@@ -1,35 +1,55 @@
 # turbo-dom
 
-Release **0.6.0** (npm package, native parser and the Rust crates `turbo-dom`,
-`turbo-dom-layout`, `turbo-dom-raster`, `turbo-dom-browser-env`; `turbo-dom-v8` 150.4.0).
+Release **0.6.0**. turbo-dom is the shared browser-engine base of three projects:
 
-A faster, more spec-correct DOM for test runners — a drop-in-style alternative to
-**jsdom** and **happy-dom** for **vitest** and **jest**.
+- **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
+- **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
+- **[turbo-surf](https://github.com/miaskiewicz/turbo-surf)**, a headless browser that uses the DOM, the V8 binding, the layout engine and the screenshot painter.
 
-The HTML parser is native ([html5ever](https://github.com/servo/html5ever), Servo's
-WHATWG tree constructor, via Rust/N-API with a WASM fallback). The DOM itself stays in
-JavaScript but is **lazy** — nodes inflate from a compact typed-array buffer only when a
-test touches them, and `window` globals materialize only on first use.
+turbo-dom is also a standalone npm package: a fast, spec-correct DOM environment for
+**vitest** and **jest**, usable in place of jsdom or happy-dom.
+
+Up to 0.5.x, each consumer kept its own copy of these pieces. In 0.6.0 each piece lives
+in this repository once and is published from here. The consumers depend on the
+published crates and keep no copies.
+[docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) has the architecture, the dependency graph
+and the publish order.
+
+## What is published
+
+| package | registry | version | what it is | used by |
+|---|---|---|---|---|
+| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.6.0 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
+| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.6.0 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
+| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.6.0 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
+| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.6.0 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
+| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.6.0 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
+| [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.0 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
+
+The root `turbo-dom-parser` crate is `publish = false`. It ships inside the npm package.
+
+```
+turbo-dom ──► turbo-dom-layout ──► turbo-dom-raster
+    │               │                    │
+    │               ├──► turbo-html2pdf  │
+    │               └────────────────────┴──► turbo-surf
+    └──► turbo-dom-browser-env ◄── turbo-dom-v8
+               ├──► turbo-test
+               └──► turbo-surf
+```
+
+## Install
+
+### npm (vitest / jest)
 
 ```bash
 npm install -D @miaskiewicz/turbo-dom
 ```
 
-- ✅ **More compatible than happy-dom** — 99.94% on html5lib-tests vs happy-dom's 37%.
-  Runs React Testing Library, `user-event`, downshift, Radix UI, and Headless UI unmodified.
-- ⚡ **Faster than both** — ~130× jsdom / ~45× happy-dom on a realistic suite (parse-memoized repeated shells), ~8–44× faster HTML parsing on real pages, and ~2.7× happy-dom on repeated queries while staying 99.7% spec-correct.
-- 🎨 **Real computed style** — `getComputedStyle` runs a **partial cascade**: it resolves real
-  injected `<style>` rules (emotion/MUI `.css-HASH{…}`) + inline styles with proper specificity/source
-  order, **inherits the standard inheritable properties down the tree** (a global `body{color}` reaches
-  descendants), and **canonicalizes colors to `rgb()/rgba()`** like a browser (so
-  `toHaveStyle({color:'#fff'})` matches a `#ffffff`/`white`/`rgb(255,255,255)` rule). It only ever
-  returns values a real rule set — never an invented one.
-- 🎯 **Honest, not lying** — no fake layout numbers; `getBoundingClientRect()` is zeros and computed
-  style never invents layout. Geometry tests belong in a real browser.
+Prebuilt native binaries are bundled for linux x64 (glibc and musl), linux arm64,
+macOS arm64 and windows x64. Other platforms use the WASM parser.
 
-## Quick start
-
-### vitest
+**vitest** (1–4):
 
 ```ts
 // vitest.config.ts
@@ -39,303 +59,186 @@ import { createRequire } from 'node:module';
 const envPath = createRequire(import.meta.url).resolve('@miaskiewicz/turbo-dom/environment/vitest');
 
 export default defineConfig({
-  test: {
-    environment: envPath, // vitest resolves a bare name only for `vitest-environment-*`
-                          // packages, so a scoped package is referenced by file path
-  },
+  test: { environment: envPath }, // a scoped package is referenced by file path
 });
 ```
 
-Works on vitest 1–4.
-
-### jest
+**jest**:
 
 ```js
 // jest.config.js
-module.exports = {
-  testEnvironment: '@miaskiewicz/turbo-dom/jest',
-};
+module.exports = { testEnvironment: '@miaskiewicz/turbo-dom/jest' };
 ```
 
-Now `document`, `window`, and friends are global in your tests — write them exactly like
-you would against jsdom/happy-dom:
+`document` and `window` are then global, as with jsdom. React Testing Library,
+`user-event`, downshift, Radix UI and Headless UI run unmodified.
 
-```js
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-
-test('counter increments', async () => {
-  render(<Counter />);
-  await userEvent.click(screen.getByRole('button'));
-  expect(screen.getByText('count: 1')).toBeInTheDocument();
-});
-```
-
-### Without a test runner
+**Without a test runner:**
 
 ```js
 import { createEnvironment } from '@miaskiewicz/turbo-dom/runtime';
 
 const env = createEnvironment('<!doctype html><body><div id="app"></div></body>');
 env.document.querySelector('#app');     // nodes inflate lazily from the parse buffer
-env.window.localStorage;                // globals materialize on first touch
 env.reset();                            // fast per-file reset (reuses the parse buffer)
 ```
 
-### Just the parser
+**Just the parser:**
 
 ```js
 const { parse, parseBuffer, parseFragment } = require('@miaskiewicz/turbo-dom');
-
-parse('<div id=a><span>hi</span></div>');         // nested tree
-parseBuffer('<div id=a>...</div>');                // compact SoA typed-array buffer
-parseFragment('<rect/>', 'svg path');              // fragment in a context element
+parse('<div id=a><span>hi</span></div>');   // nested tree
+parseBuffer('<div id=a>...</div>');          // compact SoA typed-array buffer
+parseFragment('<rect/>', 'svg path');        // fragment in a context element
 ```
 
-### Choosing the parser backend (native vs WASM)
+**Parser backend.** The default is the native addon, with WASM as the fallback. To force
+one backend, use `createEnvironment(html, { parser: 'wasm' | 'native' | 'auto' })`,
+`setParserMode('wasm')` or `TURBO_DOM_PARSER=wasm`.
 
-The runtime resolves a parser lazily on first parse: native N-API addon first, WASM
-fallback. Force it per environment or globally:
+To run without Node builtins (bare V8): instantiate the `--target web` build from
+`@miaskiewicz/turbo-dom/parser-wasm` yourself. Pass the binding to `setParser({ parse,
+parseBuffer, parseFragment })` or set it as `globalThis.__TURBO_DOM_PARSER__`. Then call
+`installGlobals(globalThis, { html })` from `@miaskiewicz/turbo-dom/install`.
 
-```js
-import { createEnvironment, setParserMode } from '@miaskiewicz/turbo-dom/runtime';
+### Rust crates
 
-createEnvironment(html, { parser: 'wasm' });   // 'wasm' | 'native' | 'auto' (default)
-setParserMode('wasm');                          // process-global; also TURBO_DOM_PARSER=wasm
-```
-
-### Embedding in a non-Node runtime (bare V8, no Node builtins)
-
-The native addon and the `--target nodejs` WASM build both need Node. For a fully
-node-free host, instantiate the `--target web` WASM yourself and inject the binding —
-the runtime then never touches `node:module`/`fs`:
-
-```js
-import init, { initSync, parse, parseBuffer, parseFragment } from '@miaskiewicz/turbo-dom/parser-wasm';
-import { setParser, createEnvironment } from '@miaskiewicz/turbo-dom/runtime';
-
-initSync({ module: wasmBytes });                // you supply the bytes (sync, no fs)
-setParser({ parse, parseBuffer, parseFragment });
-createEnvironment('<div id=app/>');             // now runs with zero Node deps
-```
-
-`setParser` also reads `globalThis.__TURBO_DOM_PARSER__` if you prefer injection by
-global. Use `installGlobals(globalThis, { html })` (from `@miaskiewicz/turbo-dom/install`)
-to set up `document`/`window` on any global object.
-
-## Compatibility
-
-| | turbo-dom | happy-dom | jsdom |
-|---|---|---|---|
-| html5lib-tests conformance | **99.94%** | 37.35% | 97.03% |
-| @testing-library/dom + user-event | ✅ | ✅ | ✅ |
-| React + Radix / Headless UI / downshift | ✅ | partial | ✅ |
-| Real layout | ❌ (honest stub) | partial | partial |
-| `getComputedStyle` cascade | partial (real `<style>` + inline + inheritance + `rgb()` colors) | partial | partial |
-| Shadow DOM (attach, slots, event retargeting, scoped/`:host` CSS) | ✅ | ✅ | ✅ |
-
-turbo-dom inherits Servo's tree constructor, so the "messy input" cases hand-rolled parsers
-get wrong — adoption-agency reparenting (`<a><p></a></p>`), table foster-parenting, optional
-end tags, `<template>` content, SVG/MathML — all match the spec. The 5 remaining
-conformance misses are bleeding-edge `<select>`-family proposals upstream `html5ever` hasn't
-adopted yet.
-
-## Performance
-
-Measured on darwin-arm64, Node 24 (`npm run bench:all`). Higher = faster, except
-the suite row (ms/file, lower = faster):
-
-| benchmark | turbo-dom | happy-dom | jsdom |
-|---|---:|---:|---:|
-| **realistic suite**, 200 files (ms/file) | **~0.025** | 1.08 | 3.20 |
-| **cold per-file construct + query** (ops/s) | **~230k** | 575 | 267 |
-| **parse 56 KB SSR** (ops/s) | **528** | 48 | 65 |
-| **parse 20 KB real page** (ops/s) | **4,353** | 135 | 99 |
-| repeated query throughput (iters/s) | **~1.8M** | 661k | 3.3k |
-| html5lib conformance | **99.94%** | 37.35% | 97.03% |
-
-On a realistic suite — 200 files of construct + queries + events — turbo-dom is
-**~45× happy-dom and ~130× jsdom**, runs repeated queries **~2.7× happy-dom**
-(~550× jsdom), and parses real pages/SSR documents **~8–44×** faster, all at 99.7%
-conformance.
-
-The per-file setup number is so high because the parser **memoizes the read-only
-SoA buffer by HTML string**: a suite calls the env setup with the same document
-shell every file, so it's parsed once and the buffer (never mutated — all changes
-go to per-Document overlays) is reused. The first parse of a given shell pays full
-cost (the parse rows above); every reuse is near-free.
-
-**turbo-dom wins across the board on what test suites actually do**: per-file
-construction (~45× happy-dom, ~130× jsdom on a repeated-shell suite), parsing,
-spec-correctness (99.7% vs 37%), **and** repeated queries.
-
-How the query speed holds up against happy-dom (whose whole design trades correctness
-for query speed): the selector/match engine is allocation-free on the hot paths (no
-per-element `classList`/`split`/regex), and `querySelectorAll`/`getElementsBy*`/
-`getElementById` results are **cached per (selector, DOM-version)** — a static
-`querySelectorAll` list is safe to reuse until the next mutation. So the repeated
-queries RTL/`findBy`/`waitFor` run against an unchanged tree are near-free, and
-`getByLabelText` went from O(n²) (1.3 ms) to ~270 µs.
-
-## How it works
-
-```
-test code (RTL, user-event)
-   └─ lazy window (Proxy, self-replacing globals)        ← JS
-   └─ lazy copy-on-write node tree (memoized identity)   ← JS
-   └─ immutable Structure-of-Arrays parse buffer          ← shared
-        └─ Rust: html5ever → flat typed-array buffer       ← native (N-API / WASM)
-```
-
-The parser runs in Rust (compute-bound, one boundary crossing per parse). The DOM stays in
-JS (chatty, fine-grained) but pays only for what a test touches. Full design notes:
-[turbo-dom-spec.md](./turbo-dom-spec.md).
-
-## Rust-native DOM runtime (`rtdom`) — for Rust consumers
-
-Everything above is the **JS-consumer** path: the DOM is JS objects, so React/RTL touch it with
-zero boundary — that's why it's fast for vitest/jest. A **Rust** consumer (crawler, extractor,
-server-side scraper) wants the opposite: the DOM in-process in Rust, no JS at all. For that there's
-**`rtdom`** — a pure-Rust port of the runtime (lazy copy-on-write tree over the same SoA buffer,
-version-cached queries, partial `getComputedStyle`, events, shadow DOM, serialize).
-
-Why a separate runtime instead of exposing this one to Rust via WASM? Measured: a Rust-DOM-in-WASM
-called *from JS* is **~0.55×** the JS runtime (the boundary crossing dominates — exactly what the
-[spec §3](./turbo-dom-spec.md) predicted), while `rtdom` run **in-process from Rust** is **~2.7×**
-the JS runtime on the same chatty workload (zero boundary). So: JS consumers keep the JS runtime,
-Rust consumers use `rtdom`.
-
-Add it to a Rust project from crates.io (the `turbo-dom` crate is the Rust-native
-runtime; the npm `@miaskiewicz/turbo-dom` is the JS path):
-
-```bash
-cargo add turbo-dom
+```toml
+[dependencies]
+turbo-dom = "0.6"
+turbo-dom-layout = "0.6"                 # bundled fonts on by default
+turbo-dom-raster = "0.6"
+turbo-dom-browser-env = "0.6"            # needs a V8 archive, see its README
 ```
 
 ```rust
-use turbo_dom::{Dom, DocumentExt};
+use turbo_dom::Dom;
 use turbo_dom::rtdom::cascade;
 
-let mut dom = Dom::parse("<main class=grid><div class=card id=hero>hi</div></main>");
-let cards = dom.tree.query_selector_all("div.card");        // version-cached, in-process
-let id = dom.tree.get_attribute(cards[0], "id");            // Some("hero") — plain Rust call
-let style = cascade::computed_style(&dom.tree, cards[0]);   // partial honest cascade
+let dom = Dom::parse("<main class=grid><div class=card id=hero>hi</div></main>");
+let cards = dom.tree.query_selector_all("div.card");      // version-cached
+let id = dom.tree.get_attribute(cards[0], "id");          // Some("hero")
+let style = cascade::computed_style(&dom.tree, cards[0]); // partial, honest cascade
 ```
 
-- **crates.io:** [`turbo-dom`](https://crates.io/crates/turbo-dom) — the Rust DOM engine lives
-  here and only here (the workspace-member crate `crates/turbo-dom/`; there is no in-repo
-  `src/rtdom` copy and no `rust-runtime` cargo feature — an earlier feature gated a duplicate copy
-  that was consolidated away). Minimal deps (`html5ever`, `rustc-hash`, `smol_str`, `cssparser`;
-  no napi/wasm), MSRV 1.89, a runnable `examples/crawl.rs`, a CI coverage floor, and a direct
-  html5lib-tests gate at **100%**. From the repo: `npm run build:rtdom` (= `cargo build -p turbo-dom --release`),
-  `npm run test:rust` (= `cargo test -p turbo-dom`), `npm run conformance:rtdom`.
-- **Browser environment over V8:** [`turbo-dom-browser-env`](./crates/turbo-dom-browser-env)
-  binds the `rtdom` tree to V8 with native callbacks (`window`/`document`/CSSOM/forms/events,
-  Chrome-control tested) — the shared DOM layer of turbo-test and turbo-surf. It links
-  [`turbo-dom-v8`](./crates/turbo-dom-v8) 150.4.0, turbo-dom's rusty_v8 fork (generated from the
-  upstream crate + reviewed patches; nothing vendored).
+Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
+[turbo-dom-layout](crates/turbo-dom-layout/README.md),
+[turbo-dom-raster](crates/turbo-dom-raster/README.md),
+[turbo-dom-browser-env](crates/turbo-dom-browser-env/README.md),
+[turbo-dom-v8](crates/turbo-dom-v8/README.md). MSRV: Rust 1.89 for turbo-dom, -layout and
+-raster; Rust 1.91 for turbo-dom-v8 and -browser-env.
 
-### The published crates (0.6.0)
+## Feature flags
 
-| crate | for |
-|---|---|
-| `turbo-dom` | the Rust DOM, selector engine, CSSOM |
-| `turbo-dom-layout` | HTML/CSS layout (turbo-html2pdf, turbo-surf) |
-| `turbo-dom-raster` | synthetic screenshots (turbo-surf) |
-| `turbo-dom-browser-env` | the V8 browser environment (turbo-test, turbo-surf) |
-| `turbo-dom-v8` (150.4.0) | the V8 binding fork they link |
+| crate | feature | default | effect |
+|---|---|---|---|
+| `turbo-dom-layout` | `bundled-fonts` | on | embeds OFL faces (Inter/Roboto, Liberation Serif/PT Serif, Fira Code/IBM Plex Mono) so a document lays out with no caller fonts |
+| | `svg` | off | routes `image/svg+xml` through the SVG rasterizer in the image pipeline (implies `svg-rasterize`) |
+| | `svg-rasterize` | off | the shared resvg rasterizer only (`svg::rasterize`) |
+| | `serde` | off | `Serialize` for the CSSOM-View metrics records |
+| | `perf` | off | hot-path instrumentation counters |
+| | `test-support` | off | font fixtures and test literals for downstream tests; never in production |
+| `turbo-dom-raster` | `avif` | off | AVIF pixels (pure-Rust rav1d) |
+| | `jxl` | off | JPEG XL pixels (jxl-oxide) |
+| | `gpu-metal` | off | wgpu (Metal) canvas and WebGL rasterization, falling back to the CPU path on any GPU failure |
+| | `coretext` | off | macOS only: canvas text through CoreText (inert elsewhere) |
+| `turbo-dom-browser-env` | `host-internals` | off | doc-hidden host access to native documents (turbo-surf) |
+| | `test-support` | off | probe, control and case constants for embedders' Chrome-parity tests |
+| | `native-sdk-frame-read` | off | reads the interceptor's should-throw mode from the V8 frame, for native SDKs without the fork fix |
+| `turbo-dom-parser` (npm) | `napi-bind` / `wasm-bind` / `wasm-runtime` | `napi-bind` | the native addon, the WASM parser and the WASM DOM-runtime spike |
 
-One `vX.Y.Z` tag publishes all of them plus the npm package, in dependency order
-([PUBLISHING.md](./PUBLISHING.md)); architecture, dependency graph and how consumers depend on
-them: [docs/CONSOLIDATION.md](./docs/CONSOLIDATION.md).
+`turbo-dom` and `turbo-dom-v8` have no features of their own. `turbo-dom-v8` forwards
+upstream rusty_v8's features (for example `simdutf`).
 
-### Layout + raster crates (`turbo-dom-layout`, `turbo-dom-raster`)
+## Status
 
-The workspace also holds the native **HTML/CSS layout engine** and the synthetic
-**screenshot painter**, relocated verbatim from `turbo-html2pdf-core` 0.3.9 and
-`turbo-surf-raster` 0.5.5 (turbo-dom consolidation, step S1):
+- **Parser:** html5lib-tests conformance is 99.94% through the npm parser (happy-dom
+  37.35%, jsdom 97.03%). The remaining misses are `<select>`-family proposals that
+  upstream html5ever has not adopted yet. The Rust `rtdom` tree passes its direct
+  html5lib-tests gate at 100% (`npm run conformance:rtdom`).
+- **Chrome parity:** behaviour fixes are backed by Chrome 156 controls. These are
+  fixtures recorded from headless Chrome and asserted in tests. At the 0.6.0 parity
+  remeasure (2026-10-29), turbo-surf's API inventory against Chrome 156 has 2 missing
+  members, down from 142. Every corpus output change is declared in
+  [`tools/parity/expected/`](tools/parity/expected) (checkpoint `b-0.6.0`).
+- **Open gaps (tracked as issues):**
+  - XPath fragment contexts (turbo-dom#185)
+  - XML parsing (#186)
+  - CSS animations in `getAnimations` (#187)
+  - focus / dialog details (#188)
+  - FileList and selector error text (#189)
+  - RTL scroll and vertical writing (#190)
+  - shaping and font metrics (#191)
+  - inset `box-shadow` (#192)
+  - block and table layout residuals (#53–#102, #128, #178)
+- **The npm runtime has no layout:** `getBoundingClientRect()` returns zeros, and
+  `getComputedStyle` is a partial cascade. It resolves real `<style>` rules and inline
+  styles, applies inheritance, and serializes colours as `rgb()`. It never invents a
+  value. `@media`, state pseudo-classes, pseudo-elements and unit conversion return `''`.
+  Shadow DOM is supported: slots, retargeting, `:host` / `::slotted`, and declarative
+  shadow roots. Layout belongs to `turbo-dom-layout`, and through it to turbo-html2pdf and
+  turbo-surf.
 
-- [`crates/turbo-dom-layout`](./crates/turbo-dom-layout) — style cascade, block / inline /
-  flex / grid / table layout into a positioned `Fragment` galley, fonts (bundled OFL faces by
-  default), image sizing, layout snapshots; `layout_html` drives raw HTML. turbo-html2pdf builds
-  its templating, pagination and PDF emit on top of it.
-- [`crates/turbo-dom-raster`](./crates/turbo-dom-raster) — paints that galley to PNG / SVG
-  (plus canvas op-log replay and, under `gpu-metal`, WebGL readback).
+## Benchmarks — pending re-run
 
-`scripts/verify-copied-layout.sh` re-derives the moved code from its source commits and diffs
-it; `docs/CONSOLIDATION-TESTS.md` maps every moved test to its new id.
-
-## Limitations (by design)
-
-- **No layout.** `getBoundingClientRect()` returns zeros; `getClientRects()` is empty.
-- **`getComputedStyle` is a partial cascade** — it resolves REAL injected `<style>` rules
-  (emotion/MUI `.css-HASH{…}`) plus inline `style`, applying specificity and source order
-  (inline wins). It **inherits the standard inheritable properties** (`color`, `font*`,
-  `line-height`, `text-align`, `visibility`, …) down the flattened tree — a global rule on
-  `body`/`:root` reaches descendants, and inheritance crosses the shadow host boundary. It
-  **canonicalizes `<color>` values to `rgb()/rgba()`** (`#fff`/`white`/`hsl(...)` → `rgb(255, 255, 255)`)
-  exactly as browsers serialize computed style, so `@testing-library/jest-dom`'s `toHaveStyle`
-  color assertions compare equal regardless of how the rule authored the color. It expands common
-  shorthands to longhands (`margin`/`padding`/`border`/single-token `background`), serializes bare
-  `0` as `0px` for length props, and normalizes `font-family` comma spacing. Out of scope (returns
-  `''`): `@media`/`@supports`/`@keyframes`, `:hover`/state pseudo-classes, pseudo-elements, the
-  `inherit`/`initial`/`unset` keywords, CSS custom properties, and length-unit conversion
-  (`em`/`rem`→`px`). Only ever returns values from a matched, inline, or inherited declaration —
-  never an invented initial value. Style/geometry assertions belong in a real browser
-  (Playwright/WebDriver).
-- **`el.style` expands shorthands like Chrome** (miaskiewicz/turbo-dom#90, #97;
-  `src/runtime/css-shorthand.mjs`, the lockstep port of the Rust `rtdom::css_shorthand`):
-  `style.flex = '1'` reads `1 1 0%` with `flexGrow` `1`, `margin: 1px 2px` sets the four
-  margins, `cssText` and the `style` attribute serialize back the way Chrome does
-  (`flex: 1 1 0%;`), longhands are spelled like Chrome (`0` → `0px`) and a value a known grammar
-  rejects is ignored. The npm runtime still keeps longhands it has no grammar for, and its
-  minimal CSSOM rules have no `style` declaration.
-- **`<style>.textContent` reflects rules injected via `sheet.insertRule()`** — CSS-in-JS engines in
-  "speedy" mode (emotion/styled-components) inject rules straight into the CSSOM without writing the
-  node's text; turbo-dom serializes them back into `textContent` (as browsers/jsdom do), so tests
-  that scrape `querySelectorAll('style')` text see the injected CSS.
-- Canvas, `<select>` rendering, and similar visual APIs are honest no-op stubs.
-- **Shadow DOM** is supported and pay-for-what-you-use — every event/query/cascade hot path
-  is unchanged until the first `attachShadow` flips a per-document flag. Covered: `attachShadow`
-  (open/closed), encapsulated `querySelector`/`getElementById`, `getRootNode({composed})`,
-  full event propagation with `target`/`relatedTarget` retargeting and `composed` boundary
-  crossing, `<slot>` `assignedNodes`/`assignedElements`/`assignedSlot`, scoped `getComputedStyle`
-  with `:host`/`:host(...)`/`::slotted(...)` and inheritance across the boundary, and declarative
-  `<template shadowrootmode>` promotion. Out of scope (honest): flattened-tree layout, `slotchange`
-  events, and the cascade caveats above (`@media`/state/pseudo-elements) inside shadow trees.
+0.6.0 has not been benchmarked yet. All four repositories will be re-run together on a
+quiet machine after the release. Until then, the last measured numbers (v0.1.55,
+2026-06-07, darwin-arm64, JS runtime vs happy-dom and jsdom) are kept unchanged and
+labelled in [docs/BENCHMARKS-history.md](docs/BENCHMARKS-history.md). They predate the
+consolidation and say nothing about 0.6.0.
 
 ## Development
 
-Requires Node ≥ 24 and a Rust toolchain (`rustup`, stable). `mise.toml` pins both.
+Requires Node ≥ 24 and Rust 1.98.0 (CI's toolchain; `mise.toml` pins Node and Rust).
+`npm install` also points git at `.githooks`, whose pre-commit hook runs `npm run test:cov`
+whenever `src/`, `test/` or `harness/` changes.
 
 ```bash
-npm install
-npm run build           # native addon (.node) + wasm — the JS-consumer artifacts
-npm test                # JS suite (unit, conformance, differential, gauntlets)
-npm run test:rust       # Rust tests: parser core + the turbo-dom crate (cargo test -p turbo-dom)
-npm run conformance     # html5lib-tests report (parser)
-npm run conformance:rtdom  # html5lib-tests gate run through the rtdom tree
-npm run bench:all       # JS-runtime benchmarks
-npm run build:wasm      # wasm32 parser fallback
-npm run build:rtdom     # pure-Rust DOM runtime (no napi/wasm) — the Rust-consumer build
-npm run complexity:rust # cyclomatic complexity <= 15 per Rust function (needs cc-check, see CLAUDE.md)
-npm run complexity:js   # cyclomatic complexity <= 15 per JS function in src/ (oxlint)
+npm run build              # native addon + both WASM packages
+npm test                   # JS suite (unit, conformance, differential, gauntlets)
+npm run test:cov           # same + coverage gate (lines 100 / functions 100 / branches 97.3)
+npm run test:vitest && npm run test:jest
+npm run test:rust          # cargo test -p turbo-dom
+npm run conformance        # html5lib-tests report (parser)
+npm run conformance:rtdom  # html5lib-tests through the rtdom tree
+cargo test -p turbo-dom-layout          # + --features svg / perf / serde,test-support
+cargo test -p turbo-dom-raster          # + --features avif / jxl
+python3 crates/turbo-dom-v8/scripts/generate.py --download --write   # generate the V8 fork
+cargo test -p turbo-dom-browser-env --features host-internals,test-support   # needs RUSTY_V8_ARCHIVE
+npm run complexity:rust    # cc-check --max 15 (install: CLAUDE.md)
+npm run complexity:js      # oxlint complexity <= 15 over src/ + crates/turbo-dom-browser-env/src
 ```
 
-CI gates every crate's line coverage at a floor and every function's cyclomatic complexity
-at <= 15 (no allow-list). The complexity jobs are expected red until the post-coverage
-refactor clears the backlog listed in [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md#complexity).
+[CLAUDE.md](CLAUDE.md) has the complete command list and the design rules.
 
-The JS runtime (`src/runtime/*.mjs`) and the Rust runtime (the `crates/turbo-dom` crate) are
-independent — touching one never affects the other. See
-[RUST_PORT_PLAN.md](./RUST_PORT_PLAN.md) for the dual-runtime architecture and
-[RUST_PORT_PERF_HISTORY.md](./RUST_PORT_PERF_HISTORY.md) for how each JS perf win maps to Rust.
+**Test fonts come from fixtures.** Text-geometry tests load the repository's own font
+files (`turbo_dom_layout::test_support::fixture_fonts()`, from
+`crates/turbo-dom-layout/assets/fonts`). Their expected values come from Chrome 156 with
+the same files loaded through `@font-face` (`scripts/fixture-font-chrome-controls.mjs`).
+Results therefore do not depend on the fonts installed on the host. Only the tests of
+the host-font policy itself read system fonts.
 
-Contributions welcome — issues and PRs at
-[github.com/miaskiewicz/turbo-dom](https://github.com/miaskiewicz/turbo-dom).
+### Gates
+
+| gate | where | status |
+|---|---|---|
+| line coverage (tarpaulin, LLVM) | `ci.yml` `coverage` | **blocking**. Floors: turbo-dom 100, turbo-dom-parser `src/core.rs` 100, turbo-dom-layout 99.8, turbo-dom-raster 100 (default / avif / jxl), turbo-dom-browser-env 97.6 |
+| JS runtime coverage | `npm run test:cov` (pre-commit hook) | lines 100 / functions 100 / branches 97.3 |
+| cyclomatic complexity ≤ 15 (Rust cc-check, JS oxlint) | `ci.yml` `complexity-rust`, `complexity-js` | **report-only** (`continue-on-error`) until the post-release refactor clears the backlog ([docs/CONSOLIDATION.md](docs/CONSOLIDATION.md#complexity)) |
+| clippy pedantic `-D warnings`, rustfmt, MSRV 1.89, version agreement, churn allocation gate, verify-copied reviews | `ci.yml` | blocking |
+
+**CI runners.** Pull requests and pushes to `main` run on Linux (x64 and arm64) and on
+Windows x64: the napi build, and the V8 / browser-env matrix with the default and
+simdutf archives. macOS arm64 builds and jobs run only in the release workflow.
+`publish.yml` calls `ci.yml` with `darwin: true`.
+
+## Releasing
+
+One annotated `vX.Y.Z` tag on the release merge commit publishes everything in dependency
+order. The order is turbo-dom-v8 → turbo-dom → turbo-dom-layout → turbo-dom-raster →
+turbo-dom-browser-env → npm. See [PUBLISHING.md](PUBLISHING.md) and the history in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-[MIT](./LICENSE).
-
-Release preparation, merge-commit tagging and registry verification are documented in [PUBLISHING.md](./PUBLISHING.md).
+[MIT](LICENSE).
