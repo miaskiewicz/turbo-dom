@@ -364,6 +364,7 @@ pub fn dispatch<'s>(
         "check" => {}
         "read" => {
             let policy = css_policy::cascade_policy(scope);
+            // invariant: an installed DOM tree is in scope
             let value = with_tree(|tree| inner_text(tree, node, &policy)).unwrap();
             rv.set(unit_string(scope, &value).into());
         }
@@ -382,6 +383,7 @@ pub fn dispatch<'s>(
                 html_popover::disconnect(scope, node, true);
             }
             if let Err(error) = set_outer(scope, node, &value) {
+                // invariant: engine-built name, far below V8's string length limit
                 rv.set(v8::String::new(scope, error).unwrap().into());
             }
         }

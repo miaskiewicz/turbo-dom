@@ -95,6 +95,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         ("__captureWindowEventInterfaces", 3),
         ("__captureSignalSubscription", 4),
     ] {
+        // invariant: engine-built name, far below V8's string length limit
         let key = v8::String::new(scope, name).unwrap();
         if let Some(function) = global
             .get(scope, key.into())
@@ -233,6 +234,7 @@ pub fn capture_window_event_interfaces(scope: &mut v8::PinScope) {
             &["message", "filename", "lineno", "colno", "error"][..],
         ),
     ] {
+        // invariant: engine-built name, far below V8's string length limit
         let key = v8::String::new(scope, interface).unwrap();
         let Some(constructor) = global
             .get(scope, key.into())
@@ -250,6 +252,7 @@ pub fn capture_window_event_interfaces(scope: &mut v8::PinScope) {
         let mut functions = Vec::with_capacity(names.len());
         let mut getters = Vec::new();
         for (index, name) in names.iter().enumerate() {
+            // invariant: engine-built name, far below V8's string length limit
             let key = v8::String::new(scope, name).unwrap();
             let value = if interface == "AbortSignal" && index > 0 {
                 prototype.get(scope, key.into())
@@ -265,6 +268,7 @@ pub fn capture_window_event_interfaces(scope: &mut v8::PinScope) {
             if let Some(value) = value.filter(|value| value.is_function()) {
                 functions.push(value);
                 if interface == "ErrorEvent" {
+                    // invariant: value produced by engine code, never page input
                     let function = v8::Local::<v8::Function>::try_from(value).unwrap();
                     let Some(function) = dom_ownership::helper_function(scope, function) else {
                         return;

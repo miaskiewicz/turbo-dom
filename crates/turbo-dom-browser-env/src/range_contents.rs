@@ -63,6 +63,7 @@ fn static_record(
     let receiver = if args.get(0).is_undefined() && args.get(1).is_object() {
         let template = v8::ObjectTemplate::new(scope);
         template.set_internal_field_count(1);
+        // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
         let object = template.new_instance(scope).unwrap();
         object.set_prototype(scope, args.get(2));
         Some(object)
@@ -118,8 +119,11 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .and_then(|script| script.run(scope))
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
+        // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
         let convert = v8::Function::new(scope, super::trusted_types::convert_call).unwrap();
+        // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
         let static_accessor = v8::Function::new(scope, static_record).unwrap();
+        // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
         let parser = v8::Function::new(scope, contextual_fragment).unwrap();
         let receiver = v8::undefined(scope);
         if let Some(updater) = initializer

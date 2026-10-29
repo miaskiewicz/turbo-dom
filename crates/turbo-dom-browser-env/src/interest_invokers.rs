@@ -51,6 +51,7 @@ pub(super) fn observe(
     }
     let event = v8::Local::new(scope, event);
     let node = wrap(scope, target);
+    // invariant: engine-built name, far below V8's string length limit
     let kind = v8::String::new(scope, ty).unwrap();
     call(scope, node, &[kind.into(), node.into(), event.into()]);
 }
@@ -147,6 +148,7 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
         let mut handles = Vec::new();
         if engaged(scope) {
             let node = wrap(scope, anchor);
+            // invariant: engine-built name, far below V8's string length limit
             let name = v8::String::new(scope, kind).unwrap();
             if let Some(list) = call(scope, node, &[name.into(), node.into()])
                 .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())

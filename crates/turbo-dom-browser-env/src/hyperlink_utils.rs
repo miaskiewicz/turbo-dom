@@ -79,6 +79,7 @@ fn dispatch<'s>(
     let name = arg_str(scope, &args, 2);
     match (operation.as_str(), parsed) {
         ("get", Some(url)) => {
+            // turbo-dom#183: fails only past V8's string length limit
             let value = v8::String::new(scope, &component(&url, &name)).unwrap();
             rv.set(value.into());
         }
@@ -89,6 +90,7 @@ fn dispatch<'s>(
         }
         ("set", Some(mut url)) => {
             update(&mut url, &name, &arg_str(scope, &args, 3));
+            // turbo-dom#183: fails only past V8's string length limit
             let value = v8::String::new(scope, url.as_str()).unwrap();
             rv.set(value.into());
         }

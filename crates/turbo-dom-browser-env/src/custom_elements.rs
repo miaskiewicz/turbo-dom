@@ -344,6 +344,7 @@ impl Drop for ReactionScope<'_> {
     }
 }
 fn append(scope: &mut v8::PinScope, array: v8::Local<v8::Array>, value: v8::Local<v8::Value>) {
+    // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, &array.length().to_string()).unwrap();
     array.create_data_property(scope, key.into(), value);
 }
@@ -642,10 +643,12 @@ pub(super) fn parser_inserted(
                 let Some(value) = queue.get_index(scope, index - 1) else {
                     return;
                 };
+                // invariant: engine-built name, far below V8's string length limit
                 let key = v8::String::new(scope, &index.to_string()).unwrap();
                 queue.create_data_property(scope, key.into(), value);
                 index -= 1;
             }
+            // invariant: engine-built name, far below V8's string length limit
             let key = v8::String::new(scope, &mark.to_string()).unwrap();
             queue.create_data_property(scope, key.into(), event.into());
         }
@@ -789,6 +792,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         ("__captureCustomElementError", 2),
         ("__captureCustomElementParsed", 3),
     ] {
+        // invariant: engine-built name, far below V8's string length limit
         let key = v8::String::new(scope, name).unwrap();
         if let Some(function) = global
             .get(scope, key.into())

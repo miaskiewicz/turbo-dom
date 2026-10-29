@@ -31,6 +31,7 @@ fn authorize(
         return true;
     };
     let callback = dom_ownership::local(scope, callback);
+    // invariant: an installed DOM tree is in scope
     let root = with_tree(Tree::root).unwrap();
     let document = wrap(scope, root);
     let element = wrap(scope, node);
@@ -73,16 +74,19 @@ fn authorize_element<'s>(
             ("line", position.line),
             ("column", position.column),
         ] {
+            // invariant: engine-built name, far below V8's string length limit
             let key = v8::String::new(scope, name).unwrap();
             let value = v8::Number::new(scope, value as f64);
             source.set(scope, key.into(), value.into());
         }
     }
     let text = unit_string(scope, units);
+    // invariant: engine-built name, far below V8's string length limit
     let kind = v8::String::new(scope, kind).unwrap();
     let metas: v8::Local<v8::Value> = if let Some(initial) = initial {
         let array = v8::Array::new(scope, initial.len() as i32);
         for (index, value) in initial.iter().enumerate() {
+            // turbo-dom#183: fails only past V8's string length limit
             let value = v8::String::new(scope, value).unwrap();
             array.set_index(scope, index as u32, value.into());
         }
@@ -122,6 +126,7 @@ fn inline_changed(scope: &mut v8::PinScope, node: Handle, initial: Option<&[Stri
     let allowed = authorize(scope, node, "style-src-attr", &source, initial);
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
+        // invariant: natives run under the DomScope of an installed DOM
         let policy = &mut dom.as_mut().unwrap().css_policy;
         let applied = if !present {
             String::new()
@@ -145,6 +150,7 @@ fn applied_inline(scope: &mut v8::PinScope, node: Handle) -> String {
     let cached = DOM.with(|dom| {
         dom.borrow()
             .as_ref()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .css_policy
             .inline
@@ -157,10 +163,12 @@ fn applied_inline(scope: &mut v8::PinScope, node: Handle) -> String {
     DOM.with(|dom| {
         dom.borrow()
             .as_ref()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .css_policy
             .inline
             .get(&node)
+            // invariant: value produced by engine code, never page input
             .unwrap()
             .applied
             .clone()
@@ -178,6 +186,7 @@ fn sheet_allowed(scope: &mut v8::PinScope, node: Handle, initial: Option<&[Strin
     let cached = DOM.with(|dom| {
         dom.borrow()
             .as_ref()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .css_policy
             .sheets
@@ -195,6 +204,7 @@ fn sheet_allowed(scope: &mut v8::PinScope, node: Handle, initial: Option<&[Strin
     DOM.with(|dom| {
         dom.borrow_mut()
             .as_mut()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .css_policy
             .sheets
@@ -214,6 +224,7 @@ pub fn install(scope: &mut v8::PinScope, callback: v8::Local<v8::Function>) {
         return;
     };
     DOM.with(|dom| {
+        // invariant: natives run under the DomScope of an installed DOM
         dom.borrow_mut().as_mut().unwrap().css_policy = PolicyState {
             callback: Some(callback.clone()),
             ..Default::default()
@@ -222,6 +233,7 @@ pub fn install(scope: &mut v8::PinScope, callback: v8::Local<v8::Function>) {
     let callback = dom_ownership::local(scope, callback);
     // Native preorder preserves parser policy position. Later meta policies never
     // retroactively revoke a style that was already authorized.
+    // invariant: an installed DOM tree is in scope
     let document = wrap(scope, with_tree(Tree::root).unwrap());
     let nodes = template_contents::parser_policy_nodes(scope, document);
     let mut metas = Vec::new();
@@ -250,6 +262,7 @@ pub fn install(scope: &mut v8::PinScope, callback: v8::Local<v8::Function>) {
                 },
             )
         })
+        // invariant: value produced by engine code, never page input
         .unwrap();
         if style {
             if owner_window {
@@ -283,6 +296,7 @@ pub(super) fn cascade_policy(scope: &mut v8::PinScope) -> StylePolicy {
     let version = with_tree(|tree| tree.version).unwrap_or_default();
     if let Some(policy) = DOM.with(|dom| {
         let dom = dom.borrow();
+        // invariant: natives run under the DomScope of an installed DOM
         let state = &dom.as_ref().unwrap().css_policy;
         if state.callback.is_none() {
             return Some(StylePolicy::default());
@@ -315,6 +329,7 @@ pub(super) fn cascade_policy(scope: &mut v8::PinScope) -> StylePolicy {
         }
     }
     DOM.with(|dom| {
+        // invariant: natives run under the DomScope of an installed DOM
         dom.borrow_mut().as_mut().unwrap().css_policy.cascade = Some((version, policy.clone()))
     });
     policy
@@ -339,6 +354,7 @@ pub(super) fn shadow_cascade_policy(scope: &mut v8::PinScope) -> StylePolicy {
     let version = with_tree(|tree| tree.version).unwrap_or_default();
     if let Some(policy) = DOM.with(|dom| {
         let dom = dom.borrow();
+        // invariant: natives run under the DomScope of an installed DOM
         let state = &dom.as_ref().unwrap().css_policy;
         state
             .shadow_cascade
@@ -355,6 +371,7 @@ pub(super) fn shadow_cascade_policy(scope: &mut v8::PinScope) -> StylePolicy {
             .extend(tree.get_elements_by_tag_name("style"))
     });
     DOM.with(|dom| {
+        // invariant: natives run under the DomScope of an installed DOM
         dom.borrow_mut().as_mut().unwrap().css_policy.shadow_cascade =
             Some((version, policy.clone()))
     });
@@ -370,6 +387,7 @@ pub(super) fn read_inline(
         return;
     };
     let text = applied_inline(scope, node);
+    // turbo-dom#183: fails only past V8's string length limit
     rv.set(v8::String::new(scope, &text).unwrap().into());
 }
 pub(super) fn write_inline(
@@ -384,6 +402,7 @@ pub(super) fn write_inline(
     let text = arg_str(scope, &args, 0);
     with_tree_mut(|tree| tree.set_attribute(node, "style", &text));
     DOM.with(|dom| {
+        // invariant: natives run under the DomScope of an installed DOM
         dom.borrow_mut().as_mut().unwrap().css_policy.inline.insert(
             node,
             Inline {

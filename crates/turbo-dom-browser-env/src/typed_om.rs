@@ -54,6 +54,7 @@ fn dispatch(
 pub(super) fn install(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__typedOmNative", dispatch);
+    // invariant: engine-built name, far below V8's string length limit
     let registry = v8::String::new(scope, REGISTRY).unwrap();
     set_prop(scope, global, "__typedOmRegistry", registry.into());
     run_js(scope, include_str!("typed_om.js"));

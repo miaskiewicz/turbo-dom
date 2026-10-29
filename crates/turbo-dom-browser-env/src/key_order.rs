@@ -141,6 +141,7 @@ fn job<'s>(
     let moved = v8::Array::new_with_elements(scope, &moved);
     let fixed: Vec<v8::Local<v8::Value>> = fixed
         .iter()
+        // invariant: engine-built name, far below V8's string length limit
         .map(|name| v8::String::new(scope, name).unwrap().into())
         .collect();
     let fixed = v8::Array::new_with_elements(scope, &fixed);
@@ -182,6 +183,7 @@ fn arrange_in(scope: &mut v8::PinScope) {
     let constructor_key = v8::String::new(scope, "constructor").unwrap();
     let mut jobs = Vec::new();
     for interface in table() {
+        // invariant: engine-built name, far below V8's string length limit
         let name = v8::String::new(scope, &interface.name).unwrap();
         if !global.has_own_property(scope, name.into()).unwrap_or(false) {
             continue;

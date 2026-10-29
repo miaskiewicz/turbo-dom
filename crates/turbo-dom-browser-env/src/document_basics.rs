@@ -47,6 +47,7 @@ pub fn clone_nonces(source: Handle, target: Handle, deep: bool) {
     .unwrap_or_default();
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
+        // invariant: natives run under the DomScope of an installed DOM
         let state = dom.as_mut().unwrap();
         for (source, target) in mapping {
             if let Some(value) = state.nonces.get(&source).cloned() {
@@ -80,6 +81,7 @@ pub fn copy_nonces(
         with_tree(|tree| flatten(tree, handle, deep, &mut nodes));
         DOM.with(|dom| {
             let dom = dom.borrow();
+            // invariant: natives run under the DomScope of an installed DOM
             let state = dom.as_ref().unwrap();
             nodes
                 .into_iter()
@@ -95,6 +97,7 @@ pub fn copy_nonces(
     with_tree(|tree| flatten(tree, handle, deep, &mut nodes));
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
+        // invariant: natives run under the DomScope of an installed DOM
         let state = dom.as_mut().unwrap();
         for (node, value) in nodes.into_iter().zip(values) {
             if let Some(value) = value {
@@ -133,6 +136,7 @@ fn capture(tree: &mut Tree, node: Handle) -> Result<Vec<Snapshot>, &'static str>
                         attribute.namespace.as_deref(),
                         &attribute.local_name,
                     )
+                    // invariant: install-time intrinsic lookup, before page script runs
                     .unwrap();
                 (handle, attribute)
             })
@@ -298,6 +302,7 @@ pub fn adopt<'s>(
         let mut modes = Vec::new();
         DOM.with(|dom| {
             let mut dom = dom.borrow_mut();
+            // invariant: natives run under the DomScope of an installed DOM
             let state = dom.as_mut().unwrap();
             for (old, new) in &mapping {
                 state.checked_radios.remove(old);
@@ -342,7 +347,9 @@ pub fn adopt<'s>(
                 .collect::<Vec<_>>();
             keys.into_iter()
                 .map(|key| {
+                    // invariant: value produced by engine code, never page input
                     let new = mapping.iter().find(|(old, _)| old == &key.0).unwrap().1;
+                    // invariant: value produced by engine code, never page input
                     let value = listeners.remove(&key).unwrap();
                     ((new, key.1), value)
                 })
@@ -427,6 +434,7 @@ pub fn adopt<'s>(
         DOM.with(|dom| {
             dom.borrow_mut()
                 .as_mut()
+                // invariant: natives run under the DomScope of an installed DOM
                 .unwrap()
                 .cache
                 .insert(handle, object);
@@ -440,6 +448,7 @@ pub fn adopt<'s>(
     LISTENERS.with(|state| state.borrow_mut().extend(listeners));
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
+        // invariant: natives run under the DomScope of an installed DOM
         let state = dom.as_mut().unwrap();
         state.scripts.extend(scripts);
         state.nonces.extend(nonces);
@@ -569,6 +578,7 @@ pub fn dispatch<'s>(
             let stamp =
                 with_tree(|tree| format!("{}:{}", DOM_ID.with(|id| id.get()), tree.version))
                     .unwrap_or_default();
+            // invariant: engine-built name, far below V8's string length limit
             rv.set(v8::String::new(scope, &stamp).unwrap().into());
         }
 
@@ -585,6 +595,7 @@ pub fn dispatch<'s>(
                 let Some(stored) = dom_ownership::helper_object(scope, state) else {
                     return;
                 };
+                // invariant: natives run under the DomScope of an installed DOM
                 DOM.with(|dom| dom.borrow_mut().as_mut().unwrap().basics_state = Some(stored));
                 state
             };
@@ -639,6 +650,7 @@ pub fn dispatch<'s>(
                 }
             }
             if let Some(error) = error {
+                // invariant: engine-built name, far below V8's string length limit
                 rv.set(v8::String::new(scope, error).unwrap().into());
             }
         }
@@ -648,6 +660,7 @@ pub fn dispatch<'s>(
             let data = dom_units(scope, args.get(3)).expect("string data");
             let node =
                 with_tree_mut(|tree| tree.create_processing_instruction_units(&target, &data))
+                    // invariant: an installed DOM tree is in scope
                     .unwrap();
             rv.set(wrap(scope, node).into());
         }
@@ -656,11 +669,13 @@ pub fn dispatch<'s>(
                 tree.processing_instruction_target_utf16(handle)
                     .unwrap_or_default()
             })
+            // invariant: an installed DOM tree is in scope
             .unwrap();
             rv.set(unit_string(scope, &target).into());
         }
         "compatMode" if kind == 9 => {
             let mode = with_tree(|tree| tree.compat_mode()).unwrap_or("BackCompat");
+            // invariant: engine-built name, far below V8's string length limit
             rv.set(v8::String::new(scope, mode).unwrap().into());
         }
         "doctype" if kind == 9 => {
@@ -680,6 +695,7 @@ pub fn dispatch<'s>(
                     tree.doctype_system_id_utf16(handle).unwrap_or_default(),
                 ]
             })
+            // invariant: value produced by engine code, never page input
             .unwrap();
             let array = v8::Array::new(scope, 3);
             for (index, value) in fields.iter().enumerate() {
@@ -697,6 +713,7 @@ pub fn dispatch<'s>(
             DOM.with(|dom| {
                 dom.borrow_mut()
                     .as_mut()
+                    // invariant: natives run under the DomScope of an installed DOM
                     .unwrap()
                     .nonces
                     .insert(handle, value);
@@ -725,6 +742,7 @@ pub fn dispatch<'s>(
                 Err(error @ SHADOW_ROOT_ADOPTED) => {
                     throw_dom_error(scope, "HierarchyRequestError", error)
                 }
+                // invariant: engine-built name, far below V8's string length limit
                 Err(error) => rv.set(v8::String::new(scope, error).unwrap().into()),
             }
         }

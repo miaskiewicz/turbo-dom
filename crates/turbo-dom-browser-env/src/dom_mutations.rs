@@ -616,6 +616,7 @@ fn insert_inputs_mode<'s>(
             return false;
         }
     };
+    // invariant: an installed DOM tree is in scope
     let root = with_tree(|tree| tree.root()).unwrap();
     let document = wrap(scope, root);
     for input in &prepared {
@@ -646,6 +647,7 @@ fn insert_inputs_mode<'s>(
                 handles.push(handle_of(scope, node.object).expect("adopted node"));
             }
             Prepared::Text(text) => {
+                // invariant: an installed DOM tree is in scope
                 handles.push(with_tree_mut(|tree| tree.create_text_node_utf16(&text)).unwrap())
             }
         }

@@ -557,22 +557,27 @@ fn segments(events: &[Event], count: usize) -> Segments {
     for event in events {
         match event {
             Event::Start(..) | Event::End(..) => {
+                // invariant: value produced by engine code, never page input
                 if !pieces.last().unwrap().is_empty() || edges.last().unwrap().is_some() {
                     pieces.push(Vec::new());
                     edges.push(None);
                 }
             }
             Event::Edge(node, after) => {
+                // invariant: value produced by engine code, never page input
                 if !pieces.last().unwrap().is_empty() || edges.last().unwrap().is_some() {
                     pieces.push(Vec::new());
                     edges.push(None);
                 }
+                // invariant: value produced by engine code, never page input
                 *edges.last_mut().unwrap() = Some((*node, *after));
                 pieces.push(Vec::new());
                 edges.push(None);
             }
+            // invariant: value produced by engine code, never page input
             Event::Piece(piece) => pieces.last_mut().unwrap().push(*piece),
             Event::Marker(index) => {
+                // invariant: value produced by engine code, never page input
                 raw[*index] = (pieces.len() - 1, pieces.last().unwrap().len());
             }
         }

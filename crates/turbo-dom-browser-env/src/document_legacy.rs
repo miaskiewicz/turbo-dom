@@ -63,6 +63,7 @@ fn reject<'s>(
     if !interceptor_mode::should_throw(scope, args) {
         return false;
     }
+    // invariant: engine-built name, far below V8's string length limit
     let message = v8::String::new(scope, message).unwrap();
     let error = v8::Exception::type_error(scope, message);
     scope.throw_exception(error);
@@ -136,6 +137,7 @@ fn all_index_deleter<'s, 'i>(
     args: v8::PropertyCallbackArguments<'s>,
     mut rv: v8::ReturnValue<v8::Boolean>,
 ) -> v8::Intercepted {
+    // invariant: engine-built name, far below V8's string length limit
     let name = v8::String::new(scope, &index.to_string()).unwrap();
     if supported(scope, &args, name.into()) != Some(true) {
         return v8::Intercepted::kNo;
@@ -249,6 +251,7 @@ fn collection<'s>(
 }
 
 fn private_key<'s>(scope: &mut v8::PinScope<'s, '_>, name: &str) -> v8::Local<'s, v8::Private> {
+    // invariant: engine-built name, far below V8's string length limit
     let name = v8::String::new(scope, name).unwrap();
     v8::Private::for_api(scope, Some(name))
 }
@@ -514,6 +517,7 @@ fn set_domain<'s>(
         .unwrap_or_else(|| trustworthy(&owner.url));
     // An origin-keyed agent cluster ignores the assignment (Chrome only warns).
     if !keyed {
+        // turbo-dom#183: fails only past V8's string length limit
         let value = v8::String::new(scope, &new_domain).unwrap();
         set_private_value(scope, document, RELAXED_DOMAIN, value.into());
     }
@@ -636,6 +640,7 @@ fn dispatch<'s>(
         "domain" => {
             if let Some(owner) = owner(scope, node) {
                 let domain = effective_domain(scope, &owner);
+                // turbo-dom#183: fails only past V8's string length limit
                 rv.set(v8::String::new(scope, &domain).unwrap().into());
             }
             return;
@@ -643,6 +648,7 @@ fn dispatch<'s>(
         "setDomain" => {
             let raw = args.get(2).to_rust_string_lossy(scope);
             if let Some(message) = set_domain(scope, node, &raw) {
+                // invariant: engine-built name, far below V8's string length limit
                 rv.set(v8::String::new(scope, &message).unwrap().into());
             }
             return;

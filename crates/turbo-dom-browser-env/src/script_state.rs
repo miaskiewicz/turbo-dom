@@ -424,6 +424,7 @@ pub(super) fn copy(
         with_tree(|tree| flatten_script_copy(tree, handle, deep, &mut nodes));
         DOM.with(|dom| {
             let dom = dom.borrow();
+            // invariant: natives run under the DomScope of an installed DOM
             let dom = dom.as_ref().unwrap();
             nodes
                 .into_iter()
@@ -449,6 +450,7 @@ pub(super) fn copy(
     with_tree(|tree| flatten_script_copy(tree, handle, deep, &mut nodes));
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
+        // invariant: natives run under the DomScope of an installed DOM
         let dom = dom.as_mut().unwrap();
         for (node, started) in nodes.into_iter().zip(values) {
             if let Some(already_started) = started {
@@ -478,11 +480,13 @@ fn async_access(
         scope.throw_exception(error);
         return;
     };
+    // invariant: receiver already brand-checked
     let handle = handle_of(scope, args.this()).unwrap();
     if args.data().is_true() {
         DOM.with(|dom| {
             dom.borrow_mut()
                 .as_mut()
+                // invariant: natives run under the DomScope of an installed DOM
                 .unwrap()
                 .scripts
                 .entry(handle)
@@ -532,6 +536,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         template.remove_prototype();
         let name = v8::String::new(scope, if setter { "set async" } else { "get async" }).unwrap();
         template.set_class_name(name);
+        // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
         functions.push(template.get_function(scope).unwrap());
     }
     let descriptor =

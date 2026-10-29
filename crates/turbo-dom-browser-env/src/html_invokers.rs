@@ -135,6 +135,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     bind_method(scope, global, "__invokerNative", dispatch);
     run_js(scope, include_str!("html_invokers.js"));
     for name in ["__captureInvokerActivation", "__captureActivationTarget"] {
+        // invariant: compiled-in fixture data
         let key = v8::String::new(scope, name).unwrap();
         if let Some(function) = global
             .get(scope, key.into())

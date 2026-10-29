@@ -56,6 +56,7 @@ pub(super) fn attribute_changed<'s>(
     else {
         return;
     };
+    // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, name).unwrap();
     references.delete(scope, key.into());
 }

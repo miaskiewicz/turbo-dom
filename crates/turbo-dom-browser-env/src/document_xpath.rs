@@ -178,6 +178,7 @@ fn dispatch(
     if operation == "stamp" {
         let stamp = with_tree(|tree| format!("{}:{}", DOM_ID.with(|id| id.get()), tree.version))
             .unwrap_or_default();
+        // invariant: engine-built name, far below V8's string length limit
         rv.set(v8::String::new(scope, &stamp).unwrap().into());
         return;
     }
@@ -192,6 +193,7 @@ fn dispatch(
     };
     let data =
         json!({"rows":snapshot.rows,"context":snapshot.context,"stamp":snapshot.stamp}).to_string();
+    // turbo-dom#183: fails only past V8's string length limit
     let data = v8::String::new(scope, &data).unwrap();
     let Some(result) = v8::json::parse(scope, data).and_then(|value| value.to_object(scope)) else {
         return;

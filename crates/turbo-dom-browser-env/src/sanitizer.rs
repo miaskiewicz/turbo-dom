@@ -172,6 +172,7 @@ impl Config {
                     .expect("attribute list")
                     .iter()
                     .map(|item| {
+                        // invariant: compiled-in fixture data
                         Name::new(item["name"].as_str().unwrap(), item["namespace"].as_str())
                     })
                     .collect::<HashSet<_>>()
@@ -185,6 +186,7 @@ impl Config {
                         .map(|item| {
                             (
                                 Name::new(
+                                    // invariant: compiled-in fixture data
                                     item["name"].as_str().unwrap(),
                                     item["namespace"].as_str(),
                                 ),
@@ -588,6 +590,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         ("__sanitizerDefault", DEFAULT_JSON),
         ("__sanitizerBaseline", BASELINE_JSON),
     ] {
+        // invariant: compiled-in fixture data
         let value = v8::String::new(scope, json).unwrap();
         set_prop(scope, global, name, value.into());
     }

@@ -78,8 +78,10 @@ pub fn editing_user_input(
         return false;
     };
     let scope = &mut v8::ContextScope::new(scope, context);
+    // invariant: engine-built name, far below V8's string length limit
     let kind = v8::String::new(scope, input_type).unwrap();
     let data: v8::Local<v8::Value> = match data {
+        // turbo-dom#183: fails only past V8's string length limit
         Some(text) => v8::String::new(scope, text).unwrap().into(),
         None => v8::null(scope).into(),
     };

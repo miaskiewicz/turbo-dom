@@ -13,6 +13,7 @@ pub(super) fn attribute_changed(scope: &mut v8::PinScope, host: v8::Local<v8::Ob
     };
     let scope = &mut v8::ContextScope::new(scope, context);
     let receiver = v8::undefined(scope);
+    // invariant: engine-built name, far below V8's string length limit
     let name = v8::String::new(scope, name).unwrap();
     callback.call(scope, receiver.into(), &[host.into(), name.into()]);
 }

@@ -100,6 +100,7 @@ fn event_target<'s>(
     if let Some(source) = source {
         set_prop(scope, init, "source", source.into());
     }
+    // invariant: engine-built name, far below V8's string length limit
     let kind = v8::String::new(scope, kind).unwrap();
     let event = constructor.new_instance(scope, &[kind.into(), init.into()])?;
     dispatch_host_event(scope, event, target);
@@ -303,6 +304,7 @@ fn hide_from<'s>(
     DOM.with(|dom| {
         dom.borrow_mut()
             .as_mut()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .popover
             .open
@@ -363,6 +365,7 @@ fn show_steps<'s>(
         });
         let closing = DOM.with(|dom| {
             let dom = dom.borrow();
+            // invariant: natives run under the DomScope of an installed DOM
             let dom = dom.as_ref().unwrap();
             dom.popover
                 .open
@@ -386,6 +389,7 @@ fn show_steps<'s>(
         return;
     }
     DOM.with(|dom| {
+        // invariant: natives run under the DomScope of an installed DOM
         dom.borrow_mut().as_mut().unwrap().popover.open.push(Entry {
             node,
             mode: mode.clone(),
@@ -491,6 +495,7 @@ pub(super) fn dispatch<'s>(
     let operation = args.get(1).to_rust_string_lossy(scope);
     if operation == "read" {
         if let Some(mode) = with_tree(|tree| mode(tree, node)).flatten() {
+            // invariant: engine-built name, far below V8's string length limit
             rv.set(v8::String::new(scope, &mode).unwrap().into());
         } else {
             rv.set(v8::null(scope).into());
@@ -539,6 +544,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         };
         DOM.with(|dom| {
             let mut dom = dom.borrow_mut();
+            // invariant: natives run under the DomScope of an installed DOM
             let state = &mut dom.as_mut().unwrap().popover;
             state.constructor = Some(constructor);
             state.active = true;
@@ -551,6 +557,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
 pub(super) fn hide_unrelated(scope: &mut v8::PinScope, node: Handle) {
     let closing = DOM.with(|dom| {
         let dom = dom.borrow();
+        // invariant: natives run under the DomScope of an installed DOM
         let dom = dom.as_ref().unwrap();
         dom.popover
             .open
@@ -668,6 +675,7 @@ pub(super) fn capture_scheduler(scope: &mut v8::PinScope) {
         let Some(scheduler) = dom_ownership::helper_function(scope, scheduler) else {
             return;
         };
+        // invariant: natives run under the DomScope of an installed DOM
         DOM.with(|dom| dom.borrow_mut().as_mut().unwrap().popover.scheduler = Some(scheduler));
     }
 }
@@ -796,6 +804,7 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
     }
     let replacement = DOM.with(|dom| {
         let dom = dom.borrow();
+        // invariant: natives run under the DomScope of an installed DOM
         let dom = dom.as_ref().unwrap();
         let root = selector_root(&dom.tree, anchor);
         let paths = dom

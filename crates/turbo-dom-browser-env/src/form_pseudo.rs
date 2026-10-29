@@ -121,6 +121,7 @@ fn classify(
     let elements = v8::Array::new_with_elements(scope, &elements);
     let requested: Vec<v8::Local<v8::Value>> = names
         .iter()
+        // invariant: engine-built name, far below V8's string length limit
         .map(|name| v8::String::new(scope, name).unwrap().into())
         .collect();
     let requested = v8::Array::new_with_elements(scope, &requested);
@@ -202,6 +203,7 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
         let paths = &replacements
             .iter()
             .find(|(known, _)| *known == lookup)
+            // invariant: value produced by engine code, never page input
             .unwrap()
             .1;
         match (name == "read-only", paths.is_empty()) {

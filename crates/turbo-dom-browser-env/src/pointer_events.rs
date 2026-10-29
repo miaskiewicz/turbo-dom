@@ -99,6 +99,7 @@ fn queue_event(scope: &mut v8::PinScope, target: v8::Local<v8::Object>, kind: &s
         return;
     };
     let function = dom_ownership::local(scope, &events.0);
+    // invariant: engine-built name, far below V8's string length limit
     let kind = v8::String::new(scope, kind).unwrap();
     let receiver = v8::undefined(scope);
     function.call(scope, receiver.into(), &[kind.into(), target.into()]);

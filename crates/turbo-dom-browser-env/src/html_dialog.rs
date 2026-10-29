@@ -463,6 +463,7 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
     let fullscreen_top = user_activation_gates::fullscreen_elements().last().copied();
     let (modal, open) = DOM.with(|dom| {
         let dom = dom.borrow();
+        // invariant: natives run under the DomScope of an installed DOM
         let dom = dom.as_ref().unwrap();
         let tree = &dom.tree;
         let root = html_popover::selector_root(tree, anchor);

@@ -30,6 +30,7 @@ pub(super) fn note(
     DOM.with(|dom| {
         dom.borrow_mut()
             .as_mut()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .event_handlers
             .sources
@@ -84,6 +85,7 @@ pub(super) fn changed(scope: &mut v8::PinScope, node: Handle, name: &str) {
     DOM.with(|dom| {
         dom.borrow_mut()
             .as_mut()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .event_handlers
             .sources
@@ -92,6 +94,7 @@ pub(super) fn changed(scope: &mut v8::PinScope, node: Handle, name: &str) {
     DOM.with(|dom| {
         dom.borrow_mut()
             .as_mut()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .event_handlers
             .errors
@@ -108,6 +111,7 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
     let source = source(node, name);
     let (same, policy, base) = DOM.with(|dom| {
         let dom = dom.borrow();
+        // invariant: natives run under the DomScope of an installed DOM
         let state = &dom.as_ref().unwrap().event_handlers;
         (
             state
@@ -122,6 +126,7 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
         return;
     }
     let element = wrap(scope, node);
+    // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, name).unwrap();
     if element.has(scope, key.into()) != Some(true) {
         return;
@@ -129,11 +134,13 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
     DOM.with(|dom| {
         dom.borrow_mut()
             .as_mut()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .event_handlers
             .sources
             .insert((node, name.to_owned()), source.clone());
     });
+    // invariant: an installed DOM tree is in scope
     let root = with_tree(Tree::root).unwrap();
     let document = wrap(scope, root);
     let active = DOM.with(|dom| {
@@ -167,6 +174,7 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
                 &base
             },
         )
+        // invariant: value produced by engine code, never page input
         .unwrap();
         let origin = v8::ScriptOrigin::new(
             scope,
@@ -182,6 +190,7 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
             None,
         );
         let mut source = v8::script_compiler::Source::new(code, Some(&origin));
+        // invariant: engine-built name, far below V8's string length limit
         let event = v8::String::new(scope, element_members::handler_parameter(node)).unwrap();
         let mut extensions = vec![document];
         let form = with_tree(|tree| {
@@ -264,6 +273,7 @@ pub(super) fn install(
         None => None,
     };
     DOM.with(|dom| {
+        // invariant: natives run under the DomScope of an installed DOM
         dom.borrow_mut().as_mut().unwrap().event_handlers = State {
             policy,
             base: base.to_owned(),
@@ -294,6 +304,7 @@ pub(super) fn take_adopted_sources(mapping: &[(Handle, Handle)]) -> Vec<AdoptedS
     let mapping = mapping.iter().copied().collect::<HashMap<_, _>>();
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
+        // invariant: natives run under the DomScope of an installed DOM
         let sources = &mut dom.as_mut().unwrap().event_handlers.sources;
         let keys = sources
             .keys()
@@ -302,6 +313,7 @@ pub(super) fn take_adopted_sources(mapping: &[(Handle, Handle)]) -> Vec<AdoptedS
             .collect::<Vec<_>>();
         keys.into_iter()
             .map(|key| {
+                // invariant: value produced by engine code, never page input
                 let value = sources.remove(&key).unwrap();
                 ((mapping[&key.0], key.1), value)
             })
@@ -312,6 +324,7 @@ pub(super) fn restore_adopted_sources(sources: Vec<AdoptedSource>) {
     DOM.with(|dom| {
         dom.borrow_mut()
             .as_mut()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .event_handlers
             .sources

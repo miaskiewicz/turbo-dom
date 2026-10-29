@@ -320,6 +320,7 @@ fn append_unique(
             return;
         }
     }
+    // invariant: engine-built name, far below V8's string length limit
     let index = v8::String::new(scope, &pending.length().to_string()).unwrap();
     pending.create_data_property(scope, index.into(), object.into());
 }
@@ -437,6 +438,7 @@ fn payload<'s>(
         MutationRecord::Attributes { .. } => "attributes",
         MutationRecord::CharacterData { .. } => "characterData",
     };
+    // invariant: engine-built name, far below V8's string length limit
     let kind = v8::String::new(scope, kind).unwrap();
     set_prop(scope, object, "type", kind.into());
     let target = wrap(scope, event.record.target());
@@ -472,6 +474,7 @@ fn payload<'s>(
     ] {
         let value = value.map_or_else(
             || null.into(),
+            // turbo-dom#183: fails only past V8's string length limit
             |value| v8::String::new(scope, value).unwrap().into(),
         );
         set_prop(scope, object, name, value);

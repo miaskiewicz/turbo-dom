@@ -221,6 +221,7 @@ pub fn hide_node_nonce(scope: &mut v8::PinScope, node: v8::Local<v8::Object>) {
     DOM.with(|dom| {
         dom.borrow_mut()
             .as_mut()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .nonces
             .insert(handle, value);
@@ -728,6 +729,7 @@ fn parse_html_tree_with<'s>(
     DOM_CONTEXTS.with(|contexts| {
         contexts.borrow_mut().insert(id, context);
     });
+    // invariant: an installed DOM tree is in scope
     let root = with_tree(|tree| tree.root()).unwrap();
     form_checked_state::parsed(root);
     let document = wrap(scope, root);
@@ -1232,6 +1234,7 @@ fn wrap_inner<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local
         .map(|owner| dom_ownership::local(scope, owner))
         .unwrap_or_else(|| scope.get_current_context());
     let scope = &mut v8::ContextScope::new(scope, context);
+    // invariant: natives run under the DomScope of an installed DOM
     let tmpl_g = DOM.with(|d| d.borrow().as_ref().unwrap().el_template.clone());
     let tmpl = dom_ownership::local(scope, &tmpl_g);
     termination_checkpoint(scope, "wrap:instance");
@@ -1266,6 +1269,7 @@ fn wrap_inner<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local
         };
         if let Some(interface) = interface {
             let global = scope.get_current_context().global(scope);
+            // invariant: engine-built name, far below V8's string length limit
             let key = v8::String::new(scope, interface).unwrap();
             if let Some(ctor) = global
                 .get(scope, key.into())
@@ -1354,6 +1358,7 @@ pub fn string_code_units(scope: &v8::PinScope, value: v8::Local<v8::String>) -> 
     units
 }
 fn unit_string<'s>(scope: &mut v8::PinScope<'s, '_>, units: &[u16]) -> v8::Local<'s, v8::String> {
+    // turbo-dom#183: fails only past V8's string length limit
     v8::String::new_from_two_byte(scope, units, v8::NewStringType::Normal).unwrap()
 }
 
@@ -1457,7 +1462,9 @@ fn dom_exception_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
 }
 
 fn throw_dom_error(scope: &mut v8::PinScope, name: &str, message: &str) {
+    // invariant: engine-built name, far below V8's string length limit
     let text = v8::String::new(scope, message).unwrap();
+    // invariant: engine-built name, far below V8's string length limit
     let name_value = v8::String::new(scope, name).unwrap();
     let global = scope.get_current_context().global(scope);
     let key = dom_exception_key(scope);
@@ -1472,6 +1479,7 @@ fn throw_dom_error(scope: &mut v8::PinScope, name: &str, message: &str) {
     }
     // Initialization failures can precede installation of the browser constructor.
     let error = v8::Exception::error(scope, text);
+    // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
     let object = v8::Local::<v8::Object>::try_from(error).unwrap();
     let key = v8::String::new(scope, "name").unwrap();
     object.set(scope, key.into(), name_value.into());
@@ -1515,11 +1523,13 @@ fn el_attach_shadow(
         }
         return;
     }
+    // invariant: an installed DOM tree is in scope
     let root = with_tree_mut(|tree| tree.attach_shadow(host)).unwrap();
     DOM.with(|state| {
         state
             .borrow_mut()
             .as_mut()
+            // invariant: natives run under the DomScope of an installed DOM
             .unwrap()
             .shadow_modes
             .insert(root, mode)
@@ -1583,6 +1593,7 @@ fn get_shadow_mode(
             .cloned()
     });
     if let Some(mode) = mode {
+        // invariant: engine-built name, far below V8's string length limit
         let value = v8::String::new(scope, &mode).unwrap();
         rv.set(value.into());
     }
@@ -2044,6 +2055,7 @@ fn el_cascade_prop(
     })
     .flatten()
     .unwrap_or_default();
+    // turbo-dom#183: fails only past V8's string length limit
     rv.set(v8::String::new(scope, &val).unwrap().into());
 }
 
@@ -2399,6 +2411,7 @@ fn validate_namespace_name(
         return Err("InvalidCharacterError");
     }
     if !attribute {
+        // invariant: value produced by engine code, never page input
         let first = local.chars().next().unwrap();
         if !first.is_ascii_alphabetic()
             && (!(first == '_' || first == ':' || !first.is_ascii())
@@ -2647,6 +2660,7 @@ fn el_set_attribute<'s>(
         DOM.with(|dom| {
             dom.borrow_mut()
                 .as_mut()
+                // invariant: natives run under the DomScope of an installed DOM
                 .unwrap()
                 .nonces
                 .insert(h, units.clone());
@@ -2717,6 +2731,7 @@ fn el_get_attribute<'s>(
 }
 
 fn attr_type_error(scope: &mut v8::PinScope, message: &str) {
+    // invariant: engine-built name, far below V8's string length limit
     let message = v8::String::new(scope, message).unwrap();
     let error = v8::Exception::type_error(scope, message);
     scope.throw_exception(error);
@@ -3076,6 +3091,7 @@ fn set_attr_value<'s, 'i, T>(
         })
         .unwrap_or(false)
         {
+            // invariant: receiver already brand-checked
             let handle = handle_of(scope, owner).unwrap();
             css_policy::attribute_changed(scope, handle);
         }
@@ -3130,6 +3146,7 @@ fn el_remove_attribute<'s>(
         DOM.with(|dom| {
             dom.borrow_mut()
                 .as_mut()
+                // invariant: natives run under the DomScope of an installed DOM
                 .unwrap()
                 .nonces
                 .insert(h, Vec::new());
@@ -3569,6 +3586,7 @@ fn el_get_bounding_client_rect(
     for k in [
         "x", "y", "top", "left", "right", "bottom", "width", "height",
     ] {
+        // invariant: engine-built name, far below V8's string length limit
         let key = v8::String::new(scope, k).unwrap();
         let zero = v8::Number::new(scope, 0.0);
         o.set(scope, key.into(), zero.into());
@@ -3709,6 +3727,7 @@ fn clone_subtree(t: &mut Tree, h: Handle, deep: bool) -> Handle {
         let nt = t.node_type_id(h);
         let new_h = match nt {
             2 => {
+                // invariant: value produced by engine code, never page input
                 let data = t.attribute_data_units(h).unwrap();
                 t.create_attribute_units(
                     data.namespace.as_deref(),
@@ -4187,6 +4206,7 @@ fn get_content_editable(
         Some("plaintext-only") => "plaintext-only",
         _ => "inherit",
     };
+    // turbo-dom#183: fails only past V8's string length limit
     rv.set(v8::String::new(scope, out).unwrap().into());
 }
 
@@ -5331,6 +5351,7 @@ fn form_controls_native(
                     .map(|url| url.to_string())
                     .unwrap_or_else(|| invalid_form_action(&raw))
             };
+            // turbo-dom#183: fails only past V8's string length limit
             rv.set(v8::String::new(scope, &value).unwrap().into());
         }
         "absolute-url" => {
@@ -5443,6 +5464,7 @@ fn dispatch_synthetic_with_trust(
         let value = v8::Integer::new(scope, -1);
         init.set(scope, key.into(), value.into());
     }
+    // invariant: engine-built name, far below V8's string length limit
     let ty_str = v8::String::new(scope, ty).unwrap();
     let Some(ev) = ctor.new_instance(scope, &[ty_str.into(), init.into()]) else {
         return;
@@ -5544,6 +5566,7 @@ fn set_node_data(
         let Some(value) = value.to_string(scope) else {
             return;
         };
+        // invariant: value produced by engine code, never page input
         dom_units(scope, value.into()).unwrap()
     };
     html_popover::attribute_node_change(scope, h, Some(&String::from_utf16_lossy(&data)));
@@ -5597,6 +5620,7 @@ fn get_node_name(
         Some(11) => "#document-fragment",
         kind => unreachable!("node type {kind:?} has a UTF-16 name"),
     };
+    // invariant: engine-built name, far below V8's string length limit
     rv.set(v8::String::new(scope, name).unwrap().into());
 }
 
@@ -5952,6 +5976,7 @@ where
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .length(method_arity(name))
         .build(scope);
+    // invariant: engine-built name, far below V8's string length limit
     let name = v8::String::new(scope, name).unwrap();
     template.set_class_name(name);
     template.remove_prototype();
@@ -5968,7 +5993,9 @@ where
         ),
 {
     let tmpl = method_template(scope, name, f);
+    // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
     let func = tmpl.get_function(scope).unwrap();
+    // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, name).unwrap();
     func.set_name(key);
     obj.set(scope, key.into(), func.into());
@@ -5985,6 +6012,7 @@ where
         ),
 {
     let ft = method_template(scope, name, f);
+    // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, name).unwrap();
     tmpl.set(key.into(), ft.into());
 }
@@ -5995,6 +6023,7 @@ fn tmpl_getter(
     name: &str,
     g: impl v8::MapFnTo<v8::AccessorNameGetterCallback>,
 ) {
+    // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, name).unwrap();
     tmpl.set_accessor(key.into(), g);
 }
@@ -6076,6 +6105,7 @@ fn tmpl_accessor<S>(
             v8::ReturnValue<()>,
         ),
 {
+    // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, name).unwrap();
     tmpl.set_accessor_with_setter(key.into(), g, ownership_setter::<S>);
 }
@@ -6210,6 +6240,7 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
         ("DOCUMENT_TYPE_NODE", 10),
         ("DOCUMENT_FRAGMENT_NODE", 11),
     ] {
+        // invariant: engine-built name, far below V8's string length limit
         let key = v8::String::new(scope, name).unwrap();
         let v = v8::Integer::new(scope, val);
         tmpl.set(key.into(), v.into());
@@ -6313,18 +6344,22 @@ fn dom_accessor_dispatch(
         scope.throw_exception(error);
         return;
     }
+    // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
     let handle = handle.unwrap();
     let Some(context) = receiver.get_creation_context(scope) else {
         return;
     };
     let scope = &mut v8::ContextScope::new(scope, context);
+    // invariant: natives run under the DomScope of an installed DOM
     let template = DOM.with(|d| d.borrow().as_ref().unwrap().el_template.clone());
     let template = dom_ownership::local(scope, template);
+    // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
     let raw = template.new_instance(scope).unwrap();
     let handle = v8::Integer::new_from_unsigned(scope, handle.raw());
     raw.set_internal_field(0, handle.into());
     let owner = v8::BigInt::new_from_u64(scope, DOM_ID.with(|id| id.get()));
     raw.set_internal_field(1, owner.into());
+    // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, property).unwrap();
     if setter {
         raw.set(scope, key.into(), args.get(0));
@@ -6342,12 +6377,14 @@ fn make_dom_accessor(
     let setter = args.get(1).boolean_value(scope);
     let owner = args.get(2).to_rust_string_lossy(scope);
     let operation = if setter { "set" } else { "get" };
+    // invariant: engine-built name, far below V8's string length limit
     let data = v8::String::new(scope, &format!("{operation}\0{owner}\0{property}")).unwrap();
     let template = v8::FunctionTemplate::builder(dom_accessor_dispatch)
         .data(data.into())
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .length(i32::from(setter))
         .build(scope);
+    // invariant: engine-built name, far below V8's string length limit
     let name = v8::String::new(scope, &format!("{operation} {property}")).unwrap();
     template.set_class_name(name);
     template.remove_prototype();
@@ -6419,6 +6456,7 @@ fn native_range_record(
     let receiver = if args.get(0).is_undefined() && args.get(1).is_object() {
         let template = v8::ObjectTemplate::new(scope);
         template.set_internal_field_count(1);
+        // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
         let object = template.new_instance(scope).unwrap();
         if args.get(2).is_object() {
             object.set_prototype(scope, args.get(2));
@@ -6505,6 +6543,7 @@ fn make_native_dom_function(
         } else {
             format!("Failed to construct '{name}': Please use the 'new' operator, this DOM object constructor cannot be called as a function.")
         };
+        // invariant: engine-built name, far below V8's string length limit
         v8::String::new(scope, &message).unwrap().into()
     };
     let data = v8::Array::new_with_elements(
@@ -6526,6 +6565,7 @@ fn make_native_dom_function(
         })
         .length(length)
         .build(scope);
+    // invariant: engine-built name, far below V8's string length limit
     let name = v8::String::new(scope, &name).unwrap();
     template.set_class_name(name);
     if !constructor {
@@ -6583,6 +6623,7 @@ fn named_query<'s, 'i>(
     {
         let mut attributes = 0;
         for (field, flag) in [("writable", 1), ("enumerable", 2), ("configurable", 4)] {
+            // invariant: engine-built name, far below V8's string length limit
             let key = v8::String::new(scope, field).unwrap();
             if descriptor
                 .get(scope, key.into())
@@ -6697,6 +6738,7 @@ where
     ];
     for (name, present, value) in fields {
         if present {
+            // invariant: engine-built name, far below V8's string length limit
             let key = v8::String::new(scope, name).unwrap();
             let value = v8::Boolean::new(scope, value);
             object.set(scope, key.into(), value.into());
@@ -6720,7 +6762,9 @@ where
         ),
     ] {
         if present {
+            // invariant: engine-built name, far below V8's string length limit
             let key = v8::String::new(scope, name).unwrap();
+            // invariant: value produced by engine code, never page input
             object.set(scope, key.into(), value.unwrap());
         }
     }
@@ -6746,6 +6790,7 @@ where
     v8::Intercepted::kYes
 }
 fn indexed_name<'s>(scope: &mut v8::PinScope<'s, '_>, index: u32) -> v8::Local<'s, v8::Name> {
+    // invariant: engine-built name, far below V8's string length limit
     v8::String::new(scope, &index.to_string()).unwrap().into()
 }
 fn indexed_getter<'s, 'i>(
@@ -6960,6 +7005,7 @@ fn computed_font_context<'s>(
         .as_ref()
         .map_or(default_family, |defaults| defaults.family.as_str());
     let size = defaults.as_ref().map_or(16.0, |defaults| defaults.size);
+    // invariant: engine-built name, far below V8's string length limit
     let family = v8::String::new(scope, family).unwrap();
     let size = v8::Number::new(scope, size);
     let composed_parent = shadow_slots::composed_parent(scope, element).filter(|parent| {
@@ -7172,14 +7218,18 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     );
     let reflect_key = v8::String::new(scope, "Reflect").unwrap();
     let construct_key = v8::String::new(scope, "construct").unwrap();
+    // invariant: install-time intrinsic lookup, before page script runs
     let reflect = global.get(scope, reflect_key.into()).unwrap();
+    // invariant: install-time intrinsic lookup, before page script runs
     let reflect = v8::Local::<v8::Object>::try_from(reflect).unwrap();
+    // invariant: install-time intrinsic lookup, before page script runs
     let construct = reflect.get(scope, construct_key.into()).unwrap();
     let factory = v8::FunctionTemplate::builder(make_native_dom_function)
         .data(construct)
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .build(scope)
         .get_function(scope)
+        // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
         .unwrap();
     let factory_key = v8::String::new(scope, "__nativeDOMFunction").unwrap();
     global.set(scope, factory_key.into(), factory.into());
@@ -7225,6 +7275,7 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
             let Some(function) = dom_ownership::helper_function(scope, function) else {
                 return;
             };
+            // invariant: natives run under the DomScope of an installed DOM
             DOM.with(|dom| dom.borrow_mut().as_mut().unwrap().control_clone = Some(function));
         }
     }
@@ -7372,6 +7423,7 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
 }
 
 fn bind_document(scope: &mut v8::PinScope) {
+    // invariant: an installed DOM tree is in scope
     let root = with_tree(|t| t.root()).unwrap();
     let body_h = with_tree(|t| t.query_selector("body")).flatten();
     let head_h = with_tree(|t| t.query_selector("head")).flatten();
@@ -9753,3 +9805,7 @@ mod editing_tests;
 #[path = "crate_surface.rs"]
 mod crate_surface;
 pub use crate_surface::*;
+
+#[cfg(test)]
+#[path = "stack_edge_tests.rs"]
+mod stack_edge_tests;

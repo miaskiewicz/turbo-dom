@@ -48,6 +48,7 @@ fn dispatch<'s>(
     else {
         return Outcome::Pass;
     };
+    // invariant: engine-built name, far below V8's string length limit
     let operation = v8::String::new(scope, operation).unwrap();
     let index = v8::Integer::new_from_unsigned(scope, index);
     let value = value.unwrap_or_else(|| v8::undefined(scope).into());
@@ -125,6 +126,7 @@ fn deleter<'s, 'i>(
         let message = format!(
             "Failed to delete an indexed property [{index}] from 'HTMLSelectElement': Index property deleter is not supported."
         );
+        // invariant: engine-built name, far below V8's string length limit
         let message = v8::String::new(scope, &message).unwrap();
         let error = v8::Exception::type_error(scope, message);
         scope.throw_exception(error);
@@ -153,6 +155,7 @@ where
             let message = format!(
                 "Failed to set an indexed property [{index}] on 'HTMLSelectElement': Accessor properties are not allowed."
             );
+            // invariant: engine-built name, far below V8's string length limit
             let message = v8::String::new(scope, &message).unwrap();
             let error = v8::Exception::type_error(scope, message);
             scope.throw_exception(error);

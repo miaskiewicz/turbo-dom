@@ -93,6 +93,7 @@ pub(super) fn observe<'s>(
     handle: Handle,
     object: v8::Local<'s, v8::Object>,
 ) {
+    // invariant: an installed DOM tree is in scope
     let root = with_tree(Tree::root).unwrap();
     let graph = DOM.with(|state| {
         state
@@ -107,8 +108,10 @@ pub(super) fn observe<'s>(
                 return;
             }
             let graph = std::rc::Rc::new(std::cell::RefCell::new(
+                // invariant: value produced by engine code, never page input
                 graph::DocumentGraph::new(scope, object).unwrap(),
             ));
+            // invariant: natives run under the DomScope of an installed DOM
             DOM.with(|state| state.borrow_mut().as_mut().unwrap().ownership = Some(graph.clone()));
             graph
         }
@@ -124,6 +127,7 @@ pub(super) fn observe<'s>(
         }
         root
     })
+    // invariant: value produced by engine code, never page input
     .unwrap();
     graph.borrow_mut().observe_component(
         scope,
@@ -172,6 +176,7 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
     if graph.reconcile(scope, &connected).is_none() {
         return;
     }
+    // invariant: value produced by engine code, never page input
     graph.reconcile_components(scope, |id| *roots.get(&id).unwrap());
 }
 

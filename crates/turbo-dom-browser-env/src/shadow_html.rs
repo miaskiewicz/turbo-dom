@@ -150,6 +150,7 @@ pub(super) fn configure(
     options: v8::Local<v8::Object>,
 ) {
     let read = |name: &str| {
+        // invariant: engine-built name, far below V8's string length limit
         let key = v8::String::new(scope, name).unwrap();
         options
             .get(scope, key.into())

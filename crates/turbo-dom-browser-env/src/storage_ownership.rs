@@ -182,6 +182,7 @@ fn collect_current(
 ) -> Result<CollectionReport, CollectionError> {
     let wrappers = DOM.with(|state| {
         let state = state.borrow();
+        // invariant: natives run under the DomScope of an installed DOM
         let state = state.as_ref().unwrap();
         if state.cache.len() > budget.max_edges {
             return Err(CollectionError::BudgetExceeded);
@@ -200,6 +201,7 @@ fn collect_current(
     );
     DOM.with(|state| {
         let mut state = state.borrow_mut();
+        // invariant: natives run under the DomScope of an installed DOM
         let state = state.as_mut().unwrap();
         let report = state.tree.collect_unreachable(&pins, budget)?;
         sweep_scalars(state);
