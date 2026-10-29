@@ -28,11 +28,12 @@
   document.body.innerHTML = '<div id=park style="position:fixed;top:520px;left:0;width:20px;height:20px"></div>'
     + '<span id=a></span><span id=b></span><div id=host class="one two"></div><iframe id=frame></iframe><template id=tpl></template>'
     + '<div id=group focusgroup="toolbar"><button id=f1>1</button><button id=f2>2</button></div>'
-    + '<button id=inv interestfor=pop style="interest-delay:800ms 800ms">i</button><div id=pop popover>p</div><button id=inv2>j</button>';
+    + '<button id=inv interestfor=pop style="interest-delay:800ms 800ms">i</button><div id=pop popover>p</div><button id=inv2>j</button><input id=ro readonly required>';
   await sleep(100);
 
   // Every member exercised below, captured before the patch.
-  const fn_T_add = fn(T, 'add'),
+  const Unit = CSSUnitValue, cssNumber = value => new Unit(value, 'number'), styleText = fn(CSSUnitValue.prototype, 'toString'), willValidate = get(HTMLInputElement.prototype, 'willValidate'), validity = fn(HTMLInputElement.prototype, 'checkValidity'),
+    fn_T_add = fn(T, 'add'),
     fn_T_contains = fn(T, 'contains'),
     fn_T_forEach = fn(T, 'forEach'),
     fn_T_item = fn(T, 'item'),
@@ -61,7 +62,7 @@
     set_T_value = set(T, 'value');
 
   // Patch every configurable member of the builtins with a throwing function.
-  const DRIVER_NEEDS = { __proto__: null, 'JSON.parse': 1, 'Array.prototype.@@Symbol(Symbol.iterator)': 1, 'Array.prototype.push': 1, 'Array.prototype.findIndex': 1, 'Array.prototype.splice': 1, 'Math.max': 1 };
+  const DRIVER_NEEDS = { __proto__: null, 'JSON.parse': 1, 'Array.prototype.@@Symbol(Symbol.iterator)': 1, 'Array.prototype.push': 1, 'Array.prototype.findIndex': 1, 'Array.prototype.splice': 1, 'Math.max': 1, 'Array.@@Symbol(Symbol.species)': 1 };
   const saved = []; let count = 0;
   const thrower = name => function () { throw new Err('patched ' + name); };
   const patchTargets = [[Array.prototype, 'Array.prototype'], [Array, 'Array'], [Map.prototype, 'Map.prototype'], [Set.prototype, 'Set.prototype'],
@@ -69,7 +70,7 @@
     [String, 'String'], [String.prototype, 'String.prototype'], [Function.prototype, 'Function.prototype'], [Promise, 'Promise'], [Promise.prototype, 'Promise.prototype'],
     [JSON, 'JSON'], [Symbol, 'Symbol'], [Number, 'Number'], [Number.prototype, 'Number.prototype'], [Math, 'Math'], [RegExp.prototype, 'RegExp.prototype'],
     [EventTarget.prototype, 'EventTarget.prototype'], [N, 'Node.prototype'], [E, 'Element.prototype'], [Document.prototype, 'Document.prototype'], [H, 'HTMLElement.prototype'],
-    [CSSStyleDeclaration.prototype, 'CSSStyleDeclaration.prototype'], [ShadowRoot.prototype, 'ShadowRoot.prototype'], [Event.prototype, 'Event.prototype'],
+    [CSSStyleDeclaration.prototype, 'CSSStyleDeclaration.prototype'], [ShadowRoot.prototype, 'ShadowRoot.prototype'], [RegExp, 'RegExp'], [Event.prototype, 'Event.prototype'],
     [KeyboardEvent.prototype, 'KeyboardEvent.prototype'], [MouseEvent.prototype, 'MouseEvent.prototype']];
   const skip = { __proto__: null, constructor: 1, prototype: 1, length: 1, name: 1, __proto__x: 1 };
   for (let t = 0; t < patchTargets.length; t++) {
@@ -137,6 +138,11 @@
     A(set_HTMLButtonElement_interestForElement, other, [null]);
     const event = new IE('interest', { source: inv, cancelable: true });
     return read + '|' + A(get_HTMLButtonElement_interestForElement, other, []) + '|' + A(idOf, A(sourceOf, event, []), []);
+  });
+  // The sweep: form validation and typed-OM number serialization use regular expressions.
+  await attempt('sweep', () => {
+    const ro = q('ro');
+    return A(willValidate, ro, []) + '|' + A(validity, ro, []) + '|' + A(styleText, cssNumber(1.5), []) + '|' + A(styleText, cssNumber(1.0000051), []) + '|' + A(styleText, cssNumber(2.5e-7), []);
   });
   await attempt('focusGroupKeys', async () => {
     A(focus, q('f1'), []);

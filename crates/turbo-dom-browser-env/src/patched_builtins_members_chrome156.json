@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "patched_builtins_members_probe.js",
-  "probeSha256": "7e42e613297902272a11160eac605543a5cda58f015c0aeb0e4018a3d323b5bf",
+  "probeSha256": "fc68c0e07c9e4cb72a0529ce31a67c6fa47c80991ac4c9e8a72016c756367add",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -23,6 +23,7 @@
     "focusGroupMembers": "true|false|true|true",
     "referenceTarget": "x|y|null",
     "interestMembers": "pop|null|inv",
+    "sweep": "false|true|1.5|1.00001|2.5e-07",
     "focusGroupKeys": "f2|f1",
     "interestHover": "true,true|false,false",
     "patched": true
