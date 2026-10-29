@@ -15,9 +15,9 @@ use taffy::prelude::{FromLength, FromPercent, TaffyAuto, TaffyMaxContent, TaffyM
 use taffy::style_helpers::{fr, line, minmax, percent, span};
 use taffy::{
     AlignItems, AvailableSpace, Dimension, Display, FlexDirection, FlexWrap, GridPlacement,
-    JustifyContent, Layout, LengthPercentage, LengthPercentageAuto, Line, MaxTrackSizingFunction,
-    MinTrackSizingFunction, NodeId as TaffyId, Position, Rect, Size, Style, TaffyTree,
-    TrackSizingFunction,
+    GridTrackRepetition, JustifyContent, Layout, LengthPercentage, LengthPercentageAuto, Line,
+    MaxTrackSizingFunction, MinTrackSizingFunction, NodeId as TaffyId,
+    NonRepeatedTrackSizingFunction, Position, Rect, Size, Style, TaffyTree, TrackSizingFunction,
 };
 
 use crate::error::Diagnostics;
@@ -1026,7 +1026,7 @@ fn gap_axis(s: &ComputedStyle, axis: &str) -> LengthPercentage {
 }
 
 /// Parse a `minmax(min, max)` track, if `t` is one (both sides required).
-fn minmax_track(t: &str) -> Option<TrackSizingFunction> {
+fn minmax_track(t: &str) -> Option<NonRepeatedTrackSizingFunction> {
     let inner = t
         .strip_prefix("minmax(")
         .and_then(|x| x.strip_suffix(')'))?;
@@ -1037,6 +1037,11 @@ fn minmax_track(t: &str) -> Option<TrackSizingFunction> {
 /// One grid track: `1fr`, `50%`, `200px`/`15.5rem`, `minmax(min, max)`, or
 /// `auto`/`min-content`/`max-content` (â taffy `AUTO`). Unparsable â `AUTO`.
 fn track_of(tok: &str) -> TrackSizingFunction {
+    single_track(tok).into()
+}
+
+/// [`track_of`] as the non-repeated track an auto-`repeat()` lists.
+fn single_track(tok: &str) -> NonRepeatedTrackSizingFunction {
     let t = tok.trim();
     if let Some(mm) = minmax_track(t) {
         return mm;
@@ -1044,14 +1049,14 @@ fn track_of(tok: &str) -> TrackSizingFunction {
     if let Some(kw) = keyword_track(t) {
         return kw;
     }
-    scalar_track(t).unwrap_or(TrackSizingFunction::AUTO)
+    scalar_track(t).unwrap_or(NonRepeatedTrackSizingFunction::AUTO)
 }
 
 /// `min-content`/`max-content` size the track to the items' content (a
 /// `grid-template-rows:min-content` row hugs its tallest cell's min-content height);
 /// mapping them to `AUTO` would let the row stretch to the container instead. Any
 /// other token is not a keyword track (`None`).
-fn keyword_track(t: &str) -> Option<TrackSizingFunction> {
+fn keyword_track(t: &str) -> Option<NonRepeatedTrackSizingFunction> {
     match t {
         "min-content" => Some(minmax(
             MinTrackSizingFunction::MIN_CONTENT,
@@ -1067,7 +1072,7 @@ fn keyword_track(t: &str) -> Option<TrackSizingFunction> {
 
 /// A single scalar track: `1fr`, `50%`, or a length (`200px`/`15.5rem`). `None` if
 /// the token matches none of those (the caller falls back to `AUTO`).
-fn scalar_track(t: &str) -> Option<TrackSizingFunction> {
+fn scalar_track(t: &str) -> Option<NonRepeatedTrackSizingFunction> {
     if let Some(f) = t
         .strip_suffix("fr")
         .and_then(|x| x.trim().parse::<f32>().ok())
@@ -1080,7 +1085,7 @@ fn scalar_track(t: &str) -> Option<TrackSizingFunction> {
     {
         return Some(percent(p / 100.0));
     }
-    parse_px(t, DEFAULT_FONT_SIZE).map(TrackSizingFunction::from_length)
+    parse_px(t, DEFAULT_FONT_SIZE).map(NonRepeatedTrackSizingFunction::from_length)
 }
 
 /// The min side of a `minmax()` (no `fr` allowed): length/`%`, else `auto`.
@@ -1212,23 +1217,31 @@ fn area_placement(
     Some((row, col))
 }
 
-/// `repeat(N, <tracks>)` expanded into N copies of its track list (integer count
-/// only; `auto-fill`/`auto-fit` fall through to a single `AUTO` track).
+/// `repeat(N, <tracks>)` expanded into N copies of its track list; `repeat(auto-fill
+/// | auto-fit, <tracks>)` kept as taffy's auto-repetition, which fills the container
+/// with as many tracks as fit (`auto-fit` then collapses the empty ones;
+/// miaskiewicz/turbo-dom#201).
 fn parse_repeat(tok: &str) -> Option<Vec<TrackSizingFunction>> {
     let inner = tok.trim().strip_prefix("repeat(")?.strip_suffix(')')?;
     let (count, tracks) = inner.split_once(',')?;
-    let count: usize = count.trim().parse().ok()?;
-    let one: Vec<TrackSizingFunction> = super::value::css_value_tokens(tracks)
-        .into_iter()
-        .map(track_of)
-        .collect();
-    Some(
-        one.iter()
-            .cloned()
-            .cycle()
-            .take(count * one.len())
-            .collect(),
-    )
+    let tokens = super::value::css_value_tokens(tracks);
+    let auto = match count.trim() {
+        "auto-fill" => GridTrackRepetition::AutoFill,
+        "auto-fit" => GridTrackRepetition::AutoFit,
+        n => {
+            let count: usize = n.parse().ok()?;
+            let one: Vec<TrackSizingFunction> = tokens.into_iter().map(track_of).collect();
+            return Some(
+                one.iter()
+                    .cloned()
+                    .cycle()
+                    .take(count * one.len())
+                    .collect(),
+            );
+        }
+    };
+    let singles = tokens.into_iter().map(single_track).collect();
+    Some(vec![TrackSizingFunction::Repeat(auto, singles)])
 }
 
 /// Parse a `grid-template-columns`/`-rows` value into taffy tracks. Empty /
