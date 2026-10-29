@@ -32,6 +32,11 @@ pub use token::{StyleToken, TokenSet};
 /// `sans-serif` → Inter → Roboto, `serif` → Liberation Serif → PT Serif, and
 /// `monospace` → Fira Code → IBM Plex Mono, so these resolve to embedded faces
 /// with no caller fonts.
+///
+/// Chrome 156's `html.css` makes `button`, `select`, `meter`, `progress` and the
+/// button-like / checkable / color / search inputs `box-sizing: border-box`
+/// (miaskiewicz/turbo-dom#193); text inputs, `input[type=file]` and `textarea` stay
+/// content-box.
 const UA_CSS: &str = "
 body { font-family: sans-serif }
 code, kbd, samp, pre { font-family: monospace }
@@ -71,6 +76,7 @@ input { display: inline-block; width: 150px; height: 1.4em; border: 1px solid #a
 input[type=hidden] { display: none }
 textarea { display: inline-block; width: 200px; height: 3em; border: 1px solid #a9a9a9; background-color: #ffffff }
 select, button { display: inline-block; border: 1px solid #a9a9a9; background-color: #efefef }
+button, select, meter, progress, input[type=button], input[type=submit], input[type=reset], input[type=color], input[type=checkbox], input[type=radio], input[type=search] { box-sizing: border-box }
 template { display: none }
 ";
 
