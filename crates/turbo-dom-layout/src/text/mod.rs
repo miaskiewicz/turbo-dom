@@ -9,6 +9,7 @@ mod inline;
 mod platform_fallback;
 mod registry;
 
+pub(crate) use font::cluster_ends;
 pub use font::{FontFace, HtmlFontMetrics, ShapedGlyph};
 pub use inline::{layout_text, Align, LineBox, TextStyle, WhiteSpace};
 pub use registry::{FontRegistry, SystemFontPolicy};

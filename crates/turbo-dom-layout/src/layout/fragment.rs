@@ -23,6 +23,25 @@ pub struct PositionedGlyph {
     pub glyph_id: u16,
     pub x: f32,
     pub y: f32,
+    /// The byte range of this glyph's source cluster in its line's `text`
+    /// (`TextLine::text` / `GlyphRun::text`): the characters the glyph draws,
+    /// for a PDF `/ToUnicode` map or `/ActualText` (turbo-dom#205). A ligature
+    /// carries its whole cluster; the later glyphs of a multi-glyph cluster
+    /// carry an empty range, so the line's glyph texts concatenate to the
+    /// shaped text once.
+    pub text_start: u32,
+    pub text_end: u32,
+}
+
+impl PositionedGlyph {
+    /// This glyph's cluster text within `line_text` (its `TextLine`'s `text`).
+    /// Empty for a continuation glyph or a range outside `line_text`.
+    #[must_use]
+    pub fn text<'a>(&self, line_text: &'a str) -> &'a str {
+        line_text
+            .get(self.text_start as usize..self.text_end as usize)
+            .unwrap_or("")
+    }
 }
 
 /// A repeatable table part: re-emitted atop each page a table spans (§6.3).
@@ -57,6 +76,8 @@ pub enum FragmentContent {
     /// One laid-out line of shaped text.
     TextLine {
         glyphs: Vec<PositionedGlyph>,
+        /// The shaped text the glyphs' cluster ranges index (turbo-dom#205).
+        text: String,
         face: FontFace,
         font_size: f32,
         color: Rgba,

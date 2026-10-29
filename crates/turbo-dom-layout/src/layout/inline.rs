@@ -150,6 +150,8 @@ pub struct PlacedAtom {
 pub struct GlyphRun {
     pub node_id: NodeId,
     pub glyphs: Vec<PositionedGlyph>,
+    /// The shaped text the glyphs' cluster ranges index (turbo-dom#205).
+    pub text: String,
     pub face: FontFace,
     pub font_size: f32,
     pub color: Rgba,
@@ -1574,6 +1576,7 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
         |units| seg.face.shape_original_utf16(units),
     );
     let right_to_left = source_shaper_is_rtl(&seg.text, capture_sources);
+    let mut text_ranges = ClusterTexts::new(&shaped);
     let (boundaries, utf16) = if capture_sources {
         let mut boundaries: Vec<_> = shaped.iter().map(|glyph| glyph.cluster as usize).collect();
         boundaries.push(seg.text.len());
@@ -1594,14 +1597,16 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
     } else {
         (Vec::new(), Vec::new())
     };
-    for g in shaped {
-        let ordinary_advance = scale * g.x_advance as f32 + seg.letter_spacing;
+    let ends: Vec<bool> = crate::text::cluster_ends(&shaped).collect();
+    for (g, cluster_end) in shaped.into_iter().zip(ends) {
+        let letter_spacing = if cluster_end { seg.letter_spacing } else { 0.0 };
+        let ordinary_advance = scale * g.x_advance as f32 + letter_spacing;
         let native_advance = html_font_scale.map_or(f64::from(ordinary_advance), |_| {
             native_text_advance::glyph_advance(
                 &seg.face,
                 seg.font_size,
                 g.x_advance,
-                seg.letter_spacing,
+                letter_spacing,
             )
         });
         let advance = html_font_scale.map_or(ordinary_advance, |_| native_advance as f32);
@@ -1629,10 +1634,13 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
                 advance,
             });
         }
+        let (text_start, text_end) = glyph_text_range(&mut text_ranges, &seg.text, g.cluster);
         glyphs.push(PositionedGlyph {
             glyph_id: g.glyph_id,
             x: position + scale * g.x_offset as f32,
             y: seg_baseline - scale * g.y_offset as f32,
+            text_start,
+            text_end,
         });
         x += advance;
         native_x += native_advance;
@@ -1656,11 +1664,46 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
         run: GlyphRun {
             node_id: seg.node_id,
             glyphs,
+            text: seg.text.clone(),
             face: seg.face.clone(),
             font_size: seg.font_size,
             color: seg.color,
         },
     }
+}
+
+/// The shaper's cluster starts, sorted, for each glyph's cluster byte range
+/// (turbo-dom#205). The first glyph seen of a cluster takes its range; later
+/// glyphs of the same cluster get an empty one.
+struct ClusterTexts {
+    starts: Vec<u32>,
+    claimed: Vec<bool>,
+}
+
+impl ClusterTexts {
+    fn new(shaped: &[crate::text::ShapedGlyph]) -> Self {
+        let mut starts: Vec<u32> = shaped.iter().map(|glyph| glyph.cluster).collect();
+        starts.sort_unstable();
+        starts.dedup();
+        let claimed = vec![false; starts.len()];
+        Self { starts, claimed }
+    }
+}
+
+fn glyph_text_range(clusters: &mut ClusterTexts, text: &str, cluster: u32) -> (u32, u32) {
+    let index = clusters
+        .starts
+        .binary_search(&cluster)
+        .expect("shaper cluster exists");
+    if std::mem::replace(&mut clusters.claimed[index], true) {
+        return (cluster, cluster);
+    }
+    let end = clusters
+        .starts
+        .get(index + 1)
+        .copied()
+        .unwrap_or_else(|| u32::try_from(text.len()).expect("run text fits u32"));
+    (cluster, end)
 }
 
 fn same_face(a: &FontFace, b: &FontFace) -> bool {
@@ -1694,7 +1737,15 @@ fn merge_runs(runs: Vec<SourceRun>, capture_sources: bool) -> Vec<SourceRun> {
     for run in runs {
         match out.last_mut() {
             Some(last) if can_merge_source(last, &run, capture_sources) => {
-                last.run.glyphs.extend(run.run.glyphs);
+                let base = u32::try_from(last.run.text.len()).expect("line text fits u32");
+                last.run.text.push_str(&run.run.text);
+                last.run
+                    .glyphs
+                    .extend(run.run.glyphs.into_iter().map(|mut glyph| {
+                        glyph.text_start += base;
+                        glyph.text_end += base;
+                        glyph
+                    }));
                 last.clusters.extend(run.clusters);
             }
             _ => out.push(run),
@@ -2192,7 +2243,10 @@ mod tests {
                     glyph_id: face.shape("A")[0].glyph_id,
                     x: 0.0,
                     y: 0.0,
+                    text_start: 0,
+                    text_end: 1,
                 }],
+                text: "A".into(),
                 face,
                 font_size: 16.0,
                 color: Rgba {

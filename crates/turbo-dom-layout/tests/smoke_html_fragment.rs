@@ -49,6 +49,7 @@ fn raw_html_to_positioned_fragment() {
                 face,
                 font_size,
                 color,
+                ..
             } => Some((glyphs.clone(), face.clone(), *font_size, *color)),
             _ => None,
         })

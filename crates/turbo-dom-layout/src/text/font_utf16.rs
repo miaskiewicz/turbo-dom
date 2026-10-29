@@ -66,7 +66,7 @@ impl FontFace {
     pub(crate) fn measure_original_utf16(&self, units: &[u16], size: f32, spacing: f32) -> f32 {
         let glyphs = self.shape_original_utf16(units);
         let advance: i64 = glyphs.iter().map(|glyph| i64::from(glyph.x_advance)).sum();
-        advance as f32 * self.scale(size) + spacing * glyphs.len() as f32
+        advance as f32 * self.scale(size) + spacing * super::cluster_count(&glyphs) as f32
     }
 }
 

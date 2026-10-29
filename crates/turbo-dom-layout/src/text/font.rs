@@ -430,13 +430,29 @@ impl FontFace {
     }
 
     /// Measure the advance width of `text` in pixels at `font_size`, adding
-    /// `letter_spacing` pixels after each glyph.
+    /// `letter_spacing` pixels after each shaper cluster (CSS: per typographic
+    /// character unit, so a combining mark adds none).
     #[must_use]
     pub fn measure(&self, text: &str, font_size: f32, letter_spacing: f32) -> f32 {
         let glyphs = self.shape(text);
         let advance: i64 = glyphs.iter().map(|g| i64::from(g.x_advance)).sum();
-        advance as f32 * self.scale(font_size) + letter_spacing * glyphs.len() as f32
+        advance as f32 * self.scale(font_size) + letter_spacing * cluster_count(&glyphs) as f32
     }
+}
+
+/// Whether each shaped glyph ends its cluster (the next glyph starts another
+/// one, or it is the last): `letter-spacing` goes after that glyph only.
+pub(crate) fn cluster_ends(glyphs: &[ShapedGlyph]) -> impl Iterator<Item = bool> + '_ {
+    glyphs.iter().enumerate().map(|(index, glyph)| {
+        glyphs
+            .get(index + 1)
+            .is_none_or(|next| next.cluster != glyph.cluster)
+    })
+}
+
+/// The number of shaper clusters in `glyphs`.
+pub(crate) fn cluster_count(glyphs: &[ShapedGlyph]) -> usize {
+    cluster_ends(glyphs).filter(|&end| end).count()
 }
 
 #[path = "font_utf16.rs"]
