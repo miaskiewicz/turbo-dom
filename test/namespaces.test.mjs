@@ -62,7 +62,7 @@ test('serialization: other namespaces use the qualified name and are never void'
   br.append(document.createElementNS('urn:x', 'q:Img'));
   const host = document.createElement('div');
   host.append(br, document.createElementNS(SVG, 'svg:image'), document.createElement('br'));
-  assert.equal(host.innerHTML, '<br><q:Img></q:Img></br><image></image><br>');
+  assert.equal(host.innerHTML, '<br><q:Img></q:Img></br><svg:image></svg:image><br>'); // Chrome 156 keeps the prefix
   const t = document.createElementNS('urn:x', 'template');
   t.append('x');
   assert.equal(t.outerHTML, '<template>x</template>');

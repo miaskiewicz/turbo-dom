@@ -63,6 +63,12 @@ reorder the range, and `compareBoundaryPoints`, `comparePoint`, `isPointInRange`
 `intersectsNode` and the `START_TO_START`... constants are added. The range is still not
 live: mutations made outside its own methods do not move its boundary points.
 
+### Fixed — prefixed elements in HTML serialization (Chrome 156 controls)
+`innerHTML`/`outerHTML` keep a `createElementNS` prefix on HTML, SVG and MathML elements
+(`<svg:g>`, `<h:br>`), as Chrome 156 does; the `./runtime` serializer dropped it. In both
+the runtime and the rtdom serializers a prefixed `<h:script>` (or other raw-text name)
+escapes its text, while void elements still key on the local name.
+
 ### Fixed — layout grid auto-repetition, forced page breaks and `opacity` (miaskiewicz/turbo-dom#201/#204/#206, Chrome 156 controls)
 
 - `grid-template-columns/-rows: repeat(auto-fill | auto-fit, ...)` creates as many tracks as

@@ -86,7 +86,7 @@ fn push_escaped_attr(out: &mut String, s: &str) {
 }
 
 /// Serialize `h` and its subtree (the node itself + descendants). `parent_tag` is the
-/// lowercase local name of the parent element, used only for the raw-text text-node rule.
+/// qualified name of the parent HTML element, used only for the raw-text text-node rule.
 fn serialize_node<'a>(tree: &'a Tree, h: Handle, parent_tag: Option<&'a str>, out: &mut String) {
     enum Task<'a> {
         Node(Handle, Option<&'a str>),
@@ -130,11 +130,8 @@ fn serialize_node<'a>(tree: &'a Tree, h: Handle, parent_tag: Option<&'a str>, ou
                     continue;
                 }
                 pending.push(Task::Close(tag));
-                let parent = if is_html {
-                    tree.local_name(h).unwrap_or("")
-                } else {
-                    ""
-                };
+                // Chrome 156 keys raw text on the qualified name: <h:script> escapes.
+                let parent = if is_html { tag } else { "" };
                 for child in tree.children(h).into_iter().rev() {
                     pending.push(Task::Node(child, Some(parent)));
                 }

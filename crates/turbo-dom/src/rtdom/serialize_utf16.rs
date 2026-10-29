@@ -56,8 +56,14 @@ fn node<'a>(tree: &'a Tree, handle: Handle, parent: Option<&'a str>, out: &mut V
                     continue;
                 }
                 pending.push(Task::Close(tag));
+                // raw text keys on the qualified name, like Chrome 156 (<h:script> escapes)
+                let raw_key = if html && tree.prefix(handle).is_none() {
+                    local
+                } else {
+                    ""
+                };
                 for child in tree.children(handle).into_iter().rev() {
-                    pending.push(Task::Node(child, Some(if html { local } else { "" })));
+                    pending.push(Task::Node(child, Some(raw_key)));
                 }
             }
             NodeType::Text => {

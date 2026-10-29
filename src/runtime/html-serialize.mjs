@@ -21,9 +21,11 @@ function serializeNode(node, out) {
   switch (node.nodeType) {
     case 1: { // element
       // HTML / SVG / MathML elements serialize their local name, other namespaces the
-      // qualified name; only HTML elements can be void or <template>
-      const ns = node.__ns, html = ns === '';
-      const tag = html || ns === 'svg' || ns === 'math' ? node.localName : node.tagName;
+      // qualified name; a createElementNS prefix is kept on all of them (Chrome 156:
+      // <h:br>, <svg:g>). Only HTML elements can be void or <template>, keyed on the local name.
+      const ns = node.__ns, html = ns === '', local = node.localName;
+      const tag = node.__prefix !== undefined ? `${node.__prefix}:${local}`
+        : html || ns === 'svg' || ns === 'math' ? local : node.tagName;
       out.push('<' + tag);
       // __attrs is lazy: buffer-backed elements leave it undefined (store __attrIdx).
       // Build from the SoA on first touch, matching every other __attrs read site.
@@ -33,8 +35,8 @@ function serializeNode(node, out) {
         out.push(` ${name}="${escapeAttr(a.value)}"`);
       }
       out.push('>');
-      if (html && VOID.has(tag)) break;
-      if (html && tag === 'template' && node.content) {
+      if (html && VOID.has(local)) break;
+      if (html && local === 'template' && node.content) {
         serializeChildren(node.content, out);
       } else {
         serializeChildren(node, out);
@@ -43,7 +45,8 @@ function serializeNode(node, out) {
       break;
     }
     case 3: { // text
-      const parentTag = node.parentNode && node.parentNode.localName;
+      // raw text keys on the parent's prefix-free local name (Chrome 156: <h:script> escapes)
+      const parent = node.parentNode, parentTag = parent && parent.__prefix === undefined && parent.localName;
       out.push(RAW_TEXT.has(parentTag) ? node.data : escapeText(node.data));
       break;
     }
