@@ -222,13 +222,7 @@ export class Node extends EventTarget {
       for (const c of node.__children().slice()) this.insertBefore(c, ref);
       return node;
     }
-    if (node.parentNode) {
-      // the live-range removal steps for a node moved from inside this range's containers
-      const from = node.parentNode, i = nodeIndex(node);
-      if (from === this.startContainer && i < this.startOffset) this.startOffset--;
-      if (from === this.endContainer && i < this.endOffset) this.endOffset--;
-      from.removeChild(node);
-    }
+    if (node.parentNode) node.parentNode.removeChild(node);
     const kids = this.__children();
     const i = ref ? kids.indexOf(ref) : -1;
     // a node from another document is adopted first (DOM "insert" step 7.1)
@@ -2253,13 +2247,7 @@ export class Document extends Node {
   }
   adoptNode(node) {
     if ((this.__ceRegistry !== undefined || node.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0) return withReactions(METHOD.adoptNode, this, [node]);
-    if (node.parentNode) {
-      // the live-range removal steps for a node moved from inside this range's containers
-      const from = node.parentNode, i = nodeIndex(node);
-      if (from === this.startContainer && i < this.startOffset) this.startOffset--;
-      if (from === this.endContainer && i < this.endOffset) this.endOffset--;
-      from.removeChild(node);
-    }
+    if (node.parentNode) node.parentNode.removeChild(node);
     if (node.ownerDocument !== this) adopt(node, this);
     return node;
   }
