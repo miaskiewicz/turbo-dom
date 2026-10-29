@@ -214,6 +214,8 @@ const INHERITED: &[&str] = &[
     "image-orientation",
     "caption-side",
     "border-spacing",
+    "orphans",
+    "widows",
 ];
 
 // --------------------------------------------------------------------------

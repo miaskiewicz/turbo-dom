@@ -522,9 +522,10 @@ fn break_properties_propagate_to_meta() {
 }
 
 #[test]
-fn visibility_hidden_and_opacity_zero_drop_the_box() {
-    // visibility:hidden / opacity:0 boxes are not rendered (this is what keeps
-    // Wikipedia's click/hover-revealed nav dropdowns hidden in a static shot).
+fn visibility_hidden_and_opacity_zero_paint_nothing() {
+    // visibility:hidden / opacity:0 boxes keep their layout box but paint nothing
+    // (miaskiewicz/turbo-dom#209; this is also what keeps Wikipedia's
+    // click/hover-revealed nav dropdowns hidden in a static shot).
     let vis = lay(
         &[el(
             "div",
@@ -533,7 +534,10 @@ fn visibility_hidden_and_opacity_zero_drop_the_box() {
         )],
         200.0,
     );
-    assert!(bg_boxes(&vis).is_empty(), "visibility:hidden box dropped");
+    assert!(
+        bg_boxes(&vis).is_empty(),
+        "visibility:hidden box paints nothing"
+    );
     let op = lay(
         &[el(
             "div",
@@ -542,7 +546,7 @@ fn visibility_hidden_and_opacity_zero_drop_the_box() {
         )],
         200.0,
     );
-    assert!(bg_boxes(&op).is_empty(), "opacity:0 box dropped");
+    assert!(bg_boxes(&op).is_empty(), "opacity:0 box paints nothing");
     // A normal box still renders.
     let visible = lay(
         &[el("div", &[("background-color", "#0000ff")], vec![])],
