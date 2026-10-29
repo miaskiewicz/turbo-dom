@@ -218,10 +218,7 @@ export class Node extends EventTarget {
     assertNotAncestor(this, node);
     if (ref && ref.parentNode !== this) throw new Error('NotFoundError: ref is not a child');
     if (ref === node) ref = node.nextSibling;
-    if (node.nodeType === DOCUMENT_FRAGMENT_NODE) {
-      for (const c of node.__children().slice()) this.insertBefore(c, ref);
-      return node;
-    }
+    if (node.nodeType === DOCUMENT_FRAGMENT_NODE) { insertBatch(this, [node], ref, EMPTY_NODES); return node; }
     if (node.parentNode) node.parentNode.removeChild(node);
     const kids = this.__children();
     const i = ref ? kids.indexOf(ref) : -1;
@@ -229,7 +226,8 @@ export class Node extends EventTarget {
     if (node.ownerDocument !== this.ownerDocument) adopt(node, this.ownerDocument);
     if (ref) kids.splice(i, 0, node); else kids.push(node);
     node.parentNode = this;
-    notifyMutation(this, 'childList', node, null, ref || null);
+    if (moQuiet === 0) notifyMutation(this, 'childList', node, null, ref || null, null, null, ref ? kids[i - 1] ?? null : kids[kids.length - 2] ?? null);
+    else this.__touch();
     // custom elements (custom-elements.mjs): upgrades + connectedCallback, only once a
     // registry exists — one predicted-false read otherwise
     const doc = this.ownerDocument;
@@ -242,11 +240,12 @@ export class Node extends EventTarget {
     const kids = this.__children();
     const i = kids.indexOf(node);
     if (i === -1) throw new Error('NotFoundError: node is not a child');
-    const next = kids[i + 1] || null;
+    const next = kids[i + 1] || null, previous = kids[i - 1] ?? null;
     const doc = this.ownerDocument, ce = doc !== null && doc.__ceRegistry !== undefined && this.isConnected;
     kids.splice(i, 1);
     node.parentNode = null;
-    notifyMutation(this, 'childList', null, node, next);
+    if (moQuiet === 0) notifyMutation(this, 'childList', null, node, next, null, null, previous);
+    else this.__touch();
     if (ce) removedNode(node);
     return node;
   }
@@ -296,26 +295,28 @@ export class Node extends EventTarget {
     while (n.parentNode) n = n.parentNode;
     return n;
   }
+  // DOM normalize: an empty Text is removed; a Text takes the data of the Text siblings
+  // after it (one characterData change), which are then removed (childList records).
   normalize() {
     const kids = this.__children();
-    let changed = false;
-    for (let i = kids.length - 1; i > 0; i--) {
-      if (kids[i].nodeType === TEXT_NODE && kids[i - 1].nodeType === TEXT_NODE) {
-        kids[i - 1]._data += kids[i].data; kids[i].parentNode = null; kids.splice(i, 1); changed = true;
-      }
+    for (let i = 0; i < kids.length;) {
+      const k = kids[i];
+      if (k.nodeType === TEXT_NODE) {
+        if (k.data === '') { this.removeChild(k); continue; }
+        let more = '';
+        for (let j = i + 1; j < kids.length && kids[j].nodeType === TEXT_NODE; j++) more += kids[j].data;
+        if (more !== '') k.data = k.data + more;
+        while (i + 1 < kids.length && kids[i + 1].nodeType === TEXT_NODE) this.removeChild(kids[i + 1]);
+      } else if (k.nodeType === ELEMENT_NODE) k.normalize();
+      i++;
     }
-    for (let i = kids.length - 1; i >= 0; i--) {
-      if (kids[i].nodeType === TEXT_NODE && kids[i].data === '') { kids[i].parentNode = null; kids.splice(i, 1); changed = true; }
-      else if (kids[i].nodeType === ELEMENT_NODE) kids[i].normalize();
-    }
-    // normalize mutates __kids in place — bump __version (invalidate cached queries)
-    // and feed MutationObservers, like every other childList mutation path.
-    if (changed) notifyMutation(this, 'childList', null, null, null);
   }
   replaceChildren(...nodes) {
     if (ceScope(this.ownerDocument)) return withReactions(METHOD.replaceChildren, this, nodes);
     for (const n of nodes) assertNotAncestor(this, n);
-    this.__detachKids(); this.__kids = []; this.__touch(); for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n));
+    const doc = this.ownerDocument, added = nodes.map((n) => toNode(doc, n));
+    if (observed(this)) { insertBatch(this, added, null, this.__children().slice()); return; }
+    this.__detachKids(); this.__kids = []; this.__touch(); for (const n of added) this.appendChild(n);
   }
   // bitmask: 1 DISCONNECTED, 2 PRECEDING, 4 FOLLOWING, 8 CONTAINS, 16 CONTAINED_BY
   compareDocumentPosition(other) {
@@ -366,10 +367,13 @@ export class Node extends EventTarget {
   }
   set textContent(value) {
     if (ceScope(this.ownerDocument)) { withReactions(METHOD.setTextContent, this, [value]); return; }
+    const removed = observed(this) ? this.__children().slice() : null;
     this.__detachKids();
     this.__kids = [];
     this.__touch();
-    if (value !== '') this.appendChild(this.ownerDocument.createTextNode(String(value)));
+    const text = value === '' || value == null ? null : this.ownerDocument.createTextNode(String(value));
+    if (text !== null) { moQuiet++; try { this.appendChild(text); } finally { moQuiet--; } }
+    if (removed !== null && (text !== null || removed.length !== 0)) notifyMutation(this, 'childList', text === null ? EMPTY_NODES : [text], removed, null, null, null, null);
   }
 
   // bump the document version so getElementsBy* caches invalidate after direct
@@ -849,7 +853,7 @@ export class Element extends Node {
   append(...nodes) { parentAppend(this, nodes); }
   prepend(...nodes) {
     if (ceScope(this.ownerDocument)) { withReactions(METHOD.prepend, this, nodes); return; }
-    const first = this.firstChild; for (const n of nodes) this.insertBefore(toNode(this.ownerDocument, n), first);
+    insertBatch(this, nodes.map((n) => toNode(this.ownerDocument, n)), viablePreviousSibling(this, null, nodes), EMPTY_NODES, true);
   }
   before(...nodes) { childBefore(this, nodes); }
   after(...nodes) { childAfter(this, nodes); }
@@ -880,6 +884,7 @@ export class Element extends Node {
     replaceAllWithMarkup(target, this, html);
   }
   get outerHTML() { return serializeOuter(this); }
+  set outerHTML(html) { setOuterHTML(this, html); }
   get innerText() { return this.textContent; }
   set innerText(v) { this.textContent = v; }
 
@@ -900,7 +905,7 @@ export class Element extends Node {
     }
     if (parent === null || parent.nodeType === DOCUMENT_NODE) throw domError('NoModificationAllowedError', 'The element has no parent.');
     const nodes = parseMarkup(parent.nodeType === ELEMENT_NODE ? parent : null, html, this.ownerDocument);
-    for (const n of nodes) parent.insertBefore(n, ref);
+    insertBatch(parent, nodes, ref, EMPTY_NODES);
   }
 
   __clone(doc, deep) {
@@ -1267,30 +1272,31 @@ function parseMarkup(context, html, doc) {
 // upgrades queue before the old children's disconnectedCallbacks, as in Chrome).
 function replaceAllWithMarkup(target, context, html) {
   const kids = parseMarkup(context, html, target.ownerDocument);
+  const removed = observed(target) ? target.__children().slice() : null;
   target.__detachKids();
   for (let i = 0; i < kids.length; i++) kids[i].parentNode = target;
   target.__kids = kids;
   target.__touch();
+  if (removed !== null && (kids.length !== 0 || removed.length !== 0)) notifyMutation(target, 'childList', kids.slice(), removed, null, null, null, null);
 }
 
 // ParentNode append / ChildNode before / after / replaceWith, shared by elements, text,
 // comments and fragments; one reaction scope for the whole call.
 function parentAppend(parent, nodes) {
   if (ceScope(parent.ownerDocument)) { withReactions(parentAppend, null, [parent, nodes]); return; }
-  for (const n of nodes) parent.appendChild(toNode(parent.ownerDocument, n));
+  insertBatch(parent, nodes.map((n) => toNode(parent.ownerDocument, n)), null, EMPTY_NODES);
 }
 function childBefore(child, nodes) {
   const p = child.parentNode;
   if (!p) return;
   if (ceScope(child.ownerDocument)) { withReactions(childBefore, null, [child, nodes]); return; }
-  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), child);
+  insertBatch(p, nodes.map((n) => toNode(child.ownerDocument, n)), viablePreviousSibling(p, child, nodes), EMPTY_NODES, true);
 }
 function childAfter(child, nodes) {
   const p = child.parentNode;
   if (!p) return;
   if (ceScope(child.ownerDocument)) { withReactions(childAfter, null, [child, nodes]); return; }
-  const ref = viableNextSibling(child, nodes);
-  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), ref);
+  insertBatch(p, nodes.map((n) => toNode(child.ownerDocument, n)), viableNextSibling(child, nodes), EMPTY_NODES);
 }
 // DOM "replaceWith": the node is removed before the replacements go in (a node passed among
 // its own replacements just moves; turbo-dom#40)
@@ -1298,10 +1304,59 @@ function childReplaceWith(child, nodes) {
   const p = child.parentNode;
   if (!p) return;
   if (ceScope(child.ownerDocument)) { withReactions(childReplaceWith, null, [child, nodes]); return; }
-  for (const n of nodes) assertNotAncestor(p, n);
-  const ref = viableNextSibling(child, nodes);
-  if (!nodes.includes(child)) p.removeChild(child);
-  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), ref);
+  insertBatch(p, nodes.map((n) => toNode(child.ownerDocument, n)), viableNextSibling(child, nodes), nodes.includes(child) ? EMPTY_NODES : [child]);
+}
+
+// outerHTML setter: the parsed markup replaces the element (no-op when detached).
+function setOuterHTML(el, html) {
+  const parent = el.parentNode;
+  if (parent === null) return;
+  if (parent.nodeType === DOCUMENT_NODE) throw domError('NoModificationAllowedError', 'The element\'s parent is the document.');
+  if (ceScope(el.ownerDocument)) { withReactions(setOuterHTML, null, [el, html]); return; }
+  const nodes = parseMarkup(parent.nodeType === ELEMENT_NODE ? parent : null, html, el.ownerDocument);
+  insertBatch(parent, nodes, el.nextSibling, [el]);
+}
+
+// ChildNode before()/prepend(): the first preceding sibling of `child` (null: from the
+// end) that is not one of the nodes being moved.
+function viablePreviousSibling(parent, child, nodes) {
+  let n = child === null ? null : child.previousSibling;
+  while (n !== null && nodes.includes(n)) n = n.previousSibling;
+  return n;
+}
+
+// childList records are batched by insertBatch while this is non-zero.
+let moQuiet = 0;
+const observed = (node) => { const d = node.ownerDocument; return d !== null && d.__mo != null && d.__mo.length !== 0; };
+
+// DOM "insert a fragment" / "replace all" for the multi-node APIs: the nodes leave their old
+// parents (recorded there), \`replaced\` children of \`parent\` go, and the nodes go in before
+// \`ref\` (after it when \`afterRef\`; null = at the start) — ONE childList record, as in Chrome.
+function insertBatch(parent, nodes, ref, replaced, afterRef = false) {
+  for (const n of nodes) assertNotAncestor(parent, n);
+  const flat = [];
+  for (const n of nodes) {
+    if (n.nodeType === DOCUMENT_FRAGMENT_NODE) {
+      const kids = n.__children().slice();
+      moQuiet++;
+      try { for (const k of kids) n.removeChild(k); } finally { moQuiet--; }
+      if (kids.length !== 0) notifyMutation(n, 'childList', EMPTY_NODES, kids, null, null, null, null);
+      for (const k of kids) flat.push(k);
+    } else {
+      if (n.parentNode) n.parentNode.removeChild(n);
+      flat.push(n);
+    }
+  }
+  const before = afterRef ? (ref === null ? parent.firstChild : ref.nextSibling) : ref;
+  const gone = replaced.filter((c) => c.parentNode === parent);
+  let previous;
+  moQuiet++;
+  try {
+    for (const c of gone) parent.removeChild(c);
+    previous = before === null ? parent.lastChild : before.previousSibling;
+    for (const n of flat) parent.insertBefore(n, before);
+  } finally { moQuiet--; }
+  if (flat.length !== 0 || gone.length !== 0) notifyMutation(parent, 'childList', flat, gone, before, null, null, previous);
 }
 
 // Deep clones of `source`'s children, created in `doc` and parented to `parent`.
@@ -1970,20 +2025,21 @@ const EMPTY_NODES = []; // shared read-only addedNodes/removedNodes for empty re
 // the common case (no MutationObservers — most test files) allocates NOTHING: it
 // only bumps __version and returns. The MutationRecord object + its node arrays
 // are built solely when an observer is actually registered.
-function notifyMutation(target, type, added, removed, nextSibling, attributeName, oldValue) {
+function notifyMutation(target, type, added, removed, nextSibling, attributeName, oldValue, previousSibling = null) {
   const doc = target.ownerDocument;
   if (!doc) return;
   // bump the DOM version on every structural/attribute mutation — invalidates
   // the document's getElementsBy* caches. Unconditional (independent of observers).
   doc.__version = ++VERSION;
   const mo = doc.__mo;
-  if (mo && mo.length !== 0) queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue);
+  if (mo && mo.length !== 0) queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue, previousSibling);
   // attributeChangedCallback: queued after the mutation record, like Chrome
   if (type === 'attributes' && doc.__ceRegistry !== undefined) attributeChanged(target, attributeName, oldValue);
 }
-function queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue) {
-  const addedNodes = added ? [added] : EMPTY_NODES;
-  const removedNodes = removed ? [removed] : EMPTY_NODES;
+function queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue, previousSibling) {
+  // one node, or the node list of a batched change (insertBatch, innerHTML, textContent)
+  const addedNodes = Array.isArray(added) ? added : added ? [added] : EMPTY_NODES;
+  const removedNodes = Array.isArray(removed) ? removed : removed ? [removed] : EMPTY_NODES;
   for (const reg of mo) {
     const { obs, target: obsTarget, options } = reg;
     const onTarget = target === obsTarget;
@@ -1996,7 +2052,7 @@ function queueRecords(mo, doc, target, type, added, removed, nextSibling, attrib
     const rec = {
       type, target,
       addedNodes, removedNodes,
-      previousSibling: null, nextSibling: nextSibling || null,
+      previousSibling: previousSibling || null, nextSibling: nextSibling || null,
       attributeName: attributeName || null, attributeNamespace: null,
       oldValue: (type === 'attributes' && options.attributeOldValue) ||
                 (type === 'characterData' && options.characterDataOldValue) ? (oldValue ?? null) : null,

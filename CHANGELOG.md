@@ -38,6 +38,17 @@ turbo-dom, -layout and -raster; 1.91 for turbo-dom-v8 and -browser-env.
   post-release refactor clears the backlog.
 - PR and push CI run on Linux and Windows; the macOS (aarch64-apple-darwin) builds and
   jobs run only in the release workflow (`ci.yml` called with `darwin: true`).
+### Fixed — MutationObserver childList records match Chrome (Chrome 156 controls)
+- `./runtime`: `innerHTML` (element and shadow root) queued no record, and `textContent` /
+  `replaceChildren` dropped the removed children. They now queue one record with both
+  lists. `previousSibling` was always `null`; it is now set. `append`/`prepend`/`before`/
+  `after`/`replaceWith`/`replaceChildren`, `insertAdjacentHTML` and fragment inserts queue
+  ONE record for all their nodes, as Chrome does, instead of one per node. `normalize()`
+  queues a characterData change plus a removal record per merged Text, not an empty record.
+  `Element.outerHTML` is settable (it was a getter only, so assigning threw in strict code).
+- rtdom `Tree`: `before`, `after`, `replace_with`, `replace_children`, `insert_adjacent_html`
+  and fragment inserts record one childList event with Chrome's siblings, not one per node.
+
 ### Fixed — JS-runtime `Range` boundary points (miaskiewicz/turbo-dom#207, Chrome 156 controls)
 The `./runtime` Range now follows the DOM boundary-point algorithms instead of only the
 single-container case. `extractContents`, `cloneContents`, `deleteContents` and `toString`
