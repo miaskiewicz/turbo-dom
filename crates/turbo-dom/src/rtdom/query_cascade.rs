@@ -992,6 +992,53 @@ mod tests {
         list.selectors()[0].specificity()
     }
 
+    /// View-transition selectors from Google's consent page (turbo-surf#117), with the
+    /// verdicts of frozen Chrome 156.0.8078.47 (a `<style>` rule kept or dropped; the DOM
+    /// APIs throw exactly when the rule is dropped).
+    #[test]
+    fn view_transition_selectors_follow_chrome() {
+        for good in [
+            "html:active-view-transition-type(aimc)",
+            "html:active-view-transition-type(a, b)",
+            ":ACTIVE-VIEW-TRANSITION-TYPE(A)",
+            "html:active-view-transition",
+            "html:active-view-transition-type(aimc)::view-transition-new(sb)",
+            "html:active-view-transition-type(aimc)::view-transition-old(sb):only-child",
+            "html:active-view-transition-type(aimc)::view-transition-group(*)",
+            "::view-transition-group(sb):only-child",
+            "::view-transition-image-pair(sb):only-child",
+            "::view-transition-new(sb)",
+        ] {
+            assert!(parse_for_cascade(good).is_ok(), "{good} should be valid");
+        }
+        for bad in [
+            "html:active-view-transition-type()",
+            "html:active-view-transition-type(1)",
+            ":active-view-transition-type(a,)",
+            ":active-view-transition-type(a b)",
+            ":active-view-transition-type(*)",
+            ":active-view-transition-type(\"a\")",
+            ":active-view-transition(x)",
+            "::view-transition:only-child",
+            "::view-transition-new(sb):first-child",
+            "::view-transition-new(sb):hover",
+        ] {
+            assert!(parse_for_cascade(bad).is_err(), "{bad} should be invalid");
+        }
+        // no view transition runs in a static document: they never match
+        let tree = Tree::parse("<p>");
+        let html = tree.query_selector("html").unwrap();
+        for sel in [
+            "html:active-view-transition-type(aimc)",
+            "html:active-view-transition",
+            "html:not(:active-view-transition)",
+        ] {
+            let expect = sel.contains(":not(");
+            assert_eq!(tree.matches_checked(html, sel), Ok(expect), "{sel}");
+        }
+        assert!(tree.matches_checked(html, "html:bogus").is_err());
+    }
+
     /// `CSS.supports("selector(…)")` in Chrome 156 (turbo-surf
     /// `harness/detection/fixtures/css-supports-chrome156.json`, the `selector(…)` cases).
     #[test]

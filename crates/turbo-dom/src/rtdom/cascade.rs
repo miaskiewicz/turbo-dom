@@ -708,6 +708,18 @@ mod tests {
         get_property_value(&map, prop)
     }
 
+    /// turbo-surf#117: one rule with an unknown pseudo-class is dropped on its own; the
+    /// valid rules around it (Google's view-transition ones among them) still apply.
+    #[test]
+    fn invalid_rule_is_dropped_and_valid_rules_apply() {
+        let css = "<style>#x{color:green;padding-left:1px} html:bogus #x{color:red} \
+                   html:active-view-transition-type(aimc) #x{color:red} \
+                   html:active-view-transition-type(aimc)::view-transition-new(sb):only-child{color:red} \
+                   #x{padding-left:2px}</style><div id=x>hi</div>";
+        assert_eq!(gcs_prop(css, "#x", "color"), "rgb(0, 128, 0)");
+        assert_eq!(gcs_prop(css, "#x", "padding-left"), "2px");
+    }
+
     #[test]
     fn inline_color_canonicalized() {
         // (a) inline style="color:red" → rgb(255, 0, 0)
