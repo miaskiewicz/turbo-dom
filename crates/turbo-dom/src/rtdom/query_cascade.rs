@@ -28,8 +28,9 @@
 //! [`Navigator`]; [`PositionCache`] memoizes sibling positions for navigators that style a
 //! whole tree (each sibling list is scanned once instead of once per structural pseudo).
 use super::{
-    matches_complex, parse_complex, split_top_level_commas, units, validate_selector_list, Complex,
-    Compound, Handle, Navigator, Pseudo, SelectorError, Tree, UnknownPseudo,
+    is_name_char, matches_complex, parse_complex, scan_name, split_top_level_commas, starts_ident,
+    units, validate_selector_list, Complex, Compound, Handle, Navigator, Pseudo, SelectorError,
+    Tree, UnknownPseudo,
 };
 use rustc_hash::FxHashMap;
 use std::cell::RefCell;
@@ -433,15 +434,51 @@ fn pseudo_element(name: &str, arg: Option<String>) -> Result<PseudoElement, Sele
         return Err(invalid("unknown pseudo-element"));
     }
     match (lower.as_str(), arg) {
-        ("slotted", Some(arg)) => {
-            let list = unforgiving_list(&arg)?;
-            if list.len() != 1 {
-                return Err(invalid("::slotted() takes one compound selector"));
-            }
-            Ok(PseudoElement::Slotted(list))
+        // one compound selector, nested lists restricted as in `:-webkit-any()` (Chrome 156)
+        ("slotted", Some(arg)) => match webkit_any(&arg) {
+            Some(list) if list.len() == 1 => Ok(PseudoElement::Slotted(list)),
+            _ => Err(invalid("::slotted() takes one compound selector")),
+        },
+        (name, Some(arg))
+            if name.starts_with("view-transition-") && !is_pt_name_and_class(&arg) =>
+        {
+            Err(invalid("view-transition pseudo-element argument"))
         }
         _ => Ok(PseudoElement::Inert(lower)),
     }
+}
+
+/// A view-transition pseudo-element argument (`<pt-name-and-class-selector>`): `*` or a
+/// name, then `.class` parts (no space after the dot), or only class parts; whitespace
+/// may separate the parts (Chrome 156).
+fn is_pt_name_and_class(arg: &str) -> bool {
+    let chars: Vec<char> = arg.trim_matches(is_css_space).chars().collect();
+    let mut i = 0;
+    if chars.first() == Some(&'*') {
+        i = 1;
+    } else if starts_ident(&chars, 0) {
+        scan_name(&chars, &mut i, is_name_char);
+    }
+    let mut parts = i;
+    loop {
+        while chars.get(i).copied().is_some_and(is_css_space) {
+            i += 1;
+        }
+        if chars.get(i) != Some(&'.') {
+            break;
+        }
+        if !starts_ident(&chars, i + 1) {
+            return false;
+        }
+        i += 1;
+        scan_name(&chars, &mut i, is_name_char);
+        parts += 1;
+    }
+    parts > 0 && i == chars.len()
+}
+
+fn is_css_space(c: char) -> bool {
+    matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0c')
 }
 
 /// Check (and, for cascade-only pseudos, rewrite) every pseudo of one compound. `nested`:
@@ -605,18 +642,6 @@ fn compound_only(complex: &mut Complex, combinators: bool) -> bool {
         }
     }
     true
-}
-
-/// An unforgiving selector-list argument parsed from its text.
-fn unforgiving_list(arg: &str) -> Result<Vec<Complex>, SelectorError> {
-    split_top_level_commas(arg)
-        .into_iter()
-        .map(|item| {
-            let mut complex = parse_complex_strict(item.trim())?;
-            check_nested(&mut complex)?;
-            Ok(complex)
-        })
-        .collect()
 }
 
 /// A pseudo the shared parser left `Unknown`: an implemented one written in another case,
