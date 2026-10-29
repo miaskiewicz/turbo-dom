@@ -684,6 +684,7 @@ fn lines_to_fragments(
             });
             let content = FragmentContent::TextLine {
                 glyphs: gr.glyphs.clone(),
+                text: gr.text.clone(),
                 face: gr.face.clone(),
                 font_size: gr.font_size,
                 color: gr.color,

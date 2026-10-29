@@ -126,6 +126,7 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             face,
             font_size,
             color,
+            ..
         } => paint_text(svg, f, glyphs, face, *font_size, *color),
         FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
         FragmentContent::Marker(_) => {}
@@ -893,6 +894,8 @@ mod tests {
                         glyph_id: g.glyph_id,
                         x,
                         y: 20.0,
+                        text_start: 0,
+                        text_end: 0,
                     };
                     x += g.x_advance as f32 * scale;
                     p
@@ -906,6 +909,7 @@ mod tests {
                 30.0,
                 FragmentContent::TextLine {
                     glyphs: glyphs.clone(),
+                    text: String::new(),
                     face: face.clone(),
                     font_size: 24.0,
                     color: RED,
@@ -1002,6 +1006,8 @@ mod tests {
                         glyph_id: g.glyph_id,
                         x,
                         y: 15.0,
+                        text_start: 0,
+                        text_end: 0,
                     })
                 })
                 .collect();
@@ -1013,6 +1019,7 @@ mod tests {
                 20.0,
                 FragmentContent::TextLine {
                     glyphs,
+                    text: String::new(),
                     face: face.clone(),
                     font_size: 20.0,
                     color,

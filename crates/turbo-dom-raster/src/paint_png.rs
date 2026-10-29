@@ -152,6 +152,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
             face,
             font_size,
             color,
+            ..
         } => paint_text(pm, f, glyphs, face, *font_size, *color, xf),
         FragmentContent::Image(placement) => paint_image(pm, f, placement, images, xf),
         FragmentContent::Marker(_) => {}
@@ -1771,6 +1772,8 @@ mod exact_tests {
                         glyph_id: g.glyph_id,
                         x,
                         y: 25.0,
+                        text_start: 0,
+                        text_end: 0,
                     };
                     x += g.x_advance as f32 * scale;
                     pg
@@ -1784,6 +1787,7 @@ mod exact_tests {
                 30.0,
                 FragmentContent::TextLine {
                     glyphs: glyphs.clone(),
+                    text: String::new(),
                     face: face.clone(),
                     font_size: size,
                     color: BLUE,

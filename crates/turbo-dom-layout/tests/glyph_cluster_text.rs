@@ -40,8 +40,7 @@ fn glyph_texts(html: &str) -> Vec<Vec<String>> {
 #[test]
 fn shared_glyph_keeps_its_source_character_not_the_lowest_codepoint() {
     // Inter draws U+2019 and U+02BC (and U+201D / U+02EE) with one glyph each.
-    let texts =
-        glyph_texts(r#"<p style="font-family:Inter">“quotes” ‘single’ don’t</p>"#).concat();
+    let texts = glyph_texts(r#"<p style="font-family:Inter">“quotes” ‘single’ don’t</p>"#).concat();
     assert!(texts.iter().any(|t| t == "’"), "{texts:?}");
     assert!(texts.iter().any(|t| t == "”"), "{texts:?}");
     assert!(!texts.iter().any(|t| t == "ʼ" || t == "ˮ"), "{texts:?}");
