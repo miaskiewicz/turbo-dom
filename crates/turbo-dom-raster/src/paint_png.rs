@@ -61,17 +61,27 @@ fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tra
     // overlapping descendants do not compound); `opacity: 0` paints nothing.
     if f.opacity < 1.0 {
         if f.opacity > 0.0 {
-            let mut layer = Pixmap::new(pm.width(), pm.height()).expect("layer the canvas size");
-            paint_opaque(&mut layer, f, images, xf);
+            let Some((x0, y0, w, h)) = group_layer(f, xf, pm.width(), pm.height()) else {
+                return;
+            };
+            let mut layer = Pixmap::new(w, h).expect("layer within the canvas");
+            let local = Transform::from_translate(-x0 as f32, -y0 as f32).pre_concat(xf);
+            paint_opaque(&mut layer, f, images, local);
             let paint = PixmapPaint {
                 opacity: f.opacity,
                 ..PixmapPaint::default()
             };
-            pm.draw_pixmap(0, 0, layer.as_ref(), &paint, Transform::identity(), None);
+            pm.draw_pixmap(x0, y0, layer.as_ref(), &paint, Transform::identity(), None);
         }
         return;
     }
     paint_opaque(pm, f, images, xf);
+}
+
+/// The device-pixel rectangle `(x, y, width, height)` an opacity group's layer covers on
+/// a `w x h` canvas; `None` when nothing of it can show.
+fn group_layer(_f: &Fragment, _xf: Transform, w: u32, h: u32) -> Option<(i32, i32, u32, u32)> {
+    Some((0, 0, w, h))
 }
 
 /// [`paint_fragment`] for a box painted at full opacity.
@@ -877,6 +887,97 @@ mod tests {
         let mut gone = plain(0.0, 0.0, 8.0, 8.0, Some(RED));
         gone.opacity = 0.0;
         assert!(all_white(&render(&gone, 10, 10, &HashMap::new())));
+    }
+
+    /// `f` (an opacity group) painted the pre-#206-follow-up way: one canvas-sized layer.
+    fn full_layer_reference(f: &Fragment, w: u32, h: u32, images: &DecodedAssets) -> Pixmap {
+        let mut pm = Pixmap::new(w, h).unwrap();
+        pm.fill(tiny_skia::Color::WHITE);
+        let mut layer = Pixmap::new(w, h).unwrap();
+        paint_opaque(&mut layer, f, images, Transform::identity());
+        let paint = PixmapPaint {
+            opacity: f.opacity,
+            ..PixmapPaint::default()
+        };
+        pm.draw_pixmap(0, 0, layer.as_ref(), &paint, Transform::identity(), None);
+        pm
+    }
+
+    #[test]
+    fn an_opacity_layer_covers_only_its_subtree_ink() {
+        // miaskiewicz/turbo-dom#206 follow-up: a canvas-sized layer per opacity box made
+        // 2000 one-pixel `opacity:.5` divs take 14 s at 1280x800.
+        let id = Transform::identity();
+        let mut dot = plain(5.0, 6.0, 1.0, 1.0, Some(RED));
+        dot.opacity = 0.5;
+        assert_eq!(group_layer(&dot, id, 1280, 800), Some((5, 6, 1, 1)));
+        // A child outside the parent box widens the layer; the canvas clamps it.
+        dot.children.push(plain(1270.0, 2.0, 40.0, 3.0, Some(RED)));
+        assert_eq!(group_layer(&dot, id, 1280, 800), Some((5, 2, 1275, 5)));
+        // The device transform moves it; off-canvas ink has no layer.
+        let shifted = Transform::from_translate(10.0, 20.0);
+        let mut lone = plain(5.0, 6.0, 2.0, 2.0, Some(RED));
+        lone.opacity = 0.5;
+        assert_eq!(group_layer(&lone, shifted, 100, 100), Some((15, 26, 2, 2)));
+        let off = Transform::from_translate(500.0, 0.0);
+        assert_eq!(group_layer(&lone, off, 100, 100), None);
+    }
+
+    #[test]
+    fn a_bounded_opacity_layer_paints_what_a_canvas_layer_does() {
+        // The tight layer must still hold every pixel the group paints: a blurred,
+        // offset shadow, a transformed child, and glyph ink outside its line box.
+        let reg = turbo_dom_layout::FontRegistry::new();
+        let face = reg.select(&["Inter"], 400, false).unwrap().clone();
+        let glyphs: Vec<PositionedGlyph> = face
+            .shape("Ag")
+            .iter()
+            .enumerate()
+            .map(|(i, g)| PositionedGlyph {
+                glyph_id: g.glyph_id,
+                x: i as f32 * 20.0,
+                y: 30.0,
+                text_start: 0,
+                text_end: 0,
+            })
+            .collect();
+        let line = Fragment::new(
+            NodeId(0),
+            20.0,
+            10.0,
+            1.0,
+            1.0,
+            FragmentContent::TextLine {
+                glyphs,
+                text: String::new(),
+                face,
+                font_size: 30.0,
+                color: RED,
+            },
+        );
+        let mut group = with_box(plain(30.0, 30.0, 20.0, 20.0, Some(RED)), |_, s, _, _| {
+            *s = Some(BoxShadow {
+                offset_x: 12,
+                offset_y: -9,
+                blur: 6,
+                spread: 3,
+                color: RED,
+                inset: false,
+            });
+        });
+        let rotated = with_box(plain(60.0, 60.0, 20.0, 10.0, Some(RED)), |_, _, _, t| {
+            *t = Some(BoxTransform {
+                matrix: [0.0, 1.0, -1.0, 0.0, 0.0, 0.0],
+                origin_x: 0.0,
+                origin_y: 0.0,
+            });
+        });
+        group.children.extend([line, rotated]);
+        group.opacity = 0.5;
+        let got = render(&group, 120, 120, &HashMap::new());
+        let want = full_layer_reference(&group, 120, 120, &HashMap::new());
+        assert!(!all_white(&got));
+        assert_eq!(got.data(), want.data());
     }
 
     fn image(name: &str, tint: Option<Rgba>) -> Fragment {
