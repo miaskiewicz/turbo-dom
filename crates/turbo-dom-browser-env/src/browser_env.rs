@@ -7496,6 +7496,9 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         }
         global.delete(scope, key.into());
     }
+    // Chrome's document owns only `location`: bootstrap shims set on the instance move to
+    // Document.prototype, or yield to the member already there (turbo-dom#221).
+    run_js(scope, "(function(){'use strict';const d=document,proto=Document.prototype,keys=Reflect.ownKeys(d);for(const key of keys){if(key==='location')continue;const descriptor=Reflect.getOwnPropertyDescriptor(d,key);if(!(key in proto))Reflect.defineProperty(proto,key,descriptor);Reflect.deleteProperty(d,key);}})();");
     // Last: reorder every interface's own keys to Chrome's order.
     key_order::installed(scope);
 }

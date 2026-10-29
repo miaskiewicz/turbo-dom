@@ -303,7 +303,10 @@ fn page_reaches_no_engine_shims_chrome_lacks() {
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
-    install_independent_html(scope, "<!doctype html><html><head></head><body></body></html>");
+    install_independent_html(
+        scope,
+        "<!doctype html><html><head></head><body></body></html>",
+    );
     v8::tc_scope!(let scope, scope);
     let source = v8::String::new(
         scope,
