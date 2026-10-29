@@ -1486,8 +1486,12 @@ fn dom_exception_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
 }
 
 fn throw_dom_error(scope: &mut v8::PinScope, name: &str, message: &str) {
-    // invariant: engine-built name, far below V8's string length limit
-    let text = v8::String::new(scope, message).unwrap();
+    // Some messages quote page text (an invalid selector), which can pass V8's string length
+    // limit: that surfaces as the #183 RangeError instead.
+    let Some(text) = v8::String::new(scope, message) else {
+        string_or_range_error(scope, None);
+        return;
+    };
     // invariant: engine-built name, far below V8's string length limit
     let name_value = v8::String::new(scope, name).unwrap();
     let global = scope.get_current_context().global(scope);

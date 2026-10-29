@@ -257,3 +257,43 @@ fn oversized_domain_refusal_message_throws_range_error() {
     );
     assert_eq!(actual, "RangeError: Invalid string length");
 }
+
+/// Refusal messages that quote page-supplied text (a selector, an
+/// HTMLAllCollection key) can pass V8's string length limit; like the domain
+/// refusal they surface the #183 RangeError instead of aborting the host.
+fn oversized_refusal(probe: &str) -> serde_json::Value {
+    run_probe(
+        "<!doctype html><html><head></head><body><p id=x></p></body></html>",
+        &format!(
+            "(() => {{ 'use strict'; const huge = '!' + ' '.repeat((1 << 29) - 24 - 4); \
+             try {{ {probe}; return 'done'; }} catch (error) {{ return error.name + ': ' + error.message; }} }})()"
+        ),
+        |_, _| {},
+    )
+}
+
+#[test]
+fn oversized_invalid_selector_message_throws_range_error() {
+    assert_eq!(
+        oversized_refusal("document.querySelector(huge)"),
+        "RangeError: Invalid string length"
+    );
+}
+
+#[test]
+fn oversized_webkit_matches_selector_message_throws_range_error() {
+    assert_eq!(
+        oversized_refusal("document.getElementById('x').webkitMatchesSelector(huge)"),
+        "RangeError: Invalid string length"
+    );
+}
+
+#[test]
+fn oversized_all_collection_named_refusal_throws_range_error() {
+    assert_eq!(
+        oversized_refusal(
+            "const key = huge.slice(1); document.getElementById('x').id = key; delete document.all[key]"
+        ),
+        "RangeError: Invalid string length"
+    );
+}

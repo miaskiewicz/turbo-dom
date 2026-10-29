@@ -63,8 +63,12 @@ fn reject<'s>(
     if !interceptor_mode::should_throw(scope, args) {
         return false;
     }
-    // invariant: engine-built name, far below V8's string length limit
-    let message = v8::String::new(scope, message).unwrap();
+    // A named refusal quotes the page's key, which can pass V8's string length limit: that
+    // surfaces as the #183 RangeError instead.
+    let Some(message) = v8::String::new(scope, message) else {
+        string_or_range_error(scope, None);
+        return true;
+    };
     let error = v8::Exception::type_error(scope, message);
     scope.throw_exception(error);
     true
