@@ -69,12 +69,10 @@ HTMLOptionsCollection.length -> get Node.prototype.firstChild
 HTMLOptionsCollection.remove -> get Node.prototype.firstChild
 HTMLOptionsCollection.selectedIndex -> get Node.prototype.firstChild
 HTMLProgressElement.position -> String.prototype.slice
-HTMLSelectElement.checkValidity -> get Node.prototype.firstChild
 HTMLSelectElement.item -> get Node.prototype.firstChild
 HTMLSelectElement.length -> get Node.prototype.firstChild
 HTMLSelectElement.namedItem -> get Node.prototype.firstChild
 HTMLSelectElement.remove -> get Node.prototype.firstChild
-HTMLSelectElement.reportValidity -> get Node.prototype.firstChild
 HTMLSelectElement.selectedIndex -> get Node.prototype.firstChild
 HTMLSelectElement.validationMessage -> get Node.prototype.firstChild
 HTMLSelectElement.value -> get Node.prototype.firstChild

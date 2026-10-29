@@ -1703,7 +1703,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // input/change handling path; undefined would route changes to the select/checkbox path.
     // An <input> type outside the known states (e.g. 'file ') is the Text state.
     var inputTypeStates = /^(hidden|text|search|tel|url|email|password|date|month|week|time|datetime-local|number|range|color|checkbox|radio|file|submit|image|reset|button)$/;
-    var mkTypeDesc = function(def){ return { configurable: true, get: function(){ var t = ($getAttr(this, 'type') || def).toLowerCase(); return def === 'text' && !inputTypeStates.test(t) ? 'text' : t; }, set: function(v){ $setAttr(this, 'type', v); } }; };
+    var mkTypeDesc = function(def){ return { configurable: true, get: function(){ var t = $c.toLowerCase($getAttr(this, 'type') || def); return def === 'text' && !$c.test(inputTypeStates, t) ? 'text' : t; }, set: function(v){ $setAttr(this, 'type', v); } }; };
     // `form` → the nearest ancestor <form> (userEvent fires submit on a submit-button's form).
     var formDesc = { configurable: true, get: function(){ return this.closest ? this.closest('form') : null; } };
     var controlSelections=new WeakMap(),selectionApply=Reflect.apply,selectionGet=WeakMap.prototype.get,selectionSet=WeakMap.prototype.set;
@@ -2734,7 +2734,6 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     Object.defineProperty(g,'EventTarget',{value:g.EventTarget,writable:true,configurable:true,enumerable:false});
     var nodeProto=defineInterface('Node',g.EventTarget.prototype);
     var elementProto=defineInterface('Element',nodeProto);
-    $getAttributeNative=elementProto.getAttribute;$setAttributeNative=elementProto.setAttribute;$removeAttributeNative=elementProto.removeAttribute;$hasAttributeNative=elementProto.hasAttribute;
     var htmlProto=defineInterface('HTMLElement',elementProto);
     var documentProto=defineInterface('Document',nodeProto);
     defineInterface('HTMLDocument',documentProto);
@@ -3000,6 +2999,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     });
     ['accept','autoFocus','autocomplete','checked','disabled','form','max','min','multiple','name','pattern','placeholder','readOnly','required','step','value','getBoundingClientRect'].forEach(function(name){delete prototypes.HTMLCanvasElement[name];});
     // Captured for the reflected members below: page-replaced builtins never run on these paths (miaskiewicz/turbo-dom#199).
+    $getAttributeNative=elementProto.getAttribute;$setAttributeNative=elementProto.setAttribute;$removeAttributeNative=elementProto.removeAttribute;$hasAttributeNative=elementProto.hasAttribute;
     var rNodeType=$gopd(g.Node.prototype,'nodeType').get,rParentElement=$gopd(g.Node.prototype,'parentElement').get,rIsPrototypeOf=Object.prototype.isPrototypeOf;
     var rFormGetters=[];['HTMLInputElement','HTMLTextAreaElement','HTMLSelectElement','HTMLButtonElement','HTMLFieldSetElement','HTMLObjectElement','HTMLOutputElement','HTMLLabelElement','HTMLLegendElement','HTMLOptionElement','HTMLImageElement'].forEach(function(owner){var proto=prototypes[owner],d=proto&&$gopd(proto,'form');if(d&&d.get)rFormGetters[rFormGetters.length]=[proto,d.get];});
     function rForm(el){for(var i=0;i<rFormGetters.length;i++)if($apply(rIsPrototypeOf,rFormGetters[i][0],[el]))return $apply(rFormGetters[i][1],el,[]);return null;}

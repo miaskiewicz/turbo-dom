@@ -36,12 +36,12 @@ fn members_survive_page_patched_builtins() {
 #[test]
 fn every_member_avoids_page_patched_builtins() {
     let probe = include_str!("patched_builtins_sweep_probe.js");
-    let expected = control(
-        include_str!("patched_builtins_sweep_chrome156.json"),
-        probe,
-    );
+    let expected = control(include_str!("patched_builtins_sweep_chrome156.json"), probe);
     let actual = run(probe);
-    assert_eq!(actual["patched"], true, "the sweep patched and exercised too little");
+    assert_eq!(
+        actual["patched"], true,
+        "the sweep patched and exercised too little"
+    );
     assert_eq!(expected["patched"], true);
     // Chrome's entries are the spec-observable conversions; the binding may skip one of those
     // (it is not this rule's business), but every builtin it reaches must be one Chrome reaches.
@@ -50,9 +50,9 @@ fn every_member_avoids_page_patched_builtins() {
     let forwards = |member: &str| {
         let name = member.rsplit('.').next().unwrap();
         expected["hits"][member].as_object().is_some_and(|chrome| {
-            chrome
-                .keys()
-                .any(|builtin| builtin.starts_with("get ") && builtin.ends_with(&format!(".prototype.{name}")))
+            chrome.keys().any(|builtin| {
+                builtin.starts_with("get ") && builtin.ends_with(&format!(".prototype.{name}"))
+            })
         })
     };
     let mut out = Vec::new();
@@ -74,6 +74,12 @@ fn every_member_avoids_page_patched_builtins() {
     let found: std::collections::BTreeSet<&str> = out.iter().map(String::as_str).collect();
     let new: Vec<_> = found.difference(&known).collect();
     let fixed: Vec<_> = known.difference(&found).collect();
-    assert!(new.is_empty(), "engine JS reached page-patched builtins:\n{new:#?}");
-    assert!(fixed.is_empty(), "fixed; delete from patched_builtins_sweep_known.txt:\n{fixed:#?}");
+    assert!(
+        new.is_empty(),
+        "engine JS reached page-patched builtins:\n{new:#?}"
+    );
+    assert!(
+        fixed.is_empty(),
+        "fixed; delete from patched_builtins_sweep_known.txt:\n{fixed:#?}"
+    );
 }
