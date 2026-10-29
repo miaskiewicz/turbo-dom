@@ -7100,6 +7100,19 @@ thread_local! {
     static CSSOM_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Fresh computed-style calculations on this thread, counted by the test-only
+    /// `__noteCascadeRun` hook so tests can assert getComputedStyle's reuse (turbo-test#125).
+    static CASCADE_RUNS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The fresh computed-style calculations counted so far (see `CASCADE_RUNS`).
+#[cfg(test)]
+fn cascade_runs() -> u64 {
+    CASCADE_RUNS.with(std::cell::Cell::get)
+}
+
 /// The current CSSOM epoch (see `CSSOM_EPOCH`).
 fn cssom_epoch(
     scope: &mut v8::PinScope,

@@ -45,6 +45,20 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
         let key = v8::String::new(scope, "__cssTestCollectionRecord").unwrap();
         global.set(scope, key.into(), getter.into());
     }
+    if code.contains("__cssTestCascadeRuns") {
+        // The cascade-run counter behind the test-only `__noteCascadeRun` hook: how many
+        // fresh computed-style calculations the page has caused so far (never page-visible).
+        fn cascade_runs(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::cascade_runs() as f64).into());
+        }
+        let getter = v8::Function::new(scope, cascade_runs).unwrap();
+        let key = v8::String::new(scope, "__cssTestCascadeRuns").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
     if code.contains("__fontInertDoc") {
         let document = parse_html_document(scope, "<!doctype html><body><b>inert</b>", false);
         let key = v8::String::new(scope, "__fontInertDoc").unwrap();
@@ -1002,34 +1016,35 @@ fn adopted_computed_sheet_copy_does_not_expose_private_collection_to_array_sette
 // all count zero page-visible scans.
 #[test]
 fn computed_style_reuses_the_cascade_until_the_document_changes() {
+    // Cascade work is counted by the engine's own test-only hook (each fresh computed-style
+    // calculation), not by wrapping a page-visible method the engine no longer calls.
     let value = run(
         "<!doctype html><head><style id=s>.box {color:rgb(1, 2, 3);width:200px} .box span {display:block}</style></head><body><div class=box id=a><p><span id=t style='width:50%'>x</span></p></div></body>",
         r#"(()=>{
-          const query=document.querySelectorAll;let scans=0;
-          document.querySelectorAll=function(selector){if(selector==='style,link')scans++;return Reflect.apply(query,this,arguments);};
-          try {
-            const t=document.getElementById('t'),retained=getComputedStyle(t);
-            const read=style=>[style.color,style.width,style.display,style.visibility,style.getPropertyValue('font-size')];
-            const first=read(retained),warm=scans;scans=0;const rows=[];
-            for(let index=0;index<5;index++)rows.push(read(getComputedStyle(t)).concat(read(retained),[getComputedStyle(t.parentElement).color]));
-            const repeated=scans;
-            const distinct=getComputedStyle(t)!==getComputedStyle(t);
-            t.setAttribute('data-x','1');scans=0;const after=read(retained);const mutated=scans;
-            return JSON.stringify({first,warm:warm>0,repeated,row:rows[0],same:rows.every(row=>JSON.stringify(row)===JSON.stringify(rows[0])),distinct,after,mutated:mutated>0});
-          } finally {document.querySelectorAll=query;}
+          const runs=__cssTestCascadeRuns;
+          const t=document.getElementById('t'),start=runs(),retained=getComputedStyle(t);
+          const read=style=>[style.color,style.width,style.display,style.visibility,style.getPropertyValue('font-size')];
+          const first=read(retained),warm=runs()-start;let mark=runs();const rows=[];
+          for(let index=0;index<5;index++)rows.push(read(getComputedStyle(t)).concat(read(retained),[getComputedStyle(t.parentElement).color]));
+          const repeated=runs()-mark;
+          const distinct=getComputedStyle(t)!==getComputedStyle(t);
+          t.setAttribute('data-x','1');mark=runs();const after=read(retained);const mutated=runs()-mark;
+          mark=runs();read(retained);const settled=runs()-mark;
+          return JSON.stringify({first,warm:warm>=4,repeated,row:rows[0],same:rows.every(row=>JSON.stringify(row)===JSON.stringify(rows[0])),distinct,after,mutated:mutated>0,settled});
         })()"#,
     );
     assert_eq!(
         value,
         serde_json::json!({
             "first": ["rgb(1, 2, 3)", "100px", "block", "visible", "16px"],
-            "warm": false,
+            "warm": true,
             "repeated": 0,
             "row": ["rgb(1, 2, 3)", "100px", "block", "visible", "16px", "rgb(1, 2, 3)", "100px", "block", "visible", "16px", "rgb(1, 2, 3)"],
             "same": true,
             "distinct": true,
             "after": ["rgb(1, 2, 3)", "100px", "block", "visible", "16px"],
-            "mutated": false
+            "mutated": true,
+            "settled": 0
         })
     );
 }
@@ -1237,4 +1252,36 @@ fn computed_style_reuse_follows_cssom_edits_in_another_realm() {
         })
     );
     reset();
+}
+
+/// turbo-dom#199: the engine's uncurried `split` (ns.intrinsics.split) splits by a RegExp
+/// without RegExp.prototype[@@split], with String.prototype.split's results: anchors, captures,
+/// empty matches, flags, limits and the empty string.
+#[test]
+fn intrinsic_regexp_split_matches_string_split() {
+    let value = run(
+        "<!doctype html><body>",
+        r#"(()=>{
+          const split=globalThis[Symbol.for('ts')].intrinsics.split,out=[];
+          const cases=[['a b  c',/\s+/],['a,b,(c,d)',/,(?![^(]*\))/],['abc',/(?:)/],['',/x/],['',/(?:)/],['^a^ab',/^a/],['aXa',/^a/m],['a1b2c',/(\d)/],['AbCb',/b/i],['x',/x/],['a  b',/ */],['a,b,c',/,/g],['a1b2c3',/\d/,2],['ab',/(?:)/,0],['a\nb',/^/m],['a😀b',/(?:)/u]];
+          for(const [text,pattern,limit] of cases){const mine=JSON.stringify(split(text,pattern,limit)),native=JSON.stringify(text.split(pattern,limit));if(mine!==native)out.push(text+':'+pattern+':'+mine+'!='+native);}
+          return JSON.stringify(out);
+        })()"#,
+    );
+    assert_eq!(value, serde_json::json!([]));
+}
+
+/// Setting adoptedStyleSheets to a non-object throws the sequence conversion error before any
+/// iteration, like Chrome 156 (measured headless on localhost): a string is never iterated.
+#[test]
+fn adopted_style_sheets_reject_non_objects_like_chrome156() {
+    let value = run(
+        "<!doctype html><body><div id=h></div>",
+        r#"(()=>{ const out=[]; const h=document.getElementById('h').attachShadow({mode:'open'});
+          for (const [t,n] of [[document,'d'],[h,'s']]) for (const v of ['x',5,null,'']) { try { t.adoptedStyleSheets=v; out.push(n+':ok:'+t.adoptedStyleSheets.length); } catch (e) { out.push(n+':'+e.constructor.name+':'+e.message); } }
+          return JSON.stringify(out); })()"#,
+    );
+    let d = "d:TypeError:Failed to set the 'adoptedStyleSheets' property on 'Document': The provided value cannot be converted to a sequence.";
+    let s = "s:TypeError:Failed to set the 'adoptedStyleSheets' property on 'ShadowRoot': The provided value cannot be converted to a sequence.";
+    assert_eq!(value, serde_json::json!([d, d, d, d, s, s, s, s]));
 }
