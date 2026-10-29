@@ -244,9 +244,23 @@ select_element.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable no
 storage_ownership.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes above unwraps
 typed_om.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes above unwraps
 html_popover.js: benv-js r1 popover members call captured intrinsics through Reflect.apply (turbo-dom#194)
+element_relations.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+element_tokens.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+interest_invokers.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+focus_group.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+reference_target.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+browser_env.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+form_controls.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+typed_om.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+file_inputs.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+input_members.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+html_invokers.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+user_activation_gates.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+focus_group_tests.rs: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
+OWNED="$OWNED patched_builtins_members_probe.js patched_builtins_members_chrome156.json"
 OWNED="$OWNED canvas_style_probe.js canvas_style_chrome156.json canvas_style_tests.rs canvas_state_probe.js canvas_state_chrome156.json"
 OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_mathml_element_probe.js svg_mathml_element_cases.json svg_mathml_element_chrome156.json svg_mathml_element_tests.rs"
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"

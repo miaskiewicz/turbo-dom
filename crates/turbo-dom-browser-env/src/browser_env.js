@@ -72,6 +72,8 @@
   // namespace (absent from getOwnPropertyNames(window) — real Chrome has no such __* globals),
   // not as `__*` string globals. Reachable from every realm via globalThis[Symbol.for('ts')].
   var __ns = g[Symbol.for('ts')] || (Object.defineProperty(g, Symbol.for('ts'), { value: {}, configurable: true, enumerable: false }), g[Symbol.for('ts')]);
+  // The uncurried captured builtins, for the engine files that run after this bootstrap.
+  __ns.intrinsics=$c;
   if (typeof g.__parseCssNative === 'function') { __ns.parseCssNative = g.__parseCssNative; delete g.__parseCssNative; }
   if (typeof g.__cssShorthandNative === 'function') { __ns.cssShorthandNative = g.__cssShorthandNative; delete g.__cssShorthandNative; }
   var cssShorthand = __ns.cssShorthandNative;
@@ -965,7 +967,7 @@
       [Event,Event.prototype].forEach(function(object){Object.defineProperty(object,name,{value:value,enumerable:true,configurable:true});});
     });
     g.Event = Event;
-    function mkSub(extra){ return function(type, init = {}){ if (arguments.length === 0) throw new TypeError('Event requires a type'); init = init || {}; Event.call(this, type, init); if (extra) extra(this, init); for (var k in init){ if (!(k in this)) this[k] = init[k]; } }; }
+    function mkSub(extra){ return function(type, init = {}){ if (arguments.length === 0) throw new TypeError('Event requires a type'); init = init || {}; $call(Event, this, type, init); if (extra) extra(this, init); for (var k in init){ if (!(k in this)) this[k] = init[k]; } }; }
     function sub(name, extra){ var C = mkSub(extra); Object.defineProperty(C, 'name', {value: name, configurable: true}); C.prototype = Object.create(Event.prototype); C.prototype.constructor = C; Object.defineProperty(C.prototype,Symbol.toStringTag,{value:name,configurable:true});g[name] = C; }
     sub('MessageEvent',function(self,init){self.data=init.data===undefined?null:init.data;self.origin=init.origin===undefined?'':eventString(init.origin);self.lastEventId=init.lastEventId===undefined?'':eventString(init.lastEventId);self.source=init.source||null;self.ports=init.ports||[];});
     // UI input interfaces keep Web-IDL state private; arbitrary dictionary keys
@@ -977,7 +979,8 @@
     var stringValue=function(value,fallback=''){return value===undefined?fallback:eventString(value);};
     var stateOf=function(states,receiver){var state=$call($wmGet,states,receiver);if(!state)throw new TypeError('Illegal invocation');return state;};
     var modifierNames={Alt:'altKey',Control:'ctrlKey',Meta:'metaKey',Shift:'shiftKey',AltGraph:'modifierAltGraph',CapsLock:'modifierCapsLock',Fn:'modifierFn',FnLock:'modifierFnLock',Hyper:'modifierHyper',NumLock:'modifierNumLock',ScrollLock:'modifierScrollLock',Super:'modifierSuper',Symbol:'modifierSymbol',SymbolLock:'modifierSymbolLock'};
-    function modifiers(init){var state={};Object.keys(modifierNames).forEach(function(name){state[modifierNames[name]]=!!init[modifierNames[name]];});return state;}
+    var modifierKeys=Object.keys(modifierNames);
+    function modifiers(init){var state={};for(var index=0;index<modifierKeys.length;index++){var name=modifierNames[modifierKeys[index]];state[name]=!!init[name];}return state;}
     function member(prototype,name,descriptor){descriptor.configurable=true;descriptor.enumerable=true;if(descriptor.value){descriptor.writable=true;if(__ns.makeNativeFunction)descriptor.value=__ns.makeNativeFunction(descriptor.value,name,descriptor.value.length);}if(descriptor.get&&__ns.makeNativeFunction)descriptor.get=__ns.makeNativeFunction(descriptor.get,'get '+name,0);Object.defineProperty(prototype,name,descriptor);}
     // relatedTarget: the dispatch retargets it per listener (turbo-dom#66) through the private
     // record; outside a dispatch it is the last retargeted value, or the initialized one.
@@ -985,52 +988,52 @@
     function relatedGetter(prototype,states){member(prototype,'relatedTarget',{get:Object.getOwnPropertyDescriptor({get relatedTarget(){var state=stateOf(states,this),record=eventRecord(this);return record.relatedAdjusted?record.adjustedRelatedTarget:state.relatedTarget;}},'relatedTarget').get});}
     function readonly(prototype,states,names){names.forEach(function(name){member(prototype,name,{get:Object.getOwnPropertyDescriptor({get [name](){return stateOf(states,this)[name];}},name).get});});}
     function tagEvent(Constructor,name){Object.defineProperty(Constructor.prototype,Symbol.toStringTag,{value:name,configurable:true});}
-    function initializeUI(event,init){var view=init.view===undefined?null:init.view;if(view!==null&&view!==g&&!((g.Window&&view instanceof g.Window)))throw new TypeError('view must be a Window');uiStates.set(event,{view:view,detail:intValue(init.detail),sourceCapabilities:null,pseudoTarget:null});}
+    function initializeUI(event,init){var view=init.view===undefined?null:init.view;if(view!==null&&view!==g&&!((g.Window&&view instanceof g.Window)))throw new TypeError('view must be a Window');$call($wmSet,uiStates,event,{view:view,detail:intValue(init.detail),sourceCapabilities:null,pseudoTarget:null});}
     class UIEvent extends Event {
       constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);initializeUI(this,init||{});}
     }
     readonly(UIEvent.prototype,uiStates,['view','detail','sourceCapabilities','pseudoTarget']);
-    member(UIEvent.prototype,'which',{get:Object.getOwnPropertyDescriptor({get which(){stateOf(uiStates,this);var keys=keyStates.get(this);if(keys)return keys.charCode||keys.keyCode;var mouse=mouseStates.get(this);if(mouse)return mouse.button===2?3:mouse.button===1?2:mouse.button===0?1:0;return 0;}},'which').get});
-    member(UIEvent.prototype,'initUIEvent',{value:function initUIEvent(type,bubbles=false,cancelable=false,view=null,detail=0){stateOf(uiStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;Event.prototype.initEvent.call(this,type,bubbles,cancelable);initializeUI(this,{view:view,detail:detail});}});
+    member(UIEvent.prototype,'which',{get:Object.getOwnPropertyDescriptor({get which(){stateOf(uiStates,this);var keys=$call($wmGet,keyStates,this);if(keys)return keys.charCode||keys.keyCode;var mouse=$call($wmGet,mouseStates,this);if(mouse)return mouse.button===2?3:mouse.button===1?2:mouse.button===0?1:0;return 0;}},'which').get});
+    var initUIEvent=function initUIEvent(type,bubbles=false,cancelable=false,view=null,detail=0){stateOf(uiStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;$call(methods.initEvent,this,type,bubbles,cancelable);initializeUI(this,{view:view,detail:detail});};member(UIEvent.prototype,'initUIEvent',{value:initUIEvent});
     tagEvent(UIEvent,'UIEvent');g.UIEvent=UIEvent;
-    function mouseState(init){var state=modifiers(init);['screenX','screenY','clientX','clientY','movementX','movementY'].forEach(function(name){state[name]=numberValue(init[name]);});state.button=shortValue(init.button);state.buttons=intValue(init.buttons)&65535;state.relatedTarget=init.relatedTarget||null;if(state.relatedTarget!==null&&!(state.relatedTarget instanceof g.EventTarget))throw new TypeError('relatedTarget must be an EventTarget');return state;}
+    function mouseState(init){var state=modifiers(init);var axes=['screenX','screenY','clientX','clientY','movementX','movementY'];for(var index=0;index<axes.length;index++)state[axes[index]]=numberValue(init[axes[index]]);state.button=shortValue(init.button);state.buttons=intValue(init.buttons)&65535;state.relatedTarget=init.relatedTarget||null;if(state.relatedTarget!==null&&!(state.relatedTarget instanceof g.EventTarget))throw new TypeError('relatedTarget must be an EventTarget');return state;}
     class MouseEvent extends UIEvent {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);mouseStates.set(this,mouseState(init||{}));relatedRecord(this,mouseStates.get(this).relatedTarget);}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);$call($wmSet,mouseStates,this,mouseState(init||{}));relatedRecord(this,$call($wmGet,mouseStates,this).relatedTarget);}
     }
     readonly(MouseEvent.prototype,mouseStates,['screenX','screenY','clientX','clientY','ctrlKey','shiftKey','altKey','metaKey','button','buttons','movementX','movementY']);relatedGetter(MouseEvent.prototype,mouseStates);
-    ['pageX','pageY','x','y','offsetX','offsetY','layerX','layerY'].forEach(function(name){var axis=name.endsWith('X')||name==='x'?'clientX':'clientY';member(MouseEvent.prototype,name,{get:Object.getOwnPropertyDescriptor({get [name](){var value=stateOf(mouseStates,this)[axis];return name.startsWith('page')?value+(axis==='clientX'?(g.scrollX||0):(g.scrollY||0)):value;}},name).get});});
+    ['pageX','pageY','x','y','offsetX','offsetY','layerX','layerY'].forEach(function(name){var axis=name.endsWith('X')||name==='x'?'clientX':'clientY',page=name.startsWith('page');member(MouseEvent.prototype,name,{get:Object.getOwnPropertyDescriptor({get [name](){var value=stateOf(mouseStates,this)[axis];return page?value+(axis==='clientX'?(g.scrollX||0):(g.scrollY||0)):value;}},name).get});});
     ['fromElement','toElement'].forEach(function(name){member(MouseEvent.prototype,name,{get:Object.getOwnPropertyDescriptor({get [name](){var state=stateOf(mouseStates,this),event=eventRecord(this);return (name==='fromElement')===(event.type==='mouseover'||event.type==='mouseenter')?state.relatedTarget:event.target;}},name).get});});
     function modifier(states,receiver,key){var state=stateOf(states,receiver);return !!state[modifierNames[eventString(key)]];}
     member(MouseEvent.prototype,'getModifierState',{value:function getModifierState(key){if(!arguments.length)throw new TypeError('A modifier is required');return modifier(mouseStates,this,key);}});
-    member(MouseEvent.prototype,'initMouseEvent',{value:function initMouseEvent(type,bubbles=false,cancelable=false,view=null,detail=0,screenX=0,screenY=0,clientX=0,clientY=0,ctrlKey=false,altKey=false,shiftKey=false,metaKey=false,button=0,relatedTarget=null){stateOf(mouseStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;UIEvent.prototype.initUIEvent.call(this,type,bubbles,cancelable,view,detail);mouseStates.set(this,mouseState({screenX,screenY,clientX,clientY,ctrlKey,altKey,shiftKey,metaKey,button,relatedTarget}));relatedRecord(this,mouseStates.get(this).relatedTarget);}});
+    member(MouseEvent.prototype,'initMouseEvent',{value:function initMouseEvent(type,bubbles=false,cancelable=false,view=null,detail=0,screenX=0,screenY=0,clientX=0,clientY=0,ctrlKey=false,altKey=false,shiftKey=false,metaKey=false,button=0,relatedTarget=null){stateOf(mouseStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;$call(initUIEvent,this,type,bubbles,cancelable,view,detail);$call($wmSet,mouseStates,this,mouseState({screenX,screenY,clientX,clientY,ctrlKey,altKey,shiftKey,metaKey,button,relatedTarget}));relatedRecord(this,$call($wmGet,mouseStates,this).relatedTarget);}});
     tagEvent(MouseEvent,'MouseEvent');g.MouseEvent=MouseEvent;
     class KeyboardEvent extends UIEvent {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};var state=modifiers(init);state.key=stringValue(init.key);state.code=stringValue(init.code);state.location=intValue(init.location)>>>0;state.repeat=!!init.repeat;state.isComposing=!!init.isComposing;state.charCode=intValue(init.charCode)>>>0;state.keyCode=intValue(init.keyCode)>>>0;keyStates.set(this,state);}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};var state=modifiers(init);state.key=stringValue(init.key);state.code=stringValue(init.code);state.location=intValue(init.location)>>>0;state.repeat=!!init.repeat;state.isComposing=!!init.isComposing;state.charCode=intValue(init.charCode)>>>0;state.keyCode=intValue(init.keyCode)>>>0;$call($wmSet,keyStates,this,state);}
     }
     readonly(KeyboardEvent.prototype,keyStates,['key','code','location','ctrlKey','shiftKey','altKey','metaKey','repeat','isComposing','charCode','keyCode']);
     member(KeyboardEvent.prototype,'getModifierState',{value:function getModifierState(key){if(!arguments.length)throw new TypeError('A modifier is required');return modifier(keyStates,this,key);}});
-    member(KeyboardEvent.prototype,'initKeyboardEvent',{value:function initKeyboardEvent(type,bubbles=false,cancelable=false,view=null,key='',location=0,ctrlKey=false,altKey=false,shiftKey=false,metaKey=false){var state=stateOf(keyStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;UIEvent.prototype.initUIEvent.call(this,type,bubbles,cancelable,view,0);Object.assign(state,{key:eventString(key),location:intValue(location)>>>0,ctrlKey:!!ctrlKey,altKey:!!altKey,shiftKey:!!shiftKey,metaKey:!!metaKey});}});
+    member(KeyboardEvent.prototype,'initKeyboardEvent',{value:function initKeyboardEvent(type,bubbles=false,cancelable=false,view=null,key='',location=0,ctrlKey=false,altKey=false,shiftKey=false,metaKey=false){var state=stateOf(keyStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;$call(initUIEvent,this,type,bubbles,cancelable,view,0);state.key=eventString(key);state.location=intValue(location)>>>0;state.ctrlKey=!!ctrlKey;state.altKey=!!altKey;state.shiftKey=!!shiftKey;state.metaKey=!!metaKey;}});
     ['DOM_KEY_LOCATION_STANDARD','DOM_KEY_LOCATION_LEFT','DOM_KEY_LOCATION_RIGHT','DOM_KEY_LOCATION_NUMPAD'].forEach(function(name,value){[KeyboardEvent,KeyboardEvent.prototype].forEach(function(object){Object.defineProperty(object,name,{value:value,enumerable:true,configurable:true});});});
     tagEvent(KeyboardEvent,'KeyboardEvent');g.KeyboardEvent=KeyboardEvent;
     class InputEvent extends UIEvent {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};inputStates.set(this,{data:init.data==null?null:eventString(init.data),isComposing:!!init.isComposing,inputType:stringValue(init.inputType),dataTransfer:init.dataTransfer||null});}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};$call($wmSet,inputStates,this,{data:init.data==null?null:eventString(init.data),isComposing:!!init.isComposing,inputType:stringValue(init.inputType),dataTransfer:init.dataTransfer||null});}
     }
     readonly(InputEvent.prototype,inputStates,['data','isComposing','inputType','dataTransfer']);
     member(InputEvent.prototype,'getTargetRanges',{value:function getTargetRanges(){stateOf(inputStates,this);return [];}});
     tagEvent(InputEvent,'InputEvent');g.InputEvent=InputEvent;
     class FocusEvent extends UIEvent {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);var related=(init||{}).relatedTarget||null;if(related!==null&&!(related instanceof g.EventTarget))throw new TypeError('relatedTarget must be an EventTarget');focusStates.set(this,{relatedTarget:related});relatedRecord(this,related);}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);var related=(init||{}).relatedTarget||null;if(related!==null&&!(related instanceof g.EventTarget))throw new TypeError('relatedTarget must be an EventTarget');$call($wmSet,focusStates,this,{relatedTarget:related});relatedRecord(this,related);}
     }
     relatedGetter(FocusEvent.prototype,focusStates);tagEvent(FocusEvent,'FocusEvent');g.FocusEvent=FocusEvent;
     class PointerEvent extends MouseEvent {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};var state={pointerId:intValue(init.pointerId),width:numberValue(init.width,1),height:numberValue(init.height,1),pressure:numberValue(init.pressure),tangentialPressure:numberValue(init.tangentialPressure),tiltX:intValue(init.tiltX),tiltY:intValue(init.tiltY),twist:intValue(init.twist)>>>0,pointerType:stringValue(init.pointerType),isPrimary:!!init.isPrimary,altitudeAngle:numberValue(init.altitudeAngle,Math.PI/2),azimuthAngle:numberValue(init.azimuthAngle),persistentDeviceId:intValue(init.persistentDeviceId)};pointerStates.set(this,state);}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};var state={pointerId:intValue(init.pointerId),width:numberValue(init.width,1),height:numberValue(init.height,1),pressure:numberValue(init.pressure),tangentialPressure:numberValue(init.tangentialPressure),tiltX:intValue(init.tiltX),tiltY:intValue(init.tiltY),twist:intValue(init.twist)>>>0,pointerType:stringValue(init.pointerType),isPrimary:!!init.isPrimary,altitudeAngle:numberValue(init.altitudeAngle,Math.PI/2),azimuthAngle:numberValue(init.azimuthAngle),persistentDeviceId:intValue(init.persistentDeviceId)};$call($wmSet,pointerStates,this,state);}
     }
     readonly(PointerEvent.prototype,pointerStates,['pointerId','width','height','pressure','tangentialPressure','tiltX','tiltY','twist','pointerType','isPrimary','altitudeAngle','azimuthAngle','persistentDeviceId']);
     member(PointerEvent.prototype,'getCoalescedEvents',{value:function getCoalescedEvents(){stateOf(pointerStates,this);return [];}});
     member(PointerEvent.prototype,'getPredictedEvents',{value:function getPredictedEvents(){stateOf(pointerStates,this);return [];}});
     tagEvent(PointerEvent,'PointerEvent');g.PointerEvent=PointerEvent;
     class WheelEvent extends MouseEvent {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};wheelStates.set(this,{deltaX:numberValue(init.deltaX),deltaY:numberValue(init.deltaY),deltaZ:numberValue(init.deltaZ),deltaMode:intValue(init.deltaMode)>>>0,momentum:false});}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};$call($wmSet,wheelStates,this,{deltaX:numberValue(init.deltaX),deltaY:numberValue(init.deltaY),deltaZ:numberValue(init.deltaZ),deltaMode:intValue(init.deltaMode)>>>0,momentum:false});}
     }
     readonly(WheelEvent.prototype,wheelStates,['deltaX','deltaY','deltaZ','deltaMode','momentum']);
     ['wheelDelta','wheelDeltaX','wheelDeltaY'].forEach(function(name){member(WheelEvent.prototype,name,{get:Object.getOwnPropertyDescriptor({get [name](){var state=stateOf(wheelStates,this);return -3*(name==='wheelDeltaX'?state.deltaX:state.deltaY);}},name).get});});
@@ -1040,17 +1043,17 @@
     // behind readonly getters, like the UI family above.
     var customStates=new WeakMap(), popStates=new WeakMap(), hashStates=new WeakMap();
     class CustomEvent extends Event {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};customStates.set(this,{detail:init.detail===undefined?null:init.detail});}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};$call($wmSet,customStates,this,{detail:init.detail===undefined?null:init.detail});}
     }
     readonly(CustomEvent.prototype,customStates,['detail']);
-    member(CustomEvent.prototype,'initCustomEvent',{value:function initCustomEvent(type,bubbles=false,cancelable=false,detail=null){var state=stateOf(customStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;Event.prototype.initEvent.call(this,type,bubbles,cancelable);state.detail=detail;}});
+    member(CustomEvent.prototype,'initCustomEvent',{value:function initCustomEvent(type,bubbles=false,cancelable=false,detail=null){var state=stateOf(customStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;$call(methods.initEvent,this,type,bubbles,cancelable);state.detail=detail;}});
     tagEvent(CustomEvent,'CustomEvent');
     class PopStateEvent extends Event {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};popStates.set(this,{state:init.state===undefined?null:init.state,hasUAVisualTransition:!!init.hasUAVisualTransition});}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};$call($wmSet,popStates,this,{state:init.state===undefined?null:init.state,hasUAVisualTransition:!!init.hasUAVisualTransition});}
     }
     readonly(PopStateEvent.prototype,popStates,['state','hasUAVisualTransition']);tagEvent(PopStateEvent,'PopStateEvent');
     class HashChangeEvent extends Event {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};hashStates.set(this,{oldURL:stringValue(init.oldURL),newURL:stringValue(init.newURL)});}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};$call($wmSet,hashStates,this,{oldURL:stringValue(init.oldURL),newURL:stringValue(init.newURL)});}
     }
     readonly(HashChangeEvent.prototype,hashStates,['oldURL','newURL']);tagEvent(HashChangeEvent,'HashChangeEvent');
     // ProgressEvent (FileReader/XHR) and CloseEvent (WebSocket).
@@ -1058,11 +1061,11 @@
     // ProgressEventInit loaded/total are restricted doubles in Chrome 156.
     var restrictedDouble=function(value,name){value=numberValue(value);if(!isFinite(value))throw new TypeError("Failed to construct 'ProgressEvent': Failed to read the '"+name+"' property from 'ProgressEventInit': The provided double value is non-finite.");return value;};
     class ProgressEvent extends Event {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};progressStates.set(this,{lengthComputable:!!init.lengthComputable,loaded:restrictedDouble(init.loaded,'loaded'),total:restrictedDouble(init.total,'total')});}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};$call($wmSet,progressStates,this,{lengthComputable:!!init.lengthComputable,loaded:restrictedDouble(init.loaded,'loaded'),total:restrictedDouble(init.total,'total')});}
     }
     readonly(ProgressEvent.prototype,progressStates,['lengthComputable','loaded','total']);tagEvent(ProgressEvent,'ProgressEvent');
     class CloseEvent extends Event {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};closeStates.set(this,{wasClean:!!init.wasClean,code:intValue(init.code)&65535,reason:stringValue(init.reason)});}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};$call($wmSet,closeStates,this,{wasClean:!!init.wasClean,code:intValue(init.code)&65535,reason:stringValue(init.reason)});}
     }
     readonly(CloseEvent.prototype,closeStates,['wasClean','code','reason']);tagEvent(CloseEvent,'CloseEvent');
     // Use the native class bridge for actual implementations, preserving private
@@ -2911,8 +2914,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     };
     [['HTMLElement',htmlProto],['SVGElement',prototypes.SVGElement],['MathMLElement',prototypes.MathMLElement]].forEach(function(entry){
       var check=__ns.domAccessor('nodeType',false,entry[0]),foreign=entry[0]!=='HTMLElement',svg=entry[0]==='SVGElement';
-      var operations={focus:foreign?function(){check.call(this);if(foreignFocusable(this,svg))return nativeFocus.apply(this,arguments);}:function(){check.call(this);return nativeFocus.apply(this,arguments);},blur:function(){check.call(this);return nativeBlur.apply(this,arguments);}};
-      if(!foreign)operations.click=function(){check.call(this);return nativeClick.apply(this,arguments);};
+      var operations={focus:foreign?function(){$call(check,this);if(foreignFocusable(this,svg))return $apply(nativeFocus,this,arguments);}:function(){$call(check,this);return $apply(nativeFocus,this,arguments);},blur:function(){$call(check,this);return $apply(nativeBlur,this,arguments);}};
+      if(!foreign)operations.click=function(){$call(check,this);return $apply(nativeClick,this,arguments);};
       Object.keys(operations).forEach(function(name){Object.defineProperty(entry[1],name,{value:__ns.makeNativeFunction(operations[name],name,0),writable:true,configurable:true,enumerable:true});});
     });
     computedStyleNativeMatches=Object.getOwnPropertyDescriptor(prototypes.Element,'matches').value;

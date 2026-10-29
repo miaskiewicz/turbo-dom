@@ -6,6 +6,9 @@
 (function () {
   'use strict';
   const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction, named = ns.makeNamedObject;
+  // String.prototype.replace(regexp) looks up page-replaceable RegExp members; the bootstrap's
+  // captured replace drives the captured exec instead (turbo-dom#194).
+  const regexpReplace = ns.intrinsics.replace;
   const native = g.__fileInputNative; delete g.__fileInputNative;
   const apply = Reflect.apply, construct = Reflect.construct, define = Object.defineProperty, create = Object.create;
   const freeze = Object.freeze, describe = Object.getOwnPropertyDescriptor, hasOwn = Object.prototype.hasOwnProperty;
@@ -16,8 +19,10 @@
   const checkInput = ns.domAccessor('nodeType', false, 'HTML:input'), nodeType = ns.domAccessor('nodeType', false, 'Node');
   const record = (object) => native('record', object), setRecord = (object, value) => native('set-record', object, value);
   const push = (rows, value) => define(rows, rows.length, {__proto__: null, value, writable: true, enumerable: true, configurable: true});
-  const lowerAscii = (text) => apply(replaceText, text, [/[A-Z]/g, (letter) => StringValue.fromCharCode(apply(charCode, letter, [0]) + 32)]);
-  const stripAscii = (text) => apply(replaceText, text, [/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '']);
+  // A loop, not String.prototype.replace(regexp), which looks up page-replaceable RegExp members (turbo-dom#194).
+  const fromCharCode = StringValue.fromCharCode;
+  const lowerAscii = (text) => { let out = ''; for (let index = 0; index < text.length; index++) { const c = apply(charCode, text, [index]); out += c >= 65 && c <= 90 ? fromCharCode(c + 32) : text[index]; } return out; };
+  const stripAscii = (text) => regexpReplace(text, /^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '');
 
   // Web IDL conversions with Blink's messages.
   const failure = (kind, owner, member) => kind === 'set' ? "Failed to set the '" + member + "' property on '" + owner + "': " : "Failed to execute '" + member + "' on '" + owner + "': ";

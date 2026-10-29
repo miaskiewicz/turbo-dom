@@ -21,16 +21,20 @@
   const construct = Reflect.construct, Event = g.Event;
   const HTML = 'http://www.w3.org/1999/xhtml';
   const string = value => { if (typeof value === 'symbol') throw new TypeError('Cannot convert a Symbol to a string'); return StringValue(value); };
-  const lower = value => { let result = ''; for (let index = 0; index < value.length; index++) { const code = value.charCodeAt(index); result += code >= 65 && code <= 90 ? StringValue.fromCharCode(code + 32) : value[index]; } return result; };
+  const charCodeAt = String.prototype.charCodeAt, fromCharCode = StringValue.fromCharCode;
+  const lower = value => { let result = ''; for (let index = 0; index < value.length; index++) { const code = call(charCodeAt, value, index); result += code >= 65 && code <= 90 ? fromCharCode(code + 32) : value[index]; } return result; };
   const element = value => { try { return call(nodeType, value) === 1; } catch (_) { return false; } };
   const html = (value, name) => element(value) && call(namespace, value) === HTML && call(localName, value) === name;
   const brand = name => receiver => { if (!html(receiver, name)) throw new TypeError('Illegal invocation'); };
   const attr = (node, name) => call(getAttribute, node, name);
 
+  // Captured, not the page-replaceable String.prototype.slice (turbo-dom#194).
+  const sliceText = Function.prototype.call.bind(String.prototype.slice);
   const popoverCommands = ['toggle-popover', 'show-popover', 'hide-popover'], dialogCommands = ['show-modal', 'close', 'request-close'];
-  const known = value => { for (const list of [popoverCommands, dialogCommands]) for (let index = 0; index < list.length; index++) if (list[index] === value) return true; return false; };
+  const commandLists = [popoverCommands, dialogCommands];
+  const known = value => { for (let at = 0; at < commandLists.length; at++) { const list = commandLists[at]; for (let index = 0; index < list.length; index++) if (list[index] === value) return true; } return false; };
   // Known keywords canonicalize ASCII-case-insensitively; custom `--` commands keep their case.
-  const commandState = node => { const value = attr(node, 'command'); if (value === null) return ''; const canonical = lower(value); return known(canonical) ? canonical : value.slice(0, 2) === '--' ? value : ''; };
+  const commandState = node => { const value = attr(node, 'command'); if (value === null) return ''; const canonical = lower(value); return known(canonical) ? canonical : sliceText(value, 0, 2) === '--' ? value : ''; };
   const targetAction = node => { const value = lower(attr(node, 'popovertargetaction') || ''); return value === 'show' || value === 'hide' ? value : 'toggle'; };
   // A button whose type is missing or invalid is in the Auto state: submit, unless it is an invoker.
   const buttonType = node => { const value = lower(attr(node, 'type') || ''); if (value === 'submit' || value === 'reset' || value === 'button') return value; return call(hasAttribute, node, 'command') || call(hasAttribute, node, 'commandfor') ? 'auto' : 'submit'; };
@@ -87,7 +91,7 @@
     Native('popover', popover, targetAction(node), node);
   }
   function validCommand(target, command) {
-    if (command.slice(0, 2) === '--') return true;
+    if (sliceText(command, 0, 2) === '--') return true;
     if (call(namespace, target) !== HTML) return false;
     for (let index = 0; index < popoverCommands.length; index++) if (popoverCommands[index] === command) return true;
     return call(localName, target) === 'dialog';
@@ -102,9 +106,9 @@
     const target = resolve(reference.read(node, 'commandfor')), command = commandState(node);
     if (target !== null && command !== '' && validCommand(target, command)) {
       const event = new CommandEvent('command', { cancelable: true, composed: true, command, source: node });
-      if (!Native('dispatch', target, event) || !call(connected, target) || command.slice(0, 2) === '--') return;
+      if (!Native('dispatch', target, event) || !call(connected, target) || sliceText(command, 0, 2) === '--') return;
       if (command === 'toggle-popover' || command === 'show-popover' || command === 'hide-popover') {
-        if (call(namespace, target) === HTML && call(popoverOf, target) !== null) Native('popover', target, command.slice(0, -8), node);
+        if (call(namespace, target) === HTML && call(popoverOf, target) !== null) Native('popover', target, sliceText(command, 0, -8), node);
       } else if (html(target, 'dialog')) dialogSteps(target, command, node);
       return;
     }

@@ -25,7 +25,10 @@
   const queryAll = (root, selector) => {const kind=apply(nodeTypeGetter,root,[]);const result=apply(kind===9?documentQuery:kind===11?fragmentQuery:query,root,[selector]);const record=collectionRecord(result);return record?record.read():result;};
   const attribute = Element.prototype.getAttribute, contains = Node.prototype.contains;
   const lower = Function.prototype.call.bind(String.prototype.toLowerCase);
-  const regexTest = Function.prototype.call.bind(RegExp.prototype.test);
+  // RegExp.prototype.test looks up a page-replaceable `exec`; the captured exec does not (turbo-dom#194).
+  const trimText = Function.prototype.call.bind(String.prototype.trim), indexOfList = (list, value) => { for (let index = 0; index < list.length; index++) if (list[index] === value) return index; return -1; };
+  const splitText = Function.prototype.call.bind(String.prototype.split), indexOfText = Function.prototype.call.bind(String.prototype.indexOf), sliceText = Function.prototype.call.bind(String.prototype.slice);
+  const regexExec = Function.prototype.call.bind(RegExp.prototype.exec), regexTest = (pattern, text) => regexExec(pattern, text) !== null;
   const associatedGet=element=>bridge('associated',element),associatedSet=(element,record)=>bridge('associated',element,record);
   const privateGet=(object,family)=>bridge('private',object,family),privateSet=(object,family,value)=>bridge('private',object,family,value);
   const customGet=element=>privateGet(element,'customMessage'),customSet=(element,value)=>privateSet(element,'customMessage',value);
@@ -146,8 +149,8 @@
       if (kind === 'input' && value) {
         if (inputType === 'email') state.typeMismatch = !regexTest(/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,value);
         if(inputType==='email'&&present(element,'multiple')) {
-          const parts=value.split(',');state.typeMismatch=false;
-          for(let index=0;index<parts.length;index++)if(!regexTest(/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,parts[index].trim()))state.typeMismatch=true;
+          const parts=splitText(value,',');state.typeMismatch=false;
+          for(let index=0;index<parts.length;index++)if(!regexTest(/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,trimText(parts[index])))state.typeMismatch=true;
         }
         if (inputType === 'url') {try {if(!bridge('absolute-url',element,value))throw new ErrorType('Invalid URL');} catch (_) {state.typeMismatch=true;}}
         const pattern = attr(element, 'pattern');
@@ -188,12 +191,12 @@
     }
     if(state.typeMismatch) {
       if(inputType==='url')return 'Please enter a URL.';
-      const at=value.indexOf('@');
+      const at=indexOfText(value,'@');
       if(at<0)return "Please include an '@' in the email address. '"+value+"' is missing an '@'.";
       if(at===0)return "Please enter a part followed by '@'. '"+value+"' is incomplete.";
       if(at===value.length-1)return "Please enter a part following '@'. '"+value+"' is incomplete.";
-      const host=value.slice(at+1);
-      if(host[0]==='.'||host[host.length-1]==='.'||host.includes('..'))return "'.' is used at a wrong position in '"+host+"'.";
+      const host=sliceText(value,at+1);
+      if(host[0]==='.'||host[host.length-1]==='.'||indexOfText(host,'..')>=0)return "'.' is used at a wrong position in '"+host+"'.";
       return 'Please enter an email address.';
     }
     if(state.patternMismatch)return 'Please match the requested format.';
@@ -354,7 +357,7 @@
     ['target','target',null,''],['name','name',null,''],['acceptCharset','accept-charset',null,''],
     ['autocomplete','autocomplete',['on','off'],'on'],['rel','rel',null,'']]) {
     define(formPrototype,property,{
-      get:native(function(){checkForm(this);if(property==='action')return bridge('action-url',this);const value=attr(this,attributeName)||'';if(!choices)return value;const normalized=lower(value);return choices.indexOf(normalized)>=0?normalized:fallback;},'get '+property,0),
+      get:native(function(){checkForm(this);if(property==='action')return bridge('action-url',this);const value=attr(this,attributeName)||'';if(!choices)return value;const normalized=lower(value);return indexOfList(choices,normalized)>=0?normalized:fallback;},'get '+property,0),
       set:native(function(value){checkForm(this);if(typeof value==='symbol')throw new ErrorType('Cannot convert a Symbol to a string');value=string(value);if(property==='action')value=apply(wellFormed,value,[]);apply(reflectedSetAttribute,this,[attributeName,value]);},'set '+property,1),enumerable:true,configurable:true
     });
   }
@@ -367,7 +370,7 @@
       ['formEnctype','formenctype',['application/x-www-form-urlencoded','multipart/form-data','text/plain'],'application/x-www-form-urlencoded'],
       ['formMethod','formmethod',['get','post','dialog'],'get'],['formTarget','formtarget',null,'']]) {
       define(prototype,property,{
-        get:native(function(){check(this);if(property==='formAction')return bridge('submitter-action-url',this);const value=attr(this,attributeName);if(value===null)return '';if(!choices)return value;const normalized=lower(value);return choices.indexOf(normalized)>=0?normalized:fallback;},'get '+property,0),
+        get:native(function(){check(this);if(property==='formAction')return bridge('submitter-action-url',this);const value=attr(this,attributeName);if(value===null)return '';if(!choices)return value;const normalized=lower(value);return indexOfList(choices,normalized)>=0?normalized:fallback;},'get '+property,0),
         set:native(function(value){check(this);if(typeof value==='symbol')throw new ErrorType('Cannot convert a Symbol to a string');value=string(value);if(property==='formAction'&&kind==='button')value=apply(wellFormed,value,[]);apply(reflectedSetAttribute,this,[attributeName,value]);},'set '+property,1),enumerable:true,configurable:true
       });
     }

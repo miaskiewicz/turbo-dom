@@ -6,6 +6,9 @@
 (function () {
   'use strict';
   const g = globalThis, ns = g[Symbol.for('ts')], native = ns.makeNativeFunction;
+  // String.prototype.replace(regexp) looks up page-replaceable RegExp members; the bootstrap's
+  // captured replace drives the captured exec instead (turbo-dom#194).
+  const regexpReplace = ns.intrinsics.replace;
   const Native = g.__inputNative; delete g.__inputNative;
   const apply = Reflect.apply, define = Object.defineProperty, describe = Object.getOwnPropertyDescriptor;
   const StringValue = String, NumberValue = Number, DateValue = Date, TypeErrorValue = TypeError, Exception = g[Symbol.for('ts')].DOMException;
@@ -19,7 +22,7 @@
   const localName = ns.domAccessor('localName', false, 'Element');
   const valueDescriptor = describe(inputPrototype, 'value'), textareaValue = describe(textareaPrototype, 'value');
   const attr = (element, name) => apply(getAttribute, element, [name]);
-  const test = (pattern, text) => apply(regexTest, pattern, [text]);
+  const regexExec = RegExp.prototype.exec, test = (pattern, text) => apply(regexExec, pattern, [text]) !== null;
   const pad = (number, width) => apply(padText, StringValue(number), [width, '0']);
 
   // Chromium's Decimal: an 18-digit coefficient whose alignment, products and quotients
@@ -372,7 +375,9 @@
   const NUMERIC = {step: [1, 1, 'real'], base: 0};
 
   const knownTypes = ['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button'];
-  const lowerAscii = (text) => apply(replaceText, text, [/[A-Z]/g, (letter) => StringValue.fromCharCode(apply(charCode, letter, [0]) + 32)]);
+  // A loop, not String.prototype.replace(regexp), which looks up page-replaceable RegExp members (turbo-dom#194).
+  const fromCharCode = StringValue.fromCharCode;
+  const lowerAscii = (text) => { let out = ''; for (let index = 0; index < text.length; index++) { const c = apply(charCode, text, [index]); out += c >= 65 && c <= 90 ? fromCharCode(c + 32) : text[index]; } return out; };
   const typeOf = (element) => { const type = lowerAscii(attr(element, 'type') || ''); for (let index = 0; index < knownTypes.length; index++) if (knownTypes[index] === type) return type; return 'text'; };
   const valueOf = (element) => apply(valueDescriptor.get, element, []);
   const assignValue = (element, value) => apply(valueDescriptor.set, element, [value]);
@@ -488,15 +493,15 @@
   // value's newline normalization. Other types keep the compatibility sanitizer.
   ns.sanitizeControlValue = (element, type, value) => {
     const name = apply(localName, element, []);
-    if (name === 'textarea') return apply(replaceText, value, [/\r\n?/g, '\n']);
+    if (name === 'textarea') return regexpReplace(value, /\r\n?/g, '\n');
     if (name !== 'input') return undefined;
     type = typeOf(element);
     // Text-like states strip line breaks; url and email also trim ASCII whitespace,
     // each comma-separated address for email[multiple].
-    if (type === 'text' || type === 'search' || type === 'tel' || type === 'password') return apply(replaceText, value, [/[\r\n]/g, '']);
+    if (type === 'text' || type === 'search' || type === 'tel' || type === 'password') return regexpReplace(value, /[\r\n]/g, '');
     if (type === 'url' || type === 'email') {
-      value = apply(replaceText, value, [/[\r\n]/g, '']);
-      const trim = (text) => apply(replaceText, text, [/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '']);
+      value = regexpReplace(value, /[\r\n]/g, '');
+      const trim = (text) => regexpReplace(text, /^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '');
       if (type === 'email' && attr(element, 'multiple') !== null) {
         const parts = apply(splitText, value, [',']);
         for (let index = 0; index < parts.length; index++) parts[index] = trim(parts[index]);
@@ -521,7 +526,7 @@
   const normalizedLocal = (value) => {
     let text = dateText(value.date) + 'T' + pad(value.time.hour, 2) + ':' + pad(value.time.minute, 2);
     if (value.time.second || value.time.millisecond) text += ':' + pad(value.time.second, 2);
-    if (value.time.millisecond) text += '.' + apply(replaceText, pad(value.time.millisecond, 3), [/0+$/, '']);
+    if (value.time.millisecond) text += '.' + regexpReplace(pad(value.time.millisecond, 3), /0+$/, '');
     return text;
   };
 
