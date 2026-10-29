@@ -208,6 +208,7 @@ fn relative_offset(bs: &BoxStyle, cb_width: f32) -> (f32, f32) {
 }
 
 fn resolve(lb: &LayoutBox, cb_width: f32, parent_fs: f32) -> BoxStyle {
+    crate::hot!("layout.block.resolve");
     lb.resolved(ResolveCtx {
         parent_font_size: parent_fs,
         cb_width,

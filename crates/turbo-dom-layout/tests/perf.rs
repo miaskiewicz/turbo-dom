@@ -39,3 +39,39 @@ fn snapshot_exposes_named_counters() {
     let snap = perf::snapshot();
     assert_eq!(snap.get("font.shape").copied(), Some(1));
 }
+
+/// `<div>` nested `depth` deep around one word.
+fn nested_divs(depth: usize) -> String {
+    format!(
+        "<!doctype html><body style='margin:0'>{}a{}</body>",
+        "<div>".repeat(depth),
+        "</div>".repeat(depth)
+    )
+}
+
+fn block_resolves(depth: usize) -> u64 {
+    let tree = turbo_dom_layout::parse_html_tree(&nested_divs(depth));
+    perf::reset();
+    let _ = turbo_dom_layout::layout_boxes_tree(
+        &tree,
+        "",
+        400.0,
+        300.0,
+        &turbo_dom_layout::text::FontRegistry::new(),
+        &turbo_dom_layout::HtmlOptions::default(),
+        &mut turbo_dom_layout::Diagnostics::default(),
+    );
+    perf::count("layout.block.resolve")
+}
+
+#[test]
+fn nested_block_style_resolves_grow_linearly() {
+    // miaskiewicz/turbo-dom#202: margin collapsing re-walked the first/last-child chain
+    // at every level, so doubling the depth quadrupled the resolves. Linear is ~2x.
+    let (small, large) = (block_resolves(200), block_resolves(400));
+    assert!(small > 0);
+    assert!(
+        large * 10 < small * 25,
+        "resolves {small} at d=200 vs {large} at d=400"
+    );
+}
