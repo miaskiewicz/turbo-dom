@@ -633,3 +633,19 @@ fn insert_before_itself_keeps_the_node_in_place() {
     assert!(tree.insert_adjacent_element(b, "afterend", b));
     assert_eq!(serialize_inner(&tree, p), "<a></a><b></b><i></i>");
 }
+
+/// Host-including: a shadow root cannot take its host or the host's ancestors (Chrome 156:
+/// HierarchyRequestError, tree unchanged).
+#[test]
+fn a_shadow_root_cannot_take_an_ancestor_of_its_host() {
+    let mut tree = Tree::parse("<div id=p><span></span></div>");
+    let p = tree.query_selector("#p").unwrap();
+    let host = tree.children(p)[0];
+    let body = tree.parent(p);
+    let shadow = tree.attach_shadow(host);
+    tree.append_child(shadow, p);
+    tree.append_child(shadow, host);
+    assert_eq!(tree.parent(p), body);
+    assert_eq!(tree.parent(host), Some(p));
+    assert!(tree.children(shadow).is_empty());
+}

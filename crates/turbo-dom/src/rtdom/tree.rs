@@ -1703,15 +1703,16 @@ impl Tree {
         }
     }
 
-    /// DOM pre-insert validity step 2: `node` is an inclusive ancestor of `parent`, so
-    /// inserting it there would build a parent cycle (Chrome: `HierarchyRequestError`).
+    /// DOM pre-insert validity step 2: `node` is a host-including inclusive ancestor of
+    /// `parent`, so inserting it there would build a parent cycle (Chrome:
+    /// `HierarchyRequestError`).
     fn is_inclusive_ancestor(&self, node: Handle, parent: Handle) -> bool {
         let mut ancestor = Some(parent);
         while let Some(n) = ancestor {
             if n == node {
                 return true;
             }
-            ancestor = self.parent(n);
+            ancestor = self.parent(n).or_else(|| self.shadow_host(n));
         }
         false
     }
