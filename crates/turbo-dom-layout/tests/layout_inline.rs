@@ -454,3 +454,36 @@ fn inline_block_baseline_ignores_floats_and_overflow_clip() {
     assert_eq!(b["cm"].1, b["c"].1, "overflow:clip keeps the line baseline");
     assert_eq!(b["c"].3, 60.0);
 }
+
+#[cfg(feature = "bundled-fonts")]
+#[test]
+fn unset_inherits_inherited_properties_and_initial_resets_them() {
+    // CSS Cascade 4 §7.3: `unset` is `inherit` on an inherited property and `initial`
+    // otherwise; `initial` is the property's initial value (`display: inline`,
+    // `font-size: medium`), never the parent's value nor the UA sheet's. Chrome 156
+    // (18px serif lines): b 50 tall, d one line, e x=196, h 72 wide (2x the 32px ref
+    // plus 4x10px), i x=30, t as wide as the 5px-spaced ref, f one line (all inline).
+    let b = cid_boxes(
+        "<body style='margin:0;font-family:serif'>\
+         <div style='line-height:50px'><div data-cid=b style='line-height:unset'>x</div></div>\
+         <div data-cid=one>x</div>\
+         <div style='white-space:nowrap;width:40px'><div data-cid=d style='white-space:unset'>aaa bbb ccc ddd</div></div>\
+         <div style='text-align:center'><div style='text-align:unset'><span data-cid=e style=display:inline-block>x</span></div></div>\
+         <div style='letter-spacing:10px'><span data-cid=h style='display:inline-block;letter-spacing:unset'>xxxx</span></div>\
+         <div><span data-cid=href style='display:inline-block'>xxxx</span></div>\
+         <div style='text-indent:30px'><div style='text-indent:unset'><span data-cid=i style=display:inline-block>x</span></div></div>\
+         <div style='border-spacing:5px'><table data-cid=t style='border-spacing:unset'><tr><td>x</td></tr></table>\
+         <table data-cid=tref style='border-spacing:5px'><tr><td>x</td></tr></table></div>\
+         <div style='font-size:30px'><div data-cid=a style='font-size:initial'>x</div></div>\
+         <div data-cid=f><div style='display:initial'>x</div><div style='display:unset'>y</div>\
+         <li style='display:unset'>z</li></div></body>",
+    );
+    assert_eq!(b["b"].3, 50.0, "line-height: unset inherits");
+    assert_eq!(b["d"].3, b["one"].3, "white-space: unset inherits nowrap");
+    assert!(b["e"].0 > 150.0, "text-align: unset inherits center: {:?}", b["e"]);
+    assert_eq!(b["h"].2, b["href"].2 + 40.0, "letter-spacing: unset inherits");
+    assert_eq!(b["i"].0, 30.0, "text-indent: unset inherits");
+    assert_eq!(b["t"].2, b["tref"].2, "border-spacing: unset inherits");
+    assert_eq!(b["a"].3, b["one"].3, "font-size: initial is medium");
+    assert_eq!(b["f"].3, b["one"].3, "display initial/unset is inline: one line");
+}
