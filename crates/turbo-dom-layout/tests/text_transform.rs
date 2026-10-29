@@ -148,9 +148,7 @@ fn capitalize_sees_the_preceding_text_of_the_inline_context() {
     );
     assert_eq!(t(&format!("x<br><b {cap}>ab</b>")), "xAb");
     assert_eq!(
-        t(&format!(
-            "x<span style=\"display:inline-block;text-transform:capitalize\">ab</span>"
-        )),
+        t("x<span style=\"display:inline-block;text-transform:capitalize\">ab</span>"),
         "xAb"
     );
     assert_eq!(
@@ -186,7 +184,7 @@ fn none_full_width_and_invalid_values_render_as_authored() {
 fn transformed_text_is_measured_like_chrome() {
     // Chrome 156 widths with the Inter fixture at 16px.
     for (style, source, chrome) in [
-        ("uppercase", "don’t stop", 97.328125),
+        ("uppercase", "don’t stop", 97.328_125),
         ("uppercase", "straße", 72.0),
         ("capitalize", "hello world", 87.5625),
     ] {
@@ -223,12 +221,10 @@ fn transformed_run(text: &str, case: CaseTransform, locale: CaseLocale) -> Piece
     })
 }
 
+type GlyphSource = (String, (usize, usize), (usize, usize));
+
 /// Per glyph: (glyph text, source byte range, source UTF-16 range).
-fn sources(
-    text: &str,
-    case: CaseTransform,
-    locale: CaseLocale,
-) -> Vec<(String, (usize, usize), (usize, usize))> {
+fn sources(text: &str, case: CaseTransform, locale: CaseLocale) -> Vec<GlyphSource> {
     let fonts = fixture_fonts();
     let native = layout_paragraph_in_with_sources(
         &[transformed_run(text, case, locale)],

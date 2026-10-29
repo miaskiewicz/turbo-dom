@@ -1,6 +1,6 @@
 //! CSS `text-transform` (CSS Text 3 §2.1) as Chrome 156 applies it.
 //!
-//! `uppercase` / `lowercase` use full Unicode case mapping (SpecialCasing:
+//! `uppercase` / `lowercase` use full Unicode case mapping (`SpecialCasing`:
 //! `ß` → `SS`, `ﬁ` → `FI`, final sigma) with the language-sensitive tailorings
 //! Chrome applies from the element's `lang` (`-webkit-locale`): Turkish and
 //! Azeri dotted/dotless i, Lithuanian dot above, and Greek accent removal in
@@ -121,8 +121,8 @@ pub(crate) fn transform_run(
         let prev = index.checked_sub(1).map(|i| chars[i].1);
         let mapped = match transform.case {
             CaseTransform::Capitalize => capitalize(ch, context.in_word),
-            CaseTransform::Uppercase => upper(ch, prev, transform.locale),
-            CaseTransform::Lowercase => lower(&chars, index, transform.locale),
+            CaseTransform::Uppercase => Some(upper(ch, prev, transform.locale)),
+            CaseTransform::Lowercase => Some(lower(&chars, index, transform.locale)),
             CaseTransform::None => unreachable!("returned above"),
         };
         context.push(ch);
@@ -211,16 +211,16 @@ fn is_soft_dotted(ch: char) -> bool {
     matches!(ch, 'i' | 'j' | '\u{12f}' | '\u{268}')
 }
 
-fn upper(ch: char, prev: Option<char>, locale: CaseLocale) -> Option<String> {
+fn upper(ch: char, prev: Option<char>, locale: CaseLocale) -> String {
     match (locale, ch) {
-        (CaseLocale::Turkic, 'i') => return Some("\u{130}".into()),
+        (CaseLocale::Turkic, 'i') => return "\u{130}".into(),
         (CaseLocale::Lithuanian, '\u{307}') if prev.is_some_and(is_soft_dotted) => {
-            return Some(String::new());
+            return String::new();
         }
-        (CaseLocale::Greek, _) => return Some(greek_upper(ch, prev)),
+        (CaseLocale::Greek, _) => return greek_upper(ch, prev),
         _ => {}
     }
-    Some(ch.to_uppercase().collect())
+    ch.to_uppercase().collect()
 }
 
 /// Greek uppercase (`el`): accents and breathings go, a dialytika stays.
@@ -254,7 +254,7 @@ fn more_above(chars: &[(usize, char)], index: usize) -> bool {
         .any(|c| matches!(c, '\u{300}'..='\u{314}' | '\u{33d}'..='\u{344}' | '\u{346}'))
 }
 
-fn lower(chars: &[(usize, char)], index: usize, locale: CaseLocale) -> Option<String> {
+fn lower(chars: &[(usize, char)], index: usize, locale: CaseLocale) -> String {
     let ch = chars[index].1;
     let prev = index.checked_sub(1).map(|i| chars[i].1);
     let next = chars.get(index + 1).map(|c| c.1);
@@ -269,10 +269,10 @@ fn lower(chars: &[(usize, char)], index: usize, locale: CaseLocale) -> Option<St
         (CaseLocale::Lithuanian, '\u{cc}') => "i\u{307}\u{300}",
         (CaseLocale::Lithuanian, '\u{cd}') => "i\u{307}\u{301}",
         (CaseLocale::Lithuanian, '\u{128}') => "i\u{307}\u{303}",
-        (_, 'Σ') => return Some(final_sigma(chars, index).into()),
-        _ => return Some(ch.to_lowercase().collect()),
+        (_, 'Σ') => return final_sigma(chars, index).into(),
+        _ => return ch.to_lowercase().collect(),
     };
-    Some(mapped.into())
+    mapped.into()
 }
 
 /// `Σ` lowercases to `ς` at the end of a word: a cased letter before it and none
