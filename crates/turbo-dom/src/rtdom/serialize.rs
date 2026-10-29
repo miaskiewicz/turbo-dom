@@ -220,6 +220,20 @@ mod tests {
         assert_eq!(serialize_inner(&tree, div), "<img src=\"x\">");
     }
 
+    /// Chrome 156: the legacy basefont / bgsound / keygen / frame serialize as void.
+    #[test]
+    fn legacy_void_elements_have_no_close_tag() {
+        let tree = Tree::parse("<div><basefont><bgsound><keygen>x</div>");
+        let div = first_div(&tree);
+        assert_eq!(serialize_inner(&tree, div), "<basefont><bgsound><keygen>x");
+        let frames = Tree::parse("<frameset><frame></frameset>");
+        let html = frames.get_elements_by_tag_name("html")[0];
+        assert_eq!(
+            serialize_outer(&frames, html),
+            "<html><head></head><frameset><frame></frameset></html>"
+        );
+    }
+
     #[test]
     fn raw_text_style_not_escaped() {
         let tree = Tree::parse("<div><style>a<b</style></div>");
