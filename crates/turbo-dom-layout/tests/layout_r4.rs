@@ -368,7 +368,11 @@ fn sticky_bottom_pulls_a_box_up_within_its_containing_block() {
             .1
     };
     assert_eq!(
-        (at("bottom:0"), at("bottom:100px"), at("bottom:100px;margin-top:10px")),
+        (
+            at("bottom:0"),
+            at("bottom:100px"),
+            at("bottom:100px;margin-top:10px")
+        ),
         (280.0, 260.0, 270.0)
     );
 }

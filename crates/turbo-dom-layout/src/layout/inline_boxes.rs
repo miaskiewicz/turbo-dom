@@ -795,6 +795,7 @@ mod defensive_contract_tests {
             floats: Vec::new(),
             table_rows: None,
             dropped_end_margins: std::collections::HashSet::new(),
+            sticky_pending: Vec::new(),
         };
         let edge = super::super::inline::PlacedInlineEdge {
             edge: InlineEdge {
