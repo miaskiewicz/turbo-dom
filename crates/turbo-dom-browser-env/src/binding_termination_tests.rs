@@ -334,3 +334,25 @@ fn dispatch_skips_collected_callbacks_and_drops_listeners_of_aborted_signals() {
     assert_eq!(stale, 0);
     reset();
 }
+
+/// Every captured node intrinsic (bootstrap's `$N` table) resolves to a function once install
+/// finishes; a member captured before another engine script defines it would otherwise surface
+/// only as "apply was called on undefined" at call time.
+#[test]
+fn every_captured_node_intrinsic_is_a_function_after_install() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><p>x</p>");
+    let value =
+        crate::browser_env::run_engine_script(scope, "return __tsNs.completeNodeIntrinsics()")
+            .unwrap()
+            .to_rust_string_lossy(scope);
+    assert_eq!(
+        value,
+        "appendChild,attr.localName,attr.name,attr.namespaceURI,attr.ownerElement,attr.prefix,attr.value,childNodes,contains,createTextNode,documentElement,element.attributes,element.namespaceURI,element.prefix,firstChild,getAttribute,getAttributeNode,getAttributeNodeNS,getBoundingClientRect,getRootNode,insertBefore,nativeAttributes,nextSibling,nodeName,nodeType,nodeValue,ownerDocument,parentElement,parentNode,removeAttributeNode,setAttributeNode,setAttributeNodeNS"
+    );
+    reset();
+}

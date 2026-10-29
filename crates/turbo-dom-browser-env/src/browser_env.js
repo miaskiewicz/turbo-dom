@@ -3064,13 +3064,18 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     ['accept','autoFocus','autocomplete','checked','disabled','form','max','min','multiple','name','pattern','placeholder','readOnly','required','step','value','getBoundingClientRect'].forEach(function(name){delete prototypes.HTMLCanvasElement[name];});
     // Captured for the reflected members below: page-replaced builtins never run on these paths (miaskiewicz/turbo-dom#199).
     $getAttributeNative=elementProto.getAttribute;$setAttributeNative=elementProto.setAttribute;$removeAttributeNative=elementProto.removeAttribute;$hasAttributeNative=elementProto.hasAttribute;
-    (function(){
+    // Members another engine script defines after bootstrap (document_basics.js's
+    // Document#documentElement) are captured again by captured_intrinsics.js, which also
+    // fails installation if any entry is still not a function.
+    function captureNodeIntrinsics(missingOnly){
       var member=function(proto,name,getter){for(var o=proto;o;o=Object.getPrototypeOf(o)){var d=$gopd(o,name);if(d)return getter?d.get:d.value;}};
       var getters=[[g.Node.prototype,['nodeType','nodeName','nodeValue','parentNode','parentElement','firstChild','nextSibling','childNodes','ownerDocument']],[g.Document.prototype,['documentElement']],[g.Attr.prototype,['ownerElement','prefix','namespaceURI','value','localName','name']],[elementProto,['namespaceURI','prefix','attributes']]];
-      for(var i=0;i<getters.length;i++)for(var k=0;k<getters[i][1].length;k++){var name=getters[i][1][k],key=(getters[i][0]===g.Attr.prototype?'attr.':getters[i][0]===elementProto?'element.':'')+name;$N[key]=member(getters[i][0],name,true);}
+      for(var i=0;i<getters.length;i++)for(var k=0;k<getters[i][1].length;k++){var name=getters[i][1][k],key=(getters[i][0]===g.Attr.prototype?'attr.':getters[i][0]===elementProto?'element.':'')+name;if(!missingOnly||typeof $N[key]!=='function')$N[key]=member(getters[i][0],name,true);}
       var methods=[[g.Document.prototype,['createTextNode']],[g.Node.prototype,['getRootNode','contains','insertBefore','appendChild']],[elementProto,['getAttribute','getAttributeNode','getAttributeNodeNS','setAttributeNode','setAttributeNodeNS','removeAttributeNode','getBoundingClientRect']]];
-      for(i=0;i<methods.length;i++)for(k=0;k<methods[i][1].length;k++)$N[methods[i][1][k]]=member(methods[i][0],methods[i][1][k],false);
-    })();
+      for(i=0;i<methods.length;i++)for(k=0;k<methods[i][1].length;k++)if(!missingOnly||typeof $N[methods[i][1][k]]!=='function')$N[methods[i][1][k]]=member(methods[i][0],methods[i][1][k],false);
+    }
+    captureNodeIntrinsics(false);
+    __ns.completeNodeIntrinsics=function(){captureNodeIntrinsics(true);var missing=[];for(var key in $N)if(typeof $N[key]!=='function')missing[missing.length]=key;if(missing.length)throw new Error('uncaptured node intrinsics: '+missing.join(', '));return Object.keys($N).sort().join();};
     var rNodeType=$gopd(g.Node.prototype,'nodeType').get,rParentElement=$gopd(g.Node.prototype,'parentElement').get,rIsPrototypeOf=Object.prototype.isPrototypeOf;
     var rFormGetters=[];['HTMLInputElement','HTMLTextAreaElement','HTMLSelectElement','HTMLButtonElement','HTMLFieldSetElement','HTMLObjectElement','HTMLOutputElement','HTMLLabelElement','HTMLLegendElement','HTMLOptionElement','HTMLImageElement'].forEach(function(owner){var proto=prototypes[owner],d=proto&&$gopd(proto,'form');if(d&&d.get)rFormGetters[rFormGetters.length]=[proto,d.get];});
     function rForm(el){for(var i=0;i<rFormGetters.length;i++)if($apply(rIsPrototypeOf,rFormGetters[i][0],[el]))return $apply(rFormGetters[i][1],el,[]);return null;}

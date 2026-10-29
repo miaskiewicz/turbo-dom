@@ -5,6 +5,8 @@
   const g = globalThis, ns = __tsNs, apply = Reflect.apply, gopd = Object.getOwnPropertyDescriptor;
   const getProto = Object.getPrototypeOf, ownKeys = Reflect.ownKeys, mapGet = Map.prototype.get, mapSet = Map.prototype.set;
   const target = g.EventTarget.prototype;
+  // Absent only when the namespace was frozen before bootstrap (install degrades).
+  if (typeof ns.completeNodeIntrinsics === 'function') ns.completeNodeIntrinsics();
   ns.handlerAdd = target.addEventListener;
   ns.handlerRemove = target.removeEventListener;
   // Every interface prototype's own `on*` setters, keyed by prototype.
