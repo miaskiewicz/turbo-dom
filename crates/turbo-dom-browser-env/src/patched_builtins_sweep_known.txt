@@ -5,7 +5,6 @@ Animation.cancel -> get Promise.@@Symbol.species
 Animation.commitStyles -> String.prototype.trim
 CSSStyleSheet.replace -> Promise.reject
 CSSStyleSheet.replace -> Promise.resolve
-CharacterData.substringData -> String.prototype.slice
 Element.attributes -> WeakMap.prototype.get
 Element.getAttributeNames -> get Element.prototype.attributes
 Element.getClientRects -> Element.prototype.getBoundingClientRect
@@ -30,7 +29,6 @@ HTMLMeterElement.optimum -> String.prototype.slice
 HTMLOptionElement.label -> RegExp.prototype.@@Symbol.replace
 HTMLOptionElement.text -> RegExp.prototype.@@Symbol.replace
 HTMLOptionElement.value -> RegExp.prototype.@@Symbol.replace
-HTMLProgressElement.position -> String.prototype.slice
 MathMLElement.focus -> get Node.prototype.isConnected
 NamedNodeMap.getNamedItem -> Element.prototype.getAttributeNode
 NamedNodeMap.getNamedItemNS -> Element.prototype.getAttributeNodeNS
@@ -43,11 +41,7 @@ Node.isDefaultNamespace -> Node.prototype.lookupNamespaceURI
 Node.isEqualNode -> get Node.prototype.nodeType
 Node.lookupNamespaceURI -> get Node.prototype.nodeType
 Node.lookupPrefix -> get Node.prototype.nodeType
-Range.cloneRange -> Object.create
 SVGElement.focus -> get Node.prototype.isConnected
-Selection.collapse -> Object.create
-Selection.selectAllChildren -> Object.create
-Selection.setPosition -> Object.create
 ShadowRoot.adoptedStyleSheets -> String.prototype.@@Symbol.iterator
 ShadowRoot.getHTML -> Array.prototype.@@Symbol.iterator
 StylePropertyMapReadOnly.entries -> String.prototype.trim
@@ -57,6 +51,5 @@ StylePropertyMapReadOnly.has -> String.prototype.trim
 StylePropertyMapReadOnly.keys -> String.prototype.trim
 StylePropertyMapReadOnly.size -> String.prototype.trim
 StylePropertyMapReadOnly.values -> String.prototype.trim
-new Range -> Object.create
 new getComputedStyle -> String.prototype.replace
 new getComputedStyle -> String.prototype.toLowerCase
