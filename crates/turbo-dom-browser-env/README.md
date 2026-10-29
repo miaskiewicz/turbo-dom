@@ -1,5 +1,9 @@
 # turbo-dom-browser-env
 
+> Part of the [turbo-dom](https://github.com/miaskiewicz/turbo-dom) 0.6.0 crate family. Used by
+> **turbo-test** (the test runner's DOM) and **turbo-surf** (with `host-internals`). Features:
+> `host-internals`, `test-support`, `native-sdk-frame-read` (all off by default, below).
+
 The native browser environment over [`turbo-dom`](../turbo-dom): turbo-dom's
 pure-Rust DOM (`turbo_dom::rtdom::Tree`) bound to V8 through native callbacks.
 Pages and tests get `window`, `document`, nodes, CSSOM, forms, events, ranges,
@@ -472,8 +476,9 @@ The crate is compiled with `#![allow(unused, clippy::all)]` (see `src/lib.rs`).
 
 CI gates the crate's line coverage in the `host-internals,test-support` configuration
 (`cargo tarpaulin --engine llvm -p turbo-dom-browser-env --features host-internals,test-support
---include-files 'crates/turbo-dom-browser-env/src/*'`; the current floor is in
-`docs/CONSOLIDATION.md`, "Coverage"). New tests assert behaviour against Chrome 156 controls.
+--include-files 'crates/turbo-dom-browser-env/src/*'`; blocking floor **97.6** for 0.6.0,
+history in `docs/CONSOLIDATION.md`, "Coverage"; the remaining lines are on the post-release
+list). Pull-request CI runs this crate on Linux x64/arm64 and Windows x64 (default and simdutf V8 archives); macOS arm64 is added in the release run only (`publish.yml` calls `ci.yml` with `darwin: true`). Complexity (<= 15 per function) is report-only until the post-release refactor. New tests assert behaviour against Chrome 156 controls.
 The coverage phase added:
 
 - `edge_probes_tests.rs`: `shadow_slots_edges`, `dom_mutation_validity`, `selector_edges`, `sanitizer_edges`,
