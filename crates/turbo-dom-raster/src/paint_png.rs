@@ -61,17 +61,90 @@ fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tra
     // overlapping descendants do not compound); `opacity: 0` paints nothing.
     if f.opacity < 1.0 {
         if f.opacity > 0.0 {
-            let mut layer = Pixmap::new(pm.width(), pm.height()).expect("layer the canvas size");
-            paint_opaque(&mut layer, f, images, xf);
+            let Some((x0, y0, w, h)) = group_layer(f, xf, pm.width(), pm.height()) else {
+                return;
+            };
+            let mut layer = Pixmap::new(w, h).expect("layer within the canvas");
+            let local = Transform::from_translate(-x0 as f32, -y0 as f32).pre_concat(xf);
+            paint_opaque(&mut layer, f, images, local);
             let paint = PixmapPaint {
                 opacity: f.opacity,
                 ..PixmapPaint::default()
             };
-            pm.draw_pixmap(0, 0, layer.as_ref(), &paint, Transform::identity(), None);
+            pm.draw_pixmap(x0, y0, layer.as_ref(), &paint, Transform::identity(), None);
         }
         return;
     }
     paint_opaque(pm, f, images, xf);
+}
+
+/// The device-pixel rectangle `(x, y, width, height)` an opacity group's layer covers on
+/// a `w x h` canvas: a conservative bound on the subtree's ink, clamped to the canvas
+/// (miaskiewicz/turbo-dom#211). `None` when nothing of it can show; the whole canvas when
+/// the bound does not resolve (a degenerate transform), as before.
+fn group_layer(f: &Fragment, xf: Transform, w: u32, h: u32) -> Option<(i32, i32, u32, u32)> {
+    let Some(ink) = ink_bounds(f, xf) else {
+        return Some((0, 0, w, h));
+    };
+    let x0 = ink.left().floor().max(0.0) as i32;
+    let y0 = ink.top().floor().max(0.0) as i32;
+    let x1 = (ink.right().ceil() as i32).min(w as i32);
+    let y1 = (ink.bottom().ceil() as i32).min(h as i32);
+    (x1 > x0 && y1 > y0).then(|| (x0, y0, (x1 - x0) as u32, (y1 - y0) as u32))
+}
+
+/// A device-space rectangle holding every pixel `f` and its subtree can paint under
+/// `xf`, or `None` when a transform does not map it to finite bounds.
+fn ink_bounds(f: &Fragment, xf: Transform) -> Option<Rect> {
+    let xf = match &f.content {
+        FragmentContent::Box {
+            transform: Some(t), ..
+        } => compose_transform(xf, f, t),
+        _ => xf,
+    };
+    let (mut l, mut t, mut r, mut b) = (f.x, f.y, f.x + f.width, f.y + f.height);
+    match &f.content {
+        FragmentContent::Box {
+            shadow: Some(sh), ..
+        } => {
+            // The shadow rect (offset, spread) plus the blur's reach on each side.
+            let reach = sh.spread.max(0) as f32 + 3.0 * shadow_blur(sh) + 1.0;
+            let (dx, dy) = (sh.offset_x as f32, sh.offset_y as f32);
+            l = l.min(l + dx - reach);
+            t = t.min(t + dy - reach);
+            r = r.max(r + dx + reach);
+            b = b.max(b + dy + reach);
+        }
+        FragmentContent::TextLine {
+            glyphs, font_size, ..
+        } => {
+            // Glyph outlines sit around their pens, within a couple of ems.
+            let m = 2.0 * font_size;
+            for g in glyphs {
+                let (px, py) = (f.x + g.x, f.y + g.y);
+                l = l.min(px - m);
+                t = t.min(py - m);
+                r = r.max(px + m);
+                b = b.max(py + m);
+            }
+        }
+        // Images paint at their rounded box.
+        FragmentContent::Image(_) => (l, t, r, b) = (l - 1.0, t - 1.0, r + 1.0, b + 1.0),
+        _ => {}
+    }
+    let mut ink = PathBuilder::from_rect(Rect::from_ltrb(l, t, r.max(l + 1.0), b.max(t + 1.0))?)
+        .transform(xf)?
+        .bounds();
+    for c in &f.children {
+        let cb = ink_bounds(c, xf)?;
+        ink = Rect::from_ltrb(
+            ink.left().min(cb.left()),
+            ink.top().min(cb.top()),
+            ink.right().max(cb.right()),
+            ink.bottom().max(cb.bottom()),
+        )?;
+    }
+    Some(ink)
 }
 
 /// [`paint_fragment`] for a box painted at full opacity.
@@ -877,6 +950,129 @@ mod tests {
         let mut gone = plain(0.0, 0.0, 8.0, 8.0, Some(RED));
         gone.opacity = 0.0;
         assert!(all_white(&render(&gone, 10, 10, &HashMap::new())));
+        // An opacity group wholly off the canvas has no layer and paints nothing (#211).
+        let mut away = plain(20.0, 20.0, 8.0, 8.0, Some(RED));
+        away.opacity = 0.5;
+        assert!(all_white(&render(&away, 10, 10, &HashMap::new())));
+    }
+
+    /// `f` (an opacity group) painted the pre-#206-follow-up way: one canvas-sized layer.
+    fn full_layer_reference(f: &Fragment, w: u32, h: u32, images: &DecodedAssets) -> Pixmap {
+        let mut pm = Pixmap::new(w, h).unwrap();
+        pm.fill(tiny_skia::Color::WHITE);
+        let mut layer = Pixmap::new(w, h).unwrap();
+        paint_opaque(&mut layer, f, images, Transform::identity());
+        let paint = PixmapPaint {
+            opacity: f.opacity,
+            ..PixmapPaint::default()
+        };
+        pm.draw_pixmap(0, 0, layer.as_ref(), &paint, Transform::identity(), None);
+        pm
+    }
+
+    #[test]
+    fn an_opacity_layer_covers_only_its_subtree_ink() {
+        // miaskiewicz/turbo-dom#206 follow-up: a canvas-sized layer per opacity box made
+        // 2000 one-pixel `opacity:.5` divs take 14 s at 1280x800.
+        let id = Transform::identity();
+        let mut dot = plain(5.0, 6.0, 1.0, 1.0, Some(RED));
+        dot.opacity = 0.5;
+        assert_eq!(group_layer(&dot, id, 1280, 800), Some((5, 6, 1, 1)));
+        // A child outside the parent box widens the layer; the canvas clamps it.
+        dot.children.push(plain(1270.0, 2.0, 40.0, 3.0, Some(RED)));
+        assert_eq!(group_layer(&dot, id, 1280, 800), Some((5, 2, 1275, 5)));
+        // The device transform moves it; off-canvas ink has no layer.
+        let shifted = Transform::from_translate(10.0, 20.0);
+        let mut lone = plain(5.0, 6.0, 2.0, 2.0, Some(RED));
+        lone.opacity = 0.5;
+        assert_eq!(group_layer(&lone, shifted, 100, 100), Some((15, 26, 2, 2)));
+        let off = Transform::from_translate(500.0, 0.0);
+        assert_eq!(group_layer(&lone, off, 100, 100), None);
+        // A transform with no finite bounds keeps the canvas-sized layer.
+        let huge = with_box(plain(5.0, 6.0, 2.0, 2.0, Some(RED)), |_, _, _, t| {
+            *t = Some(BoxTransform {
+                matrix: [f32::MAX, 0.0, 0.0, f32::MAX, 0.0, 0.0],
+                origin_x: 0.0,
+                origin_y: 0.0,
+            });
+        });
+        assert_eq!(group_layer(&huge, id, 100, 100), Some((0, 0, 100, 100)));
+        let mut parent = plain(0.0, 0.0, 2.0, 2.0, None);
+        parent.children.push(huge);
+        assert_eq!(group_layer(&parent, id, 100, 100), Some((0, 0, 100, 100)));
+    }
+
+    #[test]
+    fn a_bounded_opacity_layer_paints_what_a_canvas_layer_does() {
+        // The tight layer must still hold every pixel the group paints: a blurred,
+        // offset shadow, a transformed child, and glyph ink outside its line box.
+        let reg = turbo_dom_layout::FontRegistry::new();
+        let face = reg.select(&["Inter"], 400, false).unwrap().clone();
+        let glyphs: Vec<PositionedGlyph> = face
+            .shape("Ag")
+            .iter()
+            .enumerate()
+            .map(|(i, g)| PositionedGlyph {
+                glyph_id: g.glyph_id,
+                x: i as f32 * 20.0,
+                y: 30.0,
+                text_start: 0,
+                text_end: 0,
+            })
+            .collect();
+        let line = Fragment::new(
+            NodeId(0),
+            20.0,
+            10.0,
+            1.0,
+            1.0,
+            FragmentContent::TextLine {
+                glyphs,
+                text: String::new(),
+                face,
+                font_size: 30.0,
+                color: RED,
+            },
+        );
+        let shadowed = with_box(plain(30.0, 30.0, 20.0, 20.0, Some(RED)), |_, s, _, _| {
+            *s = Some(BoxShadow {
+                offset_x: 12,
+                offset_y: -9,
+                blur: 6,
+                spread: 3,
+                color: RED,
+                inset: false,
+            });
+        });
+        let rotated = with_box(plain(60.0, 60.0, 20.0, 10.0, Some(RED)), |_, _, _, t| {
+            *t = Some(BoxTransform {
+                matrix: [0.0, 1.0, -1.0, 0.0, 0.0, 0.0],
+                origin_x: 0.0,
+                origin_y: 0.0,
+            });
+        });
+        // A decoded image at a fractional box paints at its rounded box (8..15 here).
+        let mut pic = image("pic", None);
+        (pic.x, pic.y, pic.width, pic.height) = (7.5, 7.5, 6.5, 6.5);
+        let mut images = HashMap::new();
+        images.insert(
+            "pic".to_string(),
+            crate::image_paint::DecodedImage {
+                width: 1,
+                height: 1,
+                rgba: vec![255, 0, 0, 255],
+                intrinsic: turbo_dom_layout::image::Intrinsic::new(1, 1, false),
+                placeholder: false,
+            },
+        );
+        // Each group alone, so one feature's margin cannot hide another's.
+        for (i, mut group) in [shadowed, line, rotated, pic].into_iter().enumerate() {
+            group.opacity = 0.5;
+            let got = render(&group, 120, 120, &images);
+            let want = full_layer_reference(&group, 120, 120, &images);
+            assert!(!all_white(&got), "group {i} paints");
+            assert_eq!(got.data(), want.data(), "group {i}");
+        }
     }
 
     fn image(name: &str, tint: Option<Rgba>) -> Fragment {
