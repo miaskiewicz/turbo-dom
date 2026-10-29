@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const g = globalThis,
-    ns = g[Symbol.for("ts")],
+    ns = __tsNs,
     make = ns.makeNativeFunction;
   const nativeConstructor = g.__customElementConstructor,
     children = g.__customElementChildren,
@@ -42,7 +42,7 @@
     promiseResolve = Promise.resolve,
     promiseReject = Promise.reject,
     TypeErrorValue = TypeError,
-    Exception = g[Symbol.for("ts")].DOMException,
+    Exception = __tsNs.DOMException,
     StringValue = String;
   const weakGet = WeakMap.prototype.get,
     weakSet = WeakMap.prototype.set,

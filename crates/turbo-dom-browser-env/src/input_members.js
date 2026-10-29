@@ -5,13 +5,13 @@
 // members and createValueRange (OpaqueRange) live in selection.js.
 (function () {
   'use strict';
-  const g = globalThis, ns = g[Symbol.for('ts')], native = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, native = ns.makeNativeFunction;
   // String.prototype.replace(regexp) looks up page-replaceable RegExp members; the bootstrap's
   // captured replace drives the captured exec instead (turbo-dom#194).
   const regexpReplace = ns.intrinsics.replace;
   const Native = g.__inputNative; delete g.__inputNative;
   const apply = Reflect.apply, define = Object.defineProperty, describe = Object.getOwnPropertyDescriptor;
-  const StringValue = String, NumberValue = Number, DateValue = Date, TypeErrorValue = TypeError, Exception = g[Symbol.for('ts')].DOMException;
+  const StringValue = String, NumberValue = Number, DateValue = Date, TypeErrorValue = TypeError, Exception = __tsNs.DOMException;
   const isFiniteNumber = Number.isFinite, isNaNValue = Number.isNaN, floor = Math.floor, absolute = Math.abs;
   const dateTime = Date.prototype.getTime, regexTest = RegExp.prototype.test, replaceText = String.prototype.replace;
   const sliceText = String.prototype.slice, padText = String.prototype.padStart, charCode = String.prototype.charCodeAt;

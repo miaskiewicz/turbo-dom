@@ -1078,10 +1078,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let Some(native) = v8::Function::new(scope, dispatch) else {
         return;
     };
-    let source = v8::String::new(scope, include_str!("selection.js"))
-        .expect("selection.js is far below V8's string length limit");
-    let Some(initializer) = v8::Script::compile(scope, source, None)
-        .and_then(|script| script.run(scope))
+    let Some(initializer) = super::engine_expression(scope, include_str!("selection.js"))
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     else {
         return;
@@ -1152,13 +1149,11 @@ pub(super) mod tests {
         );
         capture_popover_scheduler(scope);
         let source = format!(
-            "Promise.resolve({}).then(JSON.stringify)",
+            "return Promise.resolve({}).then(JSON.stringify)",
             probe.trim().trim_end_matches(';')
         );
-        let source = v8::String::new(scope, &source).unwrap();
         v8::tc_scope!(let scope, scope);
-        let promise = v8::Script::compile(scope, source, None)
-            .and_then(|script| script.run(scope))
+        let promise = crate::browser_env::run_engine_script(scope, &source)
             .and_then(|value| v8::Local::<v8::Promise>::try_from(value).ok())
             .unwrap_or_else(|| {
                 panic!(
@@ -1337,7 +1332,7 @@ pub(super) mod tests {
           const range = i.createValueRange(6, 11);
           await new Promise(resolve => setTimeout(resolve, 0));
           log.length = 0;
-          const replace = globalThis[Symbol.for('ts')].replaceControlSelection;
+          const replace = __tsNs.replaceControlSelection;
           const done = [replace(i, 'XY'), replace(document.body, 'z')];
           const state = [i.value, i.selectionStart, i.selectionEnd, range.startOffset, range.endOffset, getSelection().type];
           await new Promise(resolve => setTimeout(resolve, 0));

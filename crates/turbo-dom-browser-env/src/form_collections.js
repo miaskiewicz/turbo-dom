@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const g = globalThis,
-    ns = g[Symbol.for("ts")],
+    ns = __tsNs,
     make = ns.makeNativeFunction;
   const factory = ns.formCollectionFactory,
     forms = g.__captureFormCollections;

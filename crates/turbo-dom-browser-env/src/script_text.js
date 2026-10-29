@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const g=globalThis,ns=g[Symbol.for('ts')],native=g.__scriptTextNative;
+  const g=globalThis,ns=__tsNs,native=g.__scriptTextNative;
   delete g.__scriptTextNative;
   const apply=Reflect.apply;
   const check=ns.domAccessor('nodeType',false,'HTML:script');

@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   // HTMLHyperlinkElementUtils on HTMLAnchorElement and HTMLAreaElement (hyperlink_utils.rs).
-  const g = globalThis, ns = g[Symbol.for('ts')], native = g.__hyperlinkNative;
+  const g = globalThis, ns = __tsNs, native = g.__hyperlinkNative;
   delete g.__hyperlinkNative;
   const make = ns.makeNativeFunction, apply = Reflect.apply, define = Object.defineProperty;
   const setAttribute = g.Element.prototype.setAttribute;

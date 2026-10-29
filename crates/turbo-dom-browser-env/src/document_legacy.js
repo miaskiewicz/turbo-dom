@@ -1,6 +1,6 @@
 (function () {
   const g = globalThis;
-  const ns = g[Symbol.for('ts')];
+  const ns = __tsNs;
   const native = g.__documentLegacyNative;
   delete g.__documentLegacyNative;
   const make = ns.makeNativeFunction, liveCollection = ns.formCollectionFactory.live;
@@ -108,7 +108,7 @@
   native('register', allFor);
   getter(g.Document.prototype, 'all', function () { check(this); return native('all', this); });
 
-  const proto = g.Document.prototype, DOMExceptionType = g[Symbol.for('ts')].DOMException;
+  const proto = g.Document.prototype, DOMExceptionType = __tsNs.DOMException;
   const domainError = message => new DOMExceptionType("Failed to set the 'domain' property on 'Document': " + message, 'SecurityError');
   define(proto, 'domain', {
     get: make(function () { check(this); return native('domain', this); }, 'get domain', 0),

@@ -9,7 +9,7 @@
 (function () {
   'use strict';
   const Native = globalThis.__viewTransitionNative; delete globalThis.__viewTransitionNative;
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   const apply = Reflect.apply, define = Object.defineProperty, create = Object.create, getPrototypeOf = Object.getPrototypeOf;
   const PromiseValue = Promise, then = Promise.prototype.then, resolvePromise = Promise.resolve, rejectPromise = Promise.reject;
   const ErrorType = TypeError, StringValue = String, MapValue = Map, WeakMapValue = WeakMap;

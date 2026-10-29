@@ -48,7 +48,8 @@ exactly one turbo-dom-v8 (`links = "rusty_v8"`).
 
 ## API
 
-**Model.** There is one native document per V8 context. A JS node is a V8 object that
+**Model.** There is one native document per V8 context. `window` has Chrome's Window
+interface chain (`Window.prototype` -> `WindowProperties` -> `EventTarget.prototype`). A JS node is a V8 object that
 carries its `Handle`. Native callbacks read the handle, call `Tree`, and wrap results
 back, preserving identity (`el === el`). A callback entered through a node of another
 context switches to that context's document and restores the caller's document on
@@ -63,6 +64,7 @@ return.
 | serializing | `document_html()` |
 | event loop | `flush_ownership(scope)` between tasks (wrapper ownership is reconciled in batches, so building n nodes is O(n)) |
 | realms and frames | `register_dom_exception`, `capture_window_event_interfaces`, `retire_custom_element_context`, `set_computed_font_defaults` |
+| engine namespace | `engine_namespace(scope)` (the realm's internal state object, held in a V8 private: page script cannot reach it), `run_engine_script(scope, source)` (runs `source` as a function body whose `__tsNs` parameter is that namespace; `ENGINE_NAMESPACE_PARAM`) |
 | embedding hooks (turbo-surf) | the other `pub fn`s: form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import, node nonces |
 
 Also in the crate:

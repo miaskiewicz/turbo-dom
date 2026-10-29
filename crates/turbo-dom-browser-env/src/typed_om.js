@@ -5,7 +5,7 @@
 // declarations (styleMap) and computed style (computedStyleMap()).
 (function () {
   'use strict';
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   const Native = g.__typedOmNative; delete g.__typedOmNative;
   const registry = JSON.parse(g.__typedOmRegistry); delete g.__typedOmRegistry;
   const define = Object.defineProperty, create = Object.create, getProto = Object.getPrototypeOf, setProto = Object.setPrototypeOf;
@@ -19,7 +19,7 @@
   const weakGet = Function.prototype.call.bind(WeakMap.prototype.get), weakSet = Function.prototype.call.bind(WeakMap.prototype.set);
   const mapGet = Function.prototype.call.bind(Map.prototype.get), mapSet = Function.prototype.call.bind(Map.prototype.set);
   const arrayIterator = Array.prototype[Symbol.iterator], symbolIterator = Symbol.iterator, symbolTag = Symbol.toStringTag;
-  const Exception = g[Symbol.for('ts')].DOMException;
+  const Exception = __tsNs.DOMException;
   const elementCheck = ns.domAccessor('nodeType', false, 'Element'), htmlCheck = ns.domAccessor('nodeType', false, 'HTMLElement');
   const namespaceOf = ns.domAccessor('namespaceURI', false, 'Element'), connectedOf = ns.domAccessor('isConnected', false, 'Node'), tagOf = ns.domAccessor('localName', false, 'Element');
   const getAttributeNS = g.Element.prototype.getAttributeNS, attributeOf = (element, name) => apply(getAttributeNS, element, [null, name]);

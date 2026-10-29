@@ -5,7 +5,7 @@
   const Native = globalThis.__invokerNative; delete globalThis.__invokerNative;
   // Captured at install: page-replaced builtins never reach this path (turbo-dom#172).
   const reflectApply = Reflect.apply, call = (f, receiver, ...rest) => reflectApply(f, receiver, rest);
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction, StringValue = String;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction, StringValue = String;
   const reference = ns.elementReference, retarget = ns.retargetEventSource;
   const dialogSteps = ns.dialogCommandSteps, resolve = ns.resolveReferenceTarget;
   delete ns.elementReference; delete ns.retargetEventSource; delete ns.dialogCommandSteps; delete ns.resolveReferenceTarget;

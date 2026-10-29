@@ -216,6 +216,10 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let scope = &mut v8::ContextScope::new(scope, context);
     let global = context.global(scope);
     set_prop(scope, global, "__xpathTarget", target.into());
+    // The provider serves the target realm: it reads that realm's engine namespace.
+    if let Some(namespace) = super::engine_namespace_of(scope, target) {
+        super::share_engine_namespace(scope, global, namespace);
+    }
     let name = v8::String::new(scope, "DOMException").unwrap();
     if let Some(constructor) = target.get(scope, name.into()) {
         let key = dom_exception_key(scope);

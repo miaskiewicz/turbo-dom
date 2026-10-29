@@ -10,10 +10,10 @@
 (function () {
   'use strict';
   const Native = globalThis.__animationsNative; delete globalThis.__animationsNative;
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   const apply = Reflect.apply, construct = Reflect.construct, define = Object.defineProperty, create = Object.create;
   const ownKeys = Reflect.ownKeys, getOwnDescriptor = Object.getOwnPropertyDescriptor, setPrototype = Object.setPrototypeOf;
-  const ErrorType = TypeError, Exception = g[Symbol.for('ts')].DOMException, PromiseType = Promise, promiseThen = Promise.prototype.then;
+  const ErrorType = TypeError, Exception = __tsNs.DOMException, PromiseType = Promise, promiseThen = Promise.prototype.then;
   const EventType = g.Event, TargetType = g.EventTarget;
   const listen = g.EventTarget.prototype.addEventListener, unlisten = g.EventTarget.prototype.removeEventListener;
   const floor = Math.floor, round = Math.round, abs = Math.abs, min = Math.min, max = Math.max, sqrt = Math.sqrt;

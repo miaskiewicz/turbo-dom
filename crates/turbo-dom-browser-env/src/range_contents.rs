@@ -102,24 +102,16 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         return;
     };
     let accessor = super::dom_ownership::local(scope, &accessor.0);
-    let global = scope.get_current_context().global(scope);
-    let name = v8::String::new(scope, "ts").unwrap();
-    let key = v8::Symbol::for_key(scope, name);
-    // browser_env.js installs the internal namespace and its factory earlier in install(); a
-    // termination that cut that bootstrap short leaves them missing (turbo-dom#184).
-    let Some(namespace) = global
-        .get(scope, key.into())
-        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-    else {
+    // browser_env.js installs the namespace's factory earlier in install(); a termination
+    // that cut that bootstrap short leaves it missing (turbo-dom#184).
+    let Some(namespace) = super::engine_namespace(scope) else {
         return;
     };
     let name = v8::String::new(scope, "makeNativeFunction").unwrap();
     let Some(factory) = namespace.get(scope, name.into()) else {
         return;
     };
-    let source = v8::String::new(scope, include_str!("range_contents.js")).unwrap();
-    if let Some(initializer) = v8::Script::compile(scope, source, None)
-        .and_then(|script| script.run(scope))
+    if let Some(initializer) = super::engine_expression(scope, include_str!("range_contents.js"))
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
         // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)

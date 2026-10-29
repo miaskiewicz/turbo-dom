@@ -3,7 +3,7 @@
 // doubles. Output keeps Chrome's value-mode flag and default value, which form reset restores.
 (function () {
   'use strict';
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   const apply = Reflect.apply, define = Object.defineProperty, StringValue = String, NumberValue = Number, finite = Number.isFinite;
   const ErrorType = TypeError, max = Math.max, min = Math.min, sliceText = String.prototype.slice;
   const getAttribute = g.Element.prototype.getAttribute, setAttribute = g.Element.prototype.setAttribute, hasAttribute = g.Element.prototype.hasAttribute;

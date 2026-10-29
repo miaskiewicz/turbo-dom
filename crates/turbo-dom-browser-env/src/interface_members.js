@@ -2,7 +2,7 @@
   'use strict';
   // Small Chrome 156 interface members measured in interface_members_chrome156.json:
   // HTMLMediaElement constants and `loading`, HTMLScriptElement.supports().
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   const apply = Reflect.apply, define = Object.defineProperty;
   const getAttribute = g.Element.prototype.getAttribute, setAttribute = g.Element.prototype.setAttribute;
   const lower = String.prototype.toLowerCase;

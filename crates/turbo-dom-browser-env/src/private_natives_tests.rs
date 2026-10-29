@@ -1,5 +1,5 @@
 //! The binding's private natives (captured by its JS modules at install, or reachable on the
-//! `globalThis[Symbol.for('ts')]` namespace) called with the wrong receivers / arguments:
+//! engine namespace, turbo-dom#222) called with the wrong receivers / arguments:
 //! each refuses with its documented error or an empty result, and still answers a valid call.
 use crate::browser_env::*;
 
@@ -23,16 +23,10 @@ fn with_page(body: impl FnOnce(&mut v8::PinScope)) {
 }
 
 fn json(scope: &mut v8::PinScope, source: &str) -> String {
-    let code = v8::String::new(
-        scope,
-        &format!(
-            "JSON.stringify((() => {{ const ts = globalThis[Symbol.for('ts')]; const run = f => {{ try {{ const v = f(); return v === undefined ? 'undefined' : v; }} catch (e) {{ return [e.constructor.name, e.message]; }} }}; return {source}; }})())"
-        ),
-    )
-    .unwrap();
-    v8::Script::compile(scope, code, None)
-        .unwrap()
-        .run(scope)
+    let code = format!(
+        "return JSON.stringify((() => {{ const ts = __tsNs; const run = f => {{ try {{ const v = f(); return v === undefined ? 'undefined' : v; }} catch (e) {{ return [e.constructor.name, e.message]; }} }}; return {source}; }})())"
+    );
+    run_engine_script(scope, &code)
         .unwrap()
         .to_rust_string_lossy(scope)
 }
@@ -325,16 +319,12 @@ fn wrapped_natives_refuse_hostile_calls_directly() {
 }
 
 /// The inline style accessor builds each element's declaration through the binding's
-/// namespace (`globalThis[Symbol.for('ts')]`), which page script can reach and tamper
-/// with: a removed namespace, a replaced factory or a throwing factory leave `style`
+/// engine namespace, which an engine script can tamper with (page script cannot reach it,
+/// turbo-dom#222): a replaced factory or a throwing factory leave `style`
 /// undefined or a TypeError / the factory's error, never an abort.
 #[test]
 fn inline_style_survives_a_tampered_namespace() {
     for (tamper, expected) in [
-        (
-            "delete globalThis[Symbol.for('ts')]",
-            r#"[["TypeError","Cannot convert undefined or null to object"],"string"]"#,
-        ),
         (
             "ts.makeInlineStyleDeclaration = 5",
             r#"["undefined","string"]"#,

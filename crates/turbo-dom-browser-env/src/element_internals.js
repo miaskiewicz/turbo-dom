@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const g = globalThis,
-    ns = g[Symbol.for("ts")],
+    ns = __tsNs,
     make = ns.makeNativeFunction,
     bridge = g.__internalsNative;
   const ce = g.__captureCustomElementInternals,
@@ -15,7 +15,7 @@
     define = Object.defineProperty,
     create = Object.create,
     freeze = Object.freeze;
-  const Exception = g[Symbol.for("ts")].DOMException,
+  const Exception = __tsNs.DOMException,
     ErrorType = TypeError,
     StringValue = String,
     MapValue = Map,

@@ -1,8 +1,8 @@
 (function(){
   'use strict';
-  const g=globalThis,ns=g[Symbol.for('ts')],native=g.__windowListenerNative;delete g.__windowListenerNative;
+  const g=globalThis,ns=__tsNs,native=g.__windowListenerNative;delete g.__windowListenerNative;
   const make=ns.makeNativeFunction,apply=Reflect.apply,create=Object.create,StringValue=String,ErrorType=TypeError,define=Object.defineProperty,getPrototype=Object.getPrototypeOf,setPrototype=Object.setPrototypeOf;
-  const Exception=g[Symbol.for('ts')].DOMException;
+  const Exception=__tsNs.DOMException;
   const oldHost=g.__captureHostEventDispatch,BaseTarget=g.EventTarget,NodeConstructor=g.Node,EventType=g.Event,document=g.document;
   const ownIndex=(value,index,item)=>define(value,index,{__proto__:null,value:item,writable:true,configurable:true,enumerable:true});
   const push=(value,item)=>{ownIndex(value,value.length,item);return value.length;};

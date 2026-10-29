@@ -1119,15 +1119,7 @@ fn set_node_projector(
 // Capture only at trusted bootstrap boundaries; a page can replace the public
 // namespace and global constructors without intercepting later native wrapping.
 fn capture_node_projector(scope: &mut v8::PinScope) {
-    let global = scope.get_current_context().global(scope);
-    let Some(name) = v8::String::new(scope, "ts") else {
-        return;
-    };
-    let symbol = v8::Symbol::for_key(scope, name);
-    let Some(namespace) = global
-        .get(scope, symbol.into())
-        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-    else {
+    let Some(namespace) = engine_namespace(scope) else {
         return;
     };
     let Some(name) = v8::String::new(scope, "projectNativeNode") else {
@@ -5708,13 +5700,7 @@ fn get_style(
         rv.set(object.into());
         return;
     }
-    let global = context.global(scope);
-    let name = v8::String::new(scope, "ts").unwrap();
-    let key = v8::Symbol::for_key(scope, name);
-    let Some(namespace) = global
-        .get(scope, key.into())
-        .and_then(|v| v.to_object(scope))
-    else {
+    let Some(namespace) = engine_namespace(scope) else {
         return;
     };
     let key = v8::String::new(scope, "makeInlineStyleDeclaration").unwrap();
@@ -6533,7 +6519,7 @@ const ILLEGAL_CONSTRUCTORS: &str =
      CSSStyleRule CSSImportRule TextTrackCueList TextTrack DOMImplementation \
      XMLDocument AbstractRange NodeRange XPathExpression XPathResult ValidityState \
      HTMLFormControlsCollection RadioNodeList HTMLOptionsCollection ElementInternals \
-     CustomStateSet FragmentDirective CSSPseudoElement";
+     CustomStateSet FragmentDirective CSSPseudoElement Window";
 
 // The implementation closure stays in V8's private function data. This is a
 // native callable over the facade's live guest state, not a source-string mask.
@@ -7219,13 +7205,7 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     // A replacement document is seeded before its new bootstrap probes native
     // methods. Projecting with the previous bootstrap here would delete those
     // raw own methods before their replacement prototypes have been constructed.
-    let global = scope.get_current_context().global(scope);
-    let name = v8::String::new(scope, "ts").unwrap();
-    let key = v8::Symbol::for_key(scope, name);
-    if let Some(namespace) = global
-        .get(scope, key.into())
-        .and_then(|v| v.to_object(scope))
-    {
+    if let Some(namespace) = engine_namespace(scope) {
         let key = v8::String::new(scope, "projectNativeNode").unwrap();
         namespace.delete(scope, key.into());
     }
@@ -7339,12 +7319,7 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         let key = dom_exception_key(scope);
         global.set_private(scope, key, constructor);
     }
-    let name = v8::String::new(scope, "ts").unwrap();
-    let key = v8::Symbol::for_key(scope, name);
-    if let Some(namespace) = global
-        .get(scope, key.into())
-        .and_then(|value| value.to_object(scope))
-    {
+    if let Some(namespace) = engine_namespace(scope) {
         let key = v8::String::new(scope, "cloneControlState").unwrap();
         if let Some(function) = namespace
             .get(scope, key.into())
@@ -7483,6 +7458,7 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     run_js(scope, include_str!("interface_members.js"));
     // The event handler IDL attributes register through the final EventTarget methods,
     // captured before any page script runs (turbo-dom#172).
+    run_js(scope, include_str!("window_interface.js"));
     run_js(scope, include_str!("captured_intrinsics.js"));
     let key = v8::String::new(scope, "__setInlineHandler").unwrap();
     if let Some(setter) = global
@@ -7501,6 +7477,8 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     run_js(scope, "(function(){'use strict';const d=document,proto=Document.prototype,keys=Reflect.ownKeys(d);for(const key of keys){if(key==='location')continue;const descriptor=Reflect.getOwnPropertyDescriptor(d,key);if(!(key in proto))Reflect.defineProperty(proto,key,descriptor);Reflect.deleteProperty(d,key);}})();");
     // Last: reorder every interface's own keys to Chrome's order.
     key_order::installed(scope);
+    #[cfg(test)]
+    expose_test_namespace(scope);
 }
 
 fn bind_document(scope: &mut v8::PinScope) {
@@ -7584,11 +7562,7 @@ fn run_js(scope: &mut v8::PinScope, src: &str) {
     });
     let tc = std::pin::pin!(v8::TryCatch::new(scope));
     let tc = &mut tc.init();
-    if let Some(code) = v8::String::new(tc, src) {
-        if let Some(s) = v8::Script::compile(tc, code, None) {
-            s.run(tc);
-        }
-    }
+    run_engine_script(tc, src);
     if tc.has_terminated() {
         SETUP_TERMINATED.with(|t| t.set(true));
     }
@@ -8549,6 +8523,7 @@ mod tests {
     #[test]
     fn document_collections_and_adoption_preserve_live_native_nodes() {
         init_v8();
+        EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
         let isolate = &mut v8::Isolate::new(Default::default());
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -8582,7 +8557,7 @@ mod tests {
           const fail=message=>{throw new Error(message)};
           const forms=document.forms, children=document.body.children, nodes=document.body.childNodes;
           if(Object.getOwnPropertyDescriptor(HTMLCollection.prototype,'length').get.call(childCollection)!==2||HTMLCollection.prototype.namedItem.call(childCollection,'child')!==childCollection[0])fail('cross-realm collection brand');
-          const forged=globalThis[Symbol.for('ts')].makeNamedObject(HTMLCollection.prototype,()=>({kind:'HTMLCollection',read:()=>[]}),true);let rejected=false;try{Object.getOwnPropertyDescriptor(HTMLCollection.prototype,'length').get.call(forged)}catch(e){rejected=e instanceof TypeError;}if(!rejected)fail('forged collection');
+          const forged=globalThis.__testNs.makeNamedObject(HTMLCollection.prototype,()=>({kind:'HTMLCollection',read:()=>[]}),true);let rejected=false;try{Object.getOwnPropertyDescriptor(HTMLCollection.prototype,'length').get.call(forged)}catch(e){rejected=e instanceof TypeError;}if(!rejected)fail('forged collection');
 
           if(Array.isArray(forms)||!(forms instanceof HTMLCollection)||forms!==document.forms||forms.first!==forms[0]||forms.namedItem('named')!==forms[0])fail('collection brand/identity/names');
           const descriptor=Object.getOwnPropertyDescriptor(forms,'0');
@@ -8681,6 +8656,7 @@ mod tests {
     #[test]
     fn event_records_preserve_readonly_descriptors_and_dispatch_phases() {
         init_v8();
+        EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
         let isolate = &mut v8::Isolate::new(Default::default());
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -8704,7 +8680,7 @@ mod tests {
             readonly:event.type==='test'&&event.bubbles&&event.isTrusted===false,
             stamp:event.timeStamp>=0&&event.timeStamp<1000,tag:Object.prototype.toString.call(event),phases,
             after:[result,event.defaultPrevented,event.currentTarget,event.eventPhase,event.composedPath().length,event.target===button],
-            private:!('__nativeEventRecord'in globalThis)&&!('__captureEventRecord'in globalThis)&&!('ttEventRecords'in globalThis[Symbol.for('ts')])});
+            private:!('__nativeEventRecord'in globalThis)&&!('__captureEventRecord'in globalThis)&&!('ttEventRecords'in globalThis.__testNs)});
         })()"#).unwrap();
         let value = v8::Script::compile(scope, source, None)
             .unwrap()
@@ -8976,6 +8952,7 @@ mod tests {
     #[test]
     fn native_named_objects_preserve_nonmasking_properties_and_private_mutations() {
         init_v8();
+        EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
         let isolate = &mut v8::Isolate::new(Default::default());
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -8984,7 +8961,7 @@ mod tests {
         let source=v8::String::new(scope,r#"(()=>{
           const data=new Map([['first','one'],['getItem','stored']]);
           const proto={getItem(){return 'method'}};
-          const object=globalThis[Symbol.for('ts')].makeNamedObject(proto,(operation,key,value)=>{
+          const object=globalThis.__testNs.makeNamedObject(proto,(operation,key,value)=>{
             if(operation==='get')return data.get(key);
             if(operation==='has')return data.has(key);
             if(operation==='keys')return Array.from(data.keys());
@@ -9013,6 +8990,7 @@ mod tests {
     #[test]
     fn native_indexed_objects_keep_live_readonly_entries_and_ordinary_expandos() {
         init_v8();
+        EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
         let isolate = &mut v8::Isolate::new(Default::default());
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -9022,7 +9000,7 @@ mod tests {
           const entries=['first','second'];const proto={item(index){return this[index]??null}};
           const named=new Map([['named','first']]);
           const value=(key)=>/^\d+$/.test(key)?entries[Number(key)]:named.get(key);
-          const object=globalThis[Symbol.for('ts')].makeNamedObject(proto,(operation,key,argument)=>{
+          const object=globalThis.__testNs.makeNamedObject(proto,(operation,key,argument)=>{
             if(operation==='indices')return entries.map((_,index)=>index);
             if(operation==='keys')return Array.from(named.keys());
             const current=value(key);const supported=current!==undefined;
@@ -9088,13 +9066,14 @@ mod tests {
     #[test]
     fn native_facade_functions_preserve_class_construction_and_live_collections() {
         init_v8();
+        EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
         let isolate = &mut v8::Isolate::new(Default::default());
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
         install(scope);
         let code = r#"(() => {
-          const make=globalThis[Symbol.for('ts')].makeNativeFunction;
+          const make=globalThis.__testNs.makeNativeFunction;
           class State { constructor(value){if(value==='bad')throw new RangeError('bad');this.value=value;this.target=new.target;} }
           const Wrapped=make(State,'State',1,true,true); Wrapped.prototype=State.prototype;
           class Child extends Wrapped {}
@@ -9120,13 +9099,14 @@ mod tests {
     #[test]
     fn native_facade_constructor_can_preserve_date_call_and_subclass_contracts() {
         init_v8();
+        EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
         let isolate = &mut v8::Isolate::new(Default::default());
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
         install(scope);
         let source = v8::String::new(scope, r#"(() => {
-          const make=globalThis[Symbol.for('ts')].makeNativeFunction,RealDate=Date,construct=Reflect.construct;
+          const make=globalThis.__testNs.makeNativeFunction,RealDate=Date,construct=Reflect.construct;
           function Clock(...args){if(!new.target)return new RealDate(1234).toString();return construct(RealDate,args.length?args:[1234],new.target);}
           const Wrapped=make(Clock,'Date',7,true,true,false);Wrapped.prototype=RealDate.prototype;
           class Child extends Wrapped {}
@@ -9389,6 +9369,7 @@ mod tests {
     #[test]
     fn private_css_policy_preserves_authored_dom_and_effective_cssom() {
         init_v8();
+        EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
         let isolate = &mut v8::Isolate::new(Default::default());
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -9409,7 +9390,7 @@ mod tests {
             a.setAttribute('style','color:red');const blocked=a.style.color==='green' && a.getAttribute('style')==='color:red' && getComputedStyle(a).color==='rgb(0, 128, 0)';
             const inherited=getComputedStyle(document.getElementById('child')).color==='rgb(0, 128, 0)';
             a.removeAttribute('style');const removed=a.style.color==='';
-            const privateHooks=typeof globalThis.__writeAppliedInlineStyle==='undefined' && !globalThis[Symbol.for('ts')].attachLinkedStyleSheet && !globalThis[Symbol.for('ts')].readStyleSheetRules;
+            const privateHooks=typeof globalThis.__writeAppliedInlineStyle==='undefined' && !globalThis.__testNs.attachLinkedStyleSheet && !globalThis.__testNs.readStyleSheetRules;
             return JSON.stringify({initial,cssom,blocked,inherited,removed,privateHooks});})()"#).unwrap();
         let result = v8::Script::compile(scope, source, None)
             .unwrap()

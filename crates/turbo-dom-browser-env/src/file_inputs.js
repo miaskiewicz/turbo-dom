@@ -5,14 +5,14 @@
 // files that were not dropped, and drop/effect state stays "none" outside a drag.
 (function () {
   'use strict';
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction, named = ns.makeNamedObject;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction, named = ns.makeNamedObject;
   // String.prototype.replace(regexp) looks up page-replaceable RegExp members; the bootstrap's
   // captured replace drives the captured exec instead (turbo-dom#194).
   const regexpReplace = ns.intrinsics.replace;
   const native = g.__fileInputNative; delete g.__fileInputNative;
   const apply = Reflect.apply, construct = Reflect.construct, define = Object.defineProperty, create = Object.create;
   const freeze = Object.freeze, describe = Object.getOwnPropertyDescriptor, hasOwn = Object.prototype.hasOwnProperty;
-  const StringValue = String, NumberValue = Number, TypeErrorValue = TypeError, Exception = g[Symbol.for('ts')].DOMException;
+  const StringValue = String, NumberValue = Number, TypeErrorValue = TypeError, Exception = __tsNs.DOMException;
   const PromiseValue = Promise, resolve = Promise.resolve, values = Array.prototype.values;
   const replaceText = String.prototype.replace, charCode = String.prototype.charCodeAt, split = String.prototype.split;
   const startsWith = String.prototype.startsWith, getAttribute = Element.prototype.getAttribute;

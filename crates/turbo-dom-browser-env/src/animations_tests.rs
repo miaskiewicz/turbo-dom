@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 /// then the pending-animation commit, each as its own task. A frozen host pins the document
 /// timeline the way the Chrome control does (CDP Animation.setPlaybackRate 0).
 const LOOP: &str = r#"(() => {
-  const ns = globalThis[Symbol.for('ts')];
+  const ns = __tsNs;
   let now = 1000, sequence = 0, frameQueued = false, frameTime = null, handler = null, rafId = 0;
   let callbacks = [];
   const timers = [], steps = [];

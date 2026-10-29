@@ -8,7 +8,7 @@ use turbo_dom_browser_env::browser_env::{
     capture_popover_scheduler, capture_view_transition_host, capture_window_event_interfaces,
     clear_context_capabilities, clear_interface_records, collect_native_storage,
     composed_contains_node, create_document_element, defer_key_order, dispatch_formdata_event,
-    dispatch_host_event, document_html, enabled, event_callback_state,
+    dispatch_host_event, document_html, enabled, engine_namespace, event_callback_state,
     finish_form_data_constructor, finish_key_order, form_submission_base_href,
     form_submission_base_target, get_interface_record, hide_node_nonce, host_pointer,
     import_document_node, install, install_css_policy, install_form_submission_handler,
@@ -22,12 +22,12 @@ use turbo_dom_browser_env::browser_env::{
     node_has_window_owner, node_nonce, node_parser_position, notify_user_activation,
     parse_html_document_units, parser_scripts, prepare_script, process_close_watchers,
     register_dom_exception, register_native_event_target, remove_mutation_consumer, reset,
-    reset_isolate, retire_custom_element_context, script_document, set_activation_host,
-    set_document_domain_sandboxed, set_document_last_modified, set_document_origin_keyed,
-    set_document_resource_active, set_form_submission_blocked, set_inert_document_initializer,
-    set_interface_record, set_native_event_target_observer, string_code_units,
-    sweep_collected_documents, trusted_script_source, trusted_type_string, ActivationQuery,
-    NativeDomScope, PointerLockPolicy,
+    reset_isolate, retire_custom_element_context, run_engine_script, script_document,
+    set_activation_host, set_document_domain_sandboxed, set_document_last_modified,
+    set_document_origin_keyed, set_document_resource_active, set_form_submission_blocked,
+    set_inert_document_initializer, set_interface_record, set_native_event_target_observer,
+    string_code_units, sweep_collected_documents, trusted_script_source, trusted_type_string,
+    ActivationQuery, NativeDomScope, PointerLockPolicy, ENGINE_NAMESPACE_PARAM,
 };
 
 #[test]

@@ -2,7 +2,7 @@
   'use strict';
   const g = globalThis, nativeRecord = g.__trustedTypesRecord, mappingSource = g.__trustedTypesMapping;
   delete g.__trustedTypesRecord; delete g.__trustedTypesMapping;
-  const native = g[Symbol.for('ts')].makeNativeFunction;
+  const native = __tsNs.makeNativeFunction;
   const create = Object.create, define = Object.defineProperty, apply = Reflect.apply;
   const own = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
   const lower = Function.prototype.call.bind(String.prototype.toLowerCase);
@@ -195,7 +195,7 @@
   ]) {
     const owner = entry[0], property = entry[1], type = entry[2], prototype = g[owner].prototype;
     const previous = Object.getOwnPropertyDescriptor(prototype, property);
-    const check = g[Symbol.for('ts')].domAccessor('nodeType', false, 'HTML:' + ({HTMLScriptElement:'script',HTMLEmbedElement:'embed',HTMLObjectElement:'object',HTMLIFrameElement:'iframe'})[owner]);
+    const check = __tsNs.domAccessor('nodeType', false, 'HTML:' + ({HTMLScriptElement:'script',HTMLEmbedElement:'embed',HTMLObjectElement:'object',HTMLIFrameElement:'iframe'})[owner]);
     const attribute = lower(property);
     define(prototype, property, { configurable: true, enumerable: true,
       get: previous && previous.get || native(function () { apply(check, this, []); return apply(getAttribute, this, [attribute]) || ''; }, 'get ' + property, 0),

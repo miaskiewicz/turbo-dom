@@ -20,7 +20,7 @@
   // sizes / <picture> source selection (imageHost.selectSource / naturalSize; turbo-dom#71).
   // See the crate README "Image load state".
   const g = globalThis,
-    ns = g[Symbol.for("ts")],
+    ns = __tsNs,
     make = ns.makeNativeFunction,
     accessor = ns.domAccessor;
   const getRecord = g.__getCollectionRecord,
@@ -72,7 +72,7 @@
   const PromiseValue = Promise,
     rejected = (error) => apply(Promise.reject, PromiseValue, [error]),
     pendingDecodes = new WeakMap();
-  const DOMExceptionValue = g[Symbol.for("ts")].DOMException;
+  const DOMExceptionValue = __tsNs.DOMException;
   const decodeError = () => new DOMExceptionValue("The source image cannot be decoded.", "EncodingError");
   const settleDecode = (state, resolve, reject) => {
     if (state && state.naturalWidth > 0 && state.naturalHeight > 0) resolve(undefined);

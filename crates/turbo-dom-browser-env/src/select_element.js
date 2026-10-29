@@ -4,7 +4,7 @@
   // getter/setter), size/type, and Chrome's selectedness bookkeeping around those mutations.
   // Measured against Chrome 156 in select_element_chrome156.json.
   const g = globalThis,
-    ns = g[Symbol.for("ts")],
+    ns = __tsNs,
     make = ns.makeNativeFunction,
     accessor = ns.domAccessor;
   const selection = ns.selectSelection;

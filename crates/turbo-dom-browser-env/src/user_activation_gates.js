@@ -8,8 +8,8 @@
 (function () {
   'use strict';
   const Native = globalThis.__activationNative; delete globalThis.__activationNative;
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
-  const apply = Reflect.apply, define = Object.defineProperty, ErrorType = TypeError, Exception = g[Symbol.for('ts')].DOMException;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
+  const apply = Reflect.apply, define = Object.defineProperty, ErrorType = TypeError, Exception = __tsNs.DOMException;
   const PromiseType = Promise, reject = Promise.reject.bind(Promise), StringValue = String;
   const TRANSIENT = 0, CONSUME = 1, CROSS_ORIGIN = 2, FULLSCREEN = 3;
   const HTML = 'http://www.w3.org/1999/xhtml', SVG = 'http://www.w3.org/2000/svg';

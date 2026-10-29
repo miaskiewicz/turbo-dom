@@ -2,7 +2,7 @@
 // private resolver ID-reference consumers (invokers, interest invokers) call.
 (function () {
   'use strict';
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   const Native = g.__referenceTargetNative; delete g.__referenceTargetNative;
   const StringValue = String, TypeErrorValue = TypeError, apply = Reflect.apply;
   const nodeType = Object.getOwnPropertyDescriptor(g.Node.prototype, 'nodeType').get;

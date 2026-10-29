@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const g = globalThis, ns = g[Symbol.for('ts')], native = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, native = ns.makeNativeFunction;
   const bridge = g.__formNative;
   delete g.__formNative;
   const readValue = ns.formControlValue;
@@ -11,7 +11,7 @@
   let fileEntries=null;ns.registerFileEntries=entries=>{fileEntries=entries;delete ns.registerFileEntries;};
   const apply = Reflect.apply, define = Object.defineProperty, create = Object.create;
   const string = String, number = Number;
-  const ErrorType = TypeError, Exception = g[Symbol.for('ts')].DOMException, Regex = RegExp;
+  const ErrorType = TypeError, Exception = __tsNs.DOMException, Regex = RegExp;
   const isNaNValue=Number.isNaN,absolute=Math.abs,round=Math.round,floor=Math.floor;
   const tagGetter = ns.domAccessor('tagName', false, 'Element');
   const localNameGetter = ns.domAccessor('localName', false, 'Element');

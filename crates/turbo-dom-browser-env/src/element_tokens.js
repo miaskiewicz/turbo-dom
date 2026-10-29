@@ -1,5 +1,5 @@
 (function () {
-  const g = globalThis, ns = g[Symbol.for('ts')];
+  const g = globalThis, ns = __tsNs;
   const getRecord = g.__getCollectionRecord, setRecord = g.__setCollectionRecord;
   const make = ns.makeNativeFunction, named = ns.makeNamedObject;
   const hasOwn=Function.prototype.call.bind(Object.prototype.hasOwnProperty),create=Object.create,define=Object.defineProperty,set=Reflect.set,lower=Function.prototype.call.bind(String.prototype.toLowerCase);

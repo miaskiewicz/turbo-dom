@@ -108,10 +108,10 @@
   var appliedInlineRead=g.__readAppliedInlineStyle,appliedInlineWrite=g.__writeAppliedInlineStyle,inlineSheetAllowed=g.__isInlineSheetAllowed;
   delete g.__readAppliedInlineStyle;delete g.__writeAppliedInlineStyle;delete g.__isInlineSheetAllowed;
   function cssMap(family){return {get:function(object){var shared=collectionGet(object);return shared&&shared.css&&shared.css[family];},set:function(object,value){var shared=collectionGet(object);if(!shared){shared={kind:'CSS'};collectionSet(object,shared);}if(!shared.css)shared.css=$create(null);shared.css[family]=value;},delete:function(object){var shared=collectionGet(object);if(shared&&shared.css)delete shared.css[family];}};}
-  // turbo-surf shares this binding; its internal cross-context state lives on a Symbol-keyed
-  // namespace (absent from getOwnPropertyNames(window) — real Chrome has no such __* globals),
-  // not as `__*` string globals. Reachable from every realm via globalThis[Symbol.for('ts')].
-  var __ns = g[Symbol.for('ts')] || (Object.defineProperty(g, Symbol.for('ts'), { value: {}, configurable: true, enumerable: false }), g[Symbol.for('ts')]);
+  // turbo-surf shares this binding; its internal cross-context state lives on the engine
+  // namespace, a V8 private on the global (turbo-dom#222): page script cannot name it, and
+  // each engine script receives it as its `__tsNs` parameter (run_engine_script).
+  var __ns = __tsNs;
   // The uncurried captured builtins, for the engine files that run after this bootstrap.
   __ns.intrinsics=$c;
   if (typeof g.__parseCssNative === 'function') { __ns.parseCssNative = g.__parseCssNative; delete g.__parseCssNative; }

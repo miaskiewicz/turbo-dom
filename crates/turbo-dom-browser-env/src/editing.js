@@ -13,7 +13,7 @@
   'use strict';
   const native = globalThis.__editingNative; delete globalThis.__editingNative;
   const editContexts = globalThis.__editContextHandoff; delete globalThis.__editContextHandoff;
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   const apply = Reflect.apply, define = Object.defineProperty, getOwn = Object.getOwnPropertyDescriptor, getProto = Object.getPrototypeOf, create = Object.create;
   const ErrorType = TypeError, StringValue = String, WeakMapType = WeakMap, NumberValue = Number, MathRound = Math.round, MathMax = Math.max, MathMin = Math.min, MathFloor = Math.floor;
   const wmGet = WeakMap.prototype.get, wmSet = WeakMap.prototype.set;

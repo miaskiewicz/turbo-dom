@@ -2,7 +2,7 @@
 // methods and `on*` IDL attribute setters, so the engine never reaches a page-replaced
 // builtin or accessor on its insertion / handler paths (miaskiewicz/turbo-dom#172).
 (function () {
-  const g = globalThis, ns = g[Symbol.for('ts')], apply = Reflect.apply, gopd = Object.getOwnPropertyDescriptor;
+  const g = globalThis, ns = __tsNs, apply = Reflect.apply, gopd = Object.getOwnPropertyDescriptor;
   const getProto = Object.getPrototypeOf, ownKeys = Reflect.ownKeys, mapGet = Map.prototype.get, mapSet = Map.prototype.set;
   const target = g.EventTarget.prototype;
   ns.handlerAdd = target.addEventListener;

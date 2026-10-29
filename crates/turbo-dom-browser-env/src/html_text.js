@@ -1,8 +1,8 @@
 (function () {
   'use strict';
-  const g = globalThis, ns = g[Symbol.for('ts')], native = g.__htmlTextNative;
+  const g = globalThis, ns = __tsNs, native = g.__htmlTextNative;
   delete g.__htmlTextNative;
-  const make = ns.makeNativeFunction, DOMError = g[Symbol.for('ts')].DOMException;
+  const make = ns.makeNativeFunction, DOMError = __tsNs.DOMException;
   const string = value => { if (value === null) return ''; if (typeof value === 'symbol') throw new TypeError('Cannot convert a Symbol to a string'); return String(value); };
   for (const [name, operation] of [['innerText', 'inner'], ['outerText', 'outer']]) {
     Object.defineProperty(g.HTMLElement.prototype, name, {

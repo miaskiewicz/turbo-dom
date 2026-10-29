@@ -1,8 +1,8 @@
 (function () {
   'use strict';
   const g=globalThis,native=g.__domImplementationNative;delete g.__domImplementationNative;
-  const make=g[Symbol.for('ts')].makeNativeFunction, define=Object.defineProperty,apply=Reflect.apply,setPrototype=Object.setPrototypeOf,getPrototype=Object.getPrototypeOf;
-  const TypeErrorValue=TypeError,StringValue=String,Exception=g[Symbol.for('ts')].DOMException,regexTest=RegExp.prototype.test,regexExec=RegExp.prototype.exec,stringSlice=String.prototype.slice;
+  const make=__tsNs.makeNativeFunction, define=Object.defineProperty,apply=Reflect.apply,setPrototype=Object.setPrototypeOf,getPrototype=Object.getPrototypeOf;
+  const TypeErrorValue=TypeError,StringValue=String,Exception=__tsNs.DOMException,regexTest=RegExp.prototype.test,regexExec=RegExp.prototype.exec,stringSlice=String.prototype.slice;
   const string=value=>{if(typeof value==='symbol')throw new TypeErrorValue('Cannot convert a Symbol value to a string');return StringValue(value);};
   const type=Object.getOwnPropertyDescriptor(Node.prototype,'nodeType').get;
   const namespaceXML='http://www.w3.org/XML/1998/namespace',namespaceXMLNS='http://www.w3.org/2000/xmlns/';

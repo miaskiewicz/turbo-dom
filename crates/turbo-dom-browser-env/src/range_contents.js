@@ -1,6 +1,6 @@
 (function (record, make, convertTrustedType, staticRecord, parseContextualFragment) {
   "use strict";
-  const Exception = globalThis[Symbol.for("ts")].DOMException;
+  const Exception = __tsNs.DOMException;
   const LocalRange = Range,
     TypeErrorClass = TypeError,
     StringClass = String,

@@ -5,7 +5,7 @@
   // option of setHTMLUnsafe/parseHTMLUnsafe. Configuration records are
   // null-prototype data kept in a V8 private (valid in every realm).
   const g = globalThis,
-    ns = g[Symbol.for("ts")],
+    ns = __tsNs,
     native = g.__sanitizerNative,
     defaultData = g.__sanitizerDefault,
     baselineData = g.__sanitizerBaseline;
