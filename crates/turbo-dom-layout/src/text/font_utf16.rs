@@ -165,11 +165,6 @@ mod tests {
             let fallback = fonts
                 .native_fallback(primary, char::REPLACEMENT_CHARACTER, 400, false)
                 .unwrap();
-            eprintln!(
-                "{family}: {} {}",
-                fallback.family(),
-                fallback.measure_original_utf16(&[0xd800], 64.0, 0.0)
-            );
             assert!(fallback.has_glyph(char::REPLACEMENT_CHARACTER));
             assert_eq!(
                 fallback.shape_original_utf16(&[0xd800]),
