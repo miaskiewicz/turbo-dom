@@ -721,7 +721,7 @@ fn classify_html(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
         return Some(Level::Inline(vec![line_break(el, ids)]));
     }
     if atomic_link(el, ids) {
-        // An `<a href="#name">` is laid out as an atomic inline box so it carries
+        // An inline `<a>` link (`#name` or absolute URL) is an atomic inline box so it carries
         // its own fragment (and thus a link rectangle) through layout (AC-3.25).
         return Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
             el, ids,

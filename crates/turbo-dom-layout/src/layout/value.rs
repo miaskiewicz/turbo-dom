@@ -1272,7 +1272,7 @@ fn vertical_align_of(s: &ComputedStyle) -> VAlign {
 /// `recto` and `verso` (it prints no blank page for the side values), and for the
 /// legacy `always`/`left`/`right`; the Fragmentation 4 `always` it does not support
 /// (miaskiewicz/turbo-dom#204). Keywords are ASCII case-insensitive.
-fn break_rule_of(s: &ComputedStyle, prop: &str) -> BreakRule {
+pub(super) fn break_rule_of(s: &ComputedStyle, prop: &str) -> BreakRule {
     if let Some(v) = s.get(prop) {
         return match v.trim().to_ascii_lowercase().as_str() {
             "avoid" | "avoid-page" => BreakRule::Avoid,
@@ -1305,7 +1305,7 @@ fn opacity_of(s: &ComputedStyle) -> f32 {
 }
 
 /// `break-inside: avoid | avoid-page`, or the legacy `page-break-inside: avoid`.
-fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
+pub(super) fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
     let is = |prop: &str, want: &[&str]| {
         s.get(prop)
             .is_some_and(|v| want.contains(&v.trim().to_ascii_lowercase().as_str()))
