@@ -152,6 +152,51 @@ mod tests {
     }
 
     #[test]
+    fn every_hidden_inline_item_kind_is_collected() {
+        let mut tree = build_box_tree(&[el("p", &[], vec![StyledNode::Text("a".into())])]);
+        let hidden_style =
+            || ComputedStyle::from_pairs([("visibility".to_string(), "Collapse ".to_string())]);
+        let shown_style =
+            || ComputedStyle::from_pairs([("visibility".to_string(), "visible".to_string())]);
+        tree.kind = BoxKind::Lines(vec![
+            InlineItem::SourceBreak {
+                node_id: NodeId(101),
+                style: hidden_style(),
+            },
+            InlineItem::Boundary {
+                node_id: NodeId(102),
+                style: hidden_style(),
+                start: true,
+            },
+            InlineItem::Text {
+                node_id: NodeId(103),
+                style: hidden_style(),
+                text: "x".into(),
+            },
+            InlineItem::SourceBreak {
+                node_id: NodeId(201),
+                style: shown_style(),
+            },
+            InlineItem::Boundary {
+                node_id: NodeId(202),
+                style: shown_style(),
+                start: false,
+            },
+            InlineItem::Text {
+                node_id: NodeId(203),
+                style: shown_style(),
+                text: "y".into(),
+            },
+            InlineItem::LineBreak,
+        ]);
+        let hidden = hidden_ids(&tree);
+        assert_eq!(
+            hidden,
+            HashSet::from([NodeId(101), NodeId(102), NodeId(103)])
+        );
+    }
+
+    #[test]
     fn blank_drops_images_but_keeps_markers() {
         let image = FragmentContent::Image(ImagePlacement {
             name: "x.png".into(),
