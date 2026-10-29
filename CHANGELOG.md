@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — view-transition pseudo-classes are valid selectors (miaskiewicz/turbo-surf#117)
+`:active-view-transition`, `:active-view-transition-type(<ident>#)` and `:only-child` after
+the named `::view-transition-*` pseudo-elements now parse as in Chrome 156 (never matching:
+no view transition runs). Google's consent stylesheet used them, so `matches()` /
+`querySelector*` threw "unknown pseudo-class" and turbo-surf's live layout failed.
+
 ### Fixed — browser-env setup survives a termination during install (miaskiewicz/turbo-dom#184)
 A `TerminateExecution` (an embedder's watchdog) landing while the document is being installed
 no longer panics at the internal-namespace lookup (`range_contents`). The new
