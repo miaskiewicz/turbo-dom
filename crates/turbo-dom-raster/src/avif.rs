@@ -435,6 +435,20 @@ mod tests {
     }
 
     #[test]
+    fn an_oversize_frame_is_refused_within_the_image_crate_budget() {
+        // A 1.8 KB, 12000 x 12000 solid AVIF: its RGBA (576 MB) is over the 512 MiB budget
+        // every other format decodes within; unbounded, rav1d alone peaked at ~2.8 GB.
+        let avif = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/images/avif/oversize-12000.avif"
+        ))
+        .unwrap();
+        assert!(super::decode(&avif).is_none());
+        let color = payload("tests/fixtures/images/avif/oversize-12000.avif").color;
+        assert!(av1::decode(&color).is_none(), "refused before rav1d allocates");
+    }
+
+    #[test]
     fn frames_carry_each_layouts_planes_at_their_depth() {
         let raster = "tests/fixtures/images/avif";
         let layout = "../turbo-dom-layout/tests/fixtures/images/formats";
