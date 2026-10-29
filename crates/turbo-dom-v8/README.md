@@ -85,7 +85,8 @@ python3 crates/turbo-dom-v8/scripts/generate.py --verify DIR         # hash-chec
 python3 -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'
 ```
 
-After reviewing a change to `patches/`, `tests/` or the generator, accept it with
+After reviewing a change to `patches/`, `tests/`, this README (shipped as the package README,
+relative links made absolute) or the generator, accept it with
 `generate.py --write --update-pins`.
 
 ## Testing
