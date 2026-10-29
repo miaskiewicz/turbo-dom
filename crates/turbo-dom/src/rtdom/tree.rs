@@ -1717,18 +1717,6 @@ impl Tree {
         false
     }
 
-    fn fragment_insertion_would_cycle(&self, parent: Handle, fragment: Handle) -> bool {
-        let children = self.children(fragment);
-        let mut ancestor = Some(parent);
-        while let Some(node) = ancestor {
-            if children.contains(&node) {
-                return true;
-            }
-            ancestor = self.parent(node);
-        }
-        false
-    }
-
     pub fn append_child(&mut self, parent: Handle, child: Handle) {
         if self.node_type(child) == NodeType::Attribute
             || self.node_type(parent) == NodeType::Attribute
@@ -1737,9 +1725,6 @@ impl Tree {
             return;
         }
         if self.node_type(child) == NodeType::Fragment {
-            if parent == child || self.fragment_insertion_would_cycle(parent, child) {
-                return;
-            }
             for node in self.children(child) {
                 self.append_child(parent, node);
             }
@@ -1768,9 +1753,6 @@ impl Tree {
             return;
         }
         if self.node_type(child) == NodeType::Fragment {
-            if parent == child || self.fragment_insertion_would_cycle(parent, child) {
-                return;
-            }
             for node in self.children(child) {
                 self.insert_before(parent, node, reference);
             }
