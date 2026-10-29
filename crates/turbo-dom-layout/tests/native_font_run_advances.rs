@@ -434,6 +434,7 @@ fn ordinary_run(face: turbo_dom_layout::FontFace) -> InlineRun {
         nowrap: false,
         preserve_spaces: false,
         forced_newlines: false,
+        text_transform: turbo_dom_layout::text::TextTransform::default(),
     }
 }
 #[test]

@@ -634,6 +634,7 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
             style.get("white-space").map(str::trim),
             Some("pre" | "pre-wrap" | "break-spaces" | "pre-line")
         ),
+        text_transform: crate::text::TextTransform::default(),
     })
 }
 

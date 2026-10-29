@@ -476,6 +476,7 @@ fn generic_snapshot_and_pdf_atom_caption_keep_raw_font_advances() {
             nowrap: false,
             preserve_spaces: false,
             forced_newlines: false,
+            text_transform: turbo_dom_layout::text::TextTransform::default(),
         }),
     ];
     let paragraph = layout_paragraph(

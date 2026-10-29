@@ -30,6 +30,7 @@ fn run(registry: &FontRegistry, id: u32, text: &str) -> Piece {
         nowrap: false,
         preserve_spaces: false,
         forced_newlines: false,
+        text_transform: turbo_dom_layout::text::TextTransform::default(),
     })
 }
 

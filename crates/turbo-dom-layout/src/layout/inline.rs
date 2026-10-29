@@ -46,6 +46,10 @@ pub struct InlineRun {
     /// preserved segment break, a forced line break (CSS Text 3 §4.1.1,
     /// miaskiewicz/turbo-dom#121 / #166).
     pub forced_newlines: bool,
+    /// `text-transform` and the content language it maps with (CSS Text 3
+    /// §2.1, miaskiewicz/turbo-dom#208). Applied while itemizing, so glyph cluster
+    /// text is the transformed text while source clusters keep `text` offsets.
+    pub text_transform: crate::text::TextTransform,
 }
 
 /// An atomic inline box (an `inline-block` or replaced `<img>`) that flows within
@@ -2316,6 +2320,7 @@ mod tests {
             nowrap: false,
             preserve_spaces: false,
             forced_newlines: false,
+            text_transform: crate::text::TextTransform::default(),
         })
     }
 
