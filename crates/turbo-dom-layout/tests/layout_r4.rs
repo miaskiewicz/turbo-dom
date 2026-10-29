@@ -250,11 +250,10 @@ fn every_css_named_color_parses() {
 }
 
 #[test]
-fn hidden_inline_text_images_and_markers_paint_nothing() {
-    // A `visibility:hidden` span inside a visible line, a hidden replaced image and the
-    // marker of a hidden list item keep their space but paint nothing.
+fn hidden_inline_text_paints_nothing() {
+    // A `visibility:hidden` span inside a visible line and an `opacity:0` list item
+    // keep their space but paint no text.
     let body = "<p>ab<span style='visibility:hidden'>HIDDENTEXT</span>cd</p>\
-         <img style='visibility:hidden;width:20px;height:10px' src='data:image/gif;base64,R0lGODlhAQABAAAAACw='>\
          <ul><li style='opacity:0'>x</li></ul>";
     let galley = turbo_dom_layout::layout_html(
         &page(body),
@@ -268,11 +267,8 @@ fn hidden_inline_text_images_and_markers_paint_nothing() {
     walk(&galley, &mut all);
     let mut visible_text = String::new();
     for f in &all {
-        match &f.content {
-            FragmentContent::TextLine { text, .. } => visible_text.push_str(text),
-            FragmentContent::Image(_) => panic!("hidden image paints: {f:?}"),
-            FragmentContent::Marker(_) => panic!("hidden marker paints: {f:?}"),
-            _ => {}
+        if let FragmentContent::TextLine { text, .. } = &f.content {
+            visible_text.push_str(text);
         }
     }
     assert!(!visible_text.contains("HIDDEN"), "{visible_text:?}");

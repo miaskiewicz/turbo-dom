@@ -96,7 +96,10 @@ fn blank(content: &mut FragmentContent) {
             glyphs.clear();
             text.clear();
         }
-        FragmentContent::Image(_) | FragmentContent::Marker(_) => {
+        // A marker is a paged-media directive (a forced break), not paint: a hidden
+        // box still breaks the page, as in Chrome.
+        FragmentContent::Marker(_) => {}
+        FragmentContent::Image(_) => {
             *content = FragmentContent::Box {
                 background: None,
                 border: BorderEdges::default(),
@@ -106,5 +109,85 @@ fn blank(content: &mut FragmentContent) {
                 transform: None,
             };
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::boxgen::build_box_tree;
+    use crate::layout::fragment::ImagePlacement;
+    use crate::tag::{MarkerKind, Tag};
+    use crate::{StyledElement, StyledNode};
+
+    fn el(tag: &str, pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNode {
+        StyledNode::Element(StyledElement {
+            tag: Tag::Html(tag.to_string()),
+            attrs: vec![],
+            style: ComputedStyle::from_pairs(
+                pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())),
+            ),
+            children,
+            source: None,
+        })
+    }
+
+    #[test]
+    fn hidden_inline_items_are_collected_by_their_own_visibility() {
+        let tree = build_box_tree(&[el(
+            "p",
+            &[],
+            vec![
+                StyledNode::Text("a".into()),
+                el(
+                    "span",
+                    &[("visibility", "hidden")],
+                    vec![StyledNode::Text("b".into())],
+                ),
+            ],
+        )]);
+        let hidden = hidden_ids(&tree);
+        assert!(!hidden.is_empty(), "the hidden span's items are collected");
+        assert!(!hidden.contains(&tree.node_id));
+    }
+
+    #[test]
+    fn blank_drops_images_but_keeps_markers() {
+        let image = FragmentContent::Image(ImagePlacement {
+            name: "x.png".into(),
+            intrinsic_w: 1,
+            intrinsic_h: 1,
+            has_alpha: false,
+            tint: None,
+            orientation: crate::image::Orientation::IDENTITY,
+        });
+        let mut frag = Fragment::new(NodeId(1), 0.0, 0.0, 5.0, 5.0, image);
+        frag.children.push(Fragment::new(
+            NodeId(2),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            FragmentContent::Marker(MarkerKind {
+                id: 7,
+                inline: false,
+            }),
+        ));
+        scrub(&mut frag, &HashSet::from([NodeId(1), NodeId(2)]));
+        assert!(matches!(
+            frag.content,
+            FragmentContent::Box {
+                background: None,
+                ..
+            }
+        ));
+        assert_eq!((frag.width, frag.height), (5.0, 5.0));
+        assert!(matches!(
+            frag.children[0].content,
+            FragmentContent::Marker(MarkerKind {
+                id: 7,
+                inline: false
+            })
+        ));
     }
 }
