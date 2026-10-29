@@ -260,7 +260,7 @@ package or publish workflow.
   element: no `el.classList` (allocates a ClassList + splits), no `Array.find`/`.some`/`.filter`
   closures, no regex, no per-node filtered child arrays. Use the `hasClass`/`elHasClass`
   whole-word string scan, index loops over `__children()`, and the for-loop `getAttribute`.
-  This is what makes repeated-query throughput ~2.2× happy-dom / ~460× jsdom; a stray `classList`
+  This is what made repeated-query throughput ~2.7× happy-dom at v0.1.55; a stray `classList`
   in a matcher tanks it.
 - **Text-geometry tests name a repo font, never a host default.** A layout test that
   measures text (widths, line height, line pitch) lays out with
@@ -315,13 +315,10 @@ npm run bench:query     # query-heavy DOM work (RTL-style) vs jsdom
 npm run bench:wasm      # wasm vs native parseBuffer
 npm run bench:all       # all of the above
 ```
-Latest (darwin-arm64, Node 24, `npm run bench:all`), vs jsdom / happy-dom:
-- cold per-file construct + light query: ~200k ops/s — ~765× jsdom, ~350× happy-dom
-- realistic 200-file suite (construct+query+events): ~0.025 ms/file — ~130× jsdom, ~45× happy-dom
-- parse (parseBuffer): real-page/SSR docs ~8–35× both; small/malformed up to ~75× jsdom
-- conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom#104)
-- repeated query throughput: ~1.5M iters/s — ~2.2× happy-dom (~680k) and ~460× jsdom.
-  querySelectorAll/getElementsBy*/getElementById results are cached per (selector,
+0.6.0 is not re-benchmarked yet (re-run of all four repos planned after the release); the last
+measured numbers (v0.1.55, 2026-06-07, darwin-arm64) are in `docs/BENCHMARKS-history.md`.
+Conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom#104).
+- querySelectorAll/getElementsBy*/getElementById results are cached per (selector,
   Document.__version); a static querySelectorAll list is safe to reuse until the next
   mutation. cachedQSA/cachedQS + Document.__byTag/__byClass/__idCache.
 - **Per-node memoized live views.** `childNodes`/`children` are cached on the node
@@ -398,7 +395,7 @@ Latest (darwin-arm64, Node 24, `npm run bench:all`), vs jsdom / happy-dom:
   test/adoption.test.mjs.
 - `getByLabelText` was O(n²) (element.labels → getElementsByTagName('label') per element);
   the caches took it 1342→~270µs.
-Numbers in README.md — refresh both (bench against jsdom AND happy-dom) if you touch hot paths.
+Benchmark numbers live in docs/BENCHMARKS-history.md (README links it) — re-measure against jsdom AND happy-dom if you touch hot paths; never extrapolate.
 - **Parse memoization (index.mjs `parseBufferCached`).** The SoA buffer is READ-ONLY — every
   mutation goes to a Document's own `__kids`/`__attrs`/`__cache` overlay, never the buffer — so
   the same buffer backs many Documents. Suites call setup with the same shell HTML per file →
