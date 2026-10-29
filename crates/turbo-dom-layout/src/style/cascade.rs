@@ -601,10 +601,59 @@ fn inherit(own: BTreeMap<String, String>, parent: &ComputedStyle) -> ComputedSty
         }
     }
     map.extend(own);
+    resolve_wide_keywords(&mut map);
     resolve_explicit_inherit(&mut map, parent);
     resolve_var_refs(&mut map);
     resolve_font_size(&mut map, parent);
     ComputedStyle { map }
+}
+
+/// The initial value of each inherited property (and of `display`, whose absence
+/// reads as `block` here), for the `initial` / `unset` keywords (CSS Cascade 4 §7.3).
+const INITIAL: &[(&str, &str)] = &[
+    ("color", "black"),
+    ("font-family", "serif"),
+    ("font-size", "medium"),
+    ("font-weight", "normal"),
+    ("font-style", "normal"),
+    ("line-height", "normal"),
+    ("text-align", "start"),
+    ("text-indent", "0px"),
+    ("letter-spacing", "normal"),
+    ("word-spacing", "normal"),
+    ("white-space", "normal"),
+    ("text-transform", "none"),
+    ("hyphens", "manual"),
+    ("list-style-type", "disc"),
+    ("list-style-position", "outside"),
+    ("visibility", "visible"),
+    ("image-orientation", "from-image"),
+    ("caption-side", "top"),
+    ("border-spacing", "0px"),
+    ("display", "inline"),
+];
+
+/// Resolve the CSS-wide `unset` and `initial` keywords (CSS Cascade 4 §7.3): `unset`
+/// is `inherit` on an inherited (or custom) property and `initial` otherwise;
+/// `initial` takes the property's initial value, or drops the declaration so the
+/// property reads as its default.
+fn resolve_wide_keywords(map: &mut BTreeMap<String, String>) {
+    let keys: Vec<String> = map
+        .iter()
+        .filter(|(_, v)| matches!(v.trim(), "unset" | "initial"))
+        .map(|(k, _)| k.clone())
+        .collect();
+    for k in keys {
+        let inherited = k.starts_with("--") || INHERITED.contains(&k.as_str());
+        if inherited && map[&k].trim() == "unset" {
+            map.insert(k, "inherit".to_string());
+            continue;
+        }
+        match INITIAL.iter().find(|(p, _)| *p == k) {
+            Some((_, v)) => drop(map.insert(k, (*v).to_string())),
+            None => drop(map.remove(&k)),
+        }
+    }
 }
 
 /// Resolve the explicit `inherit` keyword: a property declared `inherit` takes the
