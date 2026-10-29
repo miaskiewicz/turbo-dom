@@ -135,7 +135,7 @@ every configuration CI tests (P5-cov-raster: 79.02% → 100% default, measured a
 consolidation tip be87ef2); its new pixel expectations come from Chrome 156 controls
 (`scripts/canvas-ops-chrome-control.mjs`, `scripts/raster-avif-chrome-control.mjs`, new cases in
 `scripts/paint-chrome-control.mjs`), and the unreachable defensive branches it had were removed
-as provably dead (crate README, "Coverage"). (turbo-dom#22's 47.5% was
+as provably dead (crate README, "Gates"). (turbo-dom#22's 47.5% was
 measured without the `--include-files` filter, i.e. counting other packages' files.)
 
 turbo-dom reached 100% in P5-cov-core: the html5lib fixtures run through the UTF-16
