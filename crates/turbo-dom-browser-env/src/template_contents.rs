@@ -656,6 +656,24 @@ mod tests {
         )
         .unwrap();
     }
+    /// turbo-dom#203: template contents and shadow roots serialize the legacy basefont /
+    /// bgsound / frame / keygen as void, like Chrome 156 (headless):
+    /// `<basefont><bgsound><frame><keygen><br>|<frame>`.
+    #[test]
+    fn legacy_void_elements_serialize_without_end_tags() {
+        super::super::tests::init_v8();
+        let isolate = &mut v8::Isolate::new(Default::default());
+        v8::scope!(let scope,isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body><template id=t></template>");
+        let html = eval(
+            scope,
+            "const t=document.getElementById('t');for(const n of ['basefont','bgsound','frame','keygen','br'])t.content.appendChild(document.createElement(n));const d=document.createElement('div');d.attachShadow({mode:'open'}).appendChild(document.createElement('frame'));t.innerHTML+'|'+d.shadowRoot.innerHTML",
+        )
+        .to_rust_string_lossy(scope);
+        assert_eq!(html, "<basefont><bgsound><frame><keygen><br>|<frame>");
+    }
     #[test]
     fn context_free_template_private_keys_do_not_retain_realms() {
         super::super::tests::init_v8();
