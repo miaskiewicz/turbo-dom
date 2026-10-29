@@ -156,6 +156,8 @@ const DOCUMENTS = [
   { id: "selectedcontent_replaces_markup", html: "<select><button><selectedcontent>old<i>x</i></selectedcontent></button><option><b class=k>A</b> x<!--c--></option></select>" },
   { id: "selectedcontent_after_option", html: "<select><option selected>A</option><button><selectedcontent></selectedcontent></button></select>" },
   { id: "selectedcontent_multiple", html: "<select multiple><button><selectedcontent></selectedcontent></button><option selected>A</option></select>" },
+  { id: "selectedcontent_in_selected_option", html: "<select><option>a<selectedcontent></selectedcontent></option></select>" },
+  { id: "selectedcontent_in_other_option", html: "<select><option>a</option><option>b<selectedcontent></selectedcontent></option></select>" },
   { id: "selectedcontent_twice", html: "<select><button><selectedcontent></selectedcontent><selectedcontent></selectedcontent></button><option selected>A</option></select>" },
   { id: "selectedcontent_optgroup", html: "<select><button><selectedcontent></selectedcontent></button><optgroup><option selected>G</option></optgroup></select>" },
   { id: "selectedcontent_implied_end", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B<option>C</select>" },

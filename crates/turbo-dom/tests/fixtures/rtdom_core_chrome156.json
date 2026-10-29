@@ -1,6 +1,6 @@
 {
  "generator": "scripts/rtdom-core-chrome-control.mjs",
- "chrome": "156.0.8078.4",
+ "chrome": "156.0.8078.47",
  "playwright_core": "1.61.0",
  "documents": [
   {
@@ -589,6 +589,18 @@
    "id": "selectedcontent_multiple",
    "html": "<select multiple><button><selectedcontent></selectedcontent></button><option selected>A</option></select>",
    "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       multiple=\"\"\n|       <button>\n|         <selectedcontent>\n|       <option>\n|         selected=\"\"\n|         \"A\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_in_selected_option",
+   "html": "<select><option>a<selectedcontent></selectedcontent></option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <option>\n|         \"a\"\n|         <selectedcontent>",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_in_other_option",
+   "html": "<select><option>a</option><option>b<selectedcontent></selectedcontent></option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <option>\n|         \"a\"\n|       <option>\n|         \"b\"\n|         <selectedcontent>",
    "compatMode": "BackCompat"
   },
   {
