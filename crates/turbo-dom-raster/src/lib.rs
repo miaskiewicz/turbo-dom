@@ -402,3 +402,26 @@ fn lay_out(
         &mut diags,
     )
 }
+
+#[cfg(test)]
+mod canvas_area_tests {
+    use super::{canvas_ops_png, canvas_ops_rgba, canvas_too_large};
+
+    #[test]
+    fn chromes_max_canvas_area_is_268_435_456_pixels() {
+        // Chrome 156: 16384 x 16384 and 32768 x 8192 draw; 16385 x 16384 is a blank canvas.
+        assert!(!canvas_too_large(16384, 16384));
+        assert!(!canvas_too_large(32768, 8192));
+        assert!(canvas_too_large(16385, 16384));
+        assert!(canvas_too_large(u32::MAX, u32::MAX));
+    }
+
+    #[test]
+    fn an_over_area_canvas_is_refused_before_allocating() {
+        // Unbounded, a 30000 x 30000 fill peaked at 7.2 GB.
+        let fill = r##"[["fillRect",[0,0,30000,30000],"#f00",null,null,null,null,1,null]]"##;
+        assert!(canvas_ops_png(30000, 30000, fill).is_err());
+        assert!(canvas_ops_rgba(16385, 16384, "[]").is_err());
+        assert_eq!(canvas_ops_rgba(2, 1, "[]").unwrap().len(), 8);
+    }
+}

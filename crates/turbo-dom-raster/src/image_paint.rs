@@ -660,6 +660,33 @@ mod tests {
     }
 
     #[test]
+    fn an_over_budget_image_lays_out_without_decoding() {
+        // 18 KB / 5.5 KB / 19 KB solid RGB 12000 x 12000 images: their RGBA (576 MB) is over
+        // the 512 MiB budget. Undecoded, PNG and WebP peaked at 1.6 GB (the `image` budget
+        // counts the 3-byte RGB output, not the RGBA copy) and JPEG XL at 3.3 GB.
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/images/oversize");
+        for (file, placeholder) in [
+            ("rgb-12000.png", false),
+            ("rgb-12000.webp", false),
+            ("rgb-12000.jxl", !cfg!(feature = "jxl")),
+        ] {
+            let bytes = std::fs::read(format!("{dir}/{file}")).unwrap();
+            let d = decode(&bytes).expect(file);
+            assert_eq!((d.width, d.height, d.rgba.len()), (0, 0, 0), "{file}");
+            assert_eq!((d.intrinsic.width, d.intrinsic.height), (12000, 12000), "{file}");
+            assert_eq!(d.placeholder, placeholder, "{file}");
+        }
+    }
+
+    #[test]
+    fn the_pixel_budget_is_512_mib_of_rgba() {
+        use super::over_budget;
+        assert!(!over_budget(16384, 8192));
+        assert!(over_budget(16384, 8193));
+        assert!(over_budget(u32::MAX, u32::MAX));
+    }
+
+    #[test]
     fn inline_svg_becomes_img_carrying_size_and_class() {
         let html = r#"<div><svg class="ic" width="60" height="30" viewBox="0 0 60 30"><rect width="60" height="30"/></svg> after</div>"#;
         let (out, assets) = converted(html);
