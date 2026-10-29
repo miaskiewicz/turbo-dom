@@ -27,7 +27,7 @@
   // also clear this private assignment, including writes of the same empty value.
   for(const [name,attribute] of Object.entries(properties)){
     const many=name.endsWith('Elements');
-    Object.defineProperty(g.Element.prototype,name,{get:make(function(){return read(this,attribute,many);},'get '+name,0),set:make(function(value){assign(this,attribute,many,value);},'set '+name,1),enumerable:true,configurable:true});
+    Object.defineProperty(g.Element.prototype,name,{get:make(function(){return read(this,attribute,many);},'get '+name,0),set:make(function(value){if(many&&value!=null&&typeof value!=='object'&&typeof value!=='function')throw new TypeError("Failed to set the '"+name+"' property on 'Element': The provided value cannot be converted to a sequence.");assign(this,attribute,many,value);},'set '+name,1),enumerable:true,configurable:true});
   }
   function assign(owner,attribute,many,value){element(owner);if(value==null){apply(removeAttribute,owner,[attribute]);delete state(owner)[attribute];return;}let references;
     if(many){references=[];for(const target of value){element(target);if(!has(references,target))add(references,target);}}
