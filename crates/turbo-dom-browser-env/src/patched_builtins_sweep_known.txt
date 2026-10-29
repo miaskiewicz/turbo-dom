@@ -3,26 +3,10 @@
 # a new entry is a regression; a fixed one must be deleted here. Shrink only.
 Animation.cancel -> get Promise.@@Symbol.species
 Animation.commitStyles -> String.prototype.trim
-Animation.currentTime -> Array.prototype.indexOf
-Animation.effect -> Array.prototype.indexOf
-Animation.finish -> Array.prototype.indexOf
-Animation.pause -> Array.prototype.indexOf
-Animation.play -> Array.prototype.indexOf
-Animation.playbackRate -> Array.prototype.indexOf
-Animation.startTime -> Array.prototype.indexOf
-Animation.updatePlaybackRate -> Array.prototype.indexOf
 CSSStyleSheet.replace -> Promise.reject
 CSSStyleSheet.replace -> Promise.resolve
 CharacterData.substringData -> String.prototype.slice
-Element.ariaActionsElements -> String.prototype.@@Symbol.iterator
-Element.ariaControlsElements -> String.prototype.@@Symbol.iterator
-Element.ariaDescribedByElements -> String.prototype.@@Symbol.iterator
-Element.ariaDetailsElements -> String.prototype.@@Symbol.iterator
-Element.ariaErrorMessageElements -> String.prototype.@@Symbol.iterator
-Element.ariaFlowToElements -> String.prototype.@@Symbol.iterator
-Element.ariaLabelledByElements -> String.prototype.@@Symbol.iterator
 Element.attributes -> WeakMap.prototype.get
-Element.getAnimations -> %IteratorPrototype%.@@Symbol.iterator
 Element.getAttributeNames -> get Element.prototype.attributes
 Element.getClientRects -> Element.prototype.getBoundingClientRect
 Element.getElementsByClassName -> String.prototype.replace
@@ -69,7 +53,6 @@ Selection.collapse -> Object.create
 Selection.selectAllChildren -> Object.create
 Selection.setPosition -> Object.create
 ShadowRoot.adoptedStyleSheets -> String.prototype.@@Symbol.iterator
-ShadowRoot.getAnimations -> %IteratorPrototype%.@@Symbol.iterator
 ShadowRoot.getHTML -> Array.prototype.@@Symbol.iterator
 StylePropertyMapReadOnly.entries -> String.prototype.trim
 StylePropertyMapReadOnly.get -> String.prototype.trim

@@ -83,3 +83,24 @@ fn every_member_avoids_page_patched_builtins() {
         "fixed; delete from patched_builtins_sweep_known.txt:\n{fixed:#?}"
     );
 }
+
+/// The FrozenArray<Element> reflection setters convert a non-object to a sequence by throwing,
+/// like Chrome 156 (measured headless on localhost): a string is never iterated, so `''` no
+/// longer clears the references and `'x'` reports the sequence conversion, not an element check.
+/// Selection and value paths that moved onto captured natives keep Chrome's results.
+#[test]
+fn element_array_setters_reject_non_objects_like_chrome156() {
+    let actual = run(r#"(() => {
+      const e = document.createElement('div'), out = [];
+      for (const v of ['x', '', 5]) { try { e.ariaControlsElements = v; out.push('ok'); } catch (x) { out.push(x.constructor.name + ':' + x.message); } }
+      const s = document.createElement('select'); s.innerHTML = '<optgroup disabled><option>a</option></optgroup><option>b</option>'; out.push('sel:' + s.value + ':' + s.selectedIndex);
+      const s2 = document.createElement('select'); s2.innerHTML = '<option disabled>a</option><option>b</option>'; out.push('sel2:' + s2.value);
+      const i = document.createElement('input'); i.type = 'HIDDEN'; i.value = 'q'; out.push('hid:' + i.getAttribute('value') + ':' + i.value);
+      return out.join('|');
+    })()"#);
+    let message = "TypeError:Failed to set the 'ariaControlsElements' property on 'Element': The provided value cannot be converted to a sequence.";
+    assert_eq!(
+        actual,
+        serde_json::Value::String(format!("{message}|{message}|{message}|sel:b:1|sel2:b|hid:q:q"))
+    );
+}
