@@ -996,8 +996,10 @@ fn adopted_computed_sheet_copy_does_not_expose_private_collection_to_array_sette
 }
 
 // turbo-test#125: getComputedStyle reuses an element's computed style until something it reads
-// changes. The work counter is the document sheet scan (`querySelectorAll('style,link')`) every
-// cascade computation starts with; values are the ones a fresh computation reports.
+// changes; values are the ones a fresh computation reports. The document sheet scan every cascade
+// computation starts with runs on the captured native `querySelectorAll` (turbo-dom#199), so a
+// page-replaced `document.querySelectorAll` never observes it: warm, repeated and mutated reads
+// all count zero page-visible scans.
 #[test]
 fn computed_style_reuses_the_cascade_until_the_document_changes() {
     let value = run(
@@ -1021,13 +1023,13 @@ fn computed_style_reuses_the_cascade_until_the_document_changes() {
         value,
         serde_json::json!({
             "first": ["rgb(1, 2, 3)", "100px", "block", "visible", "16px"],
-            "warm": true,
+            "warm": false,
             "repeated": 0,
             "row": ["rgb(1, 2, 3)", "100px", "block", "visible", "16px", "rgb(1, 2, 3)", "100px", "block", "visible", "16px", "rgb(1, 2, 3)"],
             "same": true,
             "distinct": true,
             "after": ["rgb(1, 2, 3)", "100px", "block", "visible", "16px"],
-            "mutated": true
+            "mutated": false
         })
     );
 }
