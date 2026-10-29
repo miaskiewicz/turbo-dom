@@ -612,24 +612,9 @@ fn raw(tag: &str) -> bool {
         "style" | "script" | "xmp" | "iframe" | "noembed" | "noframes" | "plaintext"
     )
 }
+/// HTML "serializes as void": the one list in turbo-dom's serializer (miaskiewicz/turbo-dom#203).
 pub(super) fn void(tag: &str) -> bool {
-    matches!(
-        tag,
-        "area"
-            | "base"
-            | "br"
-            | "col"
-            | "embed"
-            | "hr"
-            | "img"
-            | "input"
-            | "link"
-            | "meta"
-            | "param"
-            | "source"
-            | "track"
-            | "wbr"
-    )
+    turbo_dom_parser::rtdom::serialize::is_void(tag)
 }
 
 #[cfg(test)]

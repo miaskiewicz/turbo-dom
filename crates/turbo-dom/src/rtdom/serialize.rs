@@ -29,7 +29,10 @@ const RAW_TEXT: &[&str] = &[
     "plaintext",
 ];
 
-fn is_void(tag: &str) -> bool {
+/// Whether an HTML element with this local name serializes as void (no end tag, no
+/// children). The one list; turbo-dom-browser-env's serializers read it too.
+#[must_use]
+pub fn is_void(tag: &str) -> bool {
     VOID.contains(&tag)
 }
 
