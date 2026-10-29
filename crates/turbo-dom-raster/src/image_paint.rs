@@ -453,6 +453,16 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
     if size_point && layout_image::probe(bytes).is_none() {
         return None;
     }
+    // No decoder for the format (an AVIF without the `avif` feature, a JPEG XL without
+    // `jxl`): laid out at its size, painted as the placeholder.
+    let no_decoder = (matches!(format, Some(Format::Avif)) && !cfg!(feature = "avif"))
+        || (matches!(format, Some(Format::Jxl)) && !cfg!(feature = "jxl"));
+    // One pixel budget for every format, checked on the header size before any decoder
+    // allocates: a decoder's own limit counts its native output (3-byte RGB, or none at
+    // all for JPEG XL), not the RGBA copy. Over it, laid out at its size, painting nothing.
+    if layout_image::probe(bytes).is_some_and(|i| over_budget(i.width, i.height)) {
+        return size_only(bytes, no_decoder);
+    }
     let pixels = match format {
         Some(Format::Png) => layout_image::decode_png_rgba(bytes),
         Some(Format::Avif) => crate::avif::decode(bytes),
@@ -476,8 +486,6 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
         // as in Chrome (turbo-dom#107), except an AVIF without the `avif` feature or a JPEG
         // XL without `jxl`: no decoder, so the placeholder. Any other undecodable image is
         // dropped.
-        let no_decoder = (matches!(format, Some(Format::Avif)) && !cfg!(feature = "avif"))
-            || (matches!(format, Some(Format::Jxl)) && !cfg!(feature = "jxl"));
         return if size_point || matches!(format, Some(Format::Avif | Format::Jxl)) {
             size_only(bytes, no_decoder)
         } else {
@@ -491,6 +499,11 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
     // the box and the painters turn the pixels (`ImagePlacement::orientation`).
     decoded.intrinsic.orientation = probed.map_or(Orientation::IDENTITY, |i| i.orientation);
     Some(decoded)
+}
+
+/// The largest image decoded (pixels): 512 MiB of RGBA8, the `image` crate's `max_alloc`.
+pub(crate) fn over_budget(width: u32, height: u32) -> bool {
+    u64::from(width) * u64::from(height) > 512 * 1024 * 1024 / 4
 }
 
 /// A probe-only entry: the image's layout size with no pixels. The painters draw nothing
@@ -657,6 +670,40 @@ mod tests {
         let body =
             turbo_dom_layout::turbo_dom::rtdom::serialize::serialize_inner(&tree, tree.root());
         (body, assets)
+    }
+
+    #[test]
+    fn an_over_budget_image_lays_out_without_decoding() {
+        // 18 KB / 5.5 KB / 19 KB solid RGB 12000 x 12000 images: their RGBA (576 MB) is over
+        // the 512 MiB budget. Undecoded, PNG and WebP peaked at 1.6 GB (the `image` budget
+        // counts the 3-byte RGB output, not the RGBA copy) and JPEG XL at 3.3 GB.
+        let dir = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/images/oversize"
+        );
+        for (file, placeholder) in [
+            ("rgb-12000.png", false),
+            ("rgb-12000.webp", false),
+            ("rgb-12000.jxl", !cfg!(feature = "jxl")),
+        ] {
+            let bytes = std::fs::read(format!("{dir}/{file}")).unwrap();
+            let d = decode(&bytes).expect(file);
+            assert_eq!((d.width, d.height, d.rgba.len()), (0, 0, 0), "{file}");
+            assert_eq!(
+                (d.intrinsic.width, d.intrinsic.height),
+                (12000, 12000),
+                "{file}"
+            );
+            assert_eq!(d.placeholder, placeholder, "{file}");
+        }
+    }
+
+    #[test]
+    fn the_pixel_budget_is_512_mib_of_rgba() {
+        use super::over_budget;
+        assert!(!over_budget(16384, 8192));
+        assert!(over_budget(16384, 8193));
+        assert!(over_budget(u32::MAX, u32::MAX));
     }
 
     #[test]

@@ -47,8 +47,14 @@ pub use webgl::{webgl_metadata, webgl_readback};
 /// tiny-skia (software); under the `gpu-metal` feature it rasterizes on the real GPU (wgpu →
 /// Metal) and, on any GPU failure, transparently falls back to tiny-skia — so enabling the
 /// feature never regresses, it only swaps the pixel backend.
+/// A canvas over Chrome's maximum area (268,435,456 pixels) is an `Err` (blank in Chrome).
 pub fn canvas_ops_png(width: u32, height: u32, ops_json: &str) -> Result<Vec<u8>, String> {
     let (w, h) = (width.max(1), height.max(1));
+    if canvas_too_large(w, h) {
+        return Err(format!(
+            "canvas {w}x{h} exceeds Chrome's maximum canvas area"
+        ));
+    }
     let ops = canvas_ops::parse_ops(ops_json)?;
     #[cfg(feature = "gpu-metal")]
     {
@@ -65,10 +71,22 @@ pub fn canvas_ops_png(width: u32, height: u32, ops_json: &str) -> Result<Vec<u8>
 /// Replay a 2D-canvas draw list into RAW straight-alpha RGBA8 (top-left origin, tightly packed) —
 /// the byte layout `getImageData` returns. Software (tiny-skia): getImageData reads back exact
 /// pixels with no PNG-encoder in the loop, so shapes/solids match a real browser byte-for-byte.
+/// A canvas over Chrome's maximum area is an `Err`, as for [`canvas_ops_png`].
 pub fn canvas_ops_rgba(width: u32, height: u32, ops_json: &str) -> Result<Vec<u8>, String> {
     let (w, h) = (width.max(1), height.max(1));
+    if canvas_too_large(w, h) {
+        return Err(format!(
+            "canvas {w}x{h} exceeds Chrome's maximum canvas area"
+        ));
+    }
     let ops = canvas_ops::parse_ops(ops_json)?;
     paint_canvas::replay_rgba(w, h, &ops)
+}
+/// Chrome's maximum canvas area (268,435,456 pixels: 16384 x 16384, 32768 x 8192). A larger
+/// canvas is blank in Chrome (`toDataURL()` is `data:,`); replaying it would allocate
+/// gigabytes, so it is an `Err`.
+fn canvas_too_large(width: u32, height: u32) -> bool {
+    u64::from(width) * u64::from(height) > 268_435_456
 }
 pub use style_extract::{
     delazy_images, delazy_tree, image_urls, image_urls_in_css, stylesheet_hrefs,
@@ -401,4 +419,27 @@ fn lay_out(
         &options,
         &mut diags,
     )
+}
+
+#[cfg(test)]
+mod canvas_area_tests {
+    use super::{canvas_ops_png, canvas_ops_rgba, canvas_too_large};
+
+    #[test]
+    fn chromes_max_canvas_area_is_268_435_456_pixels() {
+        // Chrome 156: 16384 x 16384 and 32768 x 8192 draw; 16385 x 16384 is a blank canvas.
+        assert!(!canvas_too_large(16384, 16384));
+        assert!(!canvas_too_large(32768, 8192));
+        assert!(canvas_too_large(16385, 16384));
+        assert!(canvas_too_large(u32::MAX, u32::MAX));
+    }
+
+    #[test]
+    fn an_over_area_canvas_is_refused_before_allocating() {
+        // Unbounded, a 30000 x 30000 fill peaked at 7.2 GB.
+        let fill = r##"[["fillRect",[0,0,30000,30000],"#f00",null,null,null,null,1,null]]"##;
+        assert!(canvas_ops_png(30000, 30000, fill).is_err());
+        assert!(canvas_ops_rgba(16385, 16384, "[]").is_err());
+        assert_eq!(canvas_ops_rgba(2, 1, "[]").unwrap().len(), 8);
+    }
 }
