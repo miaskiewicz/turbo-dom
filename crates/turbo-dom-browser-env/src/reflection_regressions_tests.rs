@@ -258,3 +258,27 @@ fn constructors_called_without_new_throw_blink_messages() {
         assert_eq!(got[name], "TypeError: Illegal constructor", "{name}");
     }
 }
+
+/// The popover members (turbo-dom#119/#139) keep working when the page replaces
+/// `Function.prototype.call` / `apply` (Chrome 156: `["auto",false,true,"manual"]`).
+#[test]
+fn popover_members_survive_patched_call() {
+    assert_eq!(
+        page_json(
+            PAGE,
+            "(() => { const P = HTMLElement.prototype, d = Object.getOwnPropertyDescriptor, A = Reflect.apply; \
+             const pop = d(P, 'popover'), show = P.showPopover, hide = P.hidePopover, toggle = P.togglePopover; \
+             const e = document.createElement('div'); document.body.appendChild(e); \
+             const call = Function.prototype.call, apply = Function.prototype.apply; \
+             const thrower = function () { throw new Error('patched'); }; \
+             Function.prototype.call = thrower; Function.prototype.apply = thrower; \
+             const out = []; \
+             try { A(pop.set, e, ['auto']); out.push(A(pop.get, e, [])); A(show, e, []); A(hide, e, []); \
+               out.push(e.matches(':popover-open')); out.push(A(toggle, e, [{ force: true }])); \
+               A(pop.set, e, ['manual']); out.push(A(pop.get, e, [])); } \
+             catch (error) { out.push('threw ' + error.message); } \
+             Function.prototype.call = call; Function.prototype.apply = apply; return out; })()",
+        ),
+        r#"["auto",false,true,"manual"]"#
+    );
+}
