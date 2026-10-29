@@ -189,6 +189,32 @@ fn table_rows_and_row_groups_carry_forced_breaks() {
 }
 
 #[test]
+fn a_row_groups_break_before_avoid_reaches_its_first_row() {
+    // Chrome 156 --print-to-pdf: with `break-before: avoid` (or the legacy
+    // `page-break-before: avoid`) on the second <tbody>, the last row of the first
+    // one moves to page 2 with it instead of the break falling between the groups.
+    for style in ["break-before:avoid", "page-break-before:avoid"] {
+        let rows = row_breaks(&format!(
+            "<body><table><tbody><tr id=x><td>x</td></tr></tbody>\
+             <tbody style='{style}'><tr id=y><td>y</td></tr><tr id=z><td>z</td></tr></tbody></table></body>"
+        ));
+        let before: Vec<_> = rows
+            .iter()
+            .map(|(id, m)| (id.as_str(), m.break_before))
+            .collect();
+        assert_eq!(
+            before,
+            [
+                ("x", BreakRule::Auto),
+                ("y", BreakRule::Avoid),
+                ("z", BreakRule::Auto)
+            ],
+            "{style}"
+        );
+    }
+}
+
+#[test]
 fn recorded_sources_cover_elements_texts_rows_and_the_id_range() {
     let tree = parse_html_tree(
         "<body><div id=d>t<table><tr id=r><td>c</td></tr></table></div><p>z</p></body>",

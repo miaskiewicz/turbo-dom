@@ -322,3 +322,22 @@ fn sticky_negative_top_below_threshold_is_not_shifted() {
     );
     assert_eq!(b["s"].1, 0.0);
 }
+
+#[test]
+fn a_scrolling_inline_block_has_its_bottom_margin_edge_as_baseline() {
+    // Chrome 156: next to an inline-block holding a line of text, `x` sits on that
+    // line's baseline (y=0); with `overflow:hidden` the inline-block's baseline is its
+    // bottom margin edge (40), so `x` drops to y=25.
+    let at = |overflow: &str| {
+        cid_boxes(&format!(
+            "<div><span data-cid=t style='display:inline-block'>x</span><div style='display:inline-block;\
+             overflow:{overflow};height:40px;width:20px'>y</div></div>"
+        ))["t"]
+            .1
+    };
+    // turbo-dom gives 24.6 for the hidden case: Chrome snaps the inline-block's
+    // baseline offset to whole pixels (filed as a Low follow-up), hence the 0.5 slack.
+    let (visible, hidden) = (at("visible"), at("hidden"));
+    assert_eq!(visible, 0.0);
+    assert!((hidden - 25.0).abs() < 0.5, "{hidden}");
+}
