@@ -7,6 +7,38 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+## [0.6.0] — turbo-dom consolidation
+
+turbo-dom becomes the home of the shared browser engine of turbo-html2pdf, turbo-test
+and turbo-surf: five published crates instead of copies in three repositories (see
+[docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) for the architecture, dependency graph
+and publish order).
+
+| crate | version | from |
+|---|---|---|
+| `turbo-dom` (+ npm `@miaskiewicz/turbo-dom`) | 0.6.0 | this repository |
+| `turbo-dom-v8` | 150.4.0 | rusty_v8 150.4.0 + turbo-surf's reviewed fixes (generated, not vendored) |
+| `turbo-dom-layout` | 0.6.0 | turbo-html2pdf-core 0.3.9's layout half, turbo-surf's CSSOM-View modules |
+| `turbo-dom-raster` | 0.6.0 | turbo-surf-raster 0.5.5 |
+| `turbo-dom-browser-env` | 0.6.0 | turbo-test 0.4.8's rtdom <-> V8 binding |
+
+The moves themselves were behaviour-preserving (consumer corpora byte-identical) except
+the two approved Chrome-matching changes: one Chrome 156-correct selector engine for the
+DOM APIs and the layout cascade, and turbo-surf static rendering of `t:*` elements as
+unknown inline elements. Every later output change is a bug fix backed by a Chrome 156
+control and declared in `tools/parity/expected/` (the entries below). MSRV: 1.89 for
+turbo-dom, -layout and -raster; 1.91 for turbo-dom-v8 and -browser-env.
+
+### CI — gates for 0.6.0
+- Coverage is blocking: tarpaulin `--fail-under` per crate (turbo-dom 100, turbo-dom-parser
+  `src/core.rs` 100, turbo-dom-layout 99.8, turbo-dom-raster 100 in its default / avif /
+  jxl configs, turbo-dom-browser-env 97.6).
+- Cyclomatic complexity (<= 15 per function; Rust via cc-check, JS via oxlint over `src/`
+  and `crates/turbo-dom-browser-env/src`) runs report-only (`continue-on-error`) until the
+  post-release refactor clears the backlog.
+- PR and push CI run on Linux and Windows; the macOS (aarch64-apple-darwin) builds and
+  jobs run only in the release workflow (`ci.yml` called with `darwin: true`).
+
 ### Fixed — browser-env setup survives a termination during install (miaskiewicz/turbo-dom#184)
 A `TerminateExecution` (an embedder's watchdog) landing while the document is being installed
 no longer panics at the internal-namespace lookup (`range_contents`). The new
@@ -1355,27 +1387,6 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   attribute-escaped.
 - CI: the raster job runs clippy and the tests with `--features avif` too.
 - Corpus outputs: none change (`tools/parity/expected/p5b-w2-turbo-dom-25.json`).
-
-## [0.6.0] — turbo-dom consolidation
-
-turbo-dom becomes the home of the shared browser engine of turbo-html2pdf, turbo-test
-and turbo-surf: five published crates instead of copies in three repositories (see
-[docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) for the architecture, dependency graph
-and publish order).
-
-| crate | version | from |
-|---|---|---|
-| `turbo-dom` (+ npm `@miaskiewicz/turbo-dom`) | 0.6.0 | this repository |
-| `turbo-dom-v8` | 150.4.0 | rusty_v8 150.4.0 + turbo-surf's reviewed fixes (generated, not vendored) |
-| `turbo-dom-layout` | 0.6.0 | turbo-html2pdf-core 0.3.9's layout half, turbo-surf's CSSOM-View modules |
-| `turbo-dom-raster` | 0.6.0 | turbo-surf-raster 0.5.5 |
-| `turbo-dom-browser-env` | 0.6.0 | turbo-test 0.4.8's rtdom <-> V8 binding |
-
-Every step was behaviour-preserving (consumer corpora byte-identical) except the two
-approved Chrome-matching changes: one Chrome 156-correct selector engine for the DOM
-APIs and the layout cascade, and turbo-surf static rendering of `t:*` elements as
-unknown inline elements. MSRV: 1.89 for turbo-dom, -layout and -raster; 1.91 for
-turbo-dom-v8 and -browser-env.
 
 ### Bug fixes (P5b — intended, Chrome 156-controlled behaviour changes)
 - turbo-dom-layout HTML drive (miaskiewicz/turbo-html2pdf#29): the whole document is
