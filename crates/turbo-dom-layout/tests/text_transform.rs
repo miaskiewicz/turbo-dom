@@ -106,6 +106,16 @@ fn lithuanian_keeps_the_dot_above_explicit() {
 fn greek_uppercase_drops_accents() {
     case("uppercase", Some("el"), "άλφα ήταν", "ΑΛΦΑ ΗΤΑΝ");
     case("uppercase", Some("el"), "ΐ ύ Ά", "Ϊ Υ Α");
+    // Chrome 156 (ICU Greek upper): ι/υ after an accented vowel is not a diphthong
+    // and gets a dialytika (combining when the accent was combining), which ends the
+    // accent context; a lone ή
+    // (the disjunctive "or") keeps its tonos.
+    case("uppercase", Some("el"), "άι άυ αί αι άϊ", "ΑΪ ΑΫ ΑΙ ΑΙ ΑΪ");
+    case("uppercase", Some("el"), "ήίύ", "ΗΪΥ");
+    case("uppercase", Some("el"), "α\u{301}ι", "ΑΙ\u{308}");
+    case("uppercase", Some("el"), "ή", "\u{389}");
+    case("uppercase", Some("el"), "a ή b", "A\u{389}B");
+    case("uppercase", Some("el"), "ΐ ά ι", "Ϊ Α Ι");
     case("capitalize", Some("el"), "άλφα", "Άλφα");
 }
 
