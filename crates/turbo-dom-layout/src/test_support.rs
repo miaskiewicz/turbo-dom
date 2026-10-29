@@ -365,3 +365,38 @@ pub mod literal {
         style_input(&tree(nodes).input(), cascade, &StyleOptions::default())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::literal::{Element, Node};
+    use super::style;
+    use crate::tag::{Attr, Tag};
+
+    #[test]
+    fn style_builds_a_computed_style_from_pairs() {
+        let s = style(&[("color", "red"), ("opacity", ".5")]);
+        assert_eq!(s.get("color"), Some("red"));
+        assert_eq!(s.get("opacity"), Some(".5"));
+        assert_eq!(s.get("width"), None);
+    }
+
+    #[test]
+    fn literal_nodes_borrow_only_their_own_kind() {
+        let el = Element {
+            tag: Tag::Html("p".into()),
+            attrs: vec![Attr {
+                name: "id".into(),
+                value: "x".into(),
+            }],
+            children: vec![],
+        };
+        let e = Node::Element(el.clone());
+        let t = Node::Text("hi".into());
+        assert_eq!(e.as_element(), Some(&el));
+        assert_eq!(t.as_element(), None);
+        assert_eq!(t.as_text(), Some("hi"));
+        assert_eq!(e.as_text(), None);
+        assert_eq!(el.attr("id"), Some("x"));
+        assert_eq!(el.attr("class"), None);
+    }
+}
