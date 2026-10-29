@@ -7088,6 +7088,8 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         "__computedStyleVersion",
         computed_style_version,
     );
+    #[cfg(test)]
+    bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
     bind_method(scope, global, "__cssomEpoch", cssom_epoch);
     bind_method(scope, global, "__bumpCssomEpoch", bump_cssom_epoch);
 }
@@ -7098,6 +7100,29 @@ thread_local! {
     /// another realm's element (a parent reading an iframe's), and a CSSOM edit runs in the realm
     /// that owns the sheet, so a per-realm epoch left the reader's reuse stale.
     static CSSOM_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Fresh computed-style calculations on this thread, counted by the test-only
+    /// `__noteCascadeRun` hook so tests can assert getComputedStyle's reuse (turbo-test#125).
+    static CASCADE_RUNS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The fresh computed-style calculations counted so far (see `CASCADE_RUNS`).
+#[cfg(test)]
+fn cascade_runs() -> u64 {
+    CASCADE_RUNS.with(std::cell::Cell::get)
+}
+
+/// Counts one fresh computed-style calculation (the test-only `__noteCascadeRun` hook).
+#[cfg(test)]
+fn note_cascade_run(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    CASCADE_RUNS.with(|runs| runs.set(runs.get() + 1));
 }
 
 /// The current CSSOM epoch (see `CSSOM_EPOCH`).

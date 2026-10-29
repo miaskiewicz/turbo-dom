@@ -34,7 +34,9 @@
   // page-replaceable %IteratorPrototype%[@@iterator] (turbo-dom#199).
   const setIteratorNext = Object.getPrototypeOf(apply(setValues, new SetType(), [])).next;
   const list = () => { const out = [], it = apply(setValues, live, []); for (let step = apply(setIteratorNext, it, []); !step.done; step = apply(setIteratorNext, it, [])) define(out, out.length, { value: step.value, writable: true, enumerable: true, configurable: true }); return out; };
+  const intrinsic = ns.intrinsics, toPrecision = Number.prototype.toPrecision;
   const push = (array, value) => { array[array.length] = value; return array; };
+  const contains = (array, value) => { for (let index = 0; index < array.length; index++) if (array[index] === value) return true; return false; };
   const sortBy = (array, key) => { for (let i = 1; i < array.length; i++) { const item = array[i], k = key(item); let j = i - 1; while (j >= 0 && key(array[j]) > k) { array[j + 1] = array[j]; j--; } array[j + 1] = item; } return array; };
 
   // ---- conversions and Chrome's binding messages ------------------------------------------
@@ -59,18 +61,21 @@
     if (!objectLike(value)) throw new ErrorType(`${prefix}The provided value is not of type '${type}'.`);
     return value;
   };
-  const tick = PromiseType.resolve();
+  const tick = apply(PromiseType.resolve, PromiseType, []);
+  // A private promise: an own undefined `constructor` keeps `then` off the page-replaceable Promise[@@species] (turbo-dom#199).
+  define(tick, 'constructor', { value: undefined });
   const microtask = callback => { apply(promiseThen, tick, [callback]); };
-  const handled = promise => { apply(promiseThen, promise, [undefined, () => {}]); };
+  // Marks the promise handled natively: `then` would read the page-replaceable Promise[@@species].
+  const handled = promise => { Native('handled', promise); };
   const abort = () => new Exception('The user aborted a request.', 'AbortError');
 
   // Number serialization at six significant digits (Blink's String::Number for CSS values).
   function format(value) {
     if (value === 0 || !isFinite(value)) return value === 0 ? '0' : string(value);
-    let text = value.toPrecision(6), exponent = '';
-    const e = text.indexOf('e');
-    if (e >= 0) { exponent = text.slice(e); text = text.slice(0, e); }
-    if (text.indexOf('.') >= 0) { while (text[text.length - 1] === '0') text = text.slice(0, -1); if (text[text.length - 1] === '.') text = text.slice(0, -1); }
+    let text = apply(toPrecision, value, [6]), exponent = '';
+    const e = intrinsic.indexOf(text, 'e');
+    if (e >= 0) { exponent = intrinsic.slice(text, e); text = intrinsic.slice(text, 0, e); }
+    if (intrinsic.indexOf(text, '.') >= 0) { while (text[text.length - 1] === '0') text = intrinsic.slice(text, 0, -1); if (text[text.length - 1] === '.') text = intrinsic.slice(text, 0, -1); }
     text += exponent;
     return text === '-0' ? '0' : text;
   }
@@ -110,15 +115,15 @@
     };
   }
   function linearPoints(body) {
-    const parts = body.split(','), points = [];
+    const parts = intrinsic.split(body, ','), points = [];
     for (let i = 0; i < parts.length; i++) {
-      const tokens = parts[i].trim().split(/\s+/);
+      const tokens = intrinsic.split(intrinsic.trim(parts[i]), /\s+/);
       let output = null; const inputs = [];
       for (let j = 0; j < tokens.length; j++) {
         const token = tokens[j];
-        if (NUMBER.test(token) && output === null && !inputs.length) output = +token;
-        else if (NUMBER.test(token) && output === null && inputs.length && j === tokens.length - 1) output = +token;
-        else if (/%$/.test(token) && NUMBER.test(token.slice(0, -1))) push(inputs, +token.slice(0, -1) / 100);
+        if (intrinsic.test(NUMBER, token) && output === null && !inputs.length) output = +token;
+        else if (intrinsic.test(NUMBER, token) && output === null && inputs.length && j === tokens.length - 1) output = +token;
+        else if (intrinsic.test(/%$/, token) && intrinsic.test(NUMBER, intrinsic.slice(token, 0, -1))) push(inputs, +intrinsic.slice(token, 0, -1) / 100);
         else return null;
       }
       if (output === null || inputs.length > 2) return null;
@@ -139,34 +144,34 @@
     return points;
   }
   function parseEasing(source) {
-    const text = string(source).trim(), lower = text.toLowerCase();
+    const text = intrinsic.trim(string(source)), lower = intrinsic.toLowerCase(text);
     if (lower === 'linear') return linearEasing;
     if (PRESETS[lower]) { const p = PRESETS[lower], evaluate = bezier(p[0], p[1], p[2], p[3]); return { text: lower, evaluate }; }
     if (lower === 'step-start') return { text: 'steps(1, start)', evaluate: steps(1, 'start') };
     if (lower === 'step-end') return { text: 'steps(1)', evaluate: steps(1, 'end') };
-    let match = /^cubic-bezier\(([^()]*)\)$/i.exec(text);
+    let match = intrinsic.exec(/^cubic-bezier\(([^()]*)\)$/i, text);
     if (match) {
-      const values = match[1].split(',').map(part => part.trim());
-      if (values.length !== 4 || !values.every(value => NUMBER.test(value))) return null;
-      const [x1, y1, x2, y2] = values.map(value => +value);
+      const values = intrinsic.map(intrinsic.split(match[1], ','), part => intrinsic.trim(part));
+      if (values.length !== 4 || !intrinsic.every(values, value => intrinsic.test(NUMBER, value))) return null;
+      const [x1, y1, x2, y2] = intrinsic.map(values, value => +value);
       if (x1 < 0 || x1 > 1 || x2 < 0 || x2 > 1) return null;
       return { text: `cubic-bezier(${format(x1)}, ${format(y1)}, ${format(x2)}, ${format(y2)})`, evaluate: bezier(x1, y1, x2, y2) };
     }
-    match = /^steps\(([^()]*)\)$/i.exec(text);
+    match = intrinsic.exec(/^steps\(([^()]*)\)$/i, text);
     if (match) {
-      const values = match[1].split(',').map(part => part.trim());
-      if (values.length > 2 || !/^\+?\d+$/.test(values[0])) return null;
-      const count = +values[0], position = values.length === 2 ? values[1].toLowerCase() : 'end';
-      if (!/^(start|end|jump-start|jump-end|jump-none|jump-both)$/.test(position)) return null;
+      const values = intrinsic.map(intrinsic.split(match[1], ','), part => intrinsic.trim(part));
+      if (values.length > 2 || !intrinsic.test(/^\+?\d+$/, values[0])) return null;
+      const count = +values[0], position = values.length === 2 ? intrinsic.toLowerCase(values[1]) : 'end';
+      if (!intrinsic.test(/^(start|end|jump-start|jump-end|jump-none|jump-both)$/, position)) return null;
       if (count < 1 || (position === 'jump-none' && count < 2)) return null;
       const shown = position === 'end' || position === 'jump-end' ? `steps(${count})` : `steps(${count}, ${position})`;
       return { text: shown, evaluate: steps(count, position) };
     }
-    match = /^linear\(([^()]*)\)$/i.exec(text);
+    match = intrinsic.exec(/^linear\(([^()]*)\)$/i, text);
     if (match) {
       const points = linearPoints(match[1]);
       if (!points) return null;
-      const shown = 'linear(' + points.map(point => `${format(point.output)} ${format(point.input * 100)}%`).join(', ') + ')';
+      const shown = 'linear(' + intrinsic.join(intrinsic.map(points, point => `${format(point.output)} ${format(point.input * 100)}%`), ', ') + ')';
       return { text: shown, evaluate: x => {
         let a = 0;
         for (let i = 0; i < points.length; i++) if (points[i].input <= x) a = i;
@@ -187,15 +192,15 @@
   const COLORS = { __proto__: null, color: 1, 'background-color': 1, 'border-top-color': 1, 'border-right-color': 1, 'border-bottom-color': 1, 'border-left-color': 1, 'outline-color': 1, 'text-decoration-color': 1, 'column-rule-color': 1, 'caret-color': 1, 'accent-color': 1, fill: 1, stroke: 1, 'flood-color': 1, 'lighting-color': 1, 'stop-color': 1, 'text-emphasis-color': 1 };
   const INHERITED = { __proto__: null, color: 1, visibility: 1, 'line-height': 1, 'font-weight': 1, 'letter-spacing': 1, 'word-spacing': 1, 'text-indent': 1, 'caret-color': 1, 'accent-color': 1, fill: 1, stroke: 1, 'fill-opacity': 1, 'stroke-opacity': 1, orphans: 1, widows: 1, cursor: 1, 'pointer-events': 1 };
   const INITIAL = { __proto__: null, opacity: '1', 'fill-opacity': '1', 'stroke-opacity': '1', 'flood-opacity': '1', 'stop-opacity': '1', transform: 'none', color: 'rgb(0, 0, 0)', 'background-color': 'rgba(0, 0, 0, 0)', 'z-index': 'auto', visibility: 'visible', display: 'inline', 'flex-grow': '0', 'flex-shrink': '1', 'font-weight': '400', 'line-height': 'normal', 'letter-spacing': 'normal', 'word-spacing': '0px', 'text-indent': '0px', width: 'auto', height: 'auto', top: 'auto', right: 'auto', bottom: 'auto', left: 'auto', 'outline-color': 'currentcolor', 'text-decoration-color': 'currentcolor', 'column-rule-color': 'currentcolor', 'caret-color': 'auto', 'accent-color': 'auto' };
-  const lengthProperty = name => /(width|height|margin|padding|gap|radius|letter-spacing|word-spacing|text-indent)/.test(name) || /size$/.test(name) || /^inset/.test(name) || /^(top|right|bottom|left|flex-basis|outline-offset|column-width|column-gap)$/.test(name);
-  const initialValue = name => INITIAL[name] !== undefined ? INITIAL[name] : /^border-(top|right|bottom|left)-color$/.test(name) ? 'currentcolor' : /^(margin|padding)-/.test(name) ? '0px' : /-radius$/.test(name) ? '0px' : '';
+  const lengthProperty = name => intrinsic.test(/(width|height|margin|padding|gap|radius|letter-spacing|word-spacing|text-indent)/, name) || intrinsic.test(/size$/, name) || intrinsic.test(/^inset/, name) || intrinsic.test(/^(top|right|bottom|left|flex-basis|outline-offset|column-width|column-gap)$/, name);
+  const initialValue = name => INITIAL[name] !== undefined ? INITIAL[name] : intrinsic.test(/^border-(top|right|bottom|left)-color$/, name) ? 'currentcolor' : intrinsic.test(/^(margin|padding)-/, name) ? '0px' : intrinsic.test(/-radius$/, name) ? '0px' : '';
 
   const LENGTH = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)([a-z%]*)$/i;
-  function parseNumber(text) { return NUMBER.test(text) ? +text : null; }
+  function parseNumber(text) { return intrinsic.test(NUMBER, text) ? +text : null; }
   function parseLength(text, context) {
-    const match = LENGTH.exec(text);
+    const match = intrinsic.exec(LENGTH, text);
     if (!match) return null;
-    const value = +match[1], unit = match[2].toLowerCase();
+    const value = +match[1], unit = intrinsic.toLowerCase(match[2]);
     if (unit === '') return value === 0 ? { kind: 'length', value: 0, unit: 'px' } : null;
     if (unit === 'px') return { kind: 'length', value, unit: 'px' };
     if (unit === 'em') return { kind: 'length', value: value * context.fontSize, unit: 'px' };
@@ -214,48 +219,48 @@
     return [f(0) * 255, f(8) * 255, f(4) * 255];
   }
   function hue(token) {
-    const match = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(deg|rad|grad|turn)?$/i.exec(token);
+    const match = intrinsic.exec(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(deg|rad|grad|turn)?$/i, token);
     if (!match) return null;
-    const value = +match[1], unit = (match[2] || 'deg').toLowerCase();
+    const value = +match[1], unit = intrinsic.toLowerCase((match[2] || 'deg'));
     const degrees = unit === 'rad' ? value * 180 / PI : unit === 'grad' ? value * 0.9 : unit === 'turn' ? value * 360 : value;
     return ((degrees % 360) + 360) % 360;
   }
   function channel(token, scale) {
-    if (/%$/.test(token)) { const number = parseNumber(token.slice(0, -1)); return number === null ? null : number / 100 * scale; }
+    if (intrinsic.test(/%$/, token)) { const number = parseNumber(intrinsic.slice(token, 0, -1)); return number === null ? null : number / 100 * scale; }
     return parseNumber(token);
   }
   function parseColor(text, context) {
-    const lower = text.trim().toLowerCase();
+    const lower = intrinsic.toLowerCase(intrinsic.trim(text));
     if (lower === 'currentcolor') return context.currentColor();
     if (lower === 'transparent') return { kind: 'color', r: 0, g: 0, b: 0, a: 0 };
-    let match = /^#([0-9a-f]{3,8})$/.exec(lower);
+    let match = intrinsic.exec(/^#([0-9a-f]{3,8})$/, lower);
     if (match) {
       let hex = match[1];
-      if (hex.length === 3 || hex.length === 4) hex = hex.replace(/./g, digit => digit + digit);
+      if (hex.length === 3 || hex.length === 4) hex = intrinsic.replace(hex, /./g, digit => digit + digit);
       if (hex.length !== 6 && hex.length !== 8) return null;
-      const byte = i => parseInt(hex.slice(i, i + 2), 16);
+      const byte = i => parseInt(intrinsic.slice(hex, i, i + 2), 16);
       return { kind: 'color', r: byte(0), g: byte(2), b: byte(4), a: hex.length === 8 ? byte(6) / 255 : 1 };
     }
-    match = /^(rgba?|hsla?|hwb)\((.*)\)$/.exec(lower);
+    match = intrinsic.exec(/^(rgba?|hsla?|hwb)\((.*)\)$/, lower);
     if (match) {
-      let body = match[2].trim(), alpha = '1', parts;
-      if (body.indexOf(',') >= 0) { parts = body.split(',').map(part => part.trim()); if (parts.length === 4) alpha = parts.pop(); }
-      else { const slash = body.split('/'); if (slash.length > 2) return null; if (slash.length === 2) alpha = slash[1].trim(); parts = slash[0].trim().split(/\s+/); }
+      let body = intrinsic.trim(match[2]), alpha = '1', parts;
+      if (intrinsic.indexOf(body, ',') >= 0) { parts = intrinsic.map(intrinsic.split(body, ','), part => intrinsic.trim(part)); if (parts.length === 4) { alpha = parts[3]; parts.length = 3; } }
+      else { const slash = intrinsic.split(body, '/'); if (slash.length > 2) return null; if (slash.length === 2) alpha = intrinsic.trim(slash[1]); parts = intrinsic.split(intrinsic.trim(slash[0]), /\s+/); }
       if (parts.length !== 3) return null;
       const a = channel(alpha, 1);
       if (a === null) return null;
       let rgb;
-      if (match[1][0] === 'r') { rgb = parts.map(part => channel(part, 255)); if (rgb.some(value => value === null)) return null; }
+      if (match[1][0] === 'r') { rgb = intrinsic.map(parts, part => channel(part, 255)); if (intrinsic.some(rgb, value => value === null)) return null; }
       else {
         const h = hue(parts[0]), x = channel(parts[1], 1), y = channel(parts[2], 1);
-        if (h === null || x === null || y === null || !/%$/.test(parts[1]) && match[1] !== 'hwb' && body.indexOf(',') >= 0) return null;
-        if (match[1] === 'hwb') { const white = x, black = y; if (white + black >= 1) { const gray = white / (white + black) * 255; rgb = [gray, gray, gray]; } else rgb = hsl(h, 1, 0.5).map(value => value / 255 * (1 - white - black) * 255 + white * 255); }
+        if (h === null || x === null || y === null || !intrinsic.test(/%$/, parts[1]) && match[1] !== 'hwb' && intrinsic.indexOf(body, ',') >= 0) return null;
+        if (match[1] === 'hwb') { const white = x, black = y; if (white + black >= 1) { const gray = white / (white + black) * 255; rgb = [gray, gray, gray]; } else rgb = intrinsic.map(hsl(h, 1, 0.5), value => value / 255 * (1 - white - black) * 255 + white * 255); }
         else rgb = hsl(h, min(max(x, 0), 1), min(max(y, 0), 1));
       }
       const clamp = value => min(max(value, 0), 255);
       return { kind: 'color', r: clamp(rgb[0]), g: clamp(rgb[1]), b: clamp(rgb[2]), a: min(max(a, 0), 1) };
     }
-    if (/^[a-z]+$/.test(lower)) { const named = Native('named', lower); return named ? parseColor(named, context) : null; }
+    if (intrinsic.test(/^[a-z]+$/, lower)) { const named = Native('named', lower); return named ? parseColor(named, context) : null; }
     return null;
   }
   // CSS Color 4 legacy serialization: 8-bit channels, alpha at the shortest of two or three
@@ -270,32 +275,32 @@
   }
   // Keyframe values keep named colors; other color syntaxes serialize as rgb()/rgba().
   function specifiedColor(text) {
-    const lower = text.toLowerCase();
-    if (/^[a-z]+$/.test(lower)) return lower;
+    const lower = intrinsic.toLowerCase(text);
+    if (intrinsic.test(/^[a-z]+$/, lower)) return lower;
     const color = parseColor(text, { currentColor: () => null });
     return color ? serializeColor(color) : text;
   }
 
   // Transform lists: each function normalized to a primitive with numeric arguments.
   function angle(token) {
-    const match = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(deg|rad|grad|turn)?$/i.exec(token);
+    const match = intrinsic.exec(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(deg|rad|grad|turn)?$/i, token);
     if (!match || (!match[2] && +match[1] !== 0)) return null;
-    const value = +match[1], unit = (match[2] || 'deg').toLowerCase();
+    const value = +match[1], unit = intrinsic.toLowerCase((match[2] || 'deg'));
     return unit === 'rad' ? value : unit === 'grad' ? value * PI / 200 : unit === 'turn' ? value * 2 * PI : value * PI / 180;
   }
   function transformLength(token) { const length = parseLength(token, { fontSize: 16 }); return length && length.unit === 'px' ? length.value : null; }
-  function scaleValue(token) { if (/%$/.test(token)) { const number = parseNumber(token.slice(0, -1)); return number === null ? null : number / 100; } return parseNumber(token); }
+  function scaleValue(token) { if (intrinsic.test(/%$/, token)) { const number = parseNumber(intrinsic.slice(token, 0, -1)); return number === null ? null : number / 100; } return parseNumber(token); }
   function parseTransform(text) {
-    const lower = text.trim();
-    if (/^none$/i.test(lower)) return { kind: 'transform', list: [] };
+    const lower = intrinsic.trim(text);
+    if (intrinsic.test(/^none$/i, lower)) return { kind: 'transform', list: [] };
     const list = [], pattern = /\s*([a-zA-Z0-9]+)\(([^()]*)\)\s*/y;
     let index = 0;
     while (index < lower.length) {
       pattern.lastIndex = index;
-      const match = pattern.exec(lower);
+      const match = intrinsic.exec(pattern, lower);
       if (!match) return null;
       index = pattern.lastIndex;
-      const name = match[1].toLowerCase(), args = match[2].split(',').map(part => part.trim());
+      const name = intrinsic.toLowerCase(match[1]), args = intrinsic.map(intrinsic.split(match[2], ','), part => intrinsic.trim(part));
       const fn = transformFunction(name, args);
       if (!fn) return null;
       push(list, fn);
@@ -303,7 +308,7 @@
     return list.length ? { kind: 'transform', list } : null;
   }
   function transformFunction(name, args) {
-    const lengths = values => { const out = values.map(transformLength); return out.some(value => value === null) ? null : out; };
+    const lengths = values => { const out = intrinsic.map(values, transformLength); return intrinsic.some(out, value => value === null) ? null : out; };
     const count = (a, b) => args.length >= a && args.length <= b;
     let values;
     switch (name) {
@@ -313,7 +318,7 @@
       case 'translatez': if (!count(1, 1) || !(values = lengths(args))) return null; return { type: 'translate', v: [0, 0, values[0]], three: true };
       case 'translate3d': if (!count(3, 3) || !(values = lengths(args))) return null; return { type: 'translate', v: values, three: true };
       case 'scale': case 'scalex': case 'scaley': case 'scalez': case 'scale3d': {
-        values = args.map(scaleValue); if (values.some(value => value === null)) return null;
+        values = intrinsic.map(args, scaleValue); if (intrinsic.some(values, value => value === null)) return null;
         if (name === 'scale' && count(1, 2)) return { type: 'scale', v: [values[0], values.length > 1 ? values[1] : values[0], 1] };
         if (name === 'scalex' && count(1, 1)) return { type: 'scale', v: [values[0], 1, 1] };
         if (name === 'scaley' && count(1, 1)) return { type: 'scale', v: [1, values[0], 1] };
@@ -324,13 +329,13 @@
       case 'rotate': case 'rotatez': { const a = count(1, 1) ? angle(args[0]) : null; return a === null ? null : { type: 'rotate', v: [0, 0, 1, a] }; }
       case 'rotatex': { const a = count(1, 1) ? angle(args[0]) : null; return a === null ? null : { type: 'rotate', v: [1, 0, 0, a], three: true }; }
       case 'rotatey': { const a = count(1, 1) ? angle(args[0]) : null; return a === null ? null : { type: 'rotate', v: [0, 1, 0, a], three: true }; }
-      case 'rotate3d': { if (!count(4, 4)) return null; const axis = args.slice(0, 3).map(parseNumber), a = angle(args[3]); if (a === null || axis.some(value => value === null)) return null; return { type: 'rotate', v: [axis[0], axis[1], axis[2], a], three: true }; }
+      case 'rotate3d': { if (!count(4, 4)) return null; const axis = intrinsic.map(intrinsic.slice(args, 0, 3), parseNumber), a = angle(args[3]); if (a === null || intrinsic.some(axis, value => value === null)) return null; return { type: 'rotate', v: [axis[0], axis[1], axis[2], a], three: true }; }
       case 'skew': { if (!count(1, 2)) return null; const x = angle(args[0]), y = args.length > 1 ? angle(args[1]) : 0; return x === null || y === null ? null : { type: 'skew', v: [x, y] }; }
       case 'skewx': { const x = count(1, 1) ? angle(args[0]) : null; return x === null ? null : { type: 'skew', v: [x, 0] }; }
       case 'skewy': { const y = count(1, 1) ? angle(args[0]) : null; return y === null ? null : { type: 'skew', v: [0, y] }; }
-      case 'perspective': { if (!count(1, 1)) return null; if (/^none$/i.test(args[0])) return { type: 'perspective', v: [Infinity], three: true }; const d = transformLength(args[0]); return d === null || d < 0 ? null : { type: 'perspective', v: [d], three: true }; }
-      case 'matrix': { values = args.map(parseNumber); if (args.length !== 6 || values.some(value => value === null)) return null; const [a, b, c, d, e, f] = values; return { type: 'matrix', m: [a, b, 0, 0, c, d, 0, 0, 0, 0, 1, 0, e, f, 0, 1] }; }
-      case 'matrix3d': { values = args.map(parseNumber); if (args.length !== 16 || values.some(value => value === null)) return null; return { type: 'matrix', m: values, three: true }; }
+      case 'perspective': { if (!count(1, 1)) return null; if (intrinsic.test(/^none$/i, args[0])) return { type: 'perspective', v: [Infinity], three: true }; const d = transformLength(args[0]); return d === null || d < 0 ? null : { type: 'perspective', v: [d], three: true }; }
+      case 'matrix': { values = intrinsic.map(args, parseNumber); if (args.length !== 6 || intrinsic.some(values, value => value === null)) return null; const [a, b, c, d, e, f] = values; return { type: 'matrix', m: [a, b, 0, 0, c, d, 0, 0, 0, 0, 1, 0, e, f, 0, 1] }; }
+      case 'matrix3d': { values = intrinsic.map(args, parseNumber); if (args.length !== 16 || intrinsic.some(values, value => value === null)) return null; return { type: 'matrix', m: values, three: true }; }
     }
     return null;
   }
@@ -351,7 +356,7 @@
       case 'scale': m[0] = v[0]; m[5] = v[1]; m[10] = v[2]; return m;
       case 'skew': m[4] = tan(v[0]); m[1] = tan(v[1]); return m;
       case 'perspective': if (v[0] !== Infinity) m[11] = -1 / max(v[0], 1); return m;
-      case 'matrix': return fn.m.slice();
+      case 'matrix': return intrinsic.slice(fn.m);
       case 'rotate': {
         let [x, y, z] = v; const a = v[3], length = sqrt(x * x + y * y + z * z);
         if (!length) return m;
@@ -367,8 +372,8 @@
   function serializeTransform(value) {
     if (!value.list.length) return 'none';
     const m = listMatrix(value.list);
-    if (flat(m)) return `matrix(${[m[0], m[1], m[4], m[5], m[12], m[13]].map(format).join(', ')})`;
-    return `matrix3d(${m.map(format).join(', ')})`;
+    if (flat(m)) return `matrix(${intrinsic.join(intrinsic.map([m[0], m[1], m[4], m[5], m[12], m[13]], format), ', ')})`;
+    return `matrix3d(${intrinsic.join(intrinsic.map(m, format), ', ')})`;
   }
   // CSS Transforms 2 matrix decomposition, interpolation and recomposition.
   function decompose(source) {
@@ -378,15 +383,15 @@
     const det3 = (a) => a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
     let perspective = [0, 0, 0, 1];
     if (m[0][3] || m[1][3] || m[2][3]) {
-      const p = m.map(row => row.slice()); for (let i = 0; i < 3; i++) p[i][3] = 0; p[3][3] = 1;
-      const inverse = invert([].concat(p[0], p[1], p[2], p[3]));
+      const p = intrinsic.map(m, row => intrinsic.slice(row)); for (let i = 0; i < 3; i++) p[i][3] = 0; p[3][3] = 1;
+      const inverse = invert(intrinsic.concat([], p[0], p[1], p[2], p[3]));
       if (!inverse) return null;
       const rhs = [m[0][3], m[1][3], m[2][3], m[3][3]];
       // perspective = rhs * transpose(inverse(p))
-      perspective = [0, 1, 2, 3].map(col => rhs[0] * inverse[col * 4] + rhs[1] * inverse[col * 4 + 1] + rhs[2] * inverse[col * 4 + 2] + rhs[3] * inverse[col * 4 + 3]);
+      perspective = intrinsic.map([0, 1, 2, 3], col => rhs[0] * inverse[col * 4] + rhs[1] * inverse[col * 4 + 1] + rhs[2] * inverse[col * 4 + 2] + rhs[3] * inverse[col * 4 + 3]);
     } else if (!det3(m)) return null;
     const translate = [m[3][0], m[3][1], m[3][2]];
-    const row = [m[0].slice(0, 3), m[1].slice(0, 3), m[2].slice(0, 3)];
+    const row = [intrinsic.slice(m[0], 0, 3), intrinsic.slice(m[1], 0, 3), intrinsic.slice(m[2], 0, 3)];
     const length = v => sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
     const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
     const combine = (a, b, sa, sb) => [a[0] * sa + b[0] * sb, a[1] * sa + b[1] * sb, a[2] * sa + b[2] * sb];
@@ -398,7 +403,7 @@
     skew[2] = dot(row[1], row[2]); row[2] = combine(row[2], row[1], 1, -skew[2]);
     scale[2] = length(row[2]); row[2] = combine(row[2], row[2], 1 / scale[2], 0); skew[1] /= scale[2]; skew[2] /= scale[2];
     const cross = [row[1][1] * row[2][2] - row[1][2] * row[2][1], row[1][2] * row[2][0] - row[1][0] * row[2][2], row[1][0] * row[2][1] - row[1][1] * row[2][0]];
-    if (dot(row[0], cross) < 0) for (let i = 0; i < 3; i++) { scale[i] = -scale[i]; row[i] = row[i].map(value => -value); }
+    if (dot(row[0], cross) < 0) for (let i = 0; i < 3; i++) { scale[i] = -scale[i]; row[i] = intrinsic.map(row[i], value => -value); }
     const quaternion = [0.5 * sqrt(max(1 + row[0][0] - row[1][1] - row[2][2], 0)), 0.5 * sqrt(max(1 - row[0][0] + row[1][1] - row[2][2], 0)), 0.5 * sqrt(max(1 - row[0][0] - row[1][1] + row[2][2], 0)), 0.5 * sqrt(max(1 + row[0][0] + row[1][1] + row[2][2], 0))];
     if (row[2][1] > row[1][2]) quaternion[0] = -quaternion[0];
     if (row[0][2] > row[2][0]) quaternion[1] = -quaternion[1];
@@ -435,15 +440,15 @@
   function interpolateMatrix(from, to, p) {
     const a = decompose(from), b = decompose(to);
     if (!a || !b) return p < 0.5 ? from : to;
-    const lerp = (x, y) => x.map((value, i) => value + (y[i] - value) * p);
+    const lerp = (x, y) => intrinsic.map(x, (value, i) => value + (y[i] - value) * p);
     let product = a.quaternion[0] * b.quaternion[0] + a.quaternion[1] * b.quaternion[1] + a.quaternion[2] * b.quaternion[2] + a.quaternion[3] * b.quaternion[3];
     product = max(min(product, 1), -1);
     let quaternion;
-    if (abs(product) >= 1) quaternion = a.quaternion.slice();
+    if (abs(product) >= 1) quaternion = intrinsic.slice(a.quaternion);
     else {
       const sign = product < 0 ? -1 : 1, theta = acos(abs(product)), w = sin(p * theta) / sqrt(1 - product * product);
       const scaleA = cos(p * theta) - abs(product) * w;
-      quaternion = a.quaternion.map((value, i) => value * scaleA + sign * b.quaternion[i] * w);
+      quaternion = intrinsic.map(a.quaternion, (value, i) => value * scaleA + sign * b.quaternion[i] * w);
     }
     return recompose({ translate: lerp(a.translate, b.translate), scale: lerp(a.scale, b.scale), skew: lerp(a.skew, b.skew), perspective: lerp(a.perspective, b.perspective), quaternion });
   }
@@ -457,36 +462,36 @@
     if (a.type === 'matrix' || b.type === 'matrix' || (a.type === 'rotate' && !sameAxis(a.v, b.v))) return { type: 'matrix', m: interpolateMatrix(functionMatrix(a), functionMatrix(b), p), three: a.three || b.three };
     if (a.type === 'perspective') { const ia = a.v[0] === Infinity ? 0 : 1 / max(a.v[0], 1), ib = b.v[0] === Infinity ? 0 : 1 / max(b.v[0], 1), inverse = ia + (ib - ia) * p; return { type: 'perspective', v: [inverse ? 1 / inverse : Infinity], three: true }; }
     if (a.type === 'rotate') { const axis = sqrt(a.v[0] * a.v[0] + a.v[1] * a.v[1] + a.v[2] * a.v[2]) ? a.v : b.v; return { type: 'rotate', v: [axis[0], axis[1], axis[2], a.v[3] + (b.v[3] - a.v[3]) * p], three: a.three || b.three }; }
-    return { type: a.type, v: a.v.map((value, i) => value + (b.v[i] - value) * p), three: a.three || b.three };
+    return { type: a.type, v: intrinsic.map(a.v, (value, i) => value + (b.v[i] - value) * p), three: a.three || b.three };
   }
   function interpolateTransform(from, to, p) {
     let a = from.list, b = to.list;
     if (!a.length && !b.length) return from;
-    if (!a.length) a = b.map(identityOf);
-    if (!b.length) b = a.map(identityOf);
+    if (!a.length) a = intrinsic.map(b, identityOf);
+    if (!b.length) b = intrinsic.map(a, identityOf);
     let prefix = 0;
     while (prefix < min(a.length, b.length) && a[prefix].type === b[prefix].type) prefix++;
     const out = [];
     for (let i = 0; i < prefix; i++) push(out, interpolateFunction(a[i], b[i], p));
-    if (prefix < max(a.length, b.length)) push(out, { type: 'matrix', m: interpolateMatrix(listMatrix(a.slice(prefix)), listMatrix(b.slice(prefix)), p) });
+    if (prefix < max(a.length, b.length)) push(out, { type: 'matrix', m: interpolateMatrix(listMatrix(intrinsic.slice(a, prefix)), listMatrix(intrinsic.slice(b, prefix)), p) });
     return { kind: 'transform', list: out };
   }
   function accumulateFunction(a, b) {
-    if (a.type === 'scale') return { type: 'scale', v: a.v.map((value, i) => value + b.v[i] - 1), three: a.three || b.three };
+    if (a.type === 'scale') return { type: 'scale', v: intrinsic.map(a.v, (value, i) => value + b.v[i] - 1), three: a.three || b.three };
     if (a.type === 'rotate') return sameAxis(a.v, b.v) ? { type: 'rotate', v: [a.v[0], a.v[1], a.v[2], a.v[3] + b.v[3]], three: a.three || b.three } : null;
-    if (a.type === 'translate' || a.type === 'skew') return { type: a.type, v: a.v.map((value, i) => value + b.v[i]), three: a.three || b.three };
+    if (a.type === 'translate' || a.type === 'skew') return { type: a.type, v: intrinsic.map(a.v, (value, i) => value + b.v[i]), three: a.three || b.three };
     return null;
   }
 
   // Typed value for a property's text; anything else animates discretely.
   function parseValue(property, text, context) {
     if (text === null || text === undefined) return null;
-    text = string(text).trim();
+    text = intrinsic.trim(string(text));
     if (property === 'transform') return parseTransform(text) || { kind: 'discrete', text };
     if (COLORS[property]) return parseColor(text, context) || { kind: 'discrete', text };
     if (UNIT_NUMBERS[property] || INTEGERS[property] || NUMBERS[property]) {
       let number = parseNumber(text);
-      if (number === null && UNIT_NUMBERS[property] && /%$/.test(text)) { const percent = parseNumber(text.slice(0, -1)); if (percent !== null) number = percent / 100; }
+      if (number === null && UNIT_NUMBERS[property] && intrinsic.test(/%$/, text)) { const percent = parseNumber(intrinsic.slice(text, 0, -1)); if (percent !== null) number = percent / 100; }
       if (property === 'font-weight' && number === null) number = text === 'normal' ? 400 : text === 'bold' ? 700 : null;
       if (number !== null) return { kind: 'number', value: number };
       if (property === 'line-height') { const length = parseLength(text, context); if (length && length.unit === 'px') return length; }
@@ -545,7 +550,7 @@
         for (let i = 0; i < value.list.length; i++) { const fn = underlying.list[i].type === value.list[i].type ? accumulateFunction(underlying.list[i], value.list[i]) : null; if (!fn) { out.length = 0; break; } push(out, fn); }
         if (out.length || !value.list.length) return { kind: 'transform', list: out };
       }
-      return { kind: 'transform', list: underlying.list.concat(value.list) };
+      return { kind: 'transform', list: intrinsic.concat(underlying.list, value.list) };
     }
     return value;
   }
@@ -558,9 +563,9 @@
   function offsetValue(value, prefix, dictionaryName) {
     if (value === undefined || value === null) return null;
     if (typeof value === 'number') { if (!isFinite(value)) throw new ErrorType(`${member(prefix, 'offset', dictionaryName)}The provided double value is non-finite.`); return value; }
-    const text = string(value).trim();
-    if (NUMBER.test(text)) return +text;
-    if (/%$/.test(text) && NUMBER.test(text.slice(0, -1))) return +text.slice(0, -1) / 100;
+    const text = intrinsic.trim(string(value));
+    if (intrinsic.test(NUMBER, text)) return +text;
+    if (intrinsic.test(/%$/, text) && intrinsic.test(NUMBER, intrinsic.slice(text, 0, -1))) return +intrinsic.slice(text, 0, -1) / 100;
     throw new ErrorType(`${prefix}timeline offset must be of the form [timeline-range-name] <percentage>`);
   }
   function propertyNames(input) {
@@ -634,9 +639,9 @@
         const entry = frames[i].values[j];
         let text = Native('value', entry.css, entry.text);
         if (text === null) continue;
-        if (INTEGERS[entry.css] && !/^([+-]?\d+|auto|inherit|initial|unset|revert|revert-layer)$/.test(text) && !/^var\(/.test(text)) continue;
+        if (INTEGERS[entry.css] && !intrinsic.test(/^([+-]?\d+|auto|inherit|initial|unset|revert|revert-layer)$/, text) && !intrinsic.test(/^var\(/, text)) continue;
         if (COLORS[entry.css]) text = specifiedColor(text);
-        else if (UNIT_NUMBERS[entry.css] && /%$/.test(text) && NUMBER.test(text.slice(0, -1))) text = format(+text.slice(0, -1) / 100);
+        else if (UNIT_NUMBERS[entry.css] && intrinsic.test(/%$/, text) && intrinsic.test(NUMBER, intrinsic.slice(text, 0, -1))) text = format(+intrinsic.slice(text, 0, -1) / 100);
         push(kept, { idl: entry.idl, css: entry.css, text });
       }
       frames[i].values = kept;
@@ -973,7 +978,7 @@
     return record.replace === 'active' && record.effect && timelines.get(record.timeline || {}) && playState(record) === 'finished' && effects.get(record.effect).target && effectState(record).activeTime !== null;
   }
   function removeReplaced() {
-    const candidates = sortBy(list().filter(animation => { const record = animations.get(animation); return record.timeline && replaceable(record); }), animation => animations.get(animation).seq);
+    const candidates = sortBy(intrinsic.filter(list(), animation => { const record = animations.get(animation); return record.timeline && replaceable(record); }), animation => animations.get(animation).seq);
     for (let i = 0; i < candidates.length; i++) {
       const record = animations.get(candidates[i]), effect = effects.get(record.effect);
       const properties = effect.frames.order;
@@ -1000,7 +1005,7 @@
     removeReplaced();
   }
   function frameDispatch() {
-    const pending = queue.splice(0, queue.length);
+    const pending = intrinsic.splice(queue, 0, queue.length);
     sortBy(pending, entry => entry.time === null ? -Infinity : entry.time);
     for (let i = 0; i < pending.length; i++) Native('dispatch', pending[i].animation, pending[i].event);
   }
@@ -1015,7 +1020,7 @@
   }
 
   // ---- effect stack and computed style ------------------------------------------------------
-  function fontSize(read) { const match = /^([\d.]+)px$/.exec(read('font-size')); return match ? +match[1] : 16; }
+  function fontSize(read) { const match = intrinsic.exec(/^([\d.]+)px$/, read('font-size')); return match ? +match[1] : 16; }
   // The animated value of one property on an element through its effect stack.
   function stackValue(stack, property, base, context) {
     let value = base;
@@ -1032,11 +1037,11 @@
     if (progress === null) return underlying;
     const effectComposite = entry.effect.composite;
     const keyframe = frame => frame.value || (frame.value = compose(property, underlying, parseValue(property, frame.text, context), frame.composite === 'auto' ? effectComposite : frame.composite));
-    const resolved = frames.map(frame => ({ offset: frame.offset, text: frame.text, composite: frame.composite, easing: frame.easing, value: null }));
-    if (resolved[0].offset !== 0) resolved.unshift({ offset: 0, easing: x => x, value: underlying });
+    const resolved = intrinsic.map(frames, frame => ({ offset: frame.offset, text: frame.text, composite: frame.composite, easing: frame.easing, value: null }));
+    if (resolved[0].offset !== 0) { for (let index = resolved.length; index > 0; index--) resolved[index] = resolved[index - 1]; resolved[0] = { offset: 0, easing: x => x, value: underlying }; }
     if (resolved[resolved.length - 1].offset !== 1) push(resolved, { offset: 1, easing: x => x, value: underlying });
     let start, end;
-    const zeros = resolved.filter(frame => frame.offset === 0), ones = resolved.filter(frame => frame.offset === 1);
+    const zeros = intrinsic.filter(resolved, frame => frame.offset === 0), ones = intrinsic.filter(resolved, frame => frame.offset === 1);
     if (progress < 0 && zeros.length > 1) return keyframe(zeros[0]);
     if (progress >= 1 && ones.length > 1) return keyframe(ones[ones.length - 1]);
     start = 0;
@@ -1065,9 +1070,9 @@
   }
   function stackResult(stack, read, inherited) {
     const properties = [];
-    for (let i = 0; i < stack.length; i++) for (let j = 0; j < stack[i].effect.frames.order.length; j++) { const name = stack[i].effect.frames.order[j]; if (properties.indexOf(name) < 0) push(properties, name); }
-    const at = properties.indexOf('color');
-    if (at > 0) { properties.splice(at, 1); properties.unshift('color'); }
+    for (let i = 0; i < stack.length; i++) for (let j = 0; j < stack[i].effect.frames.order.length; j++) { const name = stack[i].effect.frames.order[j]; if (!contains(properties, name)) push(properties, name); }
+    // 'color' first (currentColor resolves against it), the rest in order.
+    if (contains(properties, 'color') && properties[0] !== 'color') { let at = 0; while (properties[at] !== 'color') at++; for (; at > 0; at--) properties[at] = properties[at - 1]; properties[0] = 'color'; }
     let current = null;
     const underlyingText = property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
     const context = {
@@ -1109,7 +1114,7 @@
   }
   // Own-key order as Chrome's IDL lists them, constructor and @@toStringTag last.
   function reorder(prototype, names) {
-    const all = names.concat(['constructor']);
+    const all = intrinsic.concat(names, ['constructor']);
     for (let i = 0; i < all.length; i++) { const descriptor = getOwnDescriptor(prototype, all[i]); if (!descriptor) continue; delete prototype[all[i]]; define(prototype, all[i], descriptor); }
     const tag = getOwnDescriptor(prototype, Symbol.toStringTag); delete prototype[Symbol.toStringTag]; define(prototype, Symbol.toStringTag, tag);
   }
@@ -1220,7 +1225,7 @@
   });
   accessor(KP, 'composite', function () { return effectRecord(this).composite; }, function (value) {
     const effect = effectRecord(this), text = string(value);
-    if (COMPOSITE.indexOf(text) >= 0) effect.composite = text;
+    if (intrinsic.indexOf(COMPOSITE, text) >= 0) effect.composite = text;
   });
   method(KP, 'getKeyframes', function () {
     const effect = effectRecord(this), out = [];
@@ -1351,7 +1356,7 @@
     const element = effect.target;
     if (!rendered(element)) throw new Exception(`${prefix}Target element is not rendered.`, 'InvalidStateError');
     const stack = effectStack(element, this) || [];
-    if (record.replace === 'removed' && !stack.some(entry => entry.record === record)) {
+    if (record.replace === 'removed' && !intrinsic.some(stack, entry => entry.record === record)) {
       const state = timingAt(effect.timing, currentTime(record), record.rate < 0);
       if (state.activeTime !== null) push(stack, { record, effect, progress: state.progress });
     }
@@ -1480,10 +1485,10 @@
   }, 1);
   // Timeline ranges only position scroll and view timelines; their offsets need Typed OM.
   function rangeValue(value, prefix) {
-    if (typeof value === 'string' && value.trim().toLowerCase() === 'normal') return;
+    if (typeof value === 'string' && intrinsic.toLowerCase(intrinsic.trim(value)) === 'normal') return;
     if (objectLike(value)) return;
-    const text = string(value).trim();
-    if (!/^(cover|contain|entry|exit|entry-crossing|exit-crossing|scroll)(\s+[+-]?(?:\d+\.?\d*|\.\d+)(?:%|px))?$/i.test(text)) throw new ErrorType(`${prefix}Animation range must be a name <length-percent> pair`);
+    const text = intrinsic.trim(string(value));
+    if (!intrinsic.test(/^(cover|contain|entry|exit|entry-crossing|exit-crossing|scroll)(\s+[+-]?(?:\d+\.?\d*|\.\d+)(?:%|px))?$/i, text)) throw new ErrorType(`${prefix}Animation range must be a name <length-percent> pair`);
   }
   method(elementPrototype, 'getAnimations', function (options) {
     if (!isElement(this)) throw illegal();

@@ -248,7 +248,7 @@
     namespaceOf = accessor("namespaceURI", false, "Element"),
     firstChildOf = accessor("firstChild", false, "Node"),
     nextSiblingOf = accessor("nextSibling", false, "Node"),
-    replace = String.prototype.replace;
+    regexpReplace = ns.intrinsics.replace;
   const checkOption = (receiver) => apply(optionBrand, receiver, []);
   function optionText(option) {
     let text = "";
@@ -263,7 +263,7 @@
         }
       }
     })(option);
-    return apply(replace, apply(replace, text, [/[\t\n\f\r ]+/g, " "]), [/^ | $/g, ""]);
+    return regexpReplace(regexpReplace(text, /[\t\n\f\r ]+/g, " "), /^ | $/g, "");
   }
   const optionAccessor = (name, read, write) => {
     const descriptor = { get: make(function () { checkOption(this); return read(this); }, "get " + name, 0), enumerable: true, configurable: true };

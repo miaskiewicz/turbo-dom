@@ -4,9 +4,13 @@
   // page-replaced builtin (miaskiewicz/turbo-dom#172).
   var $apply=Reflect.apply,$gopd=Object.getOwnPropertyDescriptor,$def=Object.defineProperty,$create=Object.create;
   var $wmGet=WeakMap.prototype.get,$wmSet=WeakMap.prototype.set,$lower=String.prototype.toLowerCase;
+  var $jsonStringifyNative=JSON.stringify,$JSON=JSON,$jsonStringify=function(value){return $apply($jsonStringifyNative,$JSON,[value]);};
+  var $fromCodePoint=String.fromCodePoint,$imul=Math.imul,$Mround=Math.round;
   var $call=function(f,receiver,...rest){return $apply(f,receiver,rest);};
   // Element attribute natives for the reflected members (miaskiewicz/turbo-dom#199).
   // Captured once the Element interface is defined (below), before any page script runs.
+  // Node / Element / Attr natives the legacy members below call (miaskiewicz/turbo-dom#199), captured with the attribute natives.
+  var $N={__proto__:null};
   var $getAttributeNative,$setAttributeNative,$removeAttributeNative,$hasAttributeNative;
   var $getAttr=function(el,name){return $apply($getAttributeNative,el,[name]);},$setAttr=function(el,name,value){return $apply($setAttributeNative,el,[name,value]);};
   var $removeAttr=function(el,name){return $apply($removeAttributeNative,el,[name]);},$hasAttr=function(el,name){return $apply($hasAttributeNative,el,[name]);};
@@ -16,6 +20,8 @@
   // (the engine's own objects) keeps its own method. $O / $R are Object / Reflect.
   var $O={__proto__:null},$R={__proto__:null},$own=Reflect.ownKeys;
   (function(){var keys=$own(Object);for(var i=0;i<keys.length;i++)$O[keys[i]]=Object[keys[i]];keys=$own(Reflect);for(i=0;i<keys.length;i++)$R[keys[i]]=Reflect[keys[i]];})();
+  var $promiseResolveNative=Promise.resolve,$promiseRejectNative=Promise.reject,$PromiseType=Promise;
+  var $promiseResolve=function(value){return $apply($promiseResolveNative,$PromiseType,[value]);},$promiseReject=function(reason){return $apply($promiseRejectNative,$PromiseType,[reason]);};
   var $mapSizeGetter=$gopd(Map.prototype,'size').get,$mapSize=function(map){return $apply($mapSizeGetter,map,[]);};
   var $c=(function(){
     var isArray=Array.isArray,hasOwn=Object.hasOwn,MapType=Map,WeakMapType=WeakMap,SetType=Set,WeakSetType=WeakSet,RegExpType=RegExp;
@@ -32,6 +38,7 @@
       every:function(list,f,self){for(var i=0;i<list.length;i++)if(!$apply(f,self,[list[i],i,list]))return false;return true;},
       indexOf:function(list,value){for(var i=0;i<list.length;i++)if(list[i]===value)return i;return -1;},
       lastIndexOf:function(list,value){for(var i=list.length-1;i>=0;i--)if(list[i]===value)return i;return -1;},
+      find:function(list,f,self){for(var i=0;i<list.length;i++)if($apply(f,self,[list[i],i,list]))return list[i];return undefined;},
       includes:function(list,value){for(var i=0;i<list.length;i++)if(list[i]===value||(list[i]!==list[i]&&value!==value))return true;return false;},
       join:function(list,separator){var out='';separator=separator===undefined?',':String(separator);for(var i=0;i<list.length;i++){if(i)out+=separator;if(list[i]!=null)out+=list[i];}return out;},
       slice:function(list,from,to){var length=list.length;from=from===undefined?0:from<0?Math.max(length+from,0):Math.min(from,length);to=to===undefined?length:to<0?Math.max(length+to,0):Math.min(to,length);var out=[];for(var i=from;i<to;i++)add(out,list[i]);return out;},
@@ -50,14 +57,40 @@
       }
       pattern.lastIndex=0;return out+$apply(strings.slice,text,[at]);
     };
+    // String.prototype.split by a RegExp without RegExp.prototype[@@split] (which looks up exec,
+    // flags and the species constructor): a global clone of the pattern, built from the captured
+    // flag getters, scans the whole string so anchors keep their meaning.
+    var flagGetters=[['g','global'],['i','ignoreCase'],['m','multiline'],['s','dotAll'],['u','unicode'],['v','unicodeSets'],['d','hasIndices']],sourceOf=$gopd(RegExp.prototype,'source').get,clones=new WeakMapType(),cloneUnicode=new WeakMapType(),weakGet=weakMaps.get,weakSet=weakMaps.set;
+    for(var f=0;f<flagGetters.length;f++){var flagDescriptor=$gopd(RegExp.prototype,flagGetters[f][1]);flagGetters[f][1]=flagDescriptor&&flagDescriptor.get;}
+    var globalClone=function(pattern){
+      var clone=$apply(weakGet,clones,[pattern]);if(clone)return clone;
+      var flags='g';for(var k=1;k<flagGetters.length;k++)if(flagGetters[k][1]&&$apply(flagGetters[k][1],pattern,[]))flags+=flagGetters[k][0];
+      clone=new RegExpType($apply(sourceOf,pattern,[]),flags);$apply(weakSet,clones,[pattern,clone]);$apply(weakSet,cloneUnicode,[clone,$apply(strings.indexOf,flags,['u'])>=0||$apply(strings.indexOf,flags,['v'])>=0]);return clone;
+    };
+    var isPair=function(text,index){var high=$apply(strings.charCodeAt,text,[index]),low=$apply(strings.charCodeAt,text,[index+1]);return high>=0xD800&&high<=0xDBFF&&low>=0xDC00&&low<=0xDFFF;};
+    var split=function(text,pattern,limit){
+      var out=[],max=limit===undefined?4294967295:limit>>>0;if(max===0)return out;
+      var clone=globalClone(pattern),unicode=$apply(weakGet,cloneUnicode,[clone]),at=0,from=0,match;
+      if(text===''){clone.lastIndex=0;match=$apply(exec,clone,[text]);if(!match)add(out,text);return out;}
+      while(from<text.length){
+        clone.lastIndex=from;match=$apply(exec,clone,[text]);
+        if(!match||match.index>=text.length)break;
+        var index=match.index,end=index+match[0].length;
+        if(end===at){from=index+(unicode&&isPair(text,index)?2:1);continue;}
+        add(out,$apply(strings.slice,text,[at,index]));if(out.length===max)return out;
+        for(var i=1;i<match.length;i++){add(out,match[i]);if(out.length===max)return out;}
+        at=end;from=at;
+      }
+      add(out,$apply(strings.slice,text,[at]));return out;
+    };
     var dispatch=function(name){return function(receiver){var rest=[];for(var i=1;i<arguments.length;i++)add(rest,arguments[i]);var t=null;
-      if(typeof receiver==='string'){if(name==='replace')return replace(receiver,rest[0],rest[1]);t=strings;}
+      if(typeof receiver==='string'){if(name==='replace')return replace(receiver,rest[0],rest[1]);if(name==='split'&&rest[0] instanceof RegExpType)return split(receiver,rest[0],rest[1]);t=strings;}
       else if(typeof receiver==='function'){if(name==='call')return $apply(receiver,rest[0],$apply(arrays.slice,null,[rest,1]));if(name==='apply')return $apply(receiver,rest[0],rest[1]==null?[]:rest[1]);}
       else if(isArray(receiver)){if(arrays[name]){var args=[];add(args,receiver);for(var k=0;k<rest.length;k++)add(args,rest[k]);return $apply(arrays[name],null,args);}}
       else if(receiver instanceof MapType)t=maps;else if(receiver instanceof WeakMapType)t=weakMaps;else if(receiver instanceof SetType)t=sets;else if(receiver instanceof WeakSetType)t=weakSets;else if(receiver instanceof RegExpType){if(name==='test')return $apply(exec,receiver,rest)!==null;t=regexps;}
       if(t&&t[name])return $apply(t[name],receiver,rest);
       return $apply(receiver[name],receiver,rest);};};
-    var out={__proto__:null},names=['get','set','has','delete','clear','add','slice','forEach','test','trim','push','indexOf','startsWith','splice','replace','toLowerCase','toUpperCase','map','concat','join','some','lastIndexOf','exec','filter','every','call','apply','endsWith','includes'];
+    var out={__proto__:null},names=['get','set','has','delete','clear','add','slice','forEach','test','trim','push','indexOf','startsWith','splice','replace','toLowerCase','toUpperCase','map','concat','join','some','lastIndexOf','exec','filter','every','call','apply','endsWith','includes','split','charCodeAt','find'];
     for(var i=0;i<names.length;i++)out[names[i]]=dispatch(names[i]);
     return out;
   })();
@@ -66,6 +99,8 @@
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
+  // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
+  var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
   var cssFontNumber=Number,cssFontString=String,cssFontFinite=Number.isFinite,cssFontPrecision=Number.prototype.toPrecision,cssFontLower=String.prototype.toLowerCase;
   var prepareInlineHandler=g.__prepareInlineHandler,noteInlineHandler=g.__noteInlineHandler;delete g.__prepareInlineHandler;delete g.__noteInlineHandler;
@@ -98,7 +133,7 @@
   // g. Configurable so a test can stub framing (Object.defineProperty(window,'parent',{value:...})).
   // Without these, `window.parent !== window` reads as "always inside an iframe" and silently breaks
   // top-level/iframe detection that works under vitest.
-  ['self', 'parent', 'top', 'frames'].forEach(function(k){
+  $c.forEach(['self', 'parent', 'top', 'frames'], function(k){
     if (g[k] !== g) { try { Object.defineProperty(g, k, { value: g, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g[k] = g; } catch(e2){} } }
   });
   if (typeof g.frameElement === 'undefined') { try { Object.defineProperty(g, 'frameElement', { value: null, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g.frameElement = null; } catch(e2){} } }
@@ -129,19 +164,20 @@
     var inherited=parent?declarationRecords.get(parentSnapshot||parentStyle(parent)).fontState:null;
     var initial={__proto__:null,rootSize:initialSize,family:initialFamily,size:initialSize,style:'normal',weight:'400',stretch:'100%',caps:'normal',line:{__proto__:null,kind:'normal',value:0}};
     inherited=inherited||initial;
-    function raw(name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||/^(inherit|unset|revert|revert-layer)$/.test(key)?inheritedValue:key==='initial'?initialValue:value;}
+    function raw(name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||$c.test(/^(inherit|unset|revert|revert-layer)$/, key)?inheritedValue:key==='initial'?initialValue:value;}
     function length(value,base,rem,typedLine){
       function term(text,scalar){
-        var match=/^((?:\d*\.)?\d+)(px|em|rem|%|pt|pc|in|cm|mm|q)?$/i.exec(text);if(!match)return null;
+        var match=$c.exec(/^((?:\d*\.)?\d+)(px|em|rem|%|pt|pc|in|cm|mm|q)?$/i, text);if(!match)return null;
         var number=cssFontNumber(match[1]),unit=fontLower(match[2]||''),scale={__proto__:null,px:1,pt:96/72,pc:16,in:96,cm:96/2.54,mm:96/25.4,q:96/101.6};
         var resolved=unit==='em'?(base===null?null:number*base):unit==='rem'?(rem===null?null:number*rem):unit==='%'?(base===null?null:number*base/100):unit?number*scale[unit]:scalar||number===0?number:null;
         return resolved!==null&&cssFontFinite(resolved)?{__proto__:null,number:resolved,dimension:unit?1:0}:null;
       }
       function result(value){if(typedLine)return {__proto__:null,kind:value&&value.dimension===0?'factor':'length',value:value?value.number:null,text:source};return value&&(value.dimension===1||value.number===0)?value.number:null;}
       var source=value;
-      if(!/^calc\(/i.test(value))return result(term(value,false));
-      var expression=value.replace(/calc\(/gi,'(').replace(/\s+/g,''),tokens=expression.match(/(?:\d*\.)?\d+(?:[a-z]+|%)?|[()+*/-]/gi)||[],cursor=0;
-      if(tokens.join('')!==expression)return result(null);
+      if(!$c.test(/^calc\(/i, value))return result(term(value,false));
+      var expression=$c.replace($c.replace(value, /calc\(/gi,'('), /\s+/g,''),tokens=[],cursor=0,tokenPattern=/(?:\d*\.)?\d+(?:[a-z]+|%)?|[()+*/-]/gi,tokenMatch;
+      tokenPattern.lastIndex=0;while((tokenMatch=$c.exec(tokenPattern,expression))!==null)$c.push(tokens,tokenMatch[0]);
+      if($c.join(tokens, '')!==expression)return result(null);
       function atom(){var token=tokens[cursor++];if(token==='+'||token==='-'){var signed=atom();if(signed&&token==='-')signed.number=-signed.number;return signed;}if(token==='('){var grouped=sum();return tokens[cursor++]===')'?grouped:null;}return term(token||'',true);}
       function product(){var value=atom();while(tokens[cursor]==='*'||tokens[cursor]==='/'){var operator=tokens[cursor++],right=atom();if(!value||!right||operator==='/'&&(right.number===0||right.dimension!==0)||operator==='*'&&value.dimension+right.dimension>1)return null;value={__proto__:null,number:operator==='*'?value.number*right.number:value.number/right.number,dimension:operator==='*'?value.dimension+right.dimension:value.dimension};}return value;}
       function sum(){var value=product();while(tokens[cursor]==='+'||tokens[cursor]==='-'){var operator=tokens[cursor++],right=product();if(!value||!right||value.dimension!==right.dimension)return null;value={__proto__:null,number:operator==='+'?value.number+right.number:value.number-right.number,dimension:value.dimension};}return value;}
@@ -155,18 +191,18 @@
     if(size===null){if(sizeKey==='smaller')size=inherited.size===null?null:inherited.size/1.2;else if(sizeKey==='larger')size=inherited.size===null?null:inherited.size*1.2;else if(sizeKeywords[sizeKey])size=sizeKeywords[sizeKey]*initialSize/16;}
     if(size!==null&&size<0)size=0;
     var family=raw('font-family',inherited.family,initial.family),style=raw('font-style',inherited.style,initial.style),weight=cssFontString(raw('font-weight',inherited.weight,initial.weight));
-    var styleKey=fontLower(style);if(/^(normal|italic|oblique)$/.test(styleKey))style=styleKey;
-    var weightKey=fontLower(weight);if(/^(normal|bold|bolder|lighter)$/.test(weightKey))weight=weightKey;
-    family=cssParts(family,',').map(function(part){var name=part.trim(),key=fontLower(name);return /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded|math|emoji|fangsong)$/.test(key)?key:name;}).join(', ');
+    var styleKey=fontLower(style);if($c.test(/^(normal|italic|oblique)$/, styleKey))style=styleKey;
+    var weightKey=fontLower(weight);if($c.test(/^(normal|bold|bolder|lighter)$/, weightKey))weight=weightKey;
+    family=$c.join($c.map(cssParts(family,','), function(part){var name=$c.trim(part),key=fontLower(name);return $c.test(/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded|math|emoji|fangsong)$/, key)?key:name;}), ', ');
     if(weight==='normal')weight='400';else if(weight==='bold')weight='700';else if(weight==='bolder')weight=cssFontNumber(inherited.weight)<350?'400':cssFontNumber(inherited.weight)<550?'700':'900';else if(weight==='lighter')weight=cssFontNumber(inherited.weight)<550?'100':cssFontNumber(inherited.weight)<750?'400':'700';
     var stretch=raw('font-stretch',inherited.stretch,initial.stretch),stretchValues={__proto__:null,'ultra-condensed':'50%','extra-condensed':'62.5%',condensed:'75%','semi-condensed':'87.5%',normal:'100%','semi-expanded':'112.5%',expanded:'125%','extra-expanded':'150%','ultra-expanded':'200%'};
     stretch=stretchValues[fontLower(stretch)]||stretch;
     var caps=raw('font-variant-caps',raw('font-variant',inherited.caps,initial.caps),initial.caps);
-    var capsKey=fontLower(caps);if(/^(normal|small-caps|all-small-caps|petite-caps|all-petite-caps|unicase|titling-caps)$/.test(capsKey))caps=capsKey;
+    var capsKey=fontLower(caps);if($c.test(/^(normal|small-caps|all-small-caps|petite-caps|all-petite-caps|unicase|titling-caps)$/, capsKey))caps=capsKey;
     var lineValue=decl['line-height'],lineKey=typeof lineValue==='string'?fontLower(lineValue):lineValue,line;
-    if(!lineValue||/^(inherit|unset|revert|revert-layer)$/.test(lineKey))line=inherited.line;
-    else if(/^(normal|initial)$/.test(lineKey))line=initial.line;
-    else if(/^(?:\d*\.)?\d+$/.test(lineValue))line={__proto__:null,kind:'factor',value:cssFontNumber(lineValue)};
+    if(!lineValue||$c.test(/^(inherit|unset|revert|revert-layer)$/, lineKey))line=inherited.line;
+    else if($c.test(/^(normal|initial)$/, lineKey))line=initial.line;
+    else if($c.test(/^(?:\d*\.)?\d+$/, lineValue))line={__proto__:null,kind:'factor',value:cssFontNumber(lineValue)};
     else line=length(lineValue,size,rootSize,true);
     if(line.value!==null&&line.value<0)line={__proto__:null,kind:line.kind,value:0};
     var available=!!(connected&&context&&context[4]&&(parent?inherited.active:root===element));
@@ -174,10 +210,10 @@
     var lineText=line.kind==='normal'?'normal':line.value===null?line.text:line.kind==='factor'&&size===null?cssFontString(line.value):pixels(line.kind==='factor'?line.value*size:line.value);
     var values={'font-family':family,'font-size':size===null?cssFontString(sizeValue):pixels(size),'font-style':style,'font-weight':weight,'font-stretch':stretch,'font-variant-caps':caps,'line-height':lineText};
     var shorthand=[];
-    if(style!=='normal')shorthand.push(style);if(caps!=='normal')shorthand.push(caps);if(weight!=='400')shorthand.push(weight);
-    if(stretch!=='100%'){var stretchName=Object.keys(stretchValues).find(function(key){return stretchValues[key]===stretch;});shorthand.push(stretchName||stretch);}
-    shorthand.push(values['font-size']);if(lineText!=='normal')shorthand.push('/ '+lineText);shorthand.push(family);values.font=shorthand.join(' ');
-    Object.keys(values).forEach(function(name){var value=available?values[name]:'';decl[name]=value;decl[name.replace(/-([a-z])/g,function(_,letter){return letter.toUpperCase();})]=value;});
+    if(style!=='normal')$c.push(shorthand, style);if(caps!=='normal')$c.push(shorthand, caps);if(weight!=='400')$c.push(shorthand, weight);
+    if(stretch!=='100%'){var stretchName=$c.find($O.keys(stretchValues),function(key){return stretchValues[key]===stretch;});$c.push(shorthand, stretchName||stretch);}
+    $c.push(shorthand, values['font-size']);if(lineText!=='normal')$c.push(shorthand, '/ '+lineText);$c.push(shorthand, family);values.font=$c.join(shorthand, ' ');
+    $c.forEach($O.keys(values), function(name){var value=available?values[name]:'';decl[name]=value;decl[$c.replace(name, /-([a-z])/g,function(_,letter){return $c.toUpperCase(letter);})]=value;});
     return state;
   }
   if (typeof g.getComputedStyle === 'undefined') g.getComputedStyle = function computeStyle(el){
@@ -202,20 +238,20 @@
   function cssIdentifierPrefix(text){
     var at=0,name='',start=true;
     function escape(){
-      var hex=/^[0-9a-fA-F]{1,6}/.exec(text.slice(at+1,at+7));
-      if(hex){var code=parseInt(hex[0],16);at+=1+hex[0].length;if(/[ \t\n\r\f]/.test(text[at]||''))at++;return code===0||code>0x10FFFF||code>=0xD800&&code<=0xDFFF?'\uFFFD':String.fromCodePoint(code);}
+      var hex=$c.exec(/^[0-9a-fA-F]{1,6}/,$c.slice(text,at+1,at+7));
+      if(hex){var code=parseInt(hex[0],16);at+=1+hex[0].length;if($c.test(/[ \t\n\r\f]/,text[at]||''))at++;return code===0||code>0x10FFFF||code>=0xD800&&code<=0xDFFF?'\uFFFD':$apply($fromCodePoint,String,[code]);}
       var next=text[at+1];if(next===undefined||next==='\n')return null;at+=2;return next;
     }
     if(text[at]==='-'){name+='-';at++;if(text[at]==='-'){name+='-';at++;start=false;}}
     while(at<text.length){
       var c=text[at],part=null;
       if(c==='\\')part=escape();
-      else if(/[A-Za-z_\u0080-\uFFFF]/.test(c)||!start&&/[0-9-]/.test(c)){part=c;at++;}
+      else if($c.test(/[A-Za-z_\u0080-\uFFFF]/,c)||!start&&$c.test(/[0-9-]/,c)){part=c;at++;}
       if(part===null)break;
       name+=part;start=false;
     }
     if(start)return null;
-    return {name:name.replace(/[A-Z]/g,function(c){return c.toLowerCase();}),length:at};
+    return {name:$c.replace(name,/[A-Z]/g,function(c){return $c.toLowerCase(c);}),length:at};
   }
   // The pseudo-element a getComputedStyle(element, pseudoElt) read targets (turbo-dom#30, #47),
   // per Chrome 156: '' reads the element (no argument, a string without a leading colon that
@@ -225,16 +261,16 @@
   // `picker(select)`).
   function computedPseudoTarget(value){
     if(value===undefined||value===null)return '';
-    var text=(''+value).replace(/\/\*[\s\S]*?(?:\*\/|$)/g,'');
+    var text=$c.replace(''+value,/\/\*[\s\S]*?(?:\*\/|$)/g,'');
     var colons=0;while(text[colons]===':')colons++;
-    var rest=text.slice(colons),ident=cssIdentifierPrefix(rest),name=ident&&ident.name;
+    var rest=$c.slice(text,colons),ident=cssIdentifierPrefix(rest),name=ident&&ident.name;
     var bare=name==='before'||name==='after';
     if(colons===0){if(!ident)return '';if(ident.length<rest.length)return null;return bare?name:'';}
     if(colons>2||!ident)return null;
     if(ident.length<rest.length){
       var kind=computedPseudoFunctions[name];
       if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!kind)return null;
-      var argument=rest.slice(ident.length+1,-1).replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g,''),word=cssIdentifierPrefix(argument);
+      var argument=$c.replace($c.slice(rest,ident.length+1,-1),/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g,''),word=cssIdentifierPrefix(argument);
       if(kind==='direction'){var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';return scrollButtonDirections[direction]?name+'('+direction+')':null;}
       if(!word||word.length!==argument.length)return null;
       if(kind==='select')return word.name==='select'?name+'(select)':null;
@@ -242,7 +278,7 @@
     }
     if(colons===1)return bare||name==='first-line'||name==='first-letter'?name:null;
     if(computedPseudoNames[name])return name;
-    return name==='cue'||name.slice(0,8)==='-webkit-'||name.slice(0,10)==='-internal-'?'':null;
+    return name==='cue'||$c.slice(name,0,8)==='-webkit-'||$c.slice(name,0,10)==='-internal-'?'':null;
   }
   // Page-replaceable numeric and string intrinsics never participate in this read.
   var cssZoomFround=Math.fround,cssZoomExec=RegExp.prototype.exec,cssZoomTrim=String.prototype.trim;
@@ -258,7 +294,7 @@
   // Chrome 156 html.css display / position for an element no author rule styles (turbo-surf#36;
   // computed_defaults_chrome156.json). The attribute-dependent rules are matched natively.
   var uaDisplayByTag = (function(){
-    var table = { __proto__: null }, add = function(display, names){ names.split(' ').forEach(function(name){ table[name] = display; }); };
+    var table = { __proto__: null }, add = function(display, names){ $c.forEach($c.split(names, ' '), function(name){ table[name] = display; }); };
     add('none', 'area base basefont datalist head link meta noembed noframes param rp script style template title');
     add('block', 'html address blockquote body center dialog div figure figcaption footer form header hr legend listing main p plaintext pre search xmp article aside h1 h2 h3 h4 h5 h6 hgroup nav section dir dd dl dt menu ol ul fieldset details summary optgroup option frameset frame');
     add('list-item', 'li');
@@ -309,7 +345,7 @@
   function computedPseudoInContainer(el, parentStyle){
     var display = computedSnapshotValue(parentStyle(el), 'display');
     if (display === 'contents') return computedFlexOrGridItem(el, parentStyle);
-    return /^(inline-)?(flex|grid)$/.test(display);
+    return $c.test(/^(inline-)?(flex|grid)$/, display);
   }
   // html.css form controls (turbo-dom#61): `font: -webkit-small-control` (13.3333px Arial;
   // monospace for textarea and the date / time inputs), optgroup bolder, option normal; the measured button
@@ -326,7 +362,7 @@
     return { 'font': '13.3333px ' + (monospaceInputTypes[type] ? 'monospace' : 'Arial') };
   }
   // CSS Position 4: a top-layer box whose position is static / relative / sticky is absolute.
-  function topLayerPosition(position){ return /^(static|relative|sticky)$/.test(position) ? 'absolute' : position; }
+  function topLayerPosition(position){ return $c.test(/^(static|relative|sticky)$/, position) ? 'absolute' : position; }
   // Chrome 156 html.css values for a modal dialog (`dialog:modal`) and for ::backdrop; the
   // max sizes (calc(100% - 6px - 2em)) resolve against the dialog's own font size later.
   var modalDialogUserAgent = { 'overflow': 'auto', 'top': '0px', 'bottom': '0px', 'visibility': 'visible' };
@@ -348,9 +384,9 @@
       if (c === '"' || c === "'") quote = c;
       else if (c === '(' || c === '[') depth++;
       else if (c === ')' || c === ']') depth--;
-      else if (c === ',' && depth === 0) { items.push(text.slice(start, i)); start = i + 1; }
+      else if (c === ',' && depth === 0) { $c.push(items, $c.slice(text, start, i)); start = i + 1; }
     }
-    items.push(text.slice(start));
+    $c.push(items, $c.slice(text, start));
     return items;
   }
   // Selector aliases of pseudo-elements (`::-webkit-input-placeholder` is `::placeholder`).
@@ -362,22 +398,22 @@
   // over the selector's pseudo-element name.
   function pseudoRuleMatches(el, selectorText, pseudo){
     var items = selectorListItems(String(selectorText));
-    var wanted = typeof pseudo === 'string' ? /^([a-z-]+)(?:\((.*)\))?$/.exec(pseudo) : null;
+    var wanted = typeof pseudo === 'string' ? $c.exec(/^([a-z-]+)(?:\((.*)\))?$/, pseudo) : null;
     for (var i = 0; i < items.length; i++) {
-      var item = items[i].trim(), match = /(::?)([A-Za-z-]+)(?:\(\s*([^()]*?)\s*\))?$/.exec(item);
+      var item = $c.trim(items[i]), match = $c.exec(/(::?)([A-Za-z-]+)(?:\(\s*([^()]*?)\s*\))?$/, item);
       if (!match || match.index > 0 && item[match.index - 1] === '\\') continue;
-      var name = match[2].toLowerCase(), argument = match[3];
+      var name = $c.toLowerCase(match[2]), argument = match[3];
       name = pseudoSelectorAliases[name] || name;
-      if (match[1] === ':' && !/^(before|after|first-line|first-letter)$/.test(name)) continue;
+      if (match[1] === ':' && !$c.test(/^(before|after|first-line|first-letter)$/, name)) continue;
       if (wanted) {
         if (name !== wanted[1] || (argument === undefined) !== (wanted[2] === undefined)) continue;
         if (argument !== undefined && argument !== '*' && wanted[2] !== '*') {
-          var same = wanted[1] === 'picker' || wanted[1] === 'scroll-button' ? argument.toLowerCase() === wanted[2] : argument === wanted[2];
+          var same = wanted[1] === 'picker' || wanted[1] === 'scroll-button' ? $c.toLowerCase(argument) === wanted[2] : argument === wanted[2];
           if (!same) continue;
         }
       } else if (!pseudo(name)) continue;
-      var origin = item.slice(0, match.index);
-      if (origin === '' || /[\s>+~]$/.test(origin)) origin += '*';
+      var origin = $c.slice(item, 0, match.index);
+      if (origin === '' || $c.test(/[\s>+~]$/, origin)) origin += '*';
       if (computedNativeMatches(el, origin)) return true;
     }
     return false;
@@ -389,7 +425,7 @@
   // pseudo-elements exist only on their elements: ::placeholder on text inputs / textarea with a
   // placeholder, ::file-selector-button on file inputs, ::details-content on details,
   // ::picker(select) on select).
-  function cssPropertySet(text){ var set = { __proto__: null }; text.split(' ').forEach(function(name){ set[name] = true; }); return set; }
+  function cssPropertySet(text){ var set = { __proto__: null }; $c.forEach($c.split(text, ' '), function(name){ set[name] = true; }); return set; }
   var pseudoFontProperties = 'font font-family font-size font-style font-variant font-variant-caps font-variant-numeric font-variant-ligatures font-variant-east-asian font-variant-alternates font-variant-position font-weight font-stretch font-feature-settings font-kerning font-optical-sizing font-size-adjust font-synthesis font-variation-settings font-palette line-height letter-spacing word-spacing';
   var pseudoAnimationProperties = 'animation animation-name animation-duration animation-timing-function animation-delay animation-iteration-count animation-direction animation-fill-mode animation-play-state transition transition-property transition-duration transition-timing-function transition-delay transition-behavior';
   var pseudoTextProperties = 'background background-color background-image background-position background-repeat background-size background-attachment background-clip background-origin text-decoration text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-underline-position text-emphasis text-emphasis-color text-emphasis-style text-emphasis-position text-shadow text-transform vertical-align -webkit-text-fill-color -webkit-text-stroke -webkit-text-stroke-color -webkit-text-stroke-width';
@@ -400,7 +436,7 @@
   function pseudoAccepts(kind){
     if (kind === 'marker') return function(name){ return markerProperties[name] === true; };
     if (kind === 'first-line') return function(name){ return firstLineProperties[name] === true; };
-    if (kind === 'first-letter') return function(name){ return firstLineProperties[name] === true || name === 'float' || /^(margin|padding|border)(-|$)/.test(name) || name === 'box-shadow'; };
+    if (kind === 'first-letter') return function(name){ return firstLineProperties[name] === true || name === 'float' || $c.test(/^(margin|padding|border)(-|$)/, name) || name === 'box-shadow'; };
     if (kind === 'highlight') return function(name){ return highlightProperties[name] === true; };
     return null;
   }
@@ -423,7 +459,7 @@
       var value = '';
       try { value = computedSnapshotValue(parentStyle(node), name); } catch(e){}
       if (!value && own) value = own(node);
-      if (value && !/^(inherit|unset)$/i.test(value)) return /^initial$/i.test(value) ? fallback : value;
+      if (value && !$c.test(/^(inherit|unset)$/i, value)) return $c.test(/^initial$/i, value) ? fallback : value;
       var context = null; try { context = computedFontContext(node); } catch(e){}
       node = context ? context[2] : null;
     }
@@ -432,14 +468,14 @@
   function markerInside(el, parentStyle){
     var position = computedInheritedAuthored(el, 'list-style-position', parentStyle, 'outside', function(node){
       var shorthand = ''; try { shorthand = computedSnapshotValue(parentStyle(node), 'list-style'); } catch(e){}
-      var word = /(?:^|\s)(inside|outside)(?:\s|$)/i.exec(shorthand || '');
+      var word = $c.exec(/(?:^|\s)(inside|outside)(?:\s|$)/i, shorthand || '');
       if (word) return word[1];
       return computedHtmlTag(node) === 'SUMMARY' && computedNativeMatches(node, 'details > summary:first-of-type') ? 'inside' : '';
     });
-    return /^inside$/i.test(position);
+    return $c.test(/^inside$/i, position);
   }
   function computedPseudoInfo(el, pseudo, parentStyle){
-    var kind = pseudo.replace(/\(.*$/, ''), tag = computedHtmlTag(el);
+    var kind = $c.replace(pseudo, /\(.*$/, ''), tag = computedHtmlTag(el);
     var info = { kind: kind, authored: true, accepts: null, ua: {}, important: null, display: 'inline', position: 'static', container: true, generated: false, highlight: false };
     if (kind === 'marker') {
       var inside = markerInside(el, parentStyle);
@@ -476,13 +512,13 @@
       if (kind === 'picker-icon' && tag === 'SELECT') info.display = 'block';
     } else if (kind === 'scroll-marker-group') {
       info.display = 'block';
-    } else if (kind.slice(0, 15) === 'view-transition' && tag) {
+    } else if ($c.slice(kind, 0, 15) === 'view-transition' && tag) {
       info.display = 'block'; info.position = 'absolute';
       info.ua = kind === 'view-transition' || kind === 'view-transition-image-pair' ? { 'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px' } : kind === 'view-transition-group' ? { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': '0px' } : { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': 'auto' };
     }
     // ::view-transition > -group() > -image-pair() > -old() / -new().
-    if (kind.slice(0, 16) === 'view-transition-') {
-      var argument = pseudo.slice(kind.length);
+    if ($c.slice(kind, 0, 16) === 'view-transition-') {
+      var argument = $c.slice(pseudo, kind.length);
       info.parentPseudo = kind === 'view-transition-group' ? 'view-transition' : kind === 'view-transition-image-pair' ? 'view-transition-group' + argument : 'view-transition-image-pair' + argument;
     }
     info.accepts = pseudoAccepts(kind);
@@ -515,7 +551,7 @@
       if (!parent) return false;
       var display = computedSnapshotValue(parentStyle(parent), 'display');
       if (display === 'contents') { node = parent; continue; }
-      return /^(inline-)?(flex|grid)$/.test(display);
+      return $c.test(/^(inline-)?(flex|grid)$/, display);
     }
     return false;
   }
@@ -556,9 +592,9 @@
       var rules = appliedSheetRuleRecords(sheets[si]);
       for (var ri=0; ri<rules.length; ri++) {
         var rule=rules[ri];
-        if(rule.type===1){out.push(rule.selectorText);continue;}
-        var txt = String(cssRuleText(rule) || ''), br = txt.indexOf('{');
-        if (br >= 0) out.push(txt.slice(0, br).trim());
+        if(rule.type===1){$c.push(out, rule.selectorText);continue;}
+        var txt = String(cssRuleText(rule) || ''), br = $c.indexOf(txt, '{');
+        if (br >= 0) $c.push(out, $c.trim($c.slice(txt, 0, br)));
       }
     }
     return out;
@@ -630,16 +666,16 @@
     while(index<text.length){
       var c=text[index];
       if(c==='\\')return '*';
-      if(c==='"'||c==="'"){var end=index+1;while(end<text.length&&text[end]!==c){if(text[end]==='\\')end++;end++;}out+=text.slice(index,end+1);index=end+1;continue;}
+      if(c==='"'||c==="'"){var end=index+1;while(end<text.length&&text[end]!==c){if(text[end]==='\\')end++;end++;}out+=$c.slice(text, index,end+1);index=end+1;continue;}
       if(c!==':'||text[index+1]===':'){if(c===':'){out+='::';index+=2;continue;}out+=c;index++;continue;}
-      var name=cssApply(cssZoomExec,/^[A-Za-z0-9_-]*/,[text.slice(index+1)])[0],after=index+1+name.length;
+      var name=cssApply(cssZoomExec,/^[A-Za-z0-9_-]*/,[$c.slice(text, index+1)])[0],after=index+1+name.length;
       if(text[after]!=='('){out+=cssApply(cssZoomExec,computedStateName,[name])?':is(*)':':'+name;index=after;continue;}
       var depth=1,close=after+1;
       while(close<text.length&&depth){var d=text[close];if(d==='\\')return '*';if(d==='"'||d==="'"){var q=close+1;while(q<text.length&&text[q]!==d)q++;close=q+1;continue;}if(d==='(')depth++;else if(d===')')depth--;close++;}
-      var inner=text.slice(after+1,close-1);
+      var inner=$c.slice(text, after+1,close-1);
       if(cssApply(cssZoomExec,computedStateName,[name]))out+=':is(*)';
       else if(cssApply(cssZoomExec,computedListFunction,[name]))out+=':'+name+'('+computedRelaxSelector(inner)+')';
-      else out+=cssApply(cssZoomExec,computedStatePattern,[inner])?':is(*)':text.slice(index,close);
+      else out+=cssApply(cssZoomExec,computedStatePattern,[inner])?':is(*)':$c.slice(text, index,close);
       index=close;
     }
     return out;
@@ -654,6 +690,7 @@
   }
   function computeStyleFresh(el,snapshots,sink,pseudo,deps){
     var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
+    if(noteCascadeRun)noteCascadeRun();
     // Percentage lookup may visit several ancestors before font inheritance asks
     // for the immediate parent again. Reuse each resolved ancestor only in this read.
     function parentStyle(node){var style=computeStyleSnapshot(node,snapshots);if(deps&&deps[deps.length-2]!==node){deps[deps.length]=node;deps[deps.length]=style;}return style;}
@@ -671,7 +708,7 @@
       try { live = __ns.domAccessor('isConnected',false,'Node').call(el) && !computedMediaChild(el); } catch(e) {}
       if (!live) return __ns.makeComputedStyleDeclaration({},el,null,pseudo);
     }
-    var camel = function(p){ return p.replace(/-([a-z])/g, function(_,c){ return c.toUpperCase(); }); };
+    var camel = function(p){ return $c.replace(p,/-([a-z])/g, function(_,c){ return $c.toUpperCase(c); }); };
     var decl = { __proto__:null, getPropertyValue: function(p){ var v = this[p]; if (v == null) v = this[camel(p)]; return v == null ? '' : String(v); }, getPropertyPriority: function(){ return ''; }, length: 0 };
     // Minimal cascade: merge declarations from every injected stylesheet rule whose selector matches
     // `el` (emotion's `sx` -> `.css-xxx{...}`), then overlay inline declarations,
@@ -684,9 +721,9 @@
     // Normalize authored hex colors to the computed rgb()/rgba() spelling used by the
     // declaration records and style assertions.
     var normColor = function(v){
-      var m = /^#([0-9a-fA-F]{3})$/.exec(v); if (m){ var x=m[1]; return 'rgb('+parseInt(x[0]+x[0],16)+', '+parseInt(x[1]+x[1],16)+', '+parseInt(x[2]+x[2],16)+')'; }
-      m = /^#([0-9a-fA-F]{6})$/.exec(v); if (m){ var h=m[1]; return 'rgb('+parseInt(h.slice(0,2),16)+', '+parseInt(h.slice(2,4),16)+', '+parseInt(h.slice(4,6),16)+')'; }
-      m = /^#([0-9a-fA-F]{8})$/.exec(v); if (m){ var h2=m[1]; return 'rgba('+parseInt(h2.slice(0,2),16)+', '+parseInt(h2.slice(2,4),16)+', '+parseInt(h2.slice(4,6),16)+', '+(Math.round(parseInt(h2.slice(6,8),16)/255*100)/100)+')'; }
+      var m = $c.exec(/^#([0-9a-fA-F]{3})$/, v); if (m){ var x=m[1]; return 'rgb('+parseInt(x[0]+x[0],16)+', '+parseInt(x[1]+x[1],16)+', '+parseInt(x[2]+x[2],16)+')'; }
+      m = $c.exec(/^#([0-9a-fA-F]{6})$/, v); if (m){ var h=m[1]; return 'rgb('+parseInt($c.slice(h, 0,2),16)+', '+parseInt($c.slice(h, 2,4),16)+', '+parseInt($c.slice(h, 4,6),16)+')'; }
+      m = $c.exec(/^#([0-9a-fA-F]{8})$/, v); if (m){ var h2=m[1]; return 'rgba('+parseInt($c.slice(h2, 0,2),16)+', '+parseInt($c.slice(h2, 2,4),16)+', '+parseInt($c.slice(h2, 4,6),16)+', '+($Mround(parseInt($c.slice(h2, 6,8),16)/255*100)/100)+')'; }
       return v;
     };
     // Length-valued properties resolve a bare zero to the computed "0px" spelling.
@@ -697,18 +734,18 @@
     // A cascaded longhand outdates the shorthand entries an earlier declaration (a UA table)
     // stored; the shorthand being expanded keeps its own.
     var expandingShorthand = null;
-    var setProp = function(name, val, important){ name = String(name).trim(); if (!name) return; if(important!==undefined){if(priorities[name]&&!important)return;priorities[name]=important;} if(uaValues&&typeof val==='string'&&/^revert$/i.test(val.trim())&&uaValues[name]!==undefined)val=uaValues[name]; if (typeof val === 'string' && name.slice(0, 2) !== '--'){ var t = val.trim(); if (t.charAt(0) === '#') val = normColor(t); else if (t === '0' && LEN_PROP.test(name)) val = '0px'; else if (val.indexOf(',') >= 0) val = cssPrelude(val,true); } decl[name] = val; decl[camel(name)] = val; staleShorthands(name).forEach(function(shorthand){ if (shorthand !== expandingShorthand) { delete decl[shorthand]; delete decl[camel(shorthand)]; } }); if (sink) sink.order[name] = ++sink.count;
+    var setProp = function(name, val, important){ name = $c.trim(String(name)); if (!name) return; if(important!==undefined){if(priorities[name]&&!important)return;priorities[name]=important;} if(uaValues&&typeof val==='string'&&$c.test(/^revert$/i,$c.trim(val))&&uaValues[name]!==undefined)val=uaValues[name]; if (typeof val === 'string' && $c.slice(name,0, 2) !== '--'){ var t = $c.trim(val); if (t[0] === '#') val = normColor(t); else if (t === '0' && $c.test(LEN_PROP,name)) val = '0px'; else if ($c.indexOf(val,',') >= 0) val = cssPrelude(val,true); } decl[name] = val; decl[camel(name)] = val; $c.forEach(staleShorthands(name),function(shorthand){ if (shorthand !== expandingShorthand) { delete decl[shorthand]; delete decl[camel(shorthand)]; } }); if (sink) sink.order[name] = ++sink.count;
       if (typeof val === 'string') { var outer = expandingShorthand; expandingShorthand = name; try { expandShorthand(name, val, function(property,value){setProp(property,value,important);}); } finally { expandingShorthand = outer; } }
     };
-    function applyDeclarations(record,accepts){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&name.slice(0,2)!=='--'&&!accepts(name))continue;setProp(name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
+    function applyDeclarations(record,accepts){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;setProp(name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
     var info=pseudo&&pseudo!=='backdrop'&&pseudo!=='before'&&pseudo!=='after'?computedPseudoInfo(el,pseudo,parentStyle):null;
     // Measured Chrome button defaults are UA declarations: every matching author
     // rule (including a universal selector) and inline value takes precedence.
     var ua = null, layer = '';
     try { if(pseudo||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
     try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
-      if(!pseudo&&layer==='fullscreen')ua=Object.assign({},ua||{},fullscreenUserAgent); } catch(e){}
-    if(ua){Object.keys(ua).forEach(function(name){setProp(name,ua[name]);});uaValues=Object.create(null);Object.keys(decl).forEach(function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
+      if(!pseudo&&layer==='fullscreen')ua=$O.assign({},ua||{},fullscreenUserAgent); } catch(e){}
+    if(ua){$c.forEach($O.keys(ua), function(name){setProp(name,ua[name]);});uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
     try {
       // Element-backed pseudo-elements the element does not have see no author rules.
       var sheets = info && !info.authored ? [] : computedSheets(el);
@@ -725,10 +762,10 @@
             try{matched=cssApply(computedStyleNativeMatches,el,[rule.selectorText]);}catch(e){}
             if(!pseudo)computedStateVolatile(el,rule.selectorText,matched);
           }else{
-            var txt = String(cssRuleText(rule) || ''); var br = txt.indexOf('{'); if (br < 0) continue;
-            var sel = txt.slice(0, br).trim(),parts = sel.split(',');
+            var txt = String(cssRuleText(rule) || ''); var br = $c.indexOf(txt, '{'); if (br < 0) continue;
+            var sel = $c.trim($c.slice(txt, 0, br)),parts = $c.split(sel, ',');
             if(pseudo){try{matched=pseudoRuleMatches(el,sel,pseudo);}catch(e){}parts=[];}
-            for (var pi=0; pi<parts.length; pi++){ var s = parts[pi].trim(); if (!s) continue; try { if (cssApply(computedStyleNativeMatches,el,[s])) { matched = true; } } catch(e){} computedStateVolatile(el,s,matched); if (matched) break; }
+            for (var pi=0; pi<parts.length; pi++){ var s = $c.trim(parts[pi]); if (!s) continue; try { if (cssApply(computedStyleNativeMatches,el,[s])) { matched = true; } } catch(e){} computedStateVolatile(el,s,matched); if (matched) break; }
           }
           if (!matched) continue;
           applyDeclarations(declarationRecord(rule.style),info&&info.accepts);
@@ -741,8 +778,8 @@
     // !important UA declarations (::placeholder pointer-events, the fullscreen element's box)
     // beat every author one.
     var important = info ? info.important : !pseudo && layer === 'fullscreen' ? fullscreenImportant : null;
-    if (important) Object.keys(important).forEach(function(name){ setProp(name, important[name], true); });
-    if (sink) { var cascaded = { __proto__: null }; Object.keys(decl).forEach(function(name){ if (typeof decl[name] === 'string' && (name.slice(0, 2) === '--' || name === name.toLowerCase())) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
+    if (important) $c.forEach($O.keys(important), function(name){ setProp(name, important[name], true); });
+    if (sink) { var cascaded = { __proto__: null }; $c.forEach($O.keys(decl),function(name){ if (typeof decl[name] === 'string' && ($c.slice(name,0, 2) === '--' || name === $c.toLowerCase(name))) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
     // Inherited values come from the composed parent's snapshot in this read, so
     // CSSOM edits to document sheets reach descendants. Native cascade only adds
     // shadow-scoped rules (shadow <style>, :host, ::slotted) the JS cascade lacks.
@@ -768,12 +805,12 @@
         var highlightContext = null; try { highlightContext = computedFontContext(el); } catch(e){}
         var parentElement = highlightContext ? highlightContext[2] : null;
         highlightParent = parentElement && computedHighlightMode(parentElement, pseudo) ? computeStyleSnapshot(parentElement, snapshots, undefined, pseudo) : null;
-        var inheritsKey = function(value){ return !value || /^(inherit|unset)$/i.test(String(value).trim()); };
+        var inheritsKey = function(value){ return !value || $c.test(/^(inherit|unset)$/i, $c.trim(String(value))); };
         if (inheritsKey(color)) color = highlightParent ? computedSnapshotValue(highlightParent, 'color') : 'rgb(0, 0, 0)';
         if (inheritsKey(decl['background-color'])) setProp('background-color', highlightParent ? computedSnapshotValue(highlightParent, 'background-color') : 'rgba(0, 0, 0, 0)');
       } else if (decl['background-color'] == null) setProp('background-color', 'rgba(0, 0, 0, 0)');
     }
-    var colorKeyword = String(color || '').toLowerCase();
+    var colorKeyword = $c.toLowerCase(String(color || ''));
     if (colorKeyword === 'initial' || colorKeyword === 'canvastext') color = 'rgb(0, 0, 0)';
     else if (!color || colorKeyword === 'inherit' || colorKeyword === 'unset' || colorKeyword === 'currentcolor') {
       color = inheritParent ? inheritedValue('color') : 'rgb(0, 0, 0)';
@@ -792,9 +829,9 @@
     var cascadedValue = function(name){
       var value = decl[name];
       if ((value == null || value === '') && !pseudo && el && typeof __ns.cascadeProp === 'function') { try { value = __ns.cascadeProp.call(el, name) || ''; } catch(e){ value = ''; } }
-      return value == null ? '' : String(value).trim();
+      return value == null ? '' : $c.trim(String(value));
     };
-    var keyword = function(value){ var key = value.toLowerCase(); return /^(inherit|initial|unset|revert|revert-layer)$/.test(key) ? key : ''; };
+    var keyword = function(value){ var key = $c.toLowerCase(value); return $c.test(/^(inherit|initial|unset|revert|revert-layer)$/, key) ? key : ''; };
     if (connected) {
       var ua = pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : pseudo ? { display: info ? info.display : 'inline', position: info ? info.position : 'static', topLayer: false } : computedUserAgentBox(el, layer);
       var displayValue = cascadedValue('display'), displayKey = keyword(displayValue);
@@ -805,9 +842,9 @@
       if (!positionValue || positionKey === 'revert' || positionKey === 'revert-layer') positionValue = ua.position;
       else if (positionKey === 'inherit') positionValue = inheritedValue('position') || 'static';
       else if (positionKey) positionValue = 'static';
-      positionValue = positionValue.toLowerCase();
+      positionValue = $c.toLowerCase(positionValue);
       if (ua.topLayer) positionValue = topLayerPosition(positionValue);
-      var floatValue = String(decl['float'] == null ? '' : decl['float']).trim().toLowerCase();
+      var floatValue = $c.toLowerCase($c.trim(String(decl['float'] == null ? '' : decl['float'])));
       var floated = floatValue !== '' && floatValue !== 'none' && !keyword(floatValue);
       if (positionValue === 'absolute' || positionValue === 'fixed' || floated || (pseudo ? pseudo !== 'backdrop' && (!info || info.container) && computedPseudoInContainer(el, parentStyle) : computedFlexOrGridItem(el, parentStyle)))
         displayValue = blockifiedDisplay(displayValue);
@@ -830,9 +867,9 @@
     decl.visibility = visibilityValue || '';
     // `content` computes to normal, and to none on ::before / ::after / ::checkmark /
     // ::picker-icon; strings serialize double-quoted (turbo-dom#47).
-    var contentValue = decl.content == null ? '' : String(decl.content).trim();
-    if (pseudo && contentValue) contentValue = contentValue.replace(/'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + inner.replace(/\\'/g, "'").replace(/"/g, '\\"') + '"'; });
-    if (pseudo === 'before' || pseudo === 'after' || info && info.generated) decl.content = contentValue === '' || /^normal$/i.test(contentValue) ? 'none' : contentValue;
+    var contentValue = decl.content == null ? '' : $c.trim(String(decl.content));
+    if (pseudo && contentValue) contentValue = $c.replace(contentValue, /'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + $c.replace($c.replace(inner, /\\'/g, "'"), /"/g, '\\"') + '"'; });
+    if (pseudo === 'before' || pseudo === 'after' || info && info.generated) decl.content = contentValue === '' || $c.test(/^normal$/i, contentValue) ? 'none' : contentValue;
     else if (pseudo && contentValue) decl.content = contentValue;
     else if (decl.content == null) decl.content = connected ? 'normal' : '';
     // Initial computed values of properties Web Animations commonly animate.
@@ -853,9 +890,9 @@
       if (!node || depth > 32) return null;
       var raw;try{raw=node===el?decl[axis]:computedSnapshotValue(parentStyle(node),axis);}catch(e){return null;}
       raw = raw == null ? '' : String(raw);
-      var mpx = /^(-?\d+(?:\.\d+)?)px$/.exec(raw); if (mpx) return parseFloat(mpx[1]);
+      var mpx = $c.exec(/^(-?\d+(?:\.\d+)?)px$/, raw); if (mpx) return parseFloat(mpx[1]);
       var parent = node.parentElement || (node.parentNode && node.parentNode.nodeType === 1 ? node.parentNode : null);
-      var mpc = /^(-?\d+(?:\.\d+)?)%$/.exec(raw);
+      var mpc = $c.exec(/^(-?\d+(?:\.\d+)?)%$/, raw);
       if (mpc) { var base = usedPx(parent, axis, depth + 1); return base == null ? null : (parseFloat(mpc[1]) / 100) * base; }
       // width:auto in normal flow fills the containing block (block box); height:auto is content-driven (unknown here).
       if ((raw === '' || raw === 'auto') && axis === 'width') return usedPx(parent, axis, depth + 1);
@@ -868,15 +905,15 @@
       computedVolatile = true;
       [['width', g.innerWidth], ['height', g.innerHeight]].forEach(function(pair){
         var size = +pair[1];
-        if (size > 0 && cssFontFinite(size)) setProp(pair[0], (Math.round(size * 1000) / 1000) + 'px', true);
+        if (size > 0 && cssFontFinite(size)) setProp(pair[0], ($Mround(size * 1000) / 1000) + 'px', true);
       });
     }
     if (!pseudo && layer !== 'fullscreen') try {
-      ['width', 'height'].forEach(function(axis){
+      $c.forEach(['width', 'height'], function(axis){
         var raw = decl[axis];
-        if (typeof raw === 'string' && /^-?\d+(?:\.\d+)?%$/.test(raw.trim())) {
+        if (typeof raw === 'string' && $c.test(/^-?\d+(?:\.\d+)?%$/, $c.trim(raw))) {
           var px = usedPx(el, axis, 0);
-          if (px != null && isFinite(px)) setProp(axis, (Math.round(px * 1000) / 1000) + 'px');
+          if (px != null && isFinite(px)) setProp(axis, ($Mround(px * 1000) / 1000) + 'px');
         }
       });
     } catch(e){}
@@ -884,7 +921,7 @@
     // dialog:modal max-width / max-height: calc(100% - 6px - 2em) at the dialog's font size.
     if (connected && !pseudo && layer === 'modal' && fontState && typeof fontState.size === 'number') {
       var inset = 'calc(100% - ' + cssFontString(cssFontNumber(cssApply(cssFontPrecision, 2 * fontState.size + 6, [6]))) + 'px)';
-      ['max-width', 'max-height'].forEach(function(name){ if (decl[name] == null) decl[name] = decl[camel(name)] = inset; });
+      $c.forEach(['max-width', 'max-height'], function(name){ if (decl[name] == null) decl[name] = decl[camel(name)] = inset; });
     }
     var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo);
     if(el&&!pseudo)computedSnapshotSet(snapshots,el,snapshot);
@@ -1532,7 +1569,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   cssMethod(sheetConstructor.prototype,'addRule',0,function(selector,style,index){var record=sheetRecord(this);insertSheetRule(this,(selector===undefined?'undefined':cssString(selector))+' {'+(style===undefined?'undefined':cssString(style))+'}',index===undefined?cssItems(record.rules).length:index);return -1;});
   cssMethod(sheetConstructor.prototype,'removeRule',0,function(index){deleteSheetRule(this,index===undefined?0:index);});
   cssMethod(sheetConstructor.prototype,'replaceSync',1,function(text){var record=sheetRecord(this);if(!arguments.length)throw new TypeError('replaceSync requires 1 argument');if(!record.constructed||record.replacing)throw new __ns.DOMException('The sheet cannot be replaced','NotAllowedError');replaceSheetRules(this,record,text,false);});
-  cssMethod(sheetConstructor.prototype,'replace',1,function(text){var record;try{record=sheetRecord(this);if(!arguments.length)throw new TypeError('replace requires 1 argument');if(!record.constructed||record.replacing)throw new __ns.DOMException('The sheet cannot be replaced','NotAllowedError');replaceSheetRules(this,record,text,false);return Promise.resolve(this);}catch(error){return Promise.reject(error);}});
+  cssMethod(sheetConstructor.prototype,'replace',1,function(text){var record;try{record=sheetRecord(this);if(!arguments.length)throw new TypeError('replace requires 1 argument');if(!record.constructed||record.replacing)throw new __ns.DOMException('The sheet cannot be replaced','NotAllowedError');replaceSheetRules(this,record,text,false);return $promiseResolve(this);}catch(error){return $promiseReject(error);}});
   function linkedSheet(el,text,url){var sheet=$O.create(sheetConstructor.prototype),record=newSheetRecord();record.constructed=false;record.ownerNode=el;record.href=url||null;record.title=sheetNativeAttribute(el,'title')||null;record.media=makeMedia(sheetNativeAttribute(el,'media')||'',el);$c.set(sheetRecords,sheet,record);replaceSheetRules(sheet,record,text,true);return sheet;}
   function detachSheet(sheet){invalidateComputedStyles();if(sheet){var record=sheetRecord(sheet);if(record.ownerNode)record.title=sheetNativeAttribute(record.ownerNode,'title')||null;mediaRecord(record.media).owner=null;record.ownerNode=null;}}
   function attachLinkedStyleSheet(el,text,url,originClean){invalidateComputedStyles();var sheet=linkedSheet(el,text,url),old=elementSheets.get(el);sheetRecord(sheet).originClean=originClean!==false;if(old)detachSheet(old.sheet);elementSheets.set(el,{sheet:sheet,text:null});return sheet;};
@@ -1581,7 +1618,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function adoptionState(receiver){adoptionDocument(receiver);var state=$c.get(adoptionStates,receiver);if(!state){state=createAdoption(receiver);$c.set(adoptionStates,receiver,state);}return state;}
   function readAdoption(){cssApply(adoptionDocumentCheck,this,[]);return adoptionState(this).proxy;}
   function readShadowAdoption(){if(cssApply(adoptionNodeCheck,this,[])!==11||!cssApply(adoptionShadowCheck,this,[]))throw new TypeError('Illegal invocation');return adoptionState(this).proxy;}
-  function replaceAdoption(input){invalidateComputedStyles();var state=adoptionState(this),converted=cssHostArray();for(var value of input){adoptionRecord(value);converted[converted.length]=value;}state.target.length=0;for(var i=0;i<converted.length;i++){adoptionAllowed(this,converted[i]);adoptionDefine(state.target,String(i),{value:converted[i],writable:true,enumerable:true,configurable:true});}}
+  var adoptionNodeType=__ns.domAccessor('nodeType',false,'Node');
+  function adoptionOwnerName(node){return cssApply(adoptionNodeType,node,[])===9?'Document':'ShadowRoot';}
+  function replaceAdoption(input){invalidateComputedStyles();var state=adoptionState(this),converted=cssHostArray();if(input===null||(typeof input!=='object'&&typeof input!=='function'))throw new TypeError("Failed to set the 'adoptedStyleSheets' property on '"+(adoptionOwnerName(this))+"': The provided value cannot be converted to a sequence.");for(var value of input){adoptionRecord(value);converted[converted.length]=value;}state.target.length=0;for(var i=0;i<converted.length;i++){adoptionAllowed(this,converted[i]);adoptionDefine(state.target,String(i),{value:converted[i],writable:true,enumerable:true,configurable:true});}}
   var adoptionDescriptor={configurable:true,enumerable:true,get:__ns.makeNativeFunction(readAdoption,'get adoptedStyleSheets',0),set:__ns.makeNativeFunction(function(input){cssApply(adoptionDocumentCheck,this,[]);return cssApply(replaceAdoption,this,[input]);},'set adoptedStyleSheets',1)};
   var shadowAdoptionDescriptor={configurable:true,enumerable:true,get:__ns.makeNativeFunction(readShadowAdoption,'get adoptedStyleSheets',0),set:__ns.makeNativeFunction(function(input){cssApply(readShadowAdoption,this,[]);return cssApply(replaceAdoption,this,[input]);},'set adoptedStyleSheets',1)};
   Object.defineProperty(d,'adoptedStyleSheets',adoptionDescriptor);adoptionState(d);
@@ -1758,7 +1797,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if (!Object.getOwnPropertyDescriptor(baseProto, 'valueAsNumber')) { try { Object.defineProperty(baseProto, 'valueAsNumber', { configurable: true, get: function(){ var v = this.value; if (v == null || v === '') return NaN; var n = Number(v); return isNaN(n) ? NaN : n; }, set: function(n){ this.value = (n == null || isNaN(n)) ? '' : String(n); } }); } catch(e){} }
     // Element.getClientRects() — no layout engine, so mirror getBoundingClientRect's zero rect as a
     // single-entry DOMRectList-ish (with .item). Libs do getClientRects()[0] / .length; [] would NPE.
-    if (!baseProto.getClientRects) baseProto.getClientRects = function(){ var r = this.getBoundingClientRect ? this.getBoundingClientRect() : { x:0,y:0,top:0,left:0,right:0,bottom:0,width:0,height:0 }; var list = [r]; list.item = function(i){ return list[i] || null; }; return list; };
+    if (!baseProto.getClientRects) baseProto.getClientRects = function(){ var r = $N.getBoundingClientRect ? $call($N.getBoundingClientRect, this) : { x:0,y:0,top:0,left:0,right:0,bottom:0,width:0,height:0 }; var list = [r]; list.item = function(i){ return list[i] || null; }; return list; };
     // isEqualNode — React 18 hydration calls it on EVERY node to reconcile the server
     // markup with the client render; without it every comparison throws
     // "e.isEqualNode is not a function", React reports a hydration mismatch (#418) and
@@ -1770,22 +1809,20 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var __nodeEq = function(a, b){
         if (a === b) return true;
         if (!a || !b) return false;
-        if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) return false;
-        if (a.nodeType === 1) {
-          var aa = a.attributes || [], ba = b.attributes || [];
-          if ((aa.length || 0) !== (ba.length || 0)) return false;
+        var type = $call($N.nodeType, a);
+        if (type !== $call($N.nodeType, b) || $call($N.nodeName, a) !== $call($N.nodeName, b)) return false;
+        if (type === 1) {
+          var aa = $call($N.nativeAttributes, a), ba = $call($N.nativeAttributes, b);
+          if (aa.length !== ba.length) return false;
           for (var i = 0; i < aa.length; i++) {
-            var at = aa[i], nm = at && (at.name != null ? at.name : at.nodeName);
-            if (nm == null) continue;
-            if (!b.getAttribute || b.getAttribute(nm) !== (at.value != null ? at.value : at.nodeValue)) return false;
+            if ($call($N.getAttribute, b, $call($N['attr.name'], aa[i])) !== $call($N['attr.value'], aa[i])) return false;
           }
-        } else if ((a.nodeValue || '') !== (b.nodeValue || '')) {
+        } else if (($call($N.nodeValue, a) || '') !== ($call($N.nodeValue, b) || '')) {
           return false;
         }
-        var ac = a.childNodes || [], bc = b.childNodes || [];
-        if ((ac.length || 0) !== (bc.length || 0)) return false;
-        for (var j = 0; j < ac.length; j++) { if (!__nodeEq(ac[j], bc[j])) return false; }
-        return true;
+        var ac = $call($N.firstChild, a), bc = $call($N.firstChild, b);
+        for (; ac !== null && bc !== null; ac = $call($N.nextSibling, ac), bc = $call($N.nextSibling, bc)) { if (!__nodeEq(ac, bc)) return false; }
+        return ac === bc;
       };
       baseProto.isEqualNode = function(other){ return __nodeEq(this, other); };
       if (!baseProto.isSameNode) baseProto.isSameNode = function(other){ return this === other; };
@@ -2069,8 +2106,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var __cvHash = function(str){
       // FNV-1a (32-bit), avalanched at the end.
       var h = 0x811c9dc5;
-      for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
-      h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0; h ^= h >>> 13; return h >>> 0;
+      for (var i = 0; i < str.length; i++) { h ^= $c.charCodeAt(str, i); h = $imul(h, 0x01000193) >>> 0; }
+      h ^= h >>> 16; h = $imul(h, 0x85ebca6b) >>> 0; h ^= h >>> 13; return h >>> 0;
     };
     var __CV_B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
     var __cvB64 = function(bytes){
@@ -2085,13 +2122,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // Deterministic byte stream of length n from a 32-bit seed (an LCG).
     var __cvBytes = function(seed, n){
       var b = new Array(n), x = (seed ^ 0x9e3779b9) >>> 0;
-      for (var i = 0; i < n; i++) { x = (Math.imul(x, 1664525) + 1013904223) >>> 0; b[i] = (x >>> 16) & 0xff; }
+      for (var i = 0; i < n; i++) { x = ($imul(x, 1664525) + 1013904223) >>> 0; b[i] = (x >>> 16) & 0xff; }
       return b;
     };
     var __cvSeed = function(canvas, ctx, extra){
       var w = (canvas && canvas.width) || 300, h = (canvas && canvas.height) || 150;
       var ops = (ctx && ctx._ops) ? ctx._ops : [];
-      return __cvHash(w + 'x' + h + '|' + (extra || '') + '|' + JSON.stringify(ops));
+      return __cvHash(w + 'x' + h + '|' + (extra || '') + '|' + $jsonStringify(ops));
     };
     // fillStyle / strokeStyle / shadowColor (turbo-dom#108, canvas_style_chrome156.json): a
     // string parses with turbo-dom's CSS colour parser and reads back in Chrome's
@@ -2782,11 +2819,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var mediaNode=__ns.domAccessor('nodeType',false,'HTMLElement');
     Object.defineProperty(prototypes.HTMLMediaElement,'canPlayType',{value:__ns.makeNativeFunction(function(type){
       mediaNode.call(this);
-      if(this.namespaceURI!=='http://www.w3.org/1999/xhtml'||!['audio','video'].includes(this.localName))throw new TypeError('Illegal invocation');
+      if($call(computedStyleNativeNamespace,this)!=='http://www.w3.org/1999/xhtml'||!$c.includes(['audio','video'],$call(createdLocalName,this)))throw new TypeError('Illegal invocation');
       if(arguments.length<1)throw new TypeError("Failed to execute 'canPlayType' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
       if(typeof type==='symbol')throw new TypeError('Cannot convert a Symbol value to a string');
-      var mime=String(type).split(';',1)[0].trim().toLowerCase();
-      return mediaTypes.has(mime)?'maybe':'';
+      var mime=$c.toLowerCase($c.trim($c.split(String(type),';',1)[0]));
+      return $c.has(mediaTypes,mime)?'maybe':'';
     },'canPlayType',1),writable:true,enumerable:true,configurable:true});
     if(typeof g.Audio==='function'){
       var audioConstructor=__ns.makeNativeFunction(function(src){var element=d.createElement('audio');if(src!==undefined)element.src=src;return element;},'Audio',0,true,false,false);
@@ -2849,7 +2886,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var getTag=Object.getOwnPropertyDescriptor(elementProto,'tagName').get;
     var getNamespace=Object.getOwnPropertyDescriptor(elementProto,'namespaceURI').get;
     var getLocalTag=Object.getOwnPropertyDescriptor(elementProto,'localName').get;
-    var nativeAttributes=Object.getOwnPropertyDescriptor(elementProto,'attributes').get;
+    var nativeAttributes=Object.getOwnPropertyDescriptor(elementProto,'attributes').get;$N.nativeAttributes=nativeAttributes;
     var mapRecords=new WeakMap(),mapsByElement=new WeakMap(),namedFactory=__ns.makeNamedObject;
     var namedMapCtor=defineInterface('NamedNodeMap',Object.prototype),namedMapProto=namedMapCtor;
     function mapOwner(map){var record=collectionGet?collectionGet(map):null,owner=record&&record.kind==='NamedNodeMap'?record.owner:collectionGet?null:mapRecords.get(map);if(!owner)throw new TypeError('Illegal invocation');return owner;}
@@ -2857,17 +2894,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     function mapIndex(value){return Number(value)>>>0;}
     var mapMethods={
       item(index){return mapEntries(this)[mapIndex(index)]||null;},
-      getNamedItem(name){name=attributeString(name);return mapOwner(this).getAttributeNode(name);},
-      getNamedItemNS(namespace,local){return mapOwner(this).getAttributeNodeNS(namespace,local);},
-      setNamedItem(attribute){return mapOwner(this).setAttributeNode(attribute);},
-      setNamedItemNS(attribute){return mapOwner(this).setAttributeNodeNS(attribute);},
-      removeNamedItem(name){var owner=mapOwner(this),attribute=owner.getAttributeNode(attributeString(name));if(!attribute)throw new __ns.DOMException('The attribute is absent','NotFoundError');return owner.removeAttributeNode(attribute);},
-      removeNamedItemNS(namespace,local){var owner=mapOwner(this),attribute=owner.getAttributeNodeNS(namespace,local);if(!attribute)throw new __ns.DOMException('The attribute is absent','NotFoundError');return owner.removeAttributeNode(attribute);}
+      getNamedItem(name){name=attributeString(name);return $call($N.getAttributeNode,mapOwner(this),name);},
+      getNamedItemNS(namespace,local){return $call($N.getAttributeNodeNS,mapOwner(this),namespace,local);},
+      setNamedItem(attribute){return $call($N.setAttributeNode,mapOwner(this),attribute);},
+      setNamedItemNS(attribute){return $call($N.setAttributeNodeNS,mapOwner(this),attribute);},
+      removeNamedItem(name){var owner=mapOwner(this),attribute=$call($N.getAttributeNode,owner,attributeString(name));if(!attribute)throw new __ns.DOMException('The attribute is absent','NotFoundError');return $call($N.removeAttributeNode,owner,attribute);},
+      removeNamedItemNS(namespace,local){var owner=mapOwner(this),attribute=$call($N.getAttributeNodeNS,owner,namespace,local);if(!attribute)throw new __ns.DOMException('The attribute is absent','NotFoundError');return $call($N.removeAttributeNode,owner,attribute);}
     };
     Object.keys(mapMethods).forEach(function(name){var delegate=mapMethods[name];Object.defineProperty(namedMapProto,name,{value:__ns.makeNativeFunction(function(){mapOwner(this);if(arguments.length<delegate.length)throw new TypeError('Not enough arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
     Object.defineProperty(namedMapProto,'length',{get:__ns.makeNativeFunction(function(){return mapEntries(this).length;},'get length',0),enumerable:true,configurable:true});
     Object.defineProperty(namedMapProto,Symbol.iterator,{value:__ns.makeNativeFunction(function(){var map=this;mapOwner(map);var index=0;return {next(){var entries=mapEntries(map);return index<entries.length?{value:entries[index++],done:false}:{value:undefined,done:true};},[Symbol.iterator](){return this;}};},'values',0),writable:true,configurable:true});
-    Object.defineProperty(elementProto,'attributes',{get:__ns.makeNativeFunction(function(){getTag.call(this);var owner=this,map=mapsByElement.get(owner);if(map)return map;map=namedFactory(namedMapProto,function(operation,key,value){var entries=nativeAttributes.call(owner),index=/^(0|[1-9]\d*)$/.test(key)?Number(key):null,attribute=index===null?Array.from(entries).find(function(entry){return entry.name===key;}):entries[index];if(operation==='indices')return Array.from(entries,function(_,index){return index;});if(operation==='keys')return Array.from(new Set(Array.from(entries,function(entry){return entry.name;})));if(operation==='get')return attribute;if(operation==='has')return !!attribute;if(operation==='descriptor')return attribute?{value:attribute,writable:false,enumerable:index!==null,configurable:true}:undefined;if(operation==='set'||operation==='define')return attribute?true:undefined;if(operation==='delete')return attribute?false:undefined;},true);mapRecords.set(map,owner);if(collectionSet)collectionSet(map,{kind:'NamedNodeMap',owner:owner});mapsByElement.set(owner,map);return map;},'get attributes',0),enumerable:true,configurable:true});
+    Object.defineProperty(elementProto,'attributes',{get:__ns.makeNativeFunction(function(){getTag.call(this);var owner=this,map=$call($wmGet,mapsByElement,owner);if(map)return map;map=namedFactory(namedMapProto,function(operation,key,value){var entries=nativeAttributes.call(owner),index=/^(0|[1-9]\d*)$/.test(key)?Number(key):null,attribute=index===null?Array.from(entries).find(function(entry){return entry.name===key;}):entries[index];if(operation==='indices')return Array.from(entries,function(_,index){return index;});if(operation==='keys')return Array.from(new Set(Array.from(entries,function(entry){return entry.name;})));if(operation==='get')return attribute;if(operation==='has')return !!attribute;if(operation==='descriptor')return attribute?{value:attribute,writable:false,enumerable:index!==null,configurable:true}:undefined;if(operation==='set'||operation==='define')return attribute?true:undefined;if(operation==='delete')return attribute?false:undefined;},true);$c.set(mapRecords,map,owner);if(collectionSet)collectionSet(map,{kind:'NamedNodeMap',owner:owner});$c.set(mapsByElement,owner,map);return map;},'get attributes',0),enumerable:true,configurable:true});
     var isShadowRoot=__ns.domAccessor('__isShadowRoot',false,'Node');
     var probe=d.createElement('div');
     __ns.cascadeProp=Object.getOwnPropertyDescriptor(probe,'__cascadeProp').value;
@@ -2933,7 +2970,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       return true;
     };
     var foreignFocusable=function(element,svg){
-      if(!element.isConnected)return false;
+      if(!$call(computedStyleNativeConnected,element))return false;
       if(!parsesTabIndex(element)&&!(svg&&element.localName==='a'&&(element.hasAttribute('href')||element.hasAttributeNS('http://www.w3.org/1999/xlink','href'))))return false;
       return foreignRendered(element);
     };
@@ -2973,23 +3010,23 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var scrollMembers=function(operation,options,keys,dictionary){
       if(options==null)return;
       if(typeof options!=='object'&&typeof options!=='function')throw new ScrollTypeError("Failed to execute '"+operation+"' on 'Element': The provided value is not of type '"+dictionary+"'.");
-      keys.forEach(function(key){
+      $c.forEach(keys,function(key){
         var value=options[key];if(value===undefined)return;
         var spec=scrollEnums[key],owner=spec?spec[0]:dictionary,read="Failed to execute '"+operation+"' on 'Element': Failed to read the '"+key+"' property from '"+owner+"': ";
         if(typeof value==='symbol')throw new ScrollTypeError(read+'Cannot convert a Symbol value to a '+(spec?'string':'number'));
         if(!spec){+value;return;}
         value=scrollString(value);
-        if(spec[2].indexOf(value)<0)throw new ScrollTypeError(read+"The provided value '"+value+"' is not a valid enum value of type "+spec[1]+'.');
+        if($c.indexOf(spec[2],value)<0)throw new ScrollTypeError(read+"The provided value '"+value+"' is not a valid enum value of type "+spec[1]+'.');
       });
     };
     var scrollArguments={
       scrollIntoView:function(args){var arg=args[0];if(arg!==null&&(typeof arg==='object'||typeof arg==='function'))scrollMembers('scrollIntoView',arg,['behavior','block','container','inline'],'ScrollIntoViewOptions');},
-      scrollTo:function(args){if(args.length>=2){+args[0];+args[1];return;}scrollMembers(this,args[0],['behavior','left','top'],'ScrollToOptions');}
+      scrollTo:function(args,operation){if(args.length>=2){+args[0];+args[1];return;}scrollMembers(operation,args[0],['behavior','left','top'],'ScrollToOptions');}
     };
     ['scrollIntoView','scrollTo','scrollBy'].forEach(function(name){
       var native=Object.getOwnPropertyDescriptor(elementProto,name).value,check=__ns.domAccessor('nodeType',false,'Element'),convert=scrollArguments[name==='scrollBy'?'scrollTo':name];
       Object.defineProperty(elementProto,name,{value:__ns.makeNativeFunction(function(){
-        try{childNodeApply(check,this,[]);childNodeApply(native,this,[]);childNodeApply(convert,name,[arguments]);}catch(error){return childNodeApply(scrollReject,scrollPromise,[error]);}
+        try{childNodeApply(check,this,[]);childNodeApply(native,this,[]);childNodeApply(convert,null,[arguments,name]);}catch(error){return childNodeApply(scrollReject,scrollPromise,[error]);}
         return childNodeApply(scrollResolve,scrollPromise,[{interrupted:false}]);
       },name,0),writable:true,enumerable:true,configurable:true});
     });
@@ -3020,6 +3057,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     ['accept','autoFocus','autocomplete','checked','disabled','form','max','min','multiple','name','pattern','placeholder','readOnly','required','step','value','getBoundingClientRect'].forEach(function(name){delete prototypes.HTMLCanvasElement[name];});
     // Captured for the reflected members below: page-replaced builtins never run on these paths (miaskiewicz/turbo-dom#199).
     $getAttributeNative=elementProto.getAttribute;$setAttributeNative=elementProto.setAttribute;$removeAttributeNative=elementProto.removeAttribute;$hasAttributeNative=elementProto.hasAttribute;
+    (function(){
+      var member=function(proto,name,getter){for(var o=proto;o;o=Object.getPrototypeOf(o)){var d=$gopd(o,name);if(d)return getter?d.get:d.value;}};
+      var getters=[[g.Node.prototype,['nodeType','nodeName','nodeValue','parentNode','parentElement','firstChild','nextSibling','childNodes','ownerDocument']],[g.Document.prototype,['documentElement']],[g.Attr.prototype,['ownerElement','prefix','namespaceURI','value','localName','name']],[elementProto,['namespaceURI','prefix','attributes']]];
+      for(var i=0;i<getters.length;i++)for(var k=0;k<getters[i][1].length;k++){var name=getters[i][1][k],key=(getters[i][0]===g.Attr.prototype?'attr.':getters[i][0]===elementProto?'element.':'')+name;$N[key]=member(getters[i][0],name,true);}
+      var methods=[[g.Document.prototype,['createTextNode']],[g.Node.prototype,['getRootNode','contains','insertBefore','appendChild']],[elementProto,['getAttribute','getAttributeNode','getAttributeNodeNS','setAttributeNode','setAttributeNodeNS','removeAttributeNode','getBoundingClientRect']]];
+      for(i=0;i<methods.length;i++)for(k=0;k<methods[i][1].length;k++)$N[methods[i][1][k]]=member(methods[i][0],methods[i][1][k],false);
+    })();
     var rNodeType=$gopd(g.Node.prototype,'nodeType').get,rParentElement=$gopd(g.Node.prototype,'parentElement').get,rIsPrototypeOf=Object.prototype.isPrototypeOf;
     var rFormGetters=[];['HTMLInputElement','HTMLTextAreaElement','HTMLSelectElement','HTMLButtonElement','HTMLFieldSetElement','HTMLObjectElement','HTMLOutputElement','HTMLLabelElement','HTMLLegendElement','HTMLOptionElement','HTMLImageElement'].forEach(function(owner){var proto=prototypes[owner],d=proto&&$gopd(proto,'form');if(d&&d.get)rFormGetters[rFormGetters.length]=[proto,d.get];});
     function rForm(el){for(var i=0;i<rFormGetters.length;i++)if($apply(rIsPrototypeOf,rFormGetters[i][0],[el]))return $apply(rFormGetters[i][1],el,[]);return null;}
@@ -3137,7 +3181,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         var text='';for(var node=first;isText(node);node=reflectedApply(wholeNext,node,[]))text+=reflectedApply(wholeData,node,[]);return text;
       },'get wholeText',0)});
     }
-    var elementOperations={getAttributeNames(){return Array.from(this.attributes,function(attribute){return attribute.name;});},hasAttributes(){return this.attributes.length>0;},insertAdjacentText(position,text){if(typeof position==='symbol'||typeof text==='symbol')throw new TypeError('Cannot convert a Symbol to a string');position=String(position).toLowerCase();var node=this.ownerDocument.createTextNode(String(text));if(position==='beforebegin'){if(this.parentNode)this.parentNode.insertBefore(node,this);}else if(position==='afterend'){if(this.parentNode)this.parentNode.insertBefore(node,this.nextSibling);}else if(position==='afterbegin')this.insertBefore(node,this.firstChild);else if(position==='beforeend')this.appendChild(node);else throw new __ns.DOMException('Invalid adjacent position','SyntaxError');}};
+    var elementOperations={getAttributeNames(){var entries=$call(nativeAttributes,this),names=[];for(var index=0;index<entries.length;index++)$c.push(names,$call($N['attr.name'],entries[index]));return names;},hasAttributes(){return $call(nativeAttributes,this).length>0;},insertAdjacentText(position,text){if(typeof position==='symbol'||typeof text==='symbol')throw new TypeError('Cannot convert a Symbol to a string');position=$c.toLowerCase(String(position));var node=$call($N.createTextNode,$call($N.ownerDocument,this),String(text)),parent=$call($N.parentNode,this);if(position==='beforebegin'){if(parent)$call($N.insertBefore,parent,node,this);}else if(position==='afterend'){if(parent)$call($N.insertBefore,parent,node,$call($N.nextSibling,this));}else if(position==='afterbegin')$call($N.insertBefore,this,node,$call($N.firstChild,this));else if(position==='beforeend')$call($N.appendChild,this,node);else throw new __ns.DOMException('Invalid adjacent position','SyntaxError');}};
     Object.keys(elementOperations).forEach(function(name){var delegate=elementOperations[name],check=__ns.domAccessor('nodeType',false,'Element');Object.defineProperty(elementProto,name,{value:__ns.makeNativeFunction(function(){check.call(this);if(arguments.length<delegate.length)throw new TypeError(name+' requires '+delegate.length+' arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
     // GlobalEventHandlers: HTMLElement, SVGElement and MathMLElement each brand-check (turbo-dom#87).
     var eventHandlers=new WeakMap(),handlerAdd=g.EventTarget.prototype.addEventListener,handlerRemove=g.EventTarget.prototype.removeEventListener;
@@ -3158,12 +3202,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         },'set '+name,1)});
     });
     });
+    // The lookup start of locate-a-namespace / locate-a-namespace-prefix, through captured natives.
+    function nodeLookupStart(node){var type=$call(getType,node);return type===9?$call($N.documentElement,node):type===2?$call($N['attr.ownerElement'],node):type===1?node:$call($N.parentElement,node);}
     var nodeOperations={
-      lookupNamespaceURI(prefix){prefix=prefix==null||prefix===''?null:attributeString(prefix);var element=this.nodeType===9?this.documentElement:this.nodeType===2?this.ownerElement:this.nodeType===1?this:this.parentElement;while(element){if(prefix==='xml')return 'http://www.w3.org/XML/1998/namespace';if(prefix==='xmlns')return 'http://www.w3.org/2000/xmlns/';if(element.namespaceURI&&element.prefix===prefix)return element.namespaceURI;var declaration=element.getAttributeNodeNS('http://www.w3.org/2000/xmlns/',prefix===null?'xmlns':prefix);if(declaration&&(prefix===null?declaration.prefix===null:declaration.prefix==='xmlns'))return declaration.value||null;element=element.parentElement;}return null;},
-      lookupPrefix(namespace){namespace=namespace==null||namespace===''?null:attributeString(namespace);if(namespace===null)return null;var element=this.nodeType===9?this.documentElement:this.nodeType===2?this.ownerElement:this.nodeType===1?this:this.parentElement;while(element){if(element.prefix&&element.namespaceURI===namespace&&this.lookupNamespaceURI(element.prefix)===namespace)return element.prefix;var attributes=element.attributes;for(var index=0;index<attributes.length;index++){var attribute=attributes[index];if(attribute.namespaceURI==='http://www.w3.org/2000/xmlns/'&&attribute.prefix==='xmlns'&&attribute.value===namespace&&this.lookupNamespaceURI(attribute.localName)===namespace)return attribute.localName;}element=element.parentElement;}return null;},
-      isDefaultNamespace(namespace){namespace=namespace==null||namespace===''?null:String(namespace);return this.lookupNamespaceURI(null)===namespace;},
+      lookupNamespaceURI(prefix){prefix=prefix==null||prefix===''?null:attributeString(prefix);var element=nodeLookupStart(this);while(element){if(prefix==='xml')return 'http://www.w3.org/XML/1998/namespace';if(prefix==='xmlns')return 'http://www.w3.org/2000/xmlns/';var elementNamespace=$call($N['element.namespaceURI'],element);if(elementNamespace&&$call($N['element.prefix'],element)===prefix)return elementNamespace;var declaration=$call($N.getAttributeNodeNS,element,'http://www.w3.org/2000/xmlns/',prefix===null?'xmlns':prefix);if(declaration&&(prefix===null?$call($N['attr.prefix'],declaration)===null:$call($N['attr.prefix'],declaration)==='xmlns'))return $call($N['attr.value'],declaration)||null;element=$call($N.parentElement,element);}return null;},
+      lookupPrefix(namespace){namespace=namespace==null||namespace===''?null:attributeString(namespace);if(namespace===null)return null;var element=nodeLookupStart(this);while(element){var elementPrefix=$call($N['element.prefix'],element);if(elementPrefix&&$call($N['element.namespaceURI'],element)===namespace&&$call(nodeOperations.lookupNamespaceURI,this,elementPrefix)===namespace)return elementPrefix;var attributes=$call($N.nativeAttributes,element);for(var index=0;index<attributes.length;index++){var attribute=attributes[index];if($call($N['attr.namespaceURI'],attribute)==='http://www.w3.org/2000/xmlns/'&&$call($N['attr.prefix'],attribute)==='xmlns'&&$call($N['attr.value'],attribute)===namespace&&$call(nodeOperations.lookupNamespaceURI,this,$call($N['attr.localName'],attribute))===namespace)return $call($N['attr.localName'],attribute);}element=$call($N.parentElement,element);}return null;},
+      isDefaultNamespace(namespace){namespace=namespace==null||namespace===''?null:String(namespace);return $call(nodeOperations.lookupNamespaceURI,this,null)===namespace;},
       normalize(){var nodes=this.childNodes;for(var index=0;index<nodes.length;){var node=nodes[index];if(node.nodeType!==3){node.normalize();index++;continue;}while(index+1<nodes.length&&nodes[index+1].nodeType===3){node.data+=nodes[index+1].data;this.removeChild(nodes[index+1]);nodes=this.childNodes;}if(!node.data){this.removeChild(node);nodes=this.childNodes;}else index++;}},
-      compareDocumentPosition(other){getType.call(other);if(this===other)return 0;var root=this.getRootNode(),otherRoot=other.getRootNode();if(root!==otherRoot){var order=__ns.nodeComparisonOrder||(__ns.nodeComparisonOrder=new WeakMap());var next=__ns.nodeComparisonNext||1;[this,other].forEach(function(node){if(!order.has(node))order.set(node,next++);});__ns.nodeComparisonNext=next;return 33|(order.get(this)<order.get(other)?4:2);}if(this.contains(other))return 20;if(other.contains(this))return 10;var before=false,found=false;(function visit(node){if(found)return;if(node===this)before=true;if(node===other){found=true;return;}var children=node.childNodes;for(var i=0;i<children.length;i++)visit.call(this,children[i]);}).call(this,root);return before?4:2;}
+      compareDocumentPosition(other){getType.call(other);if(this===other)return 0;var root=$call($N.getRootNode,this),otherRoot=$call($N.getRootNode,other);if(root!==otherRoot){var order=__ns.nodeComparisonOrder||(__ns.nodeComparisonOrder=new WeakMap());var next=__ns.nodeComparisonNext||1;if(!$c.has(order,this))$c.set(order,this,next++);if(!$c.has(order,other))$c.set(order,other,next++);__ns.nodeComparisonNext=next;return 33|($c.get(order,this)<$c.get(order,other)?4:2);}if($call($N.contains,this,other))return 20;if($call($N.contains,other,this))return 10;var self=this,before=false,found=false;(function visit(node){if(found)return;if(node===self)before=true;if(node===other){found=true;return;}for(var child=$call($N.firstChild,node);child!==null;child=$call($N.nextSibling,child))visit(child);})(root);return before?4:2;}
     };
     Object.keys(nodeOperations).forEach(function(name){var delegate=nodeOperations[name];var fn=__ns.makeNativeFunction(function(){getType.call(this);if(arguments.length<delegate.length)throw new TypeError(name+' requires '+delegate.length+' arguments');return delegate.apply(this,arguments);},name,delegate.length);Object.defineProperty(nodeProto,name,{value:fn,writable:true,configurable:true,enumerable:true});});
     var tags={DIV:'HTMLDivElement',SPAN:'HTMLSpanElement',P:'HTMLParagraphElement',INPUT:'HTMLInputElement',TEXTAREA:'HTMLTextAreaElement',SELECT:'HTMLSelectElement',OPTION:'HTMLOptionElement',BUTTON:'HTMLButtonElement',LABEL:'HTMLLabelElement',CANVAS:'HTMLCanvasElement',A:'HTMLAnchorElement',FORM:'HTMLFormElement',STYLE:'HTMLStyleElement',SCRIPT:'HTMLScriptElement',IFRAME:'HTMLIFrameElement',IMG:'HTMLImageElement',UL:'HTMLUListElement',LI:'HTMLLIElement',TABLE:'HTMLTableElement'};

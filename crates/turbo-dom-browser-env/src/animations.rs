@@ -553,6 +553,12 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             let event = v8::Local::<v8::Object>::try_from(args.get(2)).expect("event");
             dispatch_host_event(scope, event, target);
         }
+        "handled" => {
+            // animations.js marks a rejected ready/finished promise handled without `then`,
+            // which would read the page-replaceable Promise[@@species] (turbo-dom#199).
+            let promise = v8::Local::<v8::Promise>::try_from(args.get(1)).expect("promise");
+            promise.mark_as_handled();
+        }
         "property" => {
             let name = arg_str(scope, &args, 1);
             set_string(scope, &mut rv, keyframe_property(&name));
