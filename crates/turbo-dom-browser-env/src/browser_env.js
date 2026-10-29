@@ -1671,9 +1671,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var fileValueDelete = WeakMap.prototype.delete, fileValueApply = Reflect.apply;
     __ns.resetControlValue = function(element){ fileValueApply(fileValueDelete, controlValues, [element]); };
     // Captured natives: the value paths never reach a page-replaced builtin (turbo-dom#199).
-    // Resolved on first use (the DOM interfaces are installed after this script's own setup).
+    // The binding's own native accessors, captured at install.
     var valueLocalName, valueNamespace, valueTextContent, valueTextContentSet;
-    var valueNatives = function(){ if (!valueTextContent) { valueLocalName = $gopd(g.Element.prototype, 'localName').get; valueNamespace = $gopd(g.Element.prototype, 'namespaceURI').get; valueTextContent = $gopd(g.Node.prototype, 'textContent').get; valueTextContentSet = $gopd(g.Node.prototype, 'textContent').set; } };
+    var valueNatives = function(){ if (!valueTextContent) { valueLocalName = __ns.domAccessor('localName', false, 'Element'); valueNamespace = __ns.domAccessor('namespaceURI', false, 'Element'); valueTextContent = __ns.domAccessor('textContent', false, 'Node'); valueTextContentSet = __ns.domAccessor('textContent', true, 'Node'); } };
+    valueNatives();
     var valueName = function(el){ valueNatives(); return $apply(valueNamespace, el, []) === 'http://www.w3.org/1999/xhtml' ? $apply(valueLocalName, el, []) : ''; };
     var isTextarea = function(el){ return valueName(el) === 'textarea'; };
     // A button's type is always submit/reset/button; an input's reflected modes follow its type attribute.
@@ -1867,16 +1868,21 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // DETACHED subtrees, which React-DOM's updateOptions reads during commit, and stays linear for
     // huge lists (indexing the live `children` collection recomputes it per access).
     var optionNs = 'http://www.w3.org/1999/xhtml';
-    var optionName = function(n){ return n.namespaceURI === optionNs ? n.localName : ''; };
+    // The binding's native tree accessors, captured at install: the walk never reaches a page-replaced builtin (turbo-dom#199).
+    var optionFirst, optionNext, optionKind, optionSpace, optionLocal, optionParent;
+    var optionNatives = function(){ if (!optionFirst) { optionFirst = __ns.domAccessor('firstChild', false, 'Node'); optionNext = __ns.domAccessor('nextSibling', false, 'Node'); optionKind = __ns.domAccessor('nodeType', false, 'Node'); optionSpace = __ns.domAccessor('namespaceURI', false, 'Element'); optionLocal = __ns.domAccessor('localName', false, 'Element'); optionParent = __ns.domAccessor('parentNode', false, 'Node'); } };
+    optionNatives();
+    var optionName = function(n){ optionNatives(); return $apply(optionSpace, n, []) === optionNs ? $apply(optionLocal, n, []) : ''; };
     var optionsOf = function(sel){
       var a = [];
-      (function walk(n, grouped){ for (var c = n.firstChild; c; c = c.nextSibling){ if (c.nodeType !== 1) continue; var name = optionName(c);
-        if (name === 'option') a.push(c);
+      optionNatives();
+      (function walk(n, grouped){ for (var c = $apply(optionFirst, n, []); c; c = $apply(optionNext, c, [])){ if ($apply(optionKind, c, []) !== 1) continue; var name = optionName(c);
+        if (name === 'option') $c.push(a, c);
         else if (name === 'optgroup') { if (!grouped) walk(c, true); }
         else if (name !== 'select' && name !== 'datalist' && name !== 'hr') walk(c, grouped); } })(sel, false);
       a.item = function(i){ return this[i] || null; }; return a;
     };
-    var ownerSelect = function(n){ var grouped = false, p = n.parentNode; while (p && p.nodeType === 1){ var name = optionName(p); if (name === 'select') return p; if (name === 'datalist' || name === 'hr' || name === 'option') return null; if (name === 'optgroup') { if (grouped) return null; grouped = true; } p = p.parentNode; } return null; };
+    var ownerSelect = function(n){ var grouped = false, p = $apply(optionParent, n, []); while (p && $apply(optionKind, p, []) === 1){ var name = optionName(p); if (name === 'select') return p; if (name === 'datalist' || name === 'hr' || name === 'option') return null; if (name === 'optgroup') { if (grouped) return null; grouped = true; } p = $apply(optionParent, p, []); } return null; };
     // <option>: `value` falls back to text content (HTML spec), `selected`/`defaultSelected` track
     // the live + attribute state. React-DOM's updateOptions reads option.value and writes
     // option.selected for every option of a controlled <select>.
@@ -1885,27 +1891,29 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var op = protoFor.HTMLOptionElement;
       Object.defineProperty(op, 'value', { configurable: true, get: function(){ var v = $getAttr(this, 'value'); return v == null ? (this.textContent || '') : v; }, set: function(v){ $setAttr(this, 'value', v == null ? '' : String(v)); } });
       var optionStates = new WeakMap(), emptySelects = new WeakSet();
-      var isSelected = function(o){ return $c.has(optionStates,o) ? $c.get(optionStates,o) : o.hasAttribute('selected'); };
+      var isSelected = function(o){ return $c.has(optionStates,o) ? $c.get(optionStates,o) : $hasAttr(o, 'selected'); };
+      var selectNumber = Number;
       var selectionOf = function(sel){
         var os = optionsOf(sel), chosen = [];
-        for (var i=0;i<os.length;i++) if (isSelected(os[i])) chosen.push(os[i]);
-        if (!sel.multiple && chosen.length > 1) chosen = [chosen[chosen.length-1]];
-        if (!chosen.length && !sel.multiple && Number(sel.getAttribute('size') || 0) <= 1 && !$c.has(emptySelects,sel)) {
+        for (var i=0;i<os.length;i++) if (isSelected(os[i])) $c.push(chosen, os[i]);
+        var multiple = $hasAttr(sel, 'multiple');
+        if (!multiple && chosen.length > 1) chosen = [chosen[chosen.length-1]];
+        if (!chosen.length && !multiple && selectNumber($getAttr(sel, 'size') || 0) <= 1 && !$c.has(emptySelects,sel)) {
           for (var j=0;j<os.length;j++) {
-            var group = os[j].parentNode;
-            if (!os[j].disabled && !(group && String(group.tagName).toUpperCase() === 'OPTGROUP' && group.hasAttribute('disabled'))) { chosen.push(os[j]); break; }
+            var group = $apply(optionParent, os[j], []);
+            if (!$hasAttr(os[j], 'disabled') && !(group && $apply(optionKind, group, []) === 1 && optionName(group) === 'optgroup' && $hasAttr(group, 'disabled'))) { $c.push(chosen, os[j]); break; }
           }
         }
         return chosen;
       };
       Object.defineProperty(op, 'selected', { configurable: true, get: function(){
-        var sel = ownerSelect(this); return sel ? selectionOf(sel).indexOf(this) >= 0 : isSelected(this);
+        var sel = ownerSelect(this); return sel ? $c.indexOf(selectionOf(sel), this) >= 0 : isSelected(this);
       }, set: function(v){
         v = !!v; $c.set(optionStates,this, v);
         var sel = ownerSelect(this);
         if (sel && v) {
           $c.delete(emptySelects,sel);
-          if (!sel.multiple) optionsOf(sel).forEach(function(o){ if (o !== this) $c.set(optionStates,o, false); }, this);
+          if (!$hasAttr(sel, 'multiple')) $c.forEach(optionsOf(sel), function(o){ if (o !== this) $c.set(optionStates,o, false); }, this);
         }
       } });
       selection = { selectionOf: selectionOf, optionStates: optionStates, emptySelects: emptySelects, isSelected: isSelected, optionsOf: optionsOf, ownerSelect: ownerSelect };
@@ -2344,7 +2352,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // prototype to the clone), so a cloned <input>/<select> keeps its type/value/checked accessors
     // (userEvent's isValidDateOrTimeValue clones a date input, assigns, and checks the value stuck).
     void applyControlProto;
-    var documentSheets=cssList('StyleSheetList',function(){var list=[],els=d.querySelectorAll('style,link');for(var i=0;i<els.length;i++){var sheet=els[i].sheet;if(sheet)list.push(sheet);}return list;});
+    var documentSheetsQuery=d.querySelectorAll,documentSheetOf=function(element){var owner=$gopd($O.getPrototypeOf(element),'sheet');return owner&&owner.get?$apply(owner.get,element,[]):element.sheet;};
+    var documentSheets=cssList('StyleSheetList',function(){var list=[],els=$apply(documentSheetsQuery,d,['style,link']);for(var i=0;i<els.length;i++){var sheet=documentSheetOf(els[i]);if(sheet)$c.push(list,sheet);}return list;});
     documentCSSRecord.cssHost.readSheets=function(){return cssRecord(documentSheets).items;};
     __ns.styleSheetList=function(refresh){return cssList('StyleSheetList',refresh);};
     try { Object.defineProperty(d, 'styleSheets', { configurable: true, get: function(){return documentSheets;} }); } catch(e){}
