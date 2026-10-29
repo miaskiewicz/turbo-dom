@@ -1,5 +1,8 @@
 # turbo-dom-v8
 
+> Part of the [turbo-dom](https://github.com/miaskiewicz/turbo-dom) 0.6.0 crate family. Linked by
+> [`turbo-dom-browser-env`](../turbo-dom-browser-env) and turbo-surf (`v8 = { package = "turbo-dom-v8", version = "~150.4" }`).
+
 `turbo-dom-v8` 150.4.0 is turbo-dom's fork of [rusty_v8](https://github.com/denoland/rusty_v8)
 (crates.io `v8` 150.4.0, upstream revision `5c15a6995c9bb4bacd3e341b59fff32c909c80bf`).
 It links the **official prebuilt** rusty_v8 v150.4.0 static library and generated
@@ -118,6 +121,6 @@ miaskiewicz/turbo-dom, using the generated `crate/`) it publishes `turbo-dom-v8 
 once: if that version already exists, the published archive must match the fresh package
 (only Cargo's `Cargo.lock`/`.cargo_vcs_info.json` may differ) and nothing is uploaded.
 turbo-dom-v8 publishes first in the turbo-dom release chain (`.github/workflows/publish.yml`,
-see PUBLISHING.md); its CI job (`ci.yml` `v8`) generates the crate, tests it on linux x64/arm64,
-macOS arm64 and windows x64 with the default and simdutf archives, and builds
+see PUBLISHING.md); its CI job (`ci.yml` `v8`) generates the crate, tests it on linux x64/arm64
+and windows x64 (plus macOS arm64 in the release run) with the default and simdutf archives, and builds
 turbo-dom-browser-env against it.
