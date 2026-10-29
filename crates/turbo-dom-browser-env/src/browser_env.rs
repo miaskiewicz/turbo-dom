@@ -7585,6 +7585,30 @@ mod tests {
         });
     }
 
+    /// turbo-dom#183: a DOM string past V8's length limit throws `RangeError: Invalid string
+    /// length` (V8's own message) instead of aborting the process.
+    #[test]
+    #[ignore = "turbo-dom#183: fails until the fix; allocates about 1 GiB"]
+    fn unit_string_past_the_limit_throws_range_error() {
+        init_v8();
+        let isolate = &mut v8::Isolate::new(Default::default());
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        v8::tc_scope!(let scope, scope);
+        let units = vec![u16::from(b'a'); v8::String::MAX_LENGTH + 1];
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            unit_string(scope, &units).length()
+        }));
+        drop(units);
+        assert_eq!(result.ok(), Some(0));
+        let exception = scope.exception().unwrap();
+        assert_eq!(
+            exception.to_rust_string_lossy(scope),
+            "RangeError: Invalid string length"
+        );
+    }
+
     #[test]
     fn native_parser_positions_use_actual_units_and_private_window_ownership() {
         init_v8();
