@@ -117,7 +117,8 @@ fn hidden_and_clipped_boxes_keep_geometry_but_display_none_has_no_fragments() {
             .len(),
         0
     );
-    // Legacy PDF rendering deliberately retains its previous nonpainting filter.
+    // The render galley keeps the invisible boxes' space too, like Chrome (only the
+    // zero-area clip box is still left out): 10 + 20 + 7 (miaskiewicz/turbo-dom#209).
     let fonts = FontRegistry::new();
     let images = ImageCtx {
         resolver: &NoImages,
@@ -128,7 +129,7 @@ fn hidden_and_clipped_boxes_keep_geometry_but_display_none_has_no_fragments() {
         &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
     );
     let legacy = layout_with_images(&styled, 200.0, &fonts, &images, &mut Diagnostics::default());
-    assert_eq!(legacy.height, 7.0);
+    assert_eq!(legacy.height, 37.0);
 }
 
 #[test]

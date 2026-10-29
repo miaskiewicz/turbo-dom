@@ -277,7 +277,7 @@ impl SourceOffsets {
                 parent_font,
                 ctx.html_font_scale.unwrap_or(1.0),
             );
-        let (dx, dy) = super::block::flow_relative_offset(&used, width);
+        let (dx, dy) = super::block::flow_relative_offset(&used, width, ctx);
         let (px, py) = self.current();
         self.stack.push(ActiveInline {
             offset: (px + dx, py + dy),

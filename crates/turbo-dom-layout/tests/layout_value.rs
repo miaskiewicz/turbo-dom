@@ -146,7 +146,9 @@ fn color_named_and_invalid() {
     assert_eq!(parse_color("gray"), Some(Rgba::new(128, 128, 128, 255)));
     assert_eq!(parse_color("grey"), Some(Rgba::new(128, 128, 128, 255)));
     assert_eq!(parse_color("transparent"), Some(Rgba::new(0, 0, 0, 0)));
-    assert_eq!(parse_color("chartreuse"), None);
+    // Every CSS Color 4 name parses (Chrome 156: chartreuse is rgb(127, 255, 0)).
+    assert_eq!(parse_color("chartreuse"), Some(Rgba::new(127, 255, 0, 255)));
+    assert_eq!(parse_color("chartreuse2"), None);
 }
 
 // ------------------------------------------------------------- display + box

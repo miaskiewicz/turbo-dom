@@ -69,6 +69,8 @@ pub struct LayoutBox {
     /// FULL sub-layout, so a deeply nested flex tree is exponential without this —
     /// keyed by the rounded proposed width (a handful of distinct values per box).
     measure_cache: RefCell<Option<Box<MeasuredSizes>>>,
+    /// Memoized margin-collapsing walks ([`MarginMemo`], miaskiewicz/turbo-dom#202).
+    margin_memo: MarginMemoSlot,
 }
 
 fn same_original_inputs(
@@ -80,6 +82,61 @@ fn same_original_inputs(
         (Some(a), Some(b)) => std::sync::Arc::ptr_eq(a, b),
         _ => false,
     }
+}
+
+/// One-entry memos of the margin-collapsing walks of `block.rs` (miaskiewicz/turbo-dom#202).
+/// Each walk descends the first- or last-child chain, and every level of a nested
+/// document calls it again, so a `d`-deep chain cost O(d^2) style resolves. Each memo
+/// holds the last `(key, value)`, the key packing the walk's containing-block width and
+/// one style length as bits. The leading-margin and self-collapsing walks are pure
+/// functions of the subtree and the key, so they are dropped only when the layout policy
+/// changes; the trailing margin also reads the dropped end margins of the latest layout,
+/// so it is dropped whenever the box is laid out again ([`LayoutBox::begin_layout`]).
+/// A clone (flex / table temporary boxes) starts empty.
+#[derive(Debug, Default)]
+struct MarginMemo {
+    leading: std::cell::Cell<Option<(u64, f32)>>,
+    kids_collapse: std::cell::Cell<Option<(u64, bool)>>,
+    trailing: std::cell::Cell<Option<(u64, f32)>>,
+}
+
+impl MarginMemo {
+    fn clear(&self) {
+        self.leading.set(None);
+        self.kids_collapse.set(None);
+        self.trailing.set(None);
+    }
+}
+
+/// A box's lazily allocated [`MarginMemo`]; a clone (flex / table temporary boxes)
+/// starts empty.
+#[derive(Debug, Default)]
+pub(crate) struct MarginMemoSlot(std::cell::OnceCell<Box<MarginMemo>>);
+
+impl Clone for MarginMemoSlot {
+    fn clone(&self) -> Self {
+        MarginMemoSlot::default()
+    }
+}
+
+/// The memo key for a walk at containing-block width `cw` with style length `extra`.
+pub(crate) fn memo_key(cw: f32, extra: f32) -> u64 {
+    (u64::from(cw.to_bits()) << 32) | u64::from(extra.to_bits())
+}
+
+fn memoized<T: Copy>(
+    cell: &std::cell::Cell<Option<(u64, T)>>,
+    key: u64,
+    f: impl FnOnce() -> T,
+) -> T {
+    if let Some((k, v)) = cell.get() {
+        if k == key {
+            return v;
+        }
+    }
+    let v = f();
+    cell.set(Some((key, v)));
+    v
 }
 
 // Lazily boxed so optional viewport data does not enlarge the public inline
@@ -154,6 +211,34 @@ impl LayoutBox {
         self.native_iframe()
             || self.svg_viewport.is_some()
             || self.image.as_ref().is_some_and(|source| source.replaced)
+    }
+
+    /// This box's margin memo, allocated on first use (boxed so inline items stay small).
+    fn margin_memo(&self) -> &MarginMemo {
+        self.margin_memo.0.get_or_init(Box::default)
+    }
+
+    /// The memoized leading (collapsed top) margin for `key` ([`MarginMemo`]).
+    pub(crate) fn leading_margin_cached(&self, key: u64, f: impl FnOnce() -> f32) -> f32 {
+        memoized(&self.margin_memo().leading, key, f)
+    }
+
+    /// Whether all in-flow children are self-collapsing, memoized for `key`.
+    pub(crate) fn kids_collapse_cached(&self, key: u64, f: impl FnOnce() -> bool) -> bool {
+        memoized(&self.margin_memo().kids_collapse, key, f)
+    }
+
+    /// The memoized trailing (collapse-through bottom) margin for `key`.
+    pub(crate) fn trailing_margin_cached(&self, key: u64, f: impl FnOnce() -> f32) -> f32 {
+        memoized(&self.margin_memo().trailing, key, f)
+    }
+
+    /// Drop what this box's previous layout memoized (its trailing margin reads the
+    /// dropped end margins that this layout records anew).
+    pub(crate) fn begin_layout(&self) {
+        if let Some(memo) = self.margin_memo.0.get() {
+            memo.trailing.set(None);
+        }
     }
 
     /// The memoized max-content width, computing it once via `f` on a miss.
@@ -231,6 +316,9 @@ impl LayoutBox {
             self.natural_cache.set(None);
             self.min_content_cache.set(None);
             self.clear_measured_values();
+            if let Some(memo) = self.margin_memo.0.get() {
+                memo.clear();
+            }
         }
         self.set_child_html_layout_policy(policy);
     }
@@ -261,6 +349,9 @@ impl LayoutBox {
             self.natural_cache.set(None);
             self.min_content_cache.set(None);
             self.clear_measured_values();
+            if let Some(memo) = self.margin_memo.0.get() {
+                memo.clear();
+            }
         }
         self.set_child_original_units(units);
     }
@@ -553,23 +644,15 @@ fn marker_level(kind: MarkerKind, el: &StyledElement, ids: &mut Ids) -> Level {
     }
 }
 
-/// Whether a box (and its subtree) is not rendered: `display:none`, or the
-/// invisible states `visibility:hidden` / `opacity:0`. We drop it rather than
-/// paint an invisible box — which is also what keeps hover/click-revealed menus
-/// (Wikipedia's nav dropdowns) hidden in a static snapshot, since their reveal
-/// rule (`:hover`/`:checked ~ …`) is never applied. `keep_zero_area_clips`: a box
-/// whose `clip: rect()` keeps nothing is not dropped for it ([`BuildOptions`]).
+/// Whether a box (and its subtree) is not rendered: `display:none`, or a visually
+/// hidden / screen-reader-only pattern ([`is_visually_hidden`]). `visibility:hidden`
+/// and `opacity:0` boxes are NOT dropped: like Chrome they keep their layout box and
+/// only paint nothing (miaskiewicz/turbo-dom#209, [`super::invisible`]); a hover- or
+/// click-revealed menu is usually absolutely positioned, so it takes no flow space.
+/// `keep_zero_area_clips`: a box whose `clip: rect()` keeps nothing is not dropped for
+/// it ([`BuildOptions`]).
 pub(crate) fn is_hidden(style: &ComputedStyle, keep_zero_area_clips: bool) -> bool {
     if matches!(display_of(style), Display::None) {
-        return true;
-    }
-    if style.get("visibility").map(str::trim) == Some("hidden") {
-        return true;
-    }
-    if matches!(
-        style.get("opacity").map(|v| v.trim().parse::<f32>()),
-        Some(Ok(o)) if o <= 0.0
-    ) {
         return true;
     }
     is_visually_hidden(style, keep_zero_area_clips)
@@ -896,6 +979,7 @@ fn table_kind(el: &StyledElement, ids: &mut Ids) -> BoxKind {
         min_content_cache: std::cell::Cell::new(None),
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
+        margin_memo: MarginMemoSlot::default(),
     });
     BoxKind::Table(captions)
 }
@@ -984,6 +1068,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             min_content_cache: std::cell::Cell::new(None),
             intrinsic_w: std::cell::Cell::new(None),
             measure_cache: RefCell::new(None),
+            margin_memo: MarginMemoSlot::default(),
         };
     }
     let svg_viewport = ids.is_svg_viewport(el).then(|| {
@@ -1017,6 +1102,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         min_content_cache: std::cell::Cell::new(None),
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
+        margin_memo: MarginMemoSlot::default(),
     }
 }
 
@@ -1229,6 +1315,7 @@ fn anon_lines_box(
         min_content_cache: std::cell::Cell::new(None),
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
+        margin_memo: MarginMemoSlot::default(),
     }
 }
 
@@ -1493,6 +1580,7 @@ fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind) -> Layout
         min_content_cache: std::cell::Cell::new(None),
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
+        margin_memo: MarginMemoSlot::default(),
     }
 }
 

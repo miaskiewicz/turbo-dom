@@ -17,7 +17,7 @@ use crate::tag::MarkerKind;
 use crate::text::{Align, FontRegistry};
 use std::collections::{HashMap, HashSet};
 
-use super::boxgen::{BoxKind, ImageSource, InlineItem, LayoutBox};
+use super::boxgen::{memo_key, BoxKind, ImageSource, InlineItem, LayoutBox};
 use super::fragment::{BreakMeta, Fragment, FragmentContent, ImagePlacement, NodeId, Transform2D};
 use super::imgsize::{size_replaced, SizeCtx, SizedImage};
 use super::inline::{self, InlineRun};
@@ -192,17 +192,23 @@ fn block_static_position(cx: f32, flow: &FlowRun) -> (f32, f32) {
 }
 
 /// The `(dx, dy)` a `position:relative` box is visually shifted by (it still
-/// occupies its normal-flow space). `left`/`top` win over `right`/`bottom`.
-fn relative_offset(bs: &BoxStyle, cb_width: f32) -> (f32, f32) {
+/// occupies its normal-flow space). `left`/`top` win over `right`/`bottom`. Horizontal
+/// `%` insets resolve against the containing block's width, vertical ones against its
+/// height `cb_height` (CSS 2.2 §9.3.2); with that height not definite (`None`) a `%`
+/// vertical inset computes to `auto`.
+fn relative_offset(bs: &BoxStyle, cb_width: f32, cb_height: Option<f32>) -> (f32, f32) {
     let dx = bs
         .inset_left
         .resolve(cb_width)
         .or_else(|| bs.inset_right.resolve(cb_width).map(|r| -r))
         .unwrap_or(0.0);
-    let dy = bs
-        .inset_top
-        .resolve(cb_width)
-        .or_else(|| bs.inset_bottom.resolve(cb_width).map(|b| -b))
+    let vertical = |inset: LengthPct| match (inset, cb_height) {
+        (LengthPct::Px(v), _) => Some(v),
+        (_, Some(basis)) => inset.resolve(basis),
+        _ => None,
+    };
+    let dy = vertical(bs.inset_top)
+        .or_else(|| vertical(bs.inset_bottom).map(|b| -b))
         .unwrap_or(0.0);
     (dx, dy)
 }
@@ -1387,7 +1393,9 @@ fn inflow_children(
 fn self_collapsing(lb: &LayoutBox, bs: &BoxStyle, cw: f32) -> bool {
     empty_flow_container(lb, bs)
         && collapsible_extent(bs)
-        && inflow_children(lb, cw, bs.font_size).all(|(kid, kbs)| self_collapsing(kid, &kbs, cw))
+        && lb.kids_collapse_cached(memo_key(cw, bs.font_size), || {
+            inflow_children(lb, cw, bs.font_size).all(|(kid, kbs)| self_collapsing(kid, &kbs, cw))
+        })
 }
 
 /// A box whose content can collapse away: a collapsing block container, or an element
@@ -1429,6 +1437,10 @@ fn zero_or_auto(value: LengthPct) -> bool {
 /// (rather than the bare `margin-top`) so a child's margin escaping a
 /// borderless/paddingless parent stacks the parent against its sibling correctly.
 fn leading_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
+    lb.leading_margin_cached(memo_key(cw, fs), || leading_margin_walk(lb, bs, cw, fs))
+}
+
+fn leading_margin_walk(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
     let mut m = bs.margin.top;
     if top_margins_collapse_through(lb, bs) {
         for (child, cbs) in inflow_children(lb, cw, fs) {
@@ -1458,6 +1470,12 @@ fn bottom_margins_collapse_through(lb: &LayoutBox, bs: &BoxStyle) -> bool {
 /// collapsed with its last in-flow child's trailing margin when that collapses through
 /// it (and was not dropped by `min-height` / `max-height`: `dropped`), recursively.
 fn trailing_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, dropped: &HashSet<NodeId>) -> f32 {
+    lb.trailing_margin_cached(memo_key(cw, bs.margin.bottom), || {
+        trailing_margin_walk(lb, bs, cw, dropped)
+    })
+}
+
+fn trailing_margin_walk(lb: &LayoutBox, bs: &BoxStyle, cw: f32, dropped: &HashSet<NodeId>) -> f32 {
     let kids = match &lb.kind {
         BoxKind::Block(kids)
             if bottom_margins_collapse_through(lb, bs) && !dropped.contains(&lb.node_id) =>
@@ -1735,7 +1753,7 @@ fn layout_in_flow_kid(
     } else {
         leading
     };
-    let (dx, dy) = flow_relative_offset(kbs, cw);
+    let (dx, dy) = flow_relative_offset(kbs, cw, ctx);
     // `leading` is the box's `margin-top` already collapsed with any margin escaping
     // its borderless top (parent/child collapse); collapse it into the running margin.
     flow.pending = collapse_margins(flow.pending, leading);
@@ -1775,9 +1793,10 @@ fn layout_in_flow_kid(
 /// The paint-time shift for a `relative`/`sticky` box: it flows normally (its
 /// space is reserved via the cursor) but is painted shifted by its insets. Any
 /// other positioning contributes no shift.
-pub(super) fn flow_relative_offset(kbs: &BoxStyle, cw: f32) -> (f32, f32) {
+pub(super) fn flow_relative_offset(kbs: &BoxStyle, cw: f32, ctx: &Ctx) -> (f32, f32) {
     if matches!(kbs.position, Position::Relative | Position::Sticky) {
-        relative_offset(kbs, cw)
+        let cb_height = (ctx.cb_h > 0.0 || ctx.cb_h_known).then_some(ctx.cb_h);
+        relative_offset(kbs, cw, cb_height)
     } else {
         (0.0, 0.0)
     }
@@ -2270,6 +2289,7 @@ fn layout_box_sized_impl(
     ctx: &mut Ctx,
     force_bfc: bool,
 ) -> Fragment {
+    lb.begin_layout();
     // A replaced `<img>` sizes from its intrinsic dimensions + caps rather than
     // flowing content — the same as the normal-flow `layout_box` path. Flex/grid
     // items and table cells reach layout through here, so without this an `<img>`
@@ -2412,6 +2432,7 @@ fn layout_box(
     parent_fs: f32,
     ctx: &mut Ctx,
 ) -> Fragment {
+    lb.begin_layout();
     let bs = resolve(lb, cb_width, parent_fs);
     if let Some(frag) = replaced_image_box(lb, &bs, bx, by, cb_width, ctx) {
         return frag;
@@ -2861,6 +2882,9 @@ fn layout_tree_policy(
     root.set_original_units(original_units.as_ref());
     stamp_intrinsic_widths(root, images);
     let mut frag = layout_box(root, 0.0, 0.0, cb_width, DEFAULT_FONT_SIZE, &mut ctx);
+    if !live_geometry {
+        super::invisible::scrub(&mut frag, &super::invisible::hidden_ids(root));
+    }
     // The galley (initial containing block) contains every float — grow it to the
     // lowest float edge if a float outran the in-flow content (a tall right-floated
     // infobox on a short page). Floats inside a nested BFC are already contained.

@@ -248,3 +248,37 @@ fn every_css_named_color_parses() {
     assert_eq!(rgb("yellowgreen"), Some((154, 205, 50, 255)));
     assert_eq!(rgb("notacolor"), None);
 }
+
+#[test]
+fn hidden_inline_text_images_and_markers_paint_nothing() {
+    // A `visibility:hidden` span inside a visible line, a hidden replaced image and the
+    // marker of a hidden list item keep their space but paint nothing.
+    let body = "<p>ab<span style='visibility:hidden'>HIDDENTEXT</span>cd</p>\
+         <img style='visibility:hidden;width:20px;height:10px' src='data:image/gif;base64,R0lGODlhAQABAAAAACw='>\
+         <ul><li style='opacity:0'>x</li></ul>";
+    let galley = turbo_dom_layout::layout_html(
+        &page(body),
+        "",
+        400.0,
+        &FontRegistry::new(),
+        &mut Diagnostics::default(),
+    )
+    .unwrap();
+    let mut all = Vec::new();
+    walk(&galley, &mut all);
+    let mut visible_text = String::new();
+    for f in &all {
+        match &f.content {
+            FragmentContent::TextLine { text, .. } => visible_text.push_str(text),
+            FragmentContent::Image(_) => panic!("hidden image paints: {f:?}"),
+            FragmentContent::Marker(_) => panic!("hidden marker paints: {f:?}"),
+            _ => {}
+        }
+    }
+    assert!(!visible_text.contains("HIDDEN"), "{visible_text:?}");
+    assert!(
+        visible_text.contains("ab") && visible_text.contains("cd"),
+        "{visible_text:?}"
+    );
+    assert!(!visible_text.contains('x'), "{visible_text:?}");
+}
