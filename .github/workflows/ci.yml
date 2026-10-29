@@ -2,13 +2,13 @@ name: CI
 
 # One job family per published unit (docs/CONSOLIDATION.md, "CI"):
 #   base         turbo-dom + turbo-dom-parser (npm addon: napi matrix, WASM, JS suites)
-#   layout       turbo-dom-layout (linux + macOS; feature configs, wasm32/musl checks)
-#   raster       turbo-dom-raster (linux + macOS; avif / jxl tests; coretext / gpu-metal checks)
-#   v8           turbo-dom-v8 (generated) + turbo-dom-browser-env, 4 platforms x default/simdutf
+#   layout       turbo-dom-layout (linux; + macOS in release; feature configs, wasm32/musl checks)
+#   raster       turbo-dom-raster (linux; + macOS in release; avif / jxl tests; coretext / gpu-metal checks)
+#   v8           turbo-dom-v8 (generated) + turbo-dom-browser-env, linux x64/arm64 + windows x64 (+ macOS arm64 in release) x default/simdutf
 #   msrv         Rust 1.89 for turbo-dom, -layout, -raster
 #   guards       rustfmt, version agreement, retired-gate guard, verify-copied reviews, script self-tests
-#   coverage     tarpaulin per crate with fail-under floors (raised by the coverage phase)
-#   complexity   cyclomatic complexity <= 15 per function: Rust (cc-check) and JS (oxlint)
+#   coverage     tarpaulin per crate with fail-under floors (blocking)
+#   complexity   cyclomatic complexity <= 15 per function: Rust (cc-check) and JS (oxlint); report-only for 0.6.0
 # publish.yml calls this whole workflow before it publishes anything.
 
 on:
@@ -463,12 +463,11 @@ jobs:
         run: |
           { echo '### JS functions above cc 15'; echo '```'; grep 'complexity of' complexity.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
-  # ---- coverage floors (tarpaulin, LLVM engine, macOS arm64 where they were measured) ----
+  # ---- coverage floors (tarpaulin, LLVM engine, ubuntu; values measured on macOS arm64) ----
   # Each gate is the crate's CURRENT measured line coverage (rounded down; see
-  # docs/CONSOLIDATION.md "Coverage"). The coverage phase (P5-cov) raises every gate to >= 99
-  # and then 100 as tests land (turbo-dom: 100 since P5-cov-core; turbo-dom-raster: 100 in
-  # each of its default / avif / jxl configs since P5-cov-raster); never lower one to pass a
-  # change. A crate measured in several feature configurations has one row (and `label`) per
+  # docs/CONSOLIDATION.md "Coverage"): the values the coverage phase (P5-cov) reached
+  # (target >= 99.5; turbo-dom-browser-env accepted at 97.6 for 0.6.0); never lower one to
+  # pass a change. A crate measured in several feature configurations has one row (and `label`) per
   # config.
   # turbo-dom-parser (the root package) gates its parser core only, src/core.rs (`files`):
   # its src/lib.rs napi / wasm front-ends and src/spike.rs (`napi-bind` / `wasm-bind` /
