@@ -11,10 +11,11 @@ use crate::rtdom::tree::{Handle, NodeType, Tree};
 mod utf16;
 pub use utf16::{serialize_inner_utf16, serialize_outer_utf16};
 
-/// Elements that emit no closing tag and have no serialized children.
+/// Elements that emit no closing tag and have no serialized children (HTML "serializes as
+/// void", Chrome 156: the legacy basefont / bgsound / frame / keygen too).
 const VOID: &[&str] = &[
-    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",
-    "track", "wbr",
+    "area", "base", "basefont", "bgsound", "br", "col", "embed", "frame", "hr", "img", "input",
+    "keygen", "link", "meta", "param", "source", "track", "wbr",
 ];
 
 /// Elements whose text content is raw (NOT escaped) on serialization.
