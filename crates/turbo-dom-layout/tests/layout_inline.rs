@@ -418,3 +418,39 @@ fn font_shorthand_line_height_sets_the_line_pitch() {
     assert_eq!(b["o"].3, 30.0);
     assert_eq!(b["i"].3, 33.0);
 }
+
+#[cfg(feature = "bundled-fonts")]
+#[test]
+fn font_shorthand_invalid_at_computed_value_time_unsets_its_longhands() {
+    // CSS Variables 1 §3.1: a shorthand whose `var()` fails is invalid at computed-value
+    // time, so every longhand (line-height included) is `unset`; an earlier longhand does
+    // not survive. Chrome 156: `line-height:40px;font:var(--nope)` is one 18px line, the
+    // same as `font:inherit`.
+    let b = cid_boxes(
+        "<body style='margin:0;font-family:serif'>\
+         <div data-cid=v style='line-height:40px;font:var(--nope)'>a</div>\
+         <div data-cid=r style='line-height:40px;font:inherit'>a</div></body>",
+    );
+    assert_ne!(b["v"].3, 40.0);
+    assert_eq!(b["v"].3, b["r"].3);
+}
+
+#[cfg(feature = "bundled-fonts")]
+#[test]
+fn inline_block_baseline_ignores_floats_and_overflow_clip() {
+    // CSS Inline 3 / CSS 2.1 §10.8.1: an inline-block's baseline is its last in-flow line
+    // box; a float's lines are not in flow, and `overflow: clip` is not a scroll container.
+    // Chrome 156: the following inline-block `m` sits at the line top in both rows (the
+    // inline-block's first line `a` holds the baseline).
+    let b = cid_boxes(
+        "<body style='margin:0;font-family:serif'>\
+         <div data-cid=f style='line-height:20px'>x<span style='display:inline-block;width:50px'>\
+         <div>a</div><div style='float:left;width:50px'>b<br>c<br>d</div></span>\
+         <span data-cid=fm style=display:inline-block>m</span></div>\
+         <div data-cid=c style='line-height:20px'>x<span style='display:inline-block;overflow:clip;height:60px'>a</span>\
+         <span data-cid=cm style=display:inline-block>m</span></div></body>",
+    );
+    assert_eq!(b["fm"].1, b["f"].1, "float lines do not set the baseline");
+    assert_eq!(b["cm"].1, b["c"].1, "overflow:clip keeps the line baseline");
+    assert_eq!(b["c"].3, 60.0);
+}
