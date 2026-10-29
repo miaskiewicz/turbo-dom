@@ -32,10 +32,14 @@ fn host_focused(
 const DRIVER: &str = r#"(() => {
   const dispatch = globalThis.__hostDispatch, focused = globalThis.__hostFocused;
   delete globalThis.__hostDispatch; delete globalThis.__hostFocused;
-  const clock = { now: 0, seq: 0, timers: [] };
+  // The host's timer queue is native in Chrome: it uses only builtins captured here, so a probe
+  // that patches builtins sees only what the engine itself reaches (turbo-dom#199).
+  const max = Math.max, NumberValue = Number, define = Object.defineProperty;
+  const remove = (list, at) => { for (let index = at; index + 1 < list.length; index++) list[index] = list[index + 1]; list.length--; };
+  const clock = { now: 0, seq: 0, timers: [], max, remove };
   globalThis.__clock = clock;
-  globalThis.setTimeout = (callback, delay) => { const id = ++clock.seq; clock.timers.push({ id, due: clock.now + Math.max(0, Number(delay) || 0), callback }); return id; };
-  globalThis.clearTimeout = id => { const index = clock.timers.findIndex(timer => timer.id === id); if (index >= 0) clock.timers.splice(index, 1); };
+  globalThis.setTimeout = (callback, delay) => { const id = ++clock.seq; define(clock.timers, clock.timers.length, { value: { id, due: clock.now + max(0, NumberValue(delay) || 0), callback }, writable: true, enumerable: true, configurable: true }); return id; };
+  globalThis.clearTimeout = id => { for (let index = 0; index < clock.timers.length; index++) if (clock.timers[index].id === id) { remove(clock.timers, index); return; } };
   Object.defineProperty(globalThis, 'performance', { value: { now: () => clock.now }, configurable: true, writable: true });
   let hovered = null;
   const fire = (target, Type, type, init) => { const event = new Type(type, init); dispatch(event, target); return event; };
@@ -94,7 +98,7 @@ pub(in super::super) fn run(probe: &str) -> serde_json::Value {
     // The earliest due timer runs next; ties keep scheduling order.
     let step = v8::String::new(
         scope,
-        "(()=>{const c=__clock;if(!c.timers.length)return false;let best=0;for(let i=1;i<c.timers.length;i++){const t=c.timers[i],b=c.timers[best];if(t.due<b.due||(t.due===b.due&&t.id<b.id))best=i;}const [timer]=c.timers.splice(best,1);c.now=Math.max(c.now,timer.due);timer.callback();return true;})()",
+        "(()=>{const c=__clock;if(!c.timers.length)return false;let best=0;for(let i=1;i<c.timers.length;i++){const t=c.timers[i],b=c.timers[best];if(t.due<b.due||(t.due===b.due&&t.id<b.id))best=i;}const timer=c.timers[best];c.remove(c.timers,best);c.now=c.max(c.now,timer.due);timer.callback();return true;})()",
     )
     .unwrap();
     let step = v8::Script::compile(scope, step, None).unwrap();
