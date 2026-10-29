@@ -243,6 +243,7 @@ key_order.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes a
 select_element.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes above unwraps
 storage_ownership.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes above unwraps
 typed_om.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes above unwraps
+html_popover.js: benv-js r1 popover members call captured intrinsics through Reflect.apply (turbo-dom#194)
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
