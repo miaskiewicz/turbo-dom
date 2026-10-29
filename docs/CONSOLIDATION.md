@@ -10,7 +10,9 @@ the consumers depend on them through crates.io.
 Governing rule: every step was behaviour-preserving (consumer corpora byte-identical,
 proven by the parity harness below) with exactly two approved exceptions, both "match
 what Chrome does": the one Chrome 156-correct selector engine (S3), and turbo-surf static
-rendering of `t:*` as unknown inline elements (S2/S4).
+rendering of `t:*` as unknown inline elements (S2/S4). The bug-fix rounds after the
+moves (P5b, D1-D5) changed outputs only where a Chrome 156 control said so; each such change
+is declared in `tools/parity/expected/` and listed in [CHANGELOG.md](../CHANGELOG.md) 0.6.0.
 
 ## Crate map
 
@@ -93,23 +95,26 @@ Manifests always name the registry version (`turbo-dom = "0.6"`,
 
 ## CI
 
-`.github/workflows/ci.yml` (toolchain 1.98.0; plan §7.4):
+`.github/workflows/ci.yml` (toolchain 1.98.0). Pull requests and pushes to `main` run it on
+Linux runners plus Windows x64 (the napi build and the v8 matrix); the macOS arm64 builds
+and jobs are added only when `publish.yml` calls it with `darwin: true` for a release.
 
 | job | what |
 |---|---|
-| base | napi addon matrix (linux x64 glibc/musl, linux arm64, macOS arm64, windows x64), WASM build, `cargo test -p turbo-dom-parser --lib`, `cargo test -p turbo-dom` + churn allocation gate, clippy `-p turbo-dom -p turbo-dom-parser` (+ wasm front-ends), JS / vitest / jest / html5lib conformance |
-| layout (linux + macOS) | clippy (default / `svg,perf,serde,test-support` / no-default); tests default, `--no-default-features` (exact red list via `scripts/check-baseline-red.py`), `svg`, `perf`, `serde,test-support`; wasm32 check (no default features); musl check |
-| raster (linux + macOS) | clippy + tests, default, `--features avif` and `--features jxl`; `coretext` / `gpu-metal` clippy and checks on macOS, `gpu-metal` check on Linux |
-| v8 + browser-env | linux x64/arm64, macOS arm64, windows x64 × default/simdutf: generate turbo-dom-v8, prebuilt rusty_v8 150.4.0 archive (cached) as `RUSTY_V8_ARCHIVE`, fork tests (no ignored interceptor tests), browser-env tests default and `host-internals,test-support`, separate target dirs per crate × variant |
+| base | napi addon matrix (linux x64 glibc/musl, linux arm64, windows x64; + macOS arm64 in release), WASM build, `cargo test -p turbo-dom-parser --lib`, `cargo test -p turbo-dom` + churn allocation gate, clippy `-p turbo-dom -p turbo-dom-parser` (+ wasm front-ends), JS / vitest / jest / html5lib conformance |
+| layout (linux; + macOS in release) | clippy (default / `svg,perf,serde,test-support` / no-default); tests default, `--no-default-features` (exact red list via `scripts/check-baseline-red.py`), `svg`, `perf`, `serde,test-support`; wasm32 check (no default features); musl check |
+| raster (linux; + macOS in release) | clippy + tests, default, `--features avif` and `--features jxl`; `coretext` / `gpu-metal` clippy and checks on macOS (release run), `gpu-metal` check on Linux |
+| v8 + browser-env | linux x64/arm64, windows x64 (+ macOS arm64 in release) × default/simdutf: generate turbo-dom-v8, prebuilt rusty_v8 150.4.0 archive (cached) as `RUSTY_V8_ARCHIVE`, fork tests (no ignored interceptor tests), browser-env tests default and `host-internals,test-support`, separate target dirs per crate × variant |
 | msrv | `cargo +1.89 check --all-targets` for turbo-dom, -layout, -raster |
 | guards | `check-versions.py`, `check-no-selector-dual.sh`, turbo-dom-v8 generator/release self-tests + `generate.py --check`, `scripts/` and `tools/parity` self-tests, `verify-copied.sh` (verbatim + current), `verify-copied-collectors.sh`, `verify-copied-layout.sh` |
-| coverage | tarpaulin (LLVM, macOS) per crate with `--fail-under` floors |
-| complexity (rust, js) | cyclomatic complexity <= 15 per function: `cc-check` (turbo-html2pdf, pinned rev) over every tracked `.rs` file, oxlint `complexity` over `src/` and `crates/turbo-dom-browser-env/src` (the binding's shipped JS); expected red until the post-coverage refactor (below) |
+| coverage | tarpaulin 0.37.5 (LLVM, ubuntu) per crate with `--fail-under` floors (blocking) |
+| complexity (rust, js) | cyclomatic complexity <= 15 per function: `cc-check` (turbo-html2pdf, pinned rev) over every tracked `.rs` file, oxlint `complexity` over `src/` and `crates/turbo-dom-browser-env/src` (the binding's shipped JS); report-only (`continue-on-error`) until the post-release refactor (below) |
 
 ### Coverage
 
-The gates are the line coverage measured at the release prep (tarpaulin 0.37.5, LLVM
-engine, macOS arm64, `--include-files 'crates/<crate>/src/*'`), rounded down:
+The gates are the line coverage reached by the coverage phase (tarpaulin 0.37.5, LLVM
+engine, `--include-files 'crates/<crate>/src/*'`; measured on macOS arm64, gated in CI on
+ubuntu), rounded down. They block the workflow (and so `publish.yml`):
 
 | crate | measured | gate |
 |---|---|---|
@@ -121,9 +126,11 @@ engine, macOS arm64, `--include-files 'crates/<crate>/src/*'`), rounded down:
 | turbo-dom-browser-env (`host-internals,test-support`) | 88.59% (14538/16411); P5-cov (C3): 89.35% (15577/17434) → 93.21% (16086/17257), default features 93.14%; C3c: → 94.35% (16258/17231); C3c round 2: → 95.71% (16486/17225); merged C3/C3b/C3c/C3d: → 96.99% (16740/17259); C3 round 4: → 97.19% (16779/17264), default features 97.12%; C3 round 5: → 97.32% (16851/17315), default features 97.25%; C3 round 5 + C3e: → 97.68% (17102/17509) | 97.6 |
 | turbo-dom-parser, `src/core.rs` only (`--include-files src/core.rs`) | no gate before step 4: 38.80% (142/366) → 100% (349/349) | 100 |
 
-The coverage phase (P5-cov) adds behaviour-asserting tests and raises every gate to
->= 99, then 100 per crate as it gets there (turbo-dom-v8: 100% of the fork delta through
-a coverage filter). A gate is never lowered to pass a change. turbo-dom-raster reached 100% in
+The coverage phase (P5-cov) added behaviour-asserting tests and set each gate at the value
+it reached: the target was >= 99.5 per crate, with turbo-dom-browser-env accepted at 97.6 for
+0.6.0 (its remaining lines are on the post-release list with the complexity refactor).
+turbo-dom-v8's fork delta is covered by its own tests (the v8 job). A gate is never lowered
+to pass a change. turbo-dom-raster reached 100% in
 every configuration CI tests (P5-cov-raster: 79.02% → 100% default, measured at the
 consolidation tip be87ef2); its new pixel expectations come from Chrome 156 controls
 (`scripts/canvas-ops-chrome-control.mjs`, `scripts/raster-avif-chrome-control.mjs`, new cases in
@@ -184,61 +191,21 @@ measured when the gate landed (functions above each threshold):
 | Rust, all tracked `.rs` | 10137 | 380 | 113 | 48 | 21 | 11 | 8 | 4 | 145 |
 | JS, `src/` | 1136 | 141 | 50 | 24 | 10 | 7 | 4 | 2 | 50 |
 
-At 15 the backlog is 72 functions (0.6% of the code's functions); 10 would triple it (163)
+At 15 that backlog was 72 functions (0.6% of the code's functions); 10 would triple it (163)
 and reach into ordinary dispatch code, while 20 would leave a 16-20 band whose branch sets
-are already too large to test exhaustively. Both jobs are red (with `continue-on-error`,
-so the workflow and `publish.yml` stay green; not required checks yet) until the backlog is
-refactored, which happens only after the coverage phase (refactoring before full tests could
-break behaviour silently). The backlog (`function:line=cc`):
+are already too large to test exhaustively. The JS scope was then widened to the
+browser-env crate's shipped JS (`crates/turbo-dom-browser-env/src`, which runs in V8 on every
+page); measured 2026-10-28 the backlog is 59 Rust functions and 228 JS functions (45 in
+`src/`, 183 in browser-env).
 
-Rust (48):
-- `crates/turbo-dom-browser-env/src/browser_env.rs`: validate_namespace_name:2453=21, el_dispatch_event:4763=36, form_controls_native:5400=18
-- `crates/turbo-dom-browser-env/src/css_selector_syntax.rs`: attribute:448=18, pseudo:594=28, class_arguments:672=18, element_arguments:773=20
-- `crates/turbo-dom-browser-env/src/document_xpath.rs`: snapshot:31=22
-- `crates/turbo-dom-browser-env/src/dom_implementation.rs`: invoke:111=61
-- `crates/turbo-dom-browser-env/src/dom_mutations.rs`: plan:12=17, incoming_plan:398=21
-- `crates/turbo-dom-browser-env/src/html_dialog.rs`: focusable:151=24
-- `crates/turbo-dom-browser-env/src/html_text.rs`: collect:146=21
-- `crates/turbo-dom-browser-env/src/sanitizer.rs`: sanitize:299=18, filter_attributes:413=19
-- `crates/turbo-dom-browser-env/src/script_state.rs`: (closure):194=20
-- `crates/turbo-dom-browser-env/src/selection.rs`: plain_text:640=29
-- `crates/turbo-dom-browser-env/src/shadow_slots.rs`: assign:397=17
-- `crates/turbo-dom-browser-env/src/template_contents.rs`: serialize_with:472=18
-- `crates/turbo-dom-browser-env/src/trusted_types.rs`: attribute_units:199=25
-- `crates/turbo-dom-browser-env/src/view_transitions.rs`: (closure):254=17
-- `crates/turbo-dom-layout/src/cssom_view/hit.rs`: elements_at_point:39=30
-- `crates/turbo-dom-layout/src/cssom_view/metrics.rs`: element_geometry:27=16, offset_position:226=33
-- `crates/turbo-dom-layout/src/cssom_view/range.rs`: select:93=18
-- `crates/turbo-dom-layout/src/cssom_view/scroll.rs`: scroll_metrics:86=34, viewport_metrics:412=16
-- `crates/turbo-dom-layout/src/cssom_view/text.rs`: caret:43=16
-- `crates/turbo-dom-layout/src/cssom_view/visibility.rs`: check:48=18
-- `crates/turbo-dom-raster/src/canvas_ops.rs`: parse_hex:197=16
-- `crates/turbo-dom-raster/src/webgl.rs`: apply:166=16, rewrite:597=16
-- `crates/turbo-dom-raster/tests/image_formats_chrome.rs`: class:15=19
-- `crates/turbo-dom-raster/tests/inline_svg_chrome.rs`: class:17=19
-- `crates/turbo-dom-raster/tests/paint_chrome.rs`: class:21=19
-- `crates/turbo-dom-raster/tests/raster_img_chrome.rs`: class:20=19
-- `crates/turbo-dom/src/rtdom/cascade.rs`: parse_stylesheet:338=16, computed_style_with_policy:565=31
-- `crates/turbo-dom/src/rtdom/color.rs`: parse_float_js:302=20
-- `crates/turbo-dom/src/rtdom/events.rs`: dispatch_event:139=22
-- `crates/turbo-dom/src/rtdom/query.rs`: lex_strict:489=41, matches_compound:1625=21
-- `crates/turbo-dom/src/rtdom/query_utf16.rs`: decoded:93=16, state_argument:730=16
-- `crates/turbo-dom/src/rtdom/storage.rs`: collect_unreachable:121=47
-- `crates/turbo-dom/src/rtdom/svg.rs`: parse_leading_float:61=22
-- `crates/turbo-dom/src/rtdom/unit_tokenizer/mod.rs`: step:737=145
-- `crates/turbo-dom/tests/cascade_selectors_chrome.rs`: selectors_match_chrome156:145=21
-
-JS (24; `function:<line>` is an anonymous function):
-- `src/runtime/cascade.mjs`: setProp:45=17, parseStylesheet:81=17, collectMatched:147=17, function:232=21
-- `src/runtime/custom-elements.mjs`: createCustomElement:276=16
-- `src/runtime/dom.mjs`: validLocalName:107=26, insertBefore:206=16, sanitizeInputValue:1662=18, queueRecords:1765=23, __inflateNested:1908=17, createElementNS:1985=18
-- `src/runtime/events.mjs`: dispatchEvent:181=41, function:231=17
-- `src/runtime/html-serialize.mjs`: serializeNode:18=19
-- `src/runtime/selectors.mjs`: parseAttr:186=20, parseAnB:285=26, tokenize:334=36, parsePseudo:400=28, parseComplexTokens:459=36, disabledState:707=17, matchPseudo:861=50, matchCompound:924=21, matchChain:960=16
-- `src/runtime/stubs.mjs`: evalMediaQuery:58=17
+For 0.6.0 both jobs are **report-only** (`continue-on-error`; the workflow and `publish.yml`
+stay green; not required checks): when a job fails, its last step writes the current functions over
+the limit to the job's step summary, which is the authoritative backlog. After the release the backlog is refactored
+(behaviour-preserving, coverage as the safety net), coverage is re-measured, and the jobs
+become blocking required checks.
 
 `crates/turbo-dom-layout`'s old cc <= 5 allow-list for the surf-origin `cssom_view` modules
-is superseded by this gate; its functions above 15 are in the list above.
+is superseded by this gate.
 
 ## Parity harness
 
