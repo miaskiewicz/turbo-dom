@@ -931,6 +931,11 @@
   if (typeof g.cancelAnimationFrame === 'undefined') g.cancelAnimationFrame = function(id){ clearTimeout(id); };
   if (typeof g.matchMedia === 'undefined') g.matchMedia = function(q){ return { matches:false, media:q, addListener:function(){}, removeListener:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return false;} }; };
   if (typeof g.scrollTo === 'undefined') g.scrollTo = function(){};
+  // Window operations are not constructors: no own `prototype` (turbo-dom#221).
+  ['getComputedStyle','requestAnimationFrame','cancelAnimationFrame','matchMedia','scrollTo'].forEach(function(name){
+    var fn=g[name];
+    if(typeof fn==='function'&&Object.prototype.hasOwnProperty.call(fn,'prototype')&&__ns.makeNativeFunction)g[name]=__ns.makeNativeFunction(fn,name,name==='scrollTo'?0:1);
+  });
   // `Image(width, height)` is the native legacy factory in html_image.js (turbo-dom#23); image
   // loading (load / error events, natural size) is the host's (record.imageHost).
   if (typeof g.location === 'undefined' || g.location == null) {
@@ -1284,12 +1289,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // postMessage + exposes onmessage/onerror + terminate so apps that construct a
   // Worker (analytics, off-main-thread hashing) don't throw and degrade gracefully.
   if (typeof g.Worker === 'undefined') {
-    g.Worker = function Worker(url){ this.url = String(url || ''); this.onmessage = null; this.onmessageerror = null; this.onerror = null; this._l = {}; };
+    // An EventTarget subclass with no own instance state (turbo-dom#221).
+    var workerHandlers = new WeakMap();
+    g.Worker = function Worker(url){ if (new.target === undefined) throw new TypeError("Failed to construct 'Worker': Please use the 'new' operator, this DOM object constructor cannot be called as a function."); var worker = Reflect.construct(g.EventTarget, [], new.target); workerHandlers.set(worker, {}); return worker; };
+    Object.setPrototypeOf(g.Worker, g.EventTarget);
+    Object.setPrototypeOf(g.Worker.prototype, g.EventTarget.prototype);
     g.Worker.prototype.postMessage = function(){};
     g.Worker.prototype.terminate = function(){};
-    g.Worker.prototype.addEventListener = function(t, f){ (this._l[t] = this._l[t] || []).push(f); };
-    g.Worker.prototype.removeEventListener = function(t, f){ var a = this._l[t]; if (a){ var i = a.indexOf(f); if (i >= 0) a.splice(i, 1); } };
-    g.Worker.prototype.dispatchEvent = function(){ return true; };
+    ['onmessage','onmessageerror','onerror'].forEach(function(name){ Object.defineProperty(g.Worker.prototype, name, { enumerable: true, configurable: true, get: function(){ var h = workerHandlers.get(this); return h && h[name] || null; }, set: function(value){ var h = workerHandlers.get(this); if (h) h[name] = typeof value === 'function' || (value && typeof value === 'object') ? value : null; } }); });
     if (typeof g.SharedWorker === 'undefined') { g.SharedWorker = function SharedWorker(url){ this.url = String(url || ''); this.port = { postMessage: function(){}, start: function(){}, close: function(){}, addEventListener: function(){}, removeEventListener: function(){}, onmessage: null }; }; }
   }
   // Extra HTML*Element constructors the base ctor list omits. App bundles reference these for

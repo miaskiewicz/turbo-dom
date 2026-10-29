@@ -335,9 +335,83 @@ fn a_scrolling_inline_block_has_its_bottom_margin_edge_as_baseline() {
         ))["t"]
             .1
     };
-    // turbo-dom gives 24.6 for the hidden case: Chrome snaps the inline-block's
-    // baseline offset to whole pixels (filed as a Low follow-up), hence the 0.5 slack.
-    let (visible, hidden) = (at("visible"), at("hidden"));
-    assert_eq!(visible, 0.0);
-    assert!((hidden - 25.0).abs() < 0.5, "{hidden}");
+    // Chrome snaps the inline-block's baseline offset to whole pixels (#219).
+    assert_eq!((at("visible"), at("hidden")), (0.0, 25.0));
+}
+
+const STICKY_TAIL: &str = "<div style='height:2000px'></div>";
+
+#[test]
+fn sticky_top_is_clamped_to_the_bottom_of_its_containing_block() {
+    // Chrome 156: `top:100px` in a 50px parent stops at the parent's content bottom,
+    // margin box included: y=30, and y=25 with a 5px bottom margin (#218).
+    let at = |extra: &str| {
+        cid_boxes(&format!(
+            "<div style='height:50px'><div data-cid=c style='position:sticky;top:100px;\
+             height:20px{extra}'></div></div>{STICKY_TAIL}"
+        ))["c"]
+            .1
+    };
+    assert_eq!((at(""), at(";margin-bottom:5px")), (30.0, 25.0));
+}
+
+#[test]
+fn sticky_bottom_pulls_a_box_up_within_its_containing_block() {
+    // Chrome 156 (300px viewport): a 20px box at y=300 with `bottom:0` rises to 280;
+    // `bottom:100px` wants 180 but stops at its parent's top (260), or 270 when its
+    // 10px top margin must stay inside the parent too (#218).
+    let at = |inset: &str| {
+        cid_boxes(&format!(
+            "<div style='height:260px'></div><div style='height:100px'><div style='height:40px'>\
+             </div><div data-cid=b style='position:sticky;{inset};height:20px'></div></div>{STICKY_TAIL}"
+        ))["b"]
+            .1
+    };
+    assert_eq!(
+        (
+            at("bottom:0"),
+            at("bottom:100px"),
+            at("bottom:100px;margin-top:10px")
+        ),
+        (280.0, 260.0, 270.0)
+    );
+}
+
+#[test]
+fn sticky_right_pulls_a_box_left_within_its_containing_block() {
+    // Chrome 156 (400px viewport): a 30px right-aligned box at x=570 with `right:10px` moves to 360;
+    // in a parent starting at x=380 it stops at 380, also with a right margin (#218).
+    let b = cid_boxes(
+        "<div style='width:600px;text-align:-webkit-right'><div data-cid=r style='position:sticky;right:10px;width:30px;height:5px'></div></div>\
+         <div style='margin-left:380px;width:200px;text-align:-webkit-right'><div data-cid=r2 style='position:sticky;right:0;width:30px;height:5px'></div></div>\
+         <div style='margin-left:380px;width:200px;text-align:-webkit-right'><div data-cid=r3 style='position:sticky;right:0;margin-right:20px;width:30px;height:5px'></div></div>",
+    );
+    assert_eq!((b["r"].0, b["r2"].0, b["r3"].0), (360.0, 380.0, 380.0));
+}
+
+#[test]
+#[ignore = "inline sticky stays relative-shifted (#218, deferred)"]
+fn inline_sticky_boxes_stick_within_their_containing_block() {
+    // Chrome 156: an inline sticky span shifts only past its threshold and stays inside
+    // its block container: `top:10px` in a one-line block stays at y=2, in a 100px block
+    // `top:30px` reaches 30; `left:100px` reaches 100, `left:300px` stops at 192 (#218).
+    let b = cid_boxes(
+        "<div>a<span data-cid=t style='position:sticky;top:10px'>x</span></div>\
+         <div style='height:100px'>a<span data-cid=t2 style='position:sticky;top:30px'>x</span></div>\
+         <div style='width:200px'>a<span data-cid=l style='position:sticky;left:100px'>x</span></div>\
+         <div style='width:200px'>a<span data-cid=l2 style='position:sticky;left:300px'>x</span></div>",
+    );
+    assert_eq!((b["t"].1, b["t2"].1), (2.0, 30.0));
+    assert_eq!((b["l"].0, b["l2"].0), (100.0, 192.0));
+}
+
+#[test]
+fn a_lone_auto_left_margin_right_aligns_a_block() {
+    // Chrome 156: `margin-left:auto` with a definite width pushes the box to the right
+    // edge (x=570), less a definite right margin (x=560).
+    let b = cid_boxes(
+        "<div style='width:600px'><div data-cid=m style='margin-left:auto;width:30px;height:5px'></div>\
+         <div data-cid=n style='margin-left:auto;margin-right:10px;width:30px;height:5px'></div></div>",
+    );
+    assert_eq!((b["m"].0, b["n"].0), (570.0, 560.0));
 }

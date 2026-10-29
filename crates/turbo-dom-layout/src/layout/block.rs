@@ -98,6 +98,21 @@ pub(crate) struct Ctx<'a> {
     /// collapses through nor counts inside (miaskiewicz/turbo-dom#75). Kept for the
     /// latest layout of each box, read by [`trailing_margin`] right after it.
     pub(crate) dropped_end_margins: HashSet<NodeId>,
+    /// In-flow block `position: sticky` boxes awaiting their vertical shift, which is
+    /// clamped to their containing block's content box and so waits for its used
+    /// height (miaskiewicz/turbo-dom#218). Drained by that block's layout.
+    pub(crate) sticky_pending: Vec<StickyPending>,
+}
+
+/// A sticky box's vertical constraints: its node, `top` / `bottom` insets and
+/// vertical margins (`auto` as 0).
+#[derive(Clone, Copy)]
+pub(crate) struct StickyPending {
+    node_id: NodeId,
+    top: Option<f32>,
+    bottom: Option<f32>,
+    margin_top: f32,
+    margin_bottom: f32,
 }
 
 /// A placed float's margin box in absolute galley coordinates, plus which edge
@@ -1784,8 +1799,18 @@ fn layout_in_flow_kid(
         frag.translate(hx, 0.0);
     }
     if kbs.position == Position::Sticky {
-        let (sx, sy) = sticky_offset(kbs, &frag, cx, cw);
-        frag.translate(sx, sy);
+        frag.translate(sticky_dx(kbs, &frag, cx, cw, ctx.root_w), 0.0);
+        let px = |inset: LengthPct| match inset {
+            LengthPct::Px(v) => Some(v),
+            _ => None,
+        };
+        ctx.sticky_pending.push(StickyPending {
+            node_id: frag.node_id,
+            top: px(kbs.inset_top),
+            bottom: px(kbs.inset_bottom),
+            margin_top: kbs.margin.top,
+            margin_bottom: kbs.margin.bottom,
+        });
     }
     // Advance the cursor by the box's height at its *unshifted* flow position. A
     // zero-height box lets the margins run through it — unless it establishes a
@@ -1802,23 +1827,46 @@ fn layout_in_flow_kid(
     frag
 }
 
-/// The shift of an in-flow block `position: sticky` box in an unscrolled document
-/// (CSS Position 3 §3.4, miaskiewicz/turbo-dom#216): it moves only when its static
-/// border edge is above its `top` / `left` threshold (the scrollport origin plus the
-/// inset), and horizontally never past its containing block's content edge
-/// (`cx + cw`). `bottom` / `right` thresholds sit at the far viewport edge and never
-/// pull a box of an unscrolled document back, so they contribute no shift.
-fn sticky_offset(kbs: &BoxStyle, frag: &Fragment, cx: f32, cw: f32) -> (f32, f32) {
-    let room = (cx + cw - (frag.x + frag.width)).max(0.0);
-    let dx = kbs
-        .inset_left
-        .resolve(cw)
-        .map_or(0.0, |left| (left - frag.x).clamp(0.0, room));
-    let dy = match kbs.inset_top {
-        LengthPct::Px(top) => (top - frag.y).max(0.0),
-        _ => 0.0,
-    };
-    (dx, dy)
+/// The horizontal shift of an in-flow block `position: sticky` box in an unscrolled
+/// document (CSS Position 3 §3.4, miaskiewicz/turbo-dom#216, #218): it moves right
+/// when its static border edge is left of its `left` threshold (the scrollport origin
+/// plus the inset), else left when its right edge is past its `right` threshold (the
+/// viewport width `vw` less the inset), and its margin box never leaves its
+/// containing block's content box (`cx`, `cw`).
+fn sticky_dx(kbs: &BoxStyle, frag: &Fragment, cx: f32, cw: f32, vw: f32) -> f32 {
+    let room = (cx + cw - kbs.margin.right - (frag.x + frag.width)).max(0.0);
+    if let Some(left) = kbs.inset_left.resolve(cw) {
+        return (left - frag.x).clamp(0.0, room);
+    }
+    let back = (frag.x - kbs.margin.left - cx).max(0.0);
+    kbs.inset_right.resolve(cw).map_or(0.0, |right| {
+        (vw - right - (frag.x + frag.width)).clamp(-back, 0.0)
+    })
+}
+
+/// Shift the sticky children recorded since `mark` vertically, now that their
+/// containing block's content box (`top`, height `h`) is known: down to a `top`
+/// threshold, else up to a `bottom` one (the viewport height `vh` less the inset),
+/// with the margin box kept inside the content box (miaskiewicz/turbo-dom#218).
+fn place_sticky_kids(
+    children: &mut [Fragment],
+    mark: usize,
+    (top, h, vh): (f32, f32, f32),
+    ctx: &mut Ctx,
+) {
+    for sticky in ctx.sticky_pending.split_off(mark) {
+        let Some(frag) = children.iter_mut().find(|f| f.node_id == sticky.node_id) else {
+            continue;
+        };
+        let down = (top + h - sticky.margin_bottom - (frag.y + frag.height)).max(0.0);
+        let up = (frag.y - sticky.margin_top - top).max(0.0);
+        let dy = match (sticky.top, sticky.bottom) {
+            (Some(t), _) => (t - frag.y).clamp(0.0, down),
+            (None, Some(b)) => (vh - b - (frag.y + frag.height)).clamp(-up, 0.0),
+            _ => 0.0,
+        };
+        frag.translate(0.0, dy);
+    }
 }
 
 /// The paint-time shift for a `relative`/`sticky` box: it flows normally (its
@@ -1868,10 +1916,16 @@ fn block_h_offset(align: Align, kbs: &BoxStyle, kid: &LayoutBox, frag_w: f32, cw
     if auto_x_margins(&kid.style) || align == Align::Center {
         return (cw - frag_w) / 2.0 - kbs.margin.left;
     }
-    if align == Align::Right {
+    // A lone `margin-left: auto` absorbs the free space (CSS 2.2 §10.3.3).
+    if align == Align::Right || auto_left_margin(&kid.style) {
         return cw - frag_w - kbs.margin.right - kbs.margin.left;
     }
     0.0
+}
+
+/// Whether `margin-left` is `auto` (with `margin-right` definite: see [`auto_x_margins`]).
+fn auto_left_margin(s: &crate::style::ComputedStyle) -> bool {
+    s.get("margin-left").map(str::trim) == Some("auto")
 }
 
 /// Whether a box centers itself via `margin: … auto` (horizontal auto margins).
@@ -2358,6 +2412,7 @@ fn layout_box_sized_impl(
     // are contained by (grow) this box rather than escaping to sibling blocks.
     let bfc = force_bfc || establishes_bfc(lb, bs);
     let saved_floats = bfc.then(|| std::mem::take(&mut ctx.floats));
+    let sticky_mark = ctx.sticky_pending.len();
     let (mut children, mut content_h) =
         layout_content(lb, bs, (content_x, content_y, content_w), bfc, ctx);
     if let Some(outer) = saved_floats {
@@ -2384,6 +2439,12 @@ fn layout_box_sized_impl(
     let auto_h = aspect_auto_height(bs, content_w).map_or(content_h, |a| a.max(content_h));
     let fill_h = resolved_content_height(bs, auto_h, ctx);
     record_dropped_end_margin(lb, bs, bfc, fill_h != content_h, ctx);
+    let vh = if ctx.icb_h > 0.0 {
+        ctx.icb_h
+    } else {
+        ctx.root_h
+    };
+    place_sticky_kids(&mut children, sticky_mark, (content_y, fill_h, vh), ctx);
     let bbh = fill_h + bs.padding.vertical() + bw.vertical();
     prepend_mask_image(
         lb,
@@ -2908,6 +2969,7 @@ fn layout_tree_policy(
         floats: Vec::new(),
         table_rows: record_rows.then(std::collections::HashSet::new),
         dropped_end_margins: HashSet::new(),
+        sticky_pending: Vec::new(),
     };
     root.set_html_layout_policy((ctx.html_font_metrics, ctx.html_font_scale));
     root.set_original_units(original_units.as_ref());
