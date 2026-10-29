@@ -60,7 +60,12 @@ fn uppercase_uses_full_case_mapping() {
         "DON’T STOP SS FI ʼN J̌ ISTANBUL I",
     );
     case("uppercase", Some("de"), "straße", "STRASSE");
-    case("uppercase", None, "άλφα ήταν ΐ", "ΆΛΦΑ ΉΤΑΝ Ϊ́");
+    case(
+        "uppercase",
+        None,
+        "άλφα ήταν ΐ",
+        "ΆΛΦΑ ΉΤΑΝ \u{399}\u{308}\u{301}",
+    );
 }
 
 #[test]
@@ -69,7 +74,7 @@ fn lowercase_uses_full_case_mapping_and_final_sigma() {
         "lowercase",
         None,
         "ISTANBUL İ I ΣΑΣ ΟΔΟΣ.",
-        "istanbul i̇ i σας οδος.",
+        "istanbul i\u{307} i σας οδος.",
     );
     case(
         "lowercase",
@@ -93,7 +98,7 @@ fn turkic_languages_map_dotted_and_dotless_i() {
 
 #[test]
 fn lithuanian_keeps_the_dot_above_explicit() {
-    case("uppercase", Some("lt"), "i\u{307}\u{300}", "\u{cc}");
+    case("uppercase", Some("lt"), "i\u{307}\u{300}", "I\u{300}");
     case("lowercase", Some("lt"), "Ì I J Į", "i\u{307}\u{300} i j į");
 }
 
@@ -156,7 +161,7 @@ fn capitalize_sees_the_preceding_text_of_the_inline_context() {
     );
     assert_eq!(
         text("<pre style=\"font-family:Inter;text-transform:capitalize\">a  b\nc</pre>"),
-        "ABC"
+        "A  BC" // preserved spaces are glyphs; Chrome: `A  B\nC`
     );
 }
 
