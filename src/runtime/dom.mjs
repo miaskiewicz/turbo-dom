@@ -449,7 +449,7 @@ class CharacterData extends Node {
   get length() { return this._data.length; }
   get textContent() { return this._data; }
   set textContent(v) { this.data = v; }
-  substringData(offset, count) { return this._data.slice(offset, offset + count); }
+  substringData(offset, count) { offset = clampData(this, offset); return this._data.substr(offset, Math.min(count >>> 0, this._data.length - offset)); }
   appendData(s) { this.__replace(this._data.length, 0, String(s)); }
   insertData(offset, s) { this.__replace(clampData(this, offset), 0, String(s)); }
   deleteData(offset, count) { offset = clampData(this, offset); this.__replace(offset, Math.min(count >>> 0, this._data.length - offset), ''); }
@@ -472,6 +472,7 @@ export class Text extends CharacterData {
   // DOM "split a Text node": insert the new node, move live boundaries past the offset into
   // it, then truncate this node's data.
   splitText(offset) {
+    offset = clampData(this, offset);
     const rest = this._data.slice(offset);
     const node = new Text(this.ownerDocument, rest);
     const parent = this.parentNode;
