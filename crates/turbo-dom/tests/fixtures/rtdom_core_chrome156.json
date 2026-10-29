@@ -1346,6 +1346,3037 @@
    ]
   },
   {
+   "id": "pseudo_element_chains",
+   "html": "<p class=a>x</p>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": "::slotted(div)::before",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(div)::after",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(div)::marker",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(a)::placeholder",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(a)::file-selector-button",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(a)::file-selector-button:hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(a)::details-content::before",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(a):before",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(a)::before::marker",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::before::marker",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": ":after::marker",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::column::scroll-marker",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x)::before",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):hover::before",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x)::first-line",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x)::selection:window-inactive",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x)::-webkit-scrollbar",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select)::picker-icon",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content::details-content::marker",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "div::slotted(.a)::backdrop",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(x)::view-transition-new(a):only-child",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group(foo):only-child",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(div)::after:hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(div)::part(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before::after",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before::marker::before",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before::marker:hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):hover::before",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x)::first-line",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x)::selection",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x)::part(y)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x)::slotted(y)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x)::before:hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button::before",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group::before",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-group(foo):only-child:hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before ::marker",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x)::marker.a",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker::marker",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column::before",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x)::bogus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x)::picker(1)",
+     "valid": false,
+     "matches": ""
+    }
+   ]
+  },
+  {
+   "id": "pseudo_classes_after_pseudo_elements",
+   "html": "<p class=a>x</p>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": "::before:hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::before:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::before:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::before:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::marker:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::marker:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::marker:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::file-selector-button:focus",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::file-selector-button:focus-within",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::file-selector-button:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::file-selector-button:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::file-selector-button:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::file-selector-button:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:window-inactive",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::selection:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::selection:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::selection:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::selection:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:is(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:where(:hover)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::column:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-marker:focus",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-marker:focus-within",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-marker:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-marker:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-marker:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker:target-current",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-marker-group:hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-marker-group:focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:focus-within",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-marker-group:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-marker-group:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-marker-group:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-marker-group:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(up):focus",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(up):focus-within",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(up):target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):disabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(up):enabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(up):required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(up):where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(up):not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up):target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::details-content:hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:focus",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:focus-within",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:target",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:checked",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:disabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:enabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:required",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:open",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:defined",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::details-content:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::details-content:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::details-content:window-inactive",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::details-content:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::details-content:state(x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::details-content:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::details-content:lang(en)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::details-content:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::details-content:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::details-content:target-current",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):focus",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):focus-within",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):target",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):checked",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):disabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):enabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):required",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):open",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):defined",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select):only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select):empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select):window-inactive",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select):corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select):state(x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select):has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select):lang(en)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(select):current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select):playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select):target-current",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):focus",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):focus-within",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):target",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):checked",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):disabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):enabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):required",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):open",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):defined",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x):only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x):empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x):window-inactive",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x):corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x):state(x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x):has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x):lang(en)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(x):current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x):playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(x):target-current",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(x):hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):is(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):where(:hover)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(x):target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::search-text:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::search-text:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:current",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::search-text:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::search-text:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue:focus",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue:focus-within",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(b):where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(b):not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b):target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):hover",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):only-child",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-old(a):empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-old(a):where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-old(a):not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(a):target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar:focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:disabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar:enabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:window-inactive",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar:horizontal",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar:corner-present",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:disabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:enabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:window-inactive",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:horizontal",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:corner-present",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-resizer:focus",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:focus-within",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:disabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-resizer:enabled",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-resizer:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:window-inactive",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-resizer:horizontal",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-resizer:corner-present",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-resizer:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-resizer:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-resizer:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-resizer:target-current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:hover",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:focus",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:focus-within",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:target",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:checked",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:disabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:enabled",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:required",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:open",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:defined",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:first-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:only-child",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:empty",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:window-inactive",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:horizontal",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:corner-present",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:state(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:is(a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:where(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:not(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:has(a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:lang(en)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:current",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:playing",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::-webkit-inner-spin-button:target-current",
+     "valid": false,
+     "matches": ""
+    }
+   ]
+  },
+  {
+   "id": "functional_pseudo_element_arguments",
+   "html": "<p class=a>x</p>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": "::picker(1)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(foo)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker( select )",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(SELECT)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(a b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(.a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(*)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(foo)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(1)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(block-start)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(up down)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight(1)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight(a b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight(--x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(1)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(a b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(1)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(a b)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(a,b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(--a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(down)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(left)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(right)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(block-end)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(inline-start)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(inline-end)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(UP)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button( up )",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(prev)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(next)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(start)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(a, b)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(.x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(a>b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b.x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(*)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(:is(a b))",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(::before)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight(a,b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight( a )",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::highlight(\\31 a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::highlight(\"a\")",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part( a  b )",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(\"a\")",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(a.b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select/**/)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(\\73 elect)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group(a)::before",
+     "valid": false,
+     "matches": ""
+    }
+   ]
+  },
+  {
    "id": "attribute_operators",
    "html": "<div id=a class=\"x y\" lang=\"en-US\" title=\"abc\"></div><p id=b lang=en title=\"\"></p><span data-v=\"a b\"></span>",
    "elements": [

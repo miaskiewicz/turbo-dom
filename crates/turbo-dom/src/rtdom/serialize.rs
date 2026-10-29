@@ -11,10 +11,11 @@ use crate::rtdom::tree::{Handle, NodeType, Tree};
 mod utf16;
 pub use utf16::{serialize_inner_utf16, serialize_outer_utf16};
 
-/// Elements that emit no closing tag and have no serialized children.
+/// Elements that emit no closing tag and have no serialized children (HTML "serializes as
+/// void", Chrome 156: the legacy basefont / bgsound / frame / keygen too).
 const VOID: &[&str] = &[
-    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",
-    "track", "wbr",
+    "area", "base", "basefont", "bgsound", "br", "col", "embed", "frame", "hr", "img", "input",
+    "keygen", "link", "meta", "param", "source", "track", "wbr",
 ];
 
 /// Elements whose text content is raw (NOT escaped) on serialization.
@@ -218,6 +219,20 @@ mod tests {
         let tree = Tree::parse("<div><img src=\"x\"></div>");
         let div = first_div(&tree);
         assert_eq!(serialize_inner(&tree, div), "<img src=\"x\">");
+    }
+
+    /// Chrome 156: the legacy basefont / bgsound / keygen / frame serialize as void.
+    #[test]
+    fn legacy_void_elements_have_no_close_tag() {
+        let tree = Tree::parse("<div><basefont><bgsound><keygen>x</div>");
+        let div = first_div(&tree);
+        assert_eq!(serialize_inner(&tree, div), "<basefont><bgsound><keygen>x");
+        let frames = Tree::parse("<frameset><frame></frameset>");
+        let html = frames.get_elements_by_tag_name("html")[0];
+        assert_eq!(
+            serialize_outer(&frames, html),
+            "<html><head></head><frameset><frame></frameset></html>"
+        );
     }
 
     #[test]

@@ -174,19 +174,24 @@ const FUNCTIONAL_PSEUDO_ELEMENTS: &[&str] = &[
     "view-transition-new",
     "view-transition-old",
 ];
-/// Pseudo-classes Chrome allows after a `::-webkit-*` (scrollbar) pseudo-element: user
-/// action and the scrollbar states. Such a selector never matches an element anyway.
-const AFTER_PSEUDO_ELEMENT: &[&str] = &[
+/// The scrollbar pseudo-elements.
+const SCROLLBAR: &[&str] = &[
+    "-webkit-resizer",
+    "-webkit-scrollbar",
+    "-webkit-scrollbar-button",
+    "-webkit-scrollbar-corner",
+    "-webkit-scrollbar-thumb",
+    "-webkit-scrollbar-track",
+    "-webkit-scrollbar-track-piece",
+];
+/// Pseudo-classes Chrome allows after a scrollbar pseudo-element: the scrollbar states,
+/// `:hover` and `:active` (no focus). Such a selector never matches an element anyway.
+const AFTER_SCROLLBAR: &[&str] = &[
     "active",
     "corner-present",
     "decrement",
-    "disabled",
     "double-button",
-    "enabled",
     "end",
-    "focus",
-    "focus-visible",
-    "focus-within",
     "horizontal",
     "hover",
     "increment",
@@ -197,47 +202,62 @@ const AFTER_PSEUDO_ELEMENT: &[&str] = &[
     "window-inactive",
 ];
 
-/// User-action pseudo-classes: what Chrome 156 allows after an element-backed
-/// pseudo-element (`::file-selector-button:hover`, `::details-content:focus`).
+/// User-action pseudo-classes: what Chrome 156 allows after `::file-selector-button`,
+/// `::cue` and the other `::-webkit-*` pseudo-elements.
 const USER_ACTION: &[&str] = &["active", "focus", "focus-visible", "focus-within", "hover"];
-/// Pseudo-elements backed by a real element (user-action pseudo-classes may follow).
-const ELEMENT_BACKED: &[&str] = &[
+/// Pseudo-elements that are real elements: any non-structural pseudo-class may follow, and
+/// any pseudo-element but `::part()` / `::slotted()`.
+const ELEMENT_LIKE: &[&str] = &["details-content", "part", "picker"];
+/// The never-matching pseudo-classes Chrome 156 rejects after an [`ELEMENT_LIKE`] one.
+const NOT_AFTER_ELEMENT_LIKE: &[&str] = &[
+    "buffering",
+    "current",
+    "host",
+    "muted",
+    "paused",
+    "playing",
+    "seeking",
+    "stalled",
+    "volume-locked",
+];
+/// The pseudo-elements that may follow `::slotted()`.
+const AFTER_SLOTTED: &[&str] = &[
+    "after",
+    "backdrop",
+    "before",
+    "checkmark",
     "details-content",
     "file-selector-button",
+    "marker",
     "picker",
-    "scroll-button",
-    "scroll-marker",
-    "scroll-marker-group",
+    "picker-icon",
+    "placeholder",
 ];
 
-/// May pseudo-class `p` follow pseudo-element `element` (lowercase name)? Chrome 156: the
-/// scrollbar pseudo-elements take their states, `::selection` only `:window-inactive`,
-/// `::part()` any non-structural pseudo-class, element-backed ones user action, and the
-/// rest (`::before`, `::marker`, `::placeholder`, `::slotted()`, …) nothing.
-fn allowed_after_pseudo_element(element: &str, p: &Pseudo) -> bool {
+/// May pseudo-class `p` follow pseudo-element `element` (lowercase name; `functional`: it
+/// has an argument)? Chrome 156: `:is()` / `:where()` after all but `::column` and
+/// `::slotted()`; `::part()`, `::picker()` and `::details-content` any non-structural
+/// pseudo-class; the scrollbar pseudo-elements their states; the rest the short lists below.
+fn allowed_after_pseudo_element(element: &str, functional: bool, p: &Pseudo) -> bool {
+    if matches!(p, Pseudo::Is(_) | Pseudo::Where(_)) {
+        return !matches!(element, "column" | "slotted");
+    }
+    if ELEMENT_LIKE.contains(&element) {
+        return after_element_like(p);
+    }
     let plain = |list: &[&str]| matches!(p, Pseudo::Unknown(u) if u.arg.is_none() && list.contains(&u.name.to_ascii_lowercase().as_str()));
-    if element.starts_with("-webkit-") {
-        return plain(AFTER_PSEUDO_ELEMENT) || matches!(p, Pseudo::Disabled | Pseudo::Enabled);
+    if SCROLLBAR.contains(&element) {
+        return plain(AFTER_SCROLLBAR) || matches!(p, Pseudo::Disabled | Pseudo::Enabled);
     }
     match element {
+        "scroll-button" => plain(USER_ACTION) || matches!(p, Pseudo::Disabled | Pseudo::Enabled),
+        "scroll-marker" => plain(USER_ACTION) || plain(&["target-current"]),
+        "scroll-marker-group" => plain(&["hover", "focus-within"]),
+        "file-selector-button" => plain(USER_ACTION),
+        "cue" => !functional && plain(USER_ACTION),
+        _ if element.starts_with("-webkit-") => plain(USER_ACTION),
         "selection" => plain(&["window-inactive"]),
-        "part" => {
-            plain(NEVER_PSEUDO_CLASSES)
-                || matches!(
-                    p,
-                    Pseudo::Checked
-                        | Pseudo::Disabled
-                        | Pseudo::Enabled
-                        | Pseudo::Required
-                        | Pseudo::Optional
-                        | Pseudo::ReadOnly
-                        | Pseudo::ReadWrite
-                        | Pseudo::Link
-                        | Pseudo::State(_)
-                        | Pseudo::Fullscreen
-                )
-        }
-        _ if ELEMENT_BACKED.contains(&element) => plain(USER_ACTION),
+        "search-text" => plain(&["current"]),
         // the view-transition tree's named pseudo-elements (not the `::view-transition`
         // root) take `:only-child`
         "view-transition-group"
@@ -245,6 +265,50 @@ fn allowed_after_pseudo_element(element: &str, p: &Pseudo) -> bool {
         | "view-transition-old"
         | "view-transition-new" => matches!(p, Pseudo::OnlyChild),
         _ => false,
+    }
+}
+
+/// The pseudo-classes Chrome 156 allows after `::part()`, `::picker()` and
+/// `::details-content`: every non-structural one.
+fn after_element_like(p: &Pseudo) -> bool {
+    match p {
+        Pseudo::Unknown(u) => {
+            let name = u.name.to_ascii_lowercase();
+            u.arg.is_none()
+                && (matches!(name.as_str(), "window-inactive" | "target-current")
+                    || (NEVER_PSEUDO_CLASSES.contains(&name.as_str())
+                        && !NOT_AFTER_ELEMENT_LIKE.contains(&name.as_str())))
+        }
+        _ => matches!(
+            p,
+            Pseudo::Checked
+                | Pseudo::Disabled
+                | Pseudo::Enabled
+                | Pseudo::Required
+                | Pseudo::Optional
+                | Pseudo::ReadOnly
+                | Pseudo::ReadWrite
+                | Pseudo::Link
+                | Pseudo::State(_)
+                | Pseudo::Lang(_)
+                | Pseudo::Dir(_)
+                | Pseudo::Defined
+                | Pseudo::Fullscreen
+                | Pseudo::FullscreenAncestor
+        ),
+    }
+}
+
+/// May pseudo-element `next` follow pseudo-element `prev` (lowercase names)? Chrome 156
+/// (miaskiewicz/turbo-dom#195).
+fn allowed_sub_pseudo_element(prev: &str, next: &str) -> bool {
+    if ELEMENT_LIKE.contains(&prev) {
+        return !matches!(next, "part" | "slotted");
+    }
+    match prev {
+        "slotted" => AFTER_SLOTTED.contains(&next) || next.starts_with("view-transition"),
+        "before" | "after" => next == "marker",
+        _ => prev == "column" && next == "scroll-marker",
     }
 }
 
@@ -396,32 +460,57 @@ fn take_pseudo_element(compound: &mut Compound) -> Result<Option<PseudoElement>,
     let Some(at) = compound.pseudos.iter().position(is_pseudo_element_marker) else {
         return Ok(None);
     };
-    let marker = compound.pseudos.remove(at);
-    let Pseudo::Unknown(UnknownPseudo { name, arg }) = marker else {
-        unreachable!("is_pseudo_element_marker only accepts Unknown");
-    };
-    let (element, element_name) = if name.is_empty() {
-        // `::name`: the name is the next pseudo the tokenizer produced
-        match (at < compound.pseudos.len()).then(|| compound.pseudos.remove(at)) {
-            Some(Pseudo::Unknown(UnknownPseudo { name, arg })) => {
-                (pseudo_element(&name, arg)?, name.to_ascii_lowercase())
+    let (mut element, mut name, mut functional) = read_pseudo_element(&mut compound.pseudos, at)?;
+    let mut chain = name.clone();
+    let mut i = at;
+    while i < compound.pseudos.len() {
+        if is_pseudo_element_marker(&compound.pseudos[i]) {
+            // a sub-pseudo-element (`::slotted(li)::marker`): valid, never matched here
+            let (_, next, next_functional) = read_pseudo_element(&mut compound.pseudos, i)?;
+            if !allowed_sub_pseudo_element(&name, &next) {
+                return Err(invalid("pseudo-element after a pseudo-element"));
             }
-            _ => return Err(invalid("unknown pseudo-element")),
+            chain = format!("{chain}::{next}");
+            element = PseudoElement::Inert(chain.clone());
+            (name, functional) = (next, next_functional);
+        } else if allowed_after_pseudo_element(&name, functional, &compound.pseudos[i]) {
+            i += 1;
+        } else {
+            return Err(invalid("pseudo-class after a pseudo-element"));
         }
-    } else if arg.is_some() {
-        return Err(invalid("legacy pseudo-element with an argument"));
-    } else {
-        let lower = name.to_ascii_lowercase();
-        (PseudoElement::Inert(lower.clone()), lower)
-    };
-    if !compound.pseudos[at..]
-        .iter()
-        .all(|p| allowed_after_pseudo_element(&element_name, p))
-    {
-        return Err(invalid("pseudo-class after a pseudo-element"));
     }
     compound.pseudos.truncate(at);
     Ok(Some(element))
+}
+
+/// Remove the pseudo-element whose marker is `pseudos[at]` (and, for `::name`, the name
+/// pseudo after it): the element, its lowercase name and whether it has an argument.
+fn read_pseudo_element(
+    pseudos: &mut Vec<Pseudo>,
+    at: usize,
+) -> Result<(PseudoElement, String, bool), SelectorError> {
+    let Pseudo::Unknown(UnknownPseudo { name, arg }) = pseudos.remove(at) else {
+        unreachable!("is_pseudo_element_marker only accepts Unknown");
+    };
+    if name.is_empty() {
+        // `::name`: the name is the next pseudo the tokenizer produced
+        match (at < pseudos.len()).then(|| pseudos.remove(at)) {
+            Some(Pseudo::Unknown(UnknownPseudo { name, arg })) => {
+                let functional = arg.is_some();
+                Ok((
+                    pseudo_element(&name, arg)?,
+                    name.to_ascii_lowercase(),
+                    functional,
+                ))
+            }
+            _ => Err(invalid("unknown pseudo-element")),
+        }
+    } else if arg.is_some() {
+        Err(invalid("legacy pseudo-element with an argument"))
+    } else {
+        let lower = name.to_ascii_lowercase();
+        Ok((PseudoElement::Inert(lower.clone()), lower, false))
+    }
 }
 
 fn pseudo_element(name: &str, arg: Option<String>) -> Result<PseudoElement, SelectorError> {
@@ -439,10 +528,12 @@ fn pseudo_element(name: &str, arg: Option<String>) -> Result<PseudoElement, Sele
             Some(list) if list.len() == 1 => Ok(PseudoElement::Slotted(list)),
             _ => Err(invalid("::slotted() takes one compound selector")),
         },
-        (name, Some(arg))
-            if name.starts_with("view-transition-") && !is_pt_name_and_class(&arg) =>
-        {
-            Err(invalid("view-transition pseudo-element argument"))
+        // compound selectors, nested lists restricted as in `:-webkit-any()`
+        ("cue", Some(arg)) if webkit_any(&arg).is_none() => {
+            Err(invalid("::cue() takes compound selectors"))
+        }
+        (name, Some(arg)) if !valid_pseudo_element_arg(name, &arg) => {
+            Err(invalid("pseudo-element argument"))
         }
         _ => Ok(PseudoElement::Inert(lower)),
     }
@@ -451,6 +542,65 @@ fn pseudo_element(name: &str, arg: Option<String>) -> Result<PseudoElement, Sele
 /// A view-transition pseudo-element argument (`<pt-name-and-class-selector>`): `*` or a
 /// name, then `.class` parts (no space after the dot), or only class parts; whitespace
 /// may separate the parts (Chrome 156).
+/// Is `arg` a valid argument of the functional pseudo-element `name` (Chrome 156)?
+/// `::picker(select)`, `::scroll-button(*)` or a direction, `::highlight()` one
+/// identifier, `::part()` identifiers, the view-transition ones `<pt-name-and-class-selector>`.
+fn valid_pseudo_element_arg(name: &str, arg: &str) -> bool {
+    let idents = ident_list(arg);
+    let one = match idents.as_deref() {
+        Some([one]) => Some(one.as_str()),
+        _ => None,
+    };
+    match name {
+        "part" => idents.is_some(),
+        "highlight" => one.is_some(),
+        "picker" => one == Some("select"),
+        "scroll-button" => {
+            arg.trim_matches(is_css_space) == "*"
+                || one.is_some_and(|d| SCROLL_BUTTON_DIRECTIONS.contains(&d))
+        }
+        _ => !name.starts_with("view-transition-") || is_pt_name_and_class(arg),
+    }
+}
+
+/// The (decoded, lowercase) identifiers of a whitespace-separated list, or `None` when an
+/// item is not an identifier or the list is empty.
+fn ident_list(arg: &str) -> Option<Vec<String>> {
+    let chars: Vec<char> = arg.chars().collect();
+    let mut out = Vec::new();
+    let mut i = 0;
+    loop {
+        while chars.get(i).copied().is_some_and(is_css_space) {
+            i += 1;
+        }
+        if i == chars.len() {
+            return (!out.is_empty()).then_some(out);
+        }
+        if !starts_ident(&chars, i) {
+            return None;
+        }
+        let start = i;
+        scan_name(&chars, &mut i, is_name_char);
+        let item: String = chars[start..i].iter().collect();
+        out.push(units::lang_range(&item.encode_utf16().collect::<Vec<_>>())?);
+        if chars.get(i).is_some_and(|&c| !is_css_space(c)) {
+            return None;
+        }
+    }
+}
+
+/// `::scroll-button()` directions.
+const SCROLL_BUTTON_DIRECTIONS: &[&str] = &[
+    "block-end",
+    "block-start",
+    "down",
+    "inline-end",
+    "inline-start",
+    "left",
+    "right",
+    "up",
+];
+
 fn is_pt_name_and_class(arg: &str) -> bool {
     let chars: Vec<char> = arg.trim_matches(is_css_space).chars().collect();
     let mut i = 0;
