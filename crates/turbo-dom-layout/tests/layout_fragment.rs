@@ -72,15 +72,20 @@ fn text_line_holds_glyphs_and_face() {
             glyph_id: 5,
             x: 0.0,
             y: 0.0,
+            text_start: 0,
+            text_end: 1,
         },
         PositionedGlyph {
             glyph_id: 8,
             x: 12.0,
             y: 0.0,
+            text_start: 1,
+            text_end: 1,
         },
     ];
     let content = FragmentContent::TextLine {
         glyphs: glyphs.clone(),
+        text: "ab".into(),
         face: face.clone(),
         font_size: 16.0,
         color: Rgba::BLACK,
@@ -101,4 +106,20 @@ fn text_line_holds_glyphs_and_face() {
 #[test]
 fn node_id_default_is_zero() {
     assert_eq!(NodeId::default(), NodeId(0));
+}
+
+#[test]
+fn positioned_glyph_text_slices_its_cluster_or_is_empty() {
+    let glyph = |text_start, text_end| PositionedGlyph {
+        glyph_id: 1,
+        x: 0.0,
+        y: 0.0,
+        text_start,
+        text_end,
+    };
+    assert_eq!(glyph(0, 2).text("fi x"), "fi");
+    assert_eq!(glyph(3, 4).text("fi x"), "x");
+    assert_eq!(glyph(2, 2).text("fi x"), "", "continuation glyph");
+    assert_eq!(glyph(3, 9).text("fi x"), "", "range past the text");
+    assert_eq!(glyph(1, 2).text("’"), "", "not a char boundary");
 }

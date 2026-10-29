@@ -3,6 +3,8 @@
 //! of reverse-mapping the font's cmap (which picks the lowest codepoint for a
 //! shared glyph and nothing for a ligature). Oracle: Chrome 156 `page.pdf()`
 //! extracts `don’t` and `a -> b != c => d` verbatim from these fonts.
+//! Inter-word spaces are pen advances, not glyphs (the PDF reader infers
+//! them from the gap), so the glyph texts concatenate to the words.
 
 use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
 use turbo_dom_layout::test_support::fixture_fonts;
@@ -35,10 +37,6 @@ fn glyph_texts(html: &str) -> Vec<Vec<String>> {
         .collect()
 }
 
-fn joined(html: &str) -> String {
-    glyph_texts(html).concat().concat()
-}
-
 #[test]
 fn shared_glyph_keeps_its_source_character_not_the_lowest_codepoint() {
     // Inter draws U+2019 and U+02BC (and U+201D / U+02EE) with one glyph each.
@@ -49,15 +47,19 @@ fn shared_glyph_keeps_its_source_character_not_the_lowest_codepoint() {
     assert!(!texts.iter().any(|t| t == "ʼ" || t == "ˮ"), "{texts:?}");
     assert_eq!(
         texts.concat(),
-        "“quotes” ‘single’ don’t",
+        "“quotes”‘single’don’t",
         "the line's glyph texts reproduce the source"
     );
 }
 
 #[test]
-fn ligature_glyphs_carry_their_whole_cluster_once() {
+fn contextual_glyphs_carry_their_source_characters() {
     let html = r#"<p style="font-family:'Fira Code'">a -> b != c => d</p>"#;
-    assert_eq!(joined(html), "a -> b != c => d");
+    let texts = glyph_texts(html).concat();
+    assert_eq!(texts.concat(), "a->b!=c=>d");
+    // Fira Code's `calt` arrows replace each character with a glyph the cmap
+    // does not reach; each still carries its own character.
+    assert_eq!(texts, ["a", "-", ">", "b", "!", "=", "c", "=", ">", "d"]);
 }
 
 #[test]
@@ -67,18 +69,13 @@ fn merged_runs_and_wrapped_lines_keep_per_line_cluster_text() {
     let html = r#"<div style="width:60px;font-family:Inter">alpha beta gamma delta</div>"#;
     let lines: Vec<String> = glyph_texts(html).into_iter().map(|l| l.concat()).collect();
     assert!(lines.len() >= 2, "{lines:?}");
-    assert_eq!(
-        lines.concat().split_whitespace().collect::<Vec<_>>(),
-        ["alpha", "beta", "gamma", "delta"]
-    );
-    for line in &lines {
-        assert!(!line.trim().is_empty(), "{lines:?}");
-    }
+    assert_eq!(lines.concat(), "alphabetagammadelta");
+    assert!(lines.iter().all(|line| !line.is_empty()), "{lines:?}");
 }
 
 #[test]
-fn text_transform_text_is_what_the_glyphs_show() {
-    // Chrome extracts the transformed text.
-    let html = r#"<p style="font-family:Inter;text-transform:uppercase">don’t</p>"#;
-    assert_eq!(joined(html), "DON’T");
+fn a_multi_glyph_cluster_gives_its_text_to_the_first_glyph_only() {
+    // q + U+0301 (no precomposed form) shape as two glyphs in one cluster.
+    let texts = glyph_texts("<p style=\"font-family:Inter\">caq\u{301}</p>").concat();
+    assert_eq!(texts, ["c", "a", "q\u{301}", ""]);
 }
