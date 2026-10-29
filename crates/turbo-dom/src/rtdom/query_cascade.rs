@@ -99,6 +99,7 @@ impl CascadeSelector {
 /// an argument.
 const NEVER_PSEUDO_CLASSES: &[&str] = &[
     "active",
+    "active-view-transition",
     "autofill",
     "-webkit-autofill",
     "buffering",
@@ -236,6 +237,12 @@ fn allowed_after_pseudo_element(element: &str, p: &Pseudo) -> bool {
                 )
         }
         _ if ELEMENT_BACKED.contains(&element) => plain(USER_ACTION),
+        // the view-transition tree's named pseudo-elements (not the `::view-transition`
+        // root) take `:only-child`
+        "view-transition-group"
+        | "view-transition-image-pair"
+        | "view-transition-old"
+        | "view-transition-new" => matches!(p, Pseudo::OnlyChild),
         _ => false,
     }
 }
@@ -624,8 +631,22 @@ fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
         (name, Some(_)) if NEVER_FUNCTIONAL_PSEUDO_CLASSES.contains(&name) => {
             Ok(Pseudo::unknown(name, arg))
         }
+        // `:active-view-transition-type(<custom-ident>#)`: no view transition runs in a
+        // static document (turbo-surf#117, Google's consent page)
+        ("active-view-transition-type", Some(list)) if is_ident_list(list) => {
+            Ok(Pseudo::unknown(lower.as_str(), arg))
+        }
         _ => Err(invalid("unknown pseudo-class")),
     }
+}
+
+/// A comma-separated list of CSS identifiers (Chrome 156: no empty item, no string, no
+/// `*`).
+fn is_ident_list(list: &str) -> bool {
+    list.split(',').all(|item| {
+        let units: Vec<u16> = item.encode_utf16().collect();
+        units::lang_range(&units).is_some()
+    })
 }
 
 /// Does `h` match `sel` through `nav` (a pseudo-element selector never matches an element,
@@ -990,6 +1011,53 @@ mod tests {
         let list = parse_for_cascade(sel).unwrap_or_else(|e| panic!("{sel}: {e}"));
         assert_eq!(list.selectors().len(), 1, "{sel}");
         list.selectors()[0].specificity()
+    }
+
+    /// View-transition selectors from Google's consent page (turbo-surf#117), with the
+    /// verdicts of frozen Chrome 156.0.8078.47 (a `<style>` rule kept or dropped; the DOM
+    /// APIs throw exactly when the rule is dropped).
+    #[test]
+    fn view_transition_selectors_follow_chrome() {
+        for good in [
+            "html:active-view-transition-type(aimc)",
+            "html:active-view-transition-type(a, b)",
+            ":ACTIVE-VIEW-TRANSITION-TYPE(A)",
+            "html:active-view-transition",
+            "html:active-view-transition-type(aimc)::view-transition-new(sb)",
+            "html:active-view-transition-type(aimc)::view-transition-old(sb):only-child",
+            "html:active-view-transition-type(aimc)::view-transition-group(*)",
+            "::view-transition-group(sb):only-child",
+            "::view-transition-image-pair(sb):only-child",
+            "::view-transition-new(sb)",
+        ] {
+            assert!(parse_for_cascade(good).is_ok(), "{good} should be valid");
+        }
+        for bad in [
+            "html:active-view-transition-type()",
+            "html:active-view-transition-type(1)",
+            ":active-view-transition-type(a,)",
+            ":active-view-transition-type(a b)",
+            ":active-view-transition-type(*)",
+            ":active-view-transition-type(\"a\")",
+            ":active-view-transition(x)",
+            "::view-transition:only-child",
+            "::view-transition-new(sb):first-child",
+            "::view-transition-new(sb):hover",
+        ] {
+            assert!(parse_for_cascade(bad).is_err(), "{bad} should be invalid");
+        }
+        // no view transition runs in a static document: they never match
+        let tree = Tree::parse("<p>");
+        let html = tree.query_selector("html").unwrap();
+        for sel in [
+            "html:active-view-transition-type(aimc)",
+            "html:active-view-transition",
+            "html:not(:active-view-transition)",
+        ] {
+            let expect = sel.contains(":not(");
+            assert_eq!(tree.matches_checked(html, sel), Ok(expect), "{sel}");
+        }
+        assert!(tree.matches_checked(html, "html:bogus").is_err());
     }
 
     /// `CSS.supports("selector(…)")` in Chrome 156 (turbo-surf
