@@ -764,13 +764,22 @@ fn expand_quad_candidates(cands: Vec<Cand>, parent: &ComputedStyle) -> Vec<Cand>
 
 /// The `font` shorthand's longhands (miaskiewicz/turbo-dom#176), parsed by turbo-dom's
 /// shorthand grammar, at the shorthand's cascade position. An invalid value (or a
-/// system-font keyword, which has no longhand values here) contributes nothing.
+/// system-font keyword, which has no longhand values here) contributes nothing; one
+/// whose `var()` fails is invalid at computed-value time and unsets every longhand.
 fn expanded_font(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec<Cand> {
     if cand.property != "font" {
         return Vec::new();
     }
     let value = substitute_vars(&cand.value, variables, 0, &[]);
     turbo_dom::rtdom::css_shorthand::expand("font", &value)
+        .or_else(|| {
+            // Invalid at computed-value time: a failed `var()` unsets every longhand,
+            // and every `font` longhand is inherited, so `unset` is `inherit`.
+            cand.value
+                .contains("var(")
+                .then(|| turbo_dom::rtdom::css_shorthand::expand("font", "inherit"))
+                .flatten()
+        })
         .unwrap_or_default()
         .into_iter()
         .filter(|longhand| longhand.pending.is_none())

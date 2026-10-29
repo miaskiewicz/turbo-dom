@@ -1102,20 +1102,51 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment) -> Option<f32> {
     let scrolls = ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {
         matches!(
             b.style.get(p).map(str::trim),
-            Some("hidden" | "auto" | "scroll" | "clip")
+            Some("hidden" | "auto" | "scroll")
         )
     });
     if scrolls {
         return None;
     }
+    let mut floats = std::collections::HashSet::new();
+    float_ids(b, &mut floats);
     let mut last: Option<(f32, f32)> = None;
-    last_line(f, &mut last);
+    last_line(f, &floats, &mut last);
     last.map(|(_, baseline)| baseline - f.y)
 }
 
+/// The node ids of the floats in `b`'s subtree (their lines are out of flow).
+fn float_ids(b: &LayoutBox, out: &mut std::collections::HashSet<NodeId>) {
+    let kids: Vec<&LayoutBox> = match &b.kind {
+        BoxKind::Block(kids) | BoxKind::Flex(kids) | BoxKind::Grid(kids) | BoxKind::Table(kids) => {
+            kids.iter().collect()
+        }
+        BoxKind::Lines(items) => items
+            .iter()
+            .filter_map(|item| match item {
+                InlineItem::Atomic(kid) => Some(kid),
+                _ => None,
+            })
+            .collect(),
+        BoxKind::Marker(_) => Vec::new(),
+    };
+    for kid in kids {
+        if super::value::float_of(&kid.style) == Float::None {
+            float_ids(kid, out);
+        } else {
+            out.insert(kid.node_id);
+        }
+    }
+}
+
 /// The `(top, baseline)` of the lowest in-flow text line in `f`'s subtree.
-fn last_line(f: &Fragment, last: &mut Option<(f32, f32)>) {
-    for child in f.children.iter().filter(|child| !child.is_positioned) {
+fn last_line(
+    f: &Fragment,
+    floats: &std::collections::HashSet<NodeId>,
+    last: &mut Option<(f32, f32)>,
+) {
+    let in_flow = |child: &&Fragment| !child.is_positioned && !floats.contains(&child.node_id);
+    for child in f.children.iter().filter(in_flow) {
         if let FragmentContent::TextLine { glyphs, .. } = &child.content {
             if let Some(glyph) = glyphs.first() {
                 if last.is_none_or(|(top, _)| child.y >= top) {
@@ -1123,7 +1154,7 @@ fn last_line(f: &Fragment, last: &mut Option<(f32, f32)>) {
                 }
             }
         }
-        last_line(child, last);
+        last_line(child, floats, last);
     }
 }
 
