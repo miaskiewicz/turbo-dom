@@ -1,5 +1,9 @@
 # turbo-dom-raster
 
+> Part of the [turbo-dom](https://github.com/miaskiewicz/turbo-dom) 0.6.0 crate family. Used by
+> **turbo-surf** (static screenshots, canvas and WebGL readback). Install:
+> `turbo-dom-raster = "0.6"` (MSRV 1.89); features `avif`, `jxl`, `gpu-metal`, `coretext`.
+
 Synthetic screenshots with no browser: turn an HTML **snapshot** into a PNG or SVG.
 [`turbo-dom-layout`](../turbo-dom-layout) lays the HTML out into a positioned
 `Fragment` display list; this crate paints it two ways — a raster painter
@@ -100,7 +104,8 @@ Lints: `clippy::pedantic` via `[workspace.lints]` (see turbo-dom-layout's README
 ## Coverage
 
 100% line coverage (tarpaulin, LLVM engine) in each configuration CI tests — default,
-`--features avif`, `--features jxl` — gated at 100 in turbo-dom's `coverage` job:
+`--features avif`, `--features jxl` — gated at 100 (blocking) in turbo-dom's `coverage` job. Pull-request CI runs this crate's jobs on Linux; macOS arm64 is added in the release run only (`publish.yml` calls `ci.yml` with `darwin: true`). Complexity (<= 15 per function) is report-only until the post-release refactor.
+
 
 ```bash
 cargo tarpaulin --engine llvm -p turbo-dom-raster [--features avif|jxl] --include-files 'crates/turbo-dom-raster/src/*'
