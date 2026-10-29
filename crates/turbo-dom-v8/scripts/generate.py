@@ -91,7 +91,7 @@ def tree_digest(tree):
 
 
 def load_pins(path=PINS_PATH):
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def checked_archive(path, pins):
@@ -240,7 +240,7 @@ REPOSITORY_BLOB = "https://github.com/miaskiewicz/turbo-dom/blob/main/"
 
 def fork_readme():
     """The fork README for the package (turbo-dom#215), relative links made absolute for crates.io."""
-    text = (CRATE / "README.md").read_text()
+    text = (CRATE / "README.md").read_text(encoding="utf-8")
     text = text.replace("](../../", "](" + REPOSITORY_BLOB)
     text = text.replace("](../", "](" + REPOSITORY_BLOB + "crates/")
     return text
@@ -281,12 +281,12 @@ def generate(archive, destination, pins, update_pins=False, compare=None):
         raise GenerationError(f"patch left {leftovers}")
     cargo = destination / "Cargo.toml"
     # Bytes, not write_text: Windows text mode would turn every "\n" into "\r\n".
-    cargo.write_bytes(manifest(cargo.read_text(), pins).encode())
+    cargo.write_bytes(manifest(cargo.read_text(encoding="utf-8"), pins).encode())
     for name in OWN_TESTS:
         shutil.copyfile(CRATE / "tests" / f"{name}.rs", destination / "tests" / f"{name}.rs")
     shutil.copyfile(CRATE / "rustfmt.toml", destination / "rustfmt.toml")
     # Upstream's README.md stays the manifest's `readme`; replace it with the fork's.
-    (destination / "README.md").write_bytes(fork_readme().encode())
+    (destination / "README.md").write_bytes(fork_readme().encode("utf-8"))
     generated = files(destination)
     build = generated["build.rs"].decode()
     if 'env::var("CARGO_PKG_VERSION")' in build or \
