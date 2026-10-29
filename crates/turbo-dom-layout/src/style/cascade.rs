@@ -204,6 +204,9 @@ const INHERITED: &[&str] = &[
     "word-spacing",
     "white-space",
     "text-transform",
+    // `lang` as a presentational hint (Blink's `-webkit-locale`): the content
+    // language `text-transform` maps with (miaskiewicz/turbo-dom#208).
+    "-webkit-locale",
     "hyphens",
     "list-style-type",
     "list-style-position",
@@ -368,6 +371,7 @@ fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
             .map(height_decl),
         font_color_decl(element),
         align_decl(element),
+        lang_decl(element),
     ]
     .into_iter()
     .flatten()
@@ -428,6 +432,13 @@ fn align_decl(element: Subject) -> Option<Declaration> {
         _ => return None,
     };
     Some(pres_decl("text-align", value.to_string()))
+}
+
+/// `lang="..."` → `-webkit-locale` (Blink maps the attribute the same way), which
+/// inherits so a descendant's `text-transform` maps with the content language.
+fn lang_decl(element: Subject) -> Option<Declaration> {
+    let lang = element.attrs.get("lang")?.trim();
+    Some(pres_decl("-webkit-locale", lang.to_string()))
 }
 
 /// `<font color="...">` → `color`, when non-empty (only on the `<font>` tag).

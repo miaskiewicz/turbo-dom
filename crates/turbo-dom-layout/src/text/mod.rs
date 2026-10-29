@@ -8,7 +8,7 @@ mod font;
 mod inline;
 mod platform_fallback;
 mod registry;
-mod transform;
+pub(crate) mod transform;
 
 pub(crate) use font::cluster_ends;
 pub use font::{FontFace, HtmlFontMetrics, ShapedGlyph};

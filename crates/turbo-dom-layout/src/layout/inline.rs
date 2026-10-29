@@ -237,6 +237,9 @@ struct SourceLine {
 struct CharInfo {
     byte_offset: usize,
     utf16_offset: usize,
+    /// The end of the source range (`byte_offset`/`utf16_offset` start it) when
+    /// `text-transform` changed the character, else `None` (the range is `ch`).
+    source_end: Option<(usize, usize)>,
     ch: char,
     run: usize,
     face: FontFace,
@@ -281,6 +284,85 @@ fn primary_covers(coverage: &[(usize, bool)], byte: usize) -> bool {
     index.checked_sub(1).is_some_and(|index| coverage[index].1)
 }
 
+/// A run's characters after `text-transform` (miaskiewicz/turbo-dom#208).
+enum RunChars {
+    /// Untransformed: the source characters themselves.
+    Source,
+    /// Transformed: the output text and, per output character, its source range.
+    Transformed {
+        text: String,
+        mapped: Vec<crate::text::transform::Mapped>,
+        utf16: Vec<usize>,
+    },
+}
+
+/// One character entering itemization: `byte` indexes the itemized text (the
+/// transformed text when there is one), `byte_offset`/`utf16_offset` the source.
+struct TransformedChar {
+    ch: char,
+    byte: usize,
+    byte_offset: usize,
+    utf16_offset: usize,
+    source_end: Option<(usize, usize)>,
+}
+
+fn run_chars(run: &InlineRun, context: &mut crate::text::transform::WordContext) -> RunChars {
+    let Some(mapped) =
+        crate::text::transform::transform_run(&run.text, run.text_transform, context)
+    else {
+        return RunChars::Source;
+    };
+    // The UTF-16 offset of every source byte boundary (index = byte).
+    let mut utf16 = vec![0; run.text.len() + 1];
+    let mut unit = 0;
+    for (byte, ch) in run.text.char_indices() {
+        utf16[byte] = unit;
+        unit += ch.len_utf16();
+    }
+    utf16[run.text.len()] = unit;
+    RunChars::Transformed {
+        text: mapped.iter().map(|m| m.ch).collect(),
+        mapped,
+        utf16,
+    }
+}
+
+impl RunChars {
+    fn iter<'a>(&'a self, source: &'a str) -> Box<dyn Iterator<Item = TransformedChar> + 'a> {
+        match self {
+            Self::Source => {
+                let mut unit = 0;
+                Box::new(source.char_indices().map(move |(byte, ch)| {
+                    let utf16_offset = unit;
+                    unit += ch.len_utf16();
+                    TransformedChar {
+                        ch,
+                        byte,
+                        byte_offset: byte,
+                        utf16_offset,
+                        source_end: None,
+                    }
+                }))
+            }
+            Self::Transformed {
+                text,
+                mapped,
+                utf16,
+            } => Box::new(
+                text.char_indices()
+                    .zip(mapped)
+                    .map(|((byte, ch), m)| TransformedChar {
+                        ch,
+                        byte,
+                        byte_offset: m.start,
+                        utf16_offset: utf16[m.start],
+                        source_end: Some((m.end, utf16[m.end])),
+                    }),
+            ),
+        }
+    }
+}
+
 fn flatten_chars(
     runs: &[InlineRun],
     reg: &FontRegistry,
@@ -289,21 +371,40 @@ fn flatten_chars(
     original_units: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
 ) -> Vec<CharInfo> {
     let mut out = Vec::new();
+    let mut context = crate::text::transform::WordContext::default();
     for (i, run) in runs.iter().enumerate() {
         let mut missing = false;
         let original = original_units
             .and_then(|units| units.get(&run.node_id))
             .map(std::sync::Arc::as_ref);
-        let coverage =
-            primary_cluster_coverage(run, capture_sources || original.is_some(), original);
+        let chars = run_chars(run, &mut context);
+        let coverage = match &chars {
+            RunChars::Source => {
+                primary_cluster_coverage(run, capture_sources || original.is_some(), original)
+            }
+            RunChars::Transformed { text, .. } => primary_cluster_coverage(
+                &InlineRun {
+                    text: text.clone(),
+                    ..run.clone()
+                },
+                capture_sources || original.is_some(),
+                None,
+            ),
+        };
         let mut native_faces = NativeFallbacks::default();
-        let mut utf16_offset = 0;
-        for (byte_offset, ch) in run.text.char_indices() {
+        for TransformedChar {
+            ch,
+            byte,
+            byte_offset,
+            utf16_offset,
+            source_end,
+        } in chars.iter(&run.text)
+        {
             let invalid_unit = invalid_source_unit(original, utf16_offset, ch);
             let (face, notdef) = select_character_face(
                 CharacterSelection {
                     ch,
-                    byte: byte_offset,
+                    byte,
                     unit: invalid_unit,
                     native: original.is_some(),
                     run,
@@ -316,13 +417,13 @@ fn flatten_chars(
             out.push(CharInfo {
                 byte_offset,
                 utf16_offset,
+                source_end,
                 ch,
                 run: i,
                 face,
                 original: original.is_some(),
                 invalid_unit,
             });
-            utf16_offset += ch.len_utf16();
         }
         if missing {
             diags.push(
@@ -445,6 +546,10 @@ struct Seg {
     baseline_shift: Option<f32>,
     source_bytes: usize,
     source_utf16: usize,
+    /// Per character of a `text-transform`ed `text`: its byte offset in `text`
+    /// and its source `(byte, utf16)` start and end. `None` when `text` is the
+    /// source itself (offsets are then `source_bytes`/`source_utf16` + local).
+    source_map: Option<Vec<SourceChar>>,
     face: FontFace,
     primary_face: FontFace,
     original_units: Option<Vec<u16>>,
@@ -498,6 +603,7 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
         baseline_shift: None,
         source_bytes: chars[0].byte_offset,
         source_utf16: chars[0].utf16_offset,
+        source_map: segment_source_map(chars),
         face,
         primary_face: run.face.clone(),
         original_units,
@@ -511,6 +617,58 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
         width,
         native_width: f64::from(width),
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SourceChar {
+    text_byte: usize,
+    start: (usize, usize),
+    end: (usize, usize),
+}
+
+fn segment_source_map(chars: &[CharInfo]) -> Option<Vec<SourceChar>> {
+    chars.iter().any(|c| c.source_end.is_some()).then(|| {
+        let mut text_byte = 0;
+        chars
+            .iter()
+            .map(|c| {
+                let start = (c.byte_offset, c.utf16_offset);
+                let end = c.source_end.unwrap_or((
+                    c.byte_offset + c.ch.len_utf8(),
+                    c.utf16_offset + c.ch.len_utf16(),
+                ));
+                let entry = SourceChar {
+                    text_byte,
+                    start,
+                    end,
+                };
+                text_byte += c.ch.len_utf8();
+                entry
+            })
+            .collect()
+    })
+}
+
+/// The source `(byte, utf16)` range of the shaper cluster `start..end` of a
+/// transformed segment. A cluster boundary inside one source character's
+/// expansion (`ß` → `S`|`S`) keeps that whole character in both clusters.
+fn mapped_source_range(
+    map: &[SourceChar],
+    start: usize,
+    end: usize,
+) -> ((usize, usize), (usize, usize)) {
+    let at = |byte: usize| map.partition_point(|c| c.text_byte < byte);
+    let first = at(start);
+    let from = map[first].start;
+    let index = at(end);
+    let to = if index == map.len() {
+        map[index - 1].end
+    } else if map[index].start == map[index - 1].start {
+        map[index].end
+    } else {
+        map[index].start
+    };
+    (from, to)
 }
 
 fn segment_original_units(chars: &[CharInfo]) -> Option<Vec<u16>> {
@@ -1627,13 +1785,23 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
                     .expect("shaper cluster is a character boundary")]
                 .1
             };
+            let ((byte_start, utf16_start), (byte_end, utf16_end)) =
+                seg.source_map.as_deref().map_or_else(
+                    || {
+                        (
+                            (seg.source_bytes + start, seg.source_utf16 + offset(start)),
+                            (seg.source_bytes + end, seg.source_utf16 + offset(end)),
+                        )
+                    },
+                    |map| mapped_source_range(map, start, end),
+                );
             clusters.push(GlyphSourceCluster {
                 collapsed_whitespace: false,
                 right_to_left,
-                byte_start: seg.source_bytes + start,
-                byte_end: seg.source_bytes + end,
-                utf16_start: seg.source_utf16 + offset(start),
-                utf16_end: seg.source_utf16 + offset(end),
+                byte_start,
+                byte_end,
+                utf16_start,
+                utf16_end,
                 pen_x: position,
                 advance,
             });
