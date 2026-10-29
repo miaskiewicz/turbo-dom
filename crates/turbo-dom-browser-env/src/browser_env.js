@@ -2449,10 +2449,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function __commonAncestor(a,b){ var A=__ancestry(a); var n=b; while(n){ if(A.indexOf(n)>=0) return n; n=n.parentNode; } return d; }
   var rangeRecord = g.__nativeRangeRecord;
   delete g.__nativeRangeRecord;
+  var rangeCreate=Object.create,rangeDefine=Object.defineProperties,rangeProto=Object.getPrototypeOf;
   function Range(){
-    var state=Object.create(Range.prototype);
-    Object.defineProperties(state,{startContainer:{value:d,writable:true},startOffset:{value:0,writable:true},endContainer:{value:d,writable:true},endOffset:{value:0,writable:true},document:{value:d,writable:true}});
-    rangeRecord(state,state);return rangeRecord(undefined,state,Object.getPrototypeOf(this));
+    var state=rangeCreate(Range.prototype);
+    rangeDefine(state,{startContainer:{value:d,writable:true},startOffset:{value:0,writable:true},endContainer:{value:d,writable:true},endOffset:{value:0,writable:true},document:{value:d,writable:true}});
+    rangeRecord(state,state);return rangeRecord(undefined,state,rangeProto(this));
   }
   Object.defineProperties(Range.prototype, {
     collapsed:{ configurable:true, enumerable:true, get:function(){ return this.startContainer===this.endContainer && this.startOffset===this.endOffset; } },

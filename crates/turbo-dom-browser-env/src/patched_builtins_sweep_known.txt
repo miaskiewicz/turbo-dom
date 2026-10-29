@@ -22,10 +22,6 @@ HTMLCanvasElement.toDataURL -> JSON.stringify
 HTMLElement.tabIndex -> Array.prototype.includes
 HTMLLinkElement.integrity -> get Element.prototype.localName
 HTMLMediaElement.canPlayType -> get Element.prototype.namespaceURI
-HTMLMeterElement.high -> String.prototype.slice
-HTMLMeterElement.low -> String.prototype.slice
-HTMLMeterElement.max -> String.prototype.slice
-HTMLMeterElement.optimum -> String.prototype.slice
 HTMLOptionElement.label -> RegExp.prototype.@@Symbol.replace
 HTMLOptionElement.text -> RegExp.prototype.@@Symbol.replace
 HTMLOptionElement.value -> RegExp.prototype.@@Symbol.replace
