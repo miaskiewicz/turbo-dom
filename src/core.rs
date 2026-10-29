@@ -929,6 +929,20 @@ mod tests {
     }
 
     #[test]
+    fn selectedcontent_inside_an_option_is_not_filled() {
+        // Chrome 156 (headless DOMParser): a <selectedcontent> inside the option it would
+        // copy keeps its (empty) content instead of receiving a clone of the option.
+        let html = "<select><option>a<selectedcontent></selectedcontent></option></select>";
+        let want = "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <option>\n\
+                    |         \"a\"\n|         <selectedcontent>";
+        assert_eq!(
+            conformance_tests::dump_node(&parse_html_document(html)),
+            want
+        );
+        assert_eq!(conformance_tests::dump_soa(&parse_html_soa(html)), want);
+    }
+
+    #[test]
     fn mentions_selectedcontent_is_an_ascii_case_insensitive_substring_test() {
         assert!(mentions_selectedcontent("selectedcontent"));
         assert!(mentions_selectedcontent("<b></b><SelectedContent>"));
