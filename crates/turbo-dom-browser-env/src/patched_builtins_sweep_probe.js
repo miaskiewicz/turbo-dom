@@ -173,6 +173,6 @@
   }
   host.remove();
   out.hits = hits;
-  out.patched = count > 5000 && members.length > 1500;
+  out.patched = count > 2000 && members.length > 800;
   return out;
 })()

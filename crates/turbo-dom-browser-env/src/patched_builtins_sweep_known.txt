@@ -1,0 +1,140 @@
+# miaskiewicz/turbo-dom#199 remaining violations (member -> page-patched builtin it reaches).
+# every_member_avoids_page_patched_builtins requires the sweep to equal this list exactly:
+# a new entry is a regression; a fixed one must be deleted here. Shrink only.
+Animation.cancel -> get Promise.@@Symbol.species
+Animation.commitStyles -> Document.prototype.querySelectorAll
+Animation.commitStyles -> String.prototype.trim
+Animation.currentTime -> Array.prototype.indexOf
+Animation.effect -> Array.prototype.indexOf
+Animation.finish -> Array.prototype.indexOf
+Animation.pause -> Array.prototype.indexOf
+Animation.play -> Array.prototype.indexOf
+Animation.playbackRate -> Array.prototype.indexOf
+Animation.startTime -> Array.prototype.indexOf
+Animation.updatePlaybackRate -> Array.prototype.indexOf
+CSSStyleSheet.replace -> Promise.reject
+CSSStyleSheet.replace -> Promise.resolve
+CharacterData.substringData -> String.prototype.slice
+Element.ariaActionsElements -> String.prototype.@@Symbol.iterator
+Element.ariaControlsElements -> String.prototype.@@Symbol.iterator
+Element.ariaDescribedByElements -> String.prototype.@@Symbol.iterator
+Element.ariaDetailsElements -> String.prototype.@@Symbol.iterator
+Element.ariaErrorMessageElements -> String.prototype.@@Symbol.iterator
+Element.ariaFlowToElements -> String.prototype.@@Symbol.iterator
+Element.ariaLabelledByElements -> String.prototype.@@Symbol.iterator
+Element.attributes -> WeakMap.prototype.get
+Element.getAnimations -> %IteratorPrototype%.@@Symbol.iterator
+Element.getAttributeNames -> get Element.prototype.attributes
+Element.getClientRects -> Element.prototype.getBoundingClientRect
+Element.getElementsByClassName -> String.prototype.replace
+Element.getElementsByTagNameNS -> JSON.stringify
+Element.getHTML -> Array.prototype.@@Symbol.iterator
+Element.hasAttributes -> get Element.prototype.attributes
+Element.insertAdjacentText -> String.prototype.toLowerCase
+Element.previousElementSibling -> get Node.prototype.parentNode
+Element.scrollBy -> String.prototype.valueOf
+Element.scrollIntoView -> Array.prototype.forEach
+Element.scrollTo -> String.prototype.valueOf
+Element.startViewTransition -> Array.prototype.@@Symbol.iterator
+Element.webkitRequestFullScreen -> Math.max
+Element.webkitRequestFullscreen -> Math.max
+HTMLButtonElement.value -> WeakMap.prototype.has
+HTMLCanvasElement.toBlob -> JSON.stringify
+HTMLCanvasElement.toDataURL -> JSON.stringify
+HTMLDetailsElement.open -> Math.max
+HTMLDialogElement.close -> Math.max
+HTMLElement.tabIndex -> Array.prototype.includes
+HTMLInputElement.createValueRange -> WeakMap.prototype.has
+HTMLInputElement.defaultValue -> get Element.prototype.tagName
+HTMLInputElement.select -> WeakMap.prototype.has
+HTMLInputElement.selectionDirection -> WeakMap.prototype.has
+HTMLInputElement.selectionEnd -> WeakMap.prototype.has
+HTMLInputElement.selectionStart -> WeakMap.prototype.has
+HTMLInputElement.setRangeText -> WeakMap.prototype.has
+HTMLInputElement.setSelectionRange -> WeakMap.prototype.has
+HTMLInputElement.value -> WeakMap.prototype.has
+HTMLLinkElement.integrity -> get Element.prototype.localName
+HTMLMediaElement.canPlayType -> get Element.prototype.namespaceURI
+HTMLMeterElement.high -> String.prototype.slice
+HTMLMeterElement.low -> String.prototype.slice
+HTMLMeterElement.max -> String.prototype.slice
+HTMLMeterElement.optimum -> String.prototype.slice
+HTMLOptionElement.index -> get Node.prototype.parentNode
+HTMLOptionElement.label -> RegExp.prototype.@@Symbol.replace
+HTMLOptionElement.selected -> WeakMap.prototype.set
+HTMLOptionElement.selected -> get Node.prototype.parentNode
+HTMLOptionElement.text -> RegExp.prototype.@@Symbol.replace
+HTMLOptionElement.value -> RegExp.prototype.@@Symbol.replace
+HTMLOptionsCollection.length -> get Node.prototype.firstChild
+HTMLOptionsCollection.remove -> get Node.prototype.firstChild
+HTMLOptionsCollection.selectedIndex -> get Node.prototype.firstChild
+HTMLProgressElement.position -> String.prototype.slice
+HTMLSelectElement.checkValidity -> get Node.prototype.firstChild
+HTMLSelectElement.item -> get Node.prototype.firstChild
+HTMLSelectElement.length -> get Node.prototype.firstChild
+HTMLSelectElement.namedItem -> get Node.prototype.firstChild
+HTMLSelectElement.remove -> get Node.prototype.firstChild
+HTMLSelectElement.reportValidity -> get Node.prototype.firstChild
+HTMLSelectElement.selectedIndex -> get Node.prototype.firstChild
+HTMLSelectElement.validationMessage -> get Node.prototype.firstChild
+HTMLSelectElement.value -> get Node.prototype.firstChild
+HTMLTextAreaElement.createValueRange -> WeakMap.prototype.has
+HTMLTextAreaElement.defaultValue -> get Element.prototype.tagName
+HTMLTextAreaElement.select -> WeakMap.prototype.has
+HTMLTextAreaElement.selectionDirection -> WeakMap.prototype.has
+HTMLTextAreaElement.selectionEnd -> WeakMap.prototype.has
+HTMLTextAreaElement.selectionStart -> WeakMap.prototype.has
+HTMLTextAreaElement.setRangeText -> WeakMap.prototype.has
+HTMLTextAreaElement.setSelectionRange -> WeakMap.prototype.has
+HTMLTextAreaElement.textLength -> WeakMap.prototype.has
+HTMLTextAreaElement.value -> WeakMap.prototype.has
+HTMLTrackElement.track -> WeakSet.prototype.add
+MathMLElement.focus -> get Node.prototype.isConnected
+NamedNodeMap.getNamedItem -> Element.prototype.getAttributeNode
+NamedNodeMap.getNamedItemNS -> Element.prototype.getAttributeNodeNS
+NamedNodeMap.removeNamedItem -> Element.prototype.getAttributeNode
+NamedNodeMap.removeNamedItemNS -> Element.prototype.getAttributeNodeNS
+NamedNodeMap.setNamedItem -> Element.prototype.setAttributeNode
+NamedNodeMap.setNamedItemNS -> Element.prototype.setAttributeNodeNS
+Node.cloneNode -> WeakMap.prototype.has
+Node.compareDocumentPosition -> Node.prototype.getRootNode
+Node.isDefaultNamespace -> Node.prototype.lookupNamespaceURI
+Node.isEqualNode -> get Node.prototype.nodeType
+Node.lastChild -> get Node.prototype.childNodes
+Node.lookupNamespaceURI -> get Node.prototype.nodeType
+Node.lookupPrefix -> get Node.prototype.nodeType
+Node.previousSibling -> get Node.prototype.parentNode
+Range.cloneRange -> Object.create
+SVGElement.focus -> get Node.prototype.isConnected
+Selection.collapse -> Object.create
+Selection.selectAllChildren -> Object.create
+Selection.setPosition -> Object.create
+ShadowRoot.adoptedStyleSheets -> String.prototype.@@Symbol.iterator
+ShadowRoot.getAnimations -> %IteratorPrototype%.@@Symbol.iterator
+ShadowRoot.getHTML -> Array.prototype.@@Symbol.iterator
+StylePropertyMapReadOnly.entries -> Document.prototype.querySelectorAll
+StylePropertyMapReadOnly.entries -> String.prototype.trim
+StylePropertyMapReadOnly.get -> Document.prototype.querySelectorAll
+StylePropertyMapReadOnly.get -> String.prototype.trim
+StylePropertyMapReadOnly.getAll -> Document.prototype.querySelectorAll
+StylePropertyMapReadOnly.getAll -> String.prototype.trim
+StylePropertyMapReadOnly.has -> Document.prototype.querySelectorAll
+StylePropertyMapReadOnly.has -> String.prototype.trim
+StylePropertyMapReadOnly.keys -> Document.prototype.querySelectorAll
+StylePropertyMapReadOnly.keys -> String.prototype.trim
+StylePropertyMapReadOnly.size -> Document.prototype.querySelectorAll
+StylePropertyMapReadOnly.size -> String.prototype.trim
+StylePropertyMapReadOnly.values -> Document.prototype.querySelectorAll
+StylePropertyMapReadOnly.values -> String.prototype.trim
+StyleSheetList.item -> Document.prototype.querySelectorAll
+StyleSheetList.length -> Document.prototype.querySelectorAll
+Text.wholeText -> get Node.prototype.parentNode
+new AbortController -> WeakSet.prototype.add
+new Animation -> WeakSet.prototype.add
+new EditContext -> WeakSet.prototype.add
+new EventTarget -> WeakSet.prototype.add
+new Range -> Object.create
+new cancelAnimationFrame -> Array.prototype.findIndex
+new getComputedStyle -> String.prototype.replace
+new getComputedStyle -> String.prototype.toLowerCase
+new requestAnimationFrame -> Math.max
