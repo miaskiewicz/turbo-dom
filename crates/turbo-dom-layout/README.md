@@ -1,5 +1,10 @@
 # turbo-dom-layout
 
+> Part of the [turbo-dom](https://github.com/miaskiewicz/turbo-dom) 0.6.0 crate family. Used by
+> **turbo-html2pdf** (templating, pagination and PDF emit on top of this galley), **turbo-surf**
+> (live CSSOM-View geometry, `serde`) and [`turbo-dom-raster`](../turbo-dom-raster)
+> (`svg-rasterize`). Install: `turbo-dom-layout = "0.6"` (MSRV 1.89).
+
 The native **HTML/CSS layout engine** of turbo-dom: a style cascade over a
 turbo-dom `Tree` (`style_input` over a `TreeView`, or the live-DOM input `live` for an
 embedder-composed document), box generation, block / inline / flex / grid / table layout
@@ -229,14 +234,13 @@ turbo-dom-layout --all-targets [--all-features | --no-default-features] -- -D wa
 
 ## Complexity
 
-Gated with the rest of the repo at cyclomatic complexity <= 15 per function (CI jobs
-`complexity / rust (cc <= 15)`, `npm run complexity:rust`; no allow-list): turbo-html2pdf's
+Measured with the rest of the repo at cyclomatic complexity <= 15 per function (CI jobs
+`complexity / rust (cc <= 15)`, `npm run complexity:rust`; no allow-list; **report-only** for
+0.6.0): turbo-html2pdf's
 `cc-check`, installed from its home at a pinned rev (see the repo's CLAUDE.md "Complexity
 gates"). This replaces the earlier cc <= 5 allow-list for the surf-origin `cssom_view`
-modules. The crate's functions above 15 are all in `src/cssom_view/` (`hit::elements_at_point`
-30, `metrics::{element_geometry 16, offset_position 33}`, `range::select 18`,
-`scroll::{scroll_metrics 34, viewport_metrics 16}`, `text::caret 16`, `visibility::check 18`)
-and are on the post-coverage refactor backlog (docs/CONSOLIDATION.md "Complexity").
+modules. Functions above 15 are on the post-release refactor backlog (the CI job's step
+summary lists the current ones; docs/CONSOLIDATION.md "Complexity").
 
 ## Tests
 
@@ -248,5 +252,9 @@ cargo test -p turbo-dom-layout --features svg --test image_layer   # the shared 
 cargo test -p turbo-dom-layout --no-default-features   # 43 known failures: tests that assume bundled fonts (turbo-html2pdf#28)
 cargo tarpaulin --config crates/turbo-dom-layout/tarpaulin.toml
 ```
+
+Coverage: 99.86% measured; CI gate **99.8** (blocking). Text-geometry tests lay out with the
+repository's fixture fonts (`test_support::fixture_fonts()`, from `assets/fonts`) against Chrome
+156 controls recorded with the same files, so results do not depend on host fonts. Pull-request CI runs this crate's jobs on Linux; macOS arm64 is added in the release run only (`publish.yml` calls `ci.yml` with `darwin: true`). Complexity (<= 15 per function) is report-only until the post-release refactor.
 
 MSRV 1.89. License: MIT.
