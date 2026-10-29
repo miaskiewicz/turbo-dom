@@ -28,11 +28,12 @@
   document.body.innerHTML = '<div id=park style="position:fixed;top:520px;left:0;width:20px;height:20px"></div>'
     + '<span id=a></span><span id=b></span><div id=host class="one two"></div><iframe id=frame></iframe><template id=tpl></template>'
     + '<div id=group focusgroup="toolbar"><button id=f1>1</button><button id=f2>2</button></div>'
-    + '<button id=inv interestfor=pop style="interest-delay:800ms 800ms">i</button><div id=pop popover>p</div><button id=inv2>j</button><input id=ro readonly required>';
+    + '<button id=inv interestfor=pop style="interest-delay:800ms 800ms">i</button><div id=pop popover>p</div><button id=inv2>j</button><input id=ro readonly required><input id=many type=email multiple value="a@b.c,d@e"><input id=bad type=email value="x@.y"><button id=cmd commandfor=pop2 command=show-popover>c</button><div id=pop2 popover>q</div>';
   await sleep(100);
 
   // Every member exercised below, captured before the patch.
-  const Unit = CSSUnitValue, cssNumber = value => new Unit(value, 'number'), styleText = fn(CSSUnitValue.prototype, 'toString'), willValidate = get(HTMLInputElement.prototype, 'willValidate'), validity = fn(HTMLInputElement.prototype, 'checkValidity'),
+  const click = fn(H, 'click'), message = get(HTMLInputElement.prototype, 'validationMessage'), valid = get(ValidityState.prototype, 'valid'), validityOf = get(HTMLInputElement.prototype, 'validity'),
+    Unit = CSSUnitValue, cssNumber = value => new Unit(value, 'number'), styleText = fn(CSSUnitValue.prototype, 'toString'), willValidate = get(HTMLInputElement.prototype, 'willValidate'), validity = fn(HTMLInputElement.prototype, 'checkValidity'),
     fn_T_add = fn(T, 'add'),
     fn_T_contains = fn(T, 'contains'),
     fn_T_forEach = fn(T, 'forEach'),
@@ -142,7 +143,8 @@
   // The sweep: form validation and typed-OM number serialization use regular expressions.
   await attempt('sweep', () => {
     const ro = q('ro');
-    return A(willValidate, ro, []) + '|' + A(validity, ro, []) + '|' + A(styleText, cssNumber(1.5), []) + '|' + A(styleText, cssNumber(1.0000051), []) + '|' + A(styleText, cssNumber(2.5e-7), []);
+    return A(willValidate, ro, []) + '|' + A(validity, ro, []) + '|' + A(styleText, cssNumber(1.5), []) + '|' + A(styleText, cssNumber(1.0000051), []) + '|' + A(styleText, cssNumber(2.5e-7), [])
+      + '|' + A(valid, A(validityOf, q('many'), []), []) + '|' + A(message, q('bad'), []) + '|' + (A(click, q('cmd'), []), A(matches, q('pop2'), [':popover-open']));
   });
   await attempt('focusGroupKeys', async () => {
     A(focus, q('f1'), []);
