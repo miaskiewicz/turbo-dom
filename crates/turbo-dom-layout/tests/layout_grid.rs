@@ -202,3 +202,85 @@ fn column_gap_spaces_tracks() {
         "gap between columns"
     );
 }
+
+/// `(x, y, width)` of each grid item, rounded to whole px.
+fn xyw(root: &Fragment) -> Vec<(f32, f32, f32)> {
+    items_of(root)
+        .iter()
+        .map(|f| (f.x.round(), f.y.round(), f.width.round()))
+        .collect()
+}
+
+#[test]
+fn repeat_auto_fill_creates_as_many_tracks_as_fit() {
+    // miaskiewicz/turbo-dom#201. Chrome 156 (400px grid): four 100px columns, the
+    // fifth item wraps to the second row at x=0.
+    let root = grid(
+        &[(
+            "grid-template-columns",
+            "repeat(auto-fill, minmax(90px, 1fr))",
+        )],
+        (0..5).map(|_| item(&[], "a")).collect(),
+        400.0,
+    );
+    let got = xyw(&root);
+    let xs: Vec<_> = got.iter().map(|&(x, _, w)| (x, w)).collect();
+    assert_eq!(
+        xs,
+        vec![
+            (0.0, 100.0),
+            (100.0, 100.0),
+            (200.0, 100.0),
+            (300.0, 100.0),
+            (0.0, 100.0)
+        ]
+    );
+    assert_eq!(got[0].1, got[3].1, "first four share a row");
+    assert!(got[4].1 > got[0].1, "fifth item on the second row");
+}
+
+#[test]
+fn repeat_auto_fill_keeps_empty_tracks_but_auto_fit_collapses_them() {
+    // Chrome 156: with two items, auto-fill keeps four 100px tracks (items 100 wide)
+    // while auto-fit collapses the empty two, so the items stretch to 200px.
+    let fill = grid(
+        &[(
+            "grid-template-columns",
+            "repeat(auto-fill, minmax(90px, 1fr))",
+        )],
+        vec![item(&[], "a"), item(&[], "b")],
+        400.0,
+    );
+    let fit = grid(
+        &[(
+            "grid-template-columns",
+            "repeat(auto-fit, minmax(90px, 1fr))",
+        )],
+        vec![item(&[], "a"), item(&[], "b")],
+        400.0,
+    );
+    let xw = |r: &Fragment| -> Vec<(f32, f32)> { xyw(r).iter().map(|&(x, _, w)| (x, w)).collect() };
+    assert_eq!(xw(&fill), vec![(0.0, 100.0), (100.0, 100.0)]);
+    assert_eq!(xw(&fit), vec![(0.0, 200.0), (200.0, 200.0)]);
+}
+
+#[test]
+fn repeat_auto_fill_after_a_fixed_track() {
+    // Chrome 156: `50px repeat(auto-fill, 100px)` in 400px: 50 + three 100px tracks.
+    let root = grid(
+        &[("grid-template-columns", "50px repeat(auto-fill, 100px)")],
+        (0..5).map(|_| item(&[], "a")).collect(),
+        400.0,
+    );
+    let xs: Vec<_> = xyw(&root).iter().map(|&(x, _, w)| (x, w)).collect();
+    assert_eq!(
+        xs,
+        vec![
+            (0.0, 50.0),
+            (50.0, 100.0),
+            (150.0, 100.0),
+            (250.0, 100.0),
+            (0.0, 50.0)
+        ]
+    );
+}
