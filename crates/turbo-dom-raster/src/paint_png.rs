@@ -950,6 +950,10 @@ mod tests {
         let mut gone = plain(0.0, 0.0, 8.0, 8.0, Some(RED));
         gone.opacity = 0.0;
         assert!(all_white(&render(&gone, 10, 10, &HashMap::new())));
+        // An opacity group wholly off the canvas has no layer and paints nothing (#211).
+        let mut away = plain(20.0, 20.0, 8.0, 8.0, Some(RED));
+        away.opacity = 0.5;
+        assert!(all_white(&render(&away, 10, 10, &HashMap::new())));
     }
 
     /// `f` (an opacity group) painted the pre-#206-follow-up way: one canvas-sized layer.
