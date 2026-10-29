@@ -38,6 +38,20 @@ turbo-dom, -layout and -raster; 1.91 for turbo-dom-v8 and -browser-env.
   post-release refactor clears the backlog.
 - PR and push CI run on Linux and Windows; the macOS (aarch64-apple-darwin) builds and
   jobs run only in the release workflow (`ci.yml` called with `darwin: true`).
+### Fixed — layout grid auto-repetition, forced page breaks and `opacity` (miaskiewicz/turbo-dom#201/#204/#206, Chrome 156 controls)
+
+- `grid-template-columns/-rows: repeat(auto-fill | auto-fit, ...)` creates as many tracks as
+  fit (`auto-fit` collapses the empty ones); it was one `auto` track (#201).
+- `break-before/-after: left | right | recto | verso` force a page break (they were dropped),
+  the legacy `page-break-before/-after` (`always | left | right | avoid`) and
+  `page-break-inside: avoid` are read when the standard property is unset, and
+  `break-inside: avoid-page` avoids a break. Keywords are case-insensitive (#204).
+- CSS `opacity` reaches the galley (`Fragment::opacity`, `BoxStyle::opacity`). A box with
+  `opacity < 1` or a `transform` paints in its stacking context's `z-index: auto` layer
+  (`Fragment::stacks_as_positioned`), so it lands over an earlier `position: relative`
+  sibling. turbo-dom-raster paints the box and its subtree as one transparency group in
+  both the PNG and the SVG painter (#206). `Fragment` gains the public `opacity` field.
+
 ### Fixed — view-transition pseudo-classes are valid selectors (miaskiewicz/turbo-surf#117)
 `:active-view-transition`, `:active-view-transition-type(<ident>#)` and `:only-child` after
 the named `::view-transition-*` pseudo-elements now parse as in Chrome 156 (never matching:

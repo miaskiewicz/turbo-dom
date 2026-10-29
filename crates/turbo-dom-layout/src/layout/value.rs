@@ -697,6 +697,10 @@ pub struct BoxStyle {
     /// (keywords mapped: `left`/`top`=0%, `center`=50%, `right`/`bottom`=100%).
     /// Resolved against the box size at layout; the CSS default is `50% 50%`.
     pub transform_origin: (LengthPct, LengthPct),
+    /// CSS `opacity` clamped to `0..=1` (a `<number>` or `<percentage>`; `1` when
+    /// absent or unparsable): the box and its subtree paint as one group at this
+    /// alpha, and `< 1` makes a stacking context (miaskiewicz/turbo-dom#206).
+    pub opacity: f32,
 }
 
 /// A parsed CSS 2D transform before its `%` translate is resolved: the linear
@@ -1135,6 +1139,22 @@ fn break_rule_of(s: &ComputedStyle, prop: &str) -> BreakRule {
     }
 }
 
+/// CSS `opacity` as a `0..=1` alpha: a number or a percentage, clamped; `1` when
+/// absent or unparsable.
+fn opacity_of(s: &ComputedStyle) -> f32 {
+    let Some(v) = s.get("opacity").map(str::trim) else {
+        return 1.0;
+    };
+    let parsed = match v.strip_suffix('%') {
+        Some(pct) => pct.trim().parse::<f32>().map(|p| p / 100.0),
+        None => v.parse::<f32>(),
+    };
+    parsed
+        .ok()
+        .filter(|o| !o.is_nan())
+        .map_or(1.0, |o| o.clamp(0.0, 1.0))
+}
+
 /// `break-inside: avoid | avoid-page`, or the legacy `page-break-inside: avoid`.
 fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
     let is = |prop: &str, want: &[&str]| {
@@ -1199,6 +1219,7 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         background_gradient: linear_gradient_of(s),
         transform: transform_of(s, fs),
         transform_origin: transform_origin_of(s, fs),
+        opacity: opacity_of(s),
     }
 }
 
