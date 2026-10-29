@@ -5,6 +5,11 @@
   var $apply=Reflect.apply,$gopd=Object.getOwnPropertyDescriptor,$def=Object.defineProperty,$create=Object.create;
   var $wmGet=WeakMap.prototype.get,$wmSet=WeakMap.prototype.set,$lower=String.prototype.toLowerCase;
   var $call=function(f,receiver,...rest){return $apply(f,receiver,rest);};
+  // Element attribute natives for the reflected members (miaskiewicz/turbo-dom#199).
+  // Captured once the Element interface is defined (below), before any page script runs.
+  var $getAttributeNative,$setAttributeNative,$removeAttributeNative,$hasAttributeNative;
+  var $getAttr=function(el,name){return $apply($getAttributeNative,el,[name]);},$setAttr=function(el,name,value){return $apply($setAttributeNative,el,[name,value]);};
+  var $removeAttr=function(el,name){return $apply($removeAttributeNative,el,[name]);},$hasAttr=function(el,name){return $apply($hasAttributeNative,el,[name]);};
   // The CSSOM's uncurried builtins (miaskiewicz/turbo-dom#175): $c.<method>(receiver, ...)
   // dispatches on the receiver's type to the members captured here, and grows arrays
   // through own definitions (no inherited index setters, no @@species). Any other receiver
@@ -1674,21 +1679,21 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if (file !== undefined) return file;
         if (controlValues.has(this) && !reflectedValue(this)) return validForType(this, controlValues.get(this));
         var value = defaultValueOf(this);
-        if (!isTextarea(this) && /^(checkbox|radio)$/.test(this.type || '') && !this.hasAttribute('value')) return 'on';
+        if (!isTextarea(this) && /^(checkbox|radio)$/.test(this.type || '') && !$hasAttr(this, 'value')) return 'on';
         return validForType(this, value);
       },
       set: function(v){
         if (fileControls && fileControls.setValue(this, v)) return;
         var oldValue=selectionApply(valDesc.get,this,[]);
         v = v == null ? '' : String(v);
-        if (reflectedValue(this)) this.setAttribute('value', v);
+        if (reflectedValue(this)) $setAttr(this, 'value', v);
         else controlValues.set(this, validForType(this, v));
         selectionValueChanged(this,oldValue,selectionApply(valDesc.get,this,[]));
       }
     };
     var defaultValueDesc = { configurable: true, get: function(){ return defaultValueOf(this); }, set: function(v){
       if (isTextarea(this)) this.textContent = String(v);
-      else this.setAttribute('value', String(v));
+      else $setAttr(this, 'value', String(v));
     } };
     var checkedNative=g.__checkedNative,checkedSetAttribute=d.createElement('input').setAttribute,checkedRemoveAttribute=d.createElement('input').removeAttribute;delete g.__checkedNative;
     var checkedDesc = { configurable: true, get: function(){ return checkedNative(0,this); }, set: function(v){ checkedNative(1,this,!!v); } };
@@ -1698,7 +1703,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // input/change handling path; undefined would route changes to the select/checkbox path.
     // An <input> type outside the known states (e.g. 'file ') is the Text state.
     var inputTypeStates = /^(hidden|text|search|tel|url|email|password|date|month|week|time|datetime-local|number|range|color|checkbox|radio|file|submit|image|reset|button)$/;
-    var mkTypeDesc = function(def){ return { configurable: true, get: function(){ var t = (this.getAttribute('type') || def).toLowerCase(); return def === 'text' && !inputTypeStates.test(t) ? 'text' : t; }, set: function(v){ this.setAttribute('type', v); } }; };
+    var mkTypeDesc = function(def){ return { configurable: true, get: function(){ var t = $c.toLowerCase($getAttr(this, 'type') || def); return def === 'text' && !$c.test(inputTypeStates, t) ? 'text' : t; }, set: function(v){ $setAttr(this, 'type', v); } }; };
     // `form` → the nearest ancestor <form> (userEvent fires submit on a submit-button's form).
     var formDesc = { configurable: true, get: function(){ return this.closest ? this.closest('form') : null; } };
     var controlSelections=new WeakMap(),selectionApply=Reflect.apply,selectionGet=WeakMap.prototype.get,selectionSet=WeakMap.prototype.set;
@@ -1736,7 +1741,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // pattern (<link rel=preload as=script media=…>, <script type=…>). For inputs `type` is shadowed
     // per-instance by the text-defaulting control descriptor (applyControlProto), so this is the
     // fallback for non-control elements.
-    ['src','href','rel','as','media','type'].forEach(function(a){ if (!Object.getOwnPropertyDescriptor(baseProto, a)) { try { Object.defineProperty(baseProto, a, { configurable: true, get: function(){ return this.getAttribute(a) || ''; }, set: function(v){ this.setAttribute(a, v == null ? '' : String(v)); } }); } catch(e){} } });
+    ['src','href','rel','as','media','type'].forEach(function(a){ if (!Object.getOwnPropertyDescriptor(baseProto, a)) { try { Object.defineProperty(baseProto, a, { configurable: true, get: function(){ return $getAttr(this, a) || ''; }, set: function(v){ $setAttr(this, a, v == null ? '' : String(v)); } }); } catch(e){} } });
     // CharacterData mutation methods (insertData/deleteData/appendData/replaceData/substringData/
     // splitText) are now native rtdom Tree ops bound on every node — see browser_env.rs.
     // input.valueAsNumber — the numeric view of `value`, NaN when non-numeric/empty. MUI Slider's
@@ -1837,10 +1842,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       // Reflected IDL string attributes: a library setting `input.name = 'x'` (e.g. react-number-
       // format, MUI) must show up as the `name` content attribute (toHaveAttribute, [name] selectors).
       // Each interface gets only the members Chrome 156 exposes on it (control_prototypes_probe.js).
-      (controlStrings[n]||[]).forEach(function(a){ Object.defineProperty(p, a, { configurable: true, enumerable:true, get: function(){ return this.getAttribute(a) || ''; }, set: function(v){ this.setAttribute(a, v == null ? '' : String(v)); } }); });
+      (controlStrings[n]||[]).forEach(function(a){ Object.defineProperty(p, a, { configurable: true, enumerable:true, get: function(){ return $getAttr(this, a) || ''; }, set: function(v){ $setAttr(this, a, v == null ? '' : String(v)); } }); });
       // Reflected BOOLEAN IDL attributes (presence): el.disabled = true -> the `disabled` content
       // attribute; reading returns hasAttribute. Tests read el.disabled / [disabled] / multiple.
-      (controlBooleans[n]||[]).forEach(function(pair){ Object.defineProperty(p, pair[0], { configurable: true, enumerable:true, get: function(){ return this.hasAttribute(pair[1]); }, set: function(v){ if (v) this.setAttribute(pair[1], ''); else this.removeAttribute(pair[1]); } }); });
+      (controlBooleans[n]||[]).forEach(function(pair){ Object.defineProperty(p, pair[0], { configurable: true, enumerable:true, get: function(){ return $hasAttr(this, pair[1]); }, set: function(v){ if (v) $setAttr(this, pair[1], ''); else $removeAttr(this, pair[1]); } }); });
       if (n === 'HTMLInputElement' || n === 'HTMLTextAreaElement') {
         defineControl('defaultValue',defaultValueDesc);
         defineControl('selectionStart',selStartDesc);defineControl('selectionEnd',selEndDesc);defineControl('selectionDirection',selDirDesc);
@@ -1871,7 +1876,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var selection;
     (function(){
       var op = protoFor.HTMLOptionElement;
-      Object.defineProperty(op, 'value', { configurable: true, get: function(){ var v = this.getAttribute('value'); return v == null ? (this.textContent || '') : v; }, set: function(v){ this.setAttribute('value', v == null ? '' : String(v)); } });
+      Object.defineProperty(op, 'value', { configurable: true, get: function(){ var v = $getAttr(this, 'value'); return v == null ? (this.textContent || '') : v; }, set: function(v){ $setAttr(this, 'value', v == null ? '' : String(v)); } });
       var optionStates = new WeakMap(), emptySelects = new WeakSet();
       var isSelected = function(o){ return optionStates.has(o) ? optionStates.get(o) : o.hasAttribute('selected'); };
       var selectionOf = function(sel){
@@ -1898,8 +1903,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       } });
       selection = { selectionOf: selectionOf, optionStates: optionStates, emptySelects: emptySelects, isSelected: isSelected, optionsOf: optionsOf, ownerSelect: ownerSelect };
       __ns.selectSelection = selection; // captured (and deleted) by select_element.js
-      Object.defineProperty(op, 'defaultSelected', { configurable: true, get: function(){ return this.hasAttribute('selected'); }, set: function(v){ if (v) this.setAttribute('selected',''); else this.removeAttribute('selected'); } });
-      Object.defineProperty(op, 'disabled', { configurable: true, get: function(){ return this.hasAttribute('disabled'); }, set: function(v){ if (v) this.setAttribute('disabled',''); else this.removeAttribute('disabled'); } });
+      Object.defineProperty(op, 'defaultSelected', { configurable: true, get: function(){ return $hasAttr(this, 'selected'); }, set: function(v){ if (v) $setAttr(this, 'selected',''); else $removeAttr(this, 'selected'); } });
+      Object.defineProperty(op, 'disabled', { configurable: true, get: function(){ return $hasAttr(this, 'disabled'); }, set: function(v){ if (v) $setAttr(this, 'disabled',''); else $removeAttr(this, 'disabled'); } });
       Object.defineProperty(op, 'text', { configurable: true, get: function(){ return this.textContent || ''; }, set: function(v){ this.textContent = v; } });
     })();
     // <select>: `options` (HTMLOptionsCollection — the crash: React-DOM reads node.options.length),
@@ -1967,9 +1972,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     (function(){
       var lp = protoFor.HTMLLabelElement;
       var labelable = function(el){ if (!el || el.nodeType !== 1) return false; var tg = String(el.tagName).toUpperCase(); if (tg === 'INPUT') return (el.getAttribute('type') || 'text').toLowerCase() !== 'hidden'; return tg === 'BUTTON' || tg === 'SELECT' || tg === 'TEXTAREA' || tg === 'METER' || tg === 'OUTPUT' || tg === 'PROGRESS'; };
-      Object.defineProperty(lp, 'htmlFor', { configurable: true, get: function(){ return this.getAttribute('for') || ''; }, set: function(v){ this.setAttribute('for', v == null ? '' : String(v)); } });
+      Object.defineProperty(lp, 'htmlFor', { configurable: true, get: function(){ return $getAttr(this, 'for') || ''; }, set: function(v){ $setAttr(this, 'for', v == null ? '' : String(v)); } });
       Object.defineProperty(lp, 'control', { configurable: true, get: function(){
-        var f = this.getAttribute('for');
+        var f = $getAttr(this, 'for');
         if (f) { var el = this.ownerDocument.getElementById(f); return labelable(el) ? el : null; }
         var list = this.querySelectorAll('input, button, select, textarea, meter, output, progress');
         for (var i=0;i<list.length;i++) if (labelable(list[i])) return list[i];
@@ -2993,11 +2998,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       }
     });
     ['accept','autoFocus','autocomplete','checked','disabled','form','max','min','multiple','name','pattern','placeholder','readOnly','required','step','value','getBoundingClientRect'].forEach(function(name){delete prototypes.HTMLCanvasElement[name];});
+    // Captured for the reflected members below: page-replaced builtins never run on these paths (miaskiewicz/turbo-dom#199).
+    $getAttributeNative=elementProto.getAttribute;$setAttributeNative=elementProto.setAttribute;$removeAttributeNative=elementProto.removeAttribute;$hasAttributeNative=elementProto.hasAttribute;
+    var rNodeType=$gopd(g.Node.prototype,'nodeType').get,rParentElement=$gopd(g.Node.prototype,'parentElement').get,rIsPrototypeOf=Object.prototype.isPrototypeOf;
+    var rFormGetters=[];['HTMLInputElement','HTMLTextAreaElement','HTMLSelectElement','HTMLButtonElement','HTMLFieldSetElement','HTMLObjectElement','HTMLOutputElement','HTMLLabelElement','HTMLLegendElement','HTMLOptionElement','HTMLImageElement'].forEach(function(owner){var proto=prototypes[owner],d=proto&&$gopd(proto,'form');if(d&&d.get)rFormGetters[rFormGetters.length]=[proto,d.get];});
+    function rForm(el){for(var i=0;i<rFormGetters.length;i++)if($apply(rIsPrototypeOf,rFormGetters[i][0],[el]))return $apply(rFormGetters[i][1],el,[]);return null;}
     function reflectAttribute(owner,name,attribute,nullable){
       var check=__ns.domAccessor('nodeType',false,owner);
       Object.defineProperty(prototypes[owner],name,{configurable:true,enumerable:true,
-        get:__ns.makeNativeFunction(function(){check.call(this);var value=this.getAttribute(attribute);return nullable?value:value||'';},'get '+name,0),
-        set:__ns.makeNativeFunction(function(value){check.call(this);if(nullable&&value==null){this.removeAttribute(attribute);return;}if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');this.setAttribute(attribute,String(value));},'set '+name,1)});
+        get:__ns.makeNativeFunction(function(){$apply(check,this,[]);var value=$getAttr(this,attribute);return nullable?value:value||'';},'get '+name,0),
+        set:__ns.makeNativeFunction(function(value){$apply(check,this,[]);if(nullable&&value==null){$removeAttr(this,attribute);return;}if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');$setAttr(this,attribute,String(value));},'set '+name,1)});
     }
     var metaApply=Reflect.apply,metaString=String,metaTypeError=TypeError;
     var metaGetAttribute=elementProto.getAttribute,metaSetAttribute=elementProto.setAttribute;
@@ -3022,23 +3032,23 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     ariaNames.forEach(function(name){reflectAttribute('Element','aria'+name,'aria-'+name.toLowerCase(),true);});
     reflectAttribute('Element','role','role',true);
     ['slot','elementTiming'].forEach(function(name){reflectAttribute('Element',name,name.toLowerCase(),false);});
-    function reflectedMember(name,get,set){var check=__ns.domAccessor('nodeType',false,'HTMLElement');Object.defineProperty(htmlProto,name,{configurable:true,enumerable:true,get:__ns.makeNativeFunction(function(){check.call(this);return get.call(this);},'get '+name,0),set:__ns.makeNativeFunction(function(value){check.call(this);return set.call(this,value);},'set '+name,1)});}
+    function reflectedMember(name,get,set){var check=__ns.domAccessor('nodeType',false,'HTMLElement');Object.defineProperty(htmlProto,name,{configurable:true,enumerable:true,get:__ns.makeNativeFunction(function(){$apply(check,this,[]);return $apply(get,this,[]);},'get '+name,0),set:__ns.makeNativeFunction(function(value){$apply(check,this,[]);return $apply(set,this,[value]);},'set '+name,1)});}
     function attributeString(value){if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');return String(value);}
-    function enumAttribute(name,keywords,fallback){reflectedMember(name,function(){var value=(this.getAttribute(name.toLowerCase())||'').toLowerCase();return keywords.indexOf(value)>=0?value:fallback;},function(value){this.setAttribute(name.toLowerCase(),attributeString(value));});}
+    function enumAttribute(name,keywords,fallback){var lowerName=name.toLowerCase();reflectedMember(name,function(){var value=$c.toLowerCase($getAttr(this,lowerName)||'');return $c.indexOf(keywords,value)>=0?value:fallback;},function(value){$setAttr(this,lowerName,attributeString(value));});}
     enumAttribute('dir',['ltr','rtl','auto'],'');
     enumAttribute('inputMode',['none','text','tel','url','email','numeric','decimal','search'],'');
     enumAttribute('enterKeyHint',['enter','done','go','next','previous','search','send'],'');
     enumAttribute('virtualKeyboardPolicy',['auto','manual'],'');
-    ['autofocus','inert'].forEach(function(name){reflectedMember(name,function(){return this.hasAttribute(name);},function(value){if(value)this.setAttribute(name,'');else this.removeAttribute(name);});});
-    ['SVGElement','MathMLElement'].forEach(function(owner){var check=__ns.domAccessor('nodeType',false,owner);Object.defineProperty(prototypes[owner],'autofocus',{configurable:true,enumerable:true,get:__ns.makeNativeFunction(function(){check.call(this);return this.hasAttribute('autofocus');},'get autofocus',0),set:__ns.makeNativeFunction(function(value){check.call(this);if(value)this.setAttribute('autofocus','');else this.removeAttribute('autofocus');},'set autofocus',1)});});
-    reflectedMember('hidden',function(){var value=this.getAttribute('hidden');return value===null?false:value.toLowerCase()==='until-found'?'until-found':true;},function(value){if(typeof value!=='boolean'&&value!=null){value=attributeString(value);if(value.toLowerCase()==='until-found'){this.setAttribute('hidden','until-found');return;}}if(value)this.setAttribute('hidden','');else this.removeAttribute('hidden');});
-    function inheritedAttribute(el,name,accepted){for(var node=el;node&&node.nodeType===1;node=node.parentElement){var value=node.getAttribute(name);if(value!==null&&accepted.indexOf(value.toLowerCase())>=0)return value.toLowerCase();}return null;}
-    reflectedMember('translate',function(){return inheritedAttribute(this,'translate',['','yes','no'])!=='no';},function(value){this.setAttribute('translate',value?'yes':'no');});
-    reflectedMember('spellcheck',function(){var value=inheritedAttribute(this,'spellcheck',['','true','false']);if(value!==null)return value!=='false';return String(getTag.call(this)).toUpperCase()!=='INPUT'||(this.getAttribute('type')||'').toLowerCase()!=='password';},function(value){this.setAttribute('spellcheck',value?'true':'false');});
-    reflectedMember('writingSuggestions',function(){var value=this.getAttribute('writingsuggestions');if(value===null)value=inheritedAttribute(this.parentElement,'writingsuggestions',['true','false']);return value!==null&&value.toLowerCase()==='false'?'false':'true';},function(value){this.setAttribute('writingsuggestions',attributeString(value));});
-    reflectedMember('draggable',function(){var value=(this.getAttribute('draggable')||'').toLowerCase();if(value==='true'||value==='false')return value==='true';var tag=String(getTag.call(this)).toUpperCase();return tag==='IMG'||tag==='A'&&this.hasAttribute('href');},function(value){this.setAttribute('draggable',value?'true':'false');});
-    reflectedMember('autocapitalize',function(){var value=this.getAttribute('autocapitalize');if(value===null&&this.form)value=this.form.getAttribute('autocapitalize');value=(value||'').toLowerCase();return value===''?'':value==='off'?'none':value==='on'?'sentences':['none','sentences','words','characters'].indexOf(value)>=0?value:'sentences';},function(value){this.setAttribute('autocapitalize',attributeString(value));});
-    reflectedMember('autocorrect',function(){var value=this.getAttribute('autocorrect');if(value===null&&this.form)value=this.form.getAttribute('autocorrect');return (value||'').toLowerCase()!=='off';},function(value){this.setAttribute('autocorrect',value?'on':'off');});
+    ['autofocus','inert'].forEach(function(name){reflectedMember(name,function(){return $hasAttr(this,name);},function(value){if(value)$setAttr(this,name,'');else $removeAttr(this,name);});});
+    ['SVGElement','MathMLElement'].forEach(function(owner){var check=__ns.domAccessor('nodeType',false,owner);Object.defineProperty(prototypes[owner],'autofocus',{configurable:true,enumerable:true,get:__ns.makeNativeFunction(function(){$apply(check,this,[]);return $hasAttr(this,'autofocus');},'get autofocus',0),set:__ns.makeNativeFunction(function(value){$apply(check,this,[]);if(value)$setAttr(this,'autofocus','');else $removeAttr(this,'autofocus');},'set autofocus',1)});});
+    reflectedMember('hidden',function(){var value=$getAttr(this,'hidden');return value===null?false:$c.toLowerCase(value)==='until-found'?'until-found':true;},function(value){if(typeof value!=='boolean'&&value!=null){value=attributeString(value);if($c.toLowerCase(value)==='until-found'){$setAttr(this,'hidden','until-found');return;}}if(value)$setAttr(this,'hidden','');else $removeAttr(this,'hidden');});
+    function inheritedAttribute(el,name,accepted){for(var node=el;node&&$apply(rNodeType,node,[])===1;node=$apply(rParentElement,node,[])){var value=$getAttr(node,name);if(value!==null&&$c.indexOf(accepted,$c.toLowerCase(value))>=0)return $c.toLowerCase(value);}return null;}
+    reflectedMember('translate',function(){return inheritedAttribute(this,'translate',['','yes','no'])!=='no';},function(value){$setAttr(this,'translate',value?'yes':'no');});
+    reflectedMember('spellcheck',function(){var value=inheritedAttribute(this,'spellcheck',['','true','false']);if(value!==null)return value!=='false';return $c.toUpperCase(String($apply(getTag,this,[])))!=='INPUT'||$c.toLowerCase($getAttr(this,'type')||'')!=='password';},function(value){$setAttr(this,'spellcheck',value?'true':'false');});
+    reflectedMember('writingSuggestions',function(){var value=$getAttr(this,'writingsuggestions');if(value===null)value=inheritedAttribute($apply(rParentElement,this,[]),'writingsuggestions',['true','false']);return value!==null&&$c.toLowerCase(value)==='false'?'false':'true';},function(value){$setAttr(this,'writingsuggestions',attributeString(value));});
+    reflectedMember('draggable',function(){var value=$c.toLowerCase($getAttr(this,'draggable')||'');if(value==='true'||value==='false')return value==='true';var tag=$c.toUpperCase(String($apply(getTag,this,[])));return tag==='IMG'||tag==='A'&&$hasAttr(this,'href');},function(value){$setAttr(this,'draggable',value?'true':'false');});
+    reflectedMember('autocapitalize',function(){var value=$getAttr(this,'autocapitalize');if(value===null&&rForm(this))value=$getAttr(rForm(this),'autocapitalize');value=$c.toLowerCase(value||'');return value===''?'':value==='off'?'none':value==='on'?'sentences':$c.indexOf(['none','sentences','words','characters'],value)>=0?value:'sentences';},function(value){$setAttr(this,'autocapitalize',attributeString(value));});
+    reflectedMember('autocorrect',function(){var value=$getAttr(this,'autocorrect');if(value===null&&rForm(this))value=$getAttr(rForm(this),'autocorrect');return $c.toLowerCase(value||'')!=='off';},function(value){$setAttr(this,'autocorrect',value?'on':'off');});
     var reflectedApply=Reflect.apply,reflectedSetHas=Set.prototype.has,reflectedGetAttribute=g.Element.prototype.getAttribute;
     // Compatibility control delegates still require genuine interface receivers.
     var controlInterfaces={HTMLInputElement:'input',HTMLTextAreaElement:'textarea',HTMLSelectElement:'select',HTMLOptionElement:'option',HTMLButtonElement:'button',HTMLLabelElement:'label',HTMLCanvasElement:'canvas'};
