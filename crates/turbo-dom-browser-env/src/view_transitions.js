@@ -24,6 +24,8 @@
   const connectedGetter = accessor(g.Node.prototype, 'isConnected');
   const iteratorKey = Symbol.iterator;
   const resolved = apply(resolvePromise, PromiseValue, []);
+  // A private promise: an own undefined `constructor` keeps `then` off the page-replaceable Promise[@@species] (turbo-dom#199).
+  define(resolved, 'constructor', { value: undefined });
   const microtask = callback => { apply(then, resolved, [callback]); };
   const read = (map, key) => apply(weakGet, map, [key]);
   const PHASE_PENDING = 0, PHASE_CALLBACK = 1, PHASE_ANIMATING = 2, PHASE_DONE = 3;
@@ -317,7 +319,7 @@
     record.start = null; record.ended = false; record.waiting = 0;
     record.updateCallbackDone = deferred(); record.ready = deferred(); record.finished = deferred();
     record.types = create(null); record.types.values = new MapValue(); record.types.generation = 0;
-    for (const type of parsed.types) if (!apply(mapHas, record.types.values, [type])) apply(mapSet, record.types.values, [type, ++record.types.generation]);
+    for (let index = 0; index < parsed.types.length; index++) { const type = parsed.types[index]; if (!apply(mapHas, record.types.values, [type])) apply(mapSet, record.types.values, [type, ++record.types.generation]); }
     const transition = create(transitionProto), typeSet = create(typeSetProto);
     record.typeSet = typeSet; record.transition = transition;
     apply(weakSet, transitions, [transition, record]);

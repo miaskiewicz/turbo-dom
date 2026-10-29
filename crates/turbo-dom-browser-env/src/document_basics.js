@@ -31,6 +31,9 @@
   const sliceText = String.prototype.slice, regExec = RegExp.prototype.exec, charCodeAt = String.prototype.charCodeAt, fromCharCode = String.fromCharCode;
   const localNameOf = Object.getOwnPropertyDescriptor(g.Element.prototype, 'localName').get;
   const local = node => apply(localNameOf, node, []);
+  // The ASCII-whitespace-separated tokens of a string (HTML's split on ASCII whitespace).
+  const asciiTokens = text => { const out = []; let token = ''; for (let i = 0; i <= text.length; i++) { const c = i < text.length ? apply(charCodeAt, text, [i]) : 32; if (c === 32 || c === 9 || c === 10 || c === 12 || c === 13) { if (token) out[out.length] = token; token = ''; } else token += text[i]; } return out; };
+  const focusableTags = { __proto__: null, A: 1, INPUT: 1, BUTTON: 1, SELECT: 1, TEXTAREA: 1, IFRAME: 1, OBJECT: 1, AUDIO: 1, VIDEO: 1 };
   const test = (pattern, text) => { pattern.lastIndex = 0; return apply(regExec, pattern, [text]) !== null; };
   const asciiUpper = text => { let out = ''; for (let i = 0; i < text.length; i++) { const c = apply(charCodeAt, text, [i]); out += c >= 97 && c <= 122 ? fromCharCode(c - 32) : text[i]; } return out; };
   const firstChild = (node, match) => { const children = call(rawChildren, node); for (let i = 0; i < children.length; i++) { const child = children[i]; if (match(child)) return child; } return null; };
@@ -101,7 +104,7 @@
     property(proto, 'nonce', function () { inSpace(this, space); return native('nonce', this); }, function (value) { inSpace(this, space); native('setNonce', this, string(value)); });
     property(proto, 'tabIndex', function () {
       inSpace(this, space);
-      const fallback = space === html ? (['A', 'INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'IFRAME', 'OBJECT', 'AUDIO', 'VIDEO'].includes(apply(tag, this, [])) ? 0 : -1) : space === spaces[1][1] && apply(localName, this, []) === 'a' ? 0 : -1;
+      const fallback = space === html ? (focusableTags[apply(tag, this, [])] === 1 ? 0 : -1) : space === spaces[1][1] && apply(localName, this, []) === 'a' ? 0 : -1;
       const value = apply(getAttribute, this, ['tabindex']); const found = value == null ? null : /^[\t\n\f\r ]*([+-]?[0-9]+)/.exec(value);
       if (!found) return fallback; const number = Number(found[1]); return number >= -2147483648 && number <= 2147483647 ? number : fallback;
     }, function (value) { inSpace(this, space); apply(setAttribute, this, ['tabindex', String((+value) >> 0)]); });
@@ -262,12 +265,12 @@
     method(g[owner].prototype, 'getElementsByTagNameNS', function (uri, local) {
       check(this, valid); if (arguments.length < 2) throw new TypeError('getElementsByTagNameNS requires 2 arguments');
       uri = uri == null || uri === '' ? null : string(uri); local = string(local); const receiver = this;
-      return cached(receiver, JSON.stringify(['ns', uri, local]), () => descendants(receiver, node => (uri === '*' || call(namespace, node) === uri) && (local === '*' || node.localName === local)));
+      return cached(receiver, 'ns:' + (uri === null ? '-' : uri.length + ':' + uri) + ':' + local, () => descendants(receiver, node => (uri === '*' || call(namespace, node) === uri) && (local === '*' || apply(localNameOf, node, []) === local)));
     }, 2);
     method(g[owner].prototype, 'getElementsByClassName', function (classes) {
       check(this, valid); if (!arguments.length) throw new TypeError('getElementsByClassName requires 1 argument');
       classes = string(classes); const receiver=this;
-      const tokens = classes.replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g,'').split(/[\t\n\f\r ]+/).filter(Boolean);
+      const tokens = asciiTokens(classes);
       return cached(receiver, 'class:' + classes, () => {
         const document=call(type, receiver)===9?receiver:receiver.ownerDocument, insensitive=document&&native('compatMode',document)==='BackCompat';
         const fold=value=>insensitive?value.replace(/[A-Z]/g,value=>value.toLowerCase()):value;
@@ -296,7 +299,7 @@
     call(type, node);return node;
   },1);
   for (const [owner, localName] of [['HTMLScriptElement','script'],['HTMLLinkElement','link']]) {
-    const branded = receiver => { check(receiver,[1]); if(call(namespace, receiver)!==html||receiver.localName!==localName)throw new TypeError('Illegal invocation'); };
+    const branded = receiver => { check(receiver,[1]); if(call(namespace, receiver)!==html||local(receiver)!==localName)throw new TypeError('Illegal invocation'); };
     property(g[owner].prototype,'integrity',function(){branded(this);return call(getAttribute, this,'integrity')||'';},function(value){branded(this);call(setAttribute, this,'integrity',string(value));});
   }
   property(g.Document.prototype, 'documentElement', function () { check(this, [9]); return documentElementOf(this); });

@@ -7088,6 +7088,8 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         "__computedStyleVersion",
         computed_style_version,
     );
+    #[cfg(test)]
+    bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
     bind_method(scope, global, "__cssomEpoch", cssom_epoch);
     bind_method(scope, global, "__bumpCssomEpoch", bump_cssom_epoch);
 }
@@ -7111,6 +7113,16 @@ thread_local! {
 #[cfg(test)]
 fn cascade_runs() -> u64 {
     CASCADE_RUNS.with(std::cell::Cell::get)
+}
+
+/// Counts one fresh computed-style calculation (the test-only `__noteCascadeRun` hook).
+#[cfg(test)]
+fn note_cascade_run(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    CASCADE_RUNS.with(|runs| runs.set(runs.get() + 1));
 }
 
 /// The current CSSOM epoch (see `CSSOM_EPOCH`).

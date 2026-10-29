@@ -79,8 +79,8 @@
   const serialize = (owner, check) =>
     function getHTML(raw) {
       check(this);
-      const [serializable, roots] = options(raw, owner);
-      return native("getHTML", this, serializable, roots);
+      const parsed = options(raw, owner);
+      return native("getHTML", this, parsed[0], parsed[1]);
     };
   const unsafe = (owner, check) =>
     function setHTMLUnsafe(html, options) {
