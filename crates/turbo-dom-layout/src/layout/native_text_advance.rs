@@ -33,7 +33,11 @@ pub(super) fn measure(
     );
     glyphs
         .iter()
-        .map(|glyph| glyph_advance(face, font_size, glyph.x_advance, letter_spacing))
+        .zip(crate::text::cluster_ends(&glyphs))
+        .map(|(glyph, end)| {
+            let spacing = if end { letter_spacing } else { 0.0 };
+            glyph_advance(face, font_size, glyph.x_advance, spacing)
+        })
         .sum()
 }
 

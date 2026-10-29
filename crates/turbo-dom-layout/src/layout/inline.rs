@@ -1597,14 +1597,16 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
     } else {
         (Vec::new(), Vec::new())
     };
-    for g in shaped {
-        let ordinary_advance = scale * g.x_advance as f32 + seg.letter_spacing;
+    let ends: Vec<bool> = crate::text::cluster_ends(&shaped).collect();
+    for (g, cluster_end) in shaped.into_iter().zip(ends) {
+        let letter_spacing = if cluster_end { seg.letter_spacing } else { 0.0 };
+        let ordinary_advance = scale * g.x_advance as f32 + letter_spacing;
         let native_advance = html_font_scale.map_or(f64::from(ordinary_advance), |_| {
             native_text_advance::glyph_advance(
                 &seg.face,
                 seg.font_size,
                 g.x_advance,
-                seg.letter_spacing,
+                letter_spacing,
             )
         });
         let advance = html_font_scale.map_or(ordinary_advance, |_| native_advance as f32);
