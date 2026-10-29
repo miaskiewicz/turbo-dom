@@ -1,8 +1,9 @@
 // HTML serialization for innerHTML / outerHTML (WHATWG-ish fragment serializer).
 
+// HTML "serializes as void" (Chrome 156 includes the legacy basefont / bgsound / frame / keygen).
 const VOID = new Set([
-  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link',
-  'meta', 'param', 'source', 'track', 'wbr',
+  'area', 'base', 'basefont', 'bgsound', 'br', 'col', 'embed', 'frame', 'hr', 'img', 'input',
+  'keygen', 'link', 'meta', 'param', 'source', 'track', 'wbr',
 ]);
 
 // Elements whose content is raw text (not escaped).
