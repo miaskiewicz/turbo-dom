@@ -87,7 +87,7 @@ fn authorize_element<'s>(
         let array = v8::Array::new(scope, initial.len() as i32);
         for (index, value) in initial.iter().enumerate() {
             // turbo-dom#183: fails only past V8's string length limit
-            let value = v8::String::new(scope, value).unwrap();
+            let value = super::utf8_string(scope, value);
             array.set_index(scope, index as u32, value.into());
         }
         array.into()

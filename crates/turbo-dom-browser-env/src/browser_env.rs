@@ -4230,7 +4230,7 @@ fn get_content_editable(
         Some("plaintext-only") => "plaintext-only",
         _ => "inherit",
     };
-    // turbo-dom#183: fails only past V8's string length limit
+    // invariant: one of four engine literals, far below V8's string length limit
     rv.set(v8::String::new(scope, out).unwrap().into());
 }
 
