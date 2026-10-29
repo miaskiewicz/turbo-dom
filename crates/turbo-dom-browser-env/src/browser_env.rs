@@ -8002,6 +8002,35 @@ mod tests {
     }
 
     #[test]
+    fn namespace_lookup_on_non_element_nodes_matches_chrome156() {
+        // Oracle: Chrome 156.0.8078.47 headless; Document's lookup start is its
+        // documentElement, which bootstrap captured before document_basics.js defined it.
+        init_v8();
+        let isolate = &mut v8::Isolate::new(Default::default());
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, r#"<!doctype html><html xmlns:q="urn:q"><body>"#);
+        let code = v8::String::new(scope, r#"(()=>{
+          const out=[];const N=[document,document.doctype,document.createDocumentFragment(),document.documentElement.getAttributeNode('xmlns:q'),document.createAttribute('lone')];
+          for(const n of N){out.push([n.isDefaultNamespace(null),n.isDefaultNamespace('http://www.w3.org/1999/xhtml'),n.lookupNamespaceURI(null),n.lookupNamespaceURI('q'),n.lookupNamespaceURI('xml'),n.lookupPrefix('urn:q'),n.lookupPrefix('http://www.w3.org/1999/xhtml')]);}
+          const x=document.implementation.createDocument(null,null);out.push([x.isDefaultNamespace(null),x.lookupNamespaceURI(null),x.lookupPrefix('urn:q')]);
+          return JSON.stringify(out);
+        })()"#).unwrap();
+        let catch = std::pin::pin!(v8::TryCatch::new(scope));
+        let catch = &mut catch.init();
+        let script = v8::Script::compile(catch, code, None).unwrap();
+        let value = script.run(catch).unwrap_or_else(|| {
+            panic!("{}", catch.exception().unwrap().to_rust_string_lossy(catch))
+        });
+        assert_eq!(
+            value.to_rust_string_lossy(catch),
+            r#"[[false,true,"http://www.w3.org/1999/xhtml",null,"http://www.w3.org/XML/1998/namespace",null,null],[true,false,null,null,null,null,null],[true,false,null,null,null,null,null],[false,true,"http://www.w3.org/1999/xhtml",null,"http://www.w3.org/XML/1998/namespace",null,null],[true,false,null,null,null,null,null],[true,null,null]]"#
+        );
+        reset();
+    }
+
+    #[test]
     fn native_namespace_attributes_preserve_uri_identity_ownership_and_scope() {
         init_v8();
         let isolate = &mut v8::Isolate::new(Default::default());
