@@ -1,6 +1,6 @@
 //! A multi-node ChildNode/ParentNode call queues ONE childList record, as in Chrome 156
 //! (the nodes are inserted as a fragment). EXPECTED is a headless Chrome 156.0.8078.47
-//! MutationObserver capture of the same operations on `<div id=r><a id=a></a><b id=b></b></div>`.
+//! `MutationObserver` capture of the same operations on `<div id=r><a id=a></a><b id=b></b></div>`.
 use serde_json::{json, Value};
 use turbo_dom::rtdom::mutations::MutationEvent;
 use turbo_dom::rtdom::{Handle, Tree};

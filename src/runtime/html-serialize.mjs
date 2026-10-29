@@ -12,8 +12,9 @@ const RAW_TEXT = new Set(['style', 'script', 'xmp', 'iframe', 'noembed', 'nofram
 function escapeText(s) {
   return s.replace(/&/g, '&amp;').replace(/ /g, '&nbsp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+// attribute values also escape < and > (Chrome 156)
 function escapeAttr(s) {
-  return s.replace(/&/g, '&amp;').replace(/ /g, '&nbsp;').replace(/"/g, '&quot;');
+  return s.replace(/&/g, '&amp;').replace(/ /g, '&nbsp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function serializeNode(node, out) {

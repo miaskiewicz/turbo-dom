@@ -38,6 +38,10 @@ turbo-dom, -layout and -raster; 1.91 for turbo-dom-v8 and -browser-env.
   post-release refactor clears the backlog.
 - PR and push CI run on Linux and Windows; the macOS (aarch64-apple-darwin) builds and
   jobs run only in the release workflow (`ci.yml` called with `darwin: true`).
+### Fixed — attribute values escape `<` and `>` when serialized (Chrome 156 control)
+`innerHTML` / `outerHTML` (the `./runtime` serializer and rtdom `serialize_*`, scalar and
+UTF-16) now write `<` and `>` in attribute values as `&lt;` / `&gt;`, as Chrome 156 does.
+
 ### Fixed — MutationObserver childList records match Chrome (Chrome 156 controls)
 - `./runtime`: `innerHTML` (element and shadow root) queued no record, and `textContent` /
   `replaceChildren` dropped the removed children. They now queue one record with both

@@ -10,8 +10,8 @@ fn escaped(out: &mut Vec<u16>, units: &[u16], attribute: bool) {
             38 => Some("&amp;"),
             160 => Some("&nbsp;"),
             34 if attribute => Some("&quot;"),
-            60 if !attribute => Some("&lt;"),
-            62 if !attribute => Some("&gt;"),
+            60 => Some("&lt;"),
+            62 => Some("&gt;"),
             _ => None,
         };
         if let Some(entity) = entity {

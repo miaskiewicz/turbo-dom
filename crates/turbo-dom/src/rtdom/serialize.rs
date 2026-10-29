@@ -63,10 +63,13 @@ fn push_escaped_text(out: &mut String, s: &str) {
     }
 }
 
-/// Append `s` attribute-escaped (`&`→`&amp;`, `"`→`&quot;`) into `out`. Spaces are kept
-/// (a quoted attribute value preserves them verbatim — no need for `&nbsp;`).
+/// Append `s` attribute-escaped (`&`→`&amp;`, `"`→`&quot;`, and `<`/`>` like Chrome 156)
+/// into `out`. Spaces are kept (a quoted attribute value preserves them verbatim).
 fn push_escaped_attr(out: &mut String, s: &str) {
-    if !s.bytes().any(|b| matches!(b, b'&' | b'"' | 0xC2)) {
+    if !s
+        .bytes()
+        .any(|b| matches!(b, b'&' | b'"' | b'<' | b'>' | 0xC2))
+    {
         out.push_str(s);
         return;
     }
@@ -74,6 +77,8 @@ fn push_escaped_attr(out: &mut String, s: &str) {
         match c {
             '&' => out.push_str("&amp;"),
             '"' => out.push_str("&quot;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
             '\u{A0}' => out.push_str("&nbsp;"),
             _ => out.push(c),
         }
