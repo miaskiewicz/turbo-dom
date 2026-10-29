@@ -293,6 +293,24 @@ class InputVerificationTests(unittest.TestCase):
                 GENERATE.verify_output(crate, PINS)
 
 
+class TextEncodingTests(unittest.TestCase):
+    def test_text_files_are_read_as_utf8_whatever_the_locale(self):
+        # The fork README has non-ASCII text; Windows' locale default (cp1252) would
+        # mangle it and change the pinned tree hash, so every read names UTF-8.
+        real = Path.read_text
+
+        def read_text(path, encoding=None, errors=None):
+            self.assertEqual(encoding, "utf-8", f"{path} read without encoding='utf-8'")
+            return real(path, encoding=encoding, errors=errors)
+
+        with mock.patch.object(Path, "read_text", read_text):
+            readme = GENERATE.fork_readme()
+            GENERATE.load_pins()
+        source = (GENERATE.CRATE / "README.md").read_bytes().decode("utf-8")
+        self.assertTrue(any(ord(ch) > 127 for ch in source))
+        self.assertEqual(readme.encode("utf-8").count("\u2014".encode("utf-8")), source.count("\u2014"))
+
+
 def cached_archive():
     try:
         return GENERATE.find_archive(PINS)
