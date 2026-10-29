@@ -115,6 +115,14 @@ class ManifestTransformTests(unittest.TestCase):
         self.assertEqual(metadata["upstream-revision"], "5c15a6995c9bb4bacd3e341b59fff32c909c80bf")
         self.assertNotIn("Cargo.toml.orig", self.text)
 
+    def test_fork_readme_links_are_absolute(self):
+        readme = GENERATE.fork_readme()
+        self.assertTrue(readme.startswith("# turbo-dom-v8\n"))
+        self.assertNotIn("](../", readme)
+        self.assertNotIn("](scripts/", readme)
+        self.assertIn("](https://github.com/miaskiewicz/turbo-dom/blob/main/docs/CONSOLIDATION.md)", readme)
+        self.assertIn("](https://github.com/miaskiewicz/turbo-dom/blob/main/crates/turbo-dom-browser-env/README.md)", readme)
+
     def test_library_keeps_the_v8_crate_name(self):
         self.assertEqual(self.result["lib"], {"name": "v8", "path": "src/lib.rs"})  # doctests run (turbo-dom#182)
 
@@ -303,6 +311,16 @@ class RealArchiveTests(unittest.TestCase):
             build = generated["build.rs"].decode()
             self.assertNotIn('env::var("CARGO_PKG_VERSION")', build)
             self.assertFalse({"Cargo.toml.orig", "Cargo.lock", ".cargo_vcs_info.json"} & generated.keys())
+
+    def test_generated_crate_ships_the_fork_readme(self):
+        # turbo-dom#215: crates.io/docs.rs must show the fork README, not upstream's.
+        with tempfile.TemporaryDirectory() as temporary:
+            generated = GENERATE.generate(cached_archive(), Path(temporary), PINS)
+            readme = generated["README.md"].decode()
+            self.assertEqual(readme, GENERATE.fork_readme())
+            self.assertTrue(readme.startswith("# turbo-dom-v8\n"))
+            self.assertNotIn("Rusty V8 Binding", readme)
+            self.assertIn('package = "turbo-dom-v8"', readme)
 
     @unittest.skipUnless(shutil.which("cargo"), "cargo not on PATH")
     def test_generated_crate_is_rustfmt_clean(self):
