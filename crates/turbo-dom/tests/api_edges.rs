@@ -574,7 +574,7 @@ fn utf16_fragment_insertion_positions_and_records() {
     );
 }
 
-/// Chrome 156 throws HierarchyRequestError, leaving the tree unchanged, when a node is
+/// Chrome 156 throws `HierarchyRequestError`, leaving the tree unchanged, when a node is
 /// inserted into itself or one of its descendants; the Tree API (which has no errors on
 /// these paths) must leave the tree unchanged instead of building a parent cycle.
 #[test]
@@ -593,15 +593,15 @@ fn inserting_a_node_into_its_own_subtree_is_a_no_op() {
         ("append self", |t, p, _, _| t.append_child(p, p)),
         ("append into child", |t, p, a, _| t.append_child(a, p)),
         ("insert into child", |t, p, a, _| {
-            t.insert_before(a, p, None)
+            t.insert_before(a, p, None);
         }),
         ("before child", |t, p, a, _| t.before(a, &[p])),
         ("after child", |t, p, a, _| t.after(a, &[p])),
         ("replace child with ancestor", |t, p, _, b| {
-            t.replace_with(b, &[p])
+            t.replace_with(b, &[p]);
         }),
         ("replace children of child", |t, p, a, _| {
-            t.replace_children(a, &[p])
+            t.replace_children(a, &[p]);
         }),
         ("adjacent afterbegin", |t, p, a, _| {
             assert!(!t.insert_adjacent_element(a, "afterbegin", p));
@@ -635,7 +635,7 @@ fn insert_before_itself_keeps_the_node_in_place() {
 }
 
 /// Host-including: a shadow root cannot take its host or the host's ancestors (Chrome 156:
-/// HierarchyRequestError, tree unchanged).
+/// `HierarchyRequestError`, tree unchanged).
 #[test]
 fn a_shadow_root_cannot_take_an_ancestor_of_its_host() {
     let mut tree = Tree::parse("<div id=p><span></span></div>");
