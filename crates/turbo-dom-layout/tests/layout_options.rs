@@ -78,6 +78,47 @@ fn internal_links_get_their_own_box_only_when_asked() {
     assert_eq!(boxed(on), 1, "only the non-empty #target link is atomic");
 }
 
+fn link_boxes(html: &str) -> Vec<(f32, f32)> {
+    let tree = parse_html_tree(html);
+    let laid = lay(
+        &tree,
+        "",
+        LayoutOptions {
+            atomic_internal_links: true,
+            ..LayoutOptions::default()
+        },
+    );
+    fragments(&laid.galley)
+        .iter()
+        .filter(|f| matches!(f.content, FragmentContent::Box { .. }))
+        .filter(|f| source_name(&tree, &laid, f.node_id).as_deref() == Some("a"))
+        .map(|f| (f.x, f.width))
+        .collect()
+}
+
+#[test]
+fn a_block_level_internal_link_keeps_its_full_width_block_box() {
+    // miaskiewicz/turbo-dom#210: Chrome 156 gives a `display:block` link the full
+    // container width (here the 400px galley), not its shrink-to-fit text width.
+    let boxes =
+        link_boxes(r##"<body><div><a href="#s" style="display:block">in div</a></div></body>"##);
+    assert_eq!(boxes, vec![(0.0, 400.0)]);
+}
+
+#[test]
+fn inline_external_links_get_their_own_box_but_relative_ones_do_not() {
+    // miaskiewicz/turbo-dom#210: an absolute-URL href needs its own fragment for a
+    // /URI annotation; a scheme-less relative href does not.
+    let boxes = link_boxes(
+        r##"<body><p>a <a href="https://x.test/">ext</a> <a href="mailto:a@x.test">m</a> <a href="rel.html">r</a> <a href="1:2">d</a></p></body>"##,
+    );
+    assert_eq!(boxes.len(), 2, "{boxes:?}");
+    assert!(
+        boxes.iter().all(|&(_, w)| w > 0.0 && w < 100.0),
+        "{boxes:?}"
+    );
+}
+
 #[test]
 fn recorded_sources_cover_elements_texts_rows_and_the_id_range() {
     let tree = parse_html_tree(
