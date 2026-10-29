@@ -11,6 +11,8 @@ import hashlib
 import importlib.util
 import io
 import os
+import shutil
+import subprocess
 import tarfile
 import tempfile
 import tomllib
@@ -301,6 +303,18 @@ class RealArchiveTests(unittest.TestCase):
             build = generated["build.rs"].decode()
             self.assertNotIn('env::var("CARGO_PKG_VERSION")', build)
             self.assertFalse({"Cargo.toml.orig", "Cargo.lock", ".cargo_vcs_info.json"} & generated.keys())
+
+    @unittest.skipUnless(shutil.which("cargo"), "cargo not on PATH")
+    def test_generated_crate_is_rustfmt_clean(self):
+        # Upstream is rustfmt-clean under its rustfmt.toml; our patches must keep it so.
+        with tempfile.TemporaryDirectory() as temporary:
+            out = Path(temporary)
+            GENERATE.generate(cached_archive(), out, PINS)
+            result = subprocess.run(["cargo", "fmt", "--check", "--manifest-path", str(out / "Cargo.toml")],
+                                    capture_output=True, text=True)
+            if "rustfmt" in result.stderr and "not installed" in result.stderr:
+                self.skipTest("rustfmt not installed")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":
