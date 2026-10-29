@@ -110,7 +110,7 @@ fn inline_external_links_get_their_own_box_but_relative_ones_do_not() {
     // miaskiewicz/turbo-dom#210: an absolute-URL href needs its own fragment for a
     // /URI annotation; a scheme-less relative href does not.
     let boxes = link_boxes(
-        r##"<body><p>a <a href="https://x.test/">ext</a> <a href="mailto:a@x.test">m</a> <a href="rel.html">r</a> <a href="1:2">d</a></p></body>"##,
+        r#"<body><p>a <a href="https://x.test/">ext</a> <a href="mailto:a@x.test">m</a> <a href="rel.html">r</a> <a href="1:2">d</a></p></body>"#,
     );
     assert_eq!(boxes.len(), 2, "{boxes:?}");
     assert!(
@@ -159,6 +159,7 @@ fn table_rows_carry_every_break_inside_avoid_spelling() {
 
 #[test]
 fn table_rows_and_row_groups_carry_forced_breaks() {
+    use BreakRule::{Auto, Page};
     // Chrome 156 --print-to-pdf: `break-before: page` on a row or a <tbody>,
     // `page-break-before: always` on a row, and `break-after: page` on a middle row
     // each print 2 pages.
@@ -168,7 +169,6 @@ fn table_rows_and_row_groups_carry_forced_breaks() {
             .map(|(id, m)| (id, m.break_before, m.break_after))
             .collect()
     };
-    use BreakRule::{Auto, Page};
     let s = |id: &str| id.to_string();
     assert_eq!(
         forced("<body><table><tr id=a><td>a</td></tr><tr id=b style='break-before:page'><td>b</td></tr></table></body>"),
