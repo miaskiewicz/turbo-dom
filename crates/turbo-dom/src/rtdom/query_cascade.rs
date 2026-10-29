@@ -99,6 +99,7 @@ impl CascadeSelector {
 /// an argument.
 const NEVER_PSEUDO_CLASSES: &[&str] = &[
     "active",
+    "active-view-transition",
     "autofill",
     "-webkit-autofill",
     "buffering",
@@ -236,6 +237,12 @@ fn allowed_after_pseudo_element(element: &str, p: &Pseudo) -> bool {
                 )
         }
         _ if ELEMENT_BACKED.contains(&element) => plain(USER_ACTION),
+        // the view-transition tree's named pseudo-elements (not the `::view-transition`
+        // root) take `:only-child`
+        "view-transition-group"
+        | "view-transition-image-pair"
+        | "view-transition-old"
+        | "view-transition-new" => matches!(p, Pseudo::OnlyChild),
         _ => false,
     }
 }
@@ -624,8 +631,22 @@ fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
         (name, Some(_)) if NEVER_FUNCTIONAL_PSEUDO_CLASSES.contains(&name) => {
             Ok(Pseudo::unknown(name, arg))
         }
+        // `:active-view-transition-type(<custom-ident>#)`: no view transition runs in a
+        // static document (turbo-surf#117, Google's consent page)
+        ("active-view-transition-type", Some(list)) if is_ident_list(list) => {
+            Ok(Pseudo::unknown(lower.as_str(), arg))
+        }
         _ => Err(invalid("unknown pseudo-class")),
     }
+}
+
+/// A comma-separated list of CSS identifiers (Chrome 156: no empty item, no string, no
+/// `*`).
+fn is_ident_list(list: &str) -> bool {
+    list.split(',').all(|item| {
+        let units: Vec<u16> = item.encode_utf16().collect();
+        units::lang_range(&units).is_some()
+    })
 }
 
 /// Does `h` match `sel` through `nav` (a pseudo-element selector never matches an element,
