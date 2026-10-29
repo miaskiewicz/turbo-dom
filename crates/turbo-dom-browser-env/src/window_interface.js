@@ -12,18 +12,26 @@
     define(target, name, { value: make({ [name](...args) { return apply(this === g ? forWindow : generic, this, args); } }[name], name, length), writable: true, enumerable: true, configurable: true });
     delete g[name];
   }
+  // An embedder whose global template already makes the global a Window instance (turbo-surf's
+  // WindowProxy template, with an immutable prototype) keeps its interface object; the chain
+  // above Window.prototype is completed here either way.
+  const getPrototype = Object.getPrototypeOf, hasOwn = Object.hasOwn;
+  let Window = g.Window;
+  const embedded = typeof Window === 'function' && getPrototype(g) === Window.prototype;
+  if (!embedded) {
+    Window = make(function Window() { throw new ErrorType(new.target ? "Failed to construct 'Window': Illegal constructor" : 'Illegal constructor'); }, 'Window', 0, true, true);
+    define(Window, 'prototype', { value: {}, writable: false, enumerable: false, configurable: false });
+    define(Window.prototype, 'constructor', { value: Window, writable: true, configurable: true });
+    define(g, 'Window', { value: Window, writable: true, configurable: true });
+  }
+  const proto = Window.prototype;
   const properties = setPrototype({}, target);
   define(properties, Symbol.toStringTag, { value: 'WindowProperties', configurable: true });
-  const Window = make(function Window() { throw new ErrorType(new.target ? "Failed to construct 'Window': Illegal constructor" : 'Illegal constructor'); }, 'Window', 0, true, true);
-  const proto = setPrototype({}, properties);
-  define(Window, 'TEMPORARY', { value: 0, enumerable: true });
-  define(Window, 'PERSISTENT', { value: 1, enumerable: true });
-  define(proto, 'TEMPORARY', { value: 0, enumerable: true });
-  define(proto, 'PERSISTENT', { value: 1, enumerable: true });
-  define(proto, 'constructor', { value: Window, writable: true, configurable: true });
-  define(proto, Symbol.toStringTag, { value: 'Window', configurable: true });
-  define(Window, 'prototype', { value: proto, writable: false, enumerable: false, configurable: false });
+  setPrototype(proto, properties);
   setPrototype(Window, g.EventTarget);
-  define(g, 'Window', { value: Window, writable: true, configurable: true });
-  setPrototype(g, proto);
+  for (const [name, value] of [['TEMPORARY', 0], ['PERSISTENT', 1]]) {
+    for (const object of [Window, proto]) if (!hasOwn(object, name)) define(object, name, { value, enumerable: true });
+  }
+  define(proto, Symbol.toStringTag, { value: 'Window', configurable: true });
+  if (!embedded) setPrototype(g, proto);
 })();

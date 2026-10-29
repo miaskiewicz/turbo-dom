@@ -101,3 +101,47 @@ fn window_has_chromes_window_interface_chain() {
         assert_eq!(actual, expected);
     });
 }
+
+/// An embedder whose global template already makes the global a `Window` instance with an
+/// immutable prototype (turbo-surf's WindowProxy) keeps its interface object, and the binding
+/// completes the chain above `Window.prototype`.
+#[test]
+fn embedder_window_template_keeps_its_interface_and_gets_the_chain() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let constructor = v8::FunctionTemplate::new(
+        scope,
+        |_: &mut v8::PinScope, _: v8::FunctionCallbackArguments, _: v8::ReturnValue| {},
+    );
+    let name = v8::String::new(scope, "Window").unwrap();
+    constructor.set_class_name(name);
+    let global = constructor.instance_template(scope);
+    global.set_with_attr(
+        name.into(),
+        constructor.into(),
+        v8::PropertyAttribute::DONT_ENUM,
+    );
+    global.set_immutable_proto();
+    let context = v8::Context::new(
+        scope,
+        v8::ContextOptions {
+            global_template: Some(global),
+            ..Default::default()
+        },
+    );
+    let scope = &mut v8::ContextScope::new(scope, context);
+    page(scope, "globalThis.__embedderWindow = Window; return ''");
+    install_with_html(scope, "<!doctype html>");
+    assert_eq!(
+        page(
+            scope,
+            "const P = Object.getPrototypeOf, tag = o => Object.prototype.hasOwnProperty.call(o, Symbol.toStringTag) ? o[Symbol.toStringTag] : null; \
+             return JSON.stringify([Window === __embedderWindow, P(window) === Window.prototype, tag(P(window)), tag(P(P(window))), P(P(P(window))) === EventTarget.prototype, \
+             window instanceof EventTarget, Window.PERSISTENT, Window.prototype.TEMPORARY, Object.hasOwn(window, 'addEventListener'), \
+             (() => { let n = 0; addEventListener('x', () => n++); dispatchEvent(new Event('x')); return n; })()])"
+        ),
+        r#"[true,true,"Window","WindowProperties",true,true,1,0,false,1]"#
+    );
+    reset();
+}
