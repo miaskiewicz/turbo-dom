@@ -1725,9 +1725,7 @@ impl Tree {
             return;
         }
         if self.node_type(child) == NodeType::Fragment {
-            for node in self.children(child) {
-                self.append_child(parent, node);
-            }
+            self.insert_nodes(parent, &[child], Anchor::Before(None), Vec::new());
             return;
         }
         self.detach(child);
@@ -1753,9 +1751,7 @@ impl Tree {
             return;
         }
         if self.node_type(child) == NodeType::Fragment {
-            for node in self.children(child) {
-                self.insert_before(parent, node, reference);
-            }
+            self.insert_nodes(parent, &[child], Anchor::Before(reference), Vec::new());
             return;
         }
         // A node inserted before itself goes before its next sibling (DOM pre-insert).
@@ -2056,9 +2052,14 @@ impl Tree {
     /// Insert `nodes` (in order) immediately before `h` within `h`'s parent. No-op if detached.
     pub fn before(&mut self, h: Handle, nodes: &[Handle]) {
         let Some(p) = self.parent(h) else { return };
-        for &n in nodes {
-            self.insert_before(p, n, Some(h));
+        if nodes.iter().any(|&n| self.is_inclusive_ancestor(n, p)) {
+            return;
         }
+        // DOM: anchor after h's viable previous sibling (the first one not being moved).
+        let sibs = self.children(p);
+        let i = sibs.iter().position(|&x| x == h).unwrap_or(0);
+        let previous = sibs[..i].iter().rev().copied().find(|s| !nodes.contains(s));
+        self.insert_nodes(p, nodes, Anchor::After(previous), Vec::new());
     }
     /// The "viable next sibling" used by `after`/`replaceWith`: `h`'s first following
     /// sibling that is NOT itself in `nodes`. Per the DOM spec these methods anchor the
@@ -2073,10 +2074,11 @@ impl Tree {
     /// Insert `nodes` (in order) immediately after `h` within `h`'s parent.
     pub fn after(&mut self, h: Handle, nodes: &[Handle]) {
         let Some(p) = self.parent(h) else { return };
-        let next = self.viable_next_sibling(h, nodes);
-        for &n in nodes {
-            self.insert_before(p, n, next);
+        if nodes.iter().any(|&n| self.is_inclusive_ancestor(n, p)) {
+            return;
         }
+        let next = self.viable_next_sibling(h, nodes);
+        self.insert_nodes(p, nodes, Anchor::Before(next), Vec::new());
     }
     /// Replace `h` with `nodes` (in order) in `h`'s parent.
     pub fn replace_with(&mut self, h: Handle, nodes: &[Handle]) {
@@ -2085,26 +2087,84 @@ impl Tree {
             return;
         }
         let next = self.viable_next_sibling(h, nodes);
-        // Insert before the viable next sibling so order is preserved, then remove h. (If a
-        // node in `nodes` is h itself it is first detached by insert_before — harmless; spec
-        // dedups similarly.)
-        for &n in nodes {
-            if n != h {
-                self.insert_before(p, n, next);
-            }
-        }
-        self.remove_child(p, h);
+        // h is replaced in the same record as the insertion, unless h is itself one of the
+        // moved nodes (then it is simply moved).
+        let replaced = if nodes.contains(&h) {
+            Vec::new()
+        } else {
+            vec![h]
+        };
+        self.insert_nodes(p, nodes, Anchor::Before(next), replaced);
     }
     /// Replace all children of `h` with `nodes` (in order).
     pub fn replace_children(&mut self, h: Handle, nodes: &[Handle]) {
         if nodes.iter().any(|&n| self.is_inclusive_ancestor(n, h)) {
             return;
         }
-        for c in self.children(h) {
-            self.remove_child(h, c);
-        }
+        let replaced = self.children(h);
+        self.insert_nodes(h, nodes, Anchor::Before(None), replaced);
+    }
+
+    /// Insert `nodes` (fragments flattened) into `parent` at `anchor`, removing `replaced`
+    /// children of `parent` first, with ONE childList record for the whole change, as the
+    /// DOM does when it converts `nodes` into a fragment. A node moved from another parent
+    /// still records its removal there; a fragment records the removal of its children.
+    fn insert_nodes(
+        &mut self,
+        parent: Handle,
+        nodes: &[Handle],
+        anchor: Anchor,
+        replaced: Vec<Handle>,
+    ) {
+        let mut flat = Vec::with_capacity(nodes.len());
         for &n in nodes {
-            self.append_child(h, n);
+            match self.node_type(n) {
+                NodeType::Attribute => {}
+                NodeType::Fragment => {
+                    let kids = self.children(n);
+                    let log = self.mutation_log.take();
+                    for &k in &kids {
+                        self.remove_child(n, k);
+                    }
+                    self.mutation_log = log;
+                    if self.is_recording() && !kids.is_empty() {
+                        let rec = crate::rtdom::mutations::MutationRecord::child_list(
+                            n,
+                            Vec::new(),
+                            kids.clone(),
+                        );
+                        self.record_event(rec, None, None, None);
+                    }
+                    flat.extend(kids);
+                }
+                _ => {
+                    self.detach(n);
+                    flat.push(n);
+                }
+            }
+        }
+        let reference = match anchor {
+            Anchor::Before(reference) => reference,
+            Anchor::After(Some(previous)) => self.next_sibling(previous),
+            Anchor::After(None) => self.first_child(parent),
+        };
+        let replaced: Vec<Handle> = replaced
+            .into_iter()
+            .filter(|&c| self.parent(c) == Some(parent))
+            .collect();
+        let log = self.mutation_log.take();
+        for &c in &replaced {
+            self.remove_child(parent, c);
+        }
+        let previous =
+            reference.map_or_else(|| self.last_child(parent), |r| self.previous_sibling(r));
+        for &n in &flat {
+            self.insert_before(parent, n, reference);
+        }
+        self.mutation_log = log;
+        if self.is_recording() && !(flat.is_empty() && replaced.is_empty()) {
+            let rec = crate::rtdom::mutations::MutationRecord::child_list(parent, flat, replaced);
+            self.record_event(rec, previous, reference, None);
         }
     }
     /// `insertAdjacentElement(position, element)` — position is beforebegin | afterbegin | beforeend
@@ -2163,15 +2223,9 @@ impl Tree {
             "afterend" => self.after(h, &kids),
             "afterbegin" => {
                 let first = self.first_child(h);
-                for &k in &kids {
-                    self.insert_before(h, k, first);
-                }
+                self.insert_nodes(h, &kids, Anchor::Before(first), Vec::new());
             }
-            _ => {
-                for &k in &kids {
-                    self.append_child(h, k);
-                }
-            } // beforeend (default)
+            _ => self.insert_nodes(h, &kids, Anchor::Before(None), Vec::new()), // beforeend (default)
         }
         core::discard_node(frag);
     }
@@ -2407,6 +2461,15 @@ fn ns_id(namespace: &str) -> Namespace {
         "math" => Namespace::MathMl,
         _ => Namespace::Html,
     }
+}
+
+/// Where `Tree::insert_nodes` inserts: before a reference child (`None`: at the end), or
+/// right after a previous sibling (`None`: at the start), resolved once the moved nodes
+/// are detached.
+#[derive(Clone, Copy)]
+enum Anchor {
+    Before(Option<Handle>),
+    After(Option<Handle>),
 }
 
 #[cfg(test)]
