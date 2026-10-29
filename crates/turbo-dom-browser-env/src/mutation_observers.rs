@@ -475,7 +475,7 @@ fn payload<'s>(
         let value = value.map_or_else(
             || null.into(),
             // turbo-dom#183: fails only past V8's string length limit
-            |value| v8::String::new(scope, value).unwrap().into(),
+            |value| super::utf8_string(scope, value).into(),
         );
         set_prop(scope, object, name, value);
     }

@@ -518,7 +518,7 @@ fn set_domain<'s>(
     // An origin-keyed agent cluster ignores the assignment (Chrome only warns).
     if !keyed {
         // turbo-dom#183: fails only past V8's string length limit
-        let value = v8::String::new(scope, &new_domain).unwrap();
+        let value = super::utf8_string(scope, &new_domain);
         set_private_value(scope, document, RELAXED_DOMAIN, value.into());
     }
     None
@@ -641,7 +641,7 @@ fn dispatch<'s>(
             if let Some(owner) = owner(scope, node) {
                 let domain = effective_domain(scope, &owner);
                 // turbo-dom#183: fails only past V8's string length limit
-                rv.set(v8::String::new(scope, &domain).unwrap().into());
+                rv.set(super::utf8_string(scope, &domain).into());
             }
             return;
         }

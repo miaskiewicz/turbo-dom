@@ -80,7 +80,7 @@ fn dispatch<'s>(
     match (operation.as_str(), parsed) {
         ("get", Some(url)) => {
             // turbo-dom#183: fails only past V8's string length limit
-            let value = v8::String::new(scope, &component(&url, &name)).unwrap();
+            let value = super::utf8_string(scope, &component(&url, &name));
             rv.set(value.into());
         }
         // Chrome reports ":" for the protocol of an element without a valid url.
@@ -91,7 +91,7 @@ fn dispatch<'s>(
         ("set", Some(mut url)) => {
             update(&mut url, &name, &arg_str(scope, &args, 3));
             // turbo-dom#183: fails only past V8's string length limit
-            let value = v8::String::new(scope, url.as_str()).unwrap();
+            let value = super::utf8_string(scope, url.as_str());
             rv.set(value.into());
         }
         _ => rv.set_null(),

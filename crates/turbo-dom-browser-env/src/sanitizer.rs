@@ -591,7 +591,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         ("__sanitizerBaseline", BASELINE_JSON),
     ] {
         // invariant: compiled-in fixture data
-        let value = v8::String::new(scope, json).unwrap();
+        let value = super::utf8_string(scope, json);
         set_prop(scope, global, name, value.into());
     }
     run_js(scope, include_str!("sanitizer.js"));

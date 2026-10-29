@@ -388,7 +388,7 @@ pub(super) fn read_inline(
     };
     let text = applied_inline(scope, node);
     // turbo-dom#183: fails only past V8's string length limit
-    rv.set(v8::String::new(scope, &text).unwrap().into());
+    rv.set(super::utf8_string(scope, &text).into());
 }
 pub(super) fn write_inline(
     scope: &mut v8::PinScope,

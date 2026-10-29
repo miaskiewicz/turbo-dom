@@ -577,7 +577,7 @@ mod tests {
                         "{},{},{}",
                         state.already_started, state.parser_inserted, state.force_async
                     );
-                    rv.set(v8::String::new(scope, &value).unwrap().into());
+                    rv.set(super::utf8_string(scope, &value).into());
                 } else {
                     rv.set(v8::null(scope).into());
                 }

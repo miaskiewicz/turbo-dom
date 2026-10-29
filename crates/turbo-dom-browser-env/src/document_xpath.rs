@@ -194,7 +194,7 @@ fn dispatch(
     let data =
         json!({"rows":snapshot.rows,"context":snapshot.context,"stamp":snapshot.stamp}).to_string();
     // turbo-dom#183: fails only past V8's string length limit
-    let data = v8::String::new(scope, &data).unwrap();
+    let data = super::utf8_string(scope, &data);
     let Some(result) = v8::json::parse(scope, data).and_then(|value| value.to_object(scope)) else {
         return;
     };

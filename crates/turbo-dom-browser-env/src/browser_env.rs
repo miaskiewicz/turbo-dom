@@ -1358,8 +1358,32 @@ pub fn string_code_units(scope: &v8::PinScope, value: v8::Local<v8::String>) -> 
     units
 }
 fn unit_string<'s>(scope: &mut v8::PinScope<'s, '_>, units: &[u16]) -> v8::Local<'s, v8::String> {
-    // turbo-dom#183: fails only past V8's string length limit
-    v8::String::new_from_two_byte(scope, units, v8::NewStringType::Normal).unwrap()
+    let string = v8::String::new_from_two_byte(scope, units, v8::NewStringType::Normal);
+    string_or_range_error(scope, string)
+}
+
+/// A page-derived UTF-8 string as a V8 string; see [`string_or_range_error`].
+fn utf8_string<'s>(scope: &mut v8::PinScope<'s, '_>, text: &str) -> v8::Local<'s, v8::String> {
+    let string = v8::String::new(scope, text);
+    string_or_range_error(scope, string)
+}
+
+/// V8 refuses strings past `String::kMaxLength` (turbo-dom#183): page script can build a DOM
+/// string that long. Throw `RangeError: Invalid string length`, V8's own error for an oversized
+/// string, and hand back the empty string; the pending exception wins over any return value.
+fn string_or_range_error<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    string: Option<v8::Local<'s, v8::String>>,
+) -> v8::Local<'s, v8::String> {
+    match string {
+        Some(string) => string,
+        None => {
+            let message = v8::String::new(scope, "Invalid string length").unwrap();
+            let error = v8::Exception::range_error(scope, message);
+            scope.throw_exception(error);
+            v8::String::empty(scope)
+        }
+    }
 }
 
 // ---- with-tree helpers (borrow the thread-local Tree) ----------------------------------------
@@ -2056,7 +2080,7 @@ fn el_cascade_prop(
     .flatten()
     .unwrap_or_default();
     // turbo-dom#183: fails only past V8's string length limit
-    rv.set(v8::String::new(scope, &val).unwrap().into());
+    rv.set(utf8_string(scope, &val).into());
 }
 
 // Convert all WebIDL Node/string arguments before native sequence conversion has effects.
@@ -5352,7 +5376,7 @@ fn form_controls_native(
                     .unwrap_or_else(|| invalid_form_action(&raw))
             };
             // turbo-dom#183: fails only past V8's string length limit
-            rv.set(v8::String::new(scope, &value).unwrap().into());
+            rv.set(utf8_string(scope, &value).into());
         }
         "absolute-url" => {
             let value = args.get(2).to_rust_string_lossy(scope);
@@ -7618,10 +7642,38 @@ mod tests {
         });
     }
 
+    /// turbo-dom#183 without the allocation: a refused string (None) throws V8's own
+    /// `RangeError: Invalid string length` and yields the empty string; a made one passes through.
+    #[test]
+    fn string_or_range_error_throws() {
+        init_v8();
+        let isolate = &mut v8::Isolate::new(Default::default());
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        v8::tc_scope!(let scope, scope);
+        let made = v8::String::new(scope, "ab");
+        let kept = string_or_range_error(scope, made);
+        assert_eq!(kept.to_rust_string_lossy(scope), "ab");
+        assert!(!scope.has_caught());
+        let refused = string_or_range_error(scope, None);
+        assert_eq!(refused.length(), 0);
+        let exception = scope.exception().unwrap();
+        assert!(exception.is_native_error());
+        assert_eq!(
+            exception.to_rust_string_lossy(scope),
+            "RangeError: Invalid string length"
+        );
+        let utf8 = utf8_string(scope, "é");
+        assert_eq!(utf8.to_rust_string_lossy(scope), "é");
+        let units = unit_string(scope, &[0xe9, 0x62]);
+        assert_eq!(units.to_rust_string_lossy(scope), "éb");
+    }
+
     /// turbo-dom#183: a DOM string past V8's length limit throws `RangeError: Invalid string
     /// length` (V8's own message) instead of aborting the process.
     #[test]
-    #[ignore = "turbo-dom#183: fails until the fix; allocates about 1 GiB"]
+    #[ignore = "turbo-dom#183: allocates about 1 GiB; string_or_range_error_throws covers it"]
     fn unit_string_past_the_limit_throws_range_error() {
         init_v8();
         let isolate = &mut v8::Isolate::new(Default::default());
