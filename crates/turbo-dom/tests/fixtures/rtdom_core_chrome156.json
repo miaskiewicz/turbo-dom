@@ -4080,6 +4080,303 @@
    ]
   },
   {
+   "id": "functional_pseudo_element_arguments",
+   "html": "<p class=a>x</p>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": "::picker(1)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(foo)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker( select )",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(SELECT)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(a b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(.a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(up)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(*)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(foo)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(1)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(block-start)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(up down)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight(1)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight(a b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight(--x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(1)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(a b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(1)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(a b)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(a,b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(--a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(down)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(left)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(right)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(block-end)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(inline-start)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(inline-end)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(UP)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button( up )",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::scroll-button(prev)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(next)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::scroll-button(start)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(a, b)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(.x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(a>b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::cue(b.x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(*)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(:is(a b))",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::cue(::before)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight(a,b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::highlight( a )",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::highlight(\\31 a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::highlight(\"a\")",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part( a  b )",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::part(\"a\")",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::part(a.b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::picker(select/**/)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::picker(\\73 elect)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group(a)::before",
+     "valid": false,
+     "matches": ""
+    }
+   ]
+  },
+  {
    "id": "attribute_operators",
    "html": "<div id=a class=\"x y\" lang=\"en-US\" title=\"abc\"></div><p id=b lang=en title=\"\"></p><span data-v=\"a b\"></span>",
    "elements": [

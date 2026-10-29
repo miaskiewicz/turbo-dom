@@ -276,26 +276,67 @@ const FUNCTIONAL_PSEUDO_ELEMENTS = new Set([
   'view-transition-image-pair', 'view-transition-new', 'view-transition-old',
 ]);
 const LEGACY_PSEUDO_ELEMENTS = new Set(['after', 'before', 'first-letter', 'first-line']);
+// The scrollbar pseudo-elements and the pseudo-classes that may follow them (scrollbar
+// states and :hover / :active, no focus).
+const SCROLLBAR = new Set([
+  '-webkit-resizer', '-webkit-scrollbar', '-webkit-scrollbar-button', '-webkit-scrollbar-corner',
+  '-webkit-scrollbar-thumb', '-webkit-scrollbar-track', '-webkit-scrollbar-track-piece',
+]);
 const AFTER_SCROLLBAR = new Set([
   'active', 'corner-present', 'decrement', 'disabled', 'double-button', 'enabled', 'end',
-  'focus', 'focus-visible', 'focus-within', 'horizontal', 'hover', 'increment', 'no-button',
-  'single-button', 'start', 'vertical', 'window-inactive',
+  'horizontal', 'hover', 'increment', 'no-button', 'single-button', 'start', 'vertical',
+  'window-inactive',
 ]);
 const USER_ACTION = new Set(['active', 'focus', 'focus-visible', 'focus-within', 'hover']);
-const ELEMENT_BACKED = new Set([
-  'details-content', 'file-selector-button', 'picker', 'scroll-button', 'scroll-marker',
-  'scroll-marker-group',
+// Pseudo-elements that are real elements: any non-structural pseudo-class may follow,
+// and so may another pseudo-element (but ::part() / ::slotted()).
+const ELEMENT_LIKE = new Set(['details-content', 'part', 'picker']);
+// The never-matching pseudo-classes Chrome 156 rejects after an ELEMENT_LIKE one.
+const NOT_AFTER_ELEMENT_LIKE = new Set([
+  'buffering', 'current', 'host', 'muted', 'paused', 'playing', 'seeking', 'stalled', 'volume-locked',
 ]);
-// The implemented non-structural pseudo-classes `::part()` may be followed by.
-const PART_STATE = new Set(['checked', 'disabled', 'enabled', 'required', 'optional', 'read-only', 'read-write', 'link', 'any-link']);
-// May pseudo-class `p` follow pseudo-element `pe`? (Chrome 156; mirrors the Rust
-// allowed_after_pseudo_element.)
+const ELEMENT_LIKE_PLAIN = new Set(['target-current', 'checked', 'disabled', 'enabled', 'required', 'optional', 'read-only', 'read-write', 'link', 'any-link', 'defined', 'window-inactive']);
+// What each pseudo-element may be followed by (Chrome 156): the pseudo-elements that may
+// follow it, and the argument-less pseudo-classes. `:is()` / `:where()` (forgiving) may
+// follow any but ::column and ::slotted().
+const SUB_AFTER_SLOTTED = new Set([
+  'after', 'backdrop', 'before', 'checkmark', 'details-content', 'file-selector-button',
+  'marker', 'picker', 'picker-icon', 'placeholder',
+]);
+const PLAIN_AFTER = new Map([
+  ['file-selector-button', USER_ACTION],
+  ['scroll-marker', new Set([...USER_ACTION, 'target-current'])],
+  ['scroll-button', new Set([...USER_ACTION, 'disabled', 'enabled'])],
+  ['scroll-marker-group', new Set(['hover', 'focus-within'])],
+  ['selection', new Set(['window-inactive'])],
+  ['search-text', new Set(['current'])],
+  ['view-transition-group', new Set(['only-child'])],
+  ['view-transition-image-pair', new Set(['only-child'])],
+  ['view-transition-old', new Set(['only-child'])],
+  ['view-transition-new', new Set(['only-child'])],
+]);
+// May pseudo-class `p` follow pseudo-element `pe` ({ name, arg })? (Chrome 156; mirrors
+// the Rust allowed_after_pseudo_element.)
 function allowedAfter(pe, p) {
-  if (pe.startsWith('-webkit-')) return p.arg === null && AFTER_SCROLLBAR.has(p.name);
-  if (pe === 'selection') return p.arg === null && p.name === 'window-inactive';
-  if (pe === 'part') return p.arg === null ? NEVER.has(p.name) || PART_STATE.has(p.name) : p.name === 'state';
-  if (ELEMENT_BACKED.has(pe)) return p.arg === null && USER_ACTION.has(p.name);
-  return false;
+  const name = pe.name;
+  if ((p.name === 'is' || p.name === 'where') && p.arg !== null) return name !== 'column' && name !== 'slotted';
+  if (ELEMENT_LIKE.has(name)) {
+    if (p.arg !== null) return p.name === 'state' || p.name === 'lang' || p.name === 'dir';
+    return ELEMENT_LIKE_PLAIN.has(p.name) || (NEVER.has(p.name) && !NOT_AFTER_ELEMENT_LIKE.has(p.name));
+  }
+  if (p.arg !== null) return false;
+  if (SCROLLBAR.has(name)) return AFTER_SCROLLBAR.has(p.name);
+  if (name.startsWith('-webkit-') || (name === 'cue' && pe.arg === null)) return USER_ACTION.has(p.name);
+  const plain = PLAIN_AFTER.get(name);
+  return plain !== undefined && plain.has(p.name);
+}
+// May pseudo-element `next` follow pseudo-element `prev` (names)? (Chrome 156,
+// miaskiewicz/turbo-dom#195; mirrors the Rust allowed_after_pseudo_element_chain.)
+function allowedSub(prev, next) {
+  if (ELEMENT_LIKE.has(prev)) return next !== 'part' && next !== 'slotted';
+  if (prev === 'slotted') return SUB_AFTER_SLOTTED.has(next) || next.startsWith('view-transition');
+  if (prev === 'before' || prev === 'after') return next === 'marker';
+  return prev === 'column' && next === 'scroll-marker';
 }
 
 // ── An+B ────────────────────────────────────────────────────────────────────
@@ -497,6 +538,37 @@ function isPtNameAndClass(arg) {
   return parts > 0 && i === s.length;
 }
 
+// The (decoded) identifiers of a whitespace-separated list, or null when an item is not an
+// identifier (or the list is empty).
+function identList(arg) {
+  const s = trimWs(arg);
+  const out = [];
+  let i = 0;
+  while (i < s.length) {
+    if (!startsIdent(s, i)) return null;
+    const t = scanIdent(s, i);
+    out.push(t.value);
+    i = t.end;
+    if (i < s.length && !isWs(s[i])) return null;
+    while (isWs(s[i])) i++;
+  }
+  return out.length ? out : null;
+}
+const SCROLL_BUTTON_DIRECTIONS = new Set([
+  'block-end', 'block-start', 'down', 'inline-end', 'inline-start', 'left', 'right', 'up',
+]);
+// Is `arg` a valid argument of the functional pseudo-element `name` (Chrome 156)?
+function validPseudoElementArg(name, arg) {
+  if (name.startsWith('view-transition-')) return isPtNameAndClass(arg);
+  const idents = identList(arg);
+  const one = idents !== null && idents.length === 1 ? idents[0].toLowerCase() : null;
+  if (name === 'part') return idents !== null;
+  if (name === 'highlight') return one !== null;
+  if (name === 'picker') return one === 'select';
+  if (name === 'scroll-button') return trimWs(arg) === '*' || SCROLL_BUTTON_DIRECTIONS.has(one);
+  return true; // ::cue() and ::slotted() take selectors (parsed below)
+}
+
 // Parse one pseudo-element (throws on unknown ones): { name, arg, slotted? }.
 function parsePseudoElement(tok, src) {
   const { name, arg } = tok;
@@ -504,9 +576,9 @@ function parsePseudoElement(tok, src) {
   const known = arg === null ? PSEUDO_ELEMENTS.has(name) : FUNCTIONAL_PSEUDO_ELEMENTS.has(name);
   if (!known && !name.startsWith('-webkit-')) throw syntax(src, `unknown pseudo-element ::${name}`);
   const pe = { name, arg };
-  if (name.startsWith('view-transition-') && !isPtNameAndClass(arg)) {
-    throw syntax(src, `::${name}() argument`);
-  }
+  if (arg !== null && !validPseudoElementArg(name, arg)) throw syntax(src, `::${name}() argument`);
+  // ::cue(): compound selectors, nested lists restricted as in :-webkit-any() (Chrome 156)
+  if (name === 'cue' && arg !== null) parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true });
   if (name === 'slotted' && arg !== null) {
     // one compound selector, nested lists restricted as in :-webkit-any() (Chrome 156)
     const list = parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true });
@@ -546,10 +618,11 @@ function parseComplexTokens(tokens, lo, hi, src, opts) {
     const compound = { tag: null, ns: null, id: null, classes: [], attrs: [], pseudos: [], pe: null };
     let parts = 0;
     let pe = null;
+    let last = null; // the last pseudo-element of the chain
     for (; pos < end; pos++) {
       const p = tokens[pos];
       if (p.k === 'ws' || p.k === 'comb') break;
-      if (pe !== null && p.k !== 'pseudo') throw syntax(src, 'simple selector after a pseudo-element');
+      if (pe !== null && p.k !== 'pseudo' && p.k !== 'pelem') throw syntax(src, 'simple selector after a pseudo-element');
       if (p.k === 'type') {
         if (parts) throw syntax(src, 'type selector after another simple selector');
         compound.tag = p.name === null ? '*' : p.name;
@@ -559,12 +632,19 @@ function parseComplexTokens(tokens, lo, hi, src, opts) {
       else if (p.k === 'attr') compound.attrs.push(p.attr);
       else if (p.k === 'pelem') {
         if (opts.nested) throw syntax(src, 'pseudo-element inside a pseudo-class argument');
-        if (pe !== null) throw syntax(src, 'two pseudo-elements');
-        pe = parsePseudoElement(p, src);
+        const next = parsePseudoElement(p, src);
+        if (pe === null) pe = next;
+        else {
+          // a sub-pseudo-element (`::slotted(li)::marker`): valid, never matched here
+          if (!allowedSub(last.name, next.name)) throw syntax(src, `::${next.name} after ::${last.name}`);
+          if (!pe.chain) Object.defineProperty(pe, 'chain', { value: [] });
+          pe.chain.push(next);
+        }
+        last = next;
       } else if (pe !== null) {
         // after a pseudo-element only the pseudo-classes Chrome allows there (the selector
         // never matches an element either way)
-        if (!allowedAfter(pe.name, p)) throw syntax(src, `:${p.name} after ::${pe.name}`);
+        if (!allowedAfter(last, p)) throw syntax(src, `:${p.name} after ::${last.name}`);
         compound.pseudos.push({ name: p.name, arg: p.arg });
       } else {
         compound.pseudos.push(parsePseudo(p, src, opts));
@@ -1109,6 +1189,24 @@ export function matchesSelector(el, selector, scope = el) {
     return list.some((cx) => matchComplex(el, cx));
   } finally {
     currentScope = saved;
+  }
+}
+
+// Does the `::slotted(S)` rule item `selector` (one complex selector of a shadow tree's
+// stylesheet) apply to `el`, which is assigned to `slot`? `el` matches S and `slot` the
+// rest of the selector (`slot[name=a]::slotted(S)`, `div ::slotted(S)`). A sub-pseudo-
+// element (`::slotted(S)::before`) targets generated content, never `el` itself.
+export function matchesSlotted(el, slot, selector) {
+  const cx = parseSelectorList(selector)[0];
+  const subject = cx.rest.length ? cx.rest[cx.rest.length - 1].compound : cx.first;
+  const pe = subject.pe;
+  if (pe === null || pe.name !== 'slotted' || pe.chain) return false;
+  if (!pe.parsed.some((arg) => matchComplex(el, arg))) return false;
+  subject.pe = null; // match the slot against the originating compound
+  try {
+    return matchComplex(slot, cx);
+  } finally {
+    subject.pe = pe;
   }
 }
 

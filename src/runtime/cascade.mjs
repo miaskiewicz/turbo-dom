@@ -15,7 +15,7 @@
 // CSS custom-property resolution. Colors ARE canonicalized to rgb()/rgba() (color.mjs)
 // and bare-0 lengths to `0px`, matching what a browser serializes.
 
-import { compareSpecificity, matchesSelector, ruleSelectors, specificity } from './selectors.mjs';
+import { compareSpecificity, matchesSelector, matchesSlotted, ruleSelectors, specificity } from './selectors.mjs';
 import { COLOR_PROPS, canonicalizeColor } from './color.mjs';
 
 const kebab = (s) => s.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
@@ -144,8 +144,8 @@ const SLOTTED_RE = /::slotted\(([^)]*)\)/;      // ::slotted(sel)
 // Collect rules from one index that apply to `el` under a given `kind`:
 //  'normal'  — el matched against the selector (skips :host/::slotted rules)
 //  'host'    — el is a shadow host; match the inner of a :host[(sel)] rule
-//  'slotted' — el is a slotted light node; match the inner of ::slotted(sel)
-function collectMatched(el, rules, kind, into) {
+//  'slotted' — el is a slotted light node assigned to `slot`; match ::slotted() rules
+function collectMatched(el, rules, kind, into, slot) {
   for (let i = 0; i < rules.length; i++) {
     const r = rules[i];
     const sel = r.selector;
@@ -159,10 +159,8 @@ function collectMatched(el, rules, kind, into) {
       const inner = hostM[1];
       if (inner === undefined) into.push(r);
       else try { if (matchesSelector(el, inner.trim(), null)) into.push(r); } catch { /* skip */ }
-    } else { // slotted
-      if (!slotM) continue;
-      const inner = (slotM[1] || '*').trim() || '*';
-      try { if (matchesSelector(el, inner, null)) into.push(r); } catch { /* skip */ }
+    } else if (slotM && matchesSlotted(el, slot, sel)) { // slotted
+      into.push(r);
     }
   }
 }
@@ -256,7 +254,7 @@ export function makeGetComputedStyle() {
       if (el.__shadow) collectMatched(el, getIndex(el.__shadow, v), 'host', matched);
       // slotted light node: overlay ::slotted rules from the slot's shadow root
       const slot = el.assignedSlot;
-      if (slot) { const sr = slot.getRootNode(); if (sr.__isShadowRoot) collectMatched(el, getIndex(sr, v), 'slotted', matched); }
+      if (slot) { const sr = slot.getRootNode(); if (sr.__isShadowRoot) collectMatched(el, getIndex(sr, v), 'slotted', matched, slot); }
     }
     applyMatched(matched, map);
 
