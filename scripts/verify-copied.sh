@@ -243,6 +243,8 @@ key_order.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes a
 select_element.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes above unwraps
 storage_ownership.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes above unwraps
 typed_om.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes above unwraps
+shadow_html.js: turbo-dom#199 engine member paths use captured intrinsics
+view_transitions.js: turbo-dom#199 engine member paths use captured intrinsics
 html_popover.js: benv-js r1 popover members call captured intrinsics through Reflect.apply (turbo-dom#194)
 element_relations.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
 element_tokens.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
