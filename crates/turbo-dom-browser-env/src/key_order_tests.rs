@@ -291,3 +291,38 @@ fn eval(scope: &mut v8::PinScope, source: &str) -> String {
         .unwrap_or_else(|| panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)))
         .to_rust_string_lossy(scope)
 }
+
+/// Page script reaches no engine shims Chrome 156 lacks (`Reflect.ownKeys` over the global, its
+/// interface prototypes and common instances): `document` has no own members but
+/// `location`, window functions are not constructors, and `Worker` is a plain
+/// `EventTarget` subclass with no own instance state.
+#[test]
+fn page_reaches_no_engine_shims_chrome_lacks() {
+    super::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_independent_html(scope, "<!doctype html><html><head></head><body></body></html>");
+    v8::tc_scope!(let scope, scope);
+    let source = v8::String::new(
+        scope,
+        "JSON.stringify({
+          document: Reflect.ownKeys(document).filter(k => k !== 'location').map(String),
+          constructible: ['getComputedStyle', 'requestAnimationFrame', 'cancelAnimationFrame', 'matchMedia', 'scrollTo']
+            .filter(n => Object.hasOwn(globalThis[n], 'prototype')),
+          worker: [Reflect.ownKeys(Worker.prototype).filter(k => /EventListener|dispatchEvent/.test(String(k))).map(String),
+            Object.getPrototypeOf(Worker.prototype) === EventTarget.prototype, Reflect.ownKeys(new Worker('w.js')).map(String)],
+          dunder: Reflect.ownKeys(globalThis).filter(k => typeof k === 'string' && k.startsWith('__')),
+        })",
+    )
+    .unwrap();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
+    assert_eq!(
+        result.to_rust_string_lossy(scope),
+        r#"{"document":[],"constructible":[],"worker":[[],true,[]],"dunder":[]}"#
+    );
+    reset();
+}
