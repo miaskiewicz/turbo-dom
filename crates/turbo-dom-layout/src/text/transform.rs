@@ -118,10 +118,9 @@ pub(crate) fn transform_run(
     let mut out: Vec<Mapped> = Vec::with_capacity(text.len());
     for (index, &(start, ch)) in chars.iter().enumerate() {
         let end = start + ch.len_utf8();
-        let prev = index.checked_sub(1).map(|i| chars[i].1);
         let mapped = match transform.case {
             CaseTransform::Capitalize => capitalize(ch, context.in_word),
-            CaseTransform::Uppercase => Some(upper(ch, prev, transform.locale)),
+            CaseTransform::Uppercase => Some(upper(&chars, index, transform.locale)),
             CaseTransform::Lowercase => Some(lower(&chars, index, transform.locale)),
             CaseTransform::None => unreachable!("returned above"),
         };
@@ -137,8 +136,6 @@ pub(crate) fn transform_run(
                     for m in out.iter_mut().rev().take_while(|m| m.start == first) {
                         m.end = end;
                     }
-                } else {
-                    out.push(Mapped { ch, start, end });
                 }
             }
             None => out.push(Mapped { ch, start, end }),
@@ -211,27 +208,58 @@ fn is_soft_dotted(ch: char) -> bool {
     matches!(ch, 'i' | 'j' | '\u{12f}' | '\u{268}')
 }
 
-fn upper(ch: char, prev: Option<char>, locale: CaseLocale) -> String {
+fn upper(chars: &[(usize, char)], index: usize, locale: CaseLocale) -> String {
+    let ch = chars[index].1;
+    let prev = index.checked_sub(1).map(|i| chars[i].1);
     match (locale, ch) {
         (CaseLocale::Turkic, 'i') => return "\u{130}".into(),
         (CaseLocale::Lithuanian, '\u{307}') if prev.is_some_and(is_soft_dotted) => {
             return String::new();
         }
-        (CaseLocale::Greek, _) => return greek_upper(ch, prev),
+        (CaseLocale::Greek, _) => return greek_upper(chars, index),
         _ => {}
     }
     ch.to_uppercase().collect()
 }
 
-/// Greek uppercase (`el`): accents and breathings go, a dialytika stays.
-fn greek_upper(ch: char, prev: Option<char>) -> String {
-    let greek_base =
-        prev.is_some_and(|p| matches!(p, '\u{370}'..='\u{3ff}' | '\u{1f00}'..='\u{1fff}'));
+/// Greek uppercase (`el`), as ICU's `GreekUpper` (Chrome 156): accents and
+/// breathings go and a dialytika stays; `ι`/`υ` after an accented vowel is no
+/// diphthong and gains a dialytika; a lone `ή` (the disjunctive "or") keeps it.
+fn greek_upper(chars: &[(usize, char)], index: usize) -> String {
+    let ch = chars[index].1;
+    let prev = index.checked_sub(1).map(|i| chars[i].1);
+    let greek_base = prev.is_some_and(is_greek);
+    let dropped = matches!(
+        ch,
+        '\u{300}' | '\u{301}' | '\u{342}' | '\u{313}' | '\u{314}' | '\u{345}'
+    );
     match ch {
-        '\u{300}' | '\u{301}' | '\u{342}' | '\u{313}' | '\u{314}' | '\u{345}' if greek_base => {
-            String::new()
-        }
+        _ if greek_base && dropped => String::new(),
         '\u{344}' if greek_base => "\u{308}".into(),
+        'ή' | 'Ή' if !cased_around(chars, index) => "\u{389}".into(),
+        'ι' | 'ί' | 'Ι' | 'Ί' | 'υ' | 'ύ' | 'Υ' | 'Ύ' => {
+            match after_accented_vowel(chars, index) {
+                Some(true) => if matches!(ch, 'ι' | 'ί' | 'Ι' | 'Ί') {
+                    "Ϊ"
+                } else {
+                    "Ϋ"
+                }
+                .into(),
+                Some(false) => format!("{}\u{308}", greek_plain_upper(ch)),
+                None => greek_plain_upper(ch),
+            }
+        }
+        _ => greek_plain_upper(ch),
+    }
+}
+
+fn is_greek(ch: char) -> bool {
+    matches!(ch, '\u{370}'..='\u{3ff}' | '\u{1f00}'..='\u{1fff}')
+}
+
+/// A Greek letter's uppercase without accents.
+fn greek_plain_upper(ch: char) -> String {
+    match ch {
         'ά' | 'Ά' => "Α".into(),
         'έ' | 'Έ' => "Ε".into(),
         'ή' | 'Ή' => "Η".into(),
@@ -243,6 +271,46 @@ fn greek_upper(ch: char, prev: Option<char>) -> String {
         'ΰ' | 'ϋ' => "Ϋ".into(),
         _ => ch.to_uppercase().collect(),
     }
+}
+
+/// The letter before `index` (combining marks skipped) and the marks after it.
+fn previous_letter(chars: &[(usize, char)], index: usize) -> Option<(char, &[(usize, char)])> {
+    let letter = chars[..index].iter().rposition(|c| !is_mark(c.1))?;
+    Some((chars[letter].1, &chars[letter + 1..index]))
+}
+
+/// Whether the previous letter is a Greek vowel with an accent and no dialytika:
+/// `Some(true)` for a precomposed accent, `Some(false)` for a combining one.
+fn after_accented_vowel(chars: &[(usize, char)], index: usize) -> Option<bool> {
+    let (letter, marks) = previous_letter(chars, index)?;
+    let at = index - marks.len() - 1;
+    let precomposed = matches!(
+        letter,
+        'ά' | 'έ' | 'ή' | 'ί' | 'ό' | 'ύ' | 'ώ' | 'Ά' | 'Έ' | 'Ή' | 'Ί' | 'Ό' | 'Ύ' | 'Ώ'
+    );
+    let combining = matches!(
+        letter,
+        'α' | 'ε' | 'η' | 'ι' | 'ο' | 'υ' | 'ω' | 'Α' | 'Ε' | 'Η' | 'Ι' | 'Ο' | 'Υ' | 'Ω'
+    ) && marks
+        .iter()
+        .any(|m| matches!(m.1, '\u{300}' | '\u{301}' | '\u{342}'));
+    // An ι/υ that itself gained a dialytika ends the context.
+    let iota_upsilon = matches!(letter, 'ι' | 'ί' | 'Ι' | 'Ί' | 'υ' | 'ύ' | 'Υ' | 'Ύ');
+    if !(precomposed || combining) || (iota_upsilon && after_accented_vowel(chars, at).is_some()) {
+        return None;
+    }
+    Some(precomposed)
+}
+
+/// Whether a cased letter sits right before or after `index` (marks skipped).
+fn cased_around(chars: &[(usize, char)], index: usize) -> bool {
+    let cased = |c: char| c.is_lowercase() || c.is_uppercase();
+    previous_letter(chars, index).is_some_and(|(c, _)| cased(c))
+        || chars[index + 1..]
+            .iter()
+            .map(|c| c.1)
+            .find(|&c| !is_mark(c))
+            .is_some_and(cased)
 }
 
 /// Whether a combining mark of the "above" class follows `index`.

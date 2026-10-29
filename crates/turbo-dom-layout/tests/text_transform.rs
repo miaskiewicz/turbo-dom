@@ -100,6 +100,12 @@ fn turkic_languages_map_dotted_and_dotless_i() {
 fn lithuanian_keeps_the_dot_above_explicit() {
     case("uppercase", Some("lt"), "i\u{307}\u{300}", "I\u{300}");
     case("lowercase", Some("lt"), "Ì I J Į", "i\u{307}\u{300} i j į");
+    case(
+        "lowercase",
+        Some("lt"),
+        "ÌÍĨ",
+        "i\u{307}\u{300}i\u{307}\u{301}i\u{307}\u{303}",
+    );
 }
 
 #[test]
@@ -116,6 +122,12 @@ fn greek_uppercase_drops_accents() {
     case("uppercase", Some("el"), "ή", "\u{389}");
     case("uppercase", Some("el"), "a ή b", "A\u{389}B");
     case("uppercase", Some("el"), "ΐ ά ι", "Ϊ Α Ι");
+    case(
+        "uppercase",
+        Some("el"),
+        "άΆέΈήΉίΊόΌύΎώΏΐϊΰϋα\u{344}",
+        "ΑΑΕΕΗΗΪΙΟΟΫΥΩΩΪΪΫΫΑ\u{308}",
+    );
     case("capitalize", Some("el"), "άλφα", "Άλφα");
 }
 
