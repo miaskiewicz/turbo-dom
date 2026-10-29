@@ -32,8 +32,9 @@ use fragment::NodeId;
 /// of the PDF engine). The default is the plain layout every other entry uses.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct LayoutOptions {
-    /// Lay every `<a href="#name">` out as an atomic inline box, so the link
-    /// carries its own fragment (html2pdf's internal links).
+    /// Lay every inline `<a>` with an internal `#name` or absolute-URL href out as
+    /// an atomic inline box, so the link carries its own fragment (html2pdf's link
+    /// annotations). Block-level links already have one and keep their block box.
     pub atomic_internal_links: bool,
     /// Accept `cmyk(...)` colours (html2pdf's print colour).
     pub accept_cmyk: bool,
