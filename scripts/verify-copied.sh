@@ -245,6 +245,16 @@ storage_ownership.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable
 typed_om.rs: A1 safety audit (turbo-dom#183) invariant / page-reachable notes above unwraps
 shadow_html.js: turbo-dom#199 engine member paths use captured intrinsics
 view_transitions.js: turbo-dom#199 engine member paths use captured intrinsics
+element_members.js: turbo-dom#199/#222 engine member paths use captured intrinsics and the private engine namespace
+form_collections.js: turbo-dom#199/#222 engine member paths use captured intrinsics and the private engine namespace
+form_pseudo.js: turbo-dom#222 engine code reads the private engine namespace (no page-reachable Symbol.for key)
+hyperlink_utils.js: turbo-dom#222 engine code reads the private engine namespace (no page-reachable Symbol.for key)
+mutation_observers.js: turbo-dom#222 engine code reads the private engine namespace (no page-reachable Symbol.for key)
+sanitizer.js: turbo-dom#222 engine code reads the private engine namespace (no page-reachable Symbol.for key)
+script_text.js: turbo-dom#222 engine code reads the private engine namespace (no page-reachable Symbol.for key)
+shadow_slots.js: turbo-dom#222 engine code reads the private engine namespace (no page-reachable Symbol.for key)
+template_contents.js: turbo-dom#222 engine code reads the private engine namespace (no page-reachable Symbol.for key)
+trusted_types.js: turbo-dom#222 engine code reads the private engine namespace (no page-reachable Symbol.for key)
 html_popover.js: benv-js r1 popover members call captured intrinsics through Reflect.apply (turbo-dom#194)
 element_relations.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
 element_tokens.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
