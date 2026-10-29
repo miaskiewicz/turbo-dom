@@ -478,6 +478,25 @@ function parsePseudo(tok, src, opts) {
   return p;
 }
 
+// A view-transition pseudo-element argument (<pt-name-and-class-selector>): `*` or a name,
+// then `.class` parts (no space after the dot), or only class parts; whitespace may
+// separate the parts (Chrome 156).
+function isPtNameAndClass(arg) {
+  const s = trimWs(arg);
+  let i = 0;
+  if (s[0] === '*') i = 1;
+  else if (startsIdent(s, 0)) i = scanIdent(s, 0).end;
+  let parts = i;
+  for (;;) {
+    while (isWs(s[i])) i++;
+    if (s[i] !== '.') break;
+    if (!startsIdent(s, i + 1)) return false;
+    i = scanIdent(s, i + 1).end;
+    parts++;
+  }
+  return parts > 0 && i === s.length;
+}
+
 // Parse one pseudo-element (throws on unknown ones): { name, arg, slotted? }.
 function parsePseudoElement(tok, src) {
   const { name, arg } = tok;
@@ -485,8 +504,12 @@ function parsePseudoElement(tok, src) {
   const known = arg === null ? PSEUDO_ELEMENTS.has(name) : FUNCTIONAL_PSEUDO_ELEMENTS.has(name);
   if (!known && !name.startsWith('-webkit-')) throw syntax(src, `unknown pseudo-element ::${name}`);
   const pe = { name, arg };
+  if (name.startsWith('view-transition-') && !isPtNameAndClass(arg)) {
+    throw syntax(src, `::${name}() argument`);
+  }
   if (name === 'slotted' && arg !== null) {
-    const list = parseList(arg, { nested: true, forgiving: false, inHas: false });
+    // one compound selector, nested lists restricted as in :-webkit-any() (Chrome 156)
+    const list = parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true });
     if (list.length !== 1) throw syntax(src, '::slotted() takes one compound selector');
     // kept for specificity (non-enumerable, like a pseudo-class's `parsed`)
     Object.defineProperty(pe, 'parsed', { value: list });

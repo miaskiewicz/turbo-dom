@@ -17,22 +17,7 @@ const fixture = JSON.parse(
 );
 
 // Recorded Chrome answers the JS engine does not give yet (each with its issue).
-// ::slotted() takes a compound selector and the view-transition pseudo-elements a
-// <pt-name-and-class-selector> (core review r1; fixed in the next commit).
-const OPEN = new Set([
-  '::slotted(:has(a))',
-  '::slotted(:not(a b))',
-  '::slotted(div span)',
-  '::slotted(div>span)',
-  '::view-transition-group()',
-  '::view-transition-group(1a)',
-  '::view-transition-group("a")',
-  '::view-transition-group(a b)',
-  '::view-transition-group(foo,bar)',
-  '::view-transition-group(foo.)',
-  '::view-transition-new(.1a)',
-  '::view-transition-old(foo . a)',
-]);
+const OPEN = new Set([]);
 
 function elements(document) {
   const out = [];
