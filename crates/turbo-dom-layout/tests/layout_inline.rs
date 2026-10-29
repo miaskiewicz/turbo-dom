@@ -480,10 +480,21 @@ fn unset_inherits_inherited_properties_and_initial_resets_them() {
     );
     assert_eq!(b["b"].3, 50.0, "line-height: unset inherits");
     assert_eq!(b["d"].3, b["one"].3, "white-space: unset inherits nowrap");
-    assert!(b["e"].0 > 150.0, "text-align: unset inherits center: {:?}", b["e"]);
-    assert_eq!(b["h"].2, b["href"].2 + 40.0, "letter-spacing: unset inherits");
+    assert!(
+        b["e"].0 > 150.0,
+        "text-align: unset inherits center: {:?}",
+        b["e"]
+    );
+    assert_eq!(
+        b["h"].2,
+        b["href"].2 + 40.0,
+        "letter-spacing: unset inherits"
+    );
     assert_eq!(b["i"].0, 30.0, "text-indent: unset inherits");
     assert_eq!(b["t"].2, b["tref"].2, "border-spacing: unset inherits");
     assert_eq!(b["a"].3, b["one"].3, "font-size: initial is medium");
-    assert_eq!(b["f"].3, b["one"].3, "display initial/unset is inline: one line");
+    assert_eq!(
+        b["f"].3, b["one"].3,
+        "display initial/unset is inline: one line"
+    );
 }
