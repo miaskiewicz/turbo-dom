@@ -4,11 +4,15 @@ Dev guide for this repo. See `turbo-dom-spec.md` for the full design and `README
 
 ## What this is
 
-Layer 1 of turboDom: a native HTML parser (Rust + `html5ever`) with napi-rs (native) and
-wasm-bindgen (fallback) front-ends over **one shared core**. Parser produces a complete
-nested tree and crosses the JS boundary once ("full marshaling"). The SoA flat-buffer from
-the architecture doc is **intentionally not built yet** — it's gated on marshaling proving
-to be the cost (a later bench). Don't SoA-ify `core.rs`.
+The shared browser-engine base of turbo-test, turbo-html2pdf and turbo-surf (0.6.0):
+
+- the npm package `@miaskiewicz/turbo-dom` — a lazy JS DOM runtime (`src/runtime/`) over a
+  native html5ever parser (`turbo-dom-parser`: napi-rs addon + wasm-bindgen fallback over one
+  shared `src/core.rs`; `parse` returns a nested tree, `parseBuffer` the SoA typed-array buffer
+  the runtime inflates from);
+- five crates.io crates: `turbo-dom` (Rust DOM, selector engine, CSSOM), `turbo-dom-layout`,
+  `turbo-dom-raster`, `turbo-dom-browser-env` (rtdom <-> V8) and `turbo-dom-v8` (generated
+  rusty_v8 fork). Crate map and dependency graph: `docs/CONSOLIDATION.md`.
 
 ## Build & test
 
@@ -41,16 +45,18 @@ npm run complexity:js     # oxlint `complexity` max 15 over src/ + crates/turbo-
 ```
 
 CI (`.github/workflows/ci.yml`) has one job family per crate (base / layout / raster / v8 +
-browser-env matrix / msrv 1.89 / guards / coverage floors / complexity); `publish.yml` runs it on a `v*`
-tag and then publishes every package in dependency order. See `docs/CONSOLIDATION.md`.
+browser-env matrix / msrv 1.89 / guards / coverage floors / complexity). PRs and pushes run on
+Linux + Windows; `publish.yml` runs it on a `v*` tag with `darwin: true` (adds the macOS arm64
+builds and jobs) and then publishes every package in dependency order. See `docs/CONSOLIDATION.md`.
 
 **Two independent runtimes, one repo.** The JS runtime (`src/runtime/*.mjs`, the npm/vitest path)
 and the Rust runtime (`crates/turbo-dom`, the workspace-member crate published to crates.io as
 `turbo-dom`) never touch each other. The Rust DOM engine lives in **one place** — that published
 crate — so there's no duplicated copy to keep in sync (the root parser crate has no rtdom module).
-rtdom's line coverage is gated in CI at 100% (P5-cov-core; it was 88.33% at 0.6.0:
-`cargo tarpaulin --engine llvm -p turbo-dom --include-files 'crates/turbo-dom/src/*'`); every
-other crate's floor rises to >= 99, then 100, in the same phase. The root parser package's `src/core.rs` is
+rtdom's line coverage is gated in CI at 100%
+(`cargo tarpaulin --engine llvm -p turbo-dom --include-files 'crates/turbo-dom/src/*'`); the
+other floors are turbo-dom-layout 99.8, turbo-dom-raster 100 (default / avif / jxl) and
+turbo-dom-browser-env 97.6 (`ci.yml` `coverage` matrix; blocking). The root parser package's `src/core.rs` is
 gated at 100% too (`--include-files src/core.rs`; `src/core/conformance_tests.rs` runs html5lib-tests
 and the Chrome 156 control through the `Node` and `Soa` outputs) — its `src/lib.rs` / `src/spike.rs`
 napi / wasm glue only runs in Node / a wasm host, so the JS suite covers it. Every line is covered by a test
@@ -99,11 +105,12 @@ closures are scored on their own), installed from its home rather than copied he
 923c89f791f3a89cb089a59626a25cef0a9cbd5f cc-check` (CI pins the same rev). It scans every
 tracked `.rs` file (`git ls-files`, so the generated `crates/turbo-dom-v8/crate/` is never
 scanned). JS uses oxlint's ESLint-compatible `complexity` rule (pinned `oxlint@1.87.0` via npx,
-no devDependency) over `src/`. **Both jobs are expected red** until the post-coverage refactor:
-the functions above 15 when the gate landed (48 Rust, 24 JS; `docs/CONSOLIDATION.md`
-"Complexity") are the refactor backlog, refactored only once their unit-test coverage is
-complete. Until then both jobs run with `continue-on-error` (red job, green workflow, so
-`publish.yml` is not blocked) and are not required checks. Don't add new ones, and never raise
+no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`. **Both jobs are
+report-only for 0.6.0**: the functions above 15 (59 Rust, 228 JS measured 2026-10-28;
+`docs/CONSOLIDATION.md` "Complexity"; a failing job writes the current list to its step
+summary) are the refactor backlog, refactored after the release. Until then both jobs run
+with `continue-on-error` (red job, green workflow, so `publish.yml` is not blocked) and are
+not required checks. Don't add new ones, and never raise
 the limit to turn the jobs green.
 
 ## Releasing (`vX.Y.Z`)
