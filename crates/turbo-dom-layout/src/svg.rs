@@ -14,7 +14,15 @@
 //! The intrinsic CSS size ([`css_size`]) is separate from the oversampled pixel size
 //! ([`pixel_size`]), so both behaviours are kept exactly.
 //!
-//! **Determinism (§0.2).** `usvg::Options::default()` is used verbatim: the font
+//! **Hostile input.** An SVG is always an SVG *image* here: its `<image>` hrefs load
+//! `data:` URLs only, never a file or any other scheme (Chrome 156; turbo-dom#196),
+//! element nesting plus `href`/`url()` reference chains are capped at [`MAX_DEPTH`]
+//! before any recursive parser runs, and parse/render run on a fixed large stack
+//! (turbo-dom#197); a [`Oversize::Clamp`]ed raster holds the whole image scaled down
+//! (turbo-dom#198).
+//!
+//! **Determinism (§0.2).** `usvg::Options::default()` is used apart from the image
+//! resolver above: the font
 //! database is left **empty** — no system-font lookup, no filesystem probe, no
 //! clock, no threads (`resvg`/`tiny-skia` rasterize single-threaded). Identical
 //! SVG bytes therefore rasterize to byte-identical pixels on every host. Text in
@@ -92,24 +100,247 @@ const SVG_NS: &str = "http://www.w3.org/2000/svg";
 /// a gzip (`svgz`) stream is not inflated.
 #[must_use]
 pub fn parse(bytes: &[u8]) -> Option<usvg::Tree> {
-    let document = parse_xml(bytes)?;
     // `Options::default()` ships an empty `fontdb`; we deliberately never call
     // `load_system_fonts`, so the parse depends only on the input bytes. (The same
     // parse `usvg::Tree::from_data` runs on XML text, with the root checked first.)
-    usvg::Tree::from_xmltree(&document, &usvg::Options::default()).ok()
+    // roxmltree's tokenizer recurses per element too, so the XML parse runs on the
+    // SVG stack as well.
+    on_svg_stack(|| {
+        let document = parse_xml(bytes)?;
+        usvg::Tree::from_xmltree(&document, &image_options()).ok()
+    })
+}
+
+/// The stack usvg's parse and resvg's render get (turbo-dom#197): both recurse once
+/// per nesting level, which [`MAX_DEPTH`] bounds, so a fixed, generous stack makes
+/// the depth limit safe whatever stack the caller runs on (a napi or Python worker
+/// thread may have far less than 8 MiB). Only address space is reserved up front.
+const SVG_STACK: usize = 256 << 20;
+
+/// Run `f` on a scoped thread with [`SVG_STACK`] of stack; inline where threads
+/// cannot be spawned (a `wasm32` build). A panic in `f` resumes on the caller.
+fn on_svg_stack<T: Send>(f: impl FnOnce() -> T + Send) -> T {
+    let job = std::sync::Mutex::new(Some(f));
+    let spawned = std::thread::scope(|scope| {
+        let handle = std::thread::Builder::new()
+            .stack_size(SVG_STACK)
+            .spawn_scoped(scope, || run(&job))
+            .ok()?;
+        Some(
+            handle
+                .join()
+                .unwrap_or_else(|p| std::panic::resume_unwind(p)),
+        )
+    });
+    match spawned.flatten() {
+        Some(out) => out,
+        None => run(&job).expect("the job runs inline when no thread could start"),
+    }
+}
+
+/// Take the job out of its slot and run it (`None` if it already ran).
+fn run<T, F: FnOnce() -> T>(job: &std::sync::Mutex<Option<F>>) -> Option<T> {
+    let f = job.lock().map_or(None, |mut f| f.take());
+    f.map(|f| f())
+}
+
+/// usvg options for an SVG used as an image: the defaults (empty `fontdb`), with an
+/// image resolver that loads `data:` URLs only (turbo-dom#196). Chrome 156 never
+/// fetches a subresource — file, http or any other scheme — for an SVG image, so a
+/// non-`data:` `href` resolves to nothing by construction: usvg's default string
+/// resolver (which reads the filesystem) is never installed.
+fn image_options() -> usvg::Options<'static> {
+    usvg::Options {
+        image_href_resolver: usvg::ImageHrefResolver {
+            resolve_data: Box::new(resolve_data_image),
+            resolve_string: Box::new(|_, _| None),
+        },
+        ..usvg::Options::default()
+    }
+}
+
+/// A `data:` image inside an SVG image: rasters as usvg decodes them; a nested SVG
+/// only if it passes the same root and depth checks as [`parse`] (usvg parses it
+/// itself, past our guard, and with no images of its own).
+fn resolve_data_image(
+    mime: &str,
+    data: std::sync::Arc<Vec<u8>>,
+    options: &usvg::Options,
+) -> Option<usvg::ImageKind> {
+    // usvg treats image/svg+xml, and text/plain that is not a PNG or JPEG, as SVG.
+    let raster = [&b"\x89PNG"[..], b"\xFF\xD8", b"GIF8", b"RIFF"]
+        .iter()
+        .any(|magic| data.starts_with(magic));
+    if !raster || mime == "image/svg+xml" {
+        parse_xml(&data)?;
+    }
+    usvg::ImageHrefResolver::default_data_resolver()(mime, data, options)
 }
 
 /// The XML document of an SVG image: UTF-8 XML (DTDs allowed, as usvg parses) whose
 /// root element is an SVG-namespace `<svg>`.
 fn parse_xml(bytes: &[u8]) -> Option<usvg::roxmltree::Document<'_>> {
     let text = std::str::from_utf8(bytes).ok()?;
+    // roxmltree's tokenizer recurses once per open element, so the depth bound is
+    // checked on the raw text before it runs (turbo-dom#197).
+    if markup_depth(bytes) > MAX_DEPTH {
+        return None;
+    }
     let options = usvg::roxmltree::ParsingOptions {
         allow_dtd: true,
         ..Default::default()
     };
     let document = usvg::roxmltree::Document::parse_with_options(text, options).ok()?;
     let root = document.root_element().tag_name();
-    (root.namespace() == Some(SVG_NS) && root.name() == "svg").then_some(document)
+    let svg_root = root.namespace() == Some(SVG_NS) && root.name() == "svg";
+    (svg_root && within_depth(&document)).then_some(document)
+}
+
+/// The deepest chain of elements usvg/resvg may recurse through (turbo-dom#197).
+/// usvg itself rejects a tree deeper than 1024 elements, but only after recursing
+/// that far in its own parse; deeper input overflowed the stack. Past this the
+/// image is broken (Chrome 156 draws a 5000-deep document as a broken image too,
+/// though it still renders 3000 levels).
+pub const MAX_DEPTH: usize = 1024;
+
+/// An upper bound on the element nesting roxmltree reaches parsing `bytes`, found
+/// by a flat scan: the deepest `<tag` nesting in the document, plus ten times the
+/// number of element starts inside a DOCTYPE internal subset (an entity may expand to
+/// markup, and roxmltree allows entity references ten deep).
+fn markup_depth(bytes: &[u8]) -> usize {
+    let (mut i, mut depth, mut deepest, mut dtd_opens) = (0, 0usize, 0, 0);
+    while let Some(off) = bytes[i..].iter().position(|&b| b == b'<') {
+        i += off;
+        let rest = &bytes[i..];
+        let skip_to = |end: &[u8]| find(rest, end).map_or(bytes.len(), |e| i + e + end.len());
+        if rest.starts_with(b"<!--") {
+            i = skip_to(b"-->");
+        } else if rest.starts_with(b"<![CDATA[") {
+            i = skip_to(b"]]>");
+        } else if rest.starts_with(b"<?") {
+            i = skip_to(b"?>");
+        } else if rest.starts_with(b"<!") {
+            let internal =
+                rest.iter().position(|&b| b == b'[') < rest.iter().position(|&b| b == b'>');
+            let end = if internal {
+                skip_to(b"]>")
+            } else {
+                skip_to(b">")
+            };
+            dtd_opens += bytes[i + 1..end].windows(2).filter(|w| is_open(w)).count();
+            i = end;
+        } else if rest.starts_with(b"</") {
+            depth = depth.saturating_sub(1);
+            i = skip_to(b">");
+        } else {
+            let end = tag_end(rest);
+            if rest[..end].ends_with(b"/") {
+                deepest = deepest.max(depth + 1);
+            } else {
+                depth += 1;
+                deepest = deepest.max(depth);
+            }
+            i += end + 1;
+        }
+        if i >= bytes.len() {
+            break;
+        }
+    }
+    deepest.saturating_add(dtd_opens.saturating_mul(10))
+}
+
+/// Whether a two-byte window starts an element tag (`<` then a name character).
+fn is_open(w: &[u8]) -> bool {
+    w[0] == b'<' && !matches!(w[1], b'/' | b'!' | b'?' | b' ' | b'\t' | b'\n' | b'\r')
+}
+
+/// The index of the `>` closing the start tag at the head of `tag` (quoted
+/// attribute values may hold `>`), or the slice length if it never closes.
+fn tag_end(tag: &[u8]) -> usize {
+    let mut quote = None;
+    for (k, &b) in tag.iter().enumerate() {
+        match quote {
+            Some(q) if b == q => quote = None,
+            None if b == b'"' || b == b'\'' => quote = Some(b),
+            None if b == b'>' => return k,
+            _ => {}
+        }
+    }
+    tag.len()
+}
+
+fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack.windows(needle.len()).position(|w| w == needle)
+}
+
+/// Whether every chain of element nesting **and** `href="#id"` / `url(#id)`
+/// references (`<use>`, clip paths, masks, patterns, filters, markers, gradients —
+/// each one a recursion in usvg) is at most [`MAX_DEPTH`] long. Iterative (an
+/// explicit stack), so the check itself never recurses on input depth; a cyclic
+/// reference adds nothing (usvg drops it).
+fn within_depth(document: &usvg::roxmltree::Document<'_>) -> bool {
+    use usvg::roxmltree::Node;
+    const UNSEEN: usize = usize::MAX;
+    const OPEN: usize = usize::MAX - 1;
+    let ids: std::collections::HashMap<&str, Node<'_, '_>> = document
+        .descendants()
+        .filter_map(|n| Some((n.attribute("id")?, n)))
+        .collect();
+    let index = |n: Node<'_, '_>| n.id().get_usize();
+    let mut depth = vec![UNSEEN; document.descendants().count() + 1];
+    // (node, its successors, next successor, deepest successor so far)
+    let mut stack: Vec<(Node<'_, '_>, Vec<Node<'_, '_>>, usize, usize)> = Vec::new();
+    let root = document.root_element();
+    depth[index(root)] = OPEN;
+    stack.push((root, successors(root, &ids), 0, 0));
+    while let Some(top) = stack.last_mut() {
+        if let Some(&next) = top.1.get(top.2) {
+            top.2 += 1;
+            match depth[index(next)] {
+                OPEN => {}
+                UNSEEN => {
+                    if stack.len() >= MAX_DEPTH {
+                        return false;
+                    }
+                    depth[index(next)] = OPEN;
+                    stack.push((next, successors(next, &ids), 0, 0));
+                }
+                d => top.3 = top.3.max(d),
+            }
+            continue;
+        }
+        let (node, _, _, deepest) = stack.pop().expect("non-empty");
+        depth[index(node)] = deepest + 1;
+        if let Some(parent) = stack.last_mut() {
+            parent.3 = parent.3.max(deepest + 1);
+        }
+    }
+    true
+}
+
+/// An element's child elements and the elements its attributes reference.
+fn successors<'a, 'i>(
+    node: usvg::roxmltree::Node<'a, 'i>,
+    ids: &std::collections::HashMap<&str, usvg::roxmltree::Node<'a, 'i>>,
+) -> Vec<usvg::roxmltree::Node<'a, 'i>> {
+    let mut out: Vec<_> = node
+        .children()
+        .filter(usvg::roxmltree::Node::is_element)
+        .collect();
+    for attr in node.attributes() {
+        let value = attr.value();
+        if let Some(id) = value.trim().strip_prefix('#') {
+            out.extend(ids.get(id.trim()));
+        }
+        for part in value.split("url(").skip(1) {
+            let id = part.trim_start().trim_start_matches(['"', '\'']);
+            if let Some(id) = id.strip_prefix('#') {
+                let end = id.find([')', '"', '\'']).unwrap_or(id.len());
+                out.extend(ids.get(id[..end].trim()));
+            }
+        }
+    }
+    out
 }
 
 /// The intrinsic CSS-pixel size of a parsed SVG (its root `width`/`height`, or the
@@ -158,9 +389,19 @@ pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Im
     let (width, height) = pixel_size(css_size(&tree), scale, oversize)?;
     let mut pixmap = tiny_skia::Pixmap::new(width, height)?;
     // Scale the unit SVG up to the oversampled buffer, so the transform (and thus
-    // the output) depends only on `scale` and the input.
-    let transform = tiny_skia::Transform::from_scale(scale, scale);
-    resvg::render(&tree, transform, &mut pixmap.as_mut());
+    // the output) depends only on `scale` and the input. A clamped axis scales the
+    // whole image down into the clamped raster instead (Chrome draws all of it into
+    // the box; turbo-dom#198).
+    let (css_w, css_h) = css_size(&tree);
+    let fit = |px: u32, css: f32| {
+        if (css * scale).ceil() > MAX_DIM as f32 {
+            px as f32 / css
+        } else {
+            scale
+        }
+    };
+    let transform = tiny_skia::Transform::from_scale(fit(width, css_w), fit(height, css_h));
+    on_svg_stack(|| resvg::render(&tree, transform, &mut pixmap.as_mut()));
     let mut rgba = Vec::with_capacity((width as usize) * (height as usize) * 4);
     for px in pixmap.pixels() {
         // `demultiply` recovers straight (non-premultiplied) colour.
@@ -185,11 +426,13 @@ pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Im
 #[must_use]
 pub fn natural_size(bytes: &[u8]) -> Option<(f32, f32)> {
     parse(bytes)?;
-    let document = parse_xml(bytes)?;
-    let root = document.root_element();
-    let (width, height) = (svg_length(root, "width"), svg_length(root, "height"));
-    let ratio = view_box_ratio(root).or_else(|| width.zip(height).map(|(w, h)| w / h));
-    Some(natural_from(width, height, ratio))
+    on_svg_stack(|| {
+        let document = parse_xml(bytes)?;
+        let root = document.root_element();
+        let (width, height) = (svg_length(root, "width"), svg_length(root, "height"));
+        let ratio = view_box_ratio(root).or_else(|| width.zip(height).map(|(w, h)| w / h));
+        Some(natural_from(width, height, ratio))
+    })
 }
 
 /// The natural size from the root's lengths and ratio (the 300x150 default object size
