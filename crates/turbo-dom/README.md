@@ -1,5 +1,9 @@
 # turbo-dom
 
+> Part of the [turbo-dom](https://github.com/miaskiewicz/turbo-dom) 0.6.0 crate family — the
+> shared base of turbo-test, turbo-html2pdf and turbo-surf. All three consumers depend on this
+> crate (directly or through `turbo-dom-layout` / `turbo-dom-browser-env`). No features.
+
 A **pure-Rust DOM runtime** for in-process Rust consumers (crawlers, extractors,
 SSR, scraping). A lazy, copy-on-write DOM tree built directly over an
 [`html5ever`](https://github.com/servo/html5ever) Structure-of-Arrays parse
@@ -86,7 +90,7 @@ Run the worked example: `cargo run --release --example crawl`.
 
 ## Status
 
-- Line coverage is gated in CI at **100%** (tarpaulin LLVM over `src/`; 88.33% at 0.6.0),
+- Line coverage is gated in CI at **100%** (tarpaulin LLVM over `src/`, blocking),
   with behaviour-asserting tests: Chrome 156 controls for what a page can observe
   (`tests/rtdom_core_chrome.rs`, `tests/cascade_selectors_chrome.rs`, …) and the html5lib
   tree-construction fixtures through both parsers (upstream html5ever and the UTF-16
@@ -94,6 +98,7 @@ Run the worked example: `cargo run --release --example crawl`.
 - The parser core (`turbo_dom::core`) shares the parser crate's html5ever options and
   passes html5lib-tests tree-construction conformance at **99.94%** there (the rtdom-direct
   gate: 100%).
+- CI: Pull-request CI runs this crate's jobs on Linux; macOS arm64 is added in the release run only (`publish.yml` calls `ci.yml` with `darwin: true`). Complexity (<= 15 per function) is report-only until the post-release refactor.
 - Honest by design: `getComputedStyle` only returns values a real rule/inline/
   inherited declaration set (no invented initial values, no layout/`@media`/state).
 
