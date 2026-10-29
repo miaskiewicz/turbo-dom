@@ -648,8 +648,8 @@ fn dispatch<'s>(
         "setDomain" => {
             let raw = args.get(2).to_rust_string_lossy(scope);
             if let Some(message) = set_domain(scope, node, &raw) {
-                // invariant: engine-built name, far below V8's string length limit
-                rv.set(v8::String::new(scope, &message).unwrap().into());
+                // turbo-dom#183: the message quotes page text, so it can pass V8's string limit
+                rv.set(super::utf8_string(scope, &message).into());
             }
             return;
         }

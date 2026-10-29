@@ -244,3 +244,16 @@ fn legacy_document_members_match_chrome156_control() {
         assert_eq!(actual, expected["result"], "Chrome case {}", case["id"]);
     }
 }
+
+/// A page-built `document.domain` value near V8's string limit makes the
+/// SecurityError message, which quotes it, too long for a V8 string: throw
+/// V8's RangeError instead of panicking the host.
+#[test]
+fn oversized_domain_refusal_message_throws_range_error() {
+    let actual = run_probe(
+        "<!doctype html><html><head></head><body></body></html>",
+        r#"(() => { try { document.domain = ' '.repeat((1 << 29) - 24 - 4); return 'set'; } catch (error) { return error.name + ': ' + error.message; } })()"#,
+        |scope, _| set_base(scope, "https://example.com/"),
+    );
+    assert_eq!(actual, "RangeError: Invalid string length");
+}
