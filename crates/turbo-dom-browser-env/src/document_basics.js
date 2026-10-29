@@ -1,6 +1,6 @@
 (function () {
   const g = globalThis;
-  const ns = g[Symbol.for('ts')];
+  const ns = __tsNs;
   const native = g.__documentBasicsNative;
   delete g.__documentBasicsNative;
   const getRecord=g.__getCollectionRecord, setRecord=g.__setCollectionRecord;

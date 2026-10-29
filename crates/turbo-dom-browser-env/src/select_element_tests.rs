@@ -60,20 +60,18 @@ fn select_indexed_interceptor_leaves_other_nodes_ordinary() {
     let scope = &mut v8::ContextScope::new(scope, context);
     install_independent_html(scope, "<!doctype html><body>");
     v8::tc_scope!(let scope,scope);
-    let source = v8::String::new(
-        scope,
+    let source = concat!(
+        "return ",
         r#"(() => {
           const div = document.createElement('div'); div[0] = 'x'; div[7] = 'y';
           const text = document.createTextNode('t'); text[0] = 1;
           const select = document.createElement('select'); select.append(document.createElement('option'));
           return JSON.stringify([div[0], div[7], Object.keys(div).filter(k => /^\d+$/.test(k)), text[0],
-            typeof globalThis.__captureSelectIndexed, 'selectSelection' in globalThis[Symbol.for('ts')],
+            typeof globalThis.__captureSelectIndexed, 'selectSelection' in __tsNs,
             select[0] === select.options[0], select.length]);
         })()"#,
-    )
-    .unwrap();
-    let result = v8::Script::compile(scope, source, None)
-        .and_then(|script| script.run(scope))
+    );
+    let result = crate::browser_env::run_engine_script(scope, source)
         .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
     assert_eq!(
         result.to_rust_string_lossy(scope),

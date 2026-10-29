@@ -1,5 +1,5 @@
 (function () {
-  const g=globalThis,ns=g[Symbol.for('ts')];
+  const g=globalThis,ns=__tsNs;
   const getRecord=g.__getCollectionRecord,setRecord=g.__setCollectionRecord,make=ns.makeNativeFunction;
   const type=Object.getOwnPropertyDescriptor(g.Node.prototype,'nodeType').get;
   const children=Object.getOwnPropertyDescriptor(g.Node.prototype,'childNodes').get;

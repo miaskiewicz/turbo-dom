@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   const Native = globalThis.__popoverNative; delete globalThis.__popoverNative;
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction, StringValue = String, ObjectValue = Object;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction, StringValue = String, ObjectValue = Object;
   // Engine calls go through the captured Reflect.apply, never a page-replaceable `.call`.
   const apply = Reflect.apply;
   const check = Object.getOwnPropertyDescriptor(g.Node.prototype, 'nodeType').get;

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const g = globalThis,
-    ns = g[Symbol.for("ts")],
+    ns = __tsNs,
     native = g.__shadowHtmlNative;
   delete g.__shadowHtmlNative;
   const make = ns.makeNativeFunction,

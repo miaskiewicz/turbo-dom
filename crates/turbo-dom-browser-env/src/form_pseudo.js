@@ -5,7 +5,7 @@
 // selectors for the query that asked; nothing is written into the guest's tree.
 (function () {
   'use strict';
-  const g = globalThis, ns = g[Symbol.for('ts')];
+  const g = globalThis, ns = __tsNs;
   const forms = g.__captureFormInternals;
   const apply = Reflect.apply, describe = Object.getOwnPropertyDescriptor, define = Object.defineProperty;
   const MapClass = Map, mapGet = Map.prototype.get, mapSet = Map.prototype.set, mapHas = Map.prototype.has;

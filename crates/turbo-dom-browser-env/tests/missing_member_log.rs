@@ -40,19 +40,11 @@ fn child() {
         .unwrap();
     browser_env::reset();
     eprintln!("--- done");
-    // A bootstrap script that throws (here: the binding namespace was frozen before
+    // A bootstrap script that throws (here: the engine namespace was frozen before
     // install) is logged, and the install still completes.
     let frozen = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, frozen);
-    let code = v8::String::new(
-        scope,
-        "Object.defineProperty(globalThis, Symbol.for('ts'), { value: Object.freeze({}) })",
-    )
-    .unwrap();
-    v8::Script::compile(scope, code, None)
-        .unwrap()
-        .run(scope)
-        .unwrap();
+    browser_env::run_engine_script(scope, "Object.freeze(__tsNs)").unwrap();
     browser_env::install_with_html(scope, "<!doctype html>");
     browser_env::reset();
     eprintln!("--- bootstrap done");

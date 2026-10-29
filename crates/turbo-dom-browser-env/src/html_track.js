@@ -7,7 +7,7 @@
   // reflection), `kind` (enumerated: missing -> subtitles, invalid -> metadata), `srclang`,
   // `label`, `default`; the TextTrack's kind / label / language / id follow the element.
   const g = globalThis,
-    ns = g[Symbol.for("ts")],
+    ns = __tsNs,
     make = ns.makeNativeFunction,
     accessor = ns.domAccessor;
   const apply = Reflect.apply,

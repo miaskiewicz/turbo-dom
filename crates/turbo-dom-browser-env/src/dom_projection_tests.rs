@@ -87,8 +87,10 @@ fn parser_created_controls_use_private_projectors_despite_page_constructor_gette
         scope,
         "<body><input id='latent-input' value='native'></body>",
     );
-    let code = v8::String::new(scope, r#"(()=>{
-      const ns=globalThis[Symbol.for('ts')],define=Object.defineProperty;
+    let code = concat!(
+        "return ",
+        r#"(()=>{
+      const ns=__tsNs,define=Object.defineProperty;
       const inputPrototype=HTMLInputElement.prototype,textareaPrototype=HTMLTextAreaElement.prototype;
       const inputDescriptor=Object.getOwnPropertyDescriptor(globalThis,'HTMLInputElement');
       const textareaDescriptor=Object.getOwnPropertyDescriptor(globalThis,'HTMLTextAreaElement');
@@ -115,10 +117,10 @@ fn parser_created_controls_use_private_projectors_despite_page_constructor_gette
       if(hooks!==0||Object.getPrototypeOf(input)!==inputPrototype||input.value!=='native'||Object.getPrototypeOf(textarea)!==textareaPrototype)throw Error('projection intercepted');
       if(Object.getPrototypeOf(custom)!==HTMLElement.prototype||custom.ownerDocument!==inert)throw Error('inherited interface name');
       return 'ok';
-    })()"#).unwrap();
+    })()"#
+    );
     v8::tc_scope!(let catch, scope);
-    let result = v8::Script::compile(catch, code, None)
-        .and_then(|script| script.run(catch))
+    let result = crate::browser_env::run_engine_script(catch, code)
         .unwrap_or_else(|| panic!("{}", catch.exception().unwrap().to_rust_string_lossy(catch)));
     assert_eq!(result.to_rust_string_lossy(catch), "ok");
     reset();

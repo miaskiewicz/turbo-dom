@@ -2,7 +2,7 @@
 // Content-attribute compilation stays native (event_handlers.rs); this only owns IDL state.
 (function () {
   'use strict';
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   const matches = g.__elementMembersMatches, prepare = g.__prepareInlineHandler, note = g.__noteInlineHandler;
   delete g.__elementMembersMatches; delete g.__prepareInlineHandler; delete g.__noteInlineHandler;
   const nodeType = Object.getOwnPropertyDescriptor(g.Node.prototype, 'nodeType').get;

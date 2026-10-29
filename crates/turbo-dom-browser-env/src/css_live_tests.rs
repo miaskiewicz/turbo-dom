@@ -29,6 +29,11 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
     let host = record.get(scope, key.into()).unwrap();
     let key = v8::String::new(scope, "__cssTestHost").unwrap();
     global.set(scope, key.into(), host);
+    if code.contains("__cssTestNs") {
+        let namespace = engine_namespace(scope).unwrap();
+        let key = v8::String::new(scope, "__cssTestNs").unwrap();
+        global.set(scope, key.into(), namespace.into());
+    }
     if code.contains("__cssTestCollectionRecord") {
         fn read_collection_record<'s>(
             scope: &mut v8::PinScope<'s, '_>,
@@ -1082,7 +1087,7 @@ fn computed_style_reuse_is_invalidated_by_every_cascade_input() {
           step('popover',$('p'),'display');$('p').showPopover();step('popover-open',$('p'),'display');$('p').hidePopover();step('popover-closed',$('p'),'display');
           step('dialog',$('d'),'position');$('d').showModal();step('dialog-modal',$('d'),'position');$('d').close();step('dialog-closed',$('d'),'position');
           const animation=t.animate([{opacity:0.1},{opacity:0.1}],{duration:100000,delay:50000});step('animation-delayed',t,'opacity');animation.currentTime=60000;step('animated',t,'opacity');animation.currentTime=0;step('animation-rewound',t,'opacity');animation.currentTime=60000;animation.cancel();step('animation-cancelled',t,'opacity');
-          let clock=1000,frames=[];globalThis[Symbol.for('ts')].installAnimationHost({now:()=>clock,frame(handler){frames.push(handler);}});
+          let clock=1000,frames=[];__cssTestNs.installAnimationHost({now:()=>clock,frame(handler){frames.push(handler);}});
           const frame=()=>{const handlers=frames.splice(0);for(const handler of handlers){handler.update();handler.dispatch();handler.commit();}};
           const timed=t.animate([{opacity:0.2},{opacity:0.2}],{duration:100000,delay:30});frame();step('timeline-delayed',t,'opacity');clock+=60;step('timeline-animated',t,'opacity');timed.cancel();
           t.remove();step('removed',t,'color');
@@ -1262,7 +1267,7 @@ fn intrinsic_regexp_split_matches_string_split() {
     let value = run(
         "<!doctype html><body>",
         r#"(()=>{
-          const split=globalThis[Symbol.for('ts')].intrinsics.split,out=[];
+          const split=__cssTestNs.intrinsics.split,out=[];
           const cases=[['a b  c',/\s+/],['a,b,(c,d)',/,(?![^(]*\))/],['abc',/(?:)/],['',/x/],['',/(?:)/],['^a^ab',/^a/],['aXa',/^a/m],['a1b2c',/(\d)/],['AbCb',/b/i],['x',/x/],['a  b',/ */],['a,b,c',/,/g],['a1b2c3',/\d/,2],['ab',/(?:)/,0],['a\nb',/^/m],['a😀b',/(?:)/u]];
           for(const [text,pattern,limit] of cases){const mine=JSON.stringify(split(text,pattern,limit)),native=JSON.stringify(text.split(pattern,limit));if(mine!==native)out.push(text+':'+pattern+':'+mine+'!='+native);}
           return JSON.stringify(out);

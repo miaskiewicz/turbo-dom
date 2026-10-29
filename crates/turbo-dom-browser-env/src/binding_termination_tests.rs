@@ -150,8 +150,8 @@ fn install_while_terminating_unwinds() {
     reset();
 }
 
-/// A realm whose binding namespace was frozen before install (an embedder or an earlier
-/// script defined `globalThis[Symbol.for('ts')]`) cannot receive the node projector: the
+/// A realm whose engine namespace was frozen before install (by an embedder's engine
+/// script) cannot receive the node projector: the
 /// install still completes without panicking and the document is reachable.
 #[test]
 fn install_into_a_frozen_namespace_degrades_without_panicking() {
@@ -160,30 +160,18 @@ fn install_into_a_frozen_namespace_degrades_without_panicking() {
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
-    let code = v8::String::new(
-        scope,
-        "Object.defineProperty(globalThis, Symbol.for('ts'), { value: Object.freeze({}), configurable: false, writable: false })",
-    )
-    .unwrap();
-    v8::Script::compile(scope, code, None)
-        .unwrap()
-        .run(scope)
-        .unwrap();
+    crate::browser_env::run_engine_script(scope, "Object.freeze(__tsNs)").unwrap();
     {
         v8::tc_scope!(let scope, scope);
         install_with_html(scope, "<!doctype html><p id=p>x</p>");
         scope.reset();
     }
-    let code = v8::String::new(
+    let value = crate::browser_env::run_engine_script(
         scope,
-        "[typeof globalThis[Symbol.for('ts')].projectNativeNode, typeof document].join()",
+        "return [typeof __tsNs.projectNativeNode, typeof document].join()",
     )
-    .unwrap();
-    let value = v8::Script::compile(scope, code, None)
-        .unwrap()
-        .run(scope)
-        .unwrap()
-        .to_rust_string_lossy(scope);
+    .unwrap()
+    .to_rust_string_lossy(scope);
     assert_eq!(value, "undefined,object");
     reset();
 }

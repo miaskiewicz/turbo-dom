@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   const Native = globalThis.__focusGroupNative; delete globalThis.__focusGroupNative;
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   // Engine calls go through captured intrinsics, never a page-replaceable builtin (turbo-dom#194).
   const apply = Reflect.apply, StringValue = String, trim = String.prototype.trim, lower = String.prototype.toLowerCase;
   const accessor = (proto, name) => Object.getOwnPropertyDescriptor(proto, name).get;

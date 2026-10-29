@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const g=globalThis,native=g.__mutationObserverNative;delete g.__mutationObserverNative;
-  const ns=g[Symbol.for('ts')],make=ns.makeNativeFunction,named=ns.makeNamedObject;
+  const ns=__tsNs,make=ns.makeNativeFunction,named=ns.makeNamedObject;
   const apply=Reflect.apply,define=Object.defineProperty,create=Object.create;
   const TypeErrorValue=TypeError,StringValue=String,NumberValue=Number;
   const weakGet=WeakMap.prototype.get,weakSet=WeakMap.prototype.set;

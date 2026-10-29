@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const Native = globalThis.__interestNative; delete globalThis.__interestNative;
-  const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction, StringValue = String;
+  const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction, StringValue = String;
   const reference = ns.elementReference, retarget = ns.retargetEventSource, resolve = ns.resolveReferenceTarget;
   const accessor = (proto, name) => Object.getOwnPropertyDescriptor(proto, name).get;
   const nodeType = accessor(g.Node.prototype, 'nodeType'), namespace = accessor(g.Element.prototype, 'namespaceURI');
