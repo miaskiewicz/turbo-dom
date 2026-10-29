@@ -335,9 +335,6 @@ fn a_scrolling_inline_block_has_its_bottom_margin_edge_as_baseline() {
         ))["t"]
             .1
     };
-    // turbo-dom gives 24.6 for the hidden case: Chrome snaps the inline-block's
-    // baseline offset to whole pixels (filed as a Low follow-up), hence the 0.5 slack.
-    let (visible, hidden) = (at("visible"), at("hidden"));
-    assert_eq!(visible, 0.0);
-    assert!((hidden - 25.0).abs() < 0.5, "{hidden}");
+    // Chrome snaps the inline-block's baseline offset to whole pixels (#219).
+    assert_eq!((at("visible"), at("hidden")), (0.0, 25.0));
 }
