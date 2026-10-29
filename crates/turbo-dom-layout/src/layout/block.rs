@@ -142,6 +142,13 @@ fn out_of_flow_origin(
     let bbw = auto_positioned_width(lb, bs, static_pos.0 + bs.margin.left, ctx)
         .unwrap_or_else(|| border_box_width(bs, cbw.max(cb_width)));
     let x = match (bs.inset_left.resolve(cbw), bs.inset_right.resolve(cbw)) {
+        (Some(l), Some(r)) if auto_margins(lb, "margin-left", "margin-right") => {
+            let free = cbw - l - r - bbw;
+            match bs.width.resolve(cbw) {
+                Some(_) => cbx + l + (free / 2.0).max(0.0),
+                None => cbx + l + bs.margin.left,
+            }
+        }
         (Some(l), _) => cbx + l + bs.margin.left,
         (None, Some(r)) => cbx + cbw - bbw - r - bs.margin.right,
         (None, None) => static_pos.0 + bs.margin.left,
@@ -152,12 +159,29 @@ fn out_of_flow_origin(
     // (`place_deferred_abs`), so `abs_cb_h` here is definite.
     let cbh = out_of_flow_height(bs, ctx);
     let y = match (bs.inset_top.resolve(cbh), bs.inset_bottom.resolve(cbh)) {
+        (Some(t), Some(b)) if auto_margins(lb, "margin-top", "margin-bottom") => {
+            let extra = bs.padding.vertical() + bs.border.widths().vertical();
+            match bs.height.resolve(cbh) {
+                Some(h) if cbh > 0.0 => {
+                    let free = cbh - t - b - to_border(h, bs.box_sizing, extra);
+                    return (x, cby + t + (free / 2.0).max(0.0));
+                }
+                _ => cby + t,
+            }
+        }
         (Some(t), _) => cby + t,
         // A `bottom`-only box needs its own (laid) height to anchor; the caller's
         // `anchor_bottom` corrects it once known. Until then keep its static y.
         (None, Some(_) | None) => static_pos.1,
     };
     (x, y + bs.margin.top)
+}
+
+/// Whether both of an absolutely positioned box's margins on one axis are `auto`
+/// (CSS 2.2 §10.3.7 / §10.6.4: they then split the free space between the insets).
+fn auto_margins(lb: &LayoutBox, start: &str, end: &str) -> bool {
+    let is_auto = |p| lb.style.get(p).map(str::trim) == Some("auto");
+    is_auto(start) && is_auto(end)
 }
 
 /// The static position of an out-of-flow box between blocks: the flow's left content
@@ -1697,13 +1721,18 @@ fn layout_in_flow_kid(
 ) -> Fragment {
     let kbs = resolve(kid, cw, fs);
     let kbs = &kbs;
-    // `clear`: skip past the floats on the cleared side(s) before laying out.
-    let base = flow.cursor + flow.pending;
-    let cleared = clear_below(ctx, kid, base);
-    if cleared > base {
+    // `clear` (CSS 2.2 §9.5.2): clearance is introduced only when the box's hypothetical
+    // border edge (its collapsed top margin included) is above a cleared float's bottom;
+    // the border edge then sits exactly at that bottom (the margin is absorbed).
+    let hypothetical = flow.cursor + collapse_margins(flow.pending, leading);
+    let cleared = clear_below(ctx, kid, hypothetical);
+    let leading = if cleared > hypothetical {
         flow.cursor = cleared;
         flow.pending = 0.0;
-    }
+        0.0
+    } else {
+        leading
+    };
     let (dx, dy) = flow_relative_offset(kbs, cw);
     // `leading` is the box's `margin-top` already collapsed with any margin escaping
     // its borderless top (parent/child collapse); collapse it into the running margin.
