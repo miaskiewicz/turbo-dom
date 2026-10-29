@@ -56,6 +56,26 @@ fn compose_transform(xf: Transform, f: &Fragment, t: &BoxTransform) -> Transform
 }
 
 fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Transform) {
+    // CSS `opacity` (miaskiewicz/turbo-dom#206): the box and its subtree paint into
+    // one canvas-sized layer composited at that alpha (a transparency group, so
+    // overlapping descendants do not compound); `opacity: 0` paints nothing.
+    if f.opacity < 1.0 {
+        if f.opacity > 0.0 {
+            let mut layer = Pixmap::new(pm.width(), pm.height()).expect("layer the canvas size");
+            paint_opaque(&mut layer, f, images, xf);
+            let paint = PixmapPaint {
+                opacity: f.opacity,
+                ..PixmapPaint::default()
+            };
+            pm.draw_pixmap(0, 0, layer.as_ref(), &paint, Transform::identity(), None);
+        }
+        return;
+    }
+    paint_opaque(pm, f, images, xf);
+}
+
+/// [`paint_fragment`] for a box painted at full opacity.
+fn paint_opaque(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Transform) {
     // A CSS `transform` on this box applies to it AND its whole subtree.
     let xf = match &f.content {
         FragmentContent::Box {
@@ -839,6 +859,23 @@ mod tests {
         pm.pixels()
             .iter()
             .all(|p| [p.red(), p.green(), p.blue()] == [255, 255, 255])
+    }
+
+    #[test]
+    fn opacity_composites_the_box_and_its_subtree_as_one_group() {
+        // miaskiewicz/turbo-dom#206: an `opacity:.5` red box with a red child over white
+        // paints one half-transparent layer (where they overlap, still 50%, not 75%), as
+        // Chrome's transparency group does; `opacity:0` paints nothing.
+        let mut half = plain(0.0, 0.0, 8.0, 8.0, Some(RED));
+        half.children.push(plain(0.0, 0.0, 4.0, 4.0, Some(RED)));
+        half.opacity = 0.5;
+        let pm = render(&half, 10, 10, &HashMap::new());
+        assert_eq!(rgb(&pm, 2, 2), [255, 128, 128]);
+        assert_eq!(rgb(&pm, 6, 6), [255, 128, 128]);
+        assert_eq!(rgb(&pm, 9, 9), [255, 255, 255]);
+        let mut gone = plain(0.0, 0.0, 8.0, 8.0, Some(RED));
+        gone.opacity = 0.0;
+        assert!(all_white(&render(&gone, 10, 10, &HashMap::new())));
     }
 
     fn image(name: &str, tint: Option<Rgba>) -> Fragment {

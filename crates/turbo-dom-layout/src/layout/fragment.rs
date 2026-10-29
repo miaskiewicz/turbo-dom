@@ -205,6 +205,10 @@ pub struct Fragment {
     /// The box's `clip: rect()` region (`None` = unclipped): painters clip this fragment
     /// and its subtree to it.
     pub clip: Option<ClipRect>,
+    /// The box's CSS `opacity` (`0..=1`, `1` = opaque): painters composite this
+    /// fragment and its whole subtree as one group at this alpha. Below `1` it also
+    /// makes a stacking context ([`Fragment::stacks_as_positioned`]).
+    pub opacity: f32,
 }
 
 impl Fragment {
@@ -230,6 +234,7 @@ impl Fragment {
             z_index: None,
             is_positioned: false,
             clip: None,
+            opacity: 1.0,
         }
     }
 
@@ -251,10 +256,28 @@ impl Fragment {
         }
     }
 
+    /// Whether this box paints in its stacking context's `z-index: auto`/`0` layer
+    /// (CSS 2.2 §9.9 / Appendix E step 8) rather than with the in-flow boxes: a
+    /// positioned box, or one whose `opacity < 1` or `transform` makes it a stacking
+    /// context (Chrome 156 paints such a box over an earlier `position: relative`
+    /// sibling; miaskiewicz/turbo-dom#206).
+    #[must_use]
+    pub fn stacks_as_positioned(&self) -> bool {
+        let transformed = matches!(
+            &self.content,
+            FragmentContent::Box {
+                transform: Some(_),
+                ..
+            }
+        );
+        self.is_positioned || self.opacity < 1.0 || transformed
+    }
+
     /// This fragment's child indices in back-to-front paint order (CSS 2.2 §9.9,
-    /// a pragmatic subset): a *stable* sort by `(paint_z, is_positioned)`, so
+    /// a pragmatic subset): a *stable* sort by `(paint_z, stacks_as_positioned)`, so
     /// within one stacking context negative-`z` boxes paint first, then in-flow
-    /// non-positioned boxes, then `z:auto`/`0` positioned boxes, then positive-`z`
+    /// non-positioned boxes, then `z:auto`/`0` positioned (or `opacity`/`transform`
+    /// stacking-context) boxes, then positive-`z`
     /// — with source (DOM) order breaking ties. The children `Vec` itself keeps
     /// its layout (top-down galley) order so the paginator's flow walk is
     /// unaffected; only painters reorder via this view.
@@ -263,7 +286,7 @@ impl Fragment {
         let mut order: Vec<usize> = (0..self.children.len()).collect();
         order.sort_by_key(|&i| {
             let c = &self.children[i];
-            (c.paint_z(), c.is_positioned)
+            (c.paint_z(), c.stacks_as_positioned())
         });
         order
     }

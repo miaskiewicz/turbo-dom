@@ -45,6 +45,21 @@ pub fn paint(
 }
 
 fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
+    // CSS `opacity` (miaskiewicz/turbo-dom#206) is a group opacity over the box and
+    // its subtree; `opacity: 0` paints nothing.
+    if f.opacity < 1.0 {
+        if f.opacity > 0.0 {
+            let _ = write!(svg, "<g opacity=\"{}\">", f.opacity);
+            paint_opaque(svg, f, images);
+            svg.push_str("</g>");
+        }
+        return;
+    }
+    paint_opaque(svg, f, images);
+}
+
+/// [`paint_fragment`] for a box painted at full opacity.
+fn paint_opaque(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
     // A CSS `transform` wraps this box + subtree in a `<g transform>` (applied about
     // the box's absolute transform-origin), so the SVG viewer transforms them as a unit.
     let transformed = matches!(
@@ -1036,5 +1051,22 @@ mod tests {
             body(&line("Ag", Rgba::new(255, 0, 0, 0)), &HashMap::new()),
             ""
         );
+    }
+
+    #[test]
+    fn opacity_wraps_the_box_and_its_subtree_in_one_group() {
+        // miaskiewicz/turbo-dom#206: `opacity` is a group opacity over the whole subtree.
+        let red = Rgba::new(255, 0, 0, 255);
+        let mut half = plain(0.0, 0.0, 8.0, 8.0, Some(red));
+        half.children.push(plain(0.0, 0.0, 4.0, 4.0, Some(red)));
+        half.opacity = 0.5;
+        let got = body(&half, &HashMap::new());
+        assert!(got.starts_with("<g opacity=\"0.5\">"), "{got}");
+        assert!(got.ends_with("</g>"), "{got}");
+        assert_eq!(got.matches("<rect").count(), 2, "{got}");
+        let mut gone = plain(0.0, 0.0, 8.0, 8.0, Some(red));
+        gone.opacity = 0.0;
+        assert_eq!(body(&gone, &HashMap::new()), "");
+        assert!(!body(&plain(0.0, 0.0, 8.0, 8.0, Some(red)), &HashMap::new()).contains("opacity"));
     }
 }

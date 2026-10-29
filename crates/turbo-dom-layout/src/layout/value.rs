@@ -697,6 +697,10 @@ pub struct BoxStyle {
     /// (keywords mapped: `left`/`top`=0%, `center`=50%, `right`/`bottom`=100%).
     /// Resolved against the box size at layout; the CSS default is `50% 50%`.
     pub transform_origin: (LengthPct, LengthPct),
+    /// CSS `opacity` clamped to `0..=1` (a `<number>` or `<percentage>`; `1` when
+    /// absent or unparsable): the box and its subtree paint as one group at this
+    /// alpha, and `< 1` makes a stacking context (miaskiewicz/turbo-dom#206).
+    pub opacity: f32,
 }
 
 /// A parsed CSS 2D transform before its `%` translate is resolved: the linear
@@ -1113,12 +1117,51 @@ fn vertical_align_of(s: &ComputedStyle) -> VAlign {
     }
 }
 
+/// A `break-before` / `break-after` value, falling back to its legacy
+/// `page-break-*` alias when the standard property is unset (CSS Fragmentation 3
+/// §3.4). Chrome 156 forces a page break for `page`, `column`, `left`, `right`,
+/// `recto` and `verso` (it prints no blank page for the side values), and for the
+/// legacy `always`/`left`/`right`; the Fragmentation 4 `always` it does not support
+/// (miaskiewicz/turbo-dom#204). Keywords are ASCII case-insensitive.
 fn break_rule_of(s: &ComputedStyle, prop: &str) -> BreakRule {
-    match s.get(prop).unwrap_or("auto").trim() {
+    if let Some(v) = s.get(prop) {
+        return match v.trim().to_ascii_lowercase().as_str() {
+            "avoid" | "avoid-page" => BreakRule::Avoid,
+            "page" | "column" | "left" | "right" | "recto" | "verso" => BreakRule::Page,
+            _ => BreakRule::Auto,
+        };
+    }
+    let legacy = s.get(&format!("page-{prop}")).unwrap_or("auto");
+    match legacy.trim().to_ascii_lowercase().as_str() {
         "avoid" => BreakRule::Avoid,
-        "page" | "column" => BreakRule::Page,
+        "always" | "left" | "right" => BreakRule::Page,
         _ => BreakRule::Auto,
     }
+}
+
+/// CSS `opacity` as a `0..=1` alpha: a number or a percentage, clamped; `1` when
+/// absent or unparsable.
+fn opacity_of(s: &ComputedStyle) -> f32 {
+    let Some(v) = s.get("opacity").map(str::trim) else {
+        return 1.0;
+    };
+    let parsed = match v.strip_suffix('%') {
+        Some(pct) => pct.trim().parse::<f32>().map(|p| p / 100.0),
+        None => v.parse::<f32>(),
+    };
+    parsed
+        .ok()
+        .filter(|o| !o.is_nan())
+        .map_or(1.0, |o| o.clamp(0.0, 1.0))
+}
+
+/// `break-inside: avoid | avoid-page`, or the legacy `page-break-inside: avoid`.
+fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
+    let is = |prop: &str, want: &[&str]| {
+        s.get(prop)
+            .is_some_and(|v| want.contains(&v.trim().to_ascii_lowercase().as_str()))
+    };
+    is("break-inside", &["avoid", "avoid-page"]) || is("page-break-inside", &["avoid"])
 }
 
 fn int_prop(s: &ComputedStyle, prop: &str, default: u8) -> u8 {
@@ -1168,7 +1211,7 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         vertical_align: vertical_align_of(s),
         break_before: break_rule_of(s, "break-before"),
         break_after: break_rule_of(s, "break-after"),
-        break_inside_avoid: s.get("break-inside").map(str::trim) == Some("avoid"),
+        break_inside_avoid: break_inside_avoid_of(s),
         orphans: int_prop(s, "orphans", 2),
         widows: int_prop(s, "widows", 2),
         background: background_of(s),
@@ -1176,6 +1219,7 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         background_gradient: linear_gradient_of(s),
         transform: transform_of(s, fs),
         transform_origin: transform_origin_of(s, fs),
+        opacity: opacity_of(s),
     }
 }
 

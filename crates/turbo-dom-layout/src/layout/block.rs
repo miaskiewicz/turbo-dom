@@ -2361,6 +2361,7 @@ fn layout_box_sized_impl(
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
         clip: super::value::clip_region(&lb.style, bbw, bbh, 1.0),
+        opacity: bs.opacity,
     }
 }
 
@@ -2602,6 +2603,7 @@ fn viewport_fragment(
     fragment.break_meta = break_meta_of(style);
     fragment.z_index = style.z_index;
     fragment.is_positioned = style.position != Position::Static;
+    fragment.opacity = style.opacity;
     fragment
 }
 
@@ -2642,6 +2644,7 @@ fn image_fragment(lb: &LayoutBox, bx: f32, by: f32, sized: &SizedImage, bs: &Box
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
         clip: super::value::clip_region(&lb.style, sized.width, sized.height, 1.0),
+        opacity: bs.opacity,
     }
 }
 
