@@ -408,6 +408,71 @@ fn letter_spacing_resolves() {
 }
 
 #[test]
+fn forced_side_breaks_and_legacy_page_break_aliases_are_page_breaks() {
+    // miaskiewicz/turbo-dom#204. Chrome 156 `--print-to-pdf` (600x400 page, two 50px
+    // blocks): `break-before: left/right/recto/verso`, `page-break-before: always`,
+    // `page-break-after: right` and `break-before: PAGE` each print 2 pages. The
+    // CSS Fragmentation 4 `always` value is NOT supported by Chrome 156 (1 page).
+    for v in ["left", "right", "recto", "verso", "page", "PAGE", "Right"] {
+        assert_eq!(
+            resolve(&[("break-before", v)]).break_before,
+            BreakRule::Page,
+            "{v}"
+        );
+        assert_eq!(
+            resolve(&[("break-after", v)]).break_after,
+            BreakRule::Page,
+            "{v}"
+        );
+    }
+    assert_eq!(
+        resolve(&[("break-before", "always")]).break_before,
+        BreakRule::Auto
+    );
+    for v in ["always", "left", "right"] {
+        let bs = resolve(&[("page-break-before", v), ("page-break-after", v)]);
+        assert_eq!(
+            (bs.break_before, bs.break_after),
+            (BreakRule::Page, BreakRule::Page),
+            "{v}"
+        );
+    }
+    for v in ["avoid", "avoid-page"] {
+        assert_eq!(
+            resolve(&[("break-before", v)]).break_before,
+            BreakRule::Avoid,
+            "{v}"
+        );
+    }
+    assert_eq!(
+        resolve(&[("page-break-after", "avoid")]).break_after,
+        BreakRule::Avoid
+    );
+    // The standard property wins over the legacy alias when both are set.
+    let both = resolve(&[("break-before", "avoid"), ("page-break-before", "always")]);
+    assert_eq!(both.break_before, BreakRule::Avoid);
+    assert_eq!(
+        resolve(&[("page-break-before", "bogus")]).break_before,
+        BreakRule::Auto
+    );
+}
+
+#[test]
+fn break_inside_avoid_page_and_legacy_page_break_inside_avoid() {
+    // Chrome 156 `--print-to-pdf` (320px page area, a 250px block then a 100px one):
+    // `break-inside: avoid-page` and `page-break-inside: avoid` both move the whole
+    // 100px block to page 2 (75pt of it there), where `auto` splits it (22pt).
+    for (prop, v) in [
+        ("break-inside", "avoid-page"),
+        ("break-inside", "AVOID"),
+        ("page-break-inside", "avoid"),
+    ] {
+        assert!(resolve(&[(prop, v)]).break_inside_avoid, "{prop}:{v}");
+    }
+    assert!(!resolve(&[("page-break-inside", "auto")]).break_inside_avoid);
+}
+
+#[test]
 fn breaks_orphans_widows_background() {
     assert_eq!(
         resolve(&[("break-before", "avoid")]).break_before,
