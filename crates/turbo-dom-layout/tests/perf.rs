@@ -49,7 +49,17 @@ fn nested_divs(depth: usize) -> String {
     )
 }
 
+/// Counts on a thread with a large stack: layout recursion is as deep as the document.
 fn block_resolves(depth: usize) -> u64 {
+    std::thread::Builder::new()
+        .stack_size(512 << 20)
+        .spawn(move || block_resolves_on_thread(depth))
+        .unwrap()
+        .join()
+        .unwrap()
+}
+
+fn block_resolves_on_thread(depth: usize) -> u64 {
     let tree = turbo_dom_layout::parse_html_tree(&nested_divs(depth));
     perf::reset();
     let _ = turbo_dom_layout::layout_boxes_tree(

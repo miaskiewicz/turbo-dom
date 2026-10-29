@@ -119,7 +119,7 @@ fn invisible_boxes_take_space_but_paint_nothing() {
             |f| matches!(f.content, FragmentContent::Box { background: Some(c), .. } if c == lime),
         )
         .unwrap();
-    assert_eq!(lime_box.y, 82.0);
+    assert_eq!(lime_box.y, 82.0, "{lime_box:?}");
     // The block after the hidden boxes keeps Chrome's position (94 with no root shift).
     assert!(galley.height >= 94.0);
 }
@@ -229,4 +229,22 @@ fn orphans_and_widows_inherit() {
     // value is kept rather than dropped back to 2.
     let q = find_text_block(&galley, "M1").unwrap();
     assert_eq!((q.break_meta.orphans, q.break_meta.widows), (2, 255));
+}
+
+#[test]
+fn every_css_named_color_parses() {
+    // CSS Color 4 §6.1 named colors (Chrome 156 computed values). Only 7 names
+    // (black/white/red/green/blue/gray/transparent) were known, so `lime`, `orange`,
+    // `navy`, ... backgrounds and text colors were dropped.
+    use turbo_dom_layout::layout::value::parse_color;
+    let rgb = |s: &str| parse_color(s).map(|c| (c.r, c.g, c.b, c.a));
+    assert_eq!(rgb("lime"), Some((0, 255, 0, 255)));
+    assert_eq!(rgb("Orange"), Some((255, 165, 0, 255)));
+    assert_eq!(rgb("rebeccapurple"), Some((102, 51, 153, 255)));
+    assert_eq!(rgb("navy"), Some((0, 0, 128, 255)));
+    assert_eq!(rgb("lightgoldenrodyellow"), Some((250, 250, 210, 255)));
+    assert_eq!(rgb("darkslategrey"), Some((47, 79, 79, 255)));
+    assert_eq!(rgb("aliceblue"), Some((240, 248, 255, 255)));
+    assert_eq!(rgb("yellowgreen"), Some((154, 205, 50, 255)));
+    assert_eq!(rgb("notacolor"), None);
 }
