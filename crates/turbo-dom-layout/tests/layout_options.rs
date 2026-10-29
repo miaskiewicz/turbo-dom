@@ -6,9 +6,9 @@ mod common;
 
 use turbo_dom_layout::turbo_dom::Tree;
 use turbo_dom_layout::{
-    build_cascade, layout_recorded, layout_with_options, parse_html_tree, style_input, Fragment,
-    FragmentContent, ImageCtx, LaidOut, LayoutOptions, NoImages, NodeId, Roots, StyleInput,
-    StyleOptions, StyledNode, TreeView,
+    build_cascade, layout_recorded, layout_with_options, parse_html_tree, style_input, BreakRule,
+    Fragment, FragmentContent, ImageCtx, LaidOut, LayoutOptions, NoImages, NodeId, Roots,
+    StyleInput, StyleOptions, StyledNode, TreeView,
 };
 
 fn styled(tree: &Tree, css: &str) -> Vec<StyledNode> {
@@ -116,6 +116,75 @@ fn inline_external_links_get_their_own_box_but_relative_ones_do_not() {
     assert!(
         boxes.iter().all(|&(_, w)| w > 0.0 && w < 100.0),
         "{boxes:?}"
+    );
+}
+
+/// Each recorded table row's `(id attribute, break hints)`, in layout order.
+fn row_breaks(html: &str) -> Vec<(String, turbo_dom_layout::BreakMeta)> {
+    let tree = parse_html_tree(html);
+    let laid = lay(&tree, "", LayoutOptions::default());
+    fragments(&laid.galley)
+        .into_iter()
+        .filter(|f| laid.sources.table_rows.contains(&f.node_id))
+        .map(|f| {
+            let h = laid.sources.elements[&f.node_id];
+            (
+                tree.get_attribute(h, "id").unwrap_or("").to_string(),
+                f.break_meta,
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn table_rows_carry_every_break_inside_avoid_spelling() {
+    // Chrome 156 --print-to-pdf (600x400 page, 40px margin): a 5-line row after a
+    // 250px row moves whole to page 2 under `break-inside: avoid`, `avoid-page` and
+    // `page-break-inside: avoid` (it splits 3/2 without them).
+    for style in [
+        "break-inside:avoid",
+        "break-inside:avoid-page",
+        "page-break-inside:avoid",
+    ] {
+        let rows = row_breaks(&format!(
+            "<body><table><tr id=a><td>a</td></tr><tr id=b style='{style}'><td>b</td></tr></table></body>"
+        ));
+        let avoid: Vec<_> = rows
+            .iter()
+            .map(|(id, m)| (id.as_str(), m.break_inside_avoid))
+            .collect();
+        assert_eq!(avoid, [("a", false), ("b", true)], "{style}");
+    }
+}
+
+#[test]
+fn table_rows_and_row_groups_carry_forced_breaks() {
+    // Chrome 156 --print-to-pdf: `break-before: page` on a row or a <tbody>,
+    // `page-break-before: always` on a row, and `break-after: page` on a middle row
+    // each print 2 pages.
+    let forced = |html: &str| -> Vec<(String, BreakRule, BreakRule)> {
+        row_breaks(html)
+            .into_iter()
+            .map(|(id, m)| (id, m.break_before, m.break_after))
+            .collect()
+    };
+    use BreakRule::{Auto, Page};
+    let s = |id: &str| id.to_string();
+    assert_eq!(
+        forced("<body><table><tr id=a><td>a</td></tr><tr id=b style='break-before:page'><td>b</td></tr></table></body>"),
+        [(s("a"), Auto, Auto), (s("b"), Page, Auto)]
+    );
+    assert_eq!(
+        forced("<body><table><tr id=a><td>a</td></tr><tr id=b style='page-break-before:always'><td>b</td></tr></table></body>"),
+        [(s("a"), Auto, Auto), (s("b"), Page, Auto)]
+    );
+    assert_eq!(
+        forced("<body><table><tr id=a><td>a</td></tr><tr id=b style='break-after:page'><td>b</td></tr><tr id=c><td>c</td></tr></table></body>"),
+        [(s("a"), Auto, Auto), (s("b"), Auto, Page), (s("c"), Auto, Auto)]
+    );
+    assert_eq!(
+        forced("<body><table><tbody><tr id=a><td>a</td></tr></tbody><tbody style='break-before:page;break-after:page'><tr id=b><td>b</td></tr><tr id=c><td>c</td></tr></tbody></table></body>"),
+        [(s("a"), Auto, Auto), (s("b"), Page, Auto), (s("c"), Auto, Page)]
     );
 }
 
