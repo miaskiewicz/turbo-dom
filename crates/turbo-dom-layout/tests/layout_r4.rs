@@ -400,3 +400,14 @@ fn inline_sticky_boxes_stick_within_their_containing_block() {
     assert_eq!((b["t"].1, b["t2"].1), (2.0, 30.0));
     assert_eq!((b["l"].0, b["l2"].0), (100.0, 192.0));
 }
+
+#[test]
+fn a_lone_auto_left_margin_right_aligns_a_block() {
+    // Chrome 156: `margin-left:auto` with a definite width pushes the box to the right
+    // edge (x=570), less a definite right margin (x=560).
+    let b = cid_boxes(
+        "<div style='width:600px'><div data-cid=m style='margin-left:auto;width:30px;height:5px'></div>\
+         <div data-cid=n style='margin-left:auto;margin-right:10px;width:30px;height:5px'></div></div>",
+    );
+    assert_eq!((b["m"].0, b["n"].0), (570.0, 560.0));
+}
