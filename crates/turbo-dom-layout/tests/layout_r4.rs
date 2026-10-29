@@ -282,3 +282,16 @@ fn hidden_inline_text_images_and_markers_paint_nothing() {
     );
     assert!(!visible_text.contains('x'), "{visible_text:?}");
 }
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#216: sticky is shifted like relative"]
+fn sticky_box_below_its_threshold_is_not_shifted() {
+    // Chrome 156 (unscrolled): a `position:sticky; top:10px` box whose normal-flow
+    // position (50) is already below the 10px threshold stays at 50.
+    let b = cid_boxes(
+        "<div style='height:50px'></div>\
+         <div data-cid=s style='position:sticky;top:10px;height:20px'></div>\
+         <div style='height:2000px'></div>",
+    );
+    assert_eq!(b["s"].1, 50.0);
+}
