@@ -755,9 +755,10 @@ mod tests {
         );
         let (out, none) = converted(html);
         assert!(none.is_empty(), "{none:?}");
+        // Chrome 156 serializes `<`/`>` in attribute values as `&lt;`/`&gt;` (f3f8263).
         assert!(
             out.contains(
-                r#"src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'></svg>""#
+                r#"src="data:image/svg+xml;utf8,&lt;svg xmlns='http://www.w3.org/2000/svg'&gt;&lt;/svg&gt;""#
             ),
             "{out}"
         );
