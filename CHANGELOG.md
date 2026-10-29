@@ -38,6 +38,16 @@ turbo-dom, -layout and -raster; 1.91 for turbo-dom-v8 and -browser-env.
   post-release refactor clears the backlog.
 - PR and push CI run on Linux and Windows; the macOS (aarch64-apple-darwin) builds and
   jobs run only in the release workflow (`ci.yml` called with `darwin: true`).
+### Fixed — JS-runtime `Range` boundary points (miaskiewicz/turbo-dom#207, Chrome 156 controls)
+The `./runtime` Range now follows the DOM boundary-point algorithms instead of only the
+single-container case. `extractContents`, `cloneContents`, `deleteContents` and `toString`
+handle ranges across containers and inside Text/Comment nodes. `insertNode` splits a Text
+start and moves the end offset. `surroundContents` throws `InvalidStateError` on a partially
+selected element. `setStart`/`setEnd` throw `IndexSizeError`/`InvalidNodeTypeError` and
+reorder the range, and `compareBoundaryPoints`, `comparePoint`, `isPointInRange`,
+`intersectsNode` and the `START_TO_START`... constants are added. The range is still not
+live: mutations made outside its own methods do not move its boundary points.
+
 ### Fixed — layout grid auto-repetition, forced page breaks and `opacity` (miaskiewicz/turbo-dom#201/#204/#206, Chrome 156 controls)
 
 - `grid-template-columns/-rows: repeat(auto-fill | auto-fit, ...)` creates as many tracks as
