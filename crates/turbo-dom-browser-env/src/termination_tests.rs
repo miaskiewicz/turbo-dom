@@ -353,9 +353,17 @@ fn install_terminated_at(at: usize) -> bool {
     let scope = &mut v8::ContextScope::new(scope, context);
     TERMINATE_AT_RUN_JS.with(|hook| hook.set(Some(at)));
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        install_with_html(scope, "<p id=p>x</p>")
+        try_install_with_html(scope, "<p id=p>x</p>")
     }));
     let fired = TERMINATE_AT_RUN_JS.with(|hook| hook.take()).is_none();
+    if let Ok(outcome) = result {
+        // The error reports exactly the installs a termination cut short.
+        assert_eq!(
+            outcome,
+            if fired { Err(SetupTerminated) } else { Ok(()) },
+            "at {at}"
+        );
+    }
     scope.cancel_terminate_execution();
     reset();
     assert!(
@@ -369,12 +377,15 @@ fn install_terminated_at(at: usize) -> bool {
 /// trusted JS. Setup must give up cleanly at every landing point instead of panicking at a
 /// later lookup (`range_contents` "the ts namespace").
 #[test]
-#[ignore = "turbo-dom#184: fails until the fix"]
 fn install_terminated_at_any_script_does_not_panic() {
     let mut at = 0;
     while install_terminated_at(at) {
         at += 1;
     }
+    assert_eq!(
+        SetupTerminated.to_string(),
+        "V8 execution was terminated while installing the document"
+    );
     // Every install script was a landing point.
     assert!(at > 40, "only {at} install scripts");
 }

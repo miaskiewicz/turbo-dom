@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — browser-env setup survives a termination during install (miaskiewicz/turbo-dom#184)
+A `TerminateExecution` (an embedder's watchdog) landing while the document is being installed
+no longer panics at the internal-namespace lookup (`range_contents`). The new
+`browser_env::try_install_with_html` returns `Err(SetupTerminated)` when setup was cut short,
+so the embedder can discard the incomplete context.
+
 ### Fixed — layout cascade expands the `font` shorthand (miaskiewicz/turbo-dom#176)
 The layout cascade now expands `font` (via turbo-dom's shorthand grammar) into its
 longhands at the shorthand's cascade position, so `font: 16px/20px serif` lays lines out

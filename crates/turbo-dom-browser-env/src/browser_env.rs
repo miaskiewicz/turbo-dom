@@ -7123,6 +7123,30 @@ pub fn install(scope: &mut v8::PinScope) {
 pub fn install_with_html(scope: &mut v8::PinScope, html: &str) {
     install_with_tree(scope, Tree::parse(html));
 }
+
+/// Setup was cut short because V8 execution was terminated while the document was being
+/// installed (e.g. an embedder's watchdog `TerminateExecution` landed during setup). The
+/// document is incomplete; the embedder should discard the context (turbo-dom#184).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SetupTerminated;
+
+impl std::fmt::Display for SetupTerminated {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("V8 execution was terminated while installing the document")
+    }
+}
+
+impl std::error::Error for SetupTerminated {}
+
+/// [`install_with_html`] that reports a termination during setup instead of leaving a
+/// half-installed document unnoticed.
+pub fn try_install_with_html(scope: &mut v8::PinScope, html: &str) -> Result<(), SetupTerminated> {
+    install_with_html(scope, html);
+    match SETUP_TERMINATED.with(|t| t.get()) || scope.is_execution_terminating() {
+        true => Err(SetupTerminated),
+        false => Ok(()),
+    }
+}
 /// Opt-in parser positions for embedders that report authentic source locations.
 pub fn install_with_html_source_positions(scope: &mut v8::PinScope, html: &str) {
     install_with_tree(scope, Tree::parse_with_source_positions(html));
@@ -7131,6 +7155,7 @@ pub fn install_with_utf16_source_positions(scope: &mut v8::PinScope, units: &[u1
     install_with_tree(scope, Tree::parse_utf16_with_source_positions(units));
 }
 fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
+    SETUP_TERMINATED.with(|t| t.set(false));
     dom_isolation::install(scope);
     dom_ownership::track_gc(scope);
     // The document parser attaches declarative shadow roots (fragment parsing
@@ -7479,6 +7504,11 @@ fn bind_document(scope: &mut v8::PinScope) {
 }
 
 /// Compile + run a JS snippet in the current context (best-effort).
+thread_local! {
+    /// Whether a termination cut an install script short since the last install began.
+    static SETUP_TERMINATED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 #[cfg(test)]
 thread_local! {
     /// Test hook (turbo-dom#184): terminate execution as the N-th install script starts, the
@@ -7502,6 +7532,9 @@ fn run_js(scope: &mut v8::PinScope, src: &str) {
         if let Some(s) = v8::Script::compile(tc, code, None) {
             s.run(tc);
         }
+    }
+    if tc.has_terminated() {
+        SETUP_TERMINATED.with(|t| t.set(true));
     }
     if tc.has_caught() && log_enabled() {
         let msg = tc

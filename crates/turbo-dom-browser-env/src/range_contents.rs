@@ -105,15 +105,18 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     let name = v8::String::new(scope, "ts").unwrap();
     let key = v8::Symbol::for_key(scope, name);
-    // browser_env.js installed the internal namespace and its factory earlier in install().
-    let namespace = global
+    // browser_env.js installs the internal namespace and its factory earlier in install(); a
+    // termination that cut that bootstrap short leaves them missing (turbo-dom#184).
+    let Some(namespace) = global
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-        .expect("the ts namespace");
+    else {
+        return;
+    };
     let name = v8::String::new(scope, "makeNativeFunction").unwrap();
-    let factory = namespace
-        .get(scope, name.into())
-        .expect("makeNativeFunction");
+    let Some(factory) = namespace.get(scope, name.into()) else {
+        return;
+    };
     let source = v8::String::new(scope, include_str!("range_contents.js")).unwrap();
     if let Some(initializer) = v8::Script::compile(scope, source, None)
         .and_then(|script| script.run(scope))
