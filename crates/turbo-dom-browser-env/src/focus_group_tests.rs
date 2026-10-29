@@ -101,6 +101,8 @@ fn element_array_setters_reject_non_objects_like_chrome156() {
     let message = "TypeError:Failed to set the 'ariaControlsElements' property on 'Element': The provided value cannot be converted to a sequence.";
     assert_eq!(
         actual,
-        serde_json::Value::String(format!("{message}|{message}|{message}|sel:b:1|sel2:b|hid:q:q"))
+        serde_json::Value::String(format!(
+            "{message}|{message}|{message}|sel:b:1|sel2:b|hid:q:q"
+        ))
     );
 }

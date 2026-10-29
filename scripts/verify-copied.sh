@@ -248,6 +248,7 @@ element_relations.js: benv-js r2 member paths call captured intrinsics, not page
 element_tokens.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
 interest_invokers.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
 focus_group.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
+form_outputs.js: benv r4 meter / progress number parsing slices through a captured String.prototype.slice (turbo-dom#199)
 reference_target.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
 browser_env.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
 form_controls.js: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
