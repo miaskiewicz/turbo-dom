@@ -1113,12 +1113,35 @@ fn vertical_align_of(s: &ComputedStyle) -> VAlign {
     }
 }
 
+/// A `break-before` / `break-after` value, falling back to its legacy
+/// `page-break-*` alias when the standard property is unset (CSS Fragmentation 3
+/// §3.4). Chrome 156 forces a page break for `page`, `column`, `left`, `right`,
+/// `recto` and `verso` (it prints no blank page for the side values), and for the
+/// legacy `always`/`left`/`right`; the Fragmentation 4 `always` it does not support
+/// (miaskiewicz/turbo-dom#204). Keywords are ASCII case-insensitive.
 fn break_rule_of(s: &ComputedStyle, prop: &str) -> BreakRule {
-    match s.get(prop).unwrap_or("auto").trim() {
+    if let Some(v) = s.get(prop) {
+        return match v.trim().to_ascii_lowercase().as_str() {
+            "avoid" | "avoid-page" => BreakRule::Avoid,
+            "page" | "column" | "left" | "right" | "recto" | "verso" => BreakRule::Page,
+            _ => BreakRule::Auto,
+        };
+    }
+    let legacy = s.get(&format!("page-{prop}")).unwrap_or("auto");
+    match legacy.trim().to_ascii_lowercase().as_str() {
         "avoid" => BreakRule::Avoid,
-        "page" | "column" => BreakRule::Page,
+        "always" | "left" | "right" => BreakRule::Page,
         _ => BreakRule::Auto,
     }
+}
+
+/// `break-inside: avoid | avoid-page`, or the legacy `page-break-inside: avoid`.
+fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
+    let is = |prop: &str, want: &[&str]| {
+        s.get(prop)
+            .is_some_and(|v| want.contains(&v.trim().to_ascii_lowercase().as_str()))
+    };
+    is("break-inside", &["avoid", "avoid-page"]) || is("page-break-inside", &["avoid"])
 }
 
 fn int_prop(s: &ComputedStyle, prop: &str, default: u8) -> u8 {
@@ -1168,7 +1191,7 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         vertical_align: vertical_align_of(s),
         break_before: break_rule_of(s, "break-before"),
         break_after: break_rule_of(s, "break-after"),
-        break_inside_avoid: s.get("break-inside").map(str::trim) == Some("avoid"),
+        break_inside_avoid: break_inside_avoid_of(s),
         orphans: int_prop(s, "orphans", 2),
         widows: int_prop(s, "widows", 2),
         background: background_of(s),

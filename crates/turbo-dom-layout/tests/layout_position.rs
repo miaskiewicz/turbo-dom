@@ -284,3 +284,28 @@ fn opacity_and_transform_stack_with_positioned_auto_boxes() {
         );
     }
 }
+
+#[test]
+fn legacy_page_break_properties_reach_the_break_metadata() {
+    // miaskiewicz/turbo-dom#204 end to end (through the cascade): Chrome 156 prints
+    // `page-break-before: always` / `page-break-after: right` as a forced break and
+    // honours `page-break-inside: avoid`.
+    use turbo_dom_layout::BreakRule;
+    let g = galley(&format!(
+        "{}{}{}",
+        probe("ff0000", "page-break-before:always"),
+        probe("00aa00", "page-break-after:right;page-break-inside:avoid"),
+        probe("0000ff", "break-before:verso"),
+    ));
+    assert_eq!(
+        box_of(&g, "ff0000").break_meta.break_before,
+        BreakRule::Page
+    );
+    let green = &box_of(&g, "00aa00").break_meta;
+    assert_eq!(green.break_after, BreakRule::Page);
+    assert!(green.break_inside_avoid);
+    assert_eq!(
+        box_of(&g, "0000ff").break_meta.break_before,
+        BreakRule::Page
+    );
+}
