@@ -2128,12 +2128,14 @@ fn place_line(
     let leading = policy
         .2
         .map_or(half_leading, |scale| (half_leading * scale).floor() / scale);
-    let baseline = m.ascent
-        + if strut_metrics.is_some() {
-            0.0
-        } else {
-            leading
-        };
+    // The approximate (non-native) policy measures fractional font metrics; Blink's
+    // are whole pixels there, so its line baselines are too (#219). The native
+    // policies keep their own sub-pixel baselines.
+    let baseline = match (strut_metrics, policy.2) {
+        (Some(_), _) => m.ascent,
+        (None, Some(_)) => m.ascent + leading,
+        (None, None) => (m.ascent + leading).round(),
+    };
     let width = policy.2.map_or_else(
         || line_used_width(&words),
         |scale| inline_advances::line_width(&words, scale),
