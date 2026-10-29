@@ -1,6 +1,6 @@
 {
  "generator": "scripts/rtdom-core-chrome-control.mjs",
- "chrome": "156.0.8078.4",
+ "chrome": "156.0.8078.47",
  "playwright_core": "1.61.0",
  "documents": [
   {
@@ -589,6 +589,18 @@
    "id": "selectedcontent_multiple",
    "html": "<select multiple><button><selectedcontent></selectedcontent></button><option selected>A</option></select>",
    "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       multiple=\"\"\n|       <button>\n|         <selectedcontent>\n|       <option>\n|         selected=\"\"\n|         \"A\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_in_selected_option",
+   "html": "<select><option>a<selectedcontent></selectedcontent></option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <option>\n|         \"a\"\n|         <selectedcontent>",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_in_other_option",
+   "html": "<select><option>a</option><option>b<selectedcontent></selectedcontent></option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <option>\n|         \"a\"\n|       <option>\n|         \"b\"\n|         <selectedcontent>",
    "compatMode": "BackCompat"
   },
   {
@@ -1181,6 +1193,158 @@
   }
  ],
  "selectors": [
+  {
+   "id": "pseudo_element_arguments",
+   "html": "<p class=a>x</p>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": "::view-transition-group(*)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group(foo)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-group(a b)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(.x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-new(*.a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-image-pair(foo.a.b)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group( foo )",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group(foo .a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group(*.a .b)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group(foo.)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-group(--x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group(foo,bar)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-group(\"a\")",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-group(\\31a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::view-transition-group(1a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-old(foo . a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-new(.1a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::view-transition-group(foo/**/.a)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted( div )",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(div span)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(div>span)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(.a:hover)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(:not(a b))",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(:is(a, b))",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(:is(a b))",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": "::slotted(:has(a))",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "::slotted(:nth-child(1 of a b))",
+     "valid": true,
+     "matches": "0000"
+    }
+   ]
+  },
   {
    "id": "attribute_operators",
    "html": "<div id=a class=\"x y\" lang=\"en-US\" title=\"abc\"></div><p id=b lang=en title=\"\"></p><span data-v=\"a b\"></span>",

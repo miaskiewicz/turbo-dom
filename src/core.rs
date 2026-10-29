@@ -176,20 +176,23 @@ fn has_attribute(node: &Handle, local: &str) -> bool {
 
 /// A select's options (with whether each is disabled) and selectedcontent elements, in tree
 /// order: an option counts unless an option, datalist or hr, or a second optgroup, lies
-/// between it and the select.
+/// between it and the select; a selectedcontent inside an option is not the select's
+/// (Chrome 156 leaves it as parsed).
 fn select_parts(select: &Handle) -> (Vec<(Handle, bool)>, Vec<Handle>) {
     let (mut options, mut contents) = (Vec::new(), Vec::new());
-    // (node, blocked, inside an optgroup, inside a disabled optgroup)
-    let mut pending: Vec<(Handle, bool, bool, bool)> = select
+    // (node, blocked, inside an option, inside an optgroup, inside a disabled optgroup)
+    let mut pending: Vec<(Handle, bool, bool, bool, bool)> = select
         .children
         .borrow()
         .iter()
         .rev()
-        .map(|child| (child.clone(), false, false, false))
+        .map(|child| (child.clone(), false, false, false, false))
         .collect();
-    while let Some((node, mut blocked, mut grouped, mut group_disabled)) = pending.pop() {
+    while let Some((node, mut blocked, mut in_option, mut grouped, mut group_disabled)) =
+        pending.pop()
+    {
         // (the parser never nests a select: a `<select>` start tag closes an open one)
-        if html_element(&node, "selectedcontent") {
+        if html_element(&node, "selectedcontent") && !in_option {
             contents.push(node);
             continue;
         }
@@ -201,6 +204,7 @@ fn select_parts(select: &Handle) -> (Vec<(Handle, bool)>, Vec<Handle>) {
                 ));
             }
             blocked = true;
+            in_option = true;
         } else if html_element(&node, "datalist") || html_element(&node, "hr") {
             blocked = true;
         } else if html_element(&node, "optgroup") {
@@ -209,7 +213,7 @@ fn select_parts(select: &Handle) -> (Vec<(Handle, bool)>, Vec<Handle>) {
             group_disabled |= has_attribute(&node, "disabled");
         }
         for child in node.children.borrow().iter().rev() {
-            pending.push((child.clone(), blocked, grouped, group_disabled));
+            pending.push((child.clone(), blocked, in_option, grouped, group_disabled));
         }
     }
     (options, contents)
@@ -921,6 +925,20 @@ mod tests {
                     |         <div>\n|           <optgroup>\n|             <option>\n\
                     |               \"a\"\n|       <option>\n|         \"b\"\n|       <button>\n\
                     |         <selectedcontent>\n|           \"b\"";
+        assert_eq!(
+            conformance_tests::dump_node(&parse_html_document(html)),
+            want
+        );
+        assert_eq!(conformance_tests::dump_soa(&parse_html_soa(html)), want);
+    }
+
+    #[test]
+    fn selectedcontent_inside_an_option_is_not_filled() {
+        // Chrome 156 (headless DOMParser): a <selectedcontent> inside the option it would
+        // copy keeps its (empty) content instead of receiving a clone of the option.
+        let html = "<select><option>a<selectedcontent></selectedcontent></option></select>";
+        let want = "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <option>\n\
+                    |         \"a\"\n|         <selectedcontent>";
         assert_eq!(
             conformance_tests::dump_node(&parse_html_document(html)),
             want

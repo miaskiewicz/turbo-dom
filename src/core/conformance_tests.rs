@@ -302,7 +302,7 @@ fn chrome156_documents_and_fragments() {
             }
         }
     }
-    assert_eq!((documents, fragments), (113, 83), "fixture rows");
+    assert_eq!((documents, fragments), (115, 83), "fixture rows");
     assert!(
         quirks > 0 && quirks < documents,
         "both compat modes are exercised"
