@@ -224,6 +224,7 @@ export class Node extends EventTarget {
     const i = ref ? kids.indexOf(ref) : -1;
     // a node from another document is adopted first (DOM "insert" step 7.1)
     if (node.ownerDocument !== this.ownerDocument) adopt(node, this.ownerDocument);
+    if (liveRanges.length !== 0) liveInsert(this, ref ? i : kids.length, 1);
     if (ref) kids.splice(i, 0, node); else kids.push(node);
     node.parentNode = this;
     if (moQuiet === 0) notifyMutation(this, 'childList', node, null, ref || null, null, null, ref ? kids[i - 1] ?? null : kids[kids.length - 2] ?? null);
@@ -241,6 +242,7 @@ export class Node extends EventTarget {
     const i = kids.indexOf(node);
     if (i === -1) throw new Error('NotFoundError: node is not a child');
     const next = kids[i + 1] || null, previous = kids[i - 1] ?? null;
+    if (liveRanges.length !== 0) liveRemove(this, node, i);
     const doc = this.ownerDocument, ce = doc !== null && doc.__ceRegistry !== undefined && this.isConnected;
     kids.splice(i, 1);
     node.parentNode = null;
@@ -305,7 +307,9 @@ export class Node extends EventTarget {
         if (k.data === '') { this.removeChild(k); continue; }
         let more = '';
         for (let j = i + 1; j < kids.length && kids[j].nodeType === TEXT_NODE; j++) more += kids[j].data;
-        if (more !== '') k.data = k.data + more;
+        const length = k.length;
+        if (more !== '') k.__replace(length, 0, more);
+        if (liveRanges.length !== 0) liveMerge(this, k, i, length);
         while (i + 1 < kids.length && kids[i + 1].nodeType === TEXT_NODE) this.removeChild(kids[i + 1]);
       } else if (k.nodeType === ELEMENT_NODE) k.normalize();
       i++;
@@ -391,6 +395,7 @@ export class Node extends EventTarget {
   __detachKids() {
     const kids = this.__kids;
     if (!kids) return;
+    if (liveRanges.length !== 0) liveReplaceAll(this);
     const doc = this.ownerDocument, ce = doc !== null && doc.__ceRegistry !== undefined && kids.length !== 0 && this.isConnected;
     for (let i = 0; i < kids.length; i++) kids[i].parentNode = null;
     if (ce) for (let i = 0; i < kids.length; i++) removedNode(kids[i]);
@@ -431,17 +436,24 @@ function viableNextSibling(node, nodes) {
 class CharacterData extends Node {
   constructor(ownerDocument, data) { super(ownerDocument); this._data = data ?? ''; }
   get data() { return this._data; }
-  set data(v) { const old = this._data; this._data = String(v); notifyMutation(this, 'characterData', null, null, null, null, old); }
+  set data(v) { this.__replace(0, this._data.length, String(v)); }
+  // DOM "replace data": the one path every CharacterData mutation takes, so live ranges follow.
+  __replace(offset, count, s) {
+    const old = this._data;
+    if (liveRanges.length !== 0) liveData(this, offset, count, s.length);
+    this._data = old.slice(0, offset) + s + old.slice(offset + count);
+    notifyMutation(this, 'characterData', null, null, null, null, old);
+  }
   get nodeValue() { return this._data; }
   set nodeValue(v) { this.data = v; }
   get length() { return this._data.length; }
   get textContent() { return this._data; }
   set textContent(v) { this.data = v; }
-  substringData(offset, count) { return this._data.slice(offset, offset + count); }
-  appendData(s) { this.data = this._data + s; }
-  insertData(offset, s) { this.data = this._data.slice(0, offset) + s + this._data.slice(offset); }
-  deleteData(offset, count) { this.data = this._data.slice(0, offset) + this._data.slice(offset + count); }
-  replaceData(offset, count, s) { this.data = this._data.slice(0, offset) + s + this._data.slice(offset + count); }
+  substringData(offset, count) { offset = clampData(this, offset); return this._data.substr(offset, Math.min(count >>> 0, this._data.length - offset)); }
+  appendData(s) { this.__replace(this._data.length, 0, String(s)); }
+  insertData(offset, s) { this.__replace(clampData(this, offset), 0, String(s)); }
+  deleteData(offset, count) { offset = clampData(this, offset); this.__replace(offset, Math.min(count >>> 0, this._data.length - offset), ''); }
+  replaceData(offset, count, s) { offset = clampData(this, offset); this.__replace(offset, Math.min(count >>> 0, this._data.length - offset), String(s)); }
   before(...nodes) { childBefore(this, nodes); }
   after(...nodes) { childAfter(this, nodes); }
   replaceWith(...nodes) { childReplaceWith(this, nodes); }
@@ -457,11 +469,18 @@ export class Text extends CharacterData {
     while (n && n.nodeType === TEXT_NODE) { s += n.data; n = n.nextSibling; }
     return s;
   }
+  // DOM "split a Text node": insert the new node, move live boundaries past the offset into
+  // it, then truncate this node's data.
   splitText(offset) {
+    offset = clampData(this, offset);
     const rest = this._data.slice(offset);
-    this.data = this._data.slice(0, offset);
     const node = new Text(this.ownerDocument, rest);
-    if (this.parentNode) this.parentNode.insertBefore(node, this.nextSibling);
+    const parent = this.parentNode;
+    if (parent) {
+      parent.insertBefore(node, this.nextSibling);
+      if (liveRanges.length !== 0) liveSplit(this, offset, node, parent, nodeIndex(this));
+    }
+    this.__replace(offset, this._data.length - offset, '');
     return node;
   }
   __clone(doc) { return new Text(doc, this._data); }
@@ -1542,6 +1561,7 @@ class Range {
     this.__doc = doc;
     this.startContainer = doc; this.endContainer = doc;
     this.startOffset = 0; this.endOffset = 0;
+    liveRanges.push(new WeakRef(this));
   }
   get collapsed() { return this.startContainer === this.endContainer && this.startOffset === this.endOffset; }
   __set(isStart, node, offset) {
@@ -1689,22 +1709,14 @@ class Range {
     if (sc.nodeType === TEXT_NODE) {
       const at = nodeIndex(sc);
       ref = sc.splitText(so);
-      if (this.endContainer === sc && this.endOffset > so) { this.endContainer = ref; this.endOffset -= so; }
-      else if (this.endContainer === parent && this.endOffset > at) this.endOffset++;
     }
     if (node === ref) ref = ref.nextSibling;
-    if (node.parentNode) {
-      // the live-range removal steps for a node moved from inside this range's containers
-      const from = node.parentNode, i = nodeIndex(node);
-      if (from === this.startContainer && i < this.startOffset) this.startOffset--;
-      if (from === this.endContainer && i < this.endOffset) this.endOffset--;
-      from.removeChild(node);
-    }
+    // the live-range steps (split, removal, insertion) move this range's end like any other's
+    if (node.parentNode) node.parentNode.removeChild(node);
     const at = ref ? nodeIndex(ref) : nodeLength(parent);
     const count = node.nodeType === DOCUMENT_FRAGMENT_NODE ? nodeLength(node) : 1;
     parent.insertBefore(node, ref);
     if (wasCollapsed) { this.endContainer = parent; this.endOffset = at + count; }
-    else if (this.endContainer === parent && this.endOffset > at) this.endOffset += count;
   }
   surroundContents(node) {
     if (ceScope(this.__doc)) { withReactions(METHOD.surroundContents, this, [node]); return; }
@@ -1730,9 +1742,95 @@ class Range {
     if (ec.nodeType === TEXT_NODE) s += ec.data.slice(0, eo);
     return s;
   }
+  // DOM Parsing "createContextualFragment": parse in the start node's element context (a
+  // Text/Comment start uses its parent; a document, fragment or <html> context parses as body).
+  createContextualFragment(html) {
+    if (arguments.length === 0) throw new TypeError("Failed to execute 'createContextualFragment' on 'Range': 1 argument required, but only 0 present.");
+    const sc = this.startContainer;
+    let context = sc.nodeType === ELEMENT_NODE ? sc : isCharData(sc) ? sc.parentElement : null;
+    if (context !== null && context.__ns === '' && context.localName === 'html') context = null;
+    const frag = this.__doc.createDocumentFragment();
+    const nodes = parseMarkup(context, html, this.__doc);
+    for (const n of nodes) n.parentNode = frag;
+    frag.__kids = nodes;
+    return frag;
+  }
   getBoundingClientRect() { return zeroRect(); }
   getClientRects() { return []; }
   detach() {}
+}
+
+// ---- live ranges (DOM "live range" steps; Range objects held weakly) ----
+let liveRanges = [];
+function eachLive(fn) {
+  let w = 0;
+  for (let i = 0; i < liveRanges.length; i++) {
+    const r = liveRanges[i].deref();
+    if (r === undefined) continue;
+    liveRanges[w++] = liveRanges[i];
+    fn(r);
+  }
+  liveRanges.length = w;
+}
+// node "insert": boundaries in `parent` past `index` shift by `count`
+function liveInsert(parent, index, count) {
+  eachLive((r) => {
+    if (r.startContainer === parent && r.startOffset > index) r.startOffset += count;
+    if (r.endContainer === parent && r.endOffset > index) r.endOffset += count;
+  });
+}
+// node "remove": boundaries inside `node` go to (parent, index); later ones in parent shift
+function liveRemove(parent, node, index) {
+  eachLive((r) => {
+    if (isInclusiveAncestor(node, r.startContainer)) { r.startContainer = parent; r.startOffset = index; }
+    if (isInclusiveAncestor(node, r.endContainer)) { r.endContainer = parent; r.endOffset = index; }
+    if (r.startContainer === parent && r.startOffset > index) r.startOffset--;
+    if (r.endContainer === parent && r.endOffset > index) r.endOffset--;
+  });
+}
+// "replace all": every child goes, so boundaries in or under `parent` end at (parent, 0)
+function liveReplaceAll(parent) {
+  eachLive((r) => {
+    if (isInclusiveAncestor(parent, r.startContainer)) { r.startContainer = parent; r.startOffset = 0; }
+    if (isInclusiveAncestor(parent, r.endContainer)) { r.endContainer = parent; r.endOffset = 0; }
+  });
+}
+// "replace data" of `count` units at `offset` with `added` units
+function liveData(node, offset, count, added) {
+  eachLive((r) => {
+    if (r.startContainer === node) r.startOffset = dataPoint(r.startOffset, offset, count, added);
+    if (r.endContainer === node) r.endOffset = dataPoint(r.endOffset, offset, count, added);
+  });
+}
+function dataPoint(at, offset, count, added) {
+  if (at > offset + count) return at + added - count;
+  return at > offset ? offset : at;
+}
+// "split a Text node" (after the new node went in at index + 1)
+function liveSplit(node, offset, next, parent, index) {
+  eachLive((r) => {
+    if (r.startContainer === node && r.startOffset > offset) { r.startContainer = next; r.startOffset -= offset; }
+    if (r.endContainer === node && r.endOffset > offset) { r.endContainer = next; r.endOffset -= offset; }
+    if (r.startContainer === parent && r.startOffset === index + 1) r.startOffset++;
+    if (r.endContainer === parent && r.endOffset === index + 1) r.endOffset++;
+  });
+}
+// normalize: the Text siblings after `node` (at `index`) merge into it
+function liveMerge(parent, node, index, length) {
+  for (let cur = node.nextSibling, i = index + 1; cur !== null && cur.nodeType === TEXT_NODE; cur = cur.nextSibling, i++) {
+    eachLive((r) => {
+      if (r.startContainer === cur) { r.startContainer = node; r.startOffset += length; }
+      if (r.endContainer === cur) { r.endContainer = node; r.endOffset += length; }
+      if (r.startContainer === parent && r.startOffset === i) { r.startContainer = node; r.startOffset = length; }
+      if (r.endContainer === parent && r.endOffset === i) { r.endContainer = node; r.endOffset = length; }
+    });
+    length += cur.data.length;
+  }
+}
+function clampData(node, offset) {
+  offset >>>= 0;
+  if (offset > node._data.length) throw domError('IndexSizeError', `The offset ${offset} is larger than the data's length (${node._data.length}).`);
+  return offset;
 }
 
 function makeSelection(doc) {
