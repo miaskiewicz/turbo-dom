@@ -96,6 +96,10 @@ mod av1 {
         // pixels do not depend on the thread count.
         settings.n_threads = 2;
         settings.max_frame_delay = 2;
+        // Bound the frame like every other format's decode (the `image` crate's 512 MiB
+        // `max_alloc`, as RGBA): unbounded, a 1.8 KB 12000 x 12000 still peaks at ~2.8 GB.
+        // An over-budget frame is a decode error: laid out at its size, painting nothing.
+        settings.frame_size_limit = MAX_FRAME_PIXELS;
         let mut ctx: Option<Dav1dContext> = None;
         // SAFETY: `ctx` is valid to write to and `settings` to read from.
         let opened =
@@ -108,6 +112,9 @@ mod av1 {
         unsafe { dav1d_close(NonNull::new(&raw mut ctx)) };
         frame
     }
+
+    /// The largest frame (pixels) decoded: 512 MiB of RGBA8.
+    const MAX_FRAME_PIXELS: u32 = 512 * 1024 * 1024 / 4;
 
     fn decode_with(ctx: Option<Dav1dContext>, stream: &[u8]) -> Option<Frame> {
         let mut data = Dav1dData::default();
@@ -432,6 +439,23 @@ mod tests {
     fn payload(path: &str) -> turbo_dom_layout::image::AvifPayload {
         let avif = std::fs::read(format!("{}/{path}", env!("CARGO_MANIFEST_DIR"))).unwrap();
         turbo_dom_layout::image::avif_payload(&avif).unwrap()
+    }
+
+    #[test]
+    fn an_oversize_frame_is_refused_within_the_image_crate_budget() {
+        // A 1.8 KB, 12000 x 12000 solid AVIF: its RGBA (576 MB) is over the 512 MiB budget
+        // every other format decodes within; unbounded, rav1d alone peaked at ~2.8 GB.
+        let avif = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/images/avif/oversize-12000.avif"
+        ))
+        .unwrap();
+        assert!(super::decode(&avif).is_none());
+        let color = payload("tests/fixtures/images/avif/oversize-12000.avif").color;
+        assert!(
+            av1::decode(&color).is_none(),
+            "refused before rav1d allocates"
+        );
     }
 
     #[test]
