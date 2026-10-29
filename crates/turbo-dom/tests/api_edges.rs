@@ -586,14 +586,23 @@ fn inserting_a_node_into_its_own_subtree_is_a_no_op() {
         (tree, p, kids[0], kids[1])
     }
     type Case = fn(&mut Tree, Handle, Handle, Handle);
-    let cases: [(&str, Case); 9] = [
+    let cases: [(&str, Case); 10] = [
+        ("adjacent beforebegin of child", |t, p, a, _| {
+            assert!(!t.insert_adjacent_element(a, "beforebegin", p));
+        }),
         ("append self", |t, p, _, _| t.append_child(p, p)),
         ("append into child", |t, p, a, _| t.append_child(a, p)),
-        ("insert into child", |t, p, a, _| t.insert_before(a, p, None)),
+        ("insert into child", |t, p, a, _| {
+            t.insert_before(a, p, None)
+        }),
         ("before child", |t, p, a, _| t.before(a, &[p])),
         ("after child", |t, p, a, _| t.after(a, &[p])),
-        ("replace child with ancestor", |t, p, _, b| t.replace_with(b, &[p])),
-        ("replace children of child", |t, p, a, _| t.replace_children(a, &[p])),
+        ("replace child with ancestor", |t, p, _, b| {
+            t.replace_with(b, &[p])
+        }),
+        ("replace children of child", |t, p, a, _| {
+            t.replace_children(a, &[p])
+        }),
         ("adjacent afterbegin", |t, p, a, _| {
             assert!(!t.insert_adjacent_element(a, "afterbegin", p));
         }),
@@ -618,5 +627,9 @@ fn insert_before_itself_keeps_the_node_in_place() {
     let p = tree.query_selector("#p").unwrap();
     let b = tree.children(p)[1];
     tree.insert_before(p, b, Some(b));
+    assert_eq!(serialize_inner(&tree, p), "<a></a><b></b><i></i>");
+    // ...and an element may still be placed next to itself (not an ancestor of the parent).
+    assert!(tree.insert_adjacent_element(b, "beforebegin", b));
+    assert!(tree.insert_adjacent_element(b, "afterend", b));
     assert_eq!(serialize_inner(&tree, p), "<a></a><b></b><i></i>");
 }
