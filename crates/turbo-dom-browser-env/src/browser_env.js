@@ -1810,13 +1810,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // Traversal accessors the native binding lacks (it ships firstChild/nextSibling/children/
     // firstElementChild only). jQuery's clone-support probe reads clone.lastChild.checked; Sizzle
     // walks siblings. Derive from native childNodes/children/parentNode (all detached-safe).
-    var idxIn = function(list, node){ for (var i=0;i<list.length;i++) if (list[i] === node) return i; return -1; };
     var defTrav = function(name, get){ if (baseProto && !Object.getOwnPropertyDescriptor(baseProto, name)) { try { Object.defineProperty(baseProto, name, { configurable: true, get: get }); } catch(e){} } };
-    defTrav('lastChild', function(){ var c = this.childNodes || []; return c.length ? c[c.length-1] : null; });
-    defTrav('lastElementChild', function(){ var c = this.children || []; return c.length ? c[c.length-1] : null; });
-    defTrav('previousSibling', function(){ var p = this.parentNode; if (!p) return null; var c = p.childNodes || []; var i = idxIn(c, this); return i > 0 ? c[i-1] : null; });
-    defTrav('previousElementSibling', function(){ var p = this.parentNode; if (!p) return null; var c = p.children || []; var i = idxIn(c, this); return i > 0 ? c[i-1] : null; });
+    // The binding's native accessors, captured at install (turbo-dom#199).
     var travNext=__ns.domAccessor('nextSibling',false,'Node'),travType=__ns.domAccessor('nodeType',false,'Node');
+    var travParent=__ns.domAccessor('parentNode',false,'Node'),travFirst=__ns.domAccessor('firstChild',false,'Node');
+    var travLast=function(node,elements){ var last=null; for (var c=$call(travFirst,node); c; c=$call(travNext,c)) if (!elements || $call(travType,c)===1) last=c; return last; };
+    var travPrevious=function(node,elements){ var p=$call(travParent,node); if (!p) return null; var previous=null; for (var c=$call(travFirst,p); c && c!==node; c=$call(travNext,c)) if (!elements || $call(travType,c)===1) previous=c; return previous; };
+    defTrav('lastChild', function(){ return travLast(this,false); });
+    defTrav('lastElementChild', function(){ return travLast(this,true); });
+    defTrav('previousSibling', function(){ return travPrevious(this,false); });
+    defTrav('previousElementSibling', function(){ return travPrevious(this,true); });
     defTrav('nextElementSibling', function(){ for (var node = $call(travNext, this); node; node = $call(travNext, node)) if ($call(travType, node) === 1) return node; return null; });
     // classList on the shared element prototype (every element inherits it), backed by className.
     if (baseProto && !Object.getOwnPropertyDescriptor(baseProto, 'classList')) {
@@ -2741,7 +2744,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       if(!windowCallbacks[name])windowCallbacks[name]=g[name];
     });
     var PreviousEventTarget=g.EventTarget;
-    var eventTargetCtor=__ns.makeNativeFunction(class extends PreviousEventTarget{constructor(){super();eventTargets.add(this);}},'EventTarget',0,true,true);
+    var eventTargetCtor=__ns.makeNativeFunction(class extends PreviousEventTarget{constructor(){super();$c.add(eventTargets,this);}},'EventTarget',0,true,true);
     eventTargetCtor.prototype=eventTargetProto;
     Object.defineProperty(g,'EventTarget',{value:eventTargetCtor,writable:true,configurable:true,enumerable:false});
     Object.defineProperty(eventTargetProto,'constructor',{value:eventTargetCtor,writable:true,configurable:true});
@@ -2881,7 +2884,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if(this===g)return $apply(windowCallbacks[name],this,arguments);
         var node=false;try{$call(getType,this);node=true;}catch(e){}
         if(node)return $apply(native,this,arguments);
-        if(__ns.eventTargetNativeBrand?!__ns.eventTargetNativeBrand(this):!eventTargets.has(this))throw new TypeError('Illegal invocation');
+        if(__ns.eventTargetNativeBrand?!__ns.eventTargetNativeBrand(this):!$c.has(eventTargets,this))throw new TypeError('Illegal invocation');
         return eventCallbacks[name].apply(this,arguments);
       },name,minimum);
       Object.defineProperty(eventTargetProto,name,{value:method,writable:true,configurable:true,enumerable:true});
