@@ -221,3 +221,66 @@ fn fixed_is_relative_to_the_page_origin() {
     approx(box_xy(&g, "ff0000").0, 0.0, "fixed left");
     approx(box_xy(&g, "ff0000").1, 0.0, "fixed top");
 }
+
+/// The fragment whose box background is `color`.
+fn box_of<'a>(g: &'a Fragment, color: &str) -> &'a Fragment {
+    let want = hex(color);
+    all(g)
+        .into_iter()
+        .find(|f| matches!(&f.content, FragmentContent::Box { background: Some(bg), .. } if *bg == want))
+        .unwrap_or_else(|| panic!("no box with background #{color}"))
+}
+
+#[test]
+fn opacity_is_carried_on_the_fragment() {
+    // miaskiewicz/turbo-dom#206: painters need the box's `opacity` (clamped to 0..1).
+    let g = galley(&format!(
+        "{}{}{}{}",
+        probe("ff0000", "opacity:.5"),
+        probe("00aa00", "opacity:25%"),
+        probe("0000ff", "opacity:7"),
+        probe("aaaaaa", ""),
+    ));
+    assert_eq!(box_of(&g, "ff0000").opacity, 0.5);
+    assert_eq!(box_of(&g, "00aa00").opacity, 0.25);
+    assert_eq!(box_of(&g, "0000ff").opacity, 1.0);
+    assert_eq!(box_of(&g, "aaaaaa").opacity, 1.0);
+}
+
+#[test]
+fn opacity_and_transform_stack_with_positioned_auto_boxes() {
+    // miaskiewicz/turbo-dom#206. `opacity < 1` (and a `transform`) makes a stacking
+    // context painted in the z-index:auto/0 positioned layer, in DOM order with the
+    // positioned boxes. Chrome 156 `elementFromPoint` on two overlapping boxes: a
+    // later `opacity:.5` (or `transform`) block is on top of an earlier
+    // `position:relative` one; a later relative box is on top of an earlier
+    // `opacity:.5` one; a `z-index:1` box stays on top of a later `opacity:.5` one.
+    let over = "margin-top:-40px";
+    let cases = [
+        ("position:relative", "opacity:.5", ["ff0000", "00aa00"]),
+        (
+            "position:relative",
+            "transform:translateX(1px)",
+            ["ff0000", "00aa00"],
+        ),
+        ("opacity:.5", "position:relative", ["ff0000", "00aa00"]),
+        (
+            "position:relative;z-index:1",
+            "opacity:.5",
+            ["00aa00", "ff0000"],
+        ),
+    ];
+    for (first, second, want) in cases {
+        let g = galley(&format!(
+            "<div>{}{}</div>",
+            probe("ff0000", first),
+            probe("00aa00", &format!("{second};{over}")),
+        ));
+        let colors = paint_colors(parent_of(&g, "ff0000"));
+        assert_eq!(
+            colors,
+            vec![hex(want[0]), hex(want[1])],
+            "{first} then {second}"
+        );
+    }
+}

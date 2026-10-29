@@ -1037,4 +1037,21 @@ mod tests {
             ""
         );
     }
+
+    #[test]
+    fn opacity_wraps_the_box_and_its_subtree_in_one_group() {
+        // miaskiewicz/turbo-dom#206: `opacity` is a group opacity over the whole subtree.
+        let red = Rgba::new(255, 0, 0, 255);
+        let mut half = plain(0.0, 0.0, 8.0, 8.0, Some(red));
+        half.children.push(plain(0.0, 0.0, 4.0, 4.0, Some(red)));
+        half.opacity = 0.5;
+        let got = body(&half, &HashMap::new());
+        assert!(got.starts_with("<g opacity=\"0.5\">"), "{got}");
+        assert!(got.ends_with("</g>"), "{got}");
+        assert_eq!(got.matches("<rect").count(), 2, "{got}");
+        let mut gone = plain(0.0, 0.0, 8.0, 8.0, Some(red));
+        gone.opacity = 0.0;
+        assert_eq!(body(&gone, &HashMap::new()), "");
+        assert!(!body(&plain(0.0, 0.0, 8.0, 8.0, Some(red)), &HashMap::new()).contains("opacity"));
+    }
 }

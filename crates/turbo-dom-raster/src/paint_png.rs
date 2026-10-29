@@ -1811,4 +1811,21 @@ mod exact_tests {
             assert_eq!(got.data(), want.data(), "{family}");
         }
     }
+
+    #[test]
+    fn opacity_composites_the_box_and_its_subtree_as_one_group() {
+        // miaskiewicz/turbo-dom#206: an `opacity:.5` red box with a red child over white
+        // paints one half-transparent layer (where they overlap, still 50%, not 75%), as
+        // Chrome's transparency group does; `opacity:0` paints nothing.
+        let mut half = plain(0.0, 0.0, 8.0, 8.0, Some(RED));
+        half.children.push(plain(0.0, 0.0, 4.0, 4.0, Some(RED)));
+        half.opacity = 0.5;
+        let pm = render(&half, 10, 10, &HashMap::new());
+        assert_eq!(rgb(&pm, 2, 2), [255, 128, 128]);
+        assert_eq!(rgb(&pm, 6, 6), [255, 128, 128]);
+        assert_eq!(rgb(&pm, 9, 9), [255, 255, 255]);
+        let mut gone = plain(0.0, 0.0, 8.0, 8.0, Some(RED));
+        gone.opacity = 0.0;
+        assert!(all_white(&render(&gone, 10, 10, &HashMap::new())));
+    }
 }
