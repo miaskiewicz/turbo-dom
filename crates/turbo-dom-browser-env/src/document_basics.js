@@ -28,7 +28,7 @@
   // Intrinsics captured at install time: page-replaced builtins never reach the engine's
   // own paths (miaskiewicz/turbo-dom#172).
   const call = (f, receiver, ...rest) => apply(f, receiver, rest);
-  const regExec = RegExp.prototype.exec, charCodeAt = String.prototype.charCodeAt, fromCharCode = String.fromCharCode;
+  const sliceText = String.prototype.slice, regExec = RegExp.prototype.exec, charCodeAt = String.prototype.charCodeAt, fromCharCode = String.fromCharCode;
   const localNameOf = Object.getOwnPropertyDescriptor(g.Element.prototype, 'localName').get;
   const local = node => apply(localNameOf, node, []);
   const test = (pattern, text) => { pattern.lastIndex = 0; return apply(regExec, pattern, [text]) !== null; };
@@ -110,7 +110,7 @@
   const character = receiver => { check(receiver, [3, 4, 7, 8]); return apply(data.get, receiver, []); };
   const range = (value, offset) => { if (offset > value.length) throw new ns.DOMException('Character-data offset is out of range', 'IndexSizeError'); };
   // Character-data offsets and native payloads both retain original UTF-16 units.
-  method(g.CharacterData.prototype, 'substringData', function (offset, count) { const value = character(this); if (arguments.length < 2) throw new TypeError('substringData requires 2 arguments'); offset = uint(offset); count = uint(count); range(value, offset); return value.slice(offset, offset + count); }, 2);
+  method(g.CharacterData.prototype, 'substringData', function (offset, count) { const value = character(this); if (arguments.length < 2) throw new TypeError('substringData requires 2 arguments'); offset = uint(offset); count = uint(count); range(value, offset); return apply(sliceText, value, [offset, offset + count]); }, 2);
   method(g.CharacterData.prototype, 'replaceData', function (offset, count, value) { const current = character(this); if (arguments.length < 3) throw new TypeError('replaceData requires 3 arguments'); offset = uint(offset); count = uint(count); value = string(value); range(current, offset); native('replaceCharacterData', this, offset, count, value); }, 3);
   method(g.CharacterData.prototype, 'insertData', function (offset, value) { const current = character(this); if (arguments.length < 2) throw new TypeError('insertData requires 2 arguments'); offset = uint(offset); value = string(value); range(current, offset); native('replaceCharacterData', this, offset, 0, value); }, 2);
   method(g.CharacterData.prototype, 'deleteData', function (offset, count) { const current = character(this); if (arguments.length < 2) throw new TypeError('deleteData requires 2 arguments'); offset = uint(offset); count = uint(count); range(current, offset); native('replaceCharacterData', this, offset, count, ''); }, 2);

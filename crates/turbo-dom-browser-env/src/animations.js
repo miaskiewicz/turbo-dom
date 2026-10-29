@@ -30,7 +30,10 @@
   const SetType = Set, setAdd = Set.prototype.add, setDelete = Set.prototype.delete, setValues = Set.prototype.values;
   const MapType = Map, mapGet = Map.prototype.get, mapSet = Map.prototype.set;
   const live = new SetType();
-  const list = () => { const out = []; for (const value of apply(setValues, live, [])) out[out.length] = value; return out; };
+  // Set iteration through the captured %SetIteratorPrototype%.next: for-of would look up the
+  // page-replaceable %IteratorPrototype%[@@iterator] (turbo-dom#199).
+  const setIteratorNext = Object.getPrototypeOf(apply(setValues, new SetType(), [])).next;
+  const list = () => { const out = [], it = apply(setValues, live, []); for (let step = apply(setIteratorNext, it, []); !step.done; step = apply(setIteratorNext, it, [])) define(out, out.length, { value: step.value, writable: true, enumerable: true, configurable: true }); return out; };
   const push = (array, value) => { array[array.length] = value; return array; };
   const sortBy = (array, key) => { for (let i = 1; i < array.length; i++) { const item = array[i], k = key(item); let j = i - 1; while (j >= 0 && key(array[j]) > k) { array[j + 1] = array[j]; j--; } array[j + 1] = item; } return array; };
 
@@ -808,10 +811,10 @@
   }
   function schedule() {
     if (queue.length) return requestFrame();
-    for (const animation of apply(setValues, live, [])) if (wantsFrame(animations.get(animation))) return requestFrame();
+    for (let at = 0, all = list(); at < all.length; at++) if (wantsFrame(animations.get(all[at]))) return requestFrame();
   }
   function prune() {
-    for (const animation of list()) {
+    for (let at = 0, all = list(); at < all.length; at++) { const animation = all[at];
       const record = animations.get(animation);
       if (record.task !== null || record.finishTask || playState(record) === 'running' || relevant(record)) continue;
       apply(setDelete, live, [animation]);
@@ -958,8 +961,10 @@
   }
   // Animations by effect target, for getAnimations() and the effect stack.
   function index(animation, from, to) {
-    if (from) { const entries = targets.get(from); if (entries) { const at = entries.indexOf(animation); if (at >= 0) entries.splice(at, 1); } }
-    if (to) { let entries = targets.get(to); if (!entries) targets.set(to, entries = []); if (entries.indexOf(animation) < 0) push(entries, animation); }
+    // Plain loops: the page may replace Array.prototype members (turbo-dom#199).
+    const find = (entries) => { for (let at = 0; at < entries.length; at++) if (entries[at] === animation) return at; return -1; };
+    if (from) { const entries = targets.get(from); if (entries) { const at = find(entries); if (at >= 0) { for (let i = at; i + 1 < entries.length; i++) entries[i] = entries[i + 1]; entries.length--; } } }
+    if (to) { let entries = targets.get(to); if (!entries) targets.set(to, entries = []); if (find(entries) < 0) push(entries, animation); }
     // The targets' computed styles change with their animations (turbo-test#125: drop reuse).
     if (ns.invalidateComputedStyles) ns.invalidateComputedStyles();
   }
@@ -1433,7 +1438,7 @@
   const byComposite = list => sortBy(list, animation => animations.get(animation).seq);
   function collect(test) {
     const out = [];
-    for (const animation of apply(setValues, live, [])) {
+    for (let at = 0, all = list(); at < all.length; at++) { const animation = all[at];
       const record = animations.get(animation);
       if (!relevant(record)) continue;
       const effect = effects.get(record.effect);

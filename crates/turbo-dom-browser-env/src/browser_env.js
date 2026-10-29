@@ -544,7 +544,7 @@
     var ownerRecord=owner&&collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
     var sheets = host ? host.readSheets() : [];
     // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
-    var adopted=adoptionStates&&adoptionStates.get(owner);
+    var adopted=adoptionStates&&$c.get(adoptionStates,owner);
     if(adopted&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
     return sheets;
   }
@@ -1578,7 +1578,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     });
     return state;
   }
-  function adoptionState(receiver){adoptionDocument(receiver);var state=adoptionStates.get(receiver);if(!state){state=createAdoption(receiver);adoptionStates.set(receiver,state);}return state;}
+  function adoptionState(receiver){adoptionDocument(receiver);var state=$c.get(adoptionStates,receiver);if(!state){state=createAdoption(receiver);$c.set(adoptionStates,receiver,state);}return state;}
   function readAdoption(){cssApply(adoptionDocumentCheck,this,[]);return adoptionState(this).proxy;}
   function readShadowAdoption(){if(cssApply(adoptionNodeCheck,this,[])!==11||!cssApply(adoptionShadowCheck,this,[]))throw new TypeError('Illegal invocation');return adoptionState(this).proxy;}
   function replaceAdoption(input){invalidateComputedStyles();var state=adoptionState(this),converted=cssHostArray();for(var value of input){adoptionRecord(value);converted[converted.length]=value;}state.target.length=0;for(var i=0;i<converted.length;i++){adoptionAllowed(this,converted[i]);adoptionDefine(state.target,String(i),{value:converted[i],writable:true,enumerable:true,configurable:true});}}
@@ -1649,17 +1649,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // checks the value stuck) to commit the typed value + fire onChange only once a full valid date
     // is entered. Without it, partials commit and the controlled reset mangles the result.
     var validForType = function(el, v){
-      var t = (el.getAttribute('type') || 'text').toLowerCase();
+      var t = $c.toLowerCase($getAttr(el, 'type') || 'text');
       // Range, the date/time family and textarea newlines follow Chromium (input_members.js).
       var sanitized = __ns.sanitizeControlValue ? __ns.sanitizeControlValue(el, t, v) : undefined;
       if (sanitized !== undefined) return sanitized;
-      if (t === 'date') return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '';
-      if (t === 'time') return /^\d{2}:\d{2}(:\d{2})?$/.test(v) ? v : '';
-      if (t === 'month') return /^\d{4}-\d{2}$/.test(v) ? v : '';
-      if (t === 'datetime-local') return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) ? v : '';
+      if (t === 'date') return $c.test(/^\d{4}-\d{2}-\d{2}$/, v) ? v : '';
+      if (t === 'time') return $c.test(/^\d{2}:\d{2}(:\d{2})?$/, v) ? v : '';
+      if (t === 'month') return $c.test(/^\d{4}-\d{2}$/, v) ? v : '';
+      if (t === 'datetime-local') return $c.test(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, v) ? v : '';
       // A number input only retains a valid floating-point number; an invalid/partial value ('.', '-')
       // becomes '' (HTML value-sanitization), which is what lets components see the empty-string clear.
-      if (t === 'number') return (v === '' || /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(v)) ? v : '';
+      if (t === 'number') return (v === '' || $c.test(/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/, v)) ? v : '';
       return v;
     };
     // Live input/textarea values have a dirty flag, separate from their defaults.
@@ -1670,16 +1670,23 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     __ns.registerFileControls = function(hooks){ fileControls = hooks; delete __ns.registerFileControls; };
     var fileValueDelete = WeakMap.prototype.delete, fileValueApply = Reflect.apply;
     __ns.resetControlValue = function(element){ fileValueApply(fileValueDelete, controlValues, [element]); };
-    var isTextarea = function(el){ return String(el.tagName).toUpperCase() === 'TEXTAREA'; };
-    var reflectedValue = function(el){ return /^(hidden|button|submit|reset|image|checkbox|radio)$/.test(el.type || ''); };
-    var defaultValueOf = function(el){ return isTextarea(el) ? el.textContent || '' : el.getAttribute('value') || ''; };
+    // Captured natives: the value paths never reach a page-replaced builtin (turbo-dom#199).
+    // The binding's own native accessors, captured at install.
+    var valueLocalName, valueNamespace, valueTextContent, valueTextContentSet;
+    var valueNatives = function(){ if (!valueTextContent) { valueLocalName = __ns.domAccessor('localName', false, 'Element'); valueNamespace = __ns.domAccessor('namespaceURI', false, 'Element'); valueTextContent = __ns.domAccessor('textContent', false, 'Node'); valueTextContentSet = __ns.domAccessor('textContent', true, 'Node'); } };
+    valueNatives();
+    var valueName = function(el){ valueNatives(); return $apply(valueNamespace, el, []) === 'http://www.w3.org/1999/xhtml' ? $apply(valueLocalName, el, []) : ''; };
+    var isTextarea = function(el){ return valueName(el) === 'textarea'; };
+    // A button's type is always submit/reset/button; an input's reflected modes follow its type attribute.
+    var reflectedValue = function(el){ var name = valueName(el); return name === 'button' || (name === 'input' && $c.test(/^(hidden|button|submit|reset|image|checkbox|radio)$/, $c.toLowerCase($getAttr(el, 'type') || ''))); };
+    var defaultValueOf = function(el){ return isTextarea(el) ? $apply(valueTextContent, el, []) || '' : $getAttr(el, 'value') || ''; };
     var valDesc = { configurable: true,
       get: function(){
         var file = fileControls ? fileControls.value(this) : undefined;
         if (file !== undefined) return file;
-        if (controlValues.has(this) && !reflectedValue(this)) return validForType(this, controlValues.get(this));
+        if ($c.has(controlValues,this) && !reflectedValue(this)) return validForType(this, $c.get(controlValues,this));
         var value = defaultValueOf(this);
-        if (!isTextarea(this) && /^(checkbox|radio)$/.test(this.type || '') && !$hasAttr(this, 'value')) return 'on';
+        if (!isTextarea(this) && $c.test(/^(checkbox|radio)$/, $c.toLowerCase($getAttr(this, 'type') || '')) && !$hasAttr(this, 'value')) return 'on';
         return validForType(this, value);
       },
       set: function(v){
@@ -1687,12 +1694,12 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         var oldValue=selectionApply(valDesc.get,this,[]);
         v = v == null ? '' : String(v);
         if (reflectedValue(this)) $setAttr(this, 'value', v);
-        else controlValues.set(this, validForType(this, v));
+        else $c.set(controlValues,this, validForType(this, v));
         selectionValueChanged(this,oldValue,selectionApply(valDesc.get,this,[]));
       }
     };
     var defaultValueDesc = { configurable: true, get: function(){ return defaultValueOf(this); }, set: function(v){
-      if (isTextarea(this)) this.textContent = String(v);
+      if (isTextarea(this)) { valueNatives(); $apply(valueTextContentSet, this, [String(v)]); }
       else $setAttr(this, 'value', String(v));
     } };
     var checkedNative=g.__checkedNative,checkedSetAttribute=d.createElement('input').setAttribute,checkedRemoveAttribute=d.createElement('input').removeAttribute;delete g.__checkedNative;
@@ -1706,17 +1713,18 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var mkTypeDesc = function(def){ return { configurable: true, get: function(){ var t = $c.toLowerCase($getAttr(this, 'type') || def); return def === 'text' && !$c.test(inputTypeStates, t) ? 'text' : t; }, set: function(v){ $setAttr(this, 'type', v); } }; };
     // `form` → the nearest ancestor <form> (userEvent fires submit on a submit-button's form).
     var formDesc = { configurable: true, get: function(){ return this.closest ? this.closest('form') : null; } };
+    var selectionMin=Math.min,selectionMax=Math.max;
     var controlSelections=new WeakMap(),selectionApply=Reflect.apply,selectionGet=WeakMap.prototype.get,selectionSet=WeakMap.prototype.set;
     var selectionString=String,selectionTypeError=TypeError,selectionException=__ns.DOMException;
     function selectionText(value){if(typeof value==='symbol')throw new selectionTypeError('Cannot convert a Symbol value to a string');return selectionString(value);}
-    function selectionAvailable(element){var tag=selectionApply(sheetTagName,element,[]);if(tag==='TEXTAREA')return true;var type=sheetNativeAttribute(element,'type')||'text';return /^(text|search|url|tel|password)$/.test(type.toLowerCase());}
+    function selectionAvailable(element){var tag=selectionApply(sheetTagName,element,[]);if(tag==='TEXTAREA')return true;var type=sheetNativeAttribute(element,'type')||'text';return $c.test(/^(text|search|url|tel|password)$/,$c.toLowerCase(type));}
     function selectionValue(element){return selectionApply(valDesc.get,element,[]);}
     function selectionState(element){var state=selectionApply(selectionGet,controlSelections,[element]);if(!state){state={start:0,end:0,direction:'none'};selectionApply(selectionSet,controlSelections,[element,state]);}return state;}
     function selectionRequire(element){if(!selectionAvailable(element))throw new selectionException('The input type does not support selection','InvalidStateError');}
-    function selectionUpdate(element,start,end,direction){var length=selectionValue(element).length;end=Math.min(end,length);start=Math.min(start,end);var state=selectionState(element);state.start=start;state.end=end;state.direction=direction==='forward'||direction==='backward'?direction:'none';}
+    function selectionUpdate(element,start,end,direction){var length=selectionValue(element).length;end=selectionMin(end,length);start=selectionMin(start,end);var state=selectionState(element);state.start=start;state.end=end;state.direction=direction==='forward'||direction==='backward'?direction:'none';}
     function selectionValueChanged(element,oldValue,newValue){if(__ns.controlValueChanged){__ns.controlValueChanged(element,oldValue,newValue);return;}if(oldValue!==newValue&&selectionAvailable(element))selectionUpdate(element,newValue.length,newValue.length,'none');}
-    var selStartDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).start:null;},set:function(value){selectionRequire(this);var state=selectionState(this),start=value===null?0:+value>>>0;selectionUpdate(this,start,Math.max(start,state.end),state.direction);}};
-    var selEndDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).end:null;},set:function(value){selectionRequire(this);var state=selectionState(this),end=value===null?0:+value>>>0;selectionUpdate(this,Math.min(state.start,end),end,state.direction);}};
+    var selStartDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).start:null;},set:function(value){selectionRequire(this);var state=selectionState(this),start=value===null?0:+value>>>0;selectionUpdate(this,start,selectionMax(start,state.end),state.direction);}};
+    var selEndDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).end:null;},set:function(value){selectionRequire(this);var state=selectionState(this),end=value===null?0:+value>>>0;selectionUpdate(this,selectionMin(state.start,end),end,state.direction);}};
     var selDirDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).direction:null;},set:function(value){selectionRequire(this);var state=selectionState(this);selectionUpdate(this,state.start,state.end,value===null?'none':selectionText(value));}};
     function setControlSelectionRange(start,end){if(arguments.length<2)throw new selectionTypeError('setSelectionRange requires two arguments');start=+start>>>0;end=+end>>>0;var direction=arguments.length<3||arguments[2]===undefined?'none':selectionText(arguments[2]);selectionRequire(this);selectionUpdate(this,start,end,direction);}
     function setControlRangeText(replacement){
@@ -1726,7 +1734,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var mode=arguments.length<4||arguments[3]===undefined?'preserve':selectionText(arguments[3]);
       if(mode!=='select'&&mode!=='start'&&mode!=='end'&&mode!=='preserve')throw new selectionTypeError('Invalid selection mode');
       selectionRequire(this);if(start>end)throw new selectionException('The start exceeds the end','IndexSizeError');
-      var value=selectionValue(this),length=value.length;start=Math.min(start,length);end=Math.min(end,length);
+      var value=selectionValue(this),length=value.length;start=selectionMin(start,length);end=selectionMin(end,length);
       var oldStart=state.start,oldEnd=state.end,next=start+replacement.length;
       selectionApply(valDesc.set,this,[value.slice(0,start)+replacement+value.slice(end)]);
       if(mode==='select')selectionUpdate(this,start,next,'none');else if(mode==='start')selectionUpdate(this,start,start,'none');else if(mode==='end')selectionUpdate(this,next,next,'none');else{var delta=replacement.length-(end-start);selectionUpdate(this,oldStart>end?oldStart+delta:oldStart>start?start:oldStart,oldEnd>end?oldEnd+delta:oldEnd>start?next:oldEnd,'none');}
@@ -1802,13 +1810,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // Traversal accessors the native binding lacks (it ships firstChild/nextSibling/children/
     // firstElementChild only). jQuery's clone-support probe reads clone.lastChild.checked; Sizzle
     // walks siblings. Derive from native childNodes/children/parentNode (all detached-safe).
-    var idxIn = function(list, node){ for (var i=0;i<list.length;i++) if (list[i] === node) return i; return -1; };
     var defTrav = function(name, get){ if (baseProto && !Object.getOwnPropertyDescriptor(baseProto, name)) { try { Object.defineProperty(baseProto, name, { configurable: true, get: get }); } catch(e){} } };
-    defTrav('lastChild', function(){ var c = this.childNodes || []; return c.length ? c[c.length-1] : null; });
-    defTrav('lastElementChild', function(){ var c = this.children || []; return c.length ? c[c.length-1] : null; });
-    defTrav('previousSibling', function(){ var p = this.parentNode; if (!p) return null; var c = p.childNodes || []; var i = idxIn(c, this); return i > 0 ? c[i-1] : null; });
-    defTrav('previousElementSibling', function(){ var p = this.parentNode; if (!p) return null; var c = p.children || []; var i = idxIn(c, this); return i > 0 ? c[i-1] : null; });
+    // The binding's native accessors, captured at install (turbo-dom#199).
     var travNext=__ns.domAccessor('nextSibling',false,'Node'),travType=__ns.domAccessor('nodeType',false,'Node');
+    var travParent=__ns.domAccessor('parentNode',false,'Node'),travFirst=__ns.domAccessor('firstChild',false,'Node');
+    var travLast=function(node,elements){ var last=null; for (var c=$call(travFirst,node); c; c=$call(travNext,c)) if (!elements || $call(travType,c)===1) last=c; return last; };
+    var travPrevious=function(node,elements){ var p=$call(travParent,node); if (!p) return null; var previous=null; for (var c=$call(travFirst,p); c && c!==node; c=$call(travNext,c)) if (!elements || $call(travType,c)===1) previous=c; return previous; };
+    defTrav('lastChild', function(){ return travLast(this,false); });
+    defTrav('lastElementChild', function(){ return travLast(this,true); });
+    defTrav('previousSibling', function(){ return travPrevious(this,false); });
+    defTrav('previousElementSibling', function(){ return travPrevious(this,true); });
     defTrav('nextElementSibling', function(){ for (var node = $call(travNext, this); node; node = $call(travNext, node)) if ($call(travType, node) === 1) return node; return null; });
     // classList on the shared element prototype (every element inherits it), backed by className.
     if (baseProto && !Object.getOwnPropertyDescriptor(baseProto, 'classList')) {
@@ -1860,16 +1871,21 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // DETACHED subtrees, which React-DOM's updateOptions reads during commit, and stays linear for
     // huge lists (indexing the live `children` collection recomputes it per access).
     var optionNs = 'http://www.w3.org/1999/xhtml';
-    var optionName = function(n){ return n.namespaceURI === optionNs ? n.localName : ''; };
+    // The binding's native tree accessors, captured at install: the walk never reaches a page-replaced builtin (turbo-dom#199).
+    var optionFirst, optionNext, optionKind, optionSpace, optionLocal, optionParent;
+    var optionNatives = function(){ if (!optionFirst) { optionFirst = __ns.domAccessor('firstChild', false, 'Node'); optionNext = __ns.domAccessor('nextSibling', false, 'Node'); optionKind = __ns.domAccessor('nodeType', false, 'Node'); optionSpace = __ns.domAccessor('namespaceURI', false, 'Element'); optionLocal = __ns.domAccessor('localName', false, 'Element'); optionParent = __ns.domAccessor('parentNode', false, 'Node'); } };
+    optionNatives();
+    var optionName = function(n){ optionNatives(); return $apply(optionSpace, n, []) === optionNs ? $apply(optionLocal, n, []) : ''; };
     var optionsOf = function(sel){
       var a = [];
-      (function walk(n, grouped){ for (var c = n.firstChild; c; c = c.nextSibling){ if (c.nodeType !== 1) continue; var name = optionName(c);
-        if (name === 'option') a.push(c);
+      optionNatives();
+      (function walk(n, grouped){ for (var c = $apply(optionFirst, n, []); c; c = $apply(optionNext, c, [])){ if ($apply(optionKind, c, []) !== 1) continue; var name = optionName(c);
+        if (name === 'option') $c.push(a, c);
         else if (name === 'optgroup') { if (!grouped) walk(c, true); }
         else if (name !== 'select' && name !== 'datalist' && name !== 'hr') walk(c, grouped); } })(sel, false);
       a.item = function(i){ return this[i] || null; }; return a;
     };
-    var ownerSelect = function(n){ var grouped = false, p = n.parentNode; while (p && p.nodeType === 1){ var name = optionName(p); if (name === 'select') return p; if (name === 'datalist' || name === 'hr' || name === 'option') return null; if (name === 'optgroup') { if (grouped) return null; grouped = true; } p = p.parentNode; } return null; };
+    var ownerSelect = function(n){ var grouped = false, p = $apply(optionParent, n, []); while (p && $apply(optionKind, p, []) === 1){ var name = optionName(p); if (name === 'select') return p; if (name === 'datalist' || name === 'hr' || name === 'option') return null; if (name === 'optgroup') { if (grouped) return null; grouped = true; } p = $apply(optionParent, p, []); } return null; };
     // <option>: `value` falls back to text content (HTML spec), `selected`/`defaultSelected` track
     // the live + attribute state. React-DOM's updateOptions reads option.value and writes
     // option.selected for every option of a controlled <select>.
@@ -1878,27 +1894,29 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var op = protoFor.HTMLOptionElement;
       Object.defineProperty(op, 'value', { configurable: true, get: function(){ var v = $getAttr(this, 'value'); return v == null ? (this.textContent || '') : v; }, set: function(v){ $setAttr(this, 'value', v == null ? '' : String(v)); } });
       var optionStates = new WeakMap(), emptySelects = new WeakSet();
-      var isSelected = function(o){ return optionStates.has(o) ? optionStates.get(o) : o.hasAttribute('selected'); };
+      var isSelected = function(o){ return $c.has(optionStates,o) ? $c.get(optionStates,o) : $hasAttr(o, 'selected'); };
+      var selectNumber = Number;
       var selectionOf = function(sel){
         var os = optionsOf(sel), chosen = [];
-        for (var i=0;i<os.length;i++) if (isSelected(os[i])) chosen.push(os[i]);
-        if (!sel.multiple && chosen.length > 1) chosen = [chosen[chosen.length-1]];
-        if (!chosen.length && !sel.multiple && Number(sel.getAttribute('size') || 0) <= 1 && !emptySelects.has(sel)) {
+        for (var i=0;i<os.length;i++) if (isSelected(os[i])) $c.push(chosen, os[i]);
+        var multiple = $hasAttr(sel, 'multiple');
+        if (!multiple && chosen.length > 1) chosen = [chosen[chosen.length-1]];
+        if (!chosen.length && !multiple && selectNumber($getAttr(sel, 'size') || 0) <= 1 && !$c.has(emptySelects,sel)) {
           for (var j=0;j<os.length;j++) {
-            var group = os[j].parentNode;
-            if (!os[j].disabled && !(group && String(group.tagName).toUpperCase() === 'OPTGROUP' && group.hasAttribute('disabled'))) { chosen.push(os[j]); break; }
+            var group = $apply(optionParent, os[j], []);
+            if (!$hasAttr(os[j], 'disabled') && !(group && $apply(optionKind, group, []) === 1 && optionName(group) === 'optgroup' && $hasAttr(group, 'disabled'))) { $c.push(chosen, os[j]); break; }
           }
         }
         return chosen;
       };
       Object.defineProperty(op, 'selected', { configurable: true, get: function(){
-        var sel = ownerSelect(this); return sel ? selectionOf(sel).indexOf(this) >= 0 : isSelected(this);
+        var sel = ownerSelect(this); return sel ? $c.indexOf(selectionOf(sel), this) >= 0 : isSelected(this);
       }, set: function(v){
-        v = !!v; optionStates.set(this, v);
+        v = !!v; $c.set(optionStates,this, v);
         var sel = ownerSelect(this);
         if (sel && v) {
-          emptySelects.delete(sel);
-          if (!sel.multiple) optionsOf(sel).forEach(function(o){ if (o !== this) optionStates.set(o, false); }, this);
+          $c.delete(emptySelects,sel);
+          if (!$hasAttr(sel, 'multiple')) $c.forEach(optionsOf(sel), function(o){ if (o !== this) $c.set(optionStates,o, false); }, this);
         }
       } });
       selection = { selectionOf: selectionOf, optionStates: optionStates, emptySelects: emptySelects, isSelected: isSelected, optionsOf: optionsOf, ownerSelect: ownerSelect };
@@ -1918,16 +1936,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.defineProperty(sp, 'selectedIndex', { configurable: true,
         get: function(){ var chosen = selection.selectionOf(this); return chosen.length ? opts(this).indexOf(chosen[0]) : -1; },
         set: function(idx){ var o = opts(this), index = Number(idx) >> 0;
-          selection.emptySelects.add(this);
-          for (var i=0;i<o.length;i++) { selection.optionStates.set(o[i], i === index); }
-          if (index >= 0 && index < o.length) selection.emptySelects.delete(this);
+          $c.add(selection.emptySelects,this);
+          for (var i=0;i<o.length;i++) { $c.set(selection.optionStates,o[i], i === index); }
+          if (index >= 0 && index < o.length) $c.delete(selection.emptySelects,this);
         } });
       Object.defineProperty(sp, 'value', { configurable: true,
         get: function(){ var chosen = selection.selectionOf(this); return chosen.length ? chosen[0].value : ''; },
         set: function(v){ var o = opts(this), s = String(v), hit = false;
-          selection.emptySelects.add(this);
-          for (var i=0;i<o.length;i++){ var m = !hit && o[i].value === s; selection.optionStates.set(o[i], m); if (m) hit = true; }
-          if (hit) selection.emptySelects.delete(this);
+          $c.add(selection.emptySelects,this);
+          for (var i=0;i<o.length;i++){ var m = !hit && o[i].value === s; $c.set(selection.optionStates,o[i], m); if (m) hit = true; }
+          if (hit) $c.delete(selection.emptySelects,this);
         } });
     })();
     var formValueApply=Reflect.apply,formValueGet=WeakMap.prototype.get,formValueHas=WeakMap.prototype.has;
@@ -1936,7 +1954,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var tag=formValueApply(sheetTagName,element,[]),type=formValueApply(sheetGetAttribute,element,['type'])||'text';
       var file=fileControls?fileControls.value(element):undefined;if(file!==undefined)return file;
       if(tag==='SELECT'){var chosen=selection.selectionOf(element);return chosen.length?chosen[0].value:'';}
-      if(formValueApply(formValueHas,controlValues,[element])&&!/^(hidden|button|submit|reset|image|checkbox|radio)$/.test(type))return formValueApply(formValueGet,controlValues,[element]);
+      if(formValueApply(formValueHas,controlValues,[element])&&!$c.test(/^(hidden|button|submit|reset|image|checkbox|radio)$/,$c.toLowerCase(type)))return formValueApply(formValueGet,controlValues,[element]);
       return tag==='TEXTAREA'?formValueApply(formValueText,element,[]):formValueApply(sheetGetAttribute,element,['value'])||'';
     };
     var resetControlDelete=WeakMap.prototype.delete,resetSelectDelete=WeakSet.prototype.delete;
@@ -1956,10 +1974,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var pending=[[source,clone]];
       for(var index=0;index<pending.length;index++){
         var pair=pending[index];source=pair[0];clone=pair[1];
-        if (controlValues.has(source)) clone.value = controlValues.get(source);
+        if ($c.has(controlValues,source)) clone.value = $c.get(controlValues,source);
         if(cloneApply(cloneNodeType,source,[])===1&&formValueApply(sheetTagName,source,[])==='INPUT'){if(checkedNative(3,source))checkedNative(1,clone,checkedNative(0,source));checkedNative(4,clone);if(fileControls)fileControls.clone(source,clone);}
-        if (selection.optionStates.has(source)) selection.optionStates.set(clone, selection.optionStates.get(source));
-        if (selection.emptySelects.has(source)) selection.emptySelects.add(clone);
+        if ($c.has(selection.optionStates,source)) $c.set(selection.optionStates,clone, $c.get(selection.optionStates,source));
+        if ($c.has(selection.emptySelects,source)) $c.add(selection.emptySelects,clone);
         if(deep){
           var originals=cloneApply(cloneChildren,source,[]),copies=cloneApply(cloneChildren,clone,[]);
           for(var i=0;i<originals.length&&i<copies.length;i++)cloneDefine(pending,pending.length,{__proto__:null,value:[originals[i],copies[i]],writable:true,configurable:true,enumerable:true});
@@ -2337,7 +2355,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // prototype to the clone), so a cloned <input>/<select> keeps its type/value/checked accessors
     // (userEvent's isValidDateOrTimeValue clones a date input, assigns, and checks the value stuck).
     void applyControlProto;
-    var documentSheets=cssList('StyleSheetList',function(){var list=[],els=d.querySelectorAll('style,link');for(var i=0;i<els.length;i++){var sheet=els[i].sheet;if(sheet)list.push(sheet);}return list;});
+    var documentSheetsQuery=d.querySelectorAll,documentSheetOf=function(element){var owner=$gopd($O.getPrototypeOf(element),'sheet');return owner&&owner.get?$apply(owner.get,element,[]):element.sheet;};
+    var documentSheets=cssList('StyleSheetList',function(){var list=[],els=$apply(documentSheetsQuery,d,['style,link']);for(var i=0;i<els.length;i++){var sheet=documentSheetOf(els[i]);if(sheet)$c.push(list,sheet);}return list;});
     documentCSSRecord.cssHost.readSheets=function(){return cssRecord(documentSheets).items;};
     __ns.styleSheetList=function(refresh){return cssList('StyleSheetList',refresh);};
     try { Object.defineProperty(d, 'styleSheets', { configurable: true, get: function(){return documentSheets;} }); } catch(e){}
@@ -2430,10 +2449,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function __commonAncestor(a,b){ var A=__ancestry(a); var n=b; while(n){ if(A.indexOf(n)>=0) return n; n=n.parentNode; } return d; }
   var rangeRecord = g.__nativeRangeRecord;
   delete g.__nativeRangeRecord;
+  var rangeCreate=Object.create,rangeDefine=Object.defineProperties,rangeProto=Object.getPrototypeOf;
   function Range(){
-    var state=Object.create(Range.prototype);
-    Object.defineProperties(state,{startContainer:{value:d,writable:true},startOffset:{value:0,writable:true},endContainer:{value:d,writable:true},endOffset:{value:0,writable:true},document:{value:d,writable:true}});
-    rangeRecord(state,state);return rangeRecord(undefined,state,Object.getPrototypeOf(this));
+    var state=rangeCreate(Range.prototype);
+    rangeDefine(state,{startContainer:{value:d,writable:true},startOffset:{value:0,writable:true},endContainer:{value:d,writable:true},endOffset:{value:0,writable:true},document:{value:d,writable:true}});
+    rangeRecord(state,state);return rangeRecord(undefined,state,rangeProto(this));
   }
   Object.defineProperties(Range.prototype, {
     collapsed:{ configurable:true, enumerable:true, get:function(){ return this.startContainer===this.endContainer && this.startOffset===this.endOffset; } },
@@ -2725,7 +2745,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       if(!windowCallbacks[name])windowCallbacks[name]=g[name];
     });
     var PreviousEventTarget=g.EventTarget;
-    var eventTargetCtor=__ns.makeNativeFunction(class extends PreviousEventTarget{constructor(){super();eventTargets.add(this);}},'EventTarget',0,true,true);
+    var eventTargetCtor=__ns.makeNativeFunction(class extends PreviousEventTarget{constructor(){super();$c.add(eventTargets,this);}},'EventTarget',0,true,true);
     eventTargetCtor.prototype=eventTargetProto;
     Object.defineProperty(g,'EventTarget',{value:eventTargetCtor,writable:true,configurable:true,enumerable:false});
     Object.defineProperty(eventTargetProto,'constructor',{value:eventTargetCtor,writable:true,configurable:true});
@@ -2865,7 +2885,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if(this===g)return $apply(windowCallbacks[name],this,arguments);
         var node=false;try{$call(getType,this);node=true;}catch(e){}
         if(node)return $apply(native,this,arguments);
-        if(__ns.eventTargetNativeBrand?!__ns.eventTargetNativeBrand(this):!eventTargets.has(this))throw new TypeError('Illegal invocation');
+        if(__ns.eventTargetNativeBrand?!__ns.eventTargetNativeBrand(this):!$c.has(eventTargets,this))throw new TypeError('Illegal invocation');
         return eventCallbacks[name].apply(this,arguments);
       },name,minimum);
       Object.defineProperty(eventTargetProto,name,{value:method,writable:true,configurable:true,enumerable:true});

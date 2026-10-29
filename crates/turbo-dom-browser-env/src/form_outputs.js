@@ -5,7 +5,7 @@
   'use strict';
   const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
   const apply = Reflect.apply, define = Object.defineProperty, StringValue = String, NumberValue = Number, finite = Number.isFinite;
-  const ErrorType = TypeError, max = Math.max, min = Math.min;
+  const ErrorType = TypeError, max = Math.max, min = Math.min, sliceText = String.prototype.slice;
   const getAttribute = g.Element.prototype.getAttribute, setAttribute = g.Element.prototype.setAttribute, hasAttribute = g.Element.prototype.hasAttribute;
   const textGet = ns.domAccessor('textContent', false, 'Node'), textSet = ns.domAccessor('textContent', true, 'Node');
   const localName = ns.domAccessor('localName', false, 'Element'), namespace = ns.domAccessor('namespaceURI', false, 'Element'), nodeType = ns.domAccessor('nodeType', false, 'Node');
@@ -27,14 +27,14 @@
     if (at(index) === 45) { sign = '-'; index++; } else if (at(index) === 43) index++;
     if (at(index) === 46 && digit(at(index + 1))) integer = '0';
     else if (!digit(at(index))) return fallback;
-    else { const start = index; while (digit(at(index))) index++; integer = value.slice(start, index); }
+    else { const start = index; while (digit(at(index))) index++; integer = apply(sliceText, value, [start, index]); }
     if (at(index) === 46 && (digit(at(index + 1)) || at(index + 1) === 101 || at(index + 1) === 69)) {
-      index++; const start = index; while (digit(at(index))) index++; fraction = value.slice(start, index);
+      index++; const start = index; while (digit(at(index))) index++; fraction = apply(sliceText, value, [start, index]);
     }
     if (at(index) === 101 || at(index) === 69) {
       let cursor = index + 1, exponentSign = '';
       if (at(cursor) === 45 || at(cursor) === 43) { exponentSign = at(cursor) === 45 ? '-' : ''; cursor++; }
-      if (digit(at(cursor))) { const start = cursor; while (digit(at(cursor))) cursor++; exponent = 'e' + exponentSign + value.slice(start, cursor); }
+      if (digit(at(cursor))) { const start = cursor; while (digit(at(cursor))) cursor++; exponent = 'e' + exponentSign + apply(sliceText, value, [start, cursor]); }
     }
     const number = NumberValue(sign + integer + (fraction ? '.' + fraction : '') + exponent);
     if (!finite(number)) return fallback;

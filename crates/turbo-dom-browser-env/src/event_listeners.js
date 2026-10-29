@@ -39,7 +39,7 @@
     getter(Signal.prototype,'aborted',function(){return read(this).aborted;});getter(Signal.prototype,'reason',function(){return read(this).reason;});
     define(Signal.prototype,'onabort',{configurable:true,enumerable:true,get:make(function(){read(this);return targetRecord(this).handlers.abort?.callback??null},'get onabort',0),set:make(function(value){read(this);targetHandler(this,'abort',value)},'set onabort',1)});
     method(Signal.prototype,'throwIfAborted',function(){const record=read(this);if(record.aborted)throw record.reason;},0);
-    const Controller=make(function(){const signal=new NativeTarget();Object.setPrototypeOf(signal,Signal.prototype);native('signalSet',signal,{aborted:false,reason:undefined});native('controllerSet',this,{signal});},'AbortController',0,true,true);
+    const Controller=make(function(){const signal=new NativeTarget();setPrototype(signal,Signal.prototype);native('signalSet',signal,{aborted:false,reason:undefined});native('controllerSet',this,{signal});},'AbortController',0,true,true);
     const controller=receiver=>{const record=native('controllerGet',receiver);if(!record)throw new ErrorType('Illegal invocation');return record;};
     getter(Controller.prototype,'signal',function(){return controller(this).signal;});
     method(Controller.prototype,'abort',function(reason){const signal=controller(this).signal,record=read(signal);if(record.aborted)return;record.aborted=true;record.reason=reason===undefined?new Exception('signal is aborted without reason','AbortError'):reason;dispatchTarget(new EventType('abort'),signal,true);},0);
