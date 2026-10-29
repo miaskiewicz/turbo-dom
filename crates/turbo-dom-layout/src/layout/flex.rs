@@ -138,12 +138,18 @@ fn align_self(s: &ComputedStyle) -> Option<AlignItems> {
     }
 }
 
-fn gap_len(s: &ComputedStyle) -> LengthPercentage {
-    let px = s
-        .get("gap")
-        .and_then(|v| parse_px(v, DEFAULT_FONT_SIZE))
-        .unwrap_or(0.0);
-    LengthPercentage::length(px)
+/// One gap axis of the `gap` shorthand (`gap: <row> <column>`, CSS Box Alignment 3
+/// §8.3): `column` picks the second value, defaulting to the first.
+fn gap_shorthand(s: &ComputedStyle, column: bool) -> Option<f32> {
+    let v = s.get("gap")?;
+    let mut parts = v.split_whitespace();
+    let row = parts.next()?;
+    let tok = if column {
+        parts.next().unwrap_or(row)
+    } else {
+        row
+    };
+    parse_px(tok, DEFAULT_FONT_SIZE)
 }
 
 fn container_style(container: &LayoutBox, cw: f32, fs: f32, cb_h: f32) -> Style {
@@ -169,8 +175,8 @@ fn container_style(container: &LayoutBox, cw: f32, fs: f32, cb_h: f32) -> Style 
         justify_content: justify_content(s),
         align_items: align_items(s),
         gap: Size {
-            width: gap_len(s),
-            height: gap_len(s),
+            width: gap_axis(s, "column-gap"),
+            height: gap_axis(s, "row-gap"),
         },
         // Carry the container's own `height` and `min/max-height` to taffy: a flex
         // box with only a `min-height` (a search bar's `min-height:50px`, a hero
@@ -1011,11 +1017,11 @@ fn place_items(
 
 /// One explicit-gap axis: `column-gap`/`row-gap`, falling back to `gap`.
 fn gap_axis(s: &ComputedStyle, axis: &str) -> LengthPercentage {
-    let px = s
-        .get(axis)
-        .or_else(|| s.get("gap"))
-        .and_then(|v| parse_px(v, DEFAULT_FONT_SIZE))
-        .unwrap_or(0.0);
+    let px = match s.get(axis) {
+        Some(v) => parse_px(v, DEFAULT_FONT_SIZE),
+        None => gap_shorthand(s, axis == "column-gap"),
+    }
+    .unwrap_or(0.0);
     LengthPercentage::length(px)
 }
 
