@@ -15,10 +15,9 @@ use crate::browser_env::crate_surface::harness_tests::thrown;
 fn run(scope: &mut v8::PinScope, code: &str) -> String {
     v8::tc_scope!(let scope, scope);
     let source = v8::String::new(scope, code).unwrap();
-    match v8::Script::compile(scope, source, None).and_then(|script| script.run(scope)) {
-        Some(value) => value.to_rust_string_lossy(scope),
-        None => format!("threw {}", thrown(scope.exception(), scope)),
-    }
+    let value = v8::Script::compile(scope, source, None).and_then(|script| script.run(scope));
+    let value = value.unwrap_or_else(|| panic!("threw {}", thrown(scope.exception(), scope)));
+    value.to_rust_string_lossy(scope)
 }
 
 /// Every native read a stale wrapper can reach, each reported as its value or its error.

@@ -272,7 +272,7 @@ user_activation_gates.js: benv-js r2 member paths call captured intrinsics, not 
 focus_group_tests.rs: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
 browser_env.js: D15 captureNodeIntrinsics re-captures members defined after bootstrap (Document#documentElement) and fails install on any non-function entry (turbo-dom#199 regression)
 browser_env.rs: D15 namespace_lookup_on_non_element_nodes_matches_chrome156 control test
-browser_env.rs: turbo-test#204 wrappers carry a tree generation next to their DOM id (owner_tag/tagged_owner); handle_of refuses a wrapper of a discarded tree or a handle its tree never minted; holder_handle throws Illegal invocation instead of panicking
+browser_env.rs: turbo-test#204 wrappers carry a tree generation next to their DOM id (owner_tag/tagged_owner); handle_of refuses a wrapper of a discarded tree or a handle its tree never minted
 document_basics.rs: turbo-test#204 adoption tags moved wrappers with the target tree's generation
 dom_ownership.rs: turbo-test#204 ownership grouping skips wrappers of a discarded tree
 "
