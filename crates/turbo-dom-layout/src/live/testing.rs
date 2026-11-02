@@ -148,7 +148,7 @@ pub(crate) fn layout_with(
     )
 }
 
-/// [`layout_with`] under `fonts` (the repo's fixture fonts for text-laid controls).
+/// [`layout_with`] in `fonts` (e.g. `test_support::fixture_fonts()`).
 pub(crate) fn layout_with_fonts(
     html: &str,
     css: &str,

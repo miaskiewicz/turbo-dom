@@ -47,7 +47,9 @@ npm run complexity:js     # oxlint `complexity` max 15 over src/ + crates/turbo-
 CI (`.github/workflows/ci.yml`) has one job family per crate (base / layout / raster / v8 +
 browser-env matrix / msrv 1.89 / guards / coverage floors / complexity). PRs and pushes run on
 Linux + Windows; `publish.yml` runs it on a `v*` tag with `darwin: true` (adds the macOS arm64
-builds and jobs) and then publishes every package in dependency order. See `docs/CONSOLIDATION.md`.
+builds and jobs) and then publishes every package in dependency order. Linux binaries (napi
+matrix, publish `crates`/`npm`) build on `ubuntu-22.04`(`-arm`), glibc 2.35, never `ubuntu-latest`;
+`scripts/check-glibc-ceiling.sh` fails any linux-gnu `.node` needing > GLIBC_2.35. See `docs/CONSOLIDATION.md`.
 
 **Two independent runtimes, one repo.** The JS runtime (`src/runtime/*.mjs`, the npm/vitest path)
 and the Rust runtime (`crates/turbo-dom`, the workspace-member crate published to crates.io as
@@ -187,7 +189,10 @@ package or publish workflow.
   `Intrinsic::orientation`, laid out displayed unless `image-orientation: none`, painted via
   `ImagePlacement::orientation`; turbo-html2pdf#30); both probes follow Blink's size points for
   cut-short bodies and SVG images need an SVG-namespace root (turbo-dom#59,
-  `scripts/image-truncation-chrome-control.mjs`). `FontRegistry::system(policy)` is the process-wide system-font load. The
+  `scripts/image-truncation-chrome-control.mjs`). `layout::list_marker` generates `::marker`s
+  (counters, counter styles, symbol shapes, outside/inside placement; turbo-dom#128,
+  `scripts/list-marker-chrome-control.mjs`): a marker is a sourceless fragment under its list
+  item, `LayoutSnapshot::list_marker_owner` maps it to the item for hit testing. `FontRegistry::system(policy)` is the process-wide system-font load. The
   `test-support` feature (`test_support`) carries the font fixtures, `ComputedStyle` pairs
   and test-only tree literals for this crate's and turbo-html2pdf-core's tests (the crate's
   own integration tests enable it through a self dev-dependency).
@@ -259,6 +264,15 @@ package or publish workflow.
   `importNode` clones into the importing document (`__clone(doc, deep)`; turbo-dom#29 item 3).
 - **Foreign content:** elements carry `namespace` ("svg"/"math", else ""); foreign attrs carry
   `prefix` ("xlink" etc). The serializer renders `<svg svg>` and `xlink href="…"`.
+- **`<?…>` has two modes (turbo-dom#135).** html5lib-tests (every conformance gate, html5ever,
+  the default rtdom parse) make it a bogus comment; Chrome 156 parses `<?target data?>` as a
+  ProcessingInstruction. The Chrome mode lives only in the UTF-16 unit tokenizer
+  (`TokenizerOpts::processing_instructions`, a marker-prefixed comment token turned into a PI on
+  import), switched on per tree (`Tree::set_processing_instructions` /
+  `parse_utf16_with_processing_instructions` / `parse_utf16_with_source_positions_and_processing_instructions`)
+  — browser-env does so for all its documents, loaded pages included. Inputs
+  with `<?` then skip the scalar fast path. Chrome control: browser-env
+  `processing_instructions_chrome156.json`.
 - **Fragment context:** `parseFragment(html, context)` where context is `"td"` or namespaced
   `"svg path"` / `"math ms"`. Empty → body.
 - **Hot paths are allocation-free — keep them that way.** `querySelectorAll`/`querySelector`/

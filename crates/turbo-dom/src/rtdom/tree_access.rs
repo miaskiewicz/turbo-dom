@@ -43,7 +43,10 @@ impl Tree {
     pub fn character_data(&self, h: Handle) -> Option<Cow<'_, str>> {
         if !matches!(
             self.node_type(h),
-            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction
+            NodeType::Text
+                | NodeType::CDataSection
+                | NodeType::Comment
+                | NodeType::ProcessingInstruction
         ) {
             return None;
         }

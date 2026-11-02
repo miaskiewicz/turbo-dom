@@ -12,6 +12,7 @@ pub mod imgsize;
 pub mod inline;
 pub(crate) mod inline_boxes;
 mod invisible;
+pub(crate) mod list_marker;
 mod svg_numbers;
 pub(crate) mod svg_viewport;
 pub mod table;

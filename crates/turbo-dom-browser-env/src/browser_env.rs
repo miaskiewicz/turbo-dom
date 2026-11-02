@@ -135,7 +135,10 @@ mod dom_implementation;
 pub use dom_implementation::set_initializer as set_inert_document_initializer;
 #[path = "document_xpath.rs"]
 mod document_xpath;
+#[path = "xml_documents.rs"]
+mod xml_documents;
 pub use document_xpath::is_native_xpath_object;
+pub use xml_documents::parse_xml_document_units;
 #[path = "dom_mutations.rs"]
 mod dom_mutations;
 #[path = "editing.rs"]
@@ -636,13 +639,16 @@ impl Drop for DomScope {
 /// Install an independent native document in the current V8 context. The caller's
 /// document stays live, and callbacks route by their receiver's creation context.
 pub fn install_independent_html(scope: &mut v8::PinScope, html: &str) {
-    install_independent_tree(scope, Tree::parse(html));
+    install_independent_tree(scope, Tree::parse_with_processing_instructions(html));
 }
 pub fn install_independent_html_units(scope: &mut v8::PinScope, units: &[u16]) {
-    install_independent_tree(scope, Tree::parse_utf16(units));
+    install_independent_tree(scope, Tree::parse_utf16_with_processing_instructions(units));
 }
 pub fn install_independent_utf16_source_positions(scope: &mut v8::PinScope, units: &[u16]) {
-    install_independent_tree(scope, Tree::parse_utf16_with_source_positions(units));
+    install_independent_tree(
+        scope,
+        Tree::parse_utf16_with_source_positions_and_processing_instructions(units),
+    );
 }
 fn install_independent_tree(scope: &mut v8::PinScope, tree: Tree) {
     dom_isolation::install(scope);
@@ -684,7 +690,11 @@ pub fn parse_html_document<'s>(
     html: &str,
     sanitize: bool,
 ) -> v8::Local<'s, v8::Object> {
-    parse_html_tree(scope, Tree::parse(html), sanitize)
+    parse_html_tree(
+        scope,
+        Tree::parse_with_processing_instructions(html),
+        sanitize,
+    )
 }
 /// Parse an original DOM string into native unit-backed payloads.
 pub fn parse_html_document_units<'s>(
@@ -692,7 +702,11 @@ pub fn parse_html_document_units<'s>(
     units: &[u16],
     sanitize: bool,
 ) -> v8::Local<'s, v8::Object> {
-    parse_html_tree(scope, Tree::parse_utf16(units), sanitize)
+    parse_html_tree(
+        scope,
+        Tree::parse_utf16_with_processing_instructions(units),
+        sanitize,
+    )
 }
 fn parse_html_tree<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -711,6 +725,7 @@ fn parse_html_tree_with<'s>(
     declarative: bool,
     sanitizer: Option<(&sanitizer::Config, bool)>,
 ) -> v8::Local<'s, v8::Object> {
+    tree.set_processing_instructions(true);
     let id = NEXT_DOM_ID.with(|next| {
         let id = next.get();
         next.set(id + 1);
@@ -850,7 +865,7 @@ pub fn import_document_node<'s>(
         let mut pending = vec![(node, None)];
         while let Some((node, parent)) = pending.pop() {
             let kind = tree.node_type_id(node);
-            if !matches!(kind, 1 | 2 | 3 | 7 | 8 | 10 | 11) {
+            if !matches!(kind, 1 | 2 | 3 | 4 | 7 | 8 | 10 | 11) {
                 return Err("Importing this node kind is unsupported");
             }
             let index = records.len();
@@ -886,6 +901,7 @@ pub fn import_document_node<'s>(
                     &snapshot.value,
                 ),
                 3 => tree.create_text_node_utf16(&snapshot.value),
+                4 => tree.create_cdata_section_utf16(&snapshot.value),
                 7 => tree.create_processing_instruction_units(&snapshot.name, &snapshot.value),
                 8 => tree.create_comment_utf16(&snapshot.value),
                 10 => tree.create_document_type_units(
@@ -3832,6 +3848,7 @@ fn clone_subtree(t: &mut Tree, h: Handle, deep: bool) -> Handle {
                 )
             }
             3 => t.create_text_node_utf16(&t.node_value_utf16(h).unwrap_or_default()),
+            4 => t.create_cdata_section_utf16(&t.node_value_utf16(h).unwrap_or_default()),
             7 => {
                 let target = t.processing_instruction_target_utf16(h).unwrap_or_default();
                 t.create_processing_instruction_units(
@@ -5649,7 +5666,7 @@ fn get_node_data(
     let _dom = DomScope::for_object(scope, args.holder());
     let h = holder_handle(scope, &args);
     let nt = with_tree(|t| t.node_type_id(h)).unwrap_or(1);
-    if matches!(nt, 2 | 3 | 7 | 8) {
+    if matches!(nt, 2 | 3 | 4 | 7 | 8) {
         let data = with_tree(|t| t.node_value_utf16(h))
             .flatten()
             .unwrap_or_default();
@@ -5667,7 +5684,7 @@ fn set_node_data(
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
     let h = holder_handle(scope, &args);
-    if !with_tree(|tree| matches!(tree.node_type_id(h), 2 | 3 | 7 | 8)).unwrap_or(false) {
+    if !with_tree(|tree| matches!(tree.node_type_id(h), 2 | 3 | 4 | 7 | 8)).unwrap_or(false) {
         return;
     }
     let data = if value.is_null() && name.to_rust_string_lossy(scope) == "nodeValue" {
@@ -5721,10 +5738,10 @@ fn get_node_name(
         rv.set(unit_string(scope, &units).into());
         return;
     }
-    // Elements, attributes, processing instructions and doctypes named themselves above
-    // (the tree has no CDATA sections).
+    // Elements, attributes, processing instructions and doctypes named themselves above.
     let name = match with_tree(|t| t.node_type_id(h)) {
         Some(3) => "#text",
+        Some(4) => "#cdata-section",
         Some(8) => "#comment",
         Some(9) => "#document",
         Some(11) => "#document-fragment",
@@ -7272,7 +7289,8 @@ pub fn install(scope: &mut v8::PinScope) {
 }
 
 pub fn install_with_html(scope: &mut v8::PinScope, html: &str) {
-    install_with_tree(scope, Tree::parse(html));
+    // A loaded page parses `<?target data?>` like Chrome (turbo-dom#135).
+    install_with_tree(scope, Tree::parse_with_processing_instructions(html));
 }
 
 /// Setup was cut short because V8 execution was terminated while the document was being
@@ -7300,13 +7318,19 @@ pub fn try_install_with_html(scope: &mut v8::PinScope, html: &str) -> Result<(),
 }
 /// Opt-in parser positions for embedders that report authentic source locations.
 pub fn install_with_html_source_positions(scope: &mut v8::PinScope, html: &str) {
-    install_with_tree(scope, Tree::parse_with_source_positions(html));
+    let units = html.encode_utf16().collect::<Vec<_>>();
+    install_with_utf16_source_positions(scope, &units);
 }
 pub fn install_with_utf16_source_positions(scope: &mut v8::PinScope, units: &[u16]) {
-    install_with_tree(scope, Tree::parse_utf16_with_source_positions(units));
+    install_with_tree(
+        scope,
+        Tree::parse_utf16_with_source_positions_and_processing_instructions(units),
+    );
 }
 fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     SETUP_TERMINATED.with(|t| t.set(false));
+    // Fragment parsing tokenizes `<?target data?>` like Chrome (turbo-dom#135).
+    tree.set_processing_instructions(true);
     dom_isolation::install(scope);
     dom_ownership::track_gc(scope);
     // The document parser attaches declarative shadow roots (fragment parsing
@@ -7462,6 +7486,7 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     document_legacy::install(scope);
     capture_node_projector(scope);
     dom_implementation::install(scope);
+    xml_documents::install(scope);
     // Root flags must exist before template realization adopts nested contents.
     let declared = shadow_html::register(scope, declared);
     template_contents::install(scope);
@@ -10023,6 +10048,9 @@ mod dom_implementation_tests;
 #[cfg(test)]
 #[path = "mutation_observers_tests.rs"]
 mod mutation_observers_tests;
+#[cfg(test)]
+#[path = "xml_documents_tests.rs"]
+mod xml_documents_tests;
 
 #[cfg(test)]
 #[path = "ownership_guard_tests.rs"]

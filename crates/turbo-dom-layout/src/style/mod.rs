@@ -70,6 +70,11 @@ caption { display: table-caption; text-align: -webkit-center }
 td, th { display: table-cell; padding: 1px }
 th { font-weight: bold; text-align: center }
 li { display: list-item }
+ul, menu, dir { list-style-type: disc }
+ol { list-style-type: decimal }
+ul ul, ol ul { list-style-type: circle }
+ol ol ul, ol ul ul, ul ol ul, ul ul ul { list-style-type: square }
+ul ul, ul ol, ol ul, ol ol { margin-top: 0; margin-bottom: 0 }
 center { display: block; text-align: -webkit-center }
 hr { display: block; height: 1px; background-color: #cccccc }
 input { display: inline-block; width: 150px; height: 1.4em; border: 1px solid #a9a9a9; background-color: #ffffff }

@@ -539,32 +539,25 @@ fn differences_of(actual: &serde_json::Value, expected: &serde_json::Value) -> V
     out
 }
 
-/// KNOWN_GAP (miaskiewicz/turbo-dom#135): `<?target data?>` parses as a bogus comment.
-const SANITIZER_GAPS: &[(&str, &str)] = &[
-    (
-        "result.parseHTML[2][0]",
-        "\"<div id=\\\"h\\\"><span>light</span></div><!--c--><!--?pi x?-->\"",
-    ),
-    (
-        "result.setHTMLComments[0]",
-        "\"<div id=\\\"h\\\"><span>light</span></div><!--c--><!--?pi x?-->\"",
-    ),
-    (
-        "result.setHTMLPi[0]",
-        "\"<div id=\\\"h\\\"><span>light</span></div>\"",
-    ),
-    (
-        "result.setHTMLUnsafe[0]",
-        "\"<div id=\\\"h\\\"><span onclick=\\\"y\\\">light</span></div><!--c--><!--?pi x?-->\"",
-    ),
-];
-
 #[test]
 fn sanitizer_edges_match_chrome156() {
     check(
         include_str!("sanitizer_edges_probe.js"),
         include_str!("sanitizer_edges_chrome156.json"),
-        SANITIZER_GAPS,
+        &[],
+    );
+}
+
+/// HTML processing instructions (miaskiewicz/turbo-dom#135): every DOM parsing entry point
+/// tokenizes `<?target data?>` like Chrome 156 (a ProcessingInstruction for an ASCII-name
+/// target other than `xml`, else a bogus comment; nothing for one cut short by the end of
+/// input), and the parsed nodes serialize and sanitize like Chrome's.
+#[test]
+fn html_processing_instructions_match_chrome156() {
+    check(
+        include_str!("processing_instructions_probe.js"),
+        include_str!("processing_instructions_chrome156.json"),
+        &[],
     );
 }
 
@@ -643,4 +636,52 @@ fn custom_element_reaction_volume_matches_chrome156() {
         include_str!("reaction_volume_chrome156.json"),
         &[],
     );
+}
+
+/// HTML processing instructions in a loaded page (miaskiewicz/turbo-dom#135): every page
+/// installer parses `<?target data?>` like Chrome 156's main-document parser
+/// (`page_processing_instructions_chrome156.json`, recorded by
+/// `scripts/page-processing-instructions-chrome-control.mjs`).
+#[test]
+fn page_processing_instructions_match_chrome156() {
+    use crate::browser_env::{
+        install_with_html, install_with_html_source_positions, install_with_utf16_source_positions,
+        reset,
+    };
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("page_processing_instructions_chrome156.json")).unwrap();
+    assert_eq!(control["browser"], "Chrome/156.0.8078.47");
+    let describe = format!("JSON.stringify({})", control["describe"].as_str().unwrap());
+    let installers: [fn(&mut v8::PinScope, &str); 3] = [
+        install_with_html,
+        install_with_html_source_positions,
+        |scope, html| {
+            install_with_utf16_source_positions(scope, &html.encode_utf16().collect::<Vec<_>>());
+        },
+    ];
+    crate::browser_env::tests::init_v8();
+    let mut failures = Vec::new();
+    for (page, expected) in control["results"].as_object().unwrap() {
+        for (index, install) in installers.iter().enumerate() {
+            let isolate = &mut v8::Isolate::new(Default::default());
+            v8::scope!(let scope, isolate);
+            let context = v8::Context::new(scope, Default::default());
+            let scope = &mut v8::ContextScope::new(scope, context);
+            install(scope, page);
+            let code = v8::String::new(scope, &describe).unwrap();
+            let value = v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap()
+                .to_rust_string_lossy(scope);
+            reset();
+            let actual: serde_json::Value = serde_json::from_str(&value).unwrap();
+            if &actual != expected {
+                failures.push(format!(
+                    "installer {index} {page:?}\n  binding: {actual}\n  chrome:  {expected}"
+                ));
+            }
+        }
+    }
+    assert_eq!(failures, Vec::<String>::new());
 }

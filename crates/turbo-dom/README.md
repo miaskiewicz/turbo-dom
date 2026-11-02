@@ -111,7 +111,10 @@ Embedder entry points beyond the browser-facing API:
 
 - **Parsing:** `Tree::parse_with(html, ParseOptions)` (scripting flag);
   `Tree::parse_utf16` and `parse_srcdoc_utf16` keep the original UTF-16 units. `srcdoc` is
-  no-quirks, as in Chrome. `parse_with_source_positions` and
+  no-quirks, as in Chrome. `parse_utf16_with_processing_instructions` /
+  `set_processing_instructions` parse `<?target data?>` as Chrome 156 does (a
+  ProcessingInstruction; the default keeps html5lib-tests' bogus comment).
+  `parse_with_source_positions` and
   `parse_utf16_with_source_positions` record token positions, read with
   `source_position` / `source_attribute_position`.
 - **Fragments:** `Tree::create_contextual_fragment_utf16(context, units, scripting_enabled)`

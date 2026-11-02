@@ -40,6 +40,7 @@ MSRV 1.89.
 | feature | default | what it does |
 |---|---|---|
 | `bundled-fonts` | on | embeds Inter / Roboto, Liberation Serif / PT Serif, Fira Code / IBM Plex Mono (OFL, see `assets/fonts/NOTICE.md`) so documents lay out with zero caller fonts |
+| `hyphenation` | on | `hyphens: auto` dictionary hyphenation for `lang=en` / `en-*` (not en-GB): embeds the en-US Knuth-Liang patterns (TeX `hyph-en-us`, ~90 KB, `hyphenation` crate). Off, `hyphens: auto` acts as `manual` |
 | `svg` | off | the PDF SVG pipeline: `image::probe` / `image::decode` route `image/svg+xml` through the shared rasterizer at 2x (implies `svg-rasterize`) |
 | `svg-rasterize` | off | the shared SVG rasterizer alone (`svg::rasterize`, resvg `=0.45.1`, pinned: 0.46+ changes raster output) without routing `probe`/`decode` through it — what turbo-dom-raster enables |
 | `perf` | off | hot-path counters (`perf` module, `hot!` macro) |
@@ -74,6 +75,12 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   `NodeSources`: box → source node, for PDF/UA tagging and links). Options are in
   `LayoutOptions`. The galley types are `Fragment`, `FragmentContent`, `ImagePlacement`,
   `ClipRect`, `BoxShadow`, `LinearGradient`, `Transform2D` and `BreakMeta`.
+  `display: list-item` boxes get their `::marker` as Chrome 156 generates it: `list-item`
+  counters (`<ol start reversed>`, `<li value>`, the `type` attribute), the `list-style-type`
+  counter styles / strings / `disc` `circle` `square` shapes, and `list-style-position`
+  (an outside marker beside the first line box). A marker is sourceless: in the galley it
+  is a `Box` / `TextLine` fragment under its list item (no `NodeSources` entry), in a
+  snapshot `LayoutSnapshot::list_marker_owner` names its item, which it hits.
 - **Text** (`text`): `FontRegistry` (`new`, `FontRegistry::system(SystemFontPolicy)` for the
   process-wide installed fonts), `FontFace`, `layout_text`, `TextStyle`, `LineBox`, `Align`,
   `WhiteSpace`. `cmap` provides the reverse cmap for text extraction.

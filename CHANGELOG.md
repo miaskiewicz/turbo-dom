@@ -7,6 +7,41 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed
+
+- turbo-dom-layout implements `hyphens: auto` for English (`lang=en` / `en-US` / other `en-*`
+  regions; not en-GB): words break at the en-US Knuth-Liang points (the `hyphenation`
+  crate's embedded TeX `hyph-en-us` patterns, behind the new default-on `hyphenation`
+  feature, ~90 KB) under `hyphenate-limit-chars` (default 5 / 2 / 2), and a taken break
+  draws a hyphen. Like Chrome 156, each text node's letters hyphenate on their own, a
+  capitalized word, a word with a soft hyphen, `hyphens: manual | none` and unset or
+  unsupported languages are left alone, and a paragraph's last word is not hyphenated on a line with earlier
+  content. A word ending at a soft hyphen now also counts its hyphen when it has
+  `overflow-wrap` opportunities. `WordBreaking` gains `auto: Option<AutoHyphens>` and
+  `with_auto_hyphens`. Chrome on macOS hyphenates with the system dictionary, whose points
+  differ for some words. Control: `tests/fixtures/hyphens`
+  (`scripts/fixture-font-chrome-controls.mjs`) (#213).
+- turbo-dom-layout generates list markers (`::marker`) like Chrome 156: `list-item` counters
+  (`<ol start reversed>`, `<li value>`, `<ol|ul|li type>`), the `list-style-type` counter
+  styles (decimal, decimal-leading-zero, lower/upper-alpha/-latin, lower/upper-roman,
+  lower-greek, strings, none) and the `disc` / `circle` / `square` shapes,
+  `list-style-position` (and the `list-style` shorthand), the outside marker box beside the
+  item's first line box. turbo-dom-raster paints them (PNG and SVG), and
+  `cssom_view::hit::elements_at_point` hits a marker's list item (#128;
+  `scripts/list-marker-chrome-control.mjs`). The UA sheet gains Chrome's list-style-type
+  defaults and zero block margins for nested lists.
+- turbo-dom-raster paints inset `box-shadow`s (PNG and SVG) inside the padding box, over the
+  background and under the border, with offset, spread and blur, like Chrome 156 (#192).
+- HTML processing instructions like Chrome 156 (turbo-dom#135): `Tree::parse_utf16_with_processing_instructions`
+  and `Tree::set_processing_instructions` make the UTF-16 tokenizer parse `<?target data?>` as a
+  ProcessingInstruction (ASCII-name target other than `xml`; nothing when the input ends inside
+  one; otherwise the standard's bogus comment). turbo-dom-browser-env turns it on for every
+  document it installs or parses (loaded pages included; `parse_utf16_with_source_positions_and_processing_instructions`
+  for the source-position parse), so innerHTML / insertAdjacentHTML / createContextualFragment /
+  setHTML[Unsafe] / Document.parseHTML[Unsafe] match Chrome; a safe `setHTML` dictionary without
+  processing-instruction lists drops them and the sanitizer keeps Document-level ones, like
+  Chrome. The default mode and the conformance gates keep html5lib-tests' bogus comment.
+
 ## [0.6.0] — turbo-dom consolidation
 
 turbo-dom becomes the home of the shared browser engine of turbo-html2pdf, turbo-test

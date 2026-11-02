@@ -669,6 +669,11 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
                 .get("overflow-wrap")
                 .or_else(|| style.get("word-wrap")),
             style.get("hyphens"),
+        )
+        .with_auto_hyphens(
+            style.get("hyphens"),
+            style.get("-webkit-locale"),
+            style.get("hyphenate-limit-chars"),
         ),
     })
 }
@@ -749,6 +754,9 @@ fn marker_frag(node_id: NodeId, kind: MarkerKind, x: f32, y: f32) -> Fragment {
 /// vertical margins stay inside it (miaskiewicz/turbo-dom#80).
 fn lay_atomic(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
     let bs = resolve(b, cw, fs);
+    if let Some(marker) = super::list_marker::inside_symbol_fragment(b, &bs, ctx) {
+        return marker;
+    }
     let replaced = b.is_replaced();
     let root = inline_block(b);
     if !replaced && bs.width.resolve(cw).is_none() {
@@ -771,6 +779,28 @@ fn lay_atomic(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
     } else {
         layout_box(b, 0.0, 0.0, cw, fs, ctx)
     }
+}
+
+/// A `::marker` style resolved (its `font-size` is already absolute).
+pub(crate) fn resolve_marker_style(style: &crate::style::ComputedStyle, cw: f32) -> BoxStyle {
+    resolve_box_style(
+        style,
+        ResolveCtx {
+            parent_font_size: 16.0,
+            cb_width: cw,
+        },
+    )
+}
+
+/// An outside text marker's box laid out at the origin, and its baseline: as wide as its
+/// text, rounded up to a layout unit (1/64 device px) as Blink sizes the marker.
+pub(crate) fn lay_marker_text(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> (Fragment, f32) {
+    let bs = resolve(b, cw, fs);
+    let units = ctx.html_font_scale.unwrap_or(1.0) * 64.0;
+    let width = (super::flex::natural_width(b, ctx.fonts) * units).ceil() / units;
+    let frag = layout_box_sized_impl(b, &bs, 0.0, 0.0, width, ctx, true);
+    let baseline = atom_baseline(b, &frag).unwrap_or(frag.height);
+    (frag, baseline)
 }
 
 /// Whether an atomic inline is an `inline-block` (as specified: it lays out as a block
@@ -2649,6 +2679,16 @@ fn layout_box_sized_impl(
     let sticky_mark = ctx.sticky_pending.len();
     let (mut children, mut content_h) =
         layout_content(lb, bs, (content_x, content_y, content_w), bfc, ctx);
+    if lb.display == super::value::Display::ListItem {
+        super::list_marker::place_outside(
+            lb,
+            (bx, content_y),
+            content_w,
+            &mut children,
+            &mut content_h,
+            ctx,
+        );
+    }
     if let Some(outer) = saved_floats {
         let inner_bottom = ctx
             .floats
