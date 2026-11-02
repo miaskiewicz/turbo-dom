@@ -180,3 +180,44 @@ fn display_knows_every_two_keyword_form() {
         Spelled::Unchecked("flow-root flex".into())
     );
 }
+
+#[test]
+fn transform_functions_keep_chromes_camel_case() {
+    // Chrome 156 spells `el.style.transform = 'TRANSLATEX(-100%)'` back as `translateX(-100%)`:
+    // the transform functions with a capital letter keep it, however they were written
+    // (jest-dom's `toHaveStyle({ transform: 'translateX(-100%)' })` compares that spelling with
+    // the computed value). The others are lowercase.
+    for (written, spelled) in [
+        ("translateX(-100%)", "translateX(-100%)"),
+        (
+            "TRANSLATEX(1px) translatey(2px)",
+            "translateX(1px) translateY(2px)",
+        ),
+        (
+            "translateZ(1px) translate3D(1px, 2px, 3px)",
+            "translateZ(1px) translate3d(1px, 2px, 3px)",
+        ),
+        (
+            "scalex(2) SCALEY(3) scaleZ(1) Scale3d(1, 2, 3)",
+            "scaleX(2) scaleY(3) scaleZ(1) scale3d(1, 2, 3)",
+        ),
+        (
+            "rotatex(1deg) rotateY(2deg) ROTATEZ(3deg) rotate3D(1, 0, 0, 4deg)",
+            "rotateX(1deg) rotateY(2deg) rotateZ(3deg) rotate3d(1, 0, 0, 4deg)",
+        ),
+        (
+            "skewx(1deg) SKEWY(2deg) MATRIX3D(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)",
+            "skewX(1deg) skewY(2deg) matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)",
+        ),
+        (
+            "ROTATE(1deg) Scale(2) PERSPECTIVE(1px)",
+            "rotate(1deg) scale(2) perspective(1px)",
+        ),
+    ] {
+        let text = match longhand_value("transform", written) {
+            Spelled::Valid(text) | Spelled::Unchecked(text) => text,
+            other => panic!("{written}: {other:?}"),
+        };
+        assert_eq!(text, spelled, "{written}");
+    }
+}
