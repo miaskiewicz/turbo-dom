@@ -93,7 +93,8 @@ pub fn resolve_matched_style(
     )
 }
 
-/// The same legacy attribute hints (`bgcolor`, `width`, `height`, `color`, `align`) the
+/// The same legacy attribute hints (`bgcolor`, `width`, `height`, `color`, `align`, a
+/// list's `type`) the
 /// ordinary tree cascade applies, for an element named `local` (`None` = a marker)
 /// with `attrs`. Embedders can assign these the owning element's scope and an early
 /// author source order.
@@ -106,7 +107,7 @@ pub fn presentational_declarations(local: Option<&str>, attrs: &[Attr]) -> Vec<D
 }
 
 /// The attributes [`presentational_declarations`] reads.
-const HINT_ATTRIBUTES: [&str; 5] = ["bgcolor", "width", "height", "color", "align"];
+const HINT_ATTRIBUTES: [&str; 6] = ["bgcolor", "width", "height", "color", "align", "type"];
 
 /// [`presentational_declarations`] of a live element `h` named `local`, reading its
 /// attributes by qualified name (the live-DOM input, [`crate::live`]).

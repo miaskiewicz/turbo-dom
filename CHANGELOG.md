@@ -9,6 +9,15 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- turbo-dom-layout generates list markers (`::marker`) like Chrome 156: `list-item` counters
+  (`<ol start reversed>`, `<li value>`, `<ol|ul|li type>`), the `list-style-type` counter
+  styles (decimal, decimal-leading-zero, lower/upper-alpha/-latin, lower/upper-roman,
+  lower-greek, strings, none) and the `disc` / `circle` / `square` shapes,
+  `list-style-position` (and the `list-style` shorthand), the outside marker box beside the
+  item's first line box. turbo-dom-raster paints them (PNG and SVG), and
+  `cssom_view::hit::elements_at_point` hits a marker's list item (#128;
+  `scripts/list-marker-chrome-control.mjs`). The UA sheet gains Chrome's list-style-type
+  defaults and zero block margins for nested lists.
 - turbo-dom-raster paints inset `box-shadow`s (PNG and SVG) inside the padding box, over the
   background and under the border, with offset, spread and blur, like Chrome 156 (#192).
 

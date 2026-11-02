@@ -183,7 +183,10 @@ package or publish workflow.
   `Intrinsic::orientation`, laid out displayed unless `image-orientation: none`, painted via
   `ImagePlacement::orientation`; turbo-html2pdf#30); both probes follow Blink's size points for
   cut-short bodies and SVG images need an SVG-namespace root (turbo-dom#59,
-  `scripts/image-truncation-chrome-control.mjs`). `FontRegistry::system(policy)` is the process-wide system-font load. The
+  `scripts/image-truncation-chrome-control.mjs`). `layout::list_marker` generates `::marker`s
+  (counters, counter styles, symbol shapes, outside/inside placement; turbo-dom#128,
+  `scripts/list-marker-chrome-control.mjs`): a marker is a sourceless fragment under its list
+  item, `LayoutSnapshot::list_marker_owner` maps it to the item for hit testing. `FontRegistry::system(policy)` is the process-wide system-font load. The
   `test-support` feature (`test_support`) carries the font fixtures, `ComputedStyle` pairs
   and test-only tree literals for this crate's and turbo-html2pdf-core's tests (the crate's
   own integration tests enable it through a self dev-dependency).

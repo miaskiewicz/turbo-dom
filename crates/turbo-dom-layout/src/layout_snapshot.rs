@@ -180,14 +180,16 @@ pub struct LayoutSnapshot {
     html_layout_scale: Option<f32>,
     unsupported_svg_sources: std::collections::BTreeSet<SourceId>,
     unsupported_inline_sources: BTreeMap<SourceId, SnapshotError>,
+    /// The fragments of list markers (miaskiewicz/turbo-dom#128) -> their list item.
+    list_markers: BTreeMap<usize, SourceId>,
 }
 
 impl LayoutSnapshot {
-    /// The list item whose `::marker` fragment `fragment_index` is, if it is one
-    /// (miaskiewicz/turbo-dom#128: no marker is generated yet).
+    /// The list item whose `::marker` fragment `fragment_index` is (a sourceless marker
+    /// box, its symbol shape or its text; miaskiewicz/turbo-dom#128), if it is one.
     #[must_use]
-    pub fn list_marker_owner(&self, _fragment_index: usize) -> Option<SourceId> {
-        None
+    pub fn list_marker_owner(&self, fragment_index: usize) -> Option<SourceId> {
+        self.list_markers.get(&fragment_index).copied()
     }
 
     /// Global native affine coefficients retain double precision. Native box and
@@ -598,6 +600,7 @@ fn capture_styled_with_plan(
     let range_projection =
         range_projection::collect(&fragments, &transforms, font_layout_scale.is_some());
     let source_index = sources.iter().enumerate().map(|(i, s)| (s.id, i)).collect();
+    let list_markers = sources::list_markers(&fragments, &records);
     sources::index_fragments(&mut sources, &source_index, &fragments, &records);
     let exceeded = text.as_ref().is_some_and(|text| text.exceeded);
     let text_runs = text.map_or_else(Vec::new, |text| text.collect(&galley, &fragments));
@@ -617,6 +620,7 @@ fn capture_styled_with_plan(
         html_layout_scale: font_layout_scale,
         unsupported_svg_sources,
         unsupported_inline_sources,
+        list_markers,
     };
     range_projection::place_boxes(&mut snapshot);
     Ok((snapshot, exceeded))

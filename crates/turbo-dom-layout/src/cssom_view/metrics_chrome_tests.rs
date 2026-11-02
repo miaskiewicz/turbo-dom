@@ -211,6 +211,7 @@ fn reads(case: &Value) -> (Vec<String>, Vec<String>) {
 }
 
 /// The reads of every fixture case `select` picks, compared with Chrome's.
+#[cfg(feature = "bundled-fonts")]
 fn assert_cases_match(select: impl Fn(&str) -> bool) {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
     assert!(fixture["chrome"].as_str().unwrap().starts_with("156."));
