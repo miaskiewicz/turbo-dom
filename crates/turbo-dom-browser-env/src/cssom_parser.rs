@@ -468,6 +468,19 @@ impl<'i> DeclarationParser<'i> for CssParser {
                 }
                 return Ok(values >= 1 && values <= count);
             }
+            // Lightning CSS reads a shadow's `none` as an unparsed value; Chrome keeps it.
+            if matches!(
+                name.to_ascii_lowercase().as_str(),
+                "box-shadow" | "-webkit-box-shadow" | "text-shadow"
+            ) && input
+                .try_parse(|input| {
+                    input.expect_ident_matching("none")?;
+                    input.expect_exhausted()
+                })
+                .is_ok()
+            {
+                return Ok(true);
+            }
             let property=Property::parse(
                 PropertyId::from(lightningcss::values::string::CowArcStr::from(name.to_string())),
                 input,
@@ -716,6 +729,21 @@ pub fn parse_one(source: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{css_number, is_supported_property, parse, parse_media, parse_one, zoom_value};
+
+    #[test]
+    fn a_rule_keeps_a_none_shadow() {
+        // Chrome 156: `.a { box-shadow: none }` keeps the declaration (MUI's Card writes it;
+        // turbo-dom#227). Lightning CSS reads `none` as an unparsed value.
+        assert_eq!(
+            parse(".a{box-shadow:none;color:red}"),
+            ".a { box-shadow: none; color: red; }"
+        );
+        assert_eq!(
+            parse_one(".a{text-shadow:none}").as_deref(),
+            Some(".a { text-shadow: none; }")
+        );
+        assert!(!parse(".a{box-shadow:none none}").contains("box-shadow"));
+    }
 
     #[test]
     fn zoom_uses_chrome156_grammar_serialization_and_factors() {
