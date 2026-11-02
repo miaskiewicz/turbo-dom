@@ -74,6 +74,12 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   `NodeSources`: box → source node, for PDF/UA tagging and links). Options are in
   `LayoutOptions`. The galley types are `Fragment`, `FragmentContent`, `ImagePlacement`,
   `ClipRect`, `BoxShadow`, `LinearGradient`, `Transform2D` and `BreakMeta`.
+  `display: list-item` boxes get their `::marker` as Chrome 156 generates it: `list-item`
+  counters (`<ol start reversed>`, `<li value>`, the `type` attribute), the `list-style-type`
+  counter styles / strings / `disc` `circle` `square` shapes, and `list-style-position`
+  (an outside marker beside the first line box). A marker is sourceless: in the galley it
+  is a `Box` / `TextLine` fragment under its list item (no `NodeSources` entry), in a
+  snapshot `LayoutSnapshot::list_marker_owner` names its item, which it hits.
 - **Text** (`text`): `FontRegistry` (`new`, `FontRegistry::system(SystemFontPolicy)` for the
   process-wide installed fonts), `FontFace`, `layout_text`, `TextStyle`, `LineBox`, `Align`,
   `WhiteSpace`. `cmap` provides the reverse cmap for text extraction.

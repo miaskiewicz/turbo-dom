@@ -687,7 +687,12 @@ pub fn parse_html_document<'s>(
     html: &str,
     sanitize: bool,
 ) -> v8::Local<'s, v8::Object> {
-    parse_html_tree(scope, Tree::parse(html), sanitize)
+    let units = html.encode_utf16().collect::<Vec<_>>();
+    parse_html_tree(
+        scope,
+        Tree::parse_utf16_with_processing_instructions(&units),
+        sanitize,
+    )
 }
 /// Parse an original DOM string into native unit-backed payloads.
 pub fn parse_html_document_units<'s>(
@@ -695,7 +700,11 @@ pub fn parse_html_document_units<'s>(
     units: &[u16],
     sanitize: bool,
 ) -> v8::Local<'s, v8::Object> {
-    parse_html_tree(scope, Tree::parse_utf16(units), sanitize)
+    parse_html_tree(
+        scope,
+        Tree::parse_utf16_with_processing_instructions(units),
+        sanitize,
+    )
 }
 fn parse_html_tree<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -714,6 +723,7 @@ fn parse_html_tree_with<'s>(
     declarative: bool,
     sanitizer: Option<(&sanitizer::Config, bool)>,
 ) -> v8::Local<'s, v8::Object> {
+    tree.set_processing_instructions(true);
     let id = NEXT_DOM_ID.with(|next| {
         let id = next.get();
         next.set(id + 1);
@@ -7312,6 +7322,8 @@ pub fn install_with_utf16_source_positions(scope: &mut v8::PinScope, units: &[u1
 }
 fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     SETUP_TERMINATED.with(|t| t.set(false));
+    // Fragment parsing tokenizes `<?target data?>` like Chrome (turbo-dom#135).
+    tree.set_processing_instructions(true);
     dom_isolation::install(scope);
     dom_ownership::track_gc(scope);
     // The document parser attaches declarative shadow roots (fragment parsing

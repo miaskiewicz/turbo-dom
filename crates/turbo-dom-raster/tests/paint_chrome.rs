@@ -355,3 +355,13 @@ fn svg_screenshot_clips_with_a_clip_path() {
         "{empty}"
     );
 }
+
+/// Inset shadows paint inside the padding box, over the background and under the border,
+/// with their offset, spread (following the padding-box radius) and blur, in both painters
+/// (miaskiewicz/turbo-dom#192: they were skipped).
+#[test]
+fn inset_box_shadows_paint_inside_the_padding_box_like_chrome_156() {
+    let mut failures = differences(|id| id.starts_with("inset-"));
+    failures.extend(svg_differences(|id| id.starts_with("inset-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

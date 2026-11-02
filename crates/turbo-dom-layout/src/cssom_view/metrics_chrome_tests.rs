@@ -210,12 +210,8 @@ fn reads(case: &Value) -> (Vec<String>, Vec<String>) {
     (got, chrome)
 }
 
-/// Cases of open bugs, held out of [`element_metrics_and_hits_match_chrome_156`] and
-/// asserted by [`held_out_cases_match_chrome_156`] (`#[ignore]`d until the fix lands):
-/// miaskiewicz/turbo-dom#128 (a list marker hits its list item).
-const HELD_OUT: &[&str] = &["hits-list-marker"];
-
 /// The reads of every fixture case `select` picks, compared with Chrome's.
+#[cfg(feature = "bundled-fonts")]
 fn assert_cases_match(select: impl Fn(&str) -> bool) {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
     assert!(fixture["chrome"].as_str().unwrap().starts_with("156."));
@@ -238,13 +234,15 @@ fn assert_cases_match(select: impl Fn(&str) -> bool) {
 #[cfg(feature = "bundled-fonts")]
 #[test]
 fn element_metrics_and_hits_match_chrome_156() {
-    assert_cases_match(|id| !HELD_OUT.contains(&id));
+    assert_cases_match(|_| true);
 }
 
+/// miaskiewicz/turbo-dom#128: a list item's outside marker (a sourceless box beside its
+/// first line) hits the list item.
+#[cfg(feature = "bundled-fonts")]
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#128: fails until the fix"]
-fn held_out_cases_match_chrome_156() {
-    assert_cases_match(|id| HELD_OUT.contains(&id));
+fn list_markers_hit_their_list_item_like_chrome_156() {
+    assert_cases_match(|id| id == "hits-list-marker");
 }
 
 /// miaskiewicz/turbo-dom#142: an `inline-block` holding text sits on its last line

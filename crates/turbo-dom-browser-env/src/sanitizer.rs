@@ -325,7 +325,8 @@ pub(super) fn sanitize(
             8 if !config.comments && tree.node_type_id(parent) != 9 => {
                 tree.remove_child(parent, node)
             }
-            7 => {
+            // ... and processing instructions that are children of a Document.
+            7 if tree.node_type_id(parent) != 9 => {
                 let target = tree
                     .processing_instruction_target(node)
                     .unwrap_or_default()
@@ -569,7 +570,7 @@ fn native<'s>(
             let config = v8::Local::<v8::Object>::try_from(args.get(3))
                 .ok()
                 .and_then(|record| Config::read(scope, record));
-            let tree = Tree::parse_utf16(&html);
+            let tree = Tree::parse_utf16_with_processing_instructions(&html);
             let document = parse_html_tree_with(
                 scope,
                 tree,

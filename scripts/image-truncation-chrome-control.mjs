@@ -79,7 +79,7 @@ for (const [id, doc] of SVGS) sources.push({ id, src: `data:image/svg+xml,${enco
 const SVGZ = gzipSync(Buffer.from(SVGS[0][1]));
 sources.push({ id: "svgz", src: `data:image/svg+xml;base64,${SVGZ.toString("base64")}` });
 
-const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 800, height: 600 }, deviceScaleFactor: 1 });
 await page.setContent("<!DOCTYPE html><body></body>", { waitUntil: "load" });

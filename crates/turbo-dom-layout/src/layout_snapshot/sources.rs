@@ -11,6 +11,9 @@ pub(crate) struct SourceRecord {
     pub(crate) id: Option<SourceId>,
     pub(crate) ancestors: Vec<SourceId>,
     pub(crate) inline_block_owners: Vec<SourceId>,
+    /// A list item's generated `::marker` box or text (sourceless; its owner is the
+    /// last of `ancestors`, miaskiewicz/turbo-dom#128).
+    pub(crate) list_marker: bool,
 }
 
 pub(crate) struct BuildSources {
@@ -33,6 +36,18 @@ impl BuildSources {
             if !record.inline_block_owners.contains(&owner) {
                 record.inline_block_owners.push(owner);
             }
+        }
+    }
+
+    /// Record `marker` as a `::marker` box/text of the list item box `owner`: sourceless,
+    /// with the item as its innermost ancestor.
+    pub(crate) fn list_marker(&mut self, marker: NodeId, owner: NodeId) {
+        // (An item outside the snapshot's identities has no record, nor does its marker.)
+        if let Some(mut record) = self.records.get(&owner).cloned() {
+            record.ancestors.extend(record.id.take());
+            record.inline_block_owners.clear();
+            record.list_marker = true;
+            self.records.insert(marker, record);
         }
     }
 
@@ -179,6 +194,7 @@ impl Walker<'_> {
                 id,
                 ancestors: ancestors.to_vec(),
                 inline_block_owners: Vec::new(),
+                list_marker: false,
             },
         );
         if let Some(id) = id {
@@ -243,6 +259,22 @@ fn node_key(node: &StyledNode) -> (usize, SourceKind) {
             SourceKind::Text,
         ),
     }
+}
+
+/// The fragments of list markers, each with its list item (the innermost recorded
+/// ancestor).
+pub(crate) fn list_markers(
+    fragments: &[SnapshotFragment],
+    records: &HashMap<NodeId, SourceRecord>,
+) -> BTreeMap<usize, SourceId> {
+    fragments
+        .iter()
+        .filter_map(|fragment| {
+            let record = records.get(&fragment.layout_node_id)?;
+            let owner = record.ancestors.last().filter(|_| record.list_marker)?;
+            Some((fragment.index, *owner))
+        })
+        .collect()
 }
 
 pub(crate) fn index_fragments(

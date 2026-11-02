@@ -5,8 +5,8 @@
 // rendering-frame clock through a trusted host (ns.installAnimationHost): each frame runs
 // "update animations and send events" before the animation-frame callbacks and commits
 // pending animations after them. Keyframe effects compose into the computed-style
-// snapshot (ns.animatedStyle). CSS animations/transitions are not modeled, so
-// getAnimations() reports script animations only.
+// snapshot (ns.animatedStyle). Declarative CSS animations and transitions are CSSAnimation /
+// CSSTransition objects on the same model, created as elements resolve their style.
 (function () {
   'use strict';
   const Native = globalThis.__animationsNative; delete globalThis.__animationsNative;
@@ -1096,6 +1096,7 @@
   ns.hasAnimations = function (element) { const entries = targets.get(element); return !!(entries && entries.length); };
   ns.animatedStyle = function (element, read, inherited) {
     if (suppressStyle) return null;
+    cssUpdate(element, read, inherited);
     const stack = effectStack(element, null);
     return stack ? stackResult(stack, read, inherited) : null;
   };
@@ -1330,9 +1331,11 @@
       if (previous !== null) setCurrentTime(this, record, previous, prefix);
     });
   });
-  accessor(AP, 'playState', function () { return playState(animationRecord(this)); });
+  // A declarative animation's playState / pending flush its owner's style first, as Blink's do.
+  const cssOwnerStyle = record => { if (record.css && computedStyle && apply(connectedGetter, record.css.owner, [])) apply(computedStyle, g, [record.css.owner]).opacity; return record; };
+  accessor(AP, 'playState', function () { return playState(cssOwnerStyle(animationRecord(this))); });
   accessor(AP, 'replaceState', function () { return animationRecord(this).replace; });
-  accessor(AP, 'pending', function () { return animationRecord(this).task !== null; });
+  accessor(AP, 'pending', function () { return cssOwnerStyle(animationRecord(this)).task !== null; });
   accessor(AP, 'id', function () { return animationRecord(this).id; }, function (value) { const record = animationRecord(this); record.id = string(value); });
   for (const type of ['finish', 'cancel', 'remove']) {
     const name = 'on' + type;
@@ -1419,6 +1422,17 @@
     return min(max(time / end, 0), 1);
   });
   reorder(AP, ['effect', 'timeline', 'startTime', 'currentTime', 'playbackRate', 'playState', 'replaceState', 'pending', 'id', 'onfinish', 'oncancel', 'onremove', 'finished', 'ready', 'cancel', 'commitStyles', 'finish', 'pause', 'persist', 'play', 'reverse', 'updatePlaybackRate', 'overallProgress']);
+  // CSSAnimation / CSSTransition: the Animation subclasses of declarative animations.
+  const cssInterface = (name, member, kind, field) => {
+    const delegate = illegalConstructor(name);
+    const constructor = make(delegate, name, 0, true, true, false);
+    finishInterface(constructor, delegate, name, Animation, AP);
+    accessor(delegate.prototype, member, function () { const record = animationRecord(this); if (!record.css || record.css.kind !== kind) throw illegal(); return record.css[field]; });
+    reorder(delegate.prototype, [member]);
+    return constructor;
+  };
+  const CSSAnimation = cssInterface('CSSAnimation', 'animationName', 1, 'name');
+  const CSSTransition = cssInterface('CSSTransition', 'transitionProperty', 0, 'property');
   reorder(KP, ['target', 'pseudoElement', 'composite', 'getKeyframes', 'setKeyframes']);
   reorder(AnimationEffectDelegate.prototype, ['getComputedTiming', 'getTiming', 'updateTiming']);
   reorder(AnimationTimelineDelegate.prototype, ['currentTime', 'duration']);
@@ -1439,8 +1453,193 @@
     return { read, inherited };
   }
 
+  // ---- CSS animations and transitions (turbo-dom#187) --------------------------------------
+  // Declarative animations belong to their element. Every style resolution of an element
+  // (getComputedStyle, and the style flush getAnimations() runs over the document) compares
+  // its animation-* / transition-* lists and transitioned values with the previous
+  // resolution, and creates, keeps or cancels CSSAnimation / CSSTransition objects that run
+  // on the same timing model as script animations.
+  const cssStates = store();
+  const CSS_TRANSITION = 0, CSS_ANIMATION = 1, SCRIPT = 2; // CSSTransition / CSSAnimation kinds above
+  const firstChild = ns.domAccessor('firstChild', false, 'Node'), nextSibling = ns.domAccessor('nextSibling', false, 'Node');
+  const comparePosition = g.Node.prototype.compareDocumentPosition;
+  let cssBusy = false, cssGeneration = 0, cssKeyframes = null;
+  // A comma-separated computed list; commas inside functions do not split.
+  function splitList(text) {
+    const out = [];
+    if (intrinsic.trim(text) === '') return out;
+    let depth = 0, start = 0;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (c === '(') depth++;
+      else if (c === ')') depth--;
+      else if (c === ',' && !depth) { push(out, intrinsic.trim(intrinsic.slice(text, start, i))); start = i + 1; }
+    }
+    return push(out, intrinsic.trim(intrinsic.slice(text, start)));
+  }
+  const pickList = (values, i, fallback) => values.length ? values[i % values.length] : fallback;
+  function milliseconds(text) {
+    const match = intrinsic.exec(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(m?s)$/i, text);
+    return match ? (intrinsic.toLowerCase(match[2]) === 'ms' ? +match[1] : +match[1] * 1000) : 0;
+  }
+  const toUpper = String.prototype.toUpperCase;
+  // A CSS property name as its IDL attribute (margin-left -> marginLeft).
+  function idlName(css) {
+    let out = '';
+    for (let i = 0; i < css.length; i++) out += css[i] === '-' && i > 0 && i + 1 < css.length ? apply(toUpper, css[++i], []) : css[i];
+    return out;
+  }
+  function cssState(element) { let state = cssStates.get(element); if (!state) cssStates.set(element, state = { animations: [], transitions: create(null), values: create(null) }); return state; }
+  function cssCreate(constructor, element, keyframes, timing, css) {
+    const effect = construct(function () {}, [], KeyframeEffect);
+    createEffect(effect, element, keyframes, timing, '', null);
+    const animation = construct(TargetType, [], constructor);
+    const record = newAnimation(animation, effect, documentTimeline(apply(ownerGetter, element, []) || realmDocument));
+    record.css = css;
+    play(animation, record, true, '');
+    track(animation);
+    return animation;
+  }
+  const cssCancel = animation => { const record = animations.get(animation); mutate(animation, record, () => cancel(animation, record)); };
+  // Keyframe offsets of a keyframe selector list (from / to / percentages).
+  function keyframeOffsets(selector) {
+    const out = [], parts = splitList(selector);
+    for (let i = 0; i < parts.length; i++) {
+      const part = intrinsic.toLowerCase(parts[i]);
+      if (part === 'from') push(out, 0);
+      else if (part === 'to') push(out, 1);
+      else if (intrinsic.test(/^(?:\d+\.?\d*|\.\d+)%$/, part)) push(out, +intrinsic.slice(part, 0, -1) / 100);
+    }
+    return out;
+  }
+  // The keyframes of an @keyframes rule as Element.animate input: computed colors, per-keyframe
+  // animation-timing-function, and boundary keyframes from the underlying style (composite
+  // 'replace') where the rule has none.
+  function cssFrameValues(frame, values, properties, underlying) {
+    for (let k = 0; k < values.length; k++) {
+      const name = values[k][0], text = values[k][1];
+      if (name === 'animation-timing-function') { frame.easing = text; continue; }
+      if (intrinsic.slice(name, 0, 10) === 'animation-' || Native('property', idlName(name)) !== name) continue;
+      frame.values[name] = COLORS[name] ? cssColor(text, underlying) : text;
+      if (!contains(properties, name)) push(properties, name);
+    }
+  }
+  function cssKeyframeInput(rule, easingText, underlying) {
+    const byOffset = [], properties = [];
+    for (let i = 0; i < rule.length; i++) {
+      const offsets = keyframeOffsets(rule[i].selector);
+      for (let j = 0; j < offsets.length; j++) {
+        let frame = null;
+        for (let k = 0; k < byOffset.length; k++) if (byOffset[k].offset === offsets[j]) frame = byOffset[k];
+        if (!frame) push(byOffset, frame = { offset: offsets[j], easing: easingText, composite: 'auto', values: create(null) });
+        cssFrameValues(frame, rule[i].values, properties, underlying);
+      }
+    }
+    sortBy(byOffset, frame => frame.offset);
+    const boundary = offset => { const values = create(null); for (let i = 0; i < properties.length; i++) values[properties[i]] = COLORS[properties[i]] ? cssColor(underlying(properties[i]), underlying) : underlying(properties[i]); return { offset, easing: easingText, composite: 'replace', values }; };
+    if (!byOffset.length || byOffset[0].offset !== 0) { for (let i = byOffset.length; i > 0; i--) byOffset[i] = byOffset[i - 1]; byOffset[0] = boundary(0); }
+    if (byOffset[byOffset.length - 1].offset !== 1) push(byOffset, boundary(1));
+    const out = [];
+    for (let i = 0; i < byOffset.length; i++) {
+      const frame = byOffset[i], object = { offset: frame.offset, easing: frame.easing, composite: frame.composite };
+      for (const name in frame.values) object[idlName(name)] = frame.values[name];
+      push(out, object);
+    }
+    return out;
+  }
+  function cssColor(text, underlying) {
+    const color = parseColor(text, { currentColor: () => parseColor(underlying('color'), { currentColor: () => null }) });
+    return color ? serializeColor(color) : text;
+  }
+  function cssAnimation(element, name, rule, lists, i, underlying) {
+    const count = pickList(lists['iteration-count'], i, '1');
+    const timing = { duration: milliseconds(pickList(lists.duration, i, '0s')), delay: milliseconds(pickList(lists.delay, i, '0s')), iterations: count === 'infinite' ? Infinity : +count, direction: pickList(lists.direction, i, 'normal'), fill: pickList(lists['fill-mode'], i, 'none'), easing: 'linear' };
+    const animation = cssCreate(CSSAnimation, element, cssKeyframeInput(rule, pickList(lists['timing-function'], i, 'ease'), underlying), timing, { kind: CSS_ANIMATION, owner: element, name, index: i });
+    if (pickList(lists['play-state'], i, 'running') === 'paused') pause(animation, animations.get(animation), '');
+    return animation;
+  }
+  function cssAnimations(element, read, underlying) {
+    const state = cssState(element), names = splitList(read('animation-name'));
+    const lists = {};
+    const fields = ['duration', 'delay', 'iteration-count', 'direction', 'fill-mode', 'timing-function', 'play-state'];
+    for (let i = 0; i < fields.length; i++) lists[fields[i]] = splitList(read('animation-' + fields[i]));
+    const kept = [];
+    for (let i = 0; i < names.length; i++) {
+      const name = names[i];
+      if (name === 'none' || read('display') === 'none') continue;
+      if (!cssKeyframes) cssKeyframes = ns.cssKeyframes ? ns.cssKeyframes() : create(null);
+      const rule = cssKeyframes[name];
+      if (!rule) continue;
+      let entry = null;
+      for (let j = 0; j < state.animations.length && !entry; j++) if (state.animations[j].name === name && !contains(kept, state.animations[j])) entry = state.animations[j];
+      if (!entry) entry = { name, animation: cssAnimation(element, name, rule, lists, i, underlying) };
+      animations.get(entry.animation).css.index = i;
+      push(kept, entry);
+    }
+    for (let i = 0; i < state.animations.length; i++) if (!contains(kept, state.animations[i])) cssCancel(state.animations[i].animation);
+    state.animations = kept;
+  }
+  function cssTransitions(element, read, underlying) {
+    const state = cssState(element), properties = splitList(read('transition-property'));
+    const durations = splitList(read('transition-duration')), delays = splitList(read('transition-delay')), easings = splitList(read('transition-timing-function'));
+    // The transitions one style change starts share a generation (ordered by property name).
+    const seen = create(null), generation = cssGeneration + 1;
+    for (let i = 0; i < properties.length; i++) {
+      const property = properties[i];
+      if (Native('property', idlName(property)) !== property || seen[property]) continue;
+      seen[property] = true;
+      const value = underlying(property), before = state.values[property];
+      state.values[property] = value;
+      const duration = milliseconds(pickList(durations, i, '0s')), delay = milliseconds(pickList(delays, i, '0s'));
+      if (before === undefined || before === value || max(duration, 0) + delay <= 0) continue;
+      if (state.transitions[property]) cssCancel(state.transitions[property]);
+      const idl = idlName(property), from = { offset: 0, easing: 'linear', composite: 'auto' }, to = { offset: 1, easing: 'linear', composite: 'auto' };
+      from[idl] = COLORS[property] ? cssColor(before, underlying) : before;
+      to[idl] = COLORS[property] ? cssColor(value, underlying) : value;
+      const timing = { duration, delay, fill: 'backwards', easing: pickList(easings, i, 'ease') };
+      state.transitions[property] = cssCreate(CSSTransition, element, [from, to], timing, { kind: CSS_TRANSITION, owner: element, property, generation: cssGeneration = generation });
+    }
+    for (const property in state.values) if (!seen[property]) delete state.values[property];
+  }
+  function cssUpdate(element, read, inherited) {
+    if (cssBusy) return;
+    const declared = read('animation-name') || read('transition-property');
+    if (!declared && !cssStates.has(element)) return;
+    cssBusy = true;
+    try {
+      const underlying = property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
+      cssAnimations(element, read, underlying);
+      cssTransitions(element, read, underlying);
+    } finally { cssBusy = false; }
+  }
+  // getAnimations() flushes style: every element of the tree resolves its style once.
+  function cssFlush(node) {
+    if (!computedStyle) return;
+    cssKeyframes = null;
+    const visit = parent => {
+      for (let child = apply(firstChild, parent, []); child; child = apply(nextSibling, child, [])) {
+        if (nodeType(child) !== 1) continue;
+        apply(computedStyle, g, [child]).opacity;
+        visit(child);
+      }
+    };
+    visit(node);
+    cssKeyframes = null;
+  }
+  const cssClass = record => record.css ? record.css.kind : SCRIPT;
+  // https://drafts.csswg.org/css-transitions-2/#animation-composite-order and its css-animations-2
+  // counterpart: transitions, then CSS animations (tree order of the owner, then generation /
+  // list position), then script animations in creation order.
+  function compositeOrder(a, b) {
+    const left = animations.get(a), right = animations.get(b), kind = cssClass(left) - cssClass(right);
+    if (kind || !left.css) return kind || left.seq - right.seq;
+    if (left.css.owner !== right.css.owner) return apply(comparePosition, left.css.owner, [right.css.owner]) & 4 ? -1 : 1;
+    if (left.css.kind === CSS_ANIMATION) return left.css.index - right.css.index;
+    return left.css.generation !== right.css.generation ? left.css.generation - right.css.generation : left.css.property < right.css.property ? -1 : 1;
+  }
+
   // Element.animate / getAnimations and DocumentOrShadowRoot.getAnimations
-  const byComposite = list => sortBy(list, animation => animations.get(animation).seq);
+  const byComposite = list => { for (let i = 1; i < list.length; i++) { const item = list[i]; let j = i - 1; while (j >= 0 && compositeOrder(list[j], item) > 0) { list[j + 1] = list[j]; j--; } list[j + 1] = item; } return list; };
   function collect(test) {
     const out = [];
     for (let at = 0, all = list(); at < all.length; at++) { const animation = all[at];
@@ -1497,6 +1696,7 @@
     const subtree = input !== null && !!input.subtree;
     const element = this;
     if (!apply(connectedGetter, element, [])) return [];
+    cssFlush(apply(ownerGetter, element, []));
     // Pseudo-element targets count only once the pseudo-element is generated; without a
     // layout tree none is, so subtree queries skip them as Chrome does for content-less ones.
     return collect(effect => effect.pseudo === null && (effect.target === element || (subtree && apply(containsNode, element, [effect.target]))));
@@ -1506,11 +1706,13 @@
   method(g.Document.prototype, 'getAnimations', function () {
     if (nodeType(this) !== 9) throw illegal();
     const document = this;
+    cssFlush(document);
     return collect(effect => root(effect.target) === document);
   }, 0);
   if (g.ShadowRoot) method(g.ShadowRoot.prototype, 'getAnimations', function () {
     try { apply(shadowMode.get, this, []); } catch (error) { throw illegal(); }
     const shadow = this;
+    cssFlush(shadow);
     return collect(effect => root(effect.target) === shadow);
   }, 0);
 

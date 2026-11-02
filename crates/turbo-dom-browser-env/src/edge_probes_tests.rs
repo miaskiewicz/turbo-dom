@@ -539,32 +539,25 @@ fn differences_of(actual: &serde_json::Value, expected: &serde_json::Value) -> V
     out
 }
 
-/// KNOWN_GAP (miaskiewicz/turbo-dom#135): `<?target data?>` parses as a bogus comment.
-const SANITIZER_GAPS: &[(&str, &str)] = &[
-    (
-        "result.parseHTML[2][0]",
-        "\"<div id=\\\"h\\\"><span>light</span></div><!--c--><!--?pi x?-->\"",
-    ),
-    (
-        "result.setHTMLComments[0]",
-        "\"<div id=\\\"h\\\"><span>light</span></div><!--c--><!--?pi x?-->\"",
-    ),
-    (
-        "result.setHTMLPi[0]",
-        "\"<div id=\\\"h\\\"><span>light</span></div>\"",
-    ),
-    (
-        "result.setHTMLUnsafe[0]",
-        "\"<div id=\\\"h\\\"><span onclick=\\\"y\\\">light</span></div><!--c--><!--?pi x?-->\"",
-    ),
-];
-
 #[test]
 fn sanitizer_edges_match_chrome156() {
     check(
         include_str!("sanitizer_edges_probe.js"),
         include_str!("sanitizer_edges_chrome156.json"),
-        SANITIZER_GAPS,
+        &[],
+    );
+}
+
+/// HTML processing instructions (miaskiewicz/turbo-dom#135): every DOM parsing entry point
+/// tokenizes `<?target data?>` like Chrome 156 (a ProcessingInstruction for an ASCII-name
+/// target other than `xml`, else a bogus comment; nothing for one cut short by the end of
+/// input), and the parsed nodes serialize and sanitize like Chrome's.
+#[test]
+fn html_processing_instructions_match_chrome156() {
+    check(
+        include_str!("processing_instructions_probe.js"),
+        include_str!("processing_instructions_chrome156.json"),
+        &[],
     );
 }
 

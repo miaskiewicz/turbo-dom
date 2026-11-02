@@ -22,8 +22,12 @@ tokens, nesting 32, and 200,000 snapshot reads per evaluation. Traversal execute
 inside V8 and remains interruptible by the embedding runtime's guest watchdog.
 Limits fail with `NotSupportedError`; they do not change the document.
 
-Namespace-axis result nodes and fragment/shadow-root contexts are explicitly
-unsupported. DOM XPath variables and extension functions are syntax errors. The
+Contexts inside a DocumentFragment, a shadow root or a detached subtree evaluate
+like Chrome 156: `/` is the context's highest `parentNode` ancestor (the fragment
+or shadow root), `id()` in a shadow tree searches that shadow root, and the
+namespace axis is empty (turbo-dom#185; `xpath_contexts_chrome156.json`). A
+fragment or shadow root itself as the context throws `NotSupportedError`, as in
+Chrome. DOM XPath variables and extension functions are syntax errors. The
 native HTML document binding supplies its existing namespace-aware foreign nodes;
 this does not add an XML parser. The separate turbo-surf view crate's deliberately
 minimal XPath helper is unchanged.

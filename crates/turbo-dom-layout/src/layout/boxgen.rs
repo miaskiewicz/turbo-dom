@@ -71,6 +71,10 @@ pub struct LayoutBox {
     measure_cache: RefCell<Option<Box<MeasuredSizes>>>,
     /// Memoized margin-collapsing walks ([`MarginMemo`], miaskiewicz/turbo-dom#202).
     margin_memo: MarginMemoSlot,
+    /// A list item's `::marker` (miaskiewicz/turbo-dom#128): on the list item for an
+    /// outside marker, placed beside its first line box at layout; on the inline-block
+    /// symbol box an inside marker inserts into the first line.
+    pub(crate) list_marker: Option<Box<super::list_marker::ListMarker>>,
 }
 
 fn same_original_inputs(
@@ -355,6 +359,13 @@ impl LayoutBox {
         }
         self.set_child_original_units(units);
     }
+    /// An outside text marker's inline-block box (laid out with this list item).
+    fn marker_text_box(&self) -> Option<&LayoutBox> {
+        match &self.list_marker.as_deref()?.content {
+            super::list_marker::MarkerContent::Text(text) => Some(text),
+            super::list_marker::MarkerContent::Symbol(_) => None,
+        }
+    }
     fn clear_measured_values(&self) {
         let mut storage = self.measure_cache.borrow_mut();
         if storage
@@ -370,6 +381,9 @@ impl LayoutBox {
         &self,
         units: Option<&std::sync::Arc<crate::layout_snapshot::text_units::NativeUnitMap>>,
     ) {
+        if let Some(text) = self.marker_text_box() {
+            text.set_original_units(units);
+        }
         match &self.kind {
             BoxKind::Block(children)
             | BoxKind::Flex(children)
@@ -391,6 +405,9 @@ impl LayoutBox {
     }
 
     fn set_child_html_layout_policy(&self, policy: (bool, Option<f32>)) {
+        if let Some(text) = self.marker_text_box() {
+            text.set_html_layout_policy(policy);
+        }
         match &self.kind {
             BoxKind::Block(children)
             | BoxKind::Flex(children)
@@ -551,6 +568,8 @@ struct Ids {
     /// Whether a box in the top layer (the fullscreen element, miaskiewicz/turbo-dom#82)
     /// was built: [`build_root`] then hoists it.
     top_layer: bool,
+    /// The `list-item` counters of the lists being built (miaskiewicz/turbo-dom#128).
+    lists: super::list_marker::ListCounters,
 }
 
 impl Ids {
@@ -563,6 +582,7 @@ impl Ids {
             atomic_internal_links: options.atomic_internal_links,
             keep_zero_area_clips: options.keep_zero_area_clips,
             top_layer: false,
+            lists: super::list_marker::ListCounters::default(),
         }
     }
 
@@ -576,6 +596,15 @@ impl Ids {
         let id = self.alloc();
         if let Some(sources) = &mut self.sources {
             sources.record(id, key);
+        }
+        id
+    }
+
+    /// An id for a `::marker` box or text of the list item box `owner`.
+    fn marker(&mut self, owner: NodeId) -> NodeId {
+        let id = self.alloc();
+        if let Some(sources) = &mut self.sources {
+            sources.list_marker(id, owner);
         }
         id
     }
@@ -994,6 +1023,7 @@ fn table_kind(el: &StyledElement, ids: &mut Ids) -> BoxKind {
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        list_marker: None,
     });
     BoxKind::Table(captions)
 }
@@ -1083,6 +1113,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             intrinsic_w: std::cell::Cell::new(None),
             measure_cache: RefCell::new(None),
             margin_memo: MarginMemoSlot::default(),
+            list_marker: None,
         };
     }
     let svg_viewport = ids.is_svg_viewport(el).then(|| {
@@ -1091,11 +1122,21 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             ids.sources.as_ref().unwrap().svg_layout_scale,
         ))
     });
+    let mut list_marker = None;
     let (display, kind) = if svg_viewport.is_some() {
         (super::svg_viewport::display(el), BoxKind::Lines(Vec::new()))
     } else {
         let display = display_of(&el.style);
-        (display, box_kind_for(display, el, ids))
+        let ordinal = (display == Display::ListItem).then(|| ids.lists.ordinal(el));
+        let list = ids.lists.enter(el);
+        let mut kind = box_kind_for(display, el, ids);
+        if list {
+            ids.lists.leave();
+        }
+        if let Some(ordinal) = ordinal {
+            list_marker = marker_of(el, node_id, ordinal, &mut kind, ids);
+        }
+        (display, kind)
     };
     // A table wrapper box paints nothing of its own: its grid box has the images.
     let wrapper = is_table_wrapper(&kind);
@@ -1117,7 +1158,53 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        list_marker,
     }
+}
+
+/// The `::marker` of the list item `el` (box `owner`) at counter value `ordinal`
+/// (miaskiewicz/turbo-dom#128): an outside marker is returned for layout to place beside
+/// the first line; an inside one goes into `kind`'s first line now.
+fn marker_of(
+    el: &StyledElement,
+    owner: NodeId,
+    ordinal: i64,
+    kind: &mut BoxKind,
+    ids: &mut Ids,
+) -> Option<Box<super::list_marker::ListMarker>> {
+    use super::list_marker::{self as marker, Content, ListMarker, MarkerContent};
+    let content = marker::content(el.style.get("list-style-type"), ordinal)?;
+    let style = marker::marker_style(&el.style);
+    let node_id = ids.marker(owner);
+    let inside = marker::inside(&el.style);
+    let item = match content {
+        Content::Text(text) if inside => InlineItem::Text {
+            node_id,
+            style,
+            text,
+        },
+        Content::Text(text) => {
+            let text_box = marker::text_box(node_id, ids.marker(owner), &style, text);
+            return Some(Box::new(ListMarker {
+                node_id,
+                style,
+                content: MarkerContent::Text(Box::new(text_box)),
+            }));
+        }
+        Content::Symbol(symbol) => {
+            let marker = ListMarker {
+                node_id,
+                style,
+                content: MarkerContent::Symbol(symbol),
+            };
+            if !inside {
+                return Some(Box::new(marker));
+            }
+            InlineItem::Atomic(marker::symbol_box(marker))
+        }
+    };
+    marker::insert_inside(kind, item, |items| anon_lines_box(items, &el.style, ids));
+    None
 }
 
 /// The raster image a styled element references: an `<img src>` is replaced
@@ -1330,6 +1417,7 @@ fn anon_lines_box(
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        list_marker: None,
     }
 }
 
@@ -1577,7 +1665,7 @@ fn backdrop_box(node_id: NodeId) -> LayoutBox {
 }
 
 /// A sourceless block box.
-fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind) -> LayoutBox {
+pub(crate) fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind) -> LayoutBox {
     LayoutBox {
         node_id,
         source_role: SourceRole::Ordinary,
@@ -1595,6 +1683,7 @@ fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind) -> Layout
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        list_marker: None,
     }
 }
 
