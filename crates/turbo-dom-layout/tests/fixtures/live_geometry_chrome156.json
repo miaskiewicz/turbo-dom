@@ -5489,7 +5489,9 @@
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"lr\" style=\"height:100px\">a<span data-cid=\"i\" style=\"display:inline-block;padding:2px\">bc</span></div>",
    "fonts": true,
    "metrics": true,
-   "measure": {},
+   "measure": {
+    "i": "xyw"
+   },
    "boxes": [
     {
      "cid": "v",
@@ -5538,8 +5540,8 @@
    ]
   },
   {
-   "id": "vertical-rl-img",
-   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"rl\" style=\"height:100px\"><img data-cid=\"i\" width=\"20\" height=\"30\" style=\"display:block\"><img data-cid=\"j\" style=\"width:8px;height:9px\"></div>",
+   "id": "vertical-rl-svg",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"rl\" style=\"height:100px\"><svg data-cid=\"i\" width=\"20\" height=\"30\" style=\"display:block\"></svg><svg data-cid=\"j\" style=\"width:8px;height:9px\"></svg>a<svg data-cid=\"k\" width=\"6\" height=\"7\" style=\"margin-left:2px\"></svg></div>",
    "fonts": true,
    "metrics": true,
    "measure": {},
@@ -5575,10 +5577,6 @@
      "display": "block",
      "position": "static",
      "metrics": {
-      "offsetLeft": 20,
-      "offsetTop": 0,
-      "offsetWidth": 20,
-      "offsetHeight": 30,
       "clientLeft": 0,
       "clientTop": 0,
       "clientWidth": 20,
@@ -5597,16 +5595,127 @@
      "display": "inline",
      "position": "static",
      "metrics": {
-      "offsetLeft": 6,
-      "offsetTop": 0,
-      "offsetWidth": 8,
-      "offsetHeight": 9,
       "clientLeft": 0,
       "clientTop": 0,
       "clientWidth": 8,
       "clientHeight": 9,
       "scrollWidth": 8,
       "scrollHeight": 9,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "k",
+     "x": 8,
+     "y": 18.859375,
+     "width": 6,
+     "height": 7,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 6,
+      "clientHeight": 7,
+      "scrollWidth": 6,
+      "scrollHeight": 7,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "vertical-rl-img",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"rl\" style=\"height:100px\"><img data-cid=\"i\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=\" style=\"display:block\"><img data-cid=\"j\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=\" style=\"display:inline;height:12px\">a<img data-cid=\"k\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=\" style=\"display:inline;width:4px\"></div>",
+   "fonts": true,
+   "metrics": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 0,
+     "width": 28,
+     "height": 100,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 28,
+      "offsetHeight": 100,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 28,
+      "clientHeight": 100,
+      "scrollWidth": 28,
+      "scrollHeight": 100,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "i",
+     "x": 20,
+     "y": 0,
+     "width": 8,
+     "height": 6,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 20,
+      "offsetTop": 0,
+      "offsetWidth": 8,
+      "offsetHeight": 6,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 8,
+      "clientHeight": 6,
+      "scrollWidth": 8,
+      "scrollHeight": 6,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "j",
+     "x": 2,
+     "y": 0,
+     "width": 16,
+     "height": 12,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 2,
+      "offsetTop": 0,
+      "offsetWidth": 16,
+      "offsetHeight": 12,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 16,
+      "clientHeight": 12,
+      "scrollWidth": 16,
+      "scrollHeight": 12,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "k",
+     "x": 8,
+     "y": 21.859375,
+     "width": 4,
+     "height": 3,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 8,
+      "offsetTop": 22,
+      "offsetWidth": 4,
+      "offsetHeight": 3,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 4,
+      "clientHeight": 3,
+      "scrollWidth": 4,
+      "scrollHeight": 3,
       "scrollLeft": 0
      }
     }

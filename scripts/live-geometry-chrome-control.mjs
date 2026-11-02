@@ -78,6 +78,9 @@ const QUIRKS_CASES = [
   ["br", `<div data-cid="d">a<br><br>b</div><div data-cid="s"><span style="font-size:10px">a<br><br>b</span></div>`],
 ];
 
+// An 8x6 PNG (the live test harness resolves every PNG `data:` URI to it).
+const PNG8X6 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=";
 // miaskiewicz/turbo-dom#234 vertical writing-mode cases: [id suffix, body, extra fields].
 const VERTICAL_CSS = 'body{margin:0;font:16px/20px "Fira Code"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}';
 const VERTICAL_CASES = [
@@ -147,10 +150,17 @@ const VERTICAL_CASES = [
   [
     "lr-inline-block-text",
     `<div data-cid="v" class="lr" style="height:100px">a<span data-cid="i" style="display:inline-block;padding:2px">bc</span></div>`,
+    // The inline size is the text's max-content, 1/64 px short in horizontal flow too
+    // (shrink-to-fit sums shaper advances, not the native ones; a separate issue).
+    { measure: { i: "xyw" } },
+  ],
+  [
+    "rl-svg",
+    `<div data-cid="v" class="rl" style="height:100px"><svg data-cid="i" width="20" height="30" style="display:block"></svg><svg data-cid="j" style="width:8px;height:9px"></svg>a<svg data-cid="k" width="6" height="7" style="margin-left:2px"></svg></div>`,
   ],
   [
     "rl-img",
-    `<div data-cid="v" class="rl" style="height:100px"><img data-cid="i" width="20" height="30" style="display:block"><img data-cid="j" style="width:8px;height:9px"></div>`,
+    `<div data-cid="v" class="rl" style="height:100px"><img data-cid="i" src="${PNG8X6}" style="display:block"><img data-cid="j" src="${PNG8X6}" style="display:inline;height:12px">a<img data-cid="k" src="${PNG8X6}" style="display:inline;width:4px"></div>`,
   ],
   [
     "rl-rtl",

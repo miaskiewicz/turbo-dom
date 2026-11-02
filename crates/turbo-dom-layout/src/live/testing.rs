@@ -14,7 +14,24 @@ use super::{
 use crate::cssom_view::scroll::{SourceStyle, SourceStyles};
 use crate::layout_snapshot::{LayoutSnapshot, SnapshotInputs};
 use crate::style::{parse_declarations, CascadeOrigin};
-use crate::{Diagnostics, FontRegistry, ImageCtx, NoImages, StyledNode, Tag};
+use crate::{Diagnostics, FontRegistry, ImageCtx, StyledNode, Tag};
+
+/// An 8x6 RGB PNG.
+const PNG_8X6: [u8; 74] = [
+    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 8, 0, 0, 0, 6, 8, 2, 0,
+    0, 0, 113, 103, 72, 172, 0, 0, 0, 17, 73, 68, 65, 84, 120, 156, 99, 8, 232, 57, 129, 21, 49,
+    12, 164, 4, 0, 253, 160, 78, 193, 237, 125, 153, 112, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96,
+    130,
+];
+
+/// Every PNG `data:` URI is the 8x6 PNG (the live-geometry Chrome control's image); no
+/// other image resolves.
+struct DataPng;
+impl crate::ImageResolver for DataPng {
+    fn resolve(&self, name: &str) -> Option<&[u8]> {
+        name.starts_with("data:image/png;").then_some(&PNG_8X6[..])
+    }
+}
 
 /// The document number test captures use.
 pub(crate) const DOCUMENT: u32 = 1;
@@ -182,7 +199,7 @@ pub(crate) fn layout_with_fonts(
         inline_declarations: &|text| Ok(parse_declarations(text)),
     };
     let images = ImageCtx {
-        resolver: &NoImages,
+        resolver: &DataPng,
         body_height: None,
     };
     let inputs = SnapshotInputs {
