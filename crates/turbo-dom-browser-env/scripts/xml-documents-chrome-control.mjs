@@ -4,6 +4,7 @@
 //
 // Usage: PLAYWRIGHT_CORE=/path/to/playwright-core node scripts/xml-documents-chrome-control.mjs \
 //          --chrome /path/to/chrome-headless-shell [--out PATH]
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
@@ -37,6 +38,7 @@ try {
     browser: `Chrome/${browser.version()}`,
     recordedAt: new Date().toISOString(),
     fixture: "xml_documents_probe.js",
+    probeSha256: createHash("sha256").update(probe).digest("hex"),
     result,
   };
   writeFileSync(out, `${JSON.stringify(oracle, null, 2)}\n`);

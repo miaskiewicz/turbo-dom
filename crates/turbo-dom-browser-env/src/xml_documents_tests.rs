@@ -2,6 +2,7 @@
 //! tree, `<parsererror>` documents, CDATA sections and the XMLSerializer round trip.
 use super::*;
 use crate::browser_env::crate_surface::harness_tests::thrown;
+use sha2::Digest;
 
 /// The embedder's `DOMParser` XML path: standalone V8 has no DOMParser, so the probe's
 /// `new DOMParser().parseFromString(source, type)` calls this host function instead.
@@ -47,7 +48,14 @@ fn xml_documents_match_the_chrome156_control() {
     let control: serde_json::Value =
         serde_json::from_str(include_str!("xml_documents_chrome156.json")).unwrap();
     assert_eq!(control["browser"], "Chrome/156.0.8078.47");
-    let actual = run(include_str!("xml_documents_probe.js"));
+    let probe = include_str!("xml_documents_probe.js");
+    let digest = sha2::Sha256::digest(probe.as_bytes());
+    let hex: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
+    assert_eq!(
+        control["probeSha256"], hex,
+        "recapture the control for the edited probe"
+    );
+    let actual = run(probe);
     let expected = control["result"].as_object().unwrap();
     let differences: Vec<_> = expected
         .iter()

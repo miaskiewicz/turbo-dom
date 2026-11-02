@@ -140,6 +140,24 @@
       new XMLSerializer().serializeToString(document.implementation.createDocumentType("a", "p", "")),
       new XMLSerializer().serializeToString(document.implementation.createDocumentType("a", "", "s")),
     ],
+    cdataInHtml: (() => {
+      const div = document.createElement("div");
+      div.append("t", document.adoptNode(doc.createCDATASection("a<b&")));
+      const clone = div.cloneNode(true);
+      return [div.innerHTML, div.textContent, clone.lastChild.nodeType, clone.lastChild.data];
+    })(),
+    cdataEdits: (() => {
+      const c = doc.createCDATASection("abc");
+      c.data = "x<y";
+      const before = c.textContent;
+      c.textContent = "z";
+      c.appendData("!");
+      const e = doc.createElement("m");
+      e.appendChild(doc.createCDATASection(""));
+      const empty = e.matches(":empty");
+      e.firstChild.data = "q";
+      return [before, c.data, c.nodeValue, c.length, empty, e.matches(":empty"), e.textContent];
+    })(),
     fragment: (() => {
       const f = doc.createDocumentFragment();
       f.append(doc.createElementNS("urn:d", "x"), "t");

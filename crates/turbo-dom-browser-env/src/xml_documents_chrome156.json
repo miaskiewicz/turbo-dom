@@ -1,7 +1,8 @@
 {
   "browser": "Chrome/156.0.8078.47",
-  "recordedAt": "2026-11-02T21:00:14.256Z",
+  "recordedAt": "2026-11-02T21:05:33.126Z",
   "fixture": "xml_documents_probe.js",
+  "probeSha256": "57fadd2f979cae8792d94625d24a3fee98db301edd27e0351d0d370b1aaae587",
   "result": {
     "nested": {
       "tag": "[object XMLDocument]",
@@ -4532,6 +4533,21 @@
         "<!DOCTYPE a>",
         "<!DOCTYPE a PUBLIC \"p\">",
         "<!DOCTYPE a SYSTEM \"s\">"
+      ],
+      "cdataInHtml": [
+        "ta&lt;b&amp;",
+        "ta<b&",
+        4,
+        "a<b&"
+      ],
+      "cdataEdits": [
+        "x<y",
+        "z!",
+        "z!",
+        2,
+        true,
+        false,
+        "q"
       ],
       "fragment": "<x xmlns=\"urn:d\"/>t"
     },
