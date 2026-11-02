@@ -313,7 +313,7 @@ OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"
 OWNED="$OWNED css_animations_cases.json css_animations_chrome156.json css_animations_probe.js processing_instructions_chrome156.json processing_instructions_probe.js page_processing_instructions_chrome156.json"
 OWNED="$OWNED page_patched_intrinsics_probe.js captured_intrinsics.js"
-OWNED="$OWNED xml_documents.rs xml_documents.js xml_documents_tests.rs xml_documents_probe.js xml_documents_chrome156.json"
+OWNED="$OWNED xml_documents.rs xml_documents.js xml_documents_tests.rs xml_documents_probe.js xml_documents_chrome156.json xml_inner_html_probe.js xml_inner_html_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}
