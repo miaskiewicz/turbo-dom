@@ -183,6 +183,13 @@ pub struct LayoutSnapshot {
 }
 
 impl LayoutSnapshot {
+    /// The list item whose `::marker` fragment `fragment_index` is, if it is one
+    /// (miaskiewicz/turbo-dom#128: no marker is generated yet).
+    #[must_use]
+    pub fn list_marker_owner(&self, _fragment_index: usize) -> Option<SourceId> {
+        None
+    }
+
     /// Global native affine coefficients retain double precision. Native box and
     /// text-selection quads additionally preserve each flat `FloatQuad` boundary;
     /// ordinary inline quads use this accumulated matrix. The legacy fragment
