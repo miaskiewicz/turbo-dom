@@ -74,7 +74,10 @@ fn inner_and_outer_html_of_xml_documents_match_the_chrome156_control() {
     let probe = include_str!("xml_inner_html_probe.js");
     let digest = sha2::Sha256::digest(probe.as_bytes());
     let hex: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
-    assert_eq!(control["probeSha256"], hex, "recapture the control for the edited probe");
+    assert_eq!(
+        control["probeSha256"], hex,
+        "recapture the control for the edited probe"
+    );
     let actual = run(probe);
     for section in ["getters", "innerSet", "outerSet"] {
         let expected = control["result"][section].as_object().unwrap();
@@ -82,7 +85,10 @@ fn inner_and_outer_html_of_xml_documents_match_the_chrome156_control() {
             .iter()
             .filter(|(key, value)| actual[section].get(key.as_str()) != Some(*value))
             .map(|(key, value)| {
-                format!("{section}.{key}:\n  native={}\n  Chrome={value}", actual[section][key])
+                format!(
+                    "{section}.{key}:\n  native={}\n  Chrome={value}",
+                    actual[section][key]
+                )
             })
             .collect();
         assert!(differences.is_empty(), "{}", differences.join("\n"));

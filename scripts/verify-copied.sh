@@ -276,7 +276,7 @@ browser_env.rs: D15 namespace_lookup_on_non_element_nodes_matches_chrome156 cont
 browser_env.rs: turbo-test#204 wrappers carry a tree generation next to their DOM id (owner_tag/tagged_owner); handle_of refuses a wrapper of a discarded tree or a handle its tree never minted
 document_basics.rs: turbo-test#204 adoption tags moved wrappers with the target tree's generation
 dom_ownership.rs: turbo-test#204 ownership grouping skips wrappers of a discarded tree
-browser_env.rs: turbo-dom#186 XML documents (xml_documents module, parse_xml_document_units, XMLSerializer install); CDATA sections are named #cdata-section, cloned / imported and read as character data
+browser_env.rs: turbo-dom#186 XML documents (xml_documents module, parse_xml_document_units, XMLSerializer install; innerHTML / outerHTML of XML documents serialize and parse XML); CDATA sections are named #cdata-section, cloned / imported and read as character data
 document_basics.rs: turbo-dom#186 createCDATASection natives (isXML, createCDATA); adoption copies CDATA sections
 document_basics.js: turbo-dom#186 createCDATASection creates CDATA sections in XML documents (Chrome's NotSupportedError / InvalidCharacterError messages otherwise)
 template_contents.rs: turbo-dom#186 HTML serialization writes a CDATA section as escaped text

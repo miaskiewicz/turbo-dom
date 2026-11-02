@@ -3342,6 +3342,10 @@ fn get_inner_html(
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
     let h = holder_handle(scope, &args);
+    if let Some(markup) = xml_documents::markup(scope, h, false) {
+        rv.set(unit_string(scope, &markup).into());
+        return;
+    }
     let node = wrap(scope, h);
     let html = template_contents::serialize(scope, node, false);
     rv.set(unit_string(scope, &html).into());
@@ -3366,6 +3370,9 @@ fn set_inner_html<'s>(
     ) else {
         return;
     };
+    if xml_documents::set_markup(scope, h, h, &html, false) {
+        return;
+    }
     let node = wrap(scope, h);
     if template_contents::set_html(scope, node, &html) {
         return;
@@ -3393,6 +3400,10 @@ fn get_outer_html(
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
     let h = holder_handle(scope, &args);
+    if let Some(markup) = xml_documents::markup(scope, h, true) {
+        rv.set(unit_string(scope, &markup).into());
+        return;
+    }
     let node = wrap(scope, h);
     let html = template_contents::serialize(scope, node, true);
     rv.set(unit_string(scope, &html).into());
@@ -3435,6 +3446,9 @@ fn set_outer_html<'s>(
     ) else {
         return;
     };
+    if xml_documents::set_markup(scope, node, parent, &html, true) {
+        return;
+    }
     html_popover::disconnect(scope, node, true);
     let position = with_tree(|tree| {
         let children = tree.children(parent);
