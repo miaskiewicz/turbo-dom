@@ -1,8 +1,8 @@
 {
   "browser": "HeadlessChrome/156.0.8078.47",
   "v8": "15.6.75.19",
-  "casesSha256": "b46e043324ecf122bd33932ede987cff684b099abfee94afeaee1e9a940ec892",
-  "probeSha256": "e3c98d7e50608780b5672b235a39fcd5ff39aa37029a6eb3cb7e41f5a6d49c7b",
+  "casesSha256": "d6a9be25f0ec1801d2317b6af63d08605eac898daedb0cae8fdaeb9406ede4ab",
+  "probeSha256": "af8196a12ceeca7e8a39cabe2d9e30d15b02bc40a09cdf6a5bbf84d4996df1fc",
   "collectorSha256": "5d8c7e0c3a6f4cf612c01cf05f99bd46e708b4b538e6183ebca4d4c2bf9aac87",
   "flags": [
     "--headless=new",
@@ -413,6 +413,169 @@
             ]
           ]
         ],
+        "w": [
+          [
+            "[object CSSTransition]",
+            "CSSTransition",
+            true,
+            null,
+            "margin-left",
+            "running",
+            true,
+            "KeyframeEffect",
+            "w",
+            [
+              0,
+              0,
+              1,
+              "normal",
+              "backwards",
+              "linear",
+              3000,
+              0
+            ]
+          ],
+          [
+            "[object CSSTransition]",
+            "CSSTransition",
+            true,
+            null,
+            "opacity",
+            "running",
+            true,
+            "KeyframeEffect",
+            "w",
+            [
+              0,
+              0,
+              1,
+              "normal",
+              "backwards",
+              "linear",
+              3000,
+              0
+            ]
+          ]
+        ],
+        "wKeyframes": [
+          [
+            [
+              [
+                "offset",
+                0
+              ],
+              [
+                "easing",
+                "linear"
+              ],
+              [
+                "composite",
+                "auto"
+              ],
+              [
+                "marginLeft",
+                "0px"
+              ],
+              [
+                "computedOffset",
+                0
+              ]
+            ],
+            [
+              [
+                "offset",
+                1
+              ],
+              [
+                "easing",
+                "linear"
+              ],
+              [
+                "composite",
+                "auto"
+              ],
+              [
+                "marginLeft",
+                "5px"
+              ],
+              [
+                "computedOffset",
+                1
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                "offset",
+                0
+              ],
+              [
+                "easing",
+                "linear"
+              ],
+              [
+                "composite",
+                "auto"
+              ],
+              [
+                "opacity",
+                "1"
+              ],
+              [
+                "computedOffset",
+                0
+              ]
+            ],
+            [
+              [
+                "offset",
+                1
+              ],
+              [
+                "easing",
+                "linear"
+              ],
+              [
+                "composite",
+                "auto"
+              ],
+              [
+                "opacity",
+                "0"
+              ],
+              [
+                "computedOffset",
+                1
+              ]
+            ]
+          ]
+        ],
+        "h": [],
+        "hShown": [
+          [
+            "[object CSSAnimation]",
+            "CSSAnimation",
+            true,
+            "k",
+            null,
+            "running",
+            true,
+            "KeyframeEffect",
+            "h",
+            [
+              0,
+              0,
+              1,
+              "normal",
+              "none",
+              "linear",
+              4000,
+              0
+            ]
+          ]
+        ],
+        "hHidden": 0,
         "document": [
           [
             "CSSTransition",
@@ -427,6 +590,16 @@
           [
             "CSSTransition",
             "u",
+            "opacity"
+          ],
+          [
+            "CSSTransition",
+            "w",
+            "margin-left"
+          ],
+          [
+            "CSSTransition",
+            "w",
             "opacity"
           ],
           [
@@ -446,6 +619,8 @@
           ]
         ],
         "documentWithScript": [
+          "CSSTransition",
+          "CSSTransition",
           "CSSTransition",
           "CSSTransition",
           "CSSTransition",

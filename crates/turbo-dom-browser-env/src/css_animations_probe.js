@@ -46,6 +46,18 @@
   out.t = $("t").getAnimations().map(row);
   out.tKeyframes = $("t").getAnimations().map(keyframes);
   out.u = $("u").getAnimations().map(row);
+  // transition-property: all transitions every changed animatable property.
+  getComputedStyle($("w")).opacity;
+  $("w").style.opacity = "0";
+  $("w").style.marginLeft = "5px";
+  out.w = $("w").getAnimations().map(row);
+  out.wKeyframes = $("w").getAnimations().map(keyframes);
+  // No CSS animation runs under a display:none ancestor; it starts once the ancestor renders.
+  out.h = $("h").getAnimations().map(row);
+  $("hp").style.display = "block";
+  out.hShown = $("h").getAnimations().map(row);
+  $("hp").style.display = "none";
+  out.hHidden = $("h").getAnimations().length;
   out.document = document.getAnimations().map((animation) => [animation.constructor.name, animation.effect.target.id, animation.animationName ?? animation.transitionProperty]);
   // Script animations sort after CSS ones in document.getAnimations().
   $("p").animate({ opacity: [0, 1] }, 1000);
