@@ -3931,6 +3931,268 @@
      "position": "static"
     }
    ]
+  },
+  {
+   "id": "quirks-strut-atom-only",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}div{font-size:30px}</style><div data-cid=\"d\"><span style=\"display:inline-block;width:10px;height:30px\"></span></div><div data-cid=\"e\"><span style=\"display:inline-block;width:10px;height:10px\"></span></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 30,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 30,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-strut-text-line",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}div{font-size:30px}</style><div data-cid=\"d\"><span style=\"display:inline-block;width:10px;height:10px\"></span>x</div><div data-cid=\"e\"> <span style=\"display:inline-block;width:10px;height:10px\"></span> </div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 37,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 37,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-strut-span-text",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}div{font-size:30px}</style><div data-cid=\"d\"><span style=\"font-size:10px\">x</span></div><div data-cid=\"e\" style=\"line-height:50px\"><span style=\"font-size:10px\">x</span></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 12,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 12,
+     "width": 1280,
+     "height": 50,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-strut-span-decorations",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}div{font-size:30px}</style><div data-cid=\"p\"><span style=\"padding-left:5px\"><span style=\"display:inline-block;width:10px;height:10px\"></span></span></div><div data-cid=\"b\"><span style=\"border:1px solid\"><span style=\"display:inline-block;width:10px;height:10px\"></span></span></div><div data-cid=\"m\"><span style=\"margin-left:4px;font-size:10px\"><span style=\"display:inline-block;width:10px;height:10px\"></span></span></div><div data-cid=\"v\"><span style=\"padding-top:3px\"><span style=\"display:inline-block;width:10px;height:10px\"></span></span></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 37,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 37,
+     "width": 1280,
+     "height": 37,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 74,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 84,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-strut-br",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}div{font-size:30px}</style><div data-cid=\"d\">a<br><br>b</div><div data-cid=\"s\"><span style=\"font-size:10px\">a<br><br>b</span></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 111,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 111,
+     "width": 1280,
+     "height": 36,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-strut-standards-control",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}div{font-size:30px}</style><div data-cid=\"d\"><span style=\"display:inline-block;width:10px;height:30px\"></span></div><div data-cid=\"e\"><span style=\"display:inline-block;width:10px;height:10px\"></span></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 39,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 39,
+     "width": 1280,
+     "height": 37,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "rtl-block-placement",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"r\" dir=\"rtl\" style=\"width:100px;padding:0 4px 0 6px;margin-left:200px\"><div data-cid=\"n\" style=\"width:40px;height:10px;margin-right:5px\"></div><div data-cid=\"l\" style=\"width:40px;height:10px;margin-right:auto\"></div><div data-cid=\"c\" style=\"width:40px;height:10px;margin:0 auto\"></div><div data-cid=\"w\" style=\"width:300px;height:10px\"></div><div data-cid=\"a\" style=\"height:10px;margin-left:7px\"></div><div data-cid=\"d\" dir=\"ltr\" style=\"width:40px;height:10px\"></div><div data-cid=\"x\" dir=\"ltr\"><div data-cid=\"xk\" style=\"width:40px;height:10px\"></div></div></div>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "r",
+     "x": 200,
+     "y": 0,
+     "width": 110,
+     "height": 70,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "n",
+     "x": 261,
+     "y": 0,
+     "width": 40,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "l",
+     "x": 206,
+     "y": 10,
+     "width": 40,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 236,
+     "y": 20,
+     "width": 40,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "w",
+     "x": 6,
+     "y": 30,
+     "width": 300,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 213,
+     "y": 40,
+     "width": 93,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "d",
+     "x": 266,
+     "y": 50,
+     "width": 40,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "x",
+     "x": 206,
+     "y": 60,
+     "width": 100,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "xk",
+     "x": 206,
+     "y": 60,
+     "width": 40,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
   }
  ]
 }

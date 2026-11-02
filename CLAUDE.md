@@ -173,7 +173,13 @@ package or publish workflow.
   (`LayoutSnapshot::unsupported_inline_geometry`; turbo-surf#31/#36, Chrome control
   `scripts/live-geometry-chrome-control.mjs` -> `src/live/chrome_tests.rs`; the scroll /
   visibility / caret / Range reads: `scripts/cssom-view-chrome-control.mjs` ->
-  `tests/fixtures/cssom_view_chrome156.json`, asserted in `cssom_view::{scroll, visibility, text, range}`). Since S5 the legacy owned `Node` input is gone (`node.rs`,
+  `tests/fixtures/cssom_view_chrome156.json`, asserted in `cssom_view::{scroll, visibility, text, range}`).
+  Since turbo-dom#190 an RTL block container places its block children from the right
+  (the UA maps `dir`; `direction` inherits), an RTL scroller overflows to the left with
+  offsets `ScrollMetrics::min_x..=0` (`scroll::inline_alignment` swaps start/end for
+  scrollIntoView), and a quirks-mode live document follows the line height quirk (the
+  style pass marks it with `style::QUIRKS_LINE_HEIGHT`); vertical writing modes are still
+  an error (turbo-dom#234). Since S5 the legacy owned `Node` input is gone (`node.rs`,
   `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
   `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the
   header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF
@@ -263,7 +269,8 @@ package or publish workflow.
   ProcessingInstruction. The Chrome mode lives only in the UTF-16 unit tokenizer
   (`TokenizerOpts::processing_instructions`, a marker-prefixed comment token turned into a PI on
   import), switched on per tree (`Tree::set_processing_instructions` /
-  `parse_utf16_with_processing_instructions`) — browser-env does so for all its documents. Inputs
+  `parse_utf16_with_processing_instructions` / `parse_utf16_with_source_positions_and_processing_instructions`)
+  — browser-env does so for all its documents, loaded pages included. Inputs
   with `<?` then skip the scalar fast path. Chrome control: browser-env
   `processing_instructions_chrome156.json`.
 - **Fragment context:** `parseFragment(html, context)` where context is `"td"` or namespaced

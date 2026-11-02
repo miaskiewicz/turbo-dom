@@ -825,6 +825,10 @@ pub struct BoxStyle {
     /// `-webkit-left` value (UA `center`, `align` attributes): only those also align the
     /// box's block-level children (miaskiewicz/turbo-dom#69).
     pub legacy_align: bool,
+    /// `direction: rtl`: the box's inline start is its right edge, so it places its
+    /// block-level children from the right and `text-align: start` aligns right
+    /// (miaskiewicz/turbo-dom#190).
+    pub rtl: bool,
     pub white_space: crate::text::WhiteSpace,
     pub letter_spacing: f32,
     pub vertical_align: VAlign,
@@ -1231,11 +1235,15 @@ fn line_height(s: &ComputedStyle, fs: f32) -> Option<f32> {
 
 fn align_of(s: &ComputedStyle) -> crate::text::Align {
     use crate::text::Align;
-    let value = s.get("text-align").unwrap_or("left").trim();
+    let rtl = s.get("direction").map(str::trim) == Some("rtl");
+    let value = s.get("text-align").unwrap_or("start").trim();
     match value.strip_prefix("-webkit-").unwrap_or(value) {
         "right" => Align::Right,
         "center" => Align::Center,
         "justify" => Align::Justify,
+        // The logical keywords follow `direction` (miaskiewicz/turbo-dom#190).
+        "start" if rtl => Align::Right,
+        "end" if !rtl => Align::Right,
         _ => Align::Left,
     }
 }
@@ -1355,6 +1363,7 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         line_height: line_height(s, fs),
         text_align: align_of(s),
         legacy_align: legacy_align_of(s),
+        rtl: s.get("direction").map(str::trim) == Some("rtl"),
         white_space: white_space_of(s),
         letter_spacing: s
             .get("letter-spacing")
@@ -2499,5 +2508,26 @@ mod clip_tests {
             assert!(!keeps_nothing(kept), "{kept}");
         }
         assert!(!clip_keeps_nothing(&style(&[("clip", "rect(0,0,0,0)")])));
+    }
+}
+
+#[cfg(test)]
+mod direction_tests {
+    use super::{align_of, ComputedStyle};
+    use crate::text::Align;
+
+    /// `text-align: start` / `end` (and the initial `start`) follow `direction`
+    /// (miaskiewicz/turbo-dom#190); the physical keywords do not.
+    #[test]
+    fn logical_text_align_follows_direction() {
+        let align =
+            |pairs: &[(&str, &str)]| align_of(&ComputedStyle::from_pairs(pairs.iter().copied()));
+        let rtl = ("direction", "rtl");
+        assert_eq!(align(&[]), Align::Left);
+        assert_eq!(align(&[rtl]), Align::Right);
+        assert_eq!(align(&[("text-align", "end")]), Align::Right);
+        assert_eq!(align(&[rtl, ("text-align", "end")]), Align::Left);
+        assert_eq!(align(&[rtl, ("text-align", "left")]), Align::Left);
+        assert_eq!(align(&[rtl, ("text-align", "-webkit-right")]), Align::Right);
     }
 }

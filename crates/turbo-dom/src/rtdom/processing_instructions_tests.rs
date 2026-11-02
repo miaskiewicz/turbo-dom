@@ -27,6 +27,7 @@ fn describe(tree: &Tree, parent: Handle) -> Vec<String> {
                 "T({})",
                 String::from_utf16_lossy(&tree.node_value_utf16(node).unwrap())
             ),
+            NodeType::Doctype => "DOCTYPE".to_owned(),
             _ => format!(
                 "E({}:{})",
                 tree.local_name(node).unwrap(),
@@ -178,4 +179,49 @@ fn documents_parse_processing_instructions_like_chrome() {
     // The standard (html5lib-tests) document parse.
     let standard = Tree::parse_utf16(&units("<?a x?>"));
     assert_eq!(describe(&standard, standard.root())[0], "C(?a x?)");
+}
+
+#[test]
+fn scalar_pages_take_the_fast_path_only_without_a_processing_instruction() {
+    use crate::rtdom::serialize::serialize_outer_utf16;
+    let dump = |tree: &Tree| {
+        tree.children(tree.root())
+            .into_iter()
+            .map(|node| String::from_utf16_lossy(&serialize_outer_utf16(tree, node)))
+            .collect::<Vec<_>>()
+    };
+    for html in [
+        "<!doctype html><title>t</title><p class=a>x<!--c--><svg><g/></svg>",
+        "<p>a ? b > c <!-- ? --></p>",
+        "",
+    ] {
+        let scalar = Tree::parse_with_processing_instructions(html);
+        let units = Tree::parse_utf16_with_processing_instructions(&units(html));
+        assert!(scalar.processing_instructions() && units.processing_instructions());
+        assert_eq!(dump(&scalar), dump(&units), "{html:?}");
+        assert_eq!(scalar.compat_mode(), units.compat_mode(), "{html:?}");
+        assert_eq!(dump(&scalar), dump(&Tree::parse(html)), "{html:?}");
+    }
+    let tree = Tree::parse_with_processing_instructions("<?a x?><p><?b y?>");
+    assert!(tree.processing_instructions());
+    assert_eq!(describe(&tree, tree.root())[0], "PI(a|x)");
+    assert_eq!(
+        describe(&tree, tree.query_selector("p").unwrap()),
+        ["PI(b|y)"]
+    );
+}
+
+#[test]
+fn positioned_documents_parse_processing_instructions_like_chrome() {
+    let source = units("<?pi x?><!doctype html><p><?q y?>");
+    let tree = Tree::parse_utf16_with_source_positions_and_processing_instructions(&source);
+    assert!(tree.processing_instructions());
+    assert_eq!(describe(&tree, tree.root())[0], "PI(pi|x)");
+    let p = tree.query_selector("p").unwrap();
+    assert_eq!(describe(&tree, p), ["PI(q|y)"]);
+    assert!(tree.source_position(p).is_some());
+    // The default positioned parse (the html5lib-tests conformance path).
+    let standard = Tree::parse_utf16_with_source_positions(&source);
+    assert!(!standard.processing_instructions());
+    assert_eq!(describe(&standard, standard.root())[0], "C(?pi x?)");
 }

@@ -31,7 +31,7 @@
 //   --out    defaults to crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json.
 // Needs playwright-core: PLAYWRIGHT_CORE=/path/to/node_modules/playwright-core (default: a
 // sibling turbo-surf checkout's node_modules/playwright-core).
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -58,6 +58,25 @@ const DOC = (css, body) => `<!doctype html><style>${css}</style>${body}`;
 // A text-free cell content box of a known size.
 const BOX = (w, h, cid = "") => `<div${cid ? ` data-cid="${cid}"` : ""} style="width:${w}px;height:${h}px"></div>`;
 const CELL = (w, h, cid) => `<td data-cid="${cid}">${BOX(w, h)}</td>`;
+// The repo's Fira Code, for the cases marked `fonts`.
+const fira = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/fira-code/FiraCode-Regular.ttf")).toString("base64");
+const FACE = `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}`;
+// miaskiewicz/turbo-dom#190 quirks-mode line strut cases: [id suffix, body].
+const QUIRKS_CSS = 'body{margin:0;font-family:"Fira Code";font-size:16px}div{font-size:30px}';
+const IB = (h) => `<span style="display:inline-block;width:10px;height:${h}px"></span>`;
+const QUIRKS_CASES = [
+  ["atom-only", `<div data-cid="d">${IB(30)}</div><div data-cid="e">${IB(10)}</div>`],
+  ["text-line", `<div data-cid="d">${IB(10)}x</div><div data-cid="e"> ${IB(10)} </div>`],
+  ["span-text", `<div data-cid="d"><span style="font-size:10px">x</span></div><div data-cid="e" style="line-height:50px"><span style="font-size:10px">x</span></div>`],
+  [
+    "span-decorations",
+    `<div data-cid="p"><span style="padding-left:5px">${IB(10)}</span></div>` +
+      `<div data-cid="b"><span style="border:1px solid">${IB(10)}</span></div>` +
+      `<div data-cid="m"><span style="margin-left:4px;font-size:10px">${IB(10)}</span></div>` +
+      `<div data-cid="v"><span style="padding-top:3px">${IB(10)}</span></div>`,
+  ],
+  ["br", `<div data-cid="d">a<br><br>b</div><div data-cid="s"><span style="font-size:10px">a<br><br>b</span></div>`],
+];
 
 const CASES = [
   // turbo-surf#31 C: position:absolute/fixed blockify an inline (display computes to
@@ -321,6 +340,39 @@ const CASES = [
     html: DOC("body{margin:0;line-height:20px}p{margin:0}", `<p data-cid="a">a</p><span style="white-space:nowrap"> </span><p data-cid="b">b</p><div data-cid="d"><span style="white-space:nowrap"> </span></div><div data-cid="e" style="white-space:nowrap">  </div><p data-cid="f">f</p>`),
     measure: { a: "xyh", b: "xyh", f: "xyh" },
   },
+  // miaskiewicz/turbo-dom#190: the quirks-mode line height quirk (no doctype: BackCompat).
+  // A line box takes the block's strut only for text (or a <br>) directly in the block,
+  // and an inline box its own metrics only for its text or an inline border / padding
+  // (not a margin); atoms always count. `fonts`: the case is laid out with the repo's
+  // Fira Code (an @font-face added after load, as the CSSOM-View control does).
+  ...QUIRKS_CASES.map(([id, body]) => ({
+    id: `quirks-strut-${id}`,
+    html: `<style>${QUIRKS_CSS}</style>${body}`,
+    fonts: true,
+  })),
+  {
+    id: "quirks-strut-standards-control",
+    html: DOC(QUIRKS_CSS, QUIRKS_CASES[0][1]),
+    fonts: true,
+  },
+  // miaskiewicz/turbo-dom#190: block boxes in an RTL block container sit at its right
+  // content edge (an over-constrained box drops its left margin), `margin-right:auto`
+  // pushes one left, `margin:0 auto` centers, and a wider box overflows to the left.
+  {
+    id: "rtl-block-placement",
+    html: DOC(
+      "body{margin:0}",
+      `<div data-cid="r" dir="rtl" style="width:100px;padding:0 4px 0 6px;margin-left:200px">` +
+        `<div data-cid="n" style="width:40px;height:10px;margin-right:5px"></div>` +
+        `<div data-cid="l" style="width:40px;height:10px;margin-right:auto"></div>` +
+        `<div data-cid="c" style="width:40px;height:10px;margin:0 auto"></div>` +
+        `<div data-cid="w" style="width:300px;height:10px"></div>` +
+        `<div data-cid="a" style="height:10px;margin-left:7px"></div>` +
+        `<div data-cid="d" dir="ltr" style="width:40px;height:10px"></div>` +
+        `<div data-cid="x" dir="ltr"><div data-cid="xk" style="width:40px;height:10px"></div></div>` +
+        `</div>`,
+    ),
+  },
 ];
 const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
@@ -328,6 +380,10 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, dev
 const result = [];
 for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
+  if (testCase.fonts) {
+    await page.addStyleTag({ content: FACE });
+    await page.evaluate(() => document.fonts.load('16px "Fira Code"').then(() => document.fonts.ready));
+  }
   if (testCase.fullscreen) {
     const target = `[data-cid="${testCase.fullscreen}"]`;
     await page.evaluate((sel) => {

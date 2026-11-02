@@ -1,8 +1,8 @@
 {
   "browser": "HeadlessChrome/156.0.8078.47",
   "v8": "15.6.75.19",
-  "casesSha256": "b46e043324ecf122bd33932ede987cff684b099abfee94afeaee1e9a940ec892",
-  "probeSha256": "e3c98d7e50608780b5672b235a39fcd5ff39aa37029a6eb3cb7e41f5a6d49c7b",
+  "casesSha256": "019cee230f44ae9f4e13731bf148a92f4ee6dddd1f5bf1aada0b59e1fca7368f",
+  "probeSha256": "fa4348299e7ee027414a4f026f89c7489037afe1b84267a9f10ac752112d1050",
   "collectorSha256": "5d8c7e0c3a6f4cf612c01cf05f99bd46e708b4b538e6183ebca4d4c2bf9aac87",
   "flags": [
     "--headless=new",
@@ -60,16 +60,16 @@
                 "auto"
               ],
               [
+                "transform",
+                "none"
+              ],
+              [
                 "color",
                 "rgb(255, 0, 0)"
               ],
               [
                 "opacity",
                 "0"
-              ],
-              [
-                "transform",
-                "none"
               ],
               [
                 "computedOffset",
@@ -90,16 +90,16 @@
                 "auto"
               ],
               [
+                "transform",
+                "translateX(10px)"
+              ],
+              [
                 "color",
                 "rgb(0, 0, 255)"
               ],
               [
                 "opacity",
                 "1"
-              ],
-              [
-                "transform",
-                "translateX(10px)"
               ],
               [
                 "computedOffset",
@@ -168,16 +168,16 @@
                 "auto"
               ],
               [
+                "transform",
+                "none"
+              ],
+              [
                 "color",
                 "rgb(255, 0, 0)"
               ],
               [
                 "opacity",
                 "0"
-              ],
-              [
-                "transform",
-                "none"
               ],
               [
                 "computedOffset",
@@ -198,16 +198,16 @@
                 "auto"
               ],
               [
+                "transform",
+                "translateX(10px)"
+              ],
+              [
                 "color",
                 "rgb(0, 0, 255)"
               ],
               [
                 "opacity",
                 "1"
-              ],
-              [
-                "transform",
-                "translateX(10px)"
               ],
               [
                 "computedOffset",
@@ -413,6 +413,312 @@
             ]
           ]
         ],
+        "w": [
+          [
+            "[object CSSTransition]",
+            "CSSTransition",
+            true,
+            null,
+            "margin-left",
+            "running",
+            true,
+            "KeyframeEffect",
+            "w",
+            [
+              0,
+              0,
+              1,
+              "normal",
+              "backwards",
+              "linear",
+              3000,
+              0
+            ]
+          ],
+          [
+            "[object CSSTransition]",
+            "CSSTransition",
+            true,
+            null,
+            "opacity",
+            "running",
+            true,
+            "KeyframeEffect",
+            "w",
+            [
+              0,
+              0,
+              1,
+              "normal",
+              "backwards",
+              "linear",
+              3000,
+              0
+            ]
+          ]
+        ],
+        "wKeyframes": [
+          [
+            [
+              [
+                "offset",
+                0
+              ],
+              [
+                "easing",
+                "linear"
+              ],
+              [
+                "composite",
+                "auto"
+              ],
+              [
+                "marginLeft",
+                "0px"
+              ],
+              [
+                "computedOffset",
+                0
+              ]
+            ],
+            [
+              [
+                "offset",
+                1
+              ],
+              [
+                "easing",
+                "linear"
+              ],
+              [
+                "composite",
+                "auto"
+              ],
+              [
+                "marginLeft",
+                "5px"
+              ],
+              [
+                "computedOffset",
+                1
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                "offset",
+                0
+              ],
+              [
+                "easing",
+                "linear"
+              ],
+              [
+                "composite",
+                "auto"
+              ],
+              [
+                "opacity",
+                "1"
+              ],
+              [
+                "computedOffset",
+                0
+              ]
+            ],
+            [
+              [
+                "offset",
+                1
+              ],
+              [
+                "easing",
+                "linear"
+              ],
+              [
+                "composite",
+                "auto"
+              ],
+              [
+                "opacity",
+                "0"
+              ],
+              [
+                "computedOffset",
+                1
+              ]
+            ]
+          ]
+        ],
+        "h": [],
+        "hShown": [
+          [
+            "[object CSSAnimation]",
+            "CSSAnimation",
+            true,
+            "k",
+            null,
+            "running",
+            true,
+            "KeyframeEffect",
+            "h",
+            [
+              0,
+              0,
+              1,
+              "normal",
+              "none",
+              "linear",
+              4000,
+              0
+            ]
+          ]
+        ],
+        "hHidden": 0,
+        "order": {
+          "small": [
+            "offset",
+            "easing",
+            "composite",
+            "color",
+            "transform",
+            "opacity",
+            "computedOffset"
+          ],
+          "pair": [
+            "offset",
+            "easing",
+            "composite",
+            "outlineColor",
+            "fontSize",
+            "computedOffset"
+          ],
+          "collide": [
+            "offset",
+            "easing",
+            "composite",
+            "outlineColor",
+            "fontSize",
+            "right",
+            "bottom",
+            "computedOffset"
+          ],
+          "shorthand": [
+            "offset",
+            "easing",
+            "composite",
+            "marginLeft",
+            "color",
+            "margin",
+            "opacity",
+            "computedOffset"
+          ],
+          "big": [
+            "offset",
+            "easing",
+            "composite",
+            "right",
+            "rotate",
+            "color",
+            "margin",
+            "opacity",
+            "borderTopColor",
+            "outlineColor",
+            "fontSize",
+            "visibility",
+            "bottom",
+            "scale",
+            "left",
+            "letterSpacing",
+            "filter",
+            "lineHeight",
+            "backgroundColor",
+            "fontWeight",
+            "marginLeft",
+            "paddingTop",
+            "maskImage",
+            "top",
+            "transform",
+            "width",
+            "wordSpacing",
+            "height",
+            "zIndex",
+            "maskComposite",
+            "translate",
+            "computedOffset"
+          ],
+          "css": [
+            [
+              [
+                "offset",
+                "easing",
+                "composite",
+                "right",
+                "rotate",
+                "color",
+                "visibility",
+                "opacity",
+                "borderTopColor",
+                "outlineColor",
+                "fontSize",
+                "bottom",
+                "scale",
+                "left",
+                "letterSpacing",
+                "filter",
+                "lineHeight",
+                "backgroundColor",
+                "marginLeft",
+                "paddingTop",
+                "top",
+                "width",
+                "transform",
+                "height",
+                "zIndex",
+                "translate",
+                "computedOffset"
+              ],
+              [
+                "offset",
+                "easing",
+                "composite",
+                "right",
+                "bottom",
+                "computedOffset"
+              ],
+              [
+                "offset",
+                "easing",
+                "composite",
+                "right",
+                "rotate",
+                "color",
+                "visibility",
+                "opacity",
+                "borderTopColor",
+                "outlineColor",
+                "fontSize",
+                "bottom",
+                "scale",
+                "left",
+                "letterSpacing",
+                "filter",
+                "lineHeight",
+                "backgroundColor",
+                "marginLeft",
+                "paddingTop",
+                "top",
+                "width",
+                "transform",
+                "height",
+                "zIndex",
+                "translate",
+                "computedOffset"
+              ]
+            ]
+          ]
+        },
         "document": [
           [
             "CSSTransition",
@@ -430,6 +736,16 @@
             "opacity"
           ],
           [
+            "CSSTransition",
+            "w",
+            "margin-left"
+          ],
+          [
+            "CSSTransition",
+            "w",
+            "opacity"
+          ],
+          [
             "CSSAnimation",
             "a",
             "k"
@@ -443,15 +759,53 @@
             "CSSAnimation",
             "m",
             "k2"
+          ],
+          [
+            "CSSAnimation",
+            "x",
+            "many"
+          ],
+          [
+            "Animation",
+            "p",
+            null
+          ],
+          [
+            "Animation",
+            "p",
+            null
+          ],
+          [
+            "Animation",
+            "p",
+            null
+          ],
+          [
+            "Animation",
+            "p",
+            null
+          ],
+          [
+            "Animation",
+            "p",
+            null
           ]
         ],
         "documentWithScript": [
           "CSSTransition",
           "CSSTransition",
           "CSSTransition",
+          "CSSTransition",
+          "CSSTransition",
           "CSSAnimation",
           "CSSAnimation",
           "CSSAnimation",
+          "CSSAnimation",
+          "Animation",
+          "Animation",
+          "Animation",
+          "Animation",
+          "Animation",
           "Animation"
         ],
         "shape": [
