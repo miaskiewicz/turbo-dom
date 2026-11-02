@@ -36,7 +36,9 @@ fn xpath_fragment_shadow_and_namespace_contexts_match_chrome() {
         for (expression, expected) in cases.as_object().unwrap() {
             let got = &actual[context][expression];
             if got != expected {
-                mismatches.push(format!("{context} {expression}: got {got}, Chrome {expected}"));
+                mismatches.push(format!(
+                    "{context} {expression}: got {got}, Chrome {expected}"
+                ));
             }
         }
     }
