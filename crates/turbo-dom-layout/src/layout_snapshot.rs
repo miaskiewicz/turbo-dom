@@ -103,6 +103,8 @@ pub enum SnapshotError {
     UnsupportedInlineAlignment,
     #[error("native ordinary inline vertical/RTL writing is unsupported")]
     UnsupportedInlineWriting,
+    /// No longer produced: absolute/fixed inlines blockify and inline sticky boxes
+    /// are laid out (turbo-dom#218). Kept for API stability.
     #[error("native ordinary inline absolute/fixed/sticky positioning is unsupported")]
     UnsupportedInlinePosition,
     #[error("source ID {0:?} is assigned more than once")]

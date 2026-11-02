@@ -269,6 +269,7 @@ struct Polytonic {
 
 /// The [`Polytonic`] decomposition of `ch`; `None` outside the block's letters.
 fn polytonic(ch: char) -> Option<Polytonic> {
+    const ROWS: [char; 7] = ['α', 'ε', 'η', 'ι', 'ο', 'υ', 'ω'];
     let code = u32::from(ch);
     let row = |base: char, accent: bool, dialytika: bool, iota: bool| {
         Some(Polytonic {
@@ -279,7 +280,6 @@ fn polytonic(ch: char) -> Option<Polytonic> {
         })
     };
     // U+1F00–U+1F6F: eight breathing/accent variants per vowel, lower then upper.
-    const ROWS: [char; 7] = ['α', 'ε', 'η', 'ι', 'ο', 'υ', 'ω'];
     match code {
         0x1f00..=0x1f6f => {
             let base = ROWS[((code - 0x1f00) / 0x10) as usize];

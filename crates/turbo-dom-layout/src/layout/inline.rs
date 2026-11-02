@@ -4,9 +4,11 @@
 //! covers a char), wraps words greedily across run boundaries, baseline-aligns
 //! mixed font sizes, and applies `vertical-align`.
 //!
+//! Words break at white space, inside words per `word-break: break-all` /
+//! `overflow-wrap` and at soft hyphens ([`WordBreaking`], turbo-dom#212, #213).
 //! Deferred (per §2): justified spacing (`Align::Justify` lays out left), Knuth-
-//! Liang hyphenation, bidi/RTL, and intra-word break opportunities beyond
-//! whitespace (CJK). Words break at whitespace only in v1.
+//! Liang hyphenation (`hyphens: auto` acts as `manual`), bidi/RTL, and CJK
+//! (UAX #14) break opportunities.
 
 use crate::error::{Diagnostics, LintCode, Span};
 use crate::text::{Align, FontFace, FontRegistry};
@@ -1221,7 +1223,7 @@ fn split_items(
                 part.append(&mut pending);
                 part.push(SourceItem::Edge(edge));
             }
-            edge => pending.push(edge),
+            edge @ SourceItem::Edge(_) => pending.push(edge),
         }
     }
     parts
@@ -2699,7 +2701,7 @@ mod tests {
             preserve_spaces: false,
             forced_newlines: false,
             text_transform: crate::text::TextTransform::default(),
-            word_breaking: Default::default(),
+            word_breaking: WordBreaking::default(),
         })
     }
 
