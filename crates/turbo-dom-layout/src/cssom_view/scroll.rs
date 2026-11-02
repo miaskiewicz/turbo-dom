@@ -219,9 +219,8 @@ pub fn scroll_metrics(
         };
         if !blocked_x {
             right = right.max(transformed[0]).max(untransformed[0]);
-            if rtl {
-                left = left.min(leftmost).min(untransformed_left);
-            }
+            // The left extent only matters to an RTL box (see `start` below).
+            left = left.min(leftmost).min(untransformed_left);
         }
         if !blocked_y {
             bottom = bottom.max(transformed[1]).max(untransformed[1]);
@@ -232,11 +231,10 @@ pub fn scroll_metrics(
         if let Some(metrics) = fragment.used_box {
             if metrics.position != Position::Absolute && metrics.position != Position::Fixed {
                 // An RTL box's inline end is its left side (miaskiewicz/turbo-dom#190).
-                if !blocked_x && scroll_container && rtl {
-                    left = left.min(rect.x - metrics.margin.left - used.padding.left);
-                } else if !blocked_x && scroll_container {
+                if !blocked_x && scroll_container {
                     right =
                         right.max(rect.x + rect.width + metrics.margin.right + used.padding.right);
+                    left = left.min(rect.x - metrics.margin.left - used.padding.left);
                 }
                 if !blocked_y && scroll_container {
                     bottom = bottom

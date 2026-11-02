@@ -1,9 +1,9 @@
 //! XML documents (turbo-dom#186): the XML parser behind an embedder's `DOMParser` XML
 //! types (`parse_xml_document_units`) and the `XMLSerializer` interface.
 //!
-//! Chrome 156 parses XML with xml-rs (the `xml` crate), so the events, well-formedness
-//! errors and their positions are that crate's. Blink's document builder is reproduced on
-//! top: a character run becomes its Text node when the run starts and receives its data
+//! The XML is read by the xml-rs (`xml`) crate; its well-formedness error messages and
+//! positions match Chrome 156's control (`xml_documents_chrome156.json`). Chrome's
+//! document shape is reproduced on top: a character run becomes its Text node when the run starts and receives its data
 //! when the next event arrives (an error in between leaves the node empty); an element's
 //! namespace declarations come first, ordered by prefix; a well-formedness error inserts
 //! Chrome's `<parsererror>` as the root element's first child, or as
@@ -32,14 +32,18 @@ pub(crate) struct ParsedXml {
     pub(crate) declaration: Option<String>,
 }
 
-struct Builder<'a> {
-    tree: Tree,
+/// The namespace a fragment parse binds an unbound prefix to; Chrome's fragment parser
+/// accepts `<z:a/>` as a no-namespace element whose local name is `z:a`.
+const UNBOUND_NAMESPACE: &str = "urn:turbo-dom:unbound-prefix";
+
+struct Builder<'a, 't> {
+    tree: &'t mut Tree,
     tags: StartTags<'a>,
     open: Vec<Handle>,
     pending: Option<(Handle, String)>,
 }
 
-impl Builder<'_> {
+impl Builder<'_, '_> {
     fn parent(&self) -> Handle {
         // invariant: the document stays at the bottom of the open-element stack (xml-rs
         // never ends more elements than it started)
@@ -76,10 +80,17 @@ impl Builder<'_> {
         attributes: Vec<xml::attribute::OwnedAttribute>,
         namespace: &XmlNamespace,
     ) {
-        let element = self.tree.create_element_namespace_units(
-            name.namespace.as_deref().map(units).as_deref(),
-            &units(&qualified(name)),
-        );
+        let element = if name.namespace.as_deref() == Some(UNBOUND_NAMESPACE) {
+            self.tree.create_element_ns_units(
+                &units(&qualified(name)),
+                turbo_dom_parser::rtdom::tree::Namespace::Other,
+            )
+        } else {
+            self.tree.create_element_namespace_units(
+                name.namespace.as_deref().map(units).as_deref(),
+                &units(&qualified(name)),
+            )
+        };
         let xmlns = units(XMLNS_NAMESPACE);
         let mut declared = self.tags.next_declarations(&qualified(name));
         declared.sort_unstable();
@@ -98,6 +109,12 @@ impl Builder<'_> {
             );
         }
         for attribute in attributes {
+            if attribute.name.namespace.as_deref() == Some(UNBOUND_NAMESPACE) {
+                let name = units(&qualified(&attribute.name));
+                self.tree
+                    .set_attribute_units(element, &name, &units(&attribute.value));
+                continue;
+            }
             self.tree.set_attribute_ns_units(
                 element,
                 attribute.name.namespace.as_deref().map(units).as_deref(),
@@ -326,6 +343,46 @@ fn report(tree: &mut Tree, error: &xml::reader::Error) {
     }
 }
 
+fn reader_config() -> ParserConfig {
+    ParserConfig::new()
+        .ignore_comments(false)
+        .whitespace_to_characters(true)
+        .cdata_to_characters(false)
+        .coalesce_characters(true)
+        .ignore_end_of_stream(true)
+        .allow_multiple_root_elements(false)
+        .override_encoding(Some(xml::Encoding::Utf8))
+        .ignore_invalid_encoding_declarations(true)
+}
+
+/// Build `source`'s nodes under `parent`, recording the XML declaration to keep (also
+/// when a later well-formedness error stops the parse).
+fn build(
+    tree: &mut Tree,
+    parent: Handle,
+    source: &str,
+    parsed_declaration: &mut Option<String>,
+) -> Result<(), xml::reader::Error> {
+    let mut reader = reader_config().create_reader(source.as_bytes());
+    let mut builder = Builder {
+        tree,
+        tags: StartTags { rest: source },
+        open: vec![parent],
+        pending: None,
+    };
+    loop {
+        let event = reader.next()?;
+        builder.flush();
+        match event {
+            XmlEvent::EndDocument => return Ok(()),
+            XmlEvent::StartDocument { standalone, .. } => {
+                *parsed_declaration = declaration(source, standalone);
+            }
+            event => builder.event(event, &reader),
+        }
+    }
+}
+
 /// Parse an XML document into a fresh tree (no browsing context).
 pub(crate) fn parse(source: &str) -> ParsedXml {
     // A no-quirks document (XML documents report CSS1Compat) without children.
@@ -334,45 +391,95 @@ pub(crate) fn parse(source: &str) -> ParsedXml {
     for child in tree.children(root) {
         tree.remove_child(root, child);
     }
-    let config = ParserConfig::new()
-        .ignore_comments(false)
-        .whitespace_to_characters(true)
-        .cdata_to_characters(false)
-        .coalesce_characters(true)
-        .ignore_end_of_stream(true)
-        .allow_multiple_root_elements(false)
-        .override_encoding(Some(xml::Encoding::Utf8))
-        .ignore_invalid_encoding_declarations(true);
-    let mut reader = config.create_reader(source.as_bytes());
-    let mut builder = Builder {
-        tree,
-        tags: StartTags { rest: source },
-        open: vec![root],
-        pending: None,
-    };
-    let mut parsed_declaration = None;
-    loop {
-        match reader.next() {
-            Ok(XmlEvent::EndDocument) => {
-                builder.flush();
-                break;
-            }
-            Ok(event) => {
-                builder.flush();
-                if let XmlEvent::StartDocument { standalone, .. } = &event {
-                    parsed_declaration = declaration(source, *standalone);
-                }
-                builder.event(event, &reader);
-            }
-            Err(error) => {
-                report(&mut builder.tree, &error);
-                break;
+    let mut declaration = None;
+    if let Err(error) = build(&mut tree, root, source, &mut declaration) {
+        report(&mut tree, &error);
+    }
+    ParsedXml { tree, declaration }
+}
+
+/// The prefix bindings in scope at `element` (its ancestors' and its own `xmlns`
+/// attributes, and each element's own prefix), outermost first.
+fn scope_at(tree: &Tree, element: Handle) -> Vec<(String, String)> {
+    let mut chain = vec![element];
+    while let Some(parent) = tree.parent(*chain.last().unwrap()) {
+        chain.push(parent);
+    }
+    let mut bindings = Vec::new();
+    for node in chain
+        .into_iter()
+        .rev()
+        .filter(|&node| tree.node_type_id(node) == 1)
+    {
+        if let Some(namespace) = tree.namespace_uri(node) {
+            let prefix = tree.prefix(node).unwrap_or_default();
+            bindings.push((prefix.to_owned(), namespace.to_owned()));
+        }
+        for attribute in tree.attributes_units(node) {
+            if attribute.namespace.as_deref() == Some(units(XMLNS_NAMESPACE).as_slice()) {
+                let prefix = attribute
+                    .prefix
+                    .is_some()
+                    .then(|| String::from_utf16_lossy(&attribute.local_name))
+                    .unwrap_or_default();
+                bindings.push((prefix, String::from_utf16_lossy(&attribute.value)));
             }
         }
     }
-    ParsedXml {
-        tree: builder.tree,
-        declaration: parsed_declaration,
+    bindings
+}
+
+/// The prefix an "Element p:x prefix is unbound" / "Attribute p:x prefix is unbound"
+/// error names.
+fn unbound_prefix(error: &xml::reader::Error) -> Option<String> {
+    let text = error.to_string();
+    let name = text
+        .strip_suffix(" prefix is unbound")?
+        .rsplit(' ')
+        .next()?;
+    Some(name.split(':').next()?.to_owned())
+}
+
+/// Parse `markup` as an XML fragment in `context`'s namespace scope (the innerHTML /
+/// outerHTML setters of an XML document). None when the markup is not well-formed.
+pub(crate) fn parse_fragment(
+    tree: &mut Tree,
+    context: Handle,
+    markup: &str,
+) -> Option<Vec<Handle>> {
+    let mut bindings = scope_at(tree, context);
+    let mut unbound = Vec::new();
+    loop {
+        let mut wrapper = String::from("<turbo-fragment");
+        for (prefix, namespace) in bindings
+            .iter()
+            .map(|(p, n)| (p, n.as_str()))
+            .chain(unbound.iter().map(|prefix| (prefix, UNBOUND_NAMESPACE)))
+        {
+            let mut value = String::new();
+            escape(&mut value, namespace, true);
+            if prefix.is_empty() {
+                wrapper.push_str(&format!(" xmlns=\"{value}\""));
+            } else if prefix != "xml" {
+                wrapper.push_str(&format!(" xmlns:{prefix}=\"{value}\""));
+            }
+        }
+        wrapper.push('>');
+        wrapper.push_str(markup);
+        wrapper.push_str("</turbo-fragment>");
+        let fragment = tree.create_document_fragment();
+        match build(tree, fragment, &wrapper, &mut None) {
+            Ok(_) => {
+                // invariant: a well-formed wrapper document has exactly its one element
+                let element = tree.children(fragment)[0];
+                return Some(tree.children(element));
+            }
+            Err(error) => {
+                let prefix = unbound_prefix(&error).filter(|prefix| !unbound.contains(prefix))?;
+                unbound.push(prefix);
+                bindings.retain(|(bound, _)| !unbound.contains(bound));
+            }
+        }
     }
 }
 
@@ -709,4 +816,78 @@ pub(crate) fn install(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__xmlDocumentsNative", dispatch);
     run_js(scope, include_str!("xml_documents.js"));
+}
+
+// ---- innerHTML / outerHTML in XML documents -------------------------------------------------
+
+fn current_document_is_xml(scope: &mut v8::PinScope) -> bool {
+    let Some(root) = with_tree(Tree::root) else {
+        return false;
+    };
+    let doc = wrap(scope, root);
+    dom_implementation::is_xml_document(scope, doc)
+}
+
+/// The innerHTML / outerHTML getters of a node of an XML document: the XML serialization
+/// (each child of innerHTML starts with no prefixes in scope, like Chrome). None for
+/// HTML documents.
+pub(crate) fn markup(scope: &mut v8::PinScope, node: Handle, outer: bool) -> Option<Vec<u16>> {
+    if !current_document_is_xml(scope) {
+        return None;
+    }
+    let text = with_tree(|tree| {
+        if outer {
+            serialize(tree, node, None)
+        } else {
+            tree.children(node)
+                .into_iter()
+                .map(|child| serialize(tree, child, None))
+                .collect::<String>()
+        }
+    })?;
+    Some(units(&text))
+}
+
+/// The innerHTML / outerHTML setters of an XML document: the markup parses as an XML
+/// fragment in the context element's namespace scope; ill-formed markup throws Chrome's
+/// SyntaxError. False (nothing done) for HTML documents.
+pub(crate) fn set_markup(
+    scope: &mut v8::PinScope,
+    node: Handle,
+    context: Handle,
+    html: &[u16],
+    outer: bool,
+) -> bool {
+    if !current_document_is_xml(scope) {
+        return false;
+    }
+    let markup = String::from_utf16_lossy(html);
+    let Some(nodes) = with_tree_mut(|tree| parse_fragment(tree, context, &markup)).flatten() else {
+        let property = if outer { "outerHTML" } else { "innerHTML" };
+        throw_dom_error(
+            scope,
+            "SyntaxError",
+            &format!("Failed to set the '{property}' property on 'Element': The provided markup is invalid XML, and therefore cannot be inserted into an XML document."),
+        );
+        return true;
+    };
+    if !outer {
+        range_live::replacing_children(scope, node);
+    }
+    with_tree_mut(|tree| {
+        if outer {
+            for child in nodes {
+                tree.insert_before(context, child, Some(node));
+            }
+            tree.remove_child(context, node);
+        } else {
+            for child in tree.children(node) {
+                tree.remove_child(node, child);
+            }
+            for child in nodes {
+                tree.append_child(node, child);
+            }
+        }
+    });
+    true
 }
