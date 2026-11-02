@@ -274,10 +274,20 @@ impl Tree {
         let dom = parsed(units, false);
         Self::from_units_dom(&dom)
     }
-    /// [`Tree::parse_utf16`] in Chrome 156's processing-instruction mode: `<?target
-    /// data?>` parses as a processing instruction (see
-    /// [`Tree::set_processing_instructions`]), and the returned tree keeps the mode for
-    /// its own fragment parsing.
+    /// [`Tree::parse`] in Chrome 156's processing-instruction mode: `<?target data?>`
+    /// parses as a processing instruction (see [`Tree::set_processing_instructions`]),
+    /// and the returned tree keeps the mode for its own fragment parsing. A page without
+    /// `<?` takes the lazy scalar parse unchanged (no UTF-16 copy).
+    #[must_use]
+    pub fn parse_with_processing_instructions(html: &str) -> Self {
+        if !html.contains("<?") {
+            let mut tree = Self::parse(html);
+            tree.processing_instructions = true;
+            return tree;
+        }
+        Self::parse_utf16_with_processing_instructions(&html.encode_utf16().collect::<Vec<_>>())
+    }
+    /// [`Tree::parse_with_processing_instructions`] over original DOM-string units.
     #[must_use]
     pub fn parse_utf16_with_processing_instructions(units: &[u16]) -> Self {
         let mut tree = if mentions_processing_instruction(units) {
