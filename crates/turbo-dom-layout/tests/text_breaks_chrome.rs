@@ -67,6 +67,7 @@ fn check(ids: &[&str]) {
             case["text"].as_str().unwrap(),
         );
         let want = case["lines"].as_array().unwrap();
+
         assert_eq!(
             got.iter().map(|l| squash(&l.0)).collect::<Vec<_>>(),
             want.iter()
