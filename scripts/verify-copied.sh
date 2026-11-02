@@ -44,6 +44,7 @@ CRATE_SRC=crates/turbo-dom-browser-env/src
 EXCLUDES="bin bundler.rs coverage.rs coverage_branch.rs esm_cjs.rs graph.rs launcher.rs napi_host.rs runner.rs transform.rs runtime.js lib.rs"
 # Moved files edited semantically after the move (path: reason).
 SEMANTIC_EDITS="
+xpath_provider/README.md: 0.7.0 turbo-dom#185 documents fragment/shadow-root contexts and the empty namespace axis
 cssom_parser.rs: zoom_value + helpers moved to turbo_dom::rtdom::css_values (re-exported here)
 interceptor_mode.rs: frame read placed behind the native-sdk-frame-read feature scaffolding
 browser_env.rs: module docs name the turbo-dom crate and drop the retired TURBO_RUST_DOM gate; P5b turbo-dom#20 native functions take a call-without-new message, named definers pass V8's should-throw mode; P5b turbo-surf#32 installs html_image.js + its tests; P5b-X2 turbo-dom#24 clones keep the custom element state; P5b-X3 turbo-surf#36 computed-defaults control test module; P5b-X5 turbo-dom#43 setters are [CEReactions] scopes and fragment-parser setters report their parsed elements; P5b-X5 turbo-dom#44 validate_namespace_name splits strictly on ':'; P5b-X6 turbo-dom#66 shadow-events and turbo-dom#74 html-track control test modules; P5b-X6 turbo-dom#66 dispatchEvent builds the shadow-crossing event path; P5b-X6 turbo-dom#74 <track> wraps as HTMLTrackElement and installs html_track.js
@@ -77,7 +78,7 @@ event_listeners.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException (the ca
 range_contents.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException (the capture hook no longer swaps it)
 animations.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
 document_legacy.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
-document_xpath.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+document_xpath.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install; 0.7.0 turbo-dom#185 fragment/shadow-root contexts, topmost-ancestor root, empty namespace axis
 edit_context.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
 element_internals.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
 file_inputs.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
@@ -177,7 +178,7 @@ event_handlers.rs: P5-cov-browser-env turbo-dom#152 an inline handler's form own
 html_text.rs: P5-cov-browser-env turbo-dom#154 content of a closed <details> has an empty innerText (rendered with its contents skipped)
 html_text.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
 animations.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
-document_xpath.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+document_xpath.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d); 0.7.0 turbo-dom#185 snapshots fragment/shadow-root/detached roots and doctypes
 html_invokers.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
 interest_invokers.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
 pointer_events.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
@@ -298,6 +299,8 @@ OWNED="$OWNED activation_focus_probe.js activation_focus_chrome156.json selector
 OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
 OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
+OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"
+OWNED="$OWNED css_animations_cases.json css_animations_chrome156.json css_animations_probe.js processing_instructions_chrome156.json processing_instructions_probe.js"
 OWNED="$OWNED page_patched_intrinsics_probe.js captured_intrinsics.js"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
