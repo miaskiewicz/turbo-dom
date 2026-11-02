@@ -9,7 +9,7 @@
   const strings = ["Typography", "AVATAR Wave", "To fi ffi", "éäo", "Hello, World!"];
   const cases = [];
   for (const family of families)
-    for (const size of [13, 16, 21.5])
+    for (const size of [13, 16, 18.72, 21.5])
       for (const weight of [400, 700])
         for (const text of strings)
           cases.push({
@@ -73,5 +73,13 @@
           ctx.font = `${fstyle} ${weight} 16px ${family}`;
           canvas.push({ font: ctx.font, text, width: ctx.measureText(text).width });
         }
+  // Fractional sizes: Blink's font cache builds the font at unsigned(size * 100) / 100
+  // (turbo-dom#236), so 18.72px measures as 18.71px and 17.3px as 17.29px.
+  for (const family of families)
+    for (const size of [17.3, 18.72])
+      for (const text of ["Typography", "AVATAR Wave"]) {
+        ctx.font = `${size}px ${family}`;
+        canvas.push({ font: ctx.font, text, width: ctx.measureText(text).width });
+      }
   return { cases: out, canvas };
 })();

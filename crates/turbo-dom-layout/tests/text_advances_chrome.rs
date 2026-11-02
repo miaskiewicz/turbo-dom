@@ -197,7 +197,7 @@ fn compare_case(case: &Value, failures: &mut Vec<String>) {
 fn text_run_advances_and_range_rects_match_chrome_156() {
     let control = control();
     let cases = control["result"]["cases"].as_array().unwrap();
-    assert_eq!(cases.len(), 93);
+    assert_eq!(cases.len(), 123);
     let mut failures = Vec::new();
     for case in cases {
         compare_case(case, &mut failures);
@@ -260,5 +260,5 @@ fn original_utf16_text_keeps_the_kerning_across_spaces() {
         );
         compared += 1;
     }
-    assert_eq!(compared, 54);
+    assert_eq!(compared, 72);
 }
