@@ -34,7 +34,6 @@
     const tokens=masked.match(/[A-Za-z_][\w.-]*|[^\s]/g)||[];
     if(tokens.length>256)throw failure('NotSupportedError','XPath expression exceeds its token budget');
     let depth=0;for(const token of tokens){if(token==='('||token==='['){if(++depth>32)throw failure('NotSupportedError','XPath expression exceeds its nesting budget');}else if(token===')'||token===']')depth--;}
-    if(/\bnamespace\s*::/.test(masked))throw failure('NotSupportedError','XPath namespace-axis nodes require a native namespace-node representation');
     if(masked.includes('$'))throw failure('SyntaxError','DOM XPath expressions do not support variables');
     for(const found of masked.matchAll(/([A-Za-z_][\w.-]*(?::[A-Za-z_][\w.-]*)?)\s*\(/g))if(!functions.has(found[1]))throw failure('SyntaxError','Unknown XPath function');
     let callback=null;
@@ -53,7 +52,15 @@
   provider.NodeTest.nameSpaceMatches=function(prefix,context,node){if(!prefix)return !node.namespaceURI||node.nodeType===1&&node.namespaceURI===html;return namespaceMatches(prefix,context,node);};
   provider.NodeTest.localNameMatches=function(name,context,node){if(node.nodeType===1&&node.namespaceURI===html)return name.toLowerCase()===node.localName.toLowerCase();return localMatches(name,context,node);};
   const applyStep=provider.PathExpr.applyStep;
+  // Like Chrome, `/` is the context's highest parentNode ancestor (a fragment, a shadow root,
+  // a detached top node, or an Attr whose parentNode is null), and the namespace axis is empty.
+  // node() matches every node, including fragment / shadow roots and the doctype.
+  provider.NodeTest.nodeTest.matches=function(){return true;};
+  provider.PathExpr.getRoot=function(_xpc,nodes){let root=nodes[0];while(root.parentNode)root=root.parentNode;return root;};
   provider.PathExpr.applyStep=function(step,context,node){
+    if(step.axis===provider.Step.NAMESPACE)return [];
+    // A name test on self / ancestor-or-self selects elements only (the axis' principal node type), never the Attr context.
+    if(step.axis===provider.Step.SELF||step.axis===provider.Step.ANCESTORORSELF){const nodes=applyStep(step,context,node);return step.nodeTest===provider.NodeTest.nodeTest?nodes:nodes.filter(item=>item.nodeType!==2);}
     if(step.axis!==provider.Step.FOLLOWING&&step.axis!==provider.Step.PRECEDING)return applyStep(step,context,node);
     context.contextNode=node;
     const attribute=node.nodeType===2,anchor=attribute?node.ownerElement:node;
@@ -76,6 +83,8 @@
     rows.forEach((row,index)=>{if(row[6]!=null)children[row[6]].push(index);});
     const docIndex=rows.findIndex(row=>row[0]===9);
     const parent=index=>rows[index][0]===2?rows[index][8]:rows[index][6];
+    // The provider's id() searches ownerDocument: a shadow tree's own root scopes it like Chrome's TreeScope.
+    const scope=index=>{let top=index;for(let current=parent(top);current!=null;current=parent(current)){spend();top=current;}return rows[top][9]?top:docIndex;};
     const ancestor=(a,b)=>{let current=parent(b);while(current!=null){spend();if(current===a)return true;current=parent(current);}return false;};
     const descendants=index=>{const values=[],stack=children[index].slice().reverse();while(stack.length){spend();const current=stack.pop();values.push(current);for(let i=children[current].length-1;i>=0;i--)stack.push(children[current][i]);}return values;};
     const list=indices=>new ProxyValue(indices.map(index=>proxies[index]),{get(target,key){spend();return key==='item'?index=>{spend();return target[index]||null;}:Reflect.get(target,key);}});
@@ -88,7 +97,7 @@
           case 'nodeType':return row[0];case 'nodeName':return row[0]===1&&row[3]===html?row[1].toUpperCase():row[1];
           case 'tagName':return row[1];case 'localName':return row[2];case 'namespaceURI':return row[3];case 'prefix':return row[4];case 'nodeValue':case 'value':case 'data':return row[5];
           case 'parentNode':return row[6]==null?null:proxies[row[6]];case 'ownerElement':return row[8]==null?null:proxies[row[8]];
-          case 'ownerDocument':return row[0]===9?null:proxies[docIndex];case 'childNodes':return list(children[index]);case 'attributes':return row[0]===1?list(row[7]):null;
+          case 'ownerDocument':return row[0]===9?null:proxies[scope(index)];case 'childNodes':return list(children[index]);case 'attributes':return row[0]===1?list(row[7]):null;
           case 'firstChild':return proxies[children[index][0]]||null;case 'lastChild':return proxies[children[index].at(-1)]||null;
           case 'previousSibling':return position>0?proxies[siblings[position-1]]:null;case 'nextSibling':return position>=0?proxies[siblings[position+1]]||null:null;
           case 'documentElement':return proxies[children[index].find(id=>rows[id][0]===1)]||null;
