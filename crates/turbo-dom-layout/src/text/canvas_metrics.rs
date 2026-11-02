@@ -113,11 +113,12 @@ impl FontFace {
         };
         for segment in segments {
             let glyphs = self.canvas_shape(segment, options.shaping);
+            let advances = self.blink_advances(&glyphs, font_size, 1.0);
             for (index, glyph) in glyphs.iter().enumerate() {
                 if let Some(rect) = self.glyph_ink(glyph, pen as f32, font_size) {
                     ink = Some(union(ink, rect));
                 }
-                pen += self.blink_glyph_advance(font_size, glyph.x_advance);
+                pen += advances[index];
                 pen += spacing(segment, &glyphs, index, options);
             }
         }
