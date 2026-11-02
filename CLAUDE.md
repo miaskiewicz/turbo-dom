@@ -178,7 +178,7 @@ package or publish workflow.
   (the UA maps `dir`; `direction` inherits), an RTL scroller overflows to the left with
   offsets `ScrollMetrics::min_x..=0` (`scroll::inline_alignment` swaps start/end for
   scrollIntoView), and a quirks-mode live document follows the line height quirk (the
-  style pass marks it with `style::QUIRKS_LINE_HEIGHT`); vertical writing modes are still
+  style pass marks it with `style::QUIRKS_LINE_HEIGHT`); inherited-RTL inlines lay out unreordered (bidi: turbo-dom#238); vertical writing modes are still
   an error (turbo-dom#234). Since S5 the legacy owned `Node` input is gone (`node.rs`,
   `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
   `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the

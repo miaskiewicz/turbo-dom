@@ -164,8 +164,14 @@ mod pointer_events;
 mod typed_om;
 pub use pointer_events::{host_pointer, PointerLockPolicy};
 #[cfg(test)]
+#[path = "canvas_measure_text_tests.rs"]
+mod canvas_measure_text_tests;
+#[cfg(test)]
 #[path = "canvas_style_tests.rs"]
 mod canvas_style_tests;
+#[path = "canvas_text.rs"]
+mod canvas_text;
+pub use canvas_text::set_canvas_fonts;
 #[path = "form_pseudo.rs"]
 mod form_pseudo;
 #[path = "html_text.rs"]
@@ -7211,6 +7217,12 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         normalize_computed_color,
     );
     bind_method(scope, global, "__canvasColorNative", canvas_color_native);
+    bind_method(
+        scope,
+        global,
+        "__canvasMeasureTextNative",
+        canvas_text::measure_text_native,
+    );
     bind_method(
         scope,
         global,

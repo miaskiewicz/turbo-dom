@@ -32,8 +32,9 @@ turbo-dom-v8 ──────────────────────�
                                                  ▲          ▲
 turbo-dom ───────────────────────────────────────┘          │
   └──► turbo-dom-layout ──► turbo-dom-raster                 │
-          ▲     ▲                 ▲                          │
-          │     └── turbo-html2pdf-core                      │
+          ▲  │  ▲                 ▲                          │
+          │  │  └── turbo-html2pdf-core                      │
+          │  └──────────────────────────────────────────────►┘ (canvas measureText)
 turbo-dom-v8 ──► turbo-surf-deno-v8 0.4.1 ──► deno family ──► turbo-surf
 turbo-dom, -layout, -raster, -browser-env ─────────────────► turbo-surf
 ```
@@ -54,7 +55,7 @@ One annotated `v0.6.0` tag on the merge commit runs `.github/workflows/publish.y
 2. `turbo-dom` 0.6.0;
 3. `turbo-dom-layout` 0.6.0 (needs turbo-dom);
 4. `turbo-dom-raster` 0.6.0 (needs turbo-dom-layout);
-5. `turbo-dom-browser-env` 0.6.0 (needs turbo-dom-v8 + turbo-dom; the root manifest's
+5. `turbo-dom-browser-env` 0.6.0 (needs turbo-dom-v8 + turbo-dom + turbo-dom-layout; the root manifest's
    pre-publish `[patch]` is dropped first so it verifies against the published fork);
 6. npm `@miaskiewicz/turbo-dom` 0.6.0.
 
