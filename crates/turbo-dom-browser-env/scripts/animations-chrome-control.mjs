@@ -39,6 +39,9 @@ const flags = [
   "--no-default-browser-check",
   "--disable-extensions",
   "--disable-component-extensions-with-background-pages",
+  // No macOS keychain prompts from the oracle's fresh profile.
+  "--use-mock-keychain",
+  "--password-store=basic",
   "about:blank",
 ];
 let html = "";
