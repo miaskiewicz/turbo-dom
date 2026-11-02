@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use serde_json::Value;
 
 use super::source_id;
-use super::testing::{layout_with, DOCUMENT};
+use super::testing::{layout_with_fonts, DOCUMENT};
 use crate::cssom_view::{hit, inline, metrics};
 use crate::layout::value::Display;
 use crate::layout_snapshot::{GeometryKind, Rect};
@@ -231,8 +231,20 @@ fn compare_cases(select: impl Fn(&str) -> bool) -> (usize, Vec<String>) {
                 assert!(tree.set_fullscreen_stack(&[element]));
             }
         };
-        let (tree, snapshot, styles) =
-            layout_with(html, css_of(html), (1280.0, 800.0), Some(1.0), prepare);
+        // A `fonts` case is laid out with the repo's Fira Code, as Chrome loaded it.
+        let fonts = if case["fonts"] == true {
+            crate::test_support::fixture_fonts()
+        } else {
+            crate::FontRegistry::new()
+        };
+        let (tree, snapshot, styles) = layout_with_fonts(
+            html,
+            css_of(html),
+            (1280.0, 800.0),
+            Some(1.0),
+            prepare,
+            &fonts,
+        );
         for want in case["boxes"].as_array().unwrap() {
             let cid = want["cid"].as_str().unwrap();
             let handle = tree
@@ -267,7 +279,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 11] = [
+    let groups: [fn(&str) -> bool; 13] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -279,6 +291,8 @@ fn held_out(id: &str) -> bool {
         fullscreen_case,
         space_line_case,
         pre_line_newline_case,
+        quirks_strut_case,
+        rtl_block_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -399,4 +413,25 @@ fn fullscreen_case(id: &str) -> bool {
 #[test]
 fn the_fullscreen_element_fills_the_viewport_like_chrome_156() {
     assert_matches_chrome(compare_cases(fullscreen_case));
+}
+
+/// miaskiewicz/turbo-dom#190: the quirks-mode line height quirk (and its standards-mode
+/// control).
+fn quirks_strut_case(id: &str) -> bool {
+    id.starts_with("quirks-strut-")
+}
+
+#[test]
+fn quirks_mode_lines_take_the_strut_only_for_text_like_chrome_156() {
+    assert_matches_chrome(compare_cases(quirks_strut_case));
+}
+
+/// miaskiewicz/turbo-dom#190: block boxes in an RTL container start at its right edge.
+fn rtl_block_case(id: &str) -> bool {
+    id.starts_with("rtl-")
+}
+
+#[test]
+fn rtl_containers_place_blocks_from_the_right_like_chrome_156() {
+    assert_matches_chrome(compare_cases(rtl_block_case));
 }

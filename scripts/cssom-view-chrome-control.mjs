@@ -321,6 +321,45 @@ const CASES = [
     ),
     metrics: ["st", "tf", "ab"],
   },
+  // miaskiewicz/turbo-dom#190: an RTL scroller's content overflows to the left, its
+  // offsets run 0..-(scrollWidth - clientWidth) (minX; a set offset reads back clamped),
+  // boxes move right under a negative offset, and scrollIntoView's inline start is the
+  // right edge.
+  {
+    id: "rtl-scroll-origin",
+    html: DOC(
+      "",
+      `<div data-cid="s" class="s" dir="rtl" style="overflow:auto;width:100px;height:50px;padding:0 4px 0 6px">` +
+        `<div data-cid="w" style="width:300px;height:10px"></div>` +
+        `<div data-cid="n" style="width:40px;height:10px;margin-right:5px"></div>` +
+        `<div data-cid="c" style="width:40px;height:10px;margin:0 auto"></div>` +
+        `<div data-cid="l" style="width:40px;height:10px;margin-right:auto"></div>` +
+        `<div data-cid="m" style="width:40px;height:10px;margin-left:-20px"></div>` +
+        `</div>` +
+        `<div data-cid="h" class="s" dir="rtl" style="overflow:hidden;width:100px;height:20px">${BOX(250, 10, "hk")}</div>` +
+        `<div data-cid="f" class="s" dir="rtl" style="overflow:auto;width:100px;height:20px">${BOX(60, 10, "fk")}</div>`,
+    ),
+    scroll: { s: [-50, 0], h: [-999, 0], f: [30, 0] },
+    metrics: ["s", "h", "f"],
+  },
+  {
+    id: "rtl-into-view",
+    html: DOC(
+      "",
+      `<div data-cid="s" class="s" dir="rtl" style="overflow:auto;width:100px;height:100px;padding:0">` +
+        `<div style="width:400px;height:1000px;position:relative">` +
+        `<div data-cid="t" style="position:absolute;right:150px;top:300px;width:30px;height:40px"></div>` +
+        `<div data-cid="near" style="position:absolute;right:10px;top:50px;width:20px;height:20px"></div>` +
+        `</div></div>`,
+    ),
+    metrics: ["s"],
+    intoView: [
+      ...[0, 1, 2, 3].map((inline) => ({ target: "t", scroller: "s", mode: 0, block: 0, inline, from: [0, 0] })),
+      { target: "t", scroller: "s", mode: 0, block: 3, inline: 3, from: [-290, 0] },
+      { target: "t", scroller: "s", mode: 1, block: 3, inline: 3, from: [0, 0] },
+      { target: "near", scroller: "s", mode: 2, block: 3, inline: 3, from: [-200, 0] },
+    ],
+  },
   // scroll::alignment + scroll::expose: the offsets scrollIntoView/IfNeeded leave.
   {
     id: "into-view",
@@ -467,7 +506,11 @@ const read = (cid) =>
     : cid === "body" || cid === "html"
       ? document.querySelector(cid)
       : document.querySelector(`[data-cid="${cid}"]`);
-const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+const browser = await chromium.launch({
+  executablePath: chromePath,
+  headless: true,
+  args: ["--use-mock-keychain", "--password-store=basic"],
+});
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 const frames = () => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
@@ -491,8 +534,19 @@ for (const testCase of CASES) {
         const saved = [el.scrollLeft, el.scrollTop];
         el.scrollTo(1e7, 1e7);
         const max = [el.scrollLeft, el.scrollTop];
+        el.scrollTo(-1e7, -1e7);
+        const minX = el.scrollLeft;
         el.scrollTo(...saved);
-        return { scrollWidth: el.scrollWidth, scrollHeight: el.scrollHeight, maxX: max[0], maxY: max[1] };
+        // An RTL scroller's offsets run 0..-(scrollWidth - clientWidth) (miaskiewicz/turbo-dom#190).
+        const scrollLeft = el.scrollLeft;
+        return {
+          scrollWidth: el.scrollWidth,
+          scrollHeight: el.scrollHeight,
+          maxX: max[0],
+          maxY: max[1],
+          ...(minX ? { minX } : {}),
+          ...(scrollLeft ? { scrollLeft } : {}),
+        };
       };
       const boundary = ([cid, child, offset]) => {
         const el = read(cid);

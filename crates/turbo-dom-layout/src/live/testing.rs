@@ -138,6 +138,25 @@ pub(crate) fn layout_with(
     layout_scale: Option<f32>,
     prepare: impl FnOnce(&mut Tree),
 ) -> (Tree, LayoutSnapshot, SourceStyles) {
+    layout_with_fonts(
+        html,
+        css,
+        (width, height),
+        layout_scale,
+        prepare,
+        &FontRegistry::new(),
+    )
+}
+
+/// [`layout_with`] under `fonts` (the repo's fixture fonts for text-laid controls).
+pub(crate) fn layout_with_fonts(
+    html: &str,
+    css: &str,
+    (width, height): (f32, f32),
+    layout_scale: Option<f32>,
+    prepare: impl FnOnce(&mut Tree),
+    fonts: &FontRegistry,
+) -> (Tree, LayoutSnapshot, SourceStyles) {
     let mut tree = Tree::parse(html);
     prepare(&mut tree);
     let children = light_children(&tree);
@@ -162,7 +181,6 @@ pub(crate) fn layout_with(
         inline_override: &|_| None,
         inline_declarations: &|text| Ok(parse_declarations(text)),
     };
-    let fonts = FontRegistry::new();
     let images = ImageCtx {
         resolver: &NoImages,
         body_height: None,
@@ -170,7 +188,7 @@ pub(crate) fn layout_with(
     let inputs = SnapshotInputs {
         width,
         height,
-        fonts: &fonts,
+        fonts,
         images: &images,
     };
     let mut diagnostics = Diagnostics::default();

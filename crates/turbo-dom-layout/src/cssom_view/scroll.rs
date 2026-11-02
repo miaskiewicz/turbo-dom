@@ -813,6 +813,25 @@ mod tests {
                 ["scrollWidth", "scrollHeight", "maxX", "maxY"].map(|k| want[k].as_i64().unwrap()),
                 "{id}: {cid} scroll extents"
             );
+            // An RTL scroller's offsets run 0..-(scrollWidth - clientWidth), and a set
+            // offset reads back clamped to them (turbo-surf's clamp; miaskiewicz/turbo-dom#190).
+            let min = if got.scroll_x { snap(got.min_x) } else { 0.0 };
+            assert_eq!(
+                min as i64,
+                want["minX"].as_i64().unwrap_or(0),
+                "{id}: {cid} minimum scroll offset"
+            );
+            if let Some(set) = case.json["scroll"].get(cid) {
+                let read = set[0]
+                    .as_f64()
+                    .unwrap()
+                    .clamp(min, max(got.max_x, got.scroll_x) as f64);
+                assert_eq!(
+                    read as i64,
+                    want["scrollLeft"].as_i64().unwrap_or(0),
+                    "{id}: {cid} scrollLeft read back"
+                );
+            }
             // An element without a box scrolls in neither axis.
             let boxed = want["scrollWidth"].as_i64() != Some(0);
             assert_eq!(
@@ -1016,9 +1035,29 @@ mod tests {
         assert_translated("translation-transformed-scroller");
     }
 
+    /// miaskiewicz/turbo-dom#190: an RTL scroller overflows to the left; its negative
+    /// offsets move its boxes right.
+    #[test]
+    fn rtl_scrollers_scroll_from_the_right_like_chrome_156() {
+        assert_extents("rtl-scroll-origin");
+        assert_translated("rtl-scroll-origin");
+        assert_extents("rtl-into-view");
+    }
+
     #[test]
     fn scroll_into_view_offsets_match_chrome_156() {
-        let case = case("into-view");
+        assert_into_view("into-view");
+    }
+
+    /// miaskiewicz/turbo-dom#190: in an RTL scroller the inline start is the right edge
+    /// and the offsets are negative.
+    #[test]
+    fn rtl_scroll_into_view_offsets_match_chrome_156() {
+        assert_into_view("rtl-into-view");
+    }
+
+    fn assert_into_view(id: &str) {
+        let case = case(id);
         let scroller = case.id("s");
         let metrics = scroll_metrics(&case.snapshot, &case.styles, scroller).unwrap();
         let port = case.bounds("s");
@@ -1031,14 +1070,19 @@ mod tests {
             ];
             // Chrome clamps the starting offsets first, as the embedder does.
             let from = [
-                from[0].clamp(0.0, snap(metrics.max_x)),
+                from[0].clamp(snap(metrics.min_x), snap(metrics.max_x)),
                 from[1].clamp(0.0, snap(metrics.max_y)),
             ];
             let mode = want["mode"].as_u64().unwrap() as u32;
+            let rtl = case.styles[&scroller].style.get("direction") == Some("rtl");
             let behaviors = [
-                alignment(want["inline"].as_u64().unwrap() as u32, mode).unwrap(),
+                inline_alignment(
+                    alignment(want["inline"].as_u64().unwrap() as u32, mode).unwrap(),
+                    rtl,
+                ),
                 alignment(want["block"].as_u64().unwrap() as u32, mode).unwrap(),
             ];
+            let min = [snap(metrics.min_x), 0.0];
             let max = [snap(metrics.max_x), snap(metrics.max_y)];
             let start = [bounds.x - port.x, bounds.y - port.y];
             let length = [bounds.width, bounds.height];
@@ -1052,7 +1096,7 @@ mod tests {
                         f64::from(visible[axis]),
                         behaviors[axis],
                     )
-                    .clamp(0.0, max[axis]),
+                    .clamp(min[axis], max[axis]),
                 )
             });
             let chrome = [
@@ -1100,17 +1144,13 @@ mod tests {
     #[test]
     fn unsupported_scroll_geometry_is_an_error_not_a_guess() {
         let (tree, snapshot, styles) = laid_out(
-            "<body><div id=r style='direction:rtl;overflow:auto'></div><div id=v style='writing-mode:vertical-rl;overflow:auto'></div><div id=z style='transform:scale(0);overflow:auto'></div><svg><rect id=s width=5 height=5></rect></svg><span id=i>x</span></body>",
+            "<body><div id=v style='writing-mode:vertical-rl;overflow:auto'></div><div id=z style='transform:scale(0);overflow:auto'></div><svg><rect id=s width=5 height=5></rect></svg><span id=i>x</span></body>",
         );
         let id = |selector| crate::live::testing::id(&tree, selector);
         let error = |selector| scroll_metrics(&snapshot, &styles, id(selector)).unwrap_err();
         assert_eq!(
-            error("#r"),
-            "native scroll RTL/vertical writing provenance pending"
-        );
-        assert_eq!(
             error("#v"),
-            "native scroll RTL/vertical writing provenance pending"
+            "native scroll vertical writing provenance pending"
         );
         assert_eq!(
             error("#z"),
