@@ -1558,6 +1558,15 @@
     if (pickList(lists['play-state'], i, 'running') === 'paused') pause(animation, animations.get(animation), '');
     return animation;
   }
+  function keyframesRule(name) {
+    if (!cssKeyframes) cssKeyframes = ns.cssKeyframes ? ns.cssKeyframes() : create(null);
+    return cssKeyframes[name];
+  }
+  // The element's existing animation of `name` not yet matched this update (kept by name).
+  function ownedAnimation(state, name, kept) {
+    for (let j = 0; j < state.animations.length; j++) if (state.animations[j].name === name && !contains(kept, state.animations[j])) return state.animations[j];
+    return null;
+  }
   function cssAnimations(element, read, underlying) {
     const state = cssState(element), names = splitList(read('animation-name'));
     const lists = {};
@@ -1569,11 +1578,9 @@
     for (let i = 0; i < names.length && !hidden; i++) {
       const name = names[i];
       if (name === 'none') continue;
-      if (!cssKeyframes) cssKeyframes = ns.cssKeyframes ? ns.cssKeyframes() : create(null);
-      const rule = cssKeyframes[name];
+      const rule = keyframesRule(name);
       if (!rule) continue;
-      let entry = null;
-      for (let j = 0; j < state.animations.length && !entry; j++) if (state.animations[j].name === name && !contains(kept, state.animations[j])) entry = state.animations[j];
+      let entry = ownedAnimation(state, name, kept);
       if (!entry) entry = { name, animation: cssAnimation(element, name, rule, lists, i, underlying) };
       animations.get(entry.animation).css.index = i;
       push(kept, entry);
