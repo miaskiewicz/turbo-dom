@@ -37,7 +37,10 @@ fn fill_text_glyph_runs_match_chrome_156() {
     assert_eq!(cases.len(), 3);
     let mut failures = Vec::new();
     for case in cases {
-        let (font, text) = (case["font"].as_str().unwrap(), case["text"].as_str().unwrap());
+        let (font, text) = (
+            case["font"].as_str().unwrap(),
+            case["text"].as_str().unwrap(),
+        );
         let ops = serde_json::json!([[
             "fillText",
             [text, baseline[0], baseline[1]],
@@ -55,7 +58,9 @@ fn fill_text_glyph_runs_match_chrome_156() {
                 .zip(want.iter().flatten())
                 .all(|(a, b)| a.abs_diff(*b) <= 1);
         if !close {
-            failures.push(format!("{font} {text:?}:\n  got   {got:?}\n  want  {want:?}"));
+            failures.push(format!(
+                "{font} {text:?}:\n  got   {got:?}\n  want  {want:?}"
+            ));
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));

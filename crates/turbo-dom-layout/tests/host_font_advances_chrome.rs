@@ -36,7 +36,11 @@ fn snapshot(style: &str, text: &str) -> LayoutSnapshot {
     };
     snapshot_html_live_tree_with_native_text(
         &literal::tree(&nodes).input(),
-        &[identity(1, &[0]), identity(2, &[0, 0]), identity(3, &[0, 0, 0])],
+        &[
+            identity(1, &[0]),
+            identity(2, &[0, 0]),
+            identity(3, &[0, 0, 0]),
+        ],
         &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &NativeTextOptions {
             original_text: &[],
@@ -73,7 +77,10 @@ fn times_range_widths_match_chrome_on_macos() {
     let mut failures = Vec::new();
     let cases = control["result"].as_array().unwrap();
     for case in cases {
-        let (style, text) = (case["style"].as_str().unwrap(), case["text"].as_str().unwrap());
+        let (style, text) = (
+            case["style"].as_str().unwrap(),
+            case["text"].as_str().unwrap(),
+        );
         let snapshot = snapshot(style, text);
         for range in case["ranges"].as_array().unwrap() {
             let end = range["end"].as_u64().unwrap() as usize;
@@ -90,6 +97,11 @@ fn times_range_widths_match_chrome_on_macos() {
             }
         }
     }
-    assert!(failures.is_empty(), "{} mismatches:\n{}", failures.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} mismatches:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
     assert_eq!(cases.len(), 40);
 }

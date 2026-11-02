@@ -9,18 +9,9 @@
 
 use crate::text::FontFace;
 
-pub(super) fn glyph_advance(
-    face: &FontFace,
-    font_size: f32,
-    design_advance: i32,
-    letter_spacing: f32,
-) -> f64 {
-    face.blink_glyph_advance(font_size, design_advance) + f64::from(letter_spacing)
-}
-
 pub(super) fn measure(
     face: &FontFace,
-    font_size: f32,
+    size: (f32, f32),
     letter_spacing: f32,
     text: &str,
     original: Option<&[u16]>,
@@ -29,14 +20,22 @@ pub(super) fn measure(
         || face.shape(text),
         |units| face.shape_original_utf16(units),
     );
-    glyphs
-        .iter()
-        .zip(crate::text::cluster_ends(&glyphs))
-        .map(|(glyph, end)| {
-            let spacing = if end { letter_spacing } else { 0.0 };
-            glyph_advance(face, font_size, glyph.x_advance, spacing)
-        })
-        .sum()
+    advances(face, size, &glyphs, letter_spacing).iter().sum()
+}
+
+/// Each shaped glyph's advance ([`FontFace::blink_advances`]) plus `letter_spacing` after
+/// each cluster's last glyph.
+pub(super) fn advances(
+    face: &FontFace,
+    (font_size, device_scale): (f32, f32),
+    glyphs: &[crate::text::ShapedGlyph],
+    letter_spacing: f32,
+) -> Vec<f64> {
+    face.blink_advances(glyphs, font_size, device_scale)
+        .into_iter()
+        .zip(crate::text::cluster_ends(glyphs))
+        .map(|(advance, end)| advance + if end { f64::from(letter_spacing) } else { 0.0 })
+        .collect()
 }
 
 #[cfg(test)]
@@ -63,18 +62,24 @@ mod tests {
             false,
         )
         .unwrap();
-        assert_eq!(measure(&ibm, 16.0, 0.0, "a", None), 9.599_990_844_726_562);
-        assert_eq!(measure(&fira, 16.0, 0.0, "a", None), 9.846_145_629_882_812);
         assert_eq!(
-            measure(&ibm, 16.0, 0.0, "aaaaa", None),
+            measure(&ibm, (16.0, 1.0), 0.0, "a", None),
+            9.599_990_844_726_562
+        );
+        assert_eq!(
+            measure(&fira, (16.0, 1.0), 0.0, "a", None),
+            9.846_145_629_882_812
+        );
+        assert_eq!(
+            measure(&ibm, (16.0, 1.0), 0.0, "aaaaa", None),
             47.999_954_223_632_81
         );
         assert_eq!(
-            measure(&ibm, 16.0, 0.0, "abc", None),
+            measure(&ibm, (16.0, 1.0), 0.0, "abc", None),
             28.799_972_534_179_688
         );
         assert_ne!(
-            measure(&ibm, 16.0, 0.0, "abc", None),
+            measure(&ibm, (16.0, 1.0), 0.0, "abc", None),
             3.0 * (9.6_f64 * 128.0).ceil() / 128.0
         );
     }
@@ -83,19 +88,24 @@ mod tests {
     fn signed_conversion_spacing_and_original_utf16_preserve_shaper_semantics() {
         let face = ibm();
         let advance = face.shape("a")[0].x_advance;
-        let positive = glyph_advance(&face, 16.0, advance, 0.0);
-        assert_eq!(glyph_advance(&face, 16.0, -advance, 0.0), -positive);
-        assert_eq!(glyph_advance(&face, 16.0, advance, 0.25), positive + 0.25);
-        assert_eq!(glyph_advance(&face, 16.0, 0, -0.25), -0.25);
+        let one = |design| face.blink_device_glyph_advance(16.0, 1.0, design);
+        let positive = one(advance);
+        assert_eq!(one(-advance), -positive);
+        assert_eq!(one(0), 0.0);
+        // At DSF 2 the font is created at 32px and truncated in device units.
+        assert_eq!(
+            face.blink_device_glyph_advance(16.0, 2.0, advance),
+            f64::from((19.2_f32 * 65536.0) as i32) / 131_072.0
+        );
         let original = [0x61, 0x62, 0x63];
         assert_eq!(
-            measure(&face, 16.0, 0.0, "ignored", Some(&original)),
-            measure(&face, 16.0, 0.0, "abc", None)
+            measure(&face, (16.0, 1.0), 0.0, "ignored", Some(&original)),
+            measure(&face, (16.0, 1.0), 0.0, "abc", None)
         );
         assert_eq!(
-            measure(&face, 16.0, 0.25, "abc", None),
-            measure(&face, 16.0, 0.0, "abc", None) + 0.75
+            measure(&face, (16.0, 1.0), 0.25, "abc", None),
+            measure(&face, (16.0, 1.0), 0.0, "abc", None) + 0.75
         );
-        assert_eq!(measure(&face, 16.0, 0.0, "", None), 0.0);
+        assert_eq!(measure(&face, (16.0, 1.0), 0.0, "", None), 0.0);
     }
 }

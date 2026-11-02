@@ -350,7 +350,7 @@ impl FontFace {
         self.italic
     }
 
-    fn ttf(&self) -> &TtfFace<'_> {
+    pub(super) fn ttf(&self) -> &TtfFace<'_> {
         &self.faces.borrow_dependent().ttf
     }
 
@@ -442,11 +442,28 @@ impl FontFace {
     /// The advance of one glyph of `design_advance` font units at `font_size` as Blink
     /// positions it: Skia's `SkScalar` advance cast to a signed 16.16 `HarfBuzz` position
     /// (truncation toward zero; chromium 155 `skia_text_metrics.h`,
-    /// `SkiaScalarToHarfBuzzPosition`).
+    /// `SkiaScalarToHarfBuzzPosition`), at the size Blink's font cache creates the font at
+    /// ([`blink_font_size`]). A canvas font is created at its CSS size, so this is
+    /// [`blink_device_glyph_advance`](Self::blink_device_glyph_advance) at scale 1.
     #[must_use]
     pub fn blink_glyph_advance(&self, font_size: f32, design_advance: i32) -> f64 {
-        let scalar = self.scale(font_size) * design_advance as f32;
-        f64::from((scalar * 65536.0) as i32) / 65536.0
+        self.blink_device_glyph_advance(font_size, 1.0, design_advance)
+    }
+
+    /// [`blink_glyph_advance`](Self::blink_glyph_advance) for HTML text at a device scale
+    /// factor, in CSS px: Blink lays HTML text out in device pixels, so the font is created
+    /// at the device size `font_size * device_scale` (truncated by the font cache there:
+    /// 18.72px at DSF 2 is a 37.43px font, 18.715 CSS px) and the 16.16 truncation is in
+    /// device units.
+    #[must_use]
+    pub fn blink_device_glyph_advance(
+        &self,
+        font_size: f32,
+        device_scale: f32,
+        design_advance: i32,
+    ) -> f64 {
+        let scalar = self.scale(blink_font_size(font_size * device_scale)) * design_advance as f32;
+        f64::from((scalar * 65536.0) as i32) / 65536.0 / f64::from(device_scale)
     }
 
     /// Canvas `measureText(text).width` as Chrome 156 computes it: Blink's canvas font
@@ -460,10 +477,25 @@ impl FontFace {
                 Some(head) => [head, " "],
                 None => [word, ""],
             })
-            .flat_map(|word| self.shape(word))
-            .map(|glyph| self.blink_glyph_advance(font_size, glyph.x_advance))
-            .sum()
+            .map(|word| {
+                self.blink_advances(&self.shape(word), font_size, 1.0)
+                    .iter()
+                    .sum::<f64>()
+            })
+            .sum::<f64>()
     }
+}
+
+/// The size Blink creates a font at for a computed `font_size` (CSS px): the font cache
+/// keys platform fonts by `unsigned(size * 100)` (float math, truncated) and builds each one
+/// at that key's size, so 18.72px text is shaped with an 18.71px font and 17.3px with
+/// 17.29px (chromium `FontPlatformDataCache` / `FontCacheKey::PrecisionMultiplier`; Chrome
+/// 156 controls `tests/fixtures/host-font-advances/chrome156.json` and the fixture-font
+/// `text-advances` rows, turbo-dom#236). Sizes with at most two decimals that are exact in
+/// binary (16, 21.5, 18.75) are unchanged.
+#[must_use]
+pub fn blink_font_size(font_size: f32) -> f32 {
+    ((font_size * 100.0) as u32) as f32 / 100.0
 }
 
 /// Whether each shaped glyph ends its cluster (the next glyph starts another

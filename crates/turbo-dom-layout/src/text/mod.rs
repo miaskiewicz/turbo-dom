@@ -3,6 +3,7 @@
 //! line layout with metrics and alignment.
 
 #[cfg(feature = "bundled-fonts")]
+mod blink_advance;
 mod bundled;
 mod font;
 mod inline;
@@ -11,7 +12,7 @@ mod registry;
 pub(crate) mod transform;
 
 pub(crate) use font::cluster_ends;
-pub use font::{FontFace, HtmlFontMetrics, ShapedGlyph};
+pub use font::{blink_font_size, FontFace, HtmlFontMetrics, ShapedGlyph};
 pub use inline::{layout_text, Align, LineBox, TextStyle, WhiteSpace};
 pub use registry::{FontRegistry, SystemFontPolicy};
 pub use transform::{CaseLocale, CaseTransform, TextTransform};
