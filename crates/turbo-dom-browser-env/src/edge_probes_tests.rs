@@ -637,3 +637,51 @@ fn custom_element_reaction_volume_matches_chrome156() {
         &[],
     );
 }
+
+/// HTML processing instructions in a loaded page (miaskiewicz/turbo-dom#135): every page
+/// installer parses `<?target data?>` like Chrome 156's main-document parser
+/// (`page_processing_instructions_chrome156.json`, recorded by
+/// `scripts/page-processing-instructions-chrome-control.mjs`).
+#[test]
+fn page_processing_instructions_match_chrome156() {
+    use crate::browser_env::{
+        install_with_html, install_with_html_source_positions, install_with_utf16_source_positions,
+        reset,
+    };
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("page_processing_instructions_chrome156.json")).unwrap();
+    assert_eq!(control["browser"], "Chrome/156.0.8078.47");
+    let describe = format!("JSON.stringify({})", control["describe"].as_str().unwrap());
+    let installers: [fn(&mut v8::PinScope, &str); 3] = [
+        install_with_html,
+        install_with_html_source_positions,
+        |scope, html| {
+            install_with_utf16_source_positions(scope, &html.encode_utf16().collect::<Vec<_>>());
+        },
+    ];
+    crate::browser_env::tests::init_v8();
+    let mut failures = Vec::new();
+    for (page, expected) in control["results"].as_object().unwrap() {
+        for (index, install) in installers.iter().enumerate() {
+            let isolate = &mut v8::Isolate::new(Default::default());
+            v8::scope!(let scope, isolate);
+            let context = v8::Context::new(scope, Default::default());
+            let scope = &mut v8::ContextScope::new(scope, context);
+            install(scope, page);
+            let code = v8::String::new(scope, &describe).unwrap();
+            let value = v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap()
+                .to_rust_string_lossy(scope);
+            reset();
+            let actual: serde_json::Value = serde_json::from_str(&value).unwrap();
+            if &actual != expected {
+                failures.push(format!(
+                    "installer {index} {page:?}\n  binding: {actual}\n  chrome:  {expected}"
+                ));
+            }
+        }
+    }
+    assert_eq!(failures, Vec::<String>::new());
+}

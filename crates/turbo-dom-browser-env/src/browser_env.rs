@@ -639,13 +639,20 @@ impl Drop for DomScope {
 /// Install an independent native document in the current V8 context. The caller's
 /// document stays live, and callbacks route by their receiver's creation context.
 pub fn install_independent_html(scope: &mut v8::PinScope, html: &str) {
-    install_independent_tree(scope, Tree::parse(html));
+    let units = html.encode_utf16().collect::<Vec<_>>();
+    install_independent_tree(
+        scope,
+        Tree::parse_utf16_with_processing_instructions(&units),
+    );
 }
 pub fn install_independent_html_units(scope: &mut v8::PinScope, units: &[u16]) {
-    install_independent_tree(scope, Tree::parse_utf16(units));
+    install_independent_tree(scope, Tree::parse_utf16_with_processing_instructions(units));
 }
 pub fn install_independent_utf16_source_positions(scope: &mut v8::PinScope, units: &[u16]) {
-    install_independent_tree(scope, Tree::parse_utf16_with_source_positions(units));
+    install_independent_tree(
+        scope,
+        Tree::parse_utf16_with_source_positions_and_processing_instructions(units),
+    );
 }
 fn install_independent_tree(scope: &mut v8::PinScope, tree: Tree) {
     dom_isolation::install(scope);
@@ -7287,7 +7294,12 @@ pub fn install(scope: &mut v8::PinScope) {
 }
 
 pub fn install_with_html(scope: &mut v8::PinScope, html: &str) {
-    install_with_tree(scope, Tree::parse(html));
+    // A loaded page parses `<?target data?>` like Chrome (turbo-dom#135).
+    let units = html.encode_utf16().collect::<Vec<_>>();
+    install_with_tree(
+        scope,
+        Tree::parse_utf16_with_processing_instructions(&units),
+    );
 }
 
 /// Setup was cut short because V8 execution was terminated while the document was being
@@ -7315,10 +7327,14 @@ pub fn try_install_with_html(scope: &mut v8::PinScope, html: &str) -> Result<(),
 }
 /// Opt-in parser positions for embedders that report authentic source locations.
 pub fn install_with_html_source_positions(scope: &mut v8::PinScope, html: &str) {
-    install_with_tree(scope, Tree::parse_with_source_positions(html));
+    let units = html.encode_utf16().collect::<Vec<_>>();
+    install_with_utf16_source_positions(scope, &units);
 }
 pub fn install_with_utf16_source_positions(scope: &mut v8::PinScope, units: &[u16]) {
-    install_with_tree(scope, Tree::parse_utf16_with_source_positions(units));
+    install_with_tree(
+        scope,
+        Tree::parse_utf16_with_source_positions_and_processing_instructions(units),
+    );
 }
 fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     SETUP_TERMINATED.with(|t| t.set(false));

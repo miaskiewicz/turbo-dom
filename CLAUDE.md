@@ -263,7 +263,8 @@ package or publish workflow.
   ProcessingInstruction. The Chrome mode lives only in the UTF-16 unit tokenizer
   (`TokenizerOpts::processing_instructions`, a marker-prefixed comment token turned into a PI on
   import), switched on per tree (`Tree::set_processing_instructions` /
-  `parse_utf16_with_processing_instructions`) — browser-env does so for all its documents. Inputs
+  `parse_utf16_with_processing_instructions` / `parse_utf16_with_source_positions_and_processing_instructions`)
+  — browser-env does so for all its documents, loaded pages included. Inputs
   with `<?` then skip the scalar fast path. Chrome control: browser-env
   `processing_instructions_chrome156.json`.
 - **Fragment context:** `parseFragment(html, context)` where context is `"td"` or namespaced

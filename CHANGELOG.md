@@ -36,7 +36,8 @@ at the time); this file reconstructs them from history.
   and `Tree::set_processing_instructions` make the UTF-16 tokenizer parse `<?target data?>` as a
   ProcessingInstruction (ASCII-name target other than `xml`; nothing when the input ends inside
   one; otherwise the standard's bogus comment). turbo-dom-browser-env turns it on for every
-  document it installs or parses, so innerHTML / insertAdjacentHTML / createContextualFragment /
+  document it installs or parses (loaded pages included; `parse_utf16_with_source_positions_and_processing_instructions`
+  for the source-position parse), so innerHTML / insertAdjacentHTML / createContextualFragment /
   setHTML[Unsafe] / Document.parseHTML[Unsafe] match Chrome; a safe `setHTML` dictionary without
   processing-instruction lists drops them and the sanitizer keeps Document-level ones, like
   Chrome. The default mode and the conformance gates keep html5lib-tests' bogus comment.
