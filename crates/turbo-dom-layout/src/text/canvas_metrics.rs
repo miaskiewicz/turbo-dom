@@ -145,6 +145,24 @@ impl FontFace {
             .map_or(font_size / 2.0, |h| f32::from(h) * self.scale(font_size))
     }
 
+    /// The face's cap height in px (OS/2 `sCapHeight`, else the ascent): the CSS `cap`.
+    #[must_use]
+    pub fn cap_height_px(&self, font_size: f32) -> f32 {
+        self.ttf()
+            .capital_height()
+            .map_or(self.ascent_px(font_size), |h| {
+                f32::from(h) * self.scale(font_size)
+            })
+    }
+
+    /// The advance of U+6C34 (水) in px when the face has the glyph: the CSS `ic` (which
+    /// is 1em otherwise).
+    #[must_use]
+    pub fn ideographic_advance_px(&self, font_size: f32) -> Option<f32> {
+        let glyph = self.glyph_index('\u{6c34}')?;
+        Some(f32::from(self.glyph_advance(glyph)) * self.scale(font_size))
+    }
+
     fn canvas_shape(&self, text: &str, shaping: CanvasShaping) -> Vec<super::ShapedGlyph> {
         if shaping != CanvasShaping::NoKerning {
             return self.shape(text);
@@ -287,5 +305,13 @@ mod tests {
     fn x_height_reads_the_os2_table() {
         let x = inter().x_height_px(16.0);
         assert!(x > 7.0 && x < 9.5, "{x}");
+    }
+
+    /// Chrome 156's canvas `1cap` with `10px Inter` is 7.275390625 (Inter's sCapHeight
+    /// 1490 / 2048 em); Inter has no U+6C34, so `ic` falls back to 1em.
+    #[test]
+    fn cap_height_and_ideographic_advance() {
+        assert_eq!(inter().cap_height_px(10.0), 7.275_390_6);
+        assert_eq!(inter().ideographic_advance_px(10.0), None);
     }
 }

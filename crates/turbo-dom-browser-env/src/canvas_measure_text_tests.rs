@@ -205,7 +205,10 @@ fn spacing_units_match_chrome156() {
         for (unit, want) in e.as_object().unwrap() {
             let got = a[unit].as_f64();
             if got.is_none_or(|got| (got - want.as_f64().unwrap()).abs() > INK_TOLERANCE) {
-                out.push(format!("{placement} 1{unit}: got {:?}, Chrome {want}", a[unit]));
+                out.push(format!(
+                    "{placement} 1{unit}: got {:?}, Chrome {want}",
+                    a[unit]
+                ));
             }
         }
     }

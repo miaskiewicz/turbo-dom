@@ -98,6 +98,7 @@
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
   var canvasMeasureTextNative=g.__canvasMeasureTextNative;delete g.__canvasMeasureTextNative;
+  var canvasLengthUnitNative=g.__canvasLengthUnitNative;delete g.__canvasLengthUnitNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
@@ -2198,10 +2199,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       return metrics;
     };
     // Text attributes (turbo-dom#237, canvas_text_attributes_chrome156.json): letterSpacing /
-    // wordSpacing take a CSS length (no percentage, unitless number, calc() or padding) and
+    // wordSpacing take a CSS length (any <length> unit Chrome parses; no percentage, unitless
+    // number, calc() or padding) and
     // read back lowercased with the number reserialized; the enum attributes accept only
     // their exact values. An invalid assignment is ignored. measureText passes them on.
-    var __cvLength = /^([+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?)(vmin|vmax|rem|px|em|ex|ch|vw|vh|pt|pc|in|cm|mm|q)$/i;
+    var __cvLength = /^([+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?)([a-z]+)$/i;
     var __cvEnums = {
       fontKerning: ['auto', 'normal', 'none'],
       fontStretch: ['ultra-condensed', 'extra-condensed', 'condensed', 'semi-condensed', 'normal',
@@ -2218,7 +2220,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
             var text = String(value);
             if (allowed) { if (allowed.indexOf(text) >= 0) state[name] = text; return; }
             var length = __cvLength.exec(text);
-            if (length) state[name] = String(Number(length[1])) + length[2].toLowerCase();
+            if (length && canvasLengthUnitNative(length[2])) state[name] = String(Number(length[1])) + length[2].toLowerCase();
           } });
       });
     };
@@ -2258,7 +2260,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           var text = String(s);
           this._ops.push(['measureText', text, this.font]);
           var m = canvasMeasureTextNative(text, String(this.font), String(this.textAlign), String(this.textBaseline), String(this.direction),
-            this.letterSpacing, this.wordSpacing, this.fontKerning, this.textRendering, +g.innerWidth || 0, +g.innerHeight || 0);
+            this.letterSpacing, this.wordSpacing, this.fontKerning, this.textRendering);
           // Native order -> the TextMetrics field order.
           return __textMetrics([m[0], m[1], m[2], m[5], m[6], m[3], m[4], m[7], m[8], m[9]]);
         },
