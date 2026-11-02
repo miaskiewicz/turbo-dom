@@ -42,6 +42,15 @@ turbo-dom, -layout and -raster; 1.91 for turbo-dom-v8 and -browser-env.
 `innerHTML` / `outerHTML` (the `./runtime` serializer and rtdom `serialize_*`, scalar and
 UTF-16) now write `<` and `>` in attribute values as `&lt;` / `&gt;`, as Chrome 156 does.
 
+### Fixed — soft hyphens in words broken by `overflow-wrap`, and the hyphen's face (miaskiewicz/turbo-dom#229, Chrome 156 control)
+- A word with both a soft hyphen and `overflow-wrap` breaks no longer repeats its text: only
+  the fragment ending at the soft hyphen draws the hyphen, instead of the whole word
+  replacing that fragment (4 lines where Chrome gives 2 in a span).
+- The drawn hyphen uses the run's own face (a fallback face that only covered U+00AD gave
+  the hyphen in a bold span a regular advance). The `text-breaks` control gains markup
+  cases across span edges: nested spans, a soft hyphen at a span edge, `break-all` across
+  spans, `hyphens: none` on a span.
+
 ### Fixed — open layout and browser-env bugs before 0.6.0 (miaskiewicz/turbo-dom#188/#189/#212/#213/#214/#218, Chrome 156 controls)
 - Layout: `word-break: break-all` breaks between any letters, and `overflow-wrap:
   break-word | anywhere` (or `word-break: break-word`) breaks a word only when it cannot fit

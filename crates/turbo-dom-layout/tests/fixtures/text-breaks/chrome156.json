@@ -8,7 +8,7 @@
     ],
     "deviceScaleFactor": 2
   },
-  "probeSha256": "3733eec5b8bbbc7c6eae95421caf0717c7a0caab121272dd345a29df4ac970d3",
+  "probeSha256": "aeed5b783c760d3bd8f1c0eae53f55c02b0566ada1401fa4319f2d3605313c7a",
   "collectorSha256": "a52d76715f3bcb04dae1c95c66a3709378c9db30b97bde5f0a7f3899ee8fce74",
   "fontFiles": {
     "liberation-serif/LiberationSerif-Regular.ttf": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4",
@@ -238,6 +238,138 @@
           {
             "text": "cdef",
             "width": 34.1875
+          }
+        ]
+      },
+      {
+        "id": "span-wrap-shy",
+        "style": "width:50px;overflow-wrap:break-word",
+        "text": "<span>wwwwww­wwwwww</span>",
+        "height": 80,
+        "lines": [
+          {
+            "text": "www",
+            "width": 39.28125
+          },
+          {
+            "text": "www­",
+            "width": 45.015625
+          },
+          {
+            "text": "www",
+            "width": 39.28125
+          },
+          {
+            "text": "www",
+            "width": 39.28125
+          }
+        ]
+      },
+      {
+        "id": "span-wrap-shy-mid",
+        "style": "width:60px;overflow-wrap:break-word",
+        "text": "x <span>wwww­wwwwwwww</span> y",
+        "height": 100,
+        "lines": [
+          {
+            "text": "x ",
+            "width": 8.734375
+          },
+          {
+            "text": "wwww­",
+            "width": 58.109375
+          },
+          {
+            "text": "wwww",
+            "width": 52.375
+          },
+          {
+            "text": "wwww",
+            "width": 52.375
+          },
+          {
+            "text": " y",
+            "width": 8.9921875
+          }
+        ]
+      },
+      {
+        "id": "span-nested",
+        "style": "width:40px",
+        "text": "ab<span>cd<b>ef­gh</b>ij</span>",
+        "height": 40,
+        "lines": [
+          {
+            "text": "abcdef­",
+            "width": 60.875
+          },
+          {
+            "text": "ghij",
+            "width": 27.8203125
+          }
+        ]
+      },
+      {
+        "id": "span-shy-edge-before",
+        "style": "width:40px",
+        "text": "abcd­<span>efgh</span>",
+        "height": 40,
+        "lines": [
+          {
+            "text": "abcd­",
+            "width": 43.453125
+          },
+          {
+            "text": "efgh",
+            "width": 34.0546875
+          }
+        ]
+      },
+      {
+        "id": "span-shy-edge-after",
+        "style": "width:40px",
+        "text": "abcd<span>­efgh</span>",
+        "height": 40,
+        "lines": [
+          {
+            "text": "abcd­",
+            "width": 43.453125
+          },
+          {
+            "text": "efgh",
+            "width": 34.0546875
+          }
+        ]
+      },
+      {
+        "id": "span-break-all-edge",
+        "style": "width:50px;word-break:break-all",
+        "text": "aaaa<span>aaaa</span>aaaa",
+        "height": 60,
+        "lines": [
+          {
+            "text": "aaaaa",
+            "width": 44.921875
+          },
+          {
+            "text": "aaaaa",
+            "width": 44.921875
+          },
+          {
+            "text": "aa",
+            "width": 17.96875
+          }
+        ]
+      },
+      {
+        "id": "span-hyphens-none",
+        "style": "width:40px",
+        "text": "ab<span style=\"hyphens:none\">cd­ef</span>gh",
+        "height": 20,
+        "lines": [
+          {
+            "text": "abcd­efgh",
+            "width": 71.7734375
           }
         ]
       }

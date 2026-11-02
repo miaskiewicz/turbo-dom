@@ -1234,7 +1234,7 @@ fn split_items(
 }
 
 /// The hyphen a taken soft hyphen draws: U+2010 when the face has it, else `-`.
-fn hyphenated(mut items: Vec<SourceItem>) -> Vec<SourceItem> {
+fn hyphenated(mut items: Vec<SourceItem>, runs: &[InlineRun]) -> Vec<SourceItem> {
     if let Some(SourceItem::Character(c)) = items
         .iter_mut()
         .rev()
@@ -1245,10 +1245,20 @@ fn hyphenated(mut items: Vec<SourceItem>) -> Vec<SourceItem> {
             c.utf16_offset + c.ch.len_utf16(),
         ));
         c.source_end = Some(end);
-        c.ch = ['\u{2010}', '-']
+        // The hyphen is drawn in the run's own face when it has one: a face without
+        // U+00AD (Inter Bold) leaves the soft hyphen itself on a fallback face.
+        let primary = &runs[c.run].face;
+        let face = [primary, &c.face]
             .into_iter()
-            .find(|h| c.face.has_glyph(*h))
+            .find(|face| face.has_glyph('\u{2010}') || face.has_glyph('-'))
+            .unwrap_or(primary)
+            .clone();
+        let ch = ['\u{2010}', '-']
+            .into_iter()
+            .find(|h| face.has_glyph(*h))
             .unwrap_or('-');
+        c.face = face;
+        c.ch = ch;
         c.invalid_unit = None;
     }
     items
@@ -1271,16 +1281,27 @@ fn breakable_words(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32)
     let mut words = Vec::with_capacity(count);
     for (index, part) in parts.into_iter().enumerate() {
         let last = index + 1 == count;
-        let hyphen = (!last && ends_with_soft_hyphen(&part, runs))
-            .then(|| Box::new(marked_word(hyphenated(part.clone()), runs, 0.0)));
+        let hyphenates = !last && ends_with_soft_hyphen(&part, runs);
+        let hyphen =
+            hyphenates.then(|| Box::new(marked_word(hyphenated(part.clone(), runs), runs, 0.0)));
         let emergency = split_items(part.clone(), runs, Opportunity::Emergency);
         let mut word = marked_word(part, runs, if last { space_after } else { 0.0 });
         word.hyphen = hyphen;
         if emergency.len() > 1 {
+            // Broken at its `overflow-wrap` opportunities, only the last fragment
+            // ends at the soft hyphen, so only it may draw the hyphen (#229).
             word.emergency = Some(
                 emergency
                     .into_iter()
-                    .map(|items| marked_word(items, runs, 0.0))
+                    .map(|items| {
+                        let hyphen =
+                            (hyphenates && ends_with_soft_hyphen(&items, runs)).then(|| {
+                                Box::new(marked_word(hyphenated(items.clone(), runs), runs, 0.0))
+                            });
+                        let mut fragment = marked_word(items, runs, 0.0);
+                        fragment.hyphen = hyphen;
+                        fragment
+                    })
                     .collect(),
             );
         }
@@ -1545,7 +1566,6 @@ impl<'a> Placer<'a> {
         last.advance_space = word.advance_space.take();
         last.native_space = word.native_space.take();
         last.space_after = word.space_after;
-        last.hyphen = word.hyphen.take();
         last.break_after = word.break_after;
         for part in parts {
             self.add(part);

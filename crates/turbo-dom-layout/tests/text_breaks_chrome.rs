@@ -67,6 +67,7 @@ fn check(ids: &[&str]) {
             case["text"].as_str().unwrap(),
         );
         let want = case["lines"].as_array().unwrap();
+
         assert_eq!(
             got.iter().map(|l| squash(&l.0)).collect::<Vec<_>>(),
             want.iter()
@@ -108,4 +109,21 @@ fn overflow_wrap_and_word_break_break_inside_words_like_chrome_156() {
 #[test]
 fn soft_hyphens_are_break_opportunities_that_draw_a_hyphen_like_chrome_156() {
     check(&["shy", "shy-fits", "shy-two", "shy-none", "shy-words"]);
+}
+
+/// miaskiewicz/turbo-dom#229: the same break opportunities inside and across inline
+/// span edges (markup cases): an `overflow-wrap` break plus a soft hyphen inside a span,
+/// nested spans, a soft hyphen at either side of a span edge, `word-break: break-all`
+/// across span edges, and `hyphens: none` on a span.
+#[test]
+fn break_opportunities_carry_across_inline_span_edges_like_chrome_156() {
+    check(&[
+        "span-wrap-shy",
+        "span-wrap-shy-mid",
+        "span-nested",
+        "span-shy-edge-before",
+        "span-shy-edge-after",
+        "span-break-all-edge",
+        "span-hyphens-none",
+    ]);
 }
