@@ -914,9 +914,8 @@ fn inline_sticky(
             continue;
         }
         let members = inline_members(&items[index..], *node_id);
-        let Some(rect) = union_rect(frags.iter(), *node_id) else {
-            continue;
-        };
+        // An inline always has a fragment (an empty one keeps its insertion box).
+        let rect = union_rect(frags.iter(), *node_id).unwrap_or_default();
         let kbs = resolve_box_style(
             style,
             ResolveCtx {
@@ -982,16 +981,17 @@ fn union_rect<'a>(
 ) -> Option<(f32, f32, f32, f32)> {
     let mut out: Option<(f32, f32, f32, f32)> = None;
     for frag in frags {
-        if frag.node_id == id {
-            let r = (frag.x, frag.y, frag.x + frag.width, frag.y + frag.height);
-            out = Some(out.map_or(r, |o| {
-                (o.0.min(r.0), o.1.min(r.1), o.2.max(r.2), o.3.max(r.3))
-            }));
-        } else if let Some(r) = union_rect(frag.children.iter(), id) {
-            out = Some(out.map_or(r, |o| {
-                (o.0.min(r.0), o.1.min(r.1), o.2.max(r.2), o.3.max(r.3))
-            }));
-        }
+        let own = (frag.node_id == id).then_some((
+            frag.x,
+            frag.y,
+            frag.x + frag.width,
+            frag.y + frag.height,
+        ));
+        let found = own.or_else(|| union_rect(frag.children.iter(), id));
+        out = match (out, found) {
+            (Some(o), Some(r)) => Some((o.0.min(r.0), o.1.min(r.1), o.2.max(r.2), o.3.max(r.3))),
+            (o, r) => o.or(r),
+        };
     }
     out
 }
