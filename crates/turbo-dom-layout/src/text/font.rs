@@ -163,6 +163,31 @@ fn html_legacy_ascent(ascent: f32, descent: f32, enabled: bool) -> f32 {
     }
 }
 
+/// Rename a single-face sfnt's `kern` directory entry to an unknown tag when Chrome would
+/// not apply it to a web font: CFF outlines, or a table version other than 0. Anything that
+/// is not a readable table directory is left alone (the parser then decides).
+fn hide_ignored_web_kern(data: &mut [u8]) {
+    let be16 = |b: &[u8], at: usize| b.get(at..at + 2).map(|s| u16::from_be_bytes([s[0], s[1]]));
+    let Some(count) = be16(data, 4) else {
+        return;
+    };
+    let entry = |tag: &[u8]| {
+        (0..usize::from(count))
+            .map(|i| 12 + 16 * i)
+            .find(|&at| data.get(at..at + 4) == Some(tag))
+    };
+    let Some(kern) = entry(b"kern") else {
+        return;
+    };
+    let cff = entry(b"CFF ").is_some() || entry(b"CFF2").is_some();
+    let offset = data.get(kern + 8..kern + 12).map_or(usize::MAX, |s| {
+        u32::from_be_bytes([s[0], s[1], s[2], s[3]]) as usize
+    });
+    if cff || be16(data, offset) != Some(0) {
+        data[kern..kern + 4].copy_from_slice(b"zzzz");
+    }
+}
+
 impl FontFace {
     /// Load a face from font bytes, tagging it with a family/weight/style so the
     /// registry can select it. Returns `None` if the bytes are not a valid font.
@@ -173,6 +198,22 @@ impl FontFace {
         italic: bool,
     ) -> Option<FontFace> {
         FontFace::from_bytes_index(data, 0, family, weight, italic)
+    }
+
+    /// [`FontFace::from_bytes`] for an `@font-face` web font, which Chrome 156 shapes
+    /// without a legacy `kern` table unless the font has TrueType outlines and the table is
+    /// the OpenType version 0 (a CFF font's `kern` table and an Apple version 1.0 table are
+    /// ignored; `tests/fixtures/web-font-kern/chrome156.json`, turbo-dom#240). An ignored
+    /// table is hidden from the shaper; installed fonts (`from_bytes`) keep theirs, as the
+    /// macOS system Times' version 1.0 table is applied.
+    pub fn from_web_font_bytes(
+        mut data: Vec<u8>,
+        family: impl Into<String>,
+        weight: u16,
+        italic: bool,
+    ) -> Option<FontFace> {
+        hide_ignored_web_kern(&mut data);
+        FontFace::from_bytes(data, family, weight, italic)
     }
 
     /// Like [`FontFace::from_bytes`] but selects face `index` of a `.ttc`
@@ -877,6 +918,34 @@ mod html_metric_policy_contracts {
         assert_eq!(cache.bytes, original_bytes);
         drop(cache);
         assert_eq!(face.shape("cache race"), glyphs);
+    }
+}
+
+#[cfg(test)]
+mod web_font_kern {
+    use super::hide_ignored_web_kern;
+
+    #[test]
+    fn only_an_ignored_kern_entry_is_renamed() {
+        // Too short for a directory, or a directory without `kern`: untouched.
+        let mut short = vec![0, 1, 0];
+        hide_ignored_web_kern(&mut short);
+        assert_eq!(short, [0, 1, 0]);
+        let go = include_bytes!("../../assets/fonts/Go-Regular.ttf").to_vec();
+        let mut copy = go.clone();
+        hide_ignored_web_kern(&mut copy);
+        assert_eq!(copy, go);
+        // A TrueType version-0 table stays; a CFF font's table is hidden.
+        let serif =
+            include_bytes!("../../assets/fonts/liberation-serif/LiberationSerif-Regular.ttf");
+        let mut copy = serif.to_vec();
+        hide_ignored_web_kern(&mut copy);
+        assert_eq!(copy, serif);
+        let warsaw = include_bytes!("../../assets/fonts/WarsawGothic-BnBV.otf");
+        let mut copy = warsaw.to_vec();
+        hide_ignored_web_kern(&mut copy);
+        assert_ne!(copy, warsaw);
+        assert!(!copy.windows(4).take(400).any(|w| w == b"kern"));
     }
 }
 
