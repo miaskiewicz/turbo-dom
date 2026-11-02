@@ -59,14 +59,7 @@ pub(crate) fn render_text(
     ctx.set_should_antialias(true);
     ctx.set_should_smooth_fonts(true);
 
-    let family = st
-        .font_families
-        .first()
-        .map_or("sans-serif", String::as_str);
-    let size = f64::from(if st.font_px > 0.0 { st.font_px } else { 10.0 });
-    let Ok(font) = core_text::font::new_from_name(family, size)
-        .or_else(|()| core_text::font::new_from_name("Helvetica", size))
-    else {
+    let Some(font) = ct_font(st) else {
         return false;
     };
 
@@ -121,6 +114,34 @@ pub(crate) fn render_text(
         }
     }
     true
+}
+
+/// The CoreText face for the canvas font: the first family (Helvetica when CoreText has no
+/// such font) at the font size, switched to its bold and/or italic face by the state's
+/// weight (CSS bold threshold, 600 and up) and style. A family without the requested face
+/// keeps the face it has, as Chrome does before synthesizing.
+pub(crate) fn ct_font(st: &State) -> Option<core_text::font::CTFont> {
+    use core_text::font_descriptor::{kCTFontBoldTrait, kCTFontItalicTrait};
+    let family = st
+        .font_families
+        .first()
+        .map_or("sans-serif", String::as_str);
+    let size = f64::from(if st.font_px > 0.0 { st.font_px } else { 10.0 });
+    let font = core_text::font::new_from_name(family, size)
+        .or_else(|()| core_text::font::new_from_name("Helvetica", size))
+        .ok()?;
+    let mut traits = 0;
+    if st.font_weight >= 600 {
+        traits |= kCTFontBoldTrait;
+    }
+    if st.font_italic {
+        traits |= kCTFontItalicTrait;
+    }
+    let mask = kCTFontBoldTrait | kCTFontItalicTrait;
+    Some(
+        font.clone_with_symbolic_traits(traits, mask)
+            .unwrap_or(font),
+    )
 }
 
 #[cfg(test)]
@@ -191,7 +212,14 @@ mod tests {
         let ink = |weight| {
             let mut pm = Pixmap::new(240, 40).unwrap();
             let st = state(weight, false);
-            assert!(render_text(&mut pm, &st, "Hello", 2.0, 28.0, Rgba::new(0, 0, 0, 255)));
+            assert!(render_text(
+                &mut pm,
+                &st,
+                "Hello",
+                2.0,
+                28.0,
+                Rgba::new(0, 0, 0, 255)
+            ));
             pm.data().chunks(4).map(|p| u32::from(p[3])).sum::<u32>()
         };
         assert!(ink(700) > ink(400));
