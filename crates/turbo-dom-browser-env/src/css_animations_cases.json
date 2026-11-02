@@ -1,0 +1,7 @@
+[
+  {
+    "id": "css-animations",
+    "html": "<!doctype html><html><head><style>@keyframes k { from { opacity: 0; transform: none; color: red } to { opacity: 1; transform: translateX(10px); color: blue } } @keyframes k2 { 50% { opacity: 0.5; margin-left: 4px } } #a { animation: k 10s } #m { animation: k 10s, k2 5s linear 1s infinite alternate both } #n { animation: missing 3s } #t { opacity: 1; transition: opacity 2s ease-in 0.5s } #u { opacity: 1; transition: opacity 2s, color 1s }</style></head><body><div id=\"a\"></div><div id=\"m\"></div><div id=\"n\"></div><div id=\"t\"></div><div id=\"u\"></div><div id=\"p\"></div></body></html>",
+    "frozenTimeline": true
+  }
+]
