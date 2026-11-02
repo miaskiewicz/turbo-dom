@@ -20,6 +20,7 @@
 //   inline-sticky/probe.js         -> inline-sticky/chrome156.json         400x300
 //   line-height/probe.js           -> line-height/chrome156.json           400x300
 //   hyphens/probe.js               -> hyphens/chrome156.json               800x600
+//   text-advances/probe.js         -> text-advances/chrome156.json         800x600
 //
 // Usage: node scripts/fixture-font-chrome-controls.mjs [--chrome PATH] [--only PROBE]
 //   --chrome defaults to the frozen Chrome 156.0.8078.47 headless shell (launched with a
@@ -85,6 +86,7 @@ const CONTROLS = [
   ["inline-sticky/probe.js", "inline-sticky/chrome156.json", [400, 300]],
   ["line-height/probe.js", "line-height/chrome156.json", [400, 300]],
   ["hyphens/probe.js", "hyphens/chrome156.json", [800, 600]],
+  ["text-advances/probe.js", "text-advances/chrome156.json", [800, 600]],
 ];
 
 const server = createServer((_, res) => {
