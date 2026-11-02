@@ -114,3 +114,75 @@ fn measure_text_without_host_fonts_uses_the_bundled_faces() {
     assert!(narrow > 0.0 && wide > narrow * 2.0, "{actual}");
     assert_eq!(actual[2], true);
 }
+
+/// The control's result, after checking it was captured from `probe` by Chrome 156.
+fn checked_control(control: &str, probe: &str) -> Value {
+    let control: Value = serde_json::from_str(control).unwrap();
+    assert_eq!(control["browser"], "Chrome/156.0.8078.47");
+    assert_eq!(control["errors"], serde_json::json!([]));
+    let digest = Sha256::digest(probe.as_bytes());
+    let hex = digest
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
+    assert_eq!(
+        control["probeSha256"], hex,
+        "control was captured from a different probe"
+    );
+    control["result"].clone()
+}
+
+/// `TextMetrics` is a global interface like Chrome 156's: not constructible, its fields are
+/// enumerable prototype getters (Chrome's order and names) that reject other receivers, and
+/// every measureText() returns a fresh instance with no own properties.
+#[test]
+fn text_metrics_interface_matches_chrome156() {
+    const PROBE: &str = include_str!("canvas_text_metrics_interface_probe.js");
+    let expected = checked_control(
+        include_str!("canvas_text_metrics_interface_chrome156.json"),
+        PROBE,
+    );
+    let actual = run(Some(turbo_dom_layout::test_support::fixture_fonts()), PROBE);
+    let mut out = Vec::new();
+    super::reference_target::probe_harness::differences("result", &actual, &expected, &mut out);
+    assert!(out.is_empty(), "{}", out.join("\n"));
+}
+
+/// letterSpacing / wordSpacing parse CSS lengths and ignore invalid values; fontKerning,
+/// fontStretch and textRendering accept only their enum values; save/restore keeps them;
+/// and measureText widths follow Chrome 156: spacing after every character (and every
+/// space), em against the current font, no kerning for `fontKerning: none`, whole-run
+/// shaping (kerning across spaces) for `normal` / optimizeLegibility / geometricPrecision.
+#[test]
+fn text_attributes_match_chrome156() {
+    const PROBE: &str = include_str!("canvas_text_attributes_probe.js");
+    let mut expected =
+        checked_control(include_str!("canvas_text_attributes_chrome156.json"), PROBE);
+    let mut actual = run(Some(turbo_dom_layout::test_support::fixture_fonts()), PROBE);
+    let rows = |value: &mut Value| value["widths"].take();
+    let (actual_rows, expected_rows) = (rows(&mut actual), rows(&mut expected));
+    let mut out = Vec::new();
+    super::reference_target::probe_harness::differences("result", &actual, &expected, &mut out);
+    let keys = ["width", "actualBoundingBoxLeft", "actualBoundingBoxRight"].map(Value::from);
+    let (a, e) = (
+        actual_rows.as_array().unwrap(),
+        expected_rows.as_array().unwrap(),
+    );
+    assert_eq!(a.len(), e.len(), "width rows");
+    for (a, e) in a.iter().zip(e) {
+        assert_eq!((&a[0], &a[1], &a[2]), (&e[0], &e[1], &e[2]));
+        compare(
+            &format!("{} {} {:?}", e[0], e[1], e[2]),
+            &keys,
+            &a[3],
+            &e[3],
+            &mut out,
+        );
+    }
+    assert!(
+        out.is_empty(),
+        "{} differences:\n{}",
+        out.len(),
+        out.join("\n")
+    );
+}

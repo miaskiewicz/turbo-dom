@@ -57,6 +57,7 @@ pub use style::{
 };
 pub use tag::{Attr, MarkerClassifier, MarkerKind, Tag};
 pub use text::{
-    layout_text, Align, CanvasTextMetrics, FontFace, FontRegistry, LineBox, TextStyle, WhiteSpace,
+    layout_text, Align, CanvasShaping, CanvasTextMetrics, CanvasTextOptions, FontFace,
+    FontRegistry, LineBox, TextStyle, WhiteSpace,
 };
 pub use turbo_dom;
