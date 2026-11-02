@@ -132,7 +132,10 @@ mod tests {
             scope,
             "<!doctype html><html><head></head><body></body></html>",
         );
-        let actual = run_probe(scope, &format!("JSON.stringify({})", probe.trim().trim_end_matches(';')));
+        let actual = run_probe(
+            scope,
+            &format!("JSON.stringify({})", probe.trim().trim_end_matches(';')),
+        );
         reset();
         let expected = control["result"].as_object().unwrap();
         for (selector, methods) in expected {

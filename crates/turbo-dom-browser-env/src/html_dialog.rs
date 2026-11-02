@@ -327,6 +327,11 @@ fn dispatch(
                 html_popover::schedule(scope, callback);
             }
         }
+        "microtask" => {
+            if let Ok(callback) = v8::Local::<v8::Function>::try_from(args.get(2)) {
+                scope.enqueue_microtask(callback);
+            }
+        }
         "focused" => match focused() {
             Some(active) => rv.set(wrap(scope, active).into()),
             None => rv.set(v8::null(scope).into()),
@@ -444,8 +449,8 @@ fn pseudo_ranges<'i, 't>(
 }
 
 /// Represent private dialog state as structural selectors within this exact DOM root, as
-/// `:popover-open` does. `:open` is the dialog/details open attribute (no select picker is
-/// ever shown); `:modal` is the is-modal flag, which outlives a removed `open` attribute,
+/// `:popover-open` does. `:open` is the dialog/details open attribute or a control's open picker
+/// ([`user_activation_gates::open_picker`]); `:modal` is the is-modal flag, which outlives a removed `open` attribute,
 /// and the document's fullscreen element (Chrome 156). `:fullscreen` and its prefixed forms
 /// match in the selector engine (`Tree::fullscreen_stack`, miaskiewicz/turbo-dom#58).
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
@@ -461,6 +466,7 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
         return Some(source.to_owned());
     }
     let fullscreen_top = user_activation_gates::fullscreen_elements().last().copied();
+    let picker = user_activation_gates::open_picker();
     let (modal, open) = DOM.with(|dom| {
         let dom = dom.borrow();
         // invariant: natives run under the DomScope of an installed DOM
@@ -484,6 +490,11 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
             .map(|entry| html_popover::selector_path(tree, entry))
             .collect::<Vec<_>>();
         let mut open = Vec::new();
+        if let Some(picker) = picker.filter(|&picker| {
+            is_connected(tree, picker) && html_popover::selector_root(tree, picker) == root
+        }) {
+            open.push(html_popover::selector_path(tree, picker));
+        }
         let mut stack = vec![root];
         while let Some(node) = stack.pop() {
             if (html(tree, node, "dialog") || html(tree, node, "details"))

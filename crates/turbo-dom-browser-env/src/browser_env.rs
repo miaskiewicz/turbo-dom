@@ -4148,7 +4148,8 @@ fn el_query_selector_all<'s>(
     let Some(h) = receiver_handle(scope, &args, &[1, 11]) else {
         return;
     };
-    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h, "querySelectorAll") else {
+    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h, "querySelectorAll")
+    else {
         return;
     };
     let handles = with_tree(|t| {
@@ -5557,7 +5558,11 @@ fn dispatch_synthetic_with_trust(
     for (k, val) in [
         ("bubbles", bubbles),
         ("cancelable", cancelable),
-        ("composed", ty == "click"),
+        // Chrome's UA focus events are composed, like its trusted clicks.
+        (
+            "composed",
+            matches!(ty, "click" | "focus" | "blur" | "focusin" | "focusout"),
+        ),
     ] {
         if let Some(key) = v8::String::new(scope, k) {
             let b = v8::Boolean::new(scope, val);
@@ -5919,7 +5924,8 @@ fn doc_query_selector_all<'s>(
     let Some(h) = receiver_handle(scope, &args, &[9]) else {
         return;
     };
-    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h, "querySelectorAll") else {
+    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h, "querySelectorAll")
+    else {
         return;
     };
     let handles: Vec<Handle> = with_tree(|t| {

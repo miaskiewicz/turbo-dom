@@ -196,10 +196,7 @@ fn view_transitions_match_chrome_156() {
     let mut differences = compare(
         &actual,
         control["result"].as_object().unwrap(),
-        &[
-            ("unhandled", ""),
-            ("documents", "domParser"),
-        ],
+        &[("unhandled", ""), ("documents", "domParser")],
     );
     let actual_hidden = run_probe(
         hidden,
