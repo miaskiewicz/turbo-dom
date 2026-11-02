@@ -30,7 +30,7 @@ pre.textContent = JSON.stringify({ result, version: navigator.userAgent });
 document.documentElement.append(pre);
 </script></body></html>`,
   );
-  const dom = execFileSync(resolve(values.chrome), ["--headless", "--dump-dom", `file://${page}`], {
+  const dom = execFileSync(resolve(values.chrome), ["--headless", "--use-mock-keychain", "--password-store=basic", "--dump-dom", `file://${page}`], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"],
   });
