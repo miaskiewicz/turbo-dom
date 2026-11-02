@@ -17,6 +17,7 @@ mod svg_numbers;
 pub(crate) mod svg_viewport;
 pub mod table;
 pub mod value;
+pub(crate) mod writing;
 
 use crate::error::Diagnostics;
 use crate::image::{ImageResolver, NoImages};

@@ -103,6 +103,11 @@ pub enum SnapshotError {
     UnsupportedInlineAlignment,
     #[error("native ordinary inline vertical/RTL writing is unsupported")]
     UnsupportedInlineWriting,
+    /// A box in a vertical writing mode the native layout cannot lay out yet: a flex,
+    /// grid or table box, an inline-level atom or replaced element, or upright (CJK /
+    /// `text-orientation: upright`) text (miaskiewicz/turbo-dom#234).
+    #[error("native vertical writing-mode layout of this box is unsupported")]
+    UnsupportedVerticalWriting,
     /// No longer produced: absolute/fixed inlines blockify and inline sticky boxes
     /// are laid out (turbo-dom#218). Kept for API stability.
     #[error("native ordinary inline absolute/fixed/sticky positioning is unsupported")]

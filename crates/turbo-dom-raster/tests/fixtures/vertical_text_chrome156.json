@@ -1,0 +1,149 @@
+{
+ "generator": "scripts/vertical-text-chrome-control.mjs",
+ "chrome": "156.0.8078.47",
+ "playwright_core": "1.64.1",
+ "viewport": [
+  800,
+  600
+ ],
+ "cases": [
+  {
+   "id": "rl-word",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;line-height:20px;color:#ff0000}</style><div data-cid=\"v\" style=\"writing-mode:vertical-rl;height:120px\">Hello</div>",
+   "boxes": [
+    {
+     "cid": "v",
+     "rect": [
+      8,
+      8,
+      20,
+      120
+     ],
+     "ink": {
+      "box": [
+       13,
+       9,
+       24,
+       43
+      ],
+      "count": 155
+     }
+    }
+   ]
+  },
+  {
+   "id": "lr-word",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;line-height:20px;color:#ff0000}</style><div data-cid=\"v\" style=\"writing-mode:vertical-lr;height:120px\">Hello</div>",
+   "boxes": [
+    {
+     "cid": "v",
+     "rect": [
+      8,
+      8,
+      20,
+      120
+     ],
+     "ink": {
+      "box": [
+       13,
+       9,
+       24,
+       43
+      ],
+      "count": 155
+     }
+    }
+   ]
+  },
+  {
+   "id": "rl-lines",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;line-height:20px;color:#ff0000}</style><div data-cid=\"v\" style=\"writing-mode:vertical-rl;height:50px\">lll mmm</div>",
+   "boxes": [
+    {
+     "cid": "v",
+     "rect": [
+      8,
+      8,
+      40,
+      50
+     ],
+     "ink": {
+      "box": [
+       13,
+       8,
+       44,
+       45
+      ],
+      "count": 210
+     }
+    }
+   ]
+  },
+  {
+   "id": "lr-lines",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;line-height:20px;color:#ff0000}</style><div data-cid=\"v\" style=\"writing-mode:vertical-lr;height:50px\">lll mmm</div>",
+   "boxes": [
+    {
+     "cid": "v",
+     "rect": [
+      8,
+      8,
+      40,
+      50
+     ],
+     "ink": {
+      "box": [
+       13,
+       8,
+       41,
+       45
+      ],
+      "count": 210
+     }
+    }
+   ]
+  },
+  {
+   "id": "rl-blocks",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;line-height:20px;color:#ff0000}</style><div style=\"writing-mode:vertical-rl;height:100px;padding:4px 6px\"><p data-cid=\"a\" style=\"margin:0 0 0 10px\">Ab</p><p data-cid=\"b\" style=\"margin:0;font-size:24px\">Cd</p></div>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      44,
+      12,
+      20,
+      100
+     ],
+     "ink": {
+      "box": [
+       49,
+       12,
+       60,
+       31
+      ],
+      "count": 86
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      14,
+      12,
+      20,
+      100
+     ],
+     "ink": {
+      "box": [
+       16,
+       13,
+       33,
+       40
+      ],
+      "count": 149
+     }
+    }
+   ]
+  }
+ ]
+}

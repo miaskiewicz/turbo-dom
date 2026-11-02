@@ -178,8 +178,17 @@ package or publish workflow.
   (the UA maps `dir`; `direction` inherits), an RTL scroller overflows to the left with
   offsets `ScrollMetrics::min_x..=0` (`scroll::inline_alignment` swaps start/end for
   scrollIntoView), and a quirks-mode live document follows the line height quirk (the
-  style pass marks it with `style::QUIRKS_LINE_HEIGHT`); inherited-RTL inlines lay out unreordered (bidi: turbo-dom#238); vertical writing modes are still
-  an error (turbo-dom#234). Since S5 the legacy owned `Node` input is gone (`node.rs`,
+  style pass marks it with `style::QUIRKS_LINE_HEIGHT`); inherited-RTL inlines lay out unreordered (bidi: turbo-dom#238). Since turbo-dom#234 `vertical-rl` /
+  `vertical-lr` lay out through a logical-coordinate layer (`layout::writing`): a box whose
+  writing mode differs from its parent's (`LayoutBox::writing_root`, an independent formatting
+  context) is laid out in its own inline/block space from a relabelled copy of its subtree
+  (`height` = inline size, physical sides renamed; orthogonal `auto` inline sizes fit the
+  available size, CSS Writing Modes 4 §7.3) and its fragments / used metrics map back, so lines
+  break at the vertical inline size like Chrome; `TextLine::vertical` runs paint turned a
+  quarter clockwise (raster PNG + SVG) and a vertical-rl scroller scrolls from the right. Chrome
+  controls: `live_geometry_chrome156.json` `vertical-*`, `scripts/vertical-text-chrome-control.mjs`
+  -> turbo-dom-raster `tests/vertical_text_chrome.rs`. Flex/grid/table/atoms/upright CJK in a
+  vertical mode fail per element (`SnapshotError::UnsupportedVerticalWriting`, turbo-dom#239). Since S5 the legacy owned `Node` input is gone (`node.rs`,
   `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
   `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the
   header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF

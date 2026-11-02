@@ -896,6 +896,7 @@ fn measure_item(
             table_rows: None,
             dropped_end_margins: std::collections::HashSet::new(),
             sticky_pending: Vec::new(),
+            writing: crate::layout::writing::WritingMode::default(),
         };
         let frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, w, &mut mctx);
         (frag.width, frag.height)

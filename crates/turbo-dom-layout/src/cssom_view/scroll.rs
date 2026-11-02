@@ -122,14 +122,15 @@ pub fn scroll_metrics(
         .ok_or("native scroll computed style missing")?;
     let x = overflow(&own.style, "overflow-x");
     let y = overflow(&own.style, "overflow-y");
-    if own
-        .style
-        .get("writing-mode")
-        .is_some_and(|v| v != "horizontal-tb")
-    {
-        return Err("native scroll vertical writing provenance pending".into());
-    }
-    let rtl = own.style.get("direction") == Some("rtl");
+    // A vertical-rl box's block flow, like an RTL box's inline flow, starts at its
+    // right edge (miaskiewicz/turbo-dom#234).
+    let rtl = match crate::layout::writing::WritingMode::of(&own.style) {
+        crate::layout::writing::WritingMode::HorizontalTb => {
+            own.style.get("direction") == Some("rtl")
+        }
+        crate::layout::writing::WritingMode::VerticalRl => true,
+        crate::layout::writing::WritingMode::VerticalLr => false,
+    };
     let matrix = snapshot
         .native_world_transform(first.index)
         .ok_or("native scroll transform unavailable")?;
@@ -1253,14 +1254,10 @@ mod tests {
     #[test]
     fn unsupported_scroll_geometry_is_an_error_not_a_guess() {
         let (tree, snapshot, styles) = laid_out(
-            "<body><div id=v style='writing-mode:vertical-rl;overflow:auto'></div><div id=z style='transform:scale(0);overflow:auto'></div><svg><rect id=s width=5 height=5></rect></svg><span id=i>x</span></body>",
+            "<body><div id=z style='transform:scale(0);overflow:auto'></div><svg><rect id=s width=5 height=5></rect></svg><span id=i>x</span></body>",
         );
         let id = |selector| crate::live::testing::id(&tree, selector);
         let error = |selector| scroll_metrics(&snapshot, &styles, id(selector)).unwrap_err();
-        assert_eq!(
-            error("#v"),
-            "native scroll vertical writing provenance pending"
-        );
         assert_eq!(
             error("#z"),
             "native scroll degenerate-container relative transform provenance pending"

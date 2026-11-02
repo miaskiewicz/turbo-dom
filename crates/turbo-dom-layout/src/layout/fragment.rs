@@ -81,6 +81,11 @@ pub enum FragmentContent {
         face: FontFace,
         font_size: f32,
         color: Rgba,
+        /// Laid out in a vertical writing mode (miaskiewicz/turbo-dom#234): the glyph
+        /// positions stay in the line's own frame (`x` along the inline axis, `y` down
+        /// from the line-over edge) and the run paints turned a quarter clockwise, a
+        /// glyph at `(x, y)` landing at `(frag.x + frag.width - y, frag.y + x)`.
+        vertical: bool,
     },
     /// A classified marker element ([`MarkerKind`]) kept opaque for the consumer
     /// (html2pdf's paged-media directives: the fragmenter/emitter read it).

@@ -36,6 +36,8 @@ pub(crate) struct TextLayoutPolicy {
 }
 
 pub(crate) struct Ctx<'a> {
+    /// The writing mode of the logical space being laid out (see [`super::writing`]).
+    pub(crate) writing: super::writing::WritingMode,
     pub(crate) fonts: &'a FontRegistry,
     pub(crate) images: &'a ImageCtx<'a>,
     pub(crate) diags: &'a mut Diagnostics,
@@ -746,6 +748,7 @@ fn lines_to_fragments(
                 face: gr.face.clone(),
                 font_size: gr.font_size,
                 color: gr.color,
+                vertical: false,
             };
             out.push(Fragment::new(
                 node_id,
@@ -2252,7 +2255,7 @@ pub(crate) fn avoids_floats(lb: &LayoutBox) -> bool {
 }
 
 fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
-    if intrinsic_formatting_root(lb, bs) {
+    if lb.writing_root || intrinsic_formatting_root(lb, bs) {
         return true;
     }
     if matches!(
@@ -2821,6 +2824,9 @@ fn layout_box(
     parent_fs: f32,
     ctx: &mut Ctx,
 ) -> Fragment {
+    if let Some(frag) = super::writing::layout_root(lb, (bx, by), cb_width, parent_fs, ctx) {
+        return frag;
+    }
     lb.begin_layout();
     let bs = resolve(lb, cb_width, parent_fs);
     if let Some(frag) = replaced_image_box(lb, &bs, bx, by, cb_width, ctx) {
@@ -2837,6 +2843,30 @@ fn layout_box(
         bbw = bbw.max(super::table::min_content_width(items, &lb.style, ctx.fonts) + frame);
     }
     layout_box_sized(lb, &bs, bx, by, bbw, ctx)
+}
+
+/// Lay out a writing-mode root (already relabelled into its own space, which `ctx` is
+/// in) at the origin, `available` being its containing block's inline size. An
+/// `auto` inline size of an orthogonal root fits its content within `available`
+/// (CSS Writing Modes 4 §7.3), as a float's does.
+pub(crate) fn layout_root_box(
+    lb: &LayoutBox,
+    available: f32,
+    parent_fs: f32,
+    orthogonal: bool,
+    ctx: &mut Ctx,
+) -> Fragment {
+    let bs = resolve(lb, available, parent_fs);
+    if orthogonal && !lb.is_replaced() && bs.width.resolve(available).is_none() {
+        let (w, _) = float_width(lb, &bs, available, ctx.fonts, false);
+        // Chrome's max-content is a ceiled LayoutUnit (1/64 px at the device scale).
+        let w = ctx
+            .html_font_scale
+            .map_or(w, |scale| (w * 64.0 * scale).ceil() / (64.0 * scale));
+        lb.begin_layout();
+        return layout_box_sized(lb, &bs, 0.0, 0.0, w, ctx);
+    }
+    layout_box(lb, 0.0, 0.0, available, parent_fs, ctx)
 }
 
 /// A `width: auto` table is shrink-to-fit: no wider than its columns' max-content
@@ -3267,6 +3297,7 @@ fn layout_tree_policy(
         table_rows: record_rows.then(std::collections::HashSet::new),
         dropped_end_margins: HashSet::new(),
         sticky_pending: Vec::new(),
+        writing: super::writing::WritingMode::default(),
     };
     root.set_html_layout_policy((ctx.html_font_metrics, ctx.html_font_scale));
     root.set_original_units(original_units.as_ref());
