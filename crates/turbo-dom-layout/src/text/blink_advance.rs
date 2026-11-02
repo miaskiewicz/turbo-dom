@@ -72,21 +72,17 @@ impl FontFace {
     /// per-glyph conversion.
     fn kern_table_pairs(&self, glyphs: &[ShapedGlyph]) -> Option<Vec<Vec<i32>>> {
         let tables = self.ttf().tables();
-        if tables.gpos.is_some() || tables.kerx.is_some() {
-            return None;
-        }
-        let subtables: Vec<kern::Subtable> = tables
-            .kern?
+        let kern = tables
+            .kern
+            .filter(|_| tables.gpos.is_none() && tables.kerx.is_none())?;
+        let subtables: Vec<kern::Subtable> = kern
             .subtables
             .into_iter()
             .filter(|s| s.horizontal && !s.variable)
             .collect();
-        if subtables
+        let simple = subtables
             .iter()
-            .any(|s| s.has_state_machine || s.has_cross_stream)
-        {
-            return None;
-        }
+            .all(|s| !s.has_state_machine && !s.has_cross_stream);
         let pairs: Vec<Vec<i32>> = glyphs
             .windows(2)
             .map(|w| {
@@ -97,7 +93,7 @@ impl FontFace {
                     .collect()
             })
             .collect();
-        self.pairs_explain(glyphs, &pairs).then_some(pairs)
+        (simple && self.pairs_explain(glyphs, &pairs)).then_some(pairs)
     }
 
     fn pairs_explain(&self, glyphs: &[ShapedGlyph], pairs: &[Vec<i32>]) -> bool {
@@ -108,5 +104,49 @@ impl FontFace {
                 .map_or(0, |p| pairs[p].iter().map(|k| k - (k >> 1)).sum());
             g.x_advance == i32::from(self.glyph_advance(g.glyph_id)) + after + before
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn face(file: &str) -> FontFace {
+        let path = format!("{}/assets/fonts/{file}", env!("CARGO_MANIFEST_DIR"));
+        FontFace::from_bytes(std::fs::read(path).unwrap(), "test", 400, false).unwrap()
+    }
+
+    // Warsaw Gothic kerns by a `kern` table and has no GPOS: rustybuzz splits each pair
+    // `k >> 1` / `k - (k >> 1)` in design units, Blink's scaled font splits the scaled pair.
+    // (The macOS-only system Times control pins this against Chrome; Chrome applies no
+    // kerning to this web font, so it has no portable control.)
+    #[test]
+    fn kern_table_pairs_are_split_in_scaled_units() {
+        let warsaw = face("WarsawGothic-BnBV.otf");
+        // The first Latin letter pair the table kerns by an odd value (where the design-unit
+        // and scaled halves differ).
+        let (glyphs, k) = ('A'..='Z')
+            .flat_map(|l| ('a'..='z').map(move |r| format!("{l}{r}")))
+            .find_map(|text| {
+                let glyphs = warsaw.shape(&text);
+                let k = warsaw.kern_table_pairs(&glyphs)?[0][0];
+                (k % 2 != 0).then_some((glyphs, k))
+            })
+            .expect("an odd kern-table pair");
+        let [a, v] = [0, 1].map(|i| i32::from(warsaw.glyph_advance(glyphs[i].glyph_id)));
+        assert_eq!(glyphs[0].x_advance, a + (k >> 1));
+        assert_eq!(glyphs[1].x_advance, v + k - (k >> 1));
+        let got = warsaw.blink_advances(&glyphs, 16.0, 1.0);
+        let unit = |x: i64| x as f64 / 65536.0;
+        let mult = (1_i64 << 36) / i64::from(warsaw.units_per_em());
+        let em = (i64::from(k) * mult + 32768) >> 16;
+        assert_eq!(got[0], warsaw.blink_glyph_advance(16.0, a) + unit(em >> 1));
+        assert_eq!(
+            got[1],
+            warsaw.blink_glyph_advance(16.0, v) + unit(em - (em >> 1))
+        );
+        // A GPOS face is not rebuilt from pairs.
+        let serif = face("liberation-serif/LiberationSerif-Regular.ttf");
+        assert!(serif.kern_table_pairs(&serif.shape("AV")).is_none());
     }
 }

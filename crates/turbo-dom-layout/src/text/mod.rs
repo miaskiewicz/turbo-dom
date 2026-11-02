@@ -2,8 +2,8 @@
 //! registry with weight/style selection and per-character fallback, and greedy
 //! line layout with metrics and alignment.
 
-#[cfg(feature = "bundled-fonts")]
 mod blink_advance;
+#[cfg(feature = "bundled-fonts")]
 mod bundled;
 mod font;
 mod inline;
