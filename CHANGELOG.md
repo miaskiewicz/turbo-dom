@@ -20,6 +20,14 @@ at the time); this file reconstructs them from history.
   defaults and zero block margins for nested lists.
 - turbo-dom-raster paints inset `box-shadow`s (PNG and SVG) inside the padding box, over the
   background and under the border, with offset, spread and blur, like Chrome 156 (#192).
+- HTML processing instructions like Chrome 156 (turbo-dom#135): `Tree::parse_utf16_with_processing_instructions`
+  and `Tree::set_processing_instructions` make the UTF-16 tokenizer parse `<?target data?>` as a
+  ProcessingInstruction (ASCII-name target other than `xml`; nothing when the input ends inside
+  one; otherwise the standard's bogus comment). turbo-dom-browser-env turns it on for every
+  document it installs or parses, so innerHTML / insertAdjacentHTML / createContextualFragment /
+  setHTML[Unsafe] / Document.parseHTML[Unsafe] match Chrome; a safe `setHTML` dictionary without
+  processing-instruction lists drops them and the sanitizer keeps Document-level ones, like
+  Chrome. The default mode and the conformance gates keep html5lib-tests' bogus comment.
 
 ## [0.6.0] — turbo-dom consolidation
 

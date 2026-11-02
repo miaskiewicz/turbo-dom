@@ -231,8 +231,12 @@
   function canonicalize(config, allowCommentsAndDataAttributes) {
     if (config.elements === undefined && config.removeElements === undefined) config.removeElements = [];
     if (config.attributes === undefined && config.removeAttributes === undefined) config.removeAttributes = [];
-    if (config.processingInstructions === undefined && config.removeProcessingInstructions === undefined)
-      config.removeProcessingInstructions = [];
+    // Like comments, Chrome 156 allows every processing instruction by default only
+    // where it allows comments by default (a safe setHTML dictionary allows none).
+    if (config.processingInstructions === undefined && config.removeProcessingInstructions === undefined) {
+      if (allowCommentsAndDataAttributes) config.removeProcessingInstructions = [];
+      else config.processingInstructions = [];
+    }
     if (config.comments === undefined) config.comments = allowCommentsAndDataAttributes;
     if (config.attributes !== undefined && config.dataAttributes === undefined)
       config.dataAttributes = allowCommentsAndDataAttributes;
