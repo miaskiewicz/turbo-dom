@@ -2528,9 +2528,6 @@ mod direction_tests {
         assert_eq!(align(&[("text-align", "end")]), Align::Right);
         assert_eq!(align(&[rtl, ("text-align", "end")]), Align::Left);
         assert_eq!(align(&[rtl, ("text-align", "left")]), Align::Left);
-        assert_eq!(
-            align(&[rtl, ("text-align", "-webkit-right")]),
-            Align::Right
-        );
+        assert_eq!(align(&[rtl, ("text-align", "-webkit-right")]), Align::Right);
     }
 }
