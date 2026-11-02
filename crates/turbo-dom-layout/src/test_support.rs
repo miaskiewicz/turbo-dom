@@ -127,12 +127,30 @@ pub fn fixture_fonts() -> FontRegistry {
             700,
             false,
         ),
+        // Hebrew and Arabic glyphs for the bidi controls (miaskiewicz/turbo-dom#238),
+        // named explicitly in a `font-family` list (no generic).
+        (
+            "Noto Sans Hebrew",
+            "",
+            "noto-sans-hebrew/NotoSansHebrew-Regular.ttf",
+            400,
+            false,
+        ),
+        (
+            "Noto Sans Arabic",
+            "",
+            "noto-sans-arabic/NotoSansArabic-Regular.ttf",
+            400,
+            false,
+        ),
     ];
     let mut registry = FontRegistry::new();
     for &(family, generic, file, weight, italic) in FACES {
         let face = FontFace::from_bytes(font_bytes(file), family, weight, italic)
             .unwrap_or_else(|| panic!("{file} parses"));
-        registry.add(face.with_family(generic));
+        if !generic.is_empty() {
+            registry.add(face.with_family(generic));
+        }
         registry.add(face);
     }
     registry

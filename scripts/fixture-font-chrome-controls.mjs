@@ -23,6 +23,7 @@
 //   crates/turbo-dom-browser-env/src/canvas_measure_text_probe.js
 //                                  -> canvas_measure_text_chrome156.json   800x600
 //   text-advances/probe.js         -> text-advances/chrome156.json         800x600
+//   bidi/probe.js                  -> bidi/chrome156.json                  800x600
 //
 // Usage: node scripts/fixture-font-chrome-controls.mjs [--chrome PATH] [--only PROBE]
 //   --chrome defaults to the frozen Chrome 156.0.8078.47 headless shell (launched with a
@@ -67,6 +68,9 @@ const FACES = [
   ["Inter", "inter/Inter-BoldItalic.otf", 700, "italic"],
   ["Fira Code", "fira-code/FiraCode-Regular.ttf", 400, "normal"],
   ["Fira Code", "fira-code/FiraCode-Bold.ttf", 700, "normal"],
+  // Hebrew / Arabic glyphs for the bidi control (miaskiewicz/turbo-dom#238).
+  ["Noto Sans Hebrew", "noto-sans-hebrew/NotoSansHebrew-Regular.ttf", 400, "normal"],
+  ["Noto Sans Arabic", "noto-sans-arabic/NotoSansArabic-Regular.ttf", 400, "normal"],
 ];
 const fontFiles = {};
 const css = FACES.map(([family, file, weight, style]) => {
@@ -89,6 +93,7 @@ const CONTROLS = [
   ["line-height/probe.js", "line-height/chrome156.json", [400, 300]],
   ["hyphens/probe.js", "hyphens/chrome156.json", [800, 600]],
   ["text-advances/probe.js", "text-advances/chrome156.json", [800, 600]],
+  ["bidi/probe.js", "bidi/chrome156.json", [800, 600]],
   // A repo-relative path names a control outside the layout fixtures (turbo-dom#237).
   [
     "crates/turbo-dom-browser-env/src/canvas_measure_text_probe.js",
