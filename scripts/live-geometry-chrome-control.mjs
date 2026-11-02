@@ -121,6 +121,53 @@ const VERTICAL_CASES = [
     `<div data-cid="v" class="lr" style="width:50px;height:40px;overflow:auto"><div data-cid="a" style="width:120px;height:20px"></div></div>`,
     { scroll: { v: 30 } },
   ],
+  // miaskiewicz/turbo-dom#239: the residuals. Flex / grid / table boxes and their items in a
+  // vertical root (their inline axis is vertical), inline-level atoms, replaced elements,
+  // direction:rtl (inline axis bottom-to-top), floats and absolute boxes.
+  [
+    "rl-flex-row",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="f" style="display:flex"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="flex:1;width:20px"></div></div></div>`,
+  ],
+  [
+    "lr-flex-column",
+    `<div data-cid="v" class="lr" style="height:100px"><div data-cid="f" style="display:flex;flex-direction:column;padding-left:2px"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="height:5px;width:20px"></div></div></div>`,
+  ],
+  [
+    "rl-grid",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="g" style="display:grid;grid-template-columns:30px 1fr;gap:4px"><div data-cid="a" style="width:10px"></div><div data-cid="b" style="width:15px"></div><div data-cid="c" style="width:6px"></div></div></div>`,
+  ],
+  [
+    "rl-table",
+    `<div data-cid="v" class="rl" style="height:200px"><table data-cid="t" style="border-spacing:2px"><tr data-cid="r"><td data-cid="a" style="padding:1px">${BOX(10, 30)}</td><td data-cid="b" style="padding:0">${BOX(12, 20)}</td></tr><tr><td data-cid="c">${BOX(5, 5)}</td><td></td></tr></table></div>`,
+  ],
+  [
+    "rl-inline-block",
+    `<div data-cid="v" class="rl" style="height:100px">ab<span data-cid="i" style="display:inline-block;width:12px;height:30px;margin-top:3px"></span>cd</div>`,
+  ],
+  [
+    "lr-inline-block-text",
+    `<div data-cid="v" class="lr" style="height:100px">a<span data-cid="i" style="display:inline-block;padding:2px">bc</span></div>`,
+  ],
+  [
+    "rl-img",
+    `<div data-cid="v" class="rl" style="height:100px"><img data-cid="i" width="20" height="30" style="display:block"><img data-cid="j" style="width:8px;height:9px"></div>`,
+  ],
+  [
+    "rl-rtl",
+    `<div data-cid="v" class="rl" dir="rtl" style="height:100px"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="width:10px">ab</div></div>`,
+  ],
+  [
+    "lr-rtl",
+    `<div data-cid="v" class="lr" style="direction:rtl;height:100px"><div data-cid="a" style="height:30px;width:10px;margin-bottom:5px"></div></div>`,
+  ],
+  [
+    "rl-float",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="f" style="float:left;width:10px;height:20px"></div><div data-cid="g" style="float:right;width:12px;height:20px"></div><div data-cid="a" style="width:5px"></div></div>`,
+  ],
+  [
+    "rl-absolute",
+    `<div data-cid="v" class="rl" style="height:100px;width:200px;position:relative"><div data-cid="a" style="position:absolute;top:5px;right:7px;width:10px;height:20px"></div><div data-cid="b" style="position:absolute;width:10px;height:20px"></div><div data-cid="s" style="width:6px"></div></div>`,
+  ],
 ];
 
 const CASES = [
