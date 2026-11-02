@@ -390,7 +390,7 @@ fn sticky_right_pulls_a_box_left_within_its_containing_block() {
 }
 
 #[test]
-#[ignore = "inline sticky stays relative-shifted (#218, deferred)"]
+#[ignore = "turbo-dom#218: fails until the fix"]
 fn inline_sticky_boxes_stick_within_their_containing_block() {
     // Chrome 156: an inline sticky span shifts only past its threshold and stays inside
     // its block container: `top:10px` in a one-line block stays at y=2, in a 100px block
