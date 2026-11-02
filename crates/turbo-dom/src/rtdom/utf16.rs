@@ -195,7 +195,9 @@ impl Tree {
                 return None;
             }
             match self.new_ref(node) {
-                NewNode::Text(value) | NewNode::Comment(value) => Some(value),
+                NewNode::Text(value) | NewNode::CData(value) | NewNode::Comment(value) => {
+                    Some(value)
+                }
                 NewNode::ProcessingInstruction(value) => Some(&value.data),
                 _ => None,
             }
@@ -245,6 +247,7 @@ impl Tree {
             self.node_type(node),
             NodeType::Attribute
                 | NodeType::Text
+                | NodeType::CDataSection
                 | NodeType::Comment
                 | NodeType::ProcessingInstruction
         ) {
@@ -259,7 +262,9 @@ impl Tree {
         pending.reverse();
         while let Some(child) = pending.pop() {
             match self.node_type(child) {
-                NodeType::Text => units.extend(self.node_value_utf16(child).unwrap_or_default()),
+                NodeType::Text | NodeType::CDataSection => {
+                    units.extend(self.node_value_utf16(child).unwrap_or_default());
+                }
                 NodeType::Comment | NodeType::Fragment => {}
                 _ => {
                     let children = self.children(child);
@@ -279,6 +284,12 @@ impl Tree {
         self.text_ov.insert(node, DomString::from_units(units));
         node
     }
+    /// Create an XML CDATA section. DOM bindings reject `]]>` and HTML documents first.
+    pub fn create_cdata_section_utf16(&mut self, units: &[u16]) -> Handle {
+        let node = self.push_node(NewNode::CData(DomString::from_units(units)));
+        self.bump();
+        node
+    }
     pub fn create_comment_utf16(&mut self, units: &[u16]) -> Handle {
         let node = self.push_node(NewNode::Comment(DomString::from_units(units)));
         self.bump();
@@ -293,7 +304,10 @@ impl Tree {
         }
         self.set_text_content(node, &value);
         match self.node_type(node) {
-            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction => {
+            NodeType::Text
+            | NodeType::CDataSection
+            | NodeType::Comment
+            | NodeType::ProcessingInstruction => {
                 self.text_ov.insert(node, value);
             }
             // (attributes returned above)

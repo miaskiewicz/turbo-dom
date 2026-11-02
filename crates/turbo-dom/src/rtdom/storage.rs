@@ -417,7 +417,9 @@ impl Tree {
             match self.new_ref(node) {
                 NewNode::Element { name, .. } => name.payload_bytes(),
                 NewNode::Attribute { data, .. } => native_attribute_bytes(data),
-                NewNode::Text(_) | NewNode::Comment(_) => self.character_payload_bytes(node),
+                NewNode::Text(_) | NewNode::CData(_) | NewNode::Comment(_) => {
+                    self.character_payload_bytes(node)
+                }
                 NewNode::ProcessingInstruction(data) => {
                     data.target.payload_bytes() + self.character_payload_bytes(node)
                 }
@@ -439,8 +441,10 @@ impl Tree {
                         + self.doctype_system_id(node).map_or(0, str::len)
                 }
                 NodeType::Fragment => self.node_label(node).map_or(0, str::len),
-                NodeType::Attribute | NodeType::ProcessingInstruction => {
-                    unreachable!("the parser buffer holds no attribute or processing instruction")
+                NodeType::Attribute | NodeType::CDataSection | NodeType::ProcessingInstruction => {
+                    unreachable!(
+                        "the parser buffer holds no attribute, CDATA or processing instruction"
+                    )
                 }
             }
         };
@@ -481,7 +485,9 @@ impl Tree {
             if let Some(value) = self.text_ov.get(h) {
                 if let NewNode::ProcessingInstruction(data) = &mut node {
                     data.data = value.clone();
-                } else if let NewNode::Text(data) | NewNode::Comment(data) = &mut node {
+                } else if let NewNode::Text(data) | NewNode::CData(data) | NewNode::Comment(data) =
+                    &mut node
+                {
                     *data = value.clone();
                 }
             }
@@ -504,7 +510,10 @@ impl Tree {
                 system_id: self.doctype_system_id(h).unwrap_or_default().into(),
             })),
             NodeType::Fragment => NewNode::Fragment(self.node_label(h).map(Into::into)),
-            NodeType::Attribute | NodeType::Document | NodeType::ProcessingInstruction => {
+            NodeType::Attribute
+            | NodeType::CDataSection
+            | NodeType::Document
+            | NodeType::ProcessingInstruction => {
                 unreachable!("only parser nodes are materialized")
             }
         }
@@ -537,7 +546,7 @@ fn node_bytes(node: &NewNode) -> usize {
     match node {
         NewNode::Element { name, .. } => name.payload_bytes(),
         NewNode::Attribute { data, .. } => native_attribute_bytes(data),
-        NewNode::Text(s) | NewNode::Comment(s) => s.payload_bytes(),
+        NewNode::Text(s) | NewNode::CData(s) | NewNode::Comment(s) => s.payload_bytes(),
         NewNode::ProcessingInstruction(p) => p.target.payload_bytes() + p.data.payload_bytes(),
         NewNode::Doctype(d) => {
             d.name.payload_bytes() + d.public_id.payload_bytes() + d.system_id.payload_bytes()

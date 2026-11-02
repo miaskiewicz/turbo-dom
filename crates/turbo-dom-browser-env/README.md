@@ -65,7 +65,7 @@ return.
 | event loop | `flush_ownership(scope)` between tasks (wrapper ownership is reconciled in batches, so building n nodes is O(n)) |
 | realms and frames | `register_dom_exception`, `capture_window_event_interfaces`, `retire_custom_element_context`, `set_computed_font_defaults` |
 | engine namespace | `engine_namespace(scope)` (the realm's internal state object, held in a V8 private: page script cannot reach it), `run_engine_script(scope, source)` (runs `source` as a function body whose `__tsNs` parameter is that namespace; `ENGINE_NAMESPACE_PARAM`) |
-| embedding hooks (turbo-surf) | the other `pub fn`s: form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import, node nonces |
+| embedding hooks (turbo-surf) | the other `pub fn`s: form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import (`parse_xml_document_units` parses `DOMParser`'s XML types into an `XMLDocument`, `<parsererror>` documents included), node nonces |
 
 Also in the crate:
 - `css_snapshot::{SheetSnapshot, RuleSnapshot}` is the JSON contract of the private
@@ -127,6 +127,7 @@ directory:
 | `scripts/view-transitions-chrome-control.mjs`, `scripts/shadow-html-chrome-control.mjs` | `view_transitions_chrome156.json`; shadow-root / HTML serialization / sanitizer controls |
 | `scripts/invokers-chrome-control.mjs`, `scripts/editing-input-chrome-control.mjs`, `scripts/trusted-input-chrome-control.mjs` | invokers/popover, editing, pointer and other trusted-input controls; `canvas_style_chrome156.json` (2D context `fillStyle` / `strokeStyle` / `shadowColor`, `currentcolor`), `canvas_state_chrome156.json` (2D context `save()` / `restore()` drawing-state stack); the edge probes of `edge_probes_tests.rs` (`shadow_slots_edges`, `dom_mutation_validity`, `selector_edges`, `sanitizer_edges`, `document_edges`, `receivers_edges`) |
 | `scripts/image-srcset-chrome-control.mjs` | `html_image_srcset_chrome156.json` (Playwright, DPR 1 / 2, local image server; cases from `scripts/make-image-srcset-cases.py`) |
+| `scripts/xml-documents-chrome-control.mjs` | `xml_documents_chrome156.json` (XML documents, `<parsererror>`, CDATA sections, `XMLSerializer`; Playwright with `--chrome` the frozen headless shell) |
 | `scripts/document-legacy-chrome-control.mjs` | `document_legacy_chrome156.json` (loopback HTTP/HTTPS cases) |
 | `scripts/trusted-types-control/` | Trusted Types controls (`trusted_types*_chrome155.json`); `cdp-connection.mjs` is shared with the document-legacy collector |
 

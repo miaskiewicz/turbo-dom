@@ -1531,7 +1531,9 @@ impl Navigator for LiveNavigator<'_> {
         tree.for_each_child(h, |c| {
             empty &= match tree.node_type(c) {
                 NodeType::Element => false,
-                NodeType::Text => tree.node_value(c).is_none_or(|t| t.is_empty()),
+                NodeType::Text | NodeType::CDataSection => {
+                    tree.node_value(c).is_none_or(|t| t.is_empty())
+                }
                 _ => true,
             };
         });
