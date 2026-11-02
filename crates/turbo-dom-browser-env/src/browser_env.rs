@@ -10021,6 +10021,9 @@ mod css_admission_tests;
 #[path = "dom_implementation_tests.rs"]
 mod dom_implementation_tests;
 #[cfg(test)]
+#[path = "xml_documents_tests.rs"]
+mod xml_documents_tests;
+#[cfg(test)]
 #[path = "mutation_observers_tests.rs"]
 mod mutation_observers_tests;
 

@@ -1,0 +1,4562 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "recordedAt": "2026-11-02T21:00:14.256Z",
+  "fixture": "xml_documents_probe.js",
+  "result": {
+    "nested": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><b/></a>"
+    },
+    "namespaces": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "r",
+            "urn:d",
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns",
+                "http://www.w3.org/2000/xmlns/",
+                null,
+                "xmlns",
+                "urn:d"
+              ],
+              [
+                "xmlns:p",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "p",
+                "urn:p"
+              ]
+            ],
+            [
+              [
+                1,
+                "p:c",
+                "urn:p",
+                "p",
+                "c",
+                "p:c",
+                [
+                  [
+                    "p:at",
+                    "urn:p",
+                    "p",
+                    "at",
+                    "1"
+                  ],
+                  [
+                    "at2",
+                    null,
+                    null,
+                    "at2",
+                    "2"
+                  ]
+                ],
+                []
+              ],
+              [
+                1,
+                "d",
+                null,
+                null,
+                "d",
+                "d",
+                [
+                  [
+                    "xmlns",
+                    "http://www.w3.org/2000/xmlns/",
+                    null,
+                    "xmlns",
+                    ""
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "e",
+                    null,
+                    null,
+                    "e",
+                    "e",
+                    [],
+                    []
+                  ]
+                ]
+              ],
+              [
+                1,
+                "p:f",
+                "urn:q",
+                "p",
+                "f",
+                "p:f",
+                [
+                  [
+                    "xmlns:p",
+                    "http://www.w3.org/2000/xmlns/",
+                    "xmlns",
+                    "p",
+                    "urn:q"
+                  ]
+                ],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<r xmlns=\"urn:d\" xmlns:p=\"urn:p\"><p:c p:at=\"1\" at2=\"2\"/><d xmlns=\"\"><e/></d><p:f xmlns:p=\"urn:q\"/></r>"
+    },
+    "nodes": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            "r.dtd"
+          ],
+          [
+            8,
+            "#comment",
+            "c"
+          ],
+          [
+            7,
+            "pi",
+            "pi",
+            "some data "
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [],
+            [
+              [
+                3,
+                "#text",
+                "t"
+              ],
+              [
+                4,
+                "#cdata-section",
+                "<x>&"
+              ],
+              [
+                3,
+                "#text",
+                "&<>\"'AB"
+              ],
+              [
+                7,
+                "empty",
+                "empty",
+                ""
+              ]
+            ]
+          ],
+          [
+            8,
+            "#comment",
+            "after"
+          ]
+        ]
+      ],
+      "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE r SYSTEM \"r.dtd\"><!--c--><?pi some data ?><r>t<![CDATA[<x>&]]>&amp;&lt;&gt;\"'AB<?empty ?></r><!--after-->"
+    },
+    "doctypePublic": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "html",
+            "html",
+            "-//W3C//DTD XHTML 1.0 Strict//EN",
+            "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"
+          ],
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [
+              [
+                "xmlns",
+                "http://www.w3.org/2000/xmlns/",
+                null,
+                "xmlns",
+                "http://www.w3.org/1999/xhtml"
+              ]
+            ],
+            [
+              [
+                1,
+                "head",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "head",
+                "head",
+                [],
+                [
+                  [
+                    1,
+                    "title",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "title",
+                    "title",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "T"
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "p",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "p",
+                    "p",
+                    [
+                      [
+                        "class",
+                        null,
+                        null,
+                        "class",
+                        "x"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "p"
+                      ],
+                      [
+                        1,
+                        "br",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "br",
+                        "br",
+                        [],
+                        []
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\"><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>T</title></head><body><p class=\"x\">p<br /></p></body></html>"
+    },
+    "svg": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "svg",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "svg",
+            "http://www.w3.org/2000/svg",
+            null,
+            "svg",
+            "svg",
+            [
+              [
+                "xmlns",
+                "http://www.w3.org/2000/xmlns/",
+                null,
+                "xmlns",
+                "http://www.w3.org/2000/svg"
+              ],
+              [
+                "xmlns:xlink",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "xlink",
+                "http://www.w3.org/1999/xlink"
+              ],
+              [
+                "viewBox",
+                null,
+                null,
+                "viewBox",
+                "0 0 1 1"
+              ]
+            ],
+            [
+              [
+                1,
+                "use",
+                "http://www.w3.org/2000/svg",
+                null,
+                "use",
+                "use",
+                [
+                  [
+                    "xlink:href",
+                    "http://www.w3.org/1999/xlink",
+                    "xlink",
+                    "href",
+                    "#a"
+                  ]
+                ],
+                []
+              ],
+              [
+                1,
+                "foreignObject",
+                "http://www.w3.org/2000/svg",
+                null,
+                "foreignObject",
+                "foreignObject",
+                [],
+                [
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "xmlns",
+                        "http://www.w3.org/2000/xmlns/",
+                        null,
+                        "xmlns",
+                        "http://www.w3.org/1999/xhtml"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "h"
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 1 1\"><use xlink:href=\"#a\"/><foreignObject><div xmlns=\"http://www.w3.org/1999/xhtml\">h</div></foreignObject></svg>"
+    },
+    "whitespace": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [
+              [
+                "x",
+                null,
+                null,
+                "x",
+                "1\n2 3 4 5"
+              ],
+              [
+                "y",
+                null,
+                null,
+                "y",
+                "q\""
+              ],
+              [
+                "z",
+                null,
+                null,
+                "z",
+                "\t"
+              ]
+            ],
+            [
+              [
+                3,
+                "#text",
+                "\n  sp \n x\n"
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a x=\"1&#10;2 3 4 5\" y=\"q&quot;\" z=\"&#9;\">\n  sp \n x\n</a>"
+    },
+    "xmlPrefix": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [
+              [
+                "xml:lang",
+                "http://www.w3.org/XML/1998/namespace",
+                "xml",
+                "lang",
+                "en"
+              ],
+              [
+                "xml:space",
+                "http://www.w3.org/XML/1998/namespace",
+                "xml",
+                "space",
+                "preserve"
+              ]
+            ],
+            [
+              [
+                1,
+                "B",
+                null,
+                null,
+                "B",
+                "B",
+                [
+                  [
+                    "Mixed",
+                    null,
+                    null,
+                    "Mixed",
+                    "Case"
+                  ]
+                ],
+                [
+                  [
+                    3,
+                    "#text",
+                    "x"
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a xml:lang=\"en\" xml:space=\"preserve\"><B Mixed=\"Case\">x</B></a>"
+    },
+    "entities": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [],
+            [
+              [
+                3,
+                "#text",
+                "ent😀"
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r>ent😀</r>"
+    },
+    "noNamespaceHtml": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            null,
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                null,
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "p",
+                    null,
+                    null,
+                    "p",
+                    "p",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "x"
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html><body><p>x</p></body></html>"
+    },
+    "serializerEscapes": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [
+              [
+                "t",
+                null,
+                null,
+                "t",
+                "<&>\"'"
+              ]
+            ],
+            [
+              [
+                3,
+                "#text",
+                "<&>\"'"
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a t=\"&lt;&amp;&gt;&quot;'\">&lt;&amp;&gt;\"'</a>"
+    },
+    "emptyAttr": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [
+              [
+                "b",
+                null,
+                null,
+                "b",
+                ""
+              ],
+              [
+                "c",
+                null,
+                null,
+                "c",
+                " "
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<a b=\"\" c=\" \"/>"
+    },
+    "nsOrder": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "r",
+            "urn:d",
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns",
+                "http://www.w3.org/2000/xmlns/",
+                null,
+                "xmlns",
+                "urn:d"
+              ],
+              [
+                "xmlns:a",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "a",
+                "urn:a"
+              ],
+              [
+                "xmlns:z",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "z",
+                "urn:z"
+              ],
+              [
+                "b",
+                null,
+                null,
+                "b",
+                "1"
+              ],
+              [
+                "z:c",
+                "urn:z",
+                "z",
+                "c",
+                "2"
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<r xmlns=\"urn:d\" xmlns:a=\"urn:a\" xmlns:z=\"urn:z\" b=\"1\" z:c=\"2\"/>"
+    },
+    "nsRedeclare": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "r",
+            "urn:d",
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns",
+                "http://www.w3.org/2000/xmlns/",
+                null,
+                "xmlns",
+                "urn:d"
+              ],
+              [
+                "xmlns:p",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "p",
+                "urn:p"
+              ]
+            ],
+            [
+              [
+                1,
+                "p:a",
+                "urn:p",
+                "p",
+                "a",
+                "p:a",
+                [
+                  [
+                    "xmlns",
+                    "http://www.w3.org/2000/xmlns/",
+                    null,
+                    "xmlns",
+                    "urn:d"
+                  ],
+                  [
+                    "xmlns:p",
+                    "http://www.w3.org/2000/xmlns/",
+                    "xmlns",
+                    "p",
+                    "urn:p"
+                  ]
+                ],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<r xmlns=\"urn:d\" xmlns:p=\"urn:p\"><p:a xmlns=\"urn:d\" xmlns:p=\"urn:p\"/></r>"
+    },
+    "nsEmptyDefault": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [
+              [
+                "xmlns",
+                "http://www.w3.org/2000/xmlns/",
+                null,
+                "xmlns",
+                ""
+              ]
+            ],
+            [
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a xmlns=\"\"><b/></a>"
+    },
+    "standalone": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            []
+          ]
+        ]
+      ],
+      "xml": "<?xml version=\"1.0\" standalone=\"yes\"?><a/>"
+    },
+    "declarationNoEncoding": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            []
+          ]
+        ]
+      ],
+      "xml": "<?xml version=\"1.0\"?><a/>"
+    },
+    "declarationAll": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            []
+          ]
+        ]
+      ],
+      "xml": "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?><a/>"
+    },
+    "declarationLatin": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                3,
+                "#text",
+                "é"
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><a>é</a>"
+    },
+    "nsInTagWithGt": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns:q",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "q",
+                "u&q"
+              ],
+              [
+                "a",
+                null,
+                null,
+                "a",
+                ">"
+              ],
+              [
+                "b",
+                null,
+                null,
+                "b",
+                "/>"
+              ]
+            ],
+            [
+              [
+                1,
+                "q:x",
+                "u&q",
+                "q",
+                "x",
+                "q:x",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<r xmlns:q=\"u&amp;q\" a=\"&gt;\" b=\"/&gt;\"><q:x/></r>"
+    },
+    "doctypeSingleQuotes": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "a",
+            "a",
+            "p",
+            "s"
+          ],
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE a PUBLIC \"p\" \"s\"><a/>"
+    },
+    "unicodeColumn": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 9: Unexpected closing tag: b != a"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                3,
+                "#text",
+                ""
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 9: Unexpected closing tag: b != a</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "mismatch": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 10: Unexpected closing tag: a != b"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 10: Unexpected closing tag: a != b</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror><b/></a>"
+    },
+    "empty": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 1: Unexpected end of stream: no root element found"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 1: Unexpected end of stream: no root element found</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "whitespaceOnly": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 2 at column 2: Unexpected end of stream: no root element found"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 2 at column 2: Unexpected end of stream: no root element found</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "unclosed": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 4: Unexpected end of stream: still inside the root element"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 4: Unexpected end of stream: still inside the root element</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "unclosedNested": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 11: Unexpected end of stream: still inside the root element"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 11: Unexpected end of stream: still inside the root element</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror><b/></a>"
+    },
+    "extraContent": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 8: Unexpected token: <"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 8: Unexpected token: &lt;</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "trailingText": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 8: Unexpected characters outside the root element: t"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 8: Unexpected characters outside the root element: t</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "unquoted": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 6: Unexpected token: 1"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 6: Unexpected token: 1</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "duplicateAttr": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 10: Attribute 'x' is redefined"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 10: Attribute 'x' is redefined</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "unboundPrefix": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 5: Element p:a prefix is unbound"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 5: Element p:a prefix is unbound</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "unboundAttrPrefix": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 4: Attribute p:x prefix is unbound"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 4: Attribute p:x prefix is unbound</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "undefinedEntity": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 8: Unexpected entity: foo"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 8: Unexpected entity: foo</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "bareAmp": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 5: Unexpected token inside entity: </"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 5: Unexpected token inside entity: &lt;/</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "textOnly": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 1: Unexpected characters outside the root element: t"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 1: Unexpected characters outside the root element: t</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "lt": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 8: Qualified name is invalid: "
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                3,
+                "#text",
+                ""
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 8: Qualified name is invalid: </div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "badName": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 3: Unexpected token inside qualified name: 1"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 3: Unexpected token inside qualified name: 1</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "commentDashes": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 11: Unexpected token '--' before ' '"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 11: Unexpected token '--' before ' '</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "multiLine": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 4 at column 4: Unexpected closing tag: r != y"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                3,
+                "#text",
+                "\n  "
+              ],
+              [
+                1,
+                "x",
+                null,
+                null,
+                "x",
+                "x",
+                [],
+                [
+                  [
+                    3,
+                    "#text",
+                    "1"
+                  ]
+                ]
+              ],
+              [
+                3,
+                "#text",
+                "\n  "
+              ],
+              [
+                1,
+                "y",
+                null,
+                null,
+                "y",
+                "y",
+                [],
+                [
+                  [
+                    3,
+                    "#text",
+                    ""
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<r><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 4 at column 4: Unexpected closing tag: r != y</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror>\n  <x>1</x>\n  <y></y></r>"
+    },
+    "xmlDeclOnly": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 22: Unexpected end of stream: no root element found"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<?xml version=\"1.0\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 22: Unexpected end of stream: no root element found</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "lateXmlDecl": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 10: Invalid processing instruction: <?xml\nThe XML spec only allows \"<?xml\" at the very beginning of the file, with no whitespace, comments, or any elements before it"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 10: Invalid processing instruction: &lt;?xml\nThe XML spec only allows \"&lt;?xml\" at the very beginning of the file, with no whitespace, comments, or any elements before it</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "unclosedComment": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 10: Unexpected end of stream"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 10: Unexpected end of stream</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "unclosedCdata": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 14: Unexpected end of stream"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 14: Unexpected end of stream</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "attrLt": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 7: Unexpected token '<' before '\"'"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 7: Unexpected token '&lt;' before '\"'</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "controlChar": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 4: Invalid character U+0001"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 4: Invalid character U+0001</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></a>"
+    },
+    "closeOnly": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 1: Unexpected token: </"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 1: Unexpected token: &lt;/</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "type application/xml": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><b/></a>"
+    },
+    "type text/xml": {
+      "tag": "[object XMLDocument]",
+      "contentType": "text/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><b/></a>"
+    },
+    "type image/svg+xml": {
+      "tag": "[object XMLDocument]",
+      "contentType": "image/svg+xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><b/></a>"
+    },
+    "type application/xhtml+xml": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xhtml+xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><b/></a>"
+    },
+    "typeError application/xml": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 10: Unexpected closing tag: a != b"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 10: Unexpected closing tag: a != b</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror><b/></a>"
+    },
+    "typeError text/xml": {
+      "tag": "[object XMLDocument]",
+      "contentType": "text/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 10: Unexpected closing tag: a != b"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 10: Unexpected closing tag: a != b</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror><b/></a>"
+    },
+    "typeError image/svg+xml": {
+      "tag": "[object XMLDocument]",
+      "contentType": "image/svg+xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 10: Unexpected closing tag: a != b"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 10: Unexpected closing tag: a != b</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror><b/></a>"
+    },
+    "typeError application/xhtml+xml": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xhtml+xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "a",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "a",
+            null,
+            null,
+            "a",
+            "a",
+            [],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 10: Unexpected closing tag: a != b"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                1,
+                "b",
+                null,
+                null,
+                "b",
+                "b",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<a><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 10: Unexpected closing tag: a != b</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror><b/></a>"
+    },
+    "serializer": {
+      "doc": "<r xmlns=\"urn:d\"><c/><x:n xmlns:x=\"urn:x\" xmlns:y=\"urn:y\" y:at=\"v\"><![CDATA[c]>d]]><!--k--><?t d?></x:n><plain/><nons xmlns=\"\"/></r>",
+      "element": "<x:n xmlns:x=\"urn:x\" xmlns:y=\"urn:y\" y:at=\"v\"><![CDATA[c]>d]]><!--k--><?t d?></x:n>",
+      "children": [
+        [
+          4,
+          "#cdata-section",
+          "c]>d"
+        ],
+        [
+          8,
+          "#comment",
+          "k"
+        ],
+        [
+          7,
+          "t",
+          "d"
+        ]
+      ],
+      "text": "c]>d",
+      "cdataError": [
+        "InvalidCharacterError",
+        "Failed to execute 'createCDATASection' on 'Document': String cannot contain ']]>' since that is the end delimiter of a CData section."
+      ],
+      "htmlNode": "<br xmlns=\"http://www.w3.org/1999/xhtml\" />",
+      "htmlFragment": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p a=\"&quot;\">x<br />&amp;</p></div>",
+      "htmlCdata": "NotSupportedError",
+      "attributeNoPrefix": "<e xmlns=\"urn:e\" xmlns:ns1=\"urn:a\" ns1:plain=\"1\" ns1:other=\"2\" xmlns:p=\"urn:b\" p:x=\"3\" xmlns:ns2=\"urn:c\" ns2:y=\"4\" xml:lang=\"en\"/>",
+      "escapes": "<q v=\"&lt;&amp;&gt;&quot;'&#9;&#10;&#13;\">&lt;&amp;&gt;\"'\t\n\r </q>",
+      "doctype": [
+        "<!DOCTYPE a>",
+        "<!DOCTYPE a PUBLIC \"p\">",
+        "<!DOCTYPE a SYSTEM \"s\">"
+      ],
+      "fragment": "<x xmlns=\"urn:d\"/>t"
+    },
+    "surface": {
+      "tag": "[object XMLSerializer]",
+      "length": [
+        0,
+        1
+      ],
+      "call": [
+        "TypeError",
+        "Failed to construct 'XMLSerializer': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+      ],
+      "noArgument": [
+        "TypeError",
+        "Failed to execute 'serializeToString' on 'XMLSerializer': 1 argument required, but only 0 present."
+      ],
+      "notNode": [
+        "TypeError",
+        "Failed to execute 'serializeToString' on 'XMLSerializer': parameter 1 is not of type 'Node'."
+      ],
+      "receiver": [
+        "TypeError",
+        "Illegal invocation"
+      ]
+    }
+  }
+}
