@@ -1,0 +1,210 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "probeSha256": "ee9ef4f8f0b261332460bf1f3032a90cf4d8c1db27b2374ba67e429d199eaa78",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "shape": {
+      "enumerable": true,
+      "configurable": true,
+      "setter": "undefined",
+      "getterName": "get customElementRegistry",
+      "getterLength": 0,
+      "constructible": false
+    },
+    "rows": [
+      [
+        "document-element",
+        "global"
+      ],
+      [
+        "detached-html",
+        "global"
+      ],
+      [
+        "detached-svg",
+        "global"
+      ],
+      [
+        "explicit-scoped",
+        "scoped"
+      ],
+      [
+        "explicit-null",
+        "null"
+      ],
+      [
+        "detached-parser",
+        "global"
+      ],
+      [
+        "scoped-shadow-parser",
+        "scoped"
+      ],
+      [
+        "scoped-parser-moved-global",
+        "scoped"
+      ],
+      [
+        "global-moved-scoped",
+        "global"
+      ],
+      [
+        "scoped-moved-scoped",
+        "scoped"
+      ],
+      [
+        "null-moved-scoped",
+        "null"
+      ],
+      [
+        "scoped-moved-global",
+        "scoped"
+      ],
+      [
+        "unread-scoped-parser-moved-global",
+        "scoped"
+      ],
+      [
+        "unread-scoped-descendant",
+        "scoped"
+      ],
+      [
+        "unread-null-parser-moved-global",
+        "null"
+      ],
+      [
+        "unread-scoped-adjacent-moved-global",
+        "scoped"
+      ],
+      [
+        "scoped-contextual-fragment",
+        "global"
+      ],
+      [
+        "global-shadow-root",
+        true
+      ],
+      [
+        "global-shadow-parser",
+        "global"
+      ],
+      [
+        "scoped-template",
+        "scoped"
+      ],
+      [
+        "template-content-parser",
+        "null"
+      ],
+      [
+        "template-content-moved-global",
+        "global"
+      ],
+      [
+        "template-descendant-moved-global",
+        "global"
+      ],
+      [
+        "inert-document-element",
+        "null"
+      ],
+      [
+        "inert-created",
+        "null"
+      ],
+      [
+        "default-inert-created-adopted-global",
+        "global"
+      ],
+      [
+        "explicit-null-inert-created-adopted-global",
+        "global"
+      ],
+      [
+        "global-adopted-inert",
+        "null"
+      ],
+      [
+        "scoped-adopted-inert",
+        "scoped"
+      ],
+      [
+        "null-adopted-inert",
+        "null"
+      ],
+      [
+        "null-inert-roundtrip-global",
+        "global"
+      ],
+      [
+        "unread-null-roundtrip-root",
+        "global"
+      ],
+      [
+        "unread-null-roundtrip-descendant",
+        "global"
+      ],
+      [
+        "implicit-inert-null-adoption",
+        "global"
+      ],
+      [
+        "inert-shadow-root-adopted-global",
+        true
+      ],
+      [
+        "unread-inert-shadow-child-adopted-global",
+        "global"
+      ],
+      [
+        "unread-inert-shadow-descendant-adopted-global",
+        "global"
+      ],
+      [
+        "explicit-foreign-global",
+        {
+          "error": "NotSupportedError"
+        }
+      ],
+      [
+        "explicit-foreign-scoped",
+        "foreign-scoped"
+      ],
+      [
+        "foreign-parent-getter",
+        "foreign"
+      ],
+      [
+        "foreign-adopted-parent",
+        "global"
+      ],
+      [
+        "foreign-getter-on-parent",
+        true
+      ],
+      [
+        "forged-object",
+        {
+          "error": "TypeError"
+        }
+      ],
+      [
+        "document-receiver",
+        {
+          "error": "TypeError"
+        }
+      ]
+    ]
+  }
+}

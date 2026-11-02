@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#42, turbo-dom#43",
+ "reason": "turbo-dom-browser-env custom element upgrades are queued per element inside [CEReactions] calls, setters are [CEReactions] scopes, fragment-parser setters queue their elements' upgrades before their removals, insertion upgrades connected elements only and customElements.upgrade(root) skips candidates another registry (or none) governs. Every change is gated on a custom element definition existing (custom_elements::mutation returns before any delivery without one), and no pinned surf / html2pdf / image-matrix input defines a custom element (no customElements in any input), so no corpus output is predicted to change. Static screenshots and the html2pdf corpora do not run the binding; the surf live corpus is not rebuildable in this slice (prediction, unmeasured). P5b-X5.",
+ "control": "crates/turbo-dom-browser-env/src/dom_adoption_reactions_chrome156.json (turbo-dom#29); crates/turbo-dom-browser-env/src/dom_reactions_names_chrome156.json section order",
+ "e2e": "crates/turbo-dom-browser-env/src/dom_reactions_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

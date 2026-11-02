@@ -1,0 +1,22 @@
+{
+ "id": "turbo-html2pdf#35",
+ "reason": "The PDF emitter paints fragments in stacking order (Fragment::paint_order: negative z-index, flow, positioned, positive z-index), as Chrome and turbo-dom-raster do; tagged PDFs number marked content in paint order and keep the structure in document order (029e371). Attribution: napi builds (plain + svg, fresh target dirs, git-archived commits) of turbo-html2pdf consol/p5b-w4 against turbo-dom 79a94d3, each step vs the previous: 029e371 changes conformance-30-relative-offset (the shifted block now over the next one) and conformance-61-sticky-header (the sticky header over the flow), plain/svg/.ua; documents without positioned boxes emit byte-identically. Chrome-ward: 30 see #34; 61 page-1 raster equally close at 48dpi (189 px), its sticky header painted above the content as in Chrome.",
+ "control": "turbo-html2pdf crates/turbo-html2pdf-core/tests/fixtures/pagination_chrome156.json (scripts/pagination-chrome-control.mjs: Chrome for Testing 156.0.8078.4 page.pdf() of 600x400px @page boxes, pdftoppm -r 96) cases absolute-static-position, relative-offset-*, fixed-negative-z-index (through the PDF)",
+ "e2e": "turbo-html2pdf tests/emit.rs fragments_paint_in_stacking_order, tests/pdf_ua.rs marked_content_follows_paint_order_and_the_tree_reading_order (veraPDF ua1)",
+ "changes": {
+  "html2pdf": [
+   "conformance-30-relative-offset.pdf",
+   "conformance-61-sticky-header.pdf"
+  ],
+  "html2pdf-svg": [
+   "conformance-30-relative-offset.pdf",
+   "conformance-61-sticky-header.pdf"
+  ],
+  "html2pdf-extra": [
+   "conformance-30-relative-offset.ua.pdf",
+   "conformance-61-sticky-header.ua.pdf"
+  ],
+  "surf": [],
+  "surf-extra": []
+ }
+}

@@ -1,0 +1,191 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "popover_exceptions_probe.js",
+  "probeSha256": "9a568732567581e05d403bc53fd9587b2a07a540c62a866a250cfc0387bb19fd",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "showHide": [
+      null,
+      [
+        [
+          "before",
+          "open"
+        ],
+        [
+          "before",
+          "closed"
+        ],
+        [
+          "closed",
+          "closed"
+        ]
+      ],
+      false
+    ],
+    "showHideShow": [
+      null,
+      [
+        [
+          "before",
+          "open"
+        ],
+        [
+          "before",
+          "closed"
+        ],
+        [
+          "before",
+          "open"
+        ],
+        [
+          "closed",
+          "open"
+        ]
+      ],
+      true
+    ],
+    "nestedHide": [
+      [
+        "undefined",
+        [
+          false,
+          false,
+          [
+            "InvalidStateError",
+            "Failed to execute 'togglePopover' on 'HTMLElement': Invalid to show a popover during another show operation"
+          ],
+          false,
+          [
+            "InvalidStateError",
+            "Failed to execute 'showPopover' on 'HTMLElement': Invalid to show a popover during another show operation"
+          ],
+          "undefined"
+        ]
+      ],
+      [
+        [
+          "before",
+          "open"
+        ],
+        [
+          "before",
+          "closed"
+        ],
+        [
+          "closed",
+          "open"
+        ]
+      ],
+      false
+    ],
+    "nestedShow": [
+      [
+        "undefined",
+        [
+          "undefined",
+          false,
+          [
+            "InvalidStateError",
+            "Failed to execute 'togglePopover' on 'HTMLElement': Invalid to show a popover during another show operation"
+          ],
+          [
+            "InvalidStateError",
+            "Failed to execute 'showPopover' on 'HTMLElement': Invalid to show a popover during another show operation"
+          ]
+        ]
+      ],
+      [
+        [
+          "before",
+          "open"
+        ],
+        [
+          "closed",
+          "open"
+        ]
+      ],
+      true
+    ],
+    "hideShow": [
+      [
+        "open",
+        "open"
+      ]
+    ],
+    "hideShowHide": [
+      [
+        "open",
+        "closed"
+      ]
+    ],
+    "detached": [
+      [
+        "InvalidStateError",
+        "Failed to execute 'showPopover' on 'HTMLElement': Invalid on disconnected popover elements."
+      ],
+      [
+        "InvalidStateError",
+        "Failed to execute 'togglePopover' on 'HTMLElement': Invalid on disconnected popover elements."
+      ],
+      [
+        "InvalidStateError",
+        "Failed to execute 'togglePopover' on 'HTMLElement': Invalid on disconnected popover elements."
+      ],
+      [
+        "InvalidStateError",
+        "Failed to execute 'togglePopover' on 'HTMLElement': Invalid on disconnected popover elements."
+      ],
+      "undefined"
+    ],
+    "notPopover": [
+      [
+        "NotSupportedError",
+        "Failed to execute 'showPopover' on 'HTMLElement': Not supported on elements that are not popovers."
+      ],
+      [
+        "NotSupportedError",
+        "Failed to execute 'hidePopover' on 'HTMLElement': Not supported on elements that are not popovers. This might have been the result of the \"beforetoggle\" event handler changing the state of this popover."
+      ],
+      [
+        "NotSupportedError",
+        "Failed to execute 'togglePopover' on 'HTMLElement': Not supported on elements that are not popovers."
+      ],
+      [
+        "NotSupportedError",
+        "Failed to execute 'togglePopover' on 'HTMLElement': Not supported on elements that are not popovers."
+      ]
+    ],
+    "notPopoverConnected": [
+      [
+        "NotSupportedError",
+        "Failed to execute 'showPopover' on 'HTMLElement': Not supported on elements that are not popovers."
+      ],
+      [
+        "NotSupportedError",
+        "Failed to execute 'hidePopover' on 'HTMLElement': Not supported on elements that are not popovers. This might have been the result of the \"beforetoggle\" event handler changing the state of this popover."
+      ],
+      [
+        "NotSupportedError",
+        "Failed to execute 'togglePopover' on 'HTMLElement': Not supported on elements that are not popovers."
+      ],
+      [
+        "NotSupportedError",
+        "Failed to execute 'togglePopover' on 'HTMLElement': Not supported on elements that are not popovers."
+      ]
+    ]
+  }
+}

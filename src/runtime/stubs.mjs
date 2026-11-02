@@ -38,24 +38,6 @@ export function makeCanvasStub() {
   });
 }
 
-// CustomElementRegistry — define/get/whenDefined. No upgrade of generic elements,
-// but enough that defining and awaiting elements doesn't throw.
-export function makeCustomElements() {
-  const defs = new Map();
-  const waiters = new Map();
-  return {
-    define(name, ctor) {
-      if (defs.has(name)) throw new Error(`'${name}' already defined`);
-      defs.set(name, ctor);
-      const w = waiters.get(name); if (w) { w.forEach((r) => r(ctor)); waiters.delete(name); }
-    },
-    get(name) { return defs.get(name); },
-    getName(ctor) { for (const [n, c] of defs) if (c === ctor) return n; return null; },
-    whenDefined(name) { if (defs.has(name)) return Promise.resolve(defs.get(name)); return new Promise((res) => { const a = waiters.get(name) || []; a.push(res); waiters.set(name, a); }); },
-    upgrade() {},
-  };
-}
-
 export class Storage {
   constructor() { this.__map = new Map(); }
   get length() { return this.__map.size; }
@@ -86,7 +68,7 @@ function evalMediaQuery(query, win) {
     else if (feat === 'max-width') matched = matched && W <= parseFloat(val);
     else if (feat === 'min-height') matched = matched && H >= parseFloat(val);
     else if (feat === 'max-height') matched = matched && H <= parseFloat(val);
-    else matched = matched && val === (W >= H ? 'landscape' : 'portrait'); // orientation
+    else matched = matched && val === (H >= W ? 'portrait' : 'landscape'); // orientation: portrait iff height >= width (turbo-dom#138)
   }
   return any && matched;
 }

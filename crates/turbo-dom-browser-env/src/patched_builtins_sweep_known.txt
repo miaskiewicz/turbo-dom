@@ -1,0 +1,3 @@
+# miaskiewicz/turbo-dom#199 remaining violations (member -> page-patched builtin it reaches).
+# every_member_avoids_page_patched_builtins requires the sweep to equal this list exactly:
+# a new entry is a regression; a fixed one must be deleted here. Shrink only.

@@ -1,0 +1,110 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "selection_text_edges_probe.js",
+  "probeSha256": "e4fb23025f7a18919dfd2745f06da498b2e1ac5a5356154d6f659d3ebb12712d",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "transforms": [
+      "\"abc d\"",
+      "\"ASSB ʼN\"",
+      "\"Ab Cd\""
+    ],
+    "whitespace": [
+      "\"a\\nb\\nc\"",
+      "\"a  \\n b\"",
+      "\"a\\nb\\nc\""
+    ],
+    "boxes": [
+      "\"xfy\\nz\"",
+      "\"xabsyfixw\"",
+      "\"xfpy\""
+    ],
+    "shadow": [
+      "\"L1L2L3\\nE1\"",
+      "\"oot t\""
+    ],
+    "tables": [
+      "\"a\\tb\\nc\\t\\nx\"",
+      "\"x\\nh\\nt2\"",
+      "\"c1\\tc2\\ny\""
+    ],
+    "moves": "#text:ab:1 #text:ab:2 BODY::1 #text:c:0 #text:c:1 #text:d:0 #text:d:1 BODY::2 #text:d:1 #text:d:0 #text:c:1 #text:c:0 BODY::1 #text:ab:2 #text:ab:1 #text:ab:0",
+    "focus": [
+      [
+        "d",
+        "BODY",
+        0,
+        2
+      ],
+      [
+        "l1",
+        "l1",
+        0,
+        2
+      ],
+      [
+        "l2",
+        "BODY",
+        0,
+        2
+      ],
+      [
+        "f",
+        "BODY",
+        0,
+        2
+      ],
+      [
+        "n",
+        "BODY",
+        0,
+        2
+      ],
+      [
+        "ok",
+        "ok",
+        0,
+        2
+      ],
+      [
+        "e1",
+        "e1",
+        0,
+        2
+      ],
+      [
+        "l3",
+        "l3",
+        0,
+        2
+      ],
+      [
+        "l4",
+        "l4",
+        0,
+        2
+      ]
+    ],
+    "shadowSlots": [
+      "\"ashownb\""
+    ],
+    "empty": [
+      "BODY",
+      0
+    ]
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "d9fdffc31f99fa37317d63174e43be06d7b07e209c6fd7d2f4eb7249f0e77f55",
+  "probeSha256": "1da67721db3d9aae1d15acce36e76768c7b945b471e9c4d6355207c3f59fda2d",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "result": {
+        "members": [
+          "formData",
+          "constructor"
+        ],
+        "descriptor": [
+          true,
+          true,
+          "get formData",
+          0,
+          true
+        ],
+        "constructor": [
+          "FormDataEvent",
+          2,
+          true,
+          true
+        ],
+        "failures": [
+          {
+            "error": "TypeError"
+          },
+          {
+            "error": "TypeError"
+          },
+          {
+            "error": "TypeError"
+          },
+          {
+            "error": "TypeError"
+          },
+          {
+            "error": "TypeError"
+          },
+          {
+            "error": "TypeError"
+          },
+          {
+            "error": "TypeError"
+          }
+        ],
+        "event": [
+          true,
+          true,
+          "[object FormDataEvent]",
+          true,
+          true,
+          true,
+          true,
+          false
+        ],
+        "reads": [
+          "bubbles",
+          "cancelable",
+          "composed",
+          "formData"
+        ],
+        "brand": {
+          "value": true,
+          "error": null
+        },
+        "nativeEvent": [
+          true,
+          true,
+          false,
+          false
+        ],
+        "submitBrand": [
+          true,
+          true,
+          true,
+          "[object SubmitEvent]",
+          true
+        ]
+      }
+    }
+  ]
+}

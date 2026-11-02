@@ -1,0 +1,80 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "casesSha256": "54151e823f7ddb6ae74a62ab10cc9a90dcf6d74bdc3480cbfd91decdc5a3c1e5",
+  "probeSha256": "226ee33148933966b0818f474a543962f6e424e8ad8079176a6fcfcf951bebbc",
+  "collectorSha256": "28c5e30fd556dffcaac973373d4fb0ad0202ab6f168b14f0950b55bf28054fe8",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "matrix",
+      "result": [
+        [
+          {
+            "name": "TypeError",
+            "message": "authored"
+          },
+          {
+            "name": "TypeError",
+            "message": "Failed to execute 'invoke' on 'CreateHTMLCallback': authored"
+          },
+          {
+            "name": "TypeError",
+            "message": "authored"
+          }
+        ],
+        [
+          {
+            "name": "Error",
+            "message": "authored"
+          },
+          {
+            "name": "Error",
+            "message": "Failed to execute 'invoke' on 'CreateHTMLCallback': authored"
+          },
+          {
+            "name": "Error",
+            "message": "authored"
+          }
+        ],
+        [
+          {
+            "name": "TypeError",
+            "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Cannot convert a Symbol value to a string"
+          },
+          {
+            "name": "TypeError",
+            "message": "Failed to execute 'invoke' on 'CreateHTMLCallback': Failed to execute 'createHTML' on 'TrustedTypePolicy': Cannot convert a Symbol value to a string"
+          },
+          {
+            "name": "TypeError",
+            "message": "Failed to execute 'getAttributeType' on 'TrustedTypePolicyFactory': Cannot convert a Symbol value to a string"
+          }
+        ],
+        [
+          {
+            "name": "TypeError",
+            "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Cannot convert object to primitive value"
+          },
+          {
+            "name": "TypeError",
+            "message": "Failed to execute 'invoke' on 'CreateHTMLCallback': Failed to execute 'createHTML' on 'TrustedTypePolicy': Cannot convert object to primitive value"
+          },
+          {
+            "name": "TypeError",
+            "message": "Failed to execute 'getAttributeType' on 'TrustedTypePolicyFactory': Cannot convert object to primitive value"
+          }
+        ]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+ "id": "turbo-html2pdf#32 item 1",
+ "reason": "Out-of-flow boxes in print as Chrome 156 paginates them: position:fixed boxes repeat on every page at their page-area position (bottom-only insets anchored to its bottom) and absolute boxes with a top/bottom inset of the initial containing block are taken out of the flow and placed at their offset continued through the page capacities (new pages past the content); an absolute box of a positioned containing block stays its descendant (placed whole it moves with it; split, the walker defers it from the block's start); static-position absolute boxes take no space. Attribution: napi builds (plain + svg, fresh target dirs, git-archived commits) of turbo-html2pdf consol/p5b-w4 against turbo-dom 79a94d3, each step vs the previous: e199218..187cfc2/3e1de14 (items 3-6) change nothing; b8263f3 changes conformance-16-position-fixed (plain/svg/.ua) and the .ua.pdf of 09/15/17/25/38/49 (their abs boxes moved to the page level, identical paint); efc5209 keeps abs boxes of positioned containing blocks in their subtree, which reverts those six .ua.pdf to the base bytes. Net: conformance-16 only. Chrome-ward: the page-1 raster of conformance-16 (pdftoppm -r 48) differs from Chrome's page.pdf() (A4, 20mm) in 255 pixels, 20155 before. P5b-W4.",
+ "control": "turbo-html2pdf crates/turbo-html2pdf-core/tests/fixtures/pagination_chrome156.json (scripts/pagination-chrome-control.mjs: Chrome for Testing 156.0.8078.4 page.pdf() of 600x400px @page boxes, pdftoppm -r 96) cases fixed-*, absolute-*",
+ "e2e": "turbo-html2pdf crates/turbo-html2pdf-core/tests/pagination_chrome.rs (+ tests/paginate.rs); every control case also matches through the emitted PDF (pdftoppm) except exact-fill-child-margin (turbo-dom#41); tests/pagination_chrome.rs an_absolute_box_stays_inside_its_positioned_parent_placed_whole",
+ "by_commit": {
+  "b8263f3 (extract out-of-flow boxes)": {
+   "html2pdf": [
+    "conformance-16-position-fixed.pdf"
+   ],
+   "html2pdf-svg": [
+    "conformance-16-position-fixed.pdf"
+   ],
+   "html2pdf-extra": [
+    "conformance-09-abs-relative.ua.pdf",
+    "conformance-15-abs-in-flex-relative.ua.pdf",
+    "conformance-16-position-fixed.ua.pdf",
+    "conformance-17-combo-stage.ua.pdf",
+    "conformance-25-abs-percentage.ua.pdf",
+    "conformance-38-calc-percent-inset.ua.pdf",
+    "conformance-49-abs-top-against-height.ua.pdf"
+   ],
+   "surf": [],
+   "surf-extra": []
+  },
+  "efc5209 (abs boxes of positioned containing blocks stay in place)": {
+   "html2pdf": [],
+   "html2pdf-svg": [],
+   "html2pdf-extra": [
+    "conformance-09-abs-relative.ua.pdf",
+    "conformance-15-abs-in-flex-relative.ua.pdf",
+    "conformance-17-combo-stage.ua.pdf",
+    "conformance-25-abs-percentage.ua.pdf",
+    "conformance-38-calc-percent-inset.ua.pdf",
+    "conformance-49-abs-top-against-height.ua.pdf"
+   ],
+   "surf": [],
+   "surf-extra": []
+  }
+ },
+ "changes": {
+  "html2pdf": [
+   "conformance-16-position-fixed.pdf"
+  ],
+  "html2pdf-svg": [
+   "conformance-16-position-fixed.pdf"
+  ],
+  "html2pdf-extra": [
+   "conformance-16-position-fixed.ua.pdf"
+  ],
+  "surf": [],
+  "surf-extra": []
+ }
+}

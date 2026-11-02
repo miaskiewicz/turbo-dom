@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#79",
+ "reason": "Intrinsic (min-/max-content) widths count the in-flow children's horizontal margins (signed; % and auto margins 0). Fresh-target parity builds (git archive of each commit, own CARGO_TARGET_DIR per build; html2pdf refactor 923c89f napi plain + svg; surf static through the napi-free raster harness): be87ef2 -> e80e26a: no corpus output changes (no corpus input has a shrink-to-fit box around a margined child). P5b-W7.",
+ "control": "intrinsic-margins-* in scripts/html-document-chrome-control.mjs",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (intrinsic_widths_count_child_margins_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

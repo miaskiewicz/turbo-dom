@@ -55,7 +55,11 @@ mod napi_front {
                 attrs: n
                     .attrs
                     .into_iter()
-                    .map(|a| JsAttr { name: a.name, value: a.value, prefix: a.prefix })
+                    .map(|a| JsAttr {
+                        name: a.name,
+                        value: a.value,
+                        prefix: a.prefix,
+                    })
                     .collect(),
                 children: n.children.into_iter().map(JsNode::from).collect(),
             }
@@ -105,25 +109,54 @@ mod napi_front {
             let n = s.node_type.len();
             let m = s.attr_name_id.len();
             let mut buf: Vec<u8> = Vec::with_capacity(36 * n + 12 * m);
-            for col in [&s.tag_id] { for v in col { buf.extend_from_slice(&v.to_le_bytes()); } }
-            for col in [&s.parent, &s.first_child, &s.next_sib, &s.text_id, &s.pub_id, &s.sys_id, &s.attr_start] {
-                for v in col { buf.extend_from_slice(&v.to_le_bytes()); }
+            for col in [&s.tag_id] {
+                for v in col {
+                    buf.extend_from_slice(&v.to_le_bytes());
+                }
+            }
+            for col in [
+                &s.parent,
+                &s.first_child,
+                &s.next_sib,
+                &s.text_id,
+                &s.pub_id,
+                &s.sys_id,
+                &s.attr_start,
+            ] {
+                for v in col {
+                    buf.extend_from_slice(&v.to_le_bytes());
+                }
             }
             for col in [&s.attr_name_id, &s.attr_value_id, &s.attr_prefix_id] {
-                for v in col { buf.extend_from_slice(&v.to_le_bytes()); }
+                for v in col {
+                    buf.extend_from_slice(&v.to_le_bytes());
+                }
             }
-            for v in &s.attr_count { buf.extend_from_slice(&v.to_le_bytes()); }
+            for v in &s.attr_count {
+                buf.extend_from_slice(&v.to_le_bytes());
+            }
             buf.extend_from_slice(&s.node_type);
             buf.extend_from_slice(&s.ns);
             // pack all five string tables into one byte blob + meta (5 counts, then
             // per-string byte lengths in table order). Zero napi string conversion.
-            let tables: [&Vec<String>; 5] =
-                [&s.tag_names, &s.attr_names, &s.attr_prefixes, &s.attr_values, &s.strings];
+            let tables: [&Vec<String>; 5] = [
+                &s.tag_names,
+                &s.attr_names,
+                &s.attr_prefixes,
+                &s.attr_values,
+                &s.strings,
+            ];
             let total_strs: usize = tables.iter().map(|t| t.len()).sum();
-            let total_bytes: usize = tables.iter().flat_map(|t| t.iter()).map(std::string::String::len).sum();
+            let total_bytes: usize = tables
+                .iter()
+                .flat_map(|t| t.iter())
+                .map(std::string::String::len)
+                .sum();
             let mut str_blob: Vec<u8> = Vec::with_capacity(total_bytes);
             let mut str_meta: Vec<u32> = Vec::with_capacity(5 + total_strs);
-            for t in &tables { str_meta.push(t.len() as u32); }
+            for t in &tables {
+                str_meta.push(t.len() as u32);
+            }
             for t in &tables {
                 for x in *t {
                     str_meta.push(x.len() as u32);

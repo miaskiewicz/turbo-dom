@@ -63,11 +63,10 @@ export class CSSStyleSheet {
   get rules() { return this.cssRules; }
 
   insertRule(rule, index = 0) {
-    const i = index === undefined ? 0 : index;
-    if (i < 0 || i > this.cssRules.length) throw new RangeError('insertRule: index out of bounds');
-    this.cssRules.splice(i, 0, new CSSStyleRule(rule));
+    if (index < 0 || index > this.cssRules.length) throw new RangeError('insertRule: index out of bounds');
+    this.cssRules.splice(index, 0, new CSSStyleRule(rule));
     this.#invalidate();
-    return i;
+    return index;
   }
 
   deleteRule(index) {

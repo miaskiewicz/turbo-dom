@@ -1,0 +1,24 @@
+{
+ "id": "miaskiewicz/turbo-dom#88",
+ "reason": "display: flow-root establishes a block formatting context (P5b-W7's implementation is kept on merging) and a zero-height formatting-context root is not self-collapsing (P5b-W6 2ae7d19). No existing corpus output changes (fresh-target builds d17e810 -> 2ae7d19: 0 changed); the extra input flow-root.html pins it. P5b-W6.",
+ "control": "scripts/html-document-chrome-control.mjs flow-root-* / empty-formatting-root-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (flow_root_establishes_a_formatting_context_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ },
+ "added": {
+  "html2pdf-extra": [
+   "extra-flow-root.boxes.json",
+   "extra-flow-root.pdf",
+   "extra-flow-root.ua.pdf"
+  ],
+  "surf-extra": [
+   "static-extra-flow-root.png",
+   "static-extra-flow-root.svg"
+  ]
+ }
+}

@@ -1,0 +1,379 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "recordedAt": "2026-10-15T23:26:55.747Z",
+  "fixture": "dom_implementation_probe.js",
+  "probeSha256": "bf8f862a355943c72f379784937be24144d1e4fe14de80b87f77bad8a4ef6610",
+  "effectiveExtensionFlags": [
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages"
+  ],
+  "result": {
+    "stable": true,
+    "brand": "[object DOMImplementation]",
+    "prototype": true,
+    "keys": [],
+    "methods": [
+      [
+        "createDocumentType",
+        3,
+        "createDocumentType",
+        "function createDocumentType() { [native code] }"
+      ],
+      [
+        "createDocument",
+        2,
+        "createDocument",
+        "function createDocument() { [native code] }"
+      ],
+      [
+        "createHTMLDocument",
+        0,
+        "createHTMLDocument",
+        "function createHTMLDocument() { [native code] }"
+      ],
+      [
+        "hasFeature",
+        0,
+        "hasFeature",
+        "function hasFeature() { [native code] }"
+      ]
+    ],
+    "html": [
+      {
+        "tag": "[object HTMLDocument]",
+        "prototype": true,
+        "independent": true,
+        "contentType": "text/html",
+        "url": "about:blank",
+        "view": true,
+        "root": [
+          "HTML",
+          "html",
+          null,
+          "http://www.w3.org/1999/xhtml"
+        ],
+        "doctype": [
+          "html",
+          "",
+          "",
+          true
+        ],
+        "head": "",
+        "body": ""
+      },
+      {
+        "tag": "[object HTMLDocument]",
+        "prototype": true,
+        "independent": true,
+        "contentType": "text/html",
+        "url": "about:blank",
+        "view": true,
+        "root": [
+          "HTML",
+          "html",
+          null,
+          "http://www.w3.org/1999/xhtml"
+        ],
+        "doctype": [
+          "html",
+          "",
+          "",
+          true
+        ],
+        "head": "",
+        "body": ""
+      },
+      {
+        "tag": "[object HTMLDocument]",
+        "prototype": true,
+        "independent": true,
+        "contentType": "text/html",
+        "url": "about:blank",
+        "view": true,
+        "root": [
+          "HTML",
+          "html",
+          null,
+          "http://www.w3.org/1999/xhtml"
+        ],
+        "doctype": [
+          "html",
+          "",
+          "",
+          true
+        ],
+        "head": "<title>null</title>",
+        "body": ""
+      },
+      {
+        "tag": "[object HTMLDocument]",
+        "prototype": true,
+        "independent": true,
+        "contentType": "text/html",
+        "url": "about:blank",
+        "view": true,
+        "root": [
+          "HTML",
+          "html",
+          null,
+          "http://www.w3.org/1999/xhtml"
+        ],
+        "doctype": [
+          "html",
+          "",
+          "",
+          true
+        ],
+        "head": "<title></title>",
+        "body": ""
+      },
+      {
+        "tag": "[object HTMLDocument]",
+        "prototype": true,
+        "independent": true,
+        "contentType": "text/html",
+        "url": "about:blank",
+        "view": true,
+        "root": [
+          "HTML",
+          "html",
+          null,
+          "http://www.w3.org/1999/xhtml"
+        ],
+        "doctype": [
+          "html",
+          "",
+          "",
+          true
+        ],
+        "head": "<title> a  b\n c </title>",
+        "body": ""
+      },
+      {
+        "tag": "[object HTMLDocument]",
+        "prototype": true,
+        "independent": true,
+        "contentType": "text/html",
+        "url": "about:blank",
+        "view": true,
+        "root": [
+          "HTML",
+          "html",
+          null,
+          "http://www.w3.org/1999/xhtml"
+        ],
+        "doctype": [
+          "html",
+          "",
+          "",
+          true
+        ],
+        "head": "<title>&lt;b&gt;safe&amp;&lt;/b&gt;</title>",
+        "body": ""
+      }
+    ],
+    "xml": [
+      {
+        "tag": "[object XMLDocument]",
+        "prototype": true,
+        "independent": false,
+        "contentType": "application/xml",
+        "url": "about:blank",
+        "view": true,
+        "root": null,
+        "doctype": [
+          "fixture",
+          "PUBLIC-id",
+          "system-id",
+          true
+        ],
+        "head": null,
+        "body": null,
+        "identity": true
+      },
+      {
+        "tag": "[object XMLDocument]",
+        "prototype": true,
+        "independent": true,
+        "contentType": "application/xml",
+        "url": "about:blank",
+        "view": true,
+        "root": [
+          "Camel",
+          "Camel",
+          null,
+          null
+        ],
+        "doctype": [
+          "fixture",
+          "PUBLIC-id",
+          "system-id",
+          true
+        ],
+        "head": null,
+        "body": null,
+        "identity": true
+      },
+      {
+        "tag": "[object XMLDocument]",
+        "prototype": true,
+        "independent": true,
+        "contentType": "application/xml",
+        "url": "about:blank",
+        "view": true,
+        "root": [
+          "p:Root",
+          "Root",
+          "p",
+          "urn:fixture"
+        ],
+        "doctype": [
+          "fixture",
+          "PUBLIC-id",
+          "system-id",
+          true
+        ],
+        "head": null,
+        "body": null,
+        "identity": true
+      },
+      {
+        "tag": "[object XMLDocument]",
+        "prototype": true,
+        "independent": true,
+        "contentType": "application/xhtml+xml",
+        "url": "about:blank",
+        "view": true,
+        "root": [
+          "html",
+          "html",
+          null,
+          "http://www.w3.org/1999/xhtml"
+        ],
+        "doctype": [
+          "fixture",
+          "PUBLIC-id",
+          "system-id",
+          true
+        ],
+        "head": null,
+        "body": null,
+        "identity": true
+      },
+      {
+        "tag": "[object XMLDocument]",
+        "prototype": true,
+        "independent": true,
+        "contentType": "image/svg+xml",
+        "url": "about:blank",
+        "view": true,
+        "root": [
+          "svg",
+          "svg",
+          null,
+          "http://www.w3.org/2000/svg"
+        ],
+        "doctype": [
+          "fixture",
+          "PUBLIC-id",
+          "system-id",
+          true
+        ],
+        "head": null,
+        "body": null,
+        "identity": true
+      }
+    ],
+    "errors": [
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      null,
+      "InvalidCharacterError",
+      "TypeError",
+      "TypeError",
+      "NamespaceError",
+      "NamespaceError",
+      "NamespaceError",
+      "InvalidCharacterError",
+      "TypeError"
+    ],
+    "constructors": [
+      {
+        "result": {
+          "tag": "[object Document]",
+          "prototype": false,
+          "independent": false,
+          "contentType": "application/xml",
+          "url": "about:blank",
+          "view": true,
+          "root": null,
+          "doctype": null,
+          "head": null,
+          "body": null
+        }
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      }
+    ],
+    "hasFeature": true,
+    "retained": true,
+    "foreignSheet": "NotAllowedError",
+    "intrinsicImmunity": {
+      "hooks": 0,
+      "created": true,
+      "failed": null,
+      "title": "protected",
+      "owner": true,
+      "identity": true
+    },
+    "fragmentId": {
+      "descriptor": [
+        "getElementById",
+        1,
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
+      "order": [
+        true,
+        true,
+        true
+      ],
+      "errors": [
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError"
+      ],
+      "units": [
+        true,
+        true
+      ],
+      "intrinsics": [
+        0,
+        true,
+        "TypeError"
+      ],
+      "shadow": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "changed": [
+        true,
+        true
+      ]
+    }
+  }
+}

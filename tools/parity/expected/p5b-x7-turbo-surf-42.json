@@ -1,0 +1,13 @@
+{
+ "id": "turbo-surf#42 + turbo-dom#72",
+ "reason": "Binding-raised DOMExceptions are built when raised from the realm's registered interface (ts.DOMException). Before, they came from a constructor captured at install or from a page-reassigned globalThis.DOMException. Commit b8694d0. Exception names and messages are unchanged; only their prototype is. Static screenshots and the html2pdf corpora do not run the binding; html2pdf manifests are byte-identical to p5b-int10. The surf live corpus records throws by name only, so no live output is predicted to change (unmeasured, surf integration). P5b-X7.",
+ "control": "crates/turbo-dom-browser-env/src/dom_exception_realm_chrome156.json",
+ "e2e": "crates/turbo-dom-browser-env/src/dom_exception_realm_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

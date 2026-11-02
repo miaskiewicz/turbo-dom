@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#89",
+ "reason": "Static path: an absolutely positioned / fixed box with height: auto and both top and bottom is stretched between them. Fresh-target parity builds (git archive of each commit, own CARGO_TARGET_DIR per build; html2pdf refactor 923c89f napi plain + svg; surf static through the napi-free raster harness): 2504594 -> 8a292c8: no corpus output changes (no corpus input has an auto-height positioned box with both top and bottom). P5b-W7.",
+ "control": "abs-stretch-* in scripts/html-document-chrome-control.mjs",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (top_and_bottom_stretch_auto_heights_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

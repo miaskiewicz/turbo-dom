@@ -1,0 +1,702 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "5c7de1595680f1052b56c65b8aea852afa3e13b7e1bae558302e18e249d557f7",
+  "probeSha256": "3b807b572cdfa49242ca48a8713c80def95dfe1e0d8ad6b6776cae185a5e3c8e",
+  "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "option-factory",
+      "result": {
+        "factory": {
+          "type": "function",
+          "name": "Option",
+          "length": 0,
+          "ownKeys": [
+            "length",
+            "name",
+            "prototype"
+          ],
+          "nameShape": {
+            "enumerable": false,
+            "configurable": true,
+            "writable": false
+          },
+          "lengthShape": {
+            "enumerable": false,
+            "configurable": true,
+            "writable": false
+          },
+          "prototypeShape": {
+            "enumerable": false,
+            "configurable": false,
+            "writable": false
+          },
+          "globalShape": {
+            "enumerable": false,
+            "configurable": true,
+            "writable": true
+          },
+          "sameProto": true,
+          "protoConstructor": true,
+          "notInterface": true,
+          "functionProto": true,
+          "source": "function Option() { [native code] }",
+          "call": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Option': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+          ],
+          "callArgs": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Option': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+          ],
+          "instance": true,
+          "distinct": true,
+          "empty": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "",
+            "value": "",
+            "valueAttr": null,
+            "hasValue": false,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "",
+            "html": "<option></option>"
+          },
+          "text": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "a b",
+            "value": "a b",
+            "valueAttr": null,
+            "hasValue": false,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [
+              [
+                3,
+                "  a  b  "
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "a b",
+            "html": "<option>  a  b  </option>"
+          },
+          "emptyText": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "",
+            "value": "",
+            "valueAttr": null,
+            "hasValue": false,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "",
+            "html": "<option></option>"
+          },
+          "textValue": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "t",
+            "value": "v",
+            "valueAttr": "v",
+            "hasValue": true,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [
+              [
+                3,
+                "t"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "t",
+            "html": "<option value=\"v\">t</option>"
+          },
+          "emptyValue": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "t",
+            "value": "",
+            "valueAttr": "",
+            "hasValue": true,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [
+              [
+                3,
+                "t"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "t",
+            "html": "<option value=\"\">t</option>"
+          },
+          "undefinedValue": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "t",
+            "value": "t",
+            "valueAttr": null,
+            "hasValue": false,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [
+              [
+                3,
+                "t"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "t",
+            "html": "<option>t</option>"
+          },
+          "nullArgs": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "null",
+            "value": "null",
+            "valueAttr": "null",
+            "hasValue": true,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [
+              [
+                3,
+                "null"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "null",
+            "html": "<option value=\"null\">null</option>"
+          },
+          "numberArgs": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "1",
+            "value": "2",
+            "valueAttr": "2",
+            "hasValue": true,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [
+              [
+                3,
+                "1"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "1",
+            "html": "<option value=\"2\">1</option>"
+          },
+          "defaultSelected": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "t",
+            "value": "v",
+            "valueAttr": "v",
+            "hasValue": true,
+            "selectedAttr": "",
+            "defaultSelected": true,
+            "selected": false,
+            "children": [
+              [
+                3,
+                "t"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "t",
+            "html": "<option value=\"v\" selected=\"\">t</option>"
+          },
+          "selectedOnly": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "t",
+            "value": "v",
+            "valueAttr": "v",
+            "hasValue": true,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": true,
+            "children": [
+              [
+                3,
+                "t"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "t",
+            "html": "<option value=\"v\">t</option>"
+          },
+          "both": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "t",
+            "value": "v",
+            "valueAttr": "v",
+            "hasValue": true,
+            "selectedAttr": "",
+            "defaultSelected": true,
+            "selected": true,
+            "children": [
+              [
+                3,
+                "t"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "t",
+            "html": "<option value=\"v\" selected=\"\">t</option>"
+          },
+          "truthy": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "t",
+            "value": "v",
+            "valueAttr": "v",
+            "hasValue": true,
+            "selectedAttr": "",
+            "defaultSelected": true,
+            "selected": true,
+            "children": [
+              [
+                3,
+                "t"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "t",
+            "html": "<option value=\"v\" selected=\"\">t</option>"
+          },
+          "falsy": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "t",
+            "value": "v",
+            "valueAttr": "v",
+            "hasValue": true,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [
+              [
+                3,
+                "t"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "t",
+            "html": "<option value=\"v\">t</option>"
+          },
+          "symbolText": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Option': Cannot convert a Symbol value to a string"
+          ],
+          "symbolValue": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Option': Cannot convert a Symbol value to a string"
+          ],
+          "objectText": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "obj",
+            "value": "obj",
+            "valueAttr": null,
+            "hasValue": false,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [
+              [
+                3,
+                "obj"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "obj",
+            "html": "<option>obj</option>"
+          },
+          "markup": {
+            "proto": true,
+            "tag": "option",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "text": "<b>x</b>",
+            "value": "\"&",
+            "valueAttr": "\"&",
+            "hasValue": true,
+            "selectedAttr": null,
+            "defaultSelected": false,
+            "selected": false,
+            "children": [
+              [
+                3,
+                "<b>x</b>"
+              ]
+            ],
+            "own": [],
+            "index": 0,
+            "form": null,
+            "label": "<b>x</b>",
+            "html": "<option value=\"&quot;&amp;\">&lt;b&gt;x&lt;/b&gt;</option>"
+          },
+          "inSelect": [
+            1,
+            "2",
+            [
+              [
+                "a",
+                false,
+                false
+              ],
+              [
+                "b",
+                true,
+                false
+              ],
+              [
+                "c",
+                false,
+                true
+              ]
+            ]
+          ],
+          "inMultiple": [
+            "1",
+            "2"
+          ],
+          "subclass": [
+            "ok",
+            [
+              true,
+              false,
+              true,
+              "s"
+            ]
+          ],
+          "reflectNewTarget": [
+            "ok",
+            [
+              true,
+              false,
+              "r"
+            ]
+          ]
+        },
+        "collection": {
+          "reflectAccessorSupported": [
+            [
+              "ok",
+              true
+            ],
+            [
+              2,
+              [
+                "a",
+                "b"
+              ],
+              [
+                "0",
+                "1"
+              ]
+            ]
+          ],
+          "reflectAccessorUnsupported": [
+            [
+              "ok",
+              true
+            ],
+            [
+              2,
+              [
+                "a",
+                "b"
+              ],
+              [
+                "0",
+                "1"
+              ]
+            ]
+          ],
+          "reflectSetterOnly": [
+            [
+              "ok",
+              true
+            ],
+            [
+              2,
+              [
+                "a",
+                "b"
+              ],
+              [
+                "0",
+                "1"
+              ]
+            ]
+          ],
+          "reflectAccessorBoth": [
+            [
+              "ok",
+              true
+            ],
+            [
+              2,
+              [
+                "a",
+                "b"
+              ],
+              [
+                "0",
+                "1"
+              ]
+            ]
+          ],
+          "objectAccessorSupported": [
+            [
+              "throw",
+              "TypeError",
+              "Failed to set an indexed property [0] on 'HTMLOptionsCollection': Accessor properties are not allowed."
+            ],
+            [
+              2,
+              [
+                "a",
+                "b"
+              ],
+              [
+                "0",
+                "1"
+              ]
+            ]
+          ],
+          "objectAccessorUnsupported": [
+            [
+              "throw",
+              "TypeError",
+              "Failed to set an indexed property [5] on 'HTMLOptionsCollection': Accessor properties are not allowed."
+            ],
+            [
+              2,
+              [
+                "a",
+                "b"
+              ],
+              [
+                "0",
+                "1"
+              ]
+            ]
+          ],
+          "objectDefineProperties": [
+            [
+              "throw",
+              "TypeError",
+              "Failed to set an indexed property [0] on 'HTMLOptionsCollection': Accessor properties are not allowed."
+            ],
+            [
+              2,
+              [
+                "a",
+                "b"
+              ],
+              [
+                "0",
+                "1"
+              ]
+            ]
+          ],
+          "reflectDataOption": [
+            [
+              "ok",
+              true
+            ],
+            [
+              2,
+              [
+                "z",
+                "b"
+              ],
+              [
+                "0",
+                "1"
+              ]
+            ]
+          ],
+          "reflectDataNull": [
+            [
+              "ok",
+              true
+            ],
+            [
+              1,
+              [
+                "b"
+              ],
+              [
+                "0"
+              ]
+            ]
+          ],
+          "reflectDataWrongType": [
+            [
+              "throw",
+              "TypeError",
+              "Failed to set an indexed property [0] on 'HTMLOptionsCollection': parameter 2 is not of type 'HTMLOptionElement'."
+            ],
+            [
+              2,
+              [
+                "a",
+                "b"
+              ],
+              [
+                "0",
+                "1"
+              ]
+            ]
+          ],
+          "reflectNamedAccessor": [
+            [
+              "ok",
+              true
+            ],
+            [
+              2,
+              [
+                "a",
+                "b"
+              ],
+              [
+                "0",
+                "1",
+                "named"
+              ]
+            ]
+          ],
+          "afterQuietAccessorRead": [
+            [
+              "ok",
+              [
+                "a",
+                "a",
+                true
+              ]
+            ],
+            [
+              2,
+              [
+                "a",
+                "b"
+              ],
+              [
+                "0",
+                "1"
+              ]
+            ]
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -24,7 +24,10 @@ pub struct Blob {
 impl Blob {
     /// Construct a blob from owned bytes and a MIME type.
     pub fn new(bytes: Vec<u8>, mime_type: impl Into<String>) -> Self {
-        Blob { bytes, mime_type: mime_type.into() }
+        Blob {
+            bytes,
+            mime_type: mime_type.into(),
+        }
     }
 
     /// The number of bytes (the JS `.size`).
@@ -147,7 +150,11 @@ impl FileReader {
     /// `readAsDataURL` — `data:<mime>;base64,<base64(bytes)>`.
     #[must_use]
     pub fn read_as_data_url(blob: &Blob) -> String {
-        format!("data:{};base64,{}", blob.mime_type, base64_encode(blob.bytes()))
+        format!(
+            "data:{};base64,{}",
+            blob.mime_type,
+            base64_encode(blob.bytes())
+        )
     }
 
     /// `readAsArrayBuffer` — a copy of the blob's bytes.

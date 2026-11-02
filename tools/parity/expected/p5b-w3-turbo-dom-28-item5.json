@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#28 item 5",
+ "reason": "Empty row groups get a zero-height box in live geometry (3c0be2b). Live-only: no corpus output changes (parity df4a880 -> 3c0be2b). P5b-W3.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json empty-row-group-* cases",
+ "e2e": "crates/turbo-dom-layout/src/live/chrome_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

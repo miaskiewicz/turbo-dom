@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-html2pdf#39",
+ "reason": "The paged body flow is laid out with layout_recorded_in_viewport at the page area height (turbo-dom e76da05 adds the entry; html2pdf consol/p5b-w7 e0cdd0b uses it): % insets, % heights and top + bottom of fixed / initial-containing-block boxes resolve against the page area. Fresh-target parity builds (git archive of each commit, own CARGO_TARGET_DIR per build; html2pdf refactor 923c89f napi plain + svg; surf static through the napi-free raster harness): turbo-dom e76da05 + html2pdf 923c89f -> turbo-dom e76da05 + html2pdf e0cdd0b: no corpus output changes (no corpus input has a %-inset, %-height or stretched fixed / initial-containing-block box). P5b-W7.",
+ "control": "turbo-html2pdf scripts/pagination-chrome-control.mjs icb-* cases",
+ "e2e": "turbo-html2pdf crates/turbo-html2pdf-core/tests/pagination_chrome.rs (the_page_area_is_the_initial_containing_block_like_chrome_156); crates/turbo-dom-layout/tests/layout_options.rs (recorded_layout_in_a_viewport_resolves_fixed_insets_against_its_height)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

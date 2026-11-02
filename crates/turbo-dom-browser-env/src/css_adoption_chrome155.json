@@ -1,0 +1,110 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "recordedAt": "2026-10-14T01:01:50.953Z",
+  "fixture": "css-adoption-probe.js",
+  "effectiveExtensionFlags": [
+    "--disable-extensions"
+  ],
+  "result": {
+    "retained": {
+      "sameBefore": true,
+      "sameAfter": true,
+      "detachedSource": 1,
+      "retainedContent": false,
+      "currentContent": true
+    },
+    "pushed": {
+      "length": 2,
+      "first": true,
+      "second": true,
+      "same": true,
+      "array": true,
+      "prototype": true,
+      "keys": [
+        "0",
+        "1",
+        "length"
+      ],
+      "lengthDescriptor": {
+        "value": 2,
+        "writable": true,
+        "enumerable": false,
+        "configurable": false
+      },
+      "indexDescriptor": {
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      }
+    },
+    "errors": {
+      "ordinary": "NotAllowedError",
+      "forged": "TypeError",
+      "null": "TypeError",
+      "nonIterable": "TypeError",
+      "invalidPush": "TypeError",
+      "invalidIndex": "TypeError",
+      "deleteIndex": "accepted",
+      "lengthGrow": "accepted",
+      "accessorIndex": "TypeError"
+    },
+    "afterErrors": {
+      "length": 0,
+      "values": []
+    },
+    "indexCases": {
+      "gap": {
+        "result": "accepted",
+        "values": [
+          "first"
+        ]
+      },
+      "append": {
+        "result": "accepted",
+        "values": [
+          "first",
+          "second"
+        ]
+      },
+      "defineValue": {
+        "result": "accepted",
+        "values": [
+          "second",
+          "second"
+        ]
+      },
+      "defineReadonly": {
+        "result": "TypeError",
+        "values": [
+          "second",
+          "second"
+        ]
+      },
+      "deleteTail": {
+        "result": "accepted",
+        "values": [
+          "second"
+        ]
+      },
+      "invalidLength": {
+        "result": "RangeError",
+        "values": [
+          "second"
+        ]
+      },
+      "nonconstructedSequence": {
+        "result": "NotAllowedError",
+        "values": [
+          "second"
+        ]
+      },
+      "invalidSequence": {
+        "result": "TypeError",
+        "values": [
+          "first"
+        ]
+      }
+    }
+  }
+}

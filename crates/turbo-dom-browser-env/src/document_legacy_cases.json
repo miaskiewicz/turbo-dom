@@ -1,0 +1,10 @@
+[
+  {"id": "loopback", "headers": [["Last-Modified", "Wed, 21 Oct 2015 07:28:00 GMT"]], "html": "<!doctype html><html><head></head><body></body></html>"},
+  {"id": "site", "host": "a.b.example.co.uk", "html": "<!doctype html><html><head></head><body></body></html>"},
+  {"id": "private-registry", "host": "x.y.github.io", "html": "<!doctype html><html><head></head><body></body></html>"},
+  {"id": "secure", "https": true, "host": "a.b.example.com", "headers": [["Last-Modified", "Thu, 29 Feb 2024 23:59:59 GMT"]], "html": "<!doctype html><html><head></head><body></body></html>"},
+  {"id": "secure-site-keyed", "https": true, "host": "a.b.example.com", "headers": [["Origin-Agent-Cluster", "?0"]], "html": "<!doctype html><html><head></head><body></body></html>"},
+  {"id": "localhost", "host": "localhost", "html": "<!doctype html><html><head></head><body></body></html>"},
+  {"id": "sandboxed", "host": "a.example.com", "headers": [["Content-Security-Policy", "sandbox allow-scripts"]], "html": "<!doctype html><html><head></head><body></body></html>"},
+  {"id": "blank", "url": "about:blank"}
+]

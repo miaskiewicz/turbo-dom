@@ -1,0 +1,1 @@
+(()=>{const units=value=>Array.from({length:value.length},(_,i)=>value.charCodeAt(i)),high=String.fromCharCode(0xd800),source='\ufeff'+high;const host=document.createElement('div');host.innerHTML=source;return {document:units(__utf16HostParse(source).body.textContent),fragment:units(host.textContent),ordinary:units(__utf16HostParse('\ufeffx').body.textContent)};})()

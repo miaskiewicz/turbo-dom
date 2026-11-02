@@ -1,0 +1,14 @@
+{
+ "id": "P5b/turbo-dom#18/defined",
+ "class": "defined",
+ "reason": ":defined is evaluated by the DOM APIs; an element parsed with an is attribute is undefined (da27621). Measured: no parity-corpus output changes (html2pdf, html2pdf-svg, html2pdf-extra vs b-main; surf static vs S5).",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cases/defined)",
+ "e2e": "crates/turbo-dom/tests/cascade_selectors_chrome.rs",
+ "surf_static": "turbo-dom-raster static screenshots (the surf static tier) of every surf static + extra input: byte-identical to S5 (74bcc5c), PNG + SVG + system-fonts passes.",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

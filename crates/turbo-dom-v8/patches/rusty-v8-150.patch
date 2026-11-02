@@ -1,0 +1,183 @@
+--- /dev/null
++++ b/LICENSE
+@@ -0,0 +1,21 @@
++MIT License
++
++Copyright (c) 2018-2019 the Deno authors
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all
++copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
+--- a/build.rs
++++ b/build.rs
+@@ -101,6 +101,9 @@
+ 
+   // Build from source
+   if env_bool("V8_FROM_SOURCE") {
++    if !Path::new("v8/BUILD.gn").is_file() {
++      panic!("This reviewed vendor contains Rust/prebuilt SDK sources. Run python3 rust/vendor/update-rusty-v8.py --write --full-source before V8_FROM_SOURCE.");
++    }
+     if is_asan && env::var_os("OPT_LEVEL").unwrap_or_default() == "0" {
+       panic!(
+         "v8 crate cannot be compiled with OPT_LEVEL=0 and ASAN.\nTry `[profile.dev.package.v8] opt-level = 1`.\nAborting before miscompilations cause issues."
+--- a/src/function.rs
++++ b/src/function.rs
+@@ -109,9 +109,20 @@
+   fn v8__PropertyCallbackInfo__GetReturnValue(
+     this: *const RawPropertyCallbackInfo,
+   ) -> usize;
+-  fn v8__PropertyCallbackInfo__ShouldThrowOnError(
+-    this: *const RawPropertyCallbackInfo,
+-  ) -> bool;
++  // V8's inline PropertyCallbackInfo<T>::ShouldThrowOnError() is constant
++  // false unless T is void or Boolean, so the prebuilt binding.cc wrapper
++  // (instantiated for Value) can never report the caller's mode. The mode is
++  // read from the callback frame instead and V8's exported helper resolves
++  // the inferred case.
++  #[cfg_attr(
++    not(target_env = "msvc"),
++    link_name = "_ZN2v88internal18ShouldThrowOnErrorEPNS0_7IsolateE"
++  )]
++  #[cfg_attr(
++    target_env = "msvc",
++    link_name = "?ShouldThrowOnError@internal@v8@@YA_NPEAVIsolate@12@@Z"
++  )]
++  fn v8__internal__ShouldThrowOnError(isolate: *mut RealIsolate) -> bool;
+ 
+   fn v8__ReturnValue__Value__Set(
+     this: *mut RawReturnValue,
+@@ -458,17 +469,48 @@
+   pub fn get(&self, i: int) -> Local<'s, Value> {
+     self.info.get(i)
+   }
++}
++
++/// Mirrors V8's `PropertyCallbackInfo<T>::HasShouldThrowOnError()`: only
++/// setter/definer/deleter callbacks (`void` or `Boolean` results) carry the
++/// optional should-throw slot after the holder.
++pub(crate) trait PropertyCallbackResult {
++  const HAS_SHOULD_THROW_ON_ERROR: bool;
++}
++impl PropertyCallbackResult for () {
++  const HAS_SHOULD_THROW_ON_ERROR: bool = true;
++}
++impl PropertyCallbackResult for Boolean {
++  const HAS_SHOULD_THROW_ON_ERROR: bool = true;
++}
++impl PropertyCallbackResult for Value {
++  const HAS_SHOULD_THROW_ON_ERROR: bool = false;
++}
++impl PropertyCallbackResult for Integer {
++  const HAS_SHOULD_THROW_ON_ERROR: bool = false;
++}
++impl PropertyCallbackResult for Array {
++  const HAS_SHOULD_THROW_ON_ERROR: bool = false;
+ }
+ 
++// v8::internal::Internals::{kDontThrow, kInferShouldThrowMode} as Smis.
++const SMI_SHIFT: u32 = if cfg!(feature = "v8_enable_pointer_compression") {
++  1
++} else {
++  32
++};
++const DONT_THROW_SMI: usize = 0;
++const INFER_SHOULD_THROW_MODE_SMI: usize = 2 << SMI_SHIFT;
++
+ #[derive(Debug)]
+-pub struct PropertyCallbackArguments<'s>(&'s RawPropertyCallbackInfo);
++pub struct PropertyCallbackArguments<'s>(&'s RawPropertyCallbackInfo, bool);
+ 
+ impl<'s> PropertyCallbackArguments<'s> {
+   #[inline(always)]
+-  pub(crate) fn from_property_callback_info<T>(
++  pub(crate) fn from_property_callback_info<T: PropertyCallbackResult>(
+     info: &'s PropertyCallbackInfo<T>,
+   ) -> Self {
+-    Self(&info.0)
++    Self(&info.0, T::HAS_SHOULD_THROW_ON_ERROR)
+   }
+ 
+   /// Returns the object in the prototype chain of the receiver that has the
+@@ -498,10 +540,26 @@
+   /// occurs. Usually, `true` corresponds to `'use strict'`.
+   ///
+   /// Always `false` when intercepting `Reflect.set()` independent of the
+-  /// language mode.
++  /// language mode, and for callbacks other than setters, definers and
++  /// deleters.
+   #[inline(always)]
+   pub fn should_throw_on_error(&self) -> bool {
+-    unsafe { v8__PropertyCallbackInfo__ShouldThrowOnError(self.0) }
++    if !self.1 {
++      return false;
++    }
++    // SAFETY: setter/definer/deleter frames store the should-throw Smi in the
++    // slot immediately after the holder (kShouldThrowOnErrorIndex ==
++    // kHolderIndex + 1), and the holder accessor returns that holder slot.
++    unsafe {
++      let holder = v8__PropertyCallbackInfo__Holder(self.0) as *const usize;
++      match *holder.add(1) {
++        DONT_THROW_SMI => false,
++        INFER_SHOULD_THROW_MODE_SMI => v8__internal__ShouldThrowOnError(
++          v8__PropertyCallbackInfo__GetIsolate(self.0),
++        ),
++        _ => true,
++      }
++    }
+   }
+ }
+ 
+--- a/src/isolate.rs
++++ b/src/isolate.rs
+@@ -1053,12 +1053,6 @@
+     // SAFETY: `annex_ptr` is non-null and points at a live `IsolateAnnex`
+     // (ANNEX_SLOT is only cleared by code further down this teardown
+     // path).
+-    unsafe {
+-      // Null the `IsolateHandle` so handles outliving the isolate see a
+-      // disposed state.
+-      (*annex_ptr).global_liveness().dispose();
+-      (*annex_ptr).isolate_handle.dispose();
+-    }
+ 
+     // Reclaim `create_param_allocations` so the caller can keep it alive
+     // for as long as V8 needs (during snapshot blob creation, V8 reads
+@@ -1127,6 +1121,12 @@
+     let (annex_ptr, create_param_allocations) =
+       unsafe { self.prepare_annex_for_dispose() };
+     unsafe { Self::run_remaining_guaranteed_finalizers(annex_ptr) };
++    // Snapshot creation also consumes the isolate; invalidate surviving handles
++    // after Rust-owned weak handles have been reset and before freeing annex.
++    unsafe {
++      (*annex_ptr).global_liveness().dispose();
++      (*annex_ptr).isolate_handle.dispose();
++    }
+     let taken_annex =
+       self.take_data_internal(Self::ANNEX_SLOT) as *mut IsolateAnnex;
+     debug_assert_eq!(taken_annex, annex_ptr);
+@@ -2359,6 +2359,11 @@
+       // teardown GC has a chance to fire weak callbacks that need the
+       // annex.
+       Isolate::run_remaining_guaranteed_finalizers(annex_ptr);
++      // Slots and guaranteed finalizers can own weak handles. Their Drop must
++      // still resolve a live isolate so it resets the registered V8 callback
++      // before freeing WeakData. Invalidate external handles only afterwards.
++      (*annex_ptr).global_liveness().dispose();
++      (*annex_ptr).isolate_handle.dispose();
+       Platform::notify_isolate_shutdown(&get_current_platform(), self);
+       // V8's final teardown runs here. `ANNEX_SLOT` still references the
+       // (drained) annex, so any re-entrant access from weak callbacks or

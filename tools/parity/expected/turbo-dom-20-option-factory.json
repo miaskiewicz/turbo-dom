@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#20/option-factory",
+ "class": "Option() legacy factory",
+ "reason": "new Option(text, value, defaultSelected, selected) now constructs an <option> instead of throwing ReferenceError/TypeError. No corpus input calls it (grep of the pinned turbo-surf / turbo-html2pdf HTML inputs), so no output is expected to change.",
+ "control": "crates/turbo-dom-browser-env/src/option_factory_chrome156.json (factory)",
+ "e2e": "crates/turbo-dom-browser-env/src/select_element_tests.rs (option_legacy_factory_matches_chrome156_control)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

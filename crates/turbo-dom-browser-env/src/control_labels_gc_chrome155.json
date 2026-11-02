@@ -1,0 +1,53 @@
+{
+  "gcPolicy": {
+    "rounds": 3,
+    "settleMs": 50,
+    "taskExpression": "0"
+  },
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+  "probeSha256": "f7217885df6b27fda2dd4f700c756e29afe0511b3341c813c7726f250cb5e402",
+  "collectorSha256": "482cff90c2f975f1f01bad124fe4e0c086baf8b23ec4c3aa8bf0031a90a0458d",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "radio-dirty-lifecycle",
+      "result": {
+        "first": {
+          "alive": [
+            false,
+            true,
+            true,
+            true,
+            true
+          ],
+          "labels": [
+            "adopted-label"
+          ],
+          "same": true
+        },
+        "afterRelease": {
+          "alive": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "labels": null,
+          "same": null
+        }
+      }
+    }
+  ]
+}

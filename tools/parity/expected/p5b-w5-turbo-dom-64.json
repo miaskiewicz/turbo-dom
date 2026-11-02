@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#64",
+ "reason": "A table's extra height (height/min-height beyond its rows) goes to its rows (body sections, auto rows, in proportion; 1/64 px). Fresh-target parity builds turbo-dom f63 -> f64 (P5b-W5 steps, html2pdf consol/p5b-w5 950754e): 0 existing outputs change. P5b-W5.",
+ "control": "scripts/html-document-chrome-control.mjs table-height-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (table_height_is_distributed_over_the_rows_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

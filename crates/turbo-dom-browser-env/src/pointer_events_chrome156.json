@@ -1,0 +1,453 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "pointer_events_probe.js",
+  "probeSha256": "be00f0eff1e3457feda64be6a5e4ba2a35c2226b683cd05432205e6ed33c63c4",
+  "collectorSha256": "e6cadc004087a31da5ba698e45efbc62530e73d28f401d29b96226fa9ed3f94d",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "shape": {
+      "setPointerCapture": {
+        "kind": "method",
+        "name": "setPointerCapture",
+        "length": 1,
+        "writable": true,
+        "enumerable": true,
+        "configurable": true,
+        "setter": null
+      },
+      "releasePointerCapture": {
+        "kind": "method",
+        "name": "releasePointerCapture",
+        "length": 1,
+        "writable": true,
+        "enumerable": true,
+        "configurable": true,
+        "setter": null
+      },
+      "hasPointerCapture": {
+        "kind": "method",
+        "name": "hasPointerCapture",
+        "length": 1,
+        "writable": true,
+        "enumerable": true,
+        "configurable": true,
+        "setter": null
+      },
+      "requestPointerLock": {
+        "kind": "method",
+        "name": "requestPointerLock",
+        "length": 0,
+        "writable": true,
+        "enumerable": true,
+        "configurable": true,
+        "setter": null
+      },
+      "exitPointerLock": {
+        "kind": "method",
+        "name": "exitPointerLock",
+        "length": 0,
+        "writable": true,
+        "enumerable": true,
+        "configurable": true,
+        "setter": null
+      },
+      "documentPointerLockElement": {
+        "kind": "accessor",
+        "name": "get pointerLockElement",
+        "length": 0,
+        "writable": null,
+        "enumerable": true,
+        "configurable": true,
+        "setter": null
+      },
+      "shadowPointerLockElement": {
+        "kind": "accessor",
+        "name": "get pointerLockElement",
+        "length": 0,
+        "writable": null,
+        "enumerable": true,
+        "configurable": true,
+        "setter": null
+      },
+      "handlers": [
+        [
+          "ongotpointercapture",
+          true,
+          true
+        ],
+        [
+          "onlostpointercapture",
+          true,
+          true
+        ],
+        [
+          "onpointerlockchange",
+          false,
+          true
+        ],
+        [
+          "onpointerlockerror",
+          false,
+          true
+        ],
+        [
+          "onpointerrawupdate",
+          true,
+          true
+        ]
+      ],
+      "brands": {
+        "set": [
+          "TypeError",
+          "Illegal invocation",
+          "TypeError"
+        ],
+        "release": [
+          "TypeError",
+          "Illegal invocation",
+          "TypeError"
+        ],
+        "has": [
+          "TypeError",
+          "Illegal invocation",
+          "TypeError"
+        ],
+        "exit": [
+          "TypeError",
+          "Illegal invocation",
+          "TypeError"
+        ],
+        "documentElement": [
+          "TypeError",
+          "Illegal invocation",
+          "TypeError"
+        ],
+        "shadowElement": [
+          "TypeError",
+          "Illegal invocation",
+          "TypeError"
+        ]
+      }
+    },
+    "capture": {
+      "has1": [
+        "ok",
+        false
+      ],
+      "has5": [
+        "ok",
+        false
+      ],
+      "set5": [
+        "NotFoundError",
+        "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ],
+      "release5": [
+        "NotFoundError",
+        "Failed to execute 'releasePointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ],
+      "set1": [
+        "ok",
+        "undefined"
+      ],
+      "has1AfterSet": [
+        "ok",
+        false
+      ],
+      "release1": [
+        "ok",
+        "undefined"
+      ],
+      "set0": [
+        "NotFoundError",
+        "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ],
+      "setNegative": [
+        "NotFoundError",
+        "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ],
+      "set2": [
+        "NotFoundError",
+        "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ],
+      "detachedSet1": [
+        "InvalidStateError",
+        "Failed to execute 'setPointerCapture' on 'Element': InvalidStateError",
+        "DOMException"
+      ],
+      "detachedSet5": [
+        "NotFoundError",
+        "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ],
+      "detachedRelease1": [
+        "ok",
+        "undefined"
+      ],
+      "detachedRelease5": [
+        "NotFoundError",
+        "Failed to execute 'releasePointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ],
+      "detachedHas1": [
+        "ok",
+        false
+      ],
+      "svgSet1": [
+        "ok",
+        "undefined"
+      ],
+      "foreignSet1": [
+        "ok",
+        "undefined"
+      ],
+      "shadowSet1": [
+        "ok",
+        "undefined"
+      ],
+      "inactiveSet1": [
+        "ok",
+        "undefined"
+      ],
+      "inactiveSet5": [
+        "ok",
+        "undefined"
+      ],
+      "inactiveRelease5": [
+        "ok",
+        "undefined"
+      ],
+      "inactiveHas1": [
+        "ok",
+        false
+      ],
+      "xmlSet5": [
+        "ok",
+        "undefined"
+      ],
+      "afterSyntheticDown": [
+        [
+          "ok",
+          "undefined"
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "syntheticPointer": [
+        "NotFoundError",
+        "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ]
+    },
+    "conversion": {
+      "none": [
+        [
+          "TypeError",
+          "Failed to execute 'setPointerCapture' on 'Element': 1 argument required, but only 0 present.",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'releasePointerCapture' on 'Element': 1 argument required, but only 0 present.",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'hasPointerCapture' on 'Element': 1 argument required, but only 0 present.",
+          "TypeError"
+        ]
+      ],
+      "string": [
+        "ok",
+        "undefined"
+      ],
+      "wrapped": [
+        "ok",
+        "undefined"
+      ],
+      "wrappedFive": [
+        "NotFoundError",
+        "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ],
+      "fraction": [
+        "ok",
+        "undefined"
+      ],
+      "nan": [
+        "NotFoundError",
+        "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ],
+      "infinity": [
+        "NotFoundError",
+        "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found.",
+        "DOMException"
+      ],
+      "object": [
+        "ok",
+        "undefined"
+      ],
+      "symbol": [
+        "TypeError",
+        "Failed to execute 'setPointerCapture' on 'Element': Cannot convert a Symbol value to a number",
+        "TypeError"
+      ],
+      "bigint": [
+        "TypeError",
+        "Failed to execute 'setPointerCapture' on 'Element': Cannot convert a BigInt value to a number",
+        "TypeError"
+      ],
+      "valueOfSymbol": [
+        "TypeError",
+        "Failed to execute 'setPointerCapture' on 'Element': Cannot convert a Symbol value to a number",
+        "TypeError"
+      ],
+      "valueOfThrows": [
+        "RangeError",
+        "own",
+        "RangeError"
+      ],
+      "valueOfThrowsType": [
+        "TypeError",
+        "own",
+        "TypeError"
+      ],
+      "noPrimitive": [
+        "TypeError",
+        "Failed to execute 'setPointerCapture' on 'Element': Cannot convert object to primitive value",
+        "TypeError"
+      ],
+      "hasSymbol": [
+        "TypeError",
+        "Failed to execute 'hasPointerCapture' on 'Element': Cannot convert a Symbol value to a number",
+        "TypeError"
+      ],
+      "detachedSymbol": [
+        "TypeError",
+        "Failed to execute 'releasePointerCapture' on 'Element': Cannot convert a Symbol value to a number",
+        "TypeError"
+      ],
+      "reads": [
+        "valueOf"
+      ]
+    },
+    "lock": {
+      "initial": [
+        null,
+        null
+      ],
+      "exitUnlocked": [
+        "ok",
+        "undefined"
+      ],
+      "inertExit": [
+        "ok",
+        "undefined"
+      ],
+      "returns": [
+        "[object Promise]",
+        true
+      ],
+      "pendingElement": [
+        null,
+        null
+      ],
+      "captureWhilePending": [
+        "InvalidStateError",
+        "Failed to execute 'setPointerCapture' on 'Element': InvalidStateError",
+        "DOMException"
+      ],
+      "denied": [
+        "requested",
+        "first rejected NotAllowedError: A user gesture is required to request Pointer Lock.",
+        "pointerlockerror true true false false false Event null"
+      ],
+      "afterDenial": [
+        null,
+        [
+          "ok",
+          "undefined"
+        ]
+      ],
+      "brand": [
+        "rejected",
+        "TypeError",
+        "Failed to execute 'requestPointerLock' on 'Element': Illegal invocation",
+        "TypeError"
+      ],
+      "brandDocument": [
+        "rejected",
+        "TypeError",
+        "Failed to execute 'requestPointerLock' on 'Element': Illegal invocation",
+        "TypeError"
+      ],
+      "badOptions": [
+        "rejected",
+        "TypeError",
+        "Failed to execute 'requestPointerLock' on 'Element': The provided value is not of type 'PointerLockOptions'.",
+        "TypeError"
+      ],
+      "stringOptions": [
+        "rejected",
+        "TypeError",
+        "Failed to execute 'requestPointerLock' on 'Element': The provided value is not of type 'PointerLockOptions'.",
+        "TypeError"
+      ],
+      "detached": [
+        "rejected",
+        "WrongDocumentError",
+        "Failed to execute 'requestPointerLock' on 'Element': Target Element removed from DOM",
+        "DOMException"
+      ],
+      "optionReads": [
+        "unadjustedMovement"
+      ],
+      "inactive": [
+        "rejected",
+        "WrongDocumentError",
+        "PointerLock cannot be requested when there is no frame or that frame has no page.",
+        "DOMException"
+      ],
+      "nullOptions": [
+        "rejected",
+        "NotAllowedError",
+        "A user gesture is required to request Pointer Lock.",
+        "DOMException"
+      ],
+      "functionOptions": [
+        "rejected",
+        "NotAllowedError",
+        "A user gesture is required to request Pointer Lock.",
+        "DOMException"
+      ],
+      "events": [
+        "pointerlockerror true true false false false Event null",
+        "pointerlockerror true true false false false Event null",
+        "pointerlockerror true true false false false Event null"
+      ],
+      "final": [
+        null,
+        null,
+        null
+      ]
+    }
+  }
+}

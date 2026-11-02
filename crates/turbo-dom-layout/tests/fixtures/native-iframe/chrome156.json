@@ -1,0 +1,1094 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "viewport": [
+      1200,
+      900
+    ],
+    "deviceScaleFactor": 2
+  },
+  "probeSha256": "ebc76abfefe3b8c414b85e88877d66909f4f2b4b5a06c6596ad689526f1c9141",
+  "collectorSha256": "1c712c680c813a5aaf93b574466311a057a932fb081d400e4ce1b5b98682ae10",
+  "fontFiles": {
+    "liberation-serif/LiberationSerif-Regular.ttf": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4",
+    "liberation-serif/LiberationSerif-Bold.ttf": "443a4dbd694b6e4689925947b456e0532e10b19c90fa32eb39ea6c2cd9db9ebd",
+    "liberation-serif/LiberationSerif-Italic.ttf": "de18fe26337e03241952dca46398d5b66f3c5738d080bfd284f66e67b926f597",
+    "liberation-serif/LiberationSerif-BoldItalic.ttf": "4b2635d2ec4d992373dcae577c742a98ecfd841ffc1b8a103b5f10db163dbc7a",
+    "inter/Inter-Regular.otf": "d4f2b9e148059a15f014cb0f0b8fea8cd11bfa447dd483bedf1b0adc0e2ba799",
+    "inter/Inter-Bold.otf": "9fc6261e817d0b1b2bf1953d8799bb1c837d11aeebbf83ae352e7b4d6de6425d",
+    "inter/Inter-Italic.otf": "3bdf49f72ad2f2959a2619ceef700784504f6d17f502e2e2bc6edce5d43ca631",
+    "inter/Inter-BoldItalic.otf": "84e07cd77951a855c668f71e63af261f42d019dc80e963326b4c560b1fca8dcd",
+    "fira-code/FiraCode-Regular.ttf": "5992ab9640e2df491b2f609467b1de60e8bc39b2c28db184342a0592d98f6117",
+    "fira-code/FiraCode-Bold.ttf": "41f6554e845e2f5b70adad3950122334b866aac436793b7742ade600067701be"
+  },
+  "errors": [],
+  "result": [
+    {
+      "name": "default",
+      "attrs": "",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        304,
+        154
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          304,
+          154
+        ]
+      ],
+      "client": [
+        2,
+        2,
+        300,
+        150
+      ],
+      "offset": [
+        0,
+        0,
+        304,
+        154
+      ],
+      "viewport": [
+        300,
+        150
+      ]
+    },
+    {
+      "name": "attributes",
+      "attrs": "width=\"127\" height=\"63\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        131,
+        67
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          131,
+          67
+        ]
+      ],
+      "client": [
+        2,
+        2,
+        127,
+        63
+      ],
+      "offset": [
+        0,
+        0,
+        131,
+        67
+      ],
+      "viewport": [
+        127,
+        63
+      ]
+    },
+    {
+      "name": "attribute-width",
+      "attrs": "width=\"80\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        84,
+        154
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          84,
+          154
+        ]
+      ],
+      "client": [
+        2,
+        2,
+        80,
+        150
+      ],
+      "offset": [
+        0,
+        0,
+        84,
+        154
+      ],
+      "viewport": [
+        80,
+        150
+      ]
+    },
+    {
+      "name": "invalid-attributes",
+      "attrs": "width=\"invalid\" height=\"-1\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        304,
+        154
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          304,
+          154
+        ]
+      ],
+      "client": [
+        2,
+        2,
+        300,
+        150
+      ],
+      "offset": [
+        0,
+        0,
+        304,
+        154
+      ],
+      "viewport": [
+        300,
+        150
+      ]
+    },
+    {
+      "name": "css-auto-overrides-attributes",
+      "attrs": "width=\"127\" height=\"63\" style=\"width:auto;height:auto\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        304,
+        154
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          304,
+          154
+        ]
+      ],
+      "client": [
+        2,
+        2,
+        300,
+        150
+      ],
+      "offset": [
+        0,
+        0,
+        304,
+        154
+      ],
+      "viewport": [
+        300,
+        150
+      ]
+    },
+    {
+      "name": "css-zero",
+      "attrs": "style=\"width:0;height:0;border:0\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        17,
+        0,
+        0
+      ],
+      "rects": [
+        [
+          0,
+          17,
+          0,
+          0
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "offset": [
+        0,
+        17,
+        0,
+        0
+      ],
+      "viewport": [
+        0,
+        0
+      ],
+      "media": {
+        "(width:0px)": true,
+        "(height:0px)": true,
+        "(min-width:0px)": true,
+        "(max-width:0px)": true,
+        "(orientation:portrait)": true,
+        "(orientation:landscape)": false,
+        "(aspect-ratio)": true,
+        "(aspect-ratio:0/1)": true,
+        "(aspect-ratio:0/0)": true,
+        "(aspect-ratio:1/1)": true,
+        "(aspect-ratio:16/9)": true,
+        "(aspect-ratio:1/0)": true,
+        "(min-aspect-ratio:0/1)": true,
+        "(max-aspect-ratio:0/1)": true,
+        "(min-aspect-ratio:1/1)": true,
+        "(max-aspect-ratio:1/1)": true,
+        "(min-aspect-ratio:1/0)": true,
+        "(max-aspect-ratio:1/0)": true,
+        "(0/1 <= aspect-ratio <= 16/9)": true,
+        "(0/1 < aspect-ratio < 16/9)": false,
+        "(aspect-ratio > 1/1)": false,
+        "(aspect-ratio < 1/1)": false
+      },
+      "childHtml": "<div id=\"fixed\" style=\"width:27px;height:11px\"></div><div id=\"units\" style=\"width:50vw;height:50vh\"></div><iframe id=\"nested\" style=\"width:37px;height:19px;border:0\"></iframe>",
+      "document": {
+        "compatMode": "BackCompat",
+        "font": "16px Times",
+        "lineHeight": "normal",
+        "textRange": [
+          0,
+          30,
+          29.3359375,
+          18.5
+        ]
+      },
+      "children": {
+        "fixed": [
+          0,
+          0,
+          27,
+          11
+        ],
+        "units": [
+          0,
+          11,
+          0,
+          0
+        ],
+        "nested": [
+          0,
+          11,
+          37,
+          19
+        ]
+      },
+      "body": [
+        0,
+        0,
+        0,
+        30
+      ],
+      "nestedViewport": [
+        37,
+        19
+      ]
+    },
+    {
+      "name": "css-zero-standards",
+      "attrs": "style=\"width:0;height:0;border:0\"",
+      "hostStyle": "",
+      "srcdoc": "<!doctype html><body style=\"margin:0\">",
+      "parentStyle": null,
+      "rect": [
+        0,
+        17,
+        0,
+        0
+      ],
+      "rects": [
+        [
+          0,
+          17,
+          0,
+          0
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "offset": [
+        0,
+        17,
+        0,
+        0
+      ],
+      "viewport": [
+        0,
+        0
+      ],
+      "media": {
+        "(width:0px)": true,
+        "(height:0px)": true,
+        "(min-width:0px)": true,
+        "(max-width:0px)": true,
+        "(orientation:portrait)": true,
+        "(orientation:landscape)": false,
+        "(aspect-ratio)": true,
+        "(aspect-ratio:0/1)": true,
+        "(aspect-ratio:0/0)": true,
+        "(aspect-ratio:1/1)": true,
+        "(aspect-ratio:16/9)": true,
+        "(aspect-ratio:1/0)": true,
+        "(min-aspect-ratio:0/1)": true,
+        "(max-aspect-ratio:0/1)": true,
+        "(min-aspect-ratio:1/1)": true,
+        "(max-aspect-ratio:1/1)": true,
+        "(min-aspect-ratio:1/0)": true,
+        "(max-aspect-ratio:1/0)": true,
+        "(0/1 <= aspect-ratio <= 16/9)": true,
+        "(0/1 < aspect-ratio < 16/9)": false,
+        "(aspect-ratio > 1/1)": false,
+        "(aspect-ratio < 1/1)": false
+      },
+      "childHtml": "<div id=\"fixed\" style=\"width:27px;height:11px\"></div><div id=\"units\" style=\"width:50vw;height:50vh\"></div><iframe id=\"nested\" style=\"width:37px;height:19px;border:0\"></iframe><div id=\"percentage\" style=\"width:50%;height:50%\"></div>",
+      "document": {
+        "compatMode": "CSS1Compat",
+        "font": "16px \"Liberation Serif\"",
+        "lineHeight": "normal",
+        "textRange": [
+          0,
+          34,
+          29.3359375,
+          18
+        ]
+      },
+      "children": {
+        "fixed": [
+          0,
+          0,
+          27,
+          11
+        ],
+        "units": [
+          0,
+          11,
+          0,
+          0
+        ],
+        "nested": [
+          0,
+          11,
+          37,
+          19
+        ],
+        "percentage": [
+          0,
+          34,
+          0,
+          0
+        ]
+      },
+      "body": [
+        0,
+        0,
+        0,
+        34
+      ],
+      "nestedViewport": [
+        37,
+        19
+      ]
+    },
+    {
+      "name": "zero-width",
+      "attrs": "style=\"width:0;border:0\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        0,
+        150
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          0,
+          150
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        0,
+        150
+      ],
+      "offset": [
+        0,
+        0,
+        0,
+        150
+      ],
+      "viewport": [
+        0,
+        150
+      ],
+      "media": {
+        "(width:0px)": true,
+        "(height:0px)": false,
+        "(min-width:0px)": true,
+        "(max-width:0px)": true,
+        "(orientation:portrait)": true,
+        "(orientation:landscape)": false,
+        "(aspect-ratio)": true,
+        "(aspect-ratio:0/1)": true,
+        "(aspect-ratio:0/0)": false,
+        "(aspect-ratio:1/1)": false,
+        "(aspect-ratio:16/9)": false,
+        "(aspect-ratio:1/0)": false,
+        "(min-aspect-ratio:0/1)": true,
+        "(max-aspect-ratio:0/1)": true,
+        "(min-aspect-ratio:1/1)": false,
+        "(max-aspect-ratio:1/1)": true,
+        "(min-aspect-ratio:1/0)": false,
+        "(max-aspect-ratio:1/0)": true,
+        "(0/1 <= aspect-ratio <= 16/9)": true,
+        "(0/1 < aspect-ratio < 16/9)": false,
+        "(aspect-ratio > 1/1)": false,
+        "(aspect-ratio < 1/1)": true
+      }
+    },
+    {
+      "name": "zero-height",
+      "attrs": "style=\"height:0;border:0\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        17,
+        300,
+        0
+      ],
+      "rects": [
+        [
+          0,
+          17,
+          300,
+          0
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        300,
+        0
+      ],
+      "offset": [
+        0,
+        17,
+        300,
+        0
+      ],
+      "viewport": [
+        300,
+        0
+      ],
+      "media": {
+        "(width:0px)": false,
+        "(height:0px)": true,
+        "(min-width:0px)": true,
+        "(max-width:0px)": false,
+        "(orientation:portrait)": false,
+        "(orientation:landscape)": true,
+        "(aspect-ratio)": true,
+        "(aspect-ratio:0/1)": false,
+        "(aspect-ratio:0/0)": true,
+        "(aspect-ratio:1/1)": false,
+        "(aspect-ratio:16/9)": false,
+        "(aspect-ratio:1/0)": true,
+        "(min-aspect-ratio:0/1)": true,
+        "(max-aspect-ratio:0/1)": false,
+        "(min-aspect-ratio:1/1)": true,
+        "(max-aspect-ratio:1/1)": false,
+        "(min-aspect-ratio:1/0)": true,
+        "(max-aspect-ratio:1/0)": true,
+        "(0/1 <= aspect-ratio <= 16/9)": false,
+        "(0/1 < aspect-ratio < 16/9)": false,
+        "(aspect-ratio > 1/1)": true,
+        "(aspect-ratio < 1/1)": false
+      }
+    },
+    {
+      "name": "padding",
+      "attrs": "style=\"width:100px;height:50px;padding:3px;border:2px solid\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        110,
+        60
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          110,
+          60
+        ]
+      ],
+      "client": [
+        2,
+        2,
+        106,
+        56
+      ],
+      "offset": [
+        0,
+        0,
+        110,
+        60
+      ],
+      "viewport": [
+        100,
+        50
+      ]
+    },
+    {
+      "name": "border-box",
+      "attrs": "style=\"box-sizing:border-box;width:80px;height:40px;padding:3px;border:2px solid\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        80,
+        40
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          80,
+          40
+        ]
+      ],
+      "client": [
+        2,
+        2,
+        76,
+        36
+      ],
+      "offset": [
+        0,
+        0,
+        80,
+        40
+      ],
+      "viewport": [
+        70,
+        30
+      ]
+    },
+    {
+      "name": "minimum",
+      "attrs": "style=\"width:10px;height:5px;min-width:20px;min-height:15px;border:0\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        2,
+        20,
+        15
+      ],
+      "rects": [
+        [
+          0,
+          2,
+          20,
+          15
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        20,
+        15
+      ],
+      "offset": [
+        0,
+        2,
+        20,
+        15
+      ],
+      "viewport": [
+        20,
+        15
+      ]
+    },
+    {
+      "name": "ratio",
+      "attrs": "style=\"width:80px;height:auto;aspect-ratio:4;border:0\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        80,
+        20
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          80,
+          20
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        80,
+        20
+      ],
+      "offset": [
+        0,
+        0,
+        80,
+        20
+      ],
+      "viewport": [
+        80,
+        20
+      ]
+    },
+    {
+      "name": "percentage-attributes",
+      "attrs": "width=\"40%\" height=\"50%\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        164,
+        104
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          164,
+          104
+        ]
+      ],
+      "client": [
+        2,
+        2,
+        160,
+        100
+      ],
+      "offset": [
+        0,
+        0,
+        164,
+        104
+      ],
+      "viewport": [
+        160,
+        100
+      ]
+    },
+    {
+      "name": "display-none",
+      "attrs": "style=\"display:none\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "rects": [],
+      "client": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "offset": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "viewport": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "zero-parent-percentage",
+      "attrs": "style=\"width:10px;height:50%;border:0\"",
+      "hostStyle": "height:0",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        17,
+        10,
+        0
+      ],
+      "rects": [
+        [
+          0,
+          17,
+          10,
+          0
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        10,
+        0
+      ],
+      "offset": [
+        0,
+        17,
+        10,
+        0
+      ],
+      "viewport": [
+        10,
+        0
+      ]
+    },
+    {
+      "name": "relative-parent-percentage",
+      "attrs": "style=\"position:relative;width:10px;height:50%;border:0\"",
+      "hostStyle": "height:200px",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        10,
+        100
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          10,
+          100
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        10,
+        100
+      ],
+      "offset": [
+        0,
+        0,
+        10,
+        100
+      ],
+      "viewport": [
+        10,
+        100
+      ]
+    },
+    {
+      "name": "relative-zero-parent-percentage",
+      "attrs": "style=\"position:relative;width:10px;height:50%;border:0\"",
+      "hostStyle": "height:0",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        17,
+        10,
+        0
+      ],
+      "rects": [
+        [
+          0,
+          17,
+          10,
+          0
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        10,
+        0
+      ],
+      "offset": [
+        0,
+        17,
+        10,
+        0
+      ],
+      "viewport": [
+        10,
+        0
+      ]
+    },
+    {
+      "name": "fallback-text",
+      "attrs": "style=\"width:40px;height:20px;border:0\"",
+      "hostStyle": "",
+      "srcdoc": null,
+      "parentStyle": null,
+      "rect": [
+        0,
+        0,
+        40,
+        20
+      ],
+      "rects": [
+        [
+          0,
+          0,
+          40,
+          20
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        40,
+        20
+      ],
+      "offset": [
+        0,
+        0,
+        40,
+        20
+      ],
+      "viewport": [
+        40,
+        20
+      ],
+      "fallback": {
+        "textUnits": [
+          102,
+          97,
+          108,
+          108,
+          98,
+          97,
+          99,
+          107,
+          32,
+          55296,
+          32,
+          57343
+        ],
+        "contentUnits": [
+          102,
+          97,
+          108,
+          108,
+          98,
+          97,
+          99,
+          107,
+          32,
+          55296,
+          32,
+          57343,
+          110,
+          101,
+          115,
+          116,
+          101,
+          100,
+          32,
+          56320
+        ],
+        "nestedUnits": [
+          110,
+          101,
+          115,
+          116,
+          101,
+          100,
+          32,
+          56320
+        ],
+        "controlUnits": [
+          99,
+          111,
+          110,
+          116,
+          114,
+          111,
+          108,
+          32,
+          55296
+        ],
+        "childCount": 2,
+        "ownership": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "frameBox": [
+          0,
+          0,
+          40,
+          20
+        ],
+        "frameSelection": {
+          "rect": [
+            0,
+            0,
+            40,
+            20
+          ],
+          "rects": [
+            [
+              0,
+              0,
+              40,
+              20
+            ]
+          ]
+        },
+        "frameContents": {
+          "rect": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "rects": []
+        },
+        "textSelection": {
+          "rect": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "rects": []
+        },
+        "nestedSelection": {
+          "rect": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "rects": []
+        },
+        "nestedContents": {
+          "rect": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "rects": []
+        },
+        "controlSelection": {
+          "rect": [
+            0,
+            202,
+            88.6171875,
+            20
+          ],
+          "rects": [
+            [
+              0,
+              202,
+              88.6171875,
+              20
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "padded-positioned-zero",
+      "attrs": "style=\"position:absolute;width:10px;height:50%;border:0\"",
+      "hostStyle": "height:0",
+      "srcdoc": null,
+      "parentStyle": "position:relative;height:50%;padding:10px",
+      "rect": [
+        10,
+        10,
+        10,
+        10
+      ],
+      "rects": [
+        [
+          10,
+          10,
+          10,
+          10
+        ]
+      ],
+      "client": [
+        0,
+        0,
+        10,
+        10
+      ],
+      "offset": [
+        10,
+        10,
+        10,
+        10
+      ],
+      "viewport": [
+        10,
+        10
+      ],
+      "parentRect": [
+        0,
+        0,
+        400,
+        20
+      ]
+    }
+  ]
+}

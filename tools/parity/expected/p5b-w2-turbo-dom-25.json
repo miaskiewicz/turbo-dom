@@ -1,0 +1,17 @@
+{
+ "id": "turbo-dom#25 item 1",
+ "reason": "turbo-dom-raster converts the parsed document's inline <svg> ELEMENTS to <img> + a rasterized SVG (re-serialized as namespace-well-formed XML), never <svg source text: a <svg inside an attribute value (raw-UTF-8 SVG data: URL), a <script> string or <noscript> text is left alone; xlink:href without a declaration, HTML character references and parser-adjusted names now paint (commit 6f9f84c). delazy_images no longer rewrites a placeholder src without a lazy URL with its own unescaped value and escapes the URLs it writes (commit 81b5cb3). No corpus output changes: static harness (surf static screenshot_png/screenshot_svg at 1280x800, plain + caller-assets + system-font passes, 123 inputs) bc290f6 vs 81b5cb3: 0 differ; bc290f6 vs 6f9f84c: 0 differ (the corpus inline SVGs are well-formed; its '<svg' script strings sit inside one script). html2pdf corpora do not use the raster. P5b-W2.",
+ "control": "crates/turbo-dom-raster/tests/fixtures/inline_svg_chrome156.json (scripts/inline-svg-chrome-control.mjs, Chrome for Testing 156.0.8078.4); crates/turbo-dom-layout/tests/fixtures/image_formats_chrome156.json case svg-utf8",
+ "e2e": "crates/turbo-dom-raster/tests/inline_svg_chrome.rs, crates/turbo-dom-raster/tests/image_formats_chrome.rs, src/image_paint.rs + src/style_extract.rs unit tests",
+ "by_commit": {
+  "81b5cb3 (delazy)": {"surf": [], "surf-extra": []},
+  "6f9f84c (inline svg tree)": {"surf": [], "surf-extra": []}
+ },
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

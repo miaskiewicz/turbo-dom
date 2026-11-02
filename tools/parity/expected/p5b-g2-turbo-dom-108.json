@@ -1,0 +1,14 @@
+{
+ "id": "turbo-dom#108",
+ "class": "browser-env-canvas-style-colours",
+ "reason": "turbo-dom-browser-env's 2D-context fillStyle / strokeStyle / shadowColor become accessors over rtdom::color::parse_color (Chrome serialization, invalid values ignored, currentcolor resolved at assignment) and rtdom::color gains Color::canvas_serialization (no existing caller changes). Only the V8 binding's canvas stub runs the changed code: html2pdf links no browser-env and the surf static tier (turbo-dom-raster screenshot_png / screenshot_svg) runs no script, so no corpus output can change; not re-measured. P5b-G2.",
+ "control": "crates/turbo-dom-browser-env/src/canvas_style_chrome156.json (canvas_style_probe.js, scripts/invokers-chrome-control.mjs, Chrome for Testing 156.0.8078.4)",
+ "e2e": "crates/turbo-dom-browser-env/src/canvas_style_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

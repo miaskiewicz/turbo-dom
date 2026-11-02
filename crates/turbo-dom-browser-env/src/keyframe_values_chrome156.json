@@ -1,0 +1,317 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "keyframe_values_probe.js",
+  "probeSha256": "a29080add0cc6e48f515936adefab063c57b3e46b9420e07c10a04e4c928580c",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "opacity": [
+      "1e-07",
+      "1.5e-07",
+      "1e-06",
+      "1.23457e-06",
+      "1e-05",
+      "0.0001",
+      "1.23457e+06",
+      "123457",
+      "1e+06",
+      "1e+21",
+      "0.3",
+      "0",
+      "-1e-13",
+      "1e-45",
+      "3.4e+38",
+      "12345.7",
+      "0.123457",
+      "1000",
+      "0.5"
+    ],
+    "translate": [
+      "1e-07px",
+      "1.5e-07px",
+      "1e-06px",
+      "1.23457e-06px",
+      "1e-05px",
+      "0.0001px",
+      "1.23457e+06px",
+      "123457px",
+      "1e+06px",
+      "1e+21px",
+      "0.3px",
+      "0px",
+      "-1e-13px",
+      "1e-45px",
+      "3.4e+38px",
+      "12345.7px",
+      "0.123457px",
+      "1000px",
+      "0.5px"
+    ],
+    "lineHeight": [
+      "1e-07",
+      "1.5e-07",
+      "1e-06",
+      "1.23457e-06",
+      "1e-05",
+      "0.0001",
+      "1.23457e+06",
+      "123457",
+      "1e+06",
+      "1e+21",
+      "0.3",
+      "0",
+      null,
+      "1e-45",
+      "3.4e+38",
+      "12345.7",
+      "0.123457",
+      "1000",
+      "0.5"
+    ],
+    "units": [
+      "1e-07%",
+      "12.3457%",
+      "1000px",
+      "1.5px",
+      "0.5em",
+      "0px"
+    ],
+    "functions": [
+      "translateX(1e-07px)",
+      "rotate(1e-10deg)"
+    ],
+    "vars": [
+      "var(--w,  (1PX) )",
+      "var(--w, (1PX))",
+      "calc(var(--a) + 1PX)",
+      "VAR(--x)",
+      "var(--w,\n1PX)",
+      "1PX var(--x)",
+      "var(--w,/*c*/1PX)",
+      "var(--w)",
+      "calc(1PX /*c*/ + var(--a))",
+      "var(--a)  ,  1PX",
+      "var(--a)",
+      "var(--a)",
+      "env(SAFE-area-inset-top)",
+      "var(--a,)",
+      "var(--a",
+      null,
+      "1E3PX var(--x)",
+      "\"str\" var(--x)",
+      "var(--a, 'q\\'')"
+    ],
+    "margin": [
+      "var(--a)  1PX",
+      "var(--a)"
+    ],
+    "custom": [
+      "x",
+      "VAR(--Y)"
+    ],
+    "zeros": [
+      [
+        "top",
+        "0px"
+      ],
+      [
+        "right",
+        "0px"
+      ],
+      [
+        "bottom",
+        "0px"
+      ],
+      [
+        "left",
+        "0px"
+      ],
+      [
+        "opacity",
+        "0"
+      ],
+      [
+        "columnWidth",
+        "0px"
+      ],
+      [
+        "outlineOffset",
+        "0px"
+      ],
+      [
+        "columnGap",
+        "0px"
+      ],
+      [
+        "columnRuleWidth",
+        "0px"
+      ],
+      [
+        "outlineWidth",
+        "0px"
+      ],
+      [
+        "borderTopWidth",
+        "0px"
+      ],
+      [
+        "borderSpacing",
+        "0px"
+      ],
+      [
+        "perspective",
+        "0px"
+      ],
+      [
+        "tabSize",
+        "0"
+      ],
+      [
+        "wordSpacing",
+        "0px"
+      ],
+      [
+        "scrollMarginTop",
+        "0px"
+      ],
+      [
+        "scrollPaddingTop",
+        "0px"
+      ],
+      [
+        "strokeWidth",
+        "0"
+      ],
+      [
+        "x",
+        "0px"
+      ],
+      [
+        "r",
+        "0px"
+      ],
+      [
+        "fontSize",
+        "0px"
+      ],
+      [
+        "textIndent",
+        "0px"
+      ],
+      [
+        "verticalAlign",
+        "0px"
+      ],
+      [
+        "shapeMargin",
+        "0px"
+      ],
+      [
+        "offsetDistance",
+        "0px"
+      ],
+      [
+        "maxWidth",
+        "0px"
+      ],
+      [
+        "minHeight",
+        "0px"
+      ],
+      [
+        "backgroundPositionX",
+        "0px"
+      ],
+      [
+        "textUnderlineOffset",
+        "0px"
+      ],
+      [
+        "textDecorationThickness",
+        "0px"
+      ],
+      [
+        "outline",
+        "0px"
+      ],
+      [
+        "borderWidth",
+        "0px"
+      ],
+      [
+        "inset",
+        "0px"
+      ],
+      [
+        "margin",
+        "0px"
+      ],
+      [
+        "gap",
+        "0px"
+      ],
+      [
+        "flex",
+        "0 1 0%"
+      ],
+      [
+        "flexBasis",
+        "0px"
+      ],
+      [
+        "lineHeight",
+        "0"
+      ]
+    ],
+    "lengthsOnly": [
+      [
+        "columnWidth",
+        "auto",
+        "auto"
+      ],
+      [
+        "columnWidth",
+        "red",
+        null
+      ],
+      [
+        "columnWidth",
+        "-1px",
+        null
+      ],
+      [
+        "columnWidth",
+        "2EM",
+        "2em"
+      ],
+      [
+        "outlineOffset",
+        "-1PX",
+        "-1px"
+      ],
+      [
+        "outlineOffset",
+        "auto",
+        null
+      ],
+      [
+        "outlineOffset",
+        "1",
+        null
+      ]
+    ]
+  }
+}

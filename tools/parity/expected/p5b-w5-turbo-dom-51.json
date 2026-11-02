@@ -1,0 +1,24 @@
+{
+ "id": "miaskiewicz/turbo-dom#51",
+ "reason": "Table captions lay out in the table wrapper box (above/below the grid, own box, widening the table to their min-content; the table's frame/background paint the grid only); PDF/UA tags them as the table's Caption (turbo-html2pdf). No corpus page has a caption, so no existing output changes (parity c498c88+h2p cfa20bc -> turbo-dom 1eb2d80 + h2p 46b483d: 0 changed); the new extra input table-caption.html pins it. P5b-W5.",
+ "control": "scripts/html-document-chrome-control.mjs, scripts/live-geometry-chrome-control.mjs, scripts/paint-chrome-control.mjs caption-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs + src/live/chrome_tests.rs (table_captions_lay_out_in_the_table_wrapper_like_chrome_156), crates/turbo-dom-raster/tests/paint_chrome.rs; turbo-html2pdf tests/pdf_ua.rs (tags_a_table_caption_as_the_tables_caption)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ },
+ "added": {
+  "html2pdf-extra": [
+   "extra-table-caption.boxes.json",
+   "extra-table-caption.pdf",
+   "extra-table-caption.ua.pdf"
+  ],
+  "surf-extra": [
+   "static-extra-table-caption.png",
+   "static-extra-table-caption.svg"
+  ]
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "id": "turbo-html2pdf#30",
+ "reason": "EXIF orientation as Chrome 156 applies it: the shared probe reads JPEG APP1 Exif / PNG eXIf Orientation (WebP EXIF is ignored, as in Chrome); image boxes lay out at the displayed size (orientations 5-8 swap width/height) unless image-orientation:none; the raster painters turn the decoded pixels; the html2pdf PDF emit rotates the image placement matrix. Changed: the extra corpus's jpeg-exif-orient6 page (layoutBoxes: the <img> is 40x64 as in Chrome; surf static: its background image is drawn turned); every orientation 1-8, PNG eXIf, WebP EXIF and image-orientation:none are covered by the crate-level Chrome control tests (no corpus input carries them). P5b-Y.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/image_orientation_chrome156.json (scripts/image-orientation-chrome-control.mjs over tests/fixtures/images/orientation, scripts/make_orientation_fixtures.py)",
+ "e2e": "crates/turbo-dom-layout/tests/image_orientation_chrome.rs, crates/turbo-dom-raster/tests/image_orientation_chrome.rs, turbo-html2pdf crates/turbo-html2pdf-core/tests/image.rs + src/emit/image.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [
+   "extra-img-jpeg-exif-orient6.boxes.json"
+  ],
+  "surf": [],
+  "surf-extra": [
+   "static-extra-img-jpeg-exif-orient6.png",
+   "static-extra-img-jpeg-exif-orient6.svg"
+  ]
+ }
+}

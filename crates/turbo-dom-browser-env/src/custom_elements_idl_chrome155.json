@@ -1,0 +1,66 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "probeSha256": "bdfc8bdccaa85646c8362b4f28114027129c21bdf46052760a26b2e450be2531",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "invalidCreate": "InvalidCharacterError",
+    "createReads": [
+      "name",
+      "registry",
+      "is"
+    ],
+    "invalidShadow": "TypeError",
+    "shadowReads": [
+      "clonable",
+      "registry"
+    ],
+    "atomicShadow": true,
+    "createOptions": [
+      "div",
+      "div",
+      "div",
+      "div",
+      "div",
+      "TypeError",
+      "div"
+    ],
+    "brands": [
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError"
+      ]
+    ],
+    "reentrant": "SyntaxError",
+    "reentrantAgain": "undefined",
+    "nested": [
+      "NotSupportedError"
+    ],
+    "sequence": "undefined",
+    "sequenceReads": [
+      "observed",
+      "iterator",
+      "yield",
+      "string"
+    ],
+    "constructorBrands": [
+      "TypeError",
+      "TypeError",
+      "TypeError"
+    ]
+  }
+}

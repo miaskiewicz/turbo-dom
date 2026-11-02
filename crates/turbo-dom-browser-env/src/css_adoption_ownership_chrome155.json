@@ -1,0 +1,34 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "recordedAt": "2026-10-14T01:31:49.139Z",
+  "fixture": "css-adoption-ownership-probe.js",
+  "effectiveExtensionFlags": [
+    "--disable-extensions"
+  ],
+  "result": {
+    "shadow": {
+      "stable": true,
+      "sheet": true,
+      "array": true,
+      "descriptor": [
+        "get adoptedStyleSheets",
+        "set adoptedStyleSheets",
+        0,
+        1
+      ]
+    },
+    "errors": [
+      "NotAllowedError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError"
+    ],
+    "privateOwner": true,
+    "extensible": true,
+    "length": 1
+  }
+}

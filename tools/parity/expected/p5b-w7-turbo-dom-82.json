@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#82",
+ "reason": "While the tree's fullscreen stack is non-empty the cascade adds Chrome's :not(:root):fullscreen UA rules and the fullscreen element's box goes to the top layer (after its black ::backdrop, above everything). No corpus document has a fullscreen stack. Fresh-target parity builds (git archive of each commit, own CARGO_TARGET_DIR per build; html2pdf refactor 923c89f napi plain + svg; surf static through the napi-free raster harness): 9830e3c -> 128ad49: no corpus output changes (no corpus input has a fullscreen element (no corpus document has a fullscreen stack)). P5b-W7.",
+ "control": "fullscreen-* in scripts/live-geometry-chrome-control.mjs (trusted-click requestFullscreen)",
+ "e2e": "crates/turbo-dom-layout/src/live/chrome_tests.rs, crates/turbo-dom-layout/tests/fullscreen_chrome.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

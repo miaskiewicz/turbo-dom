@@ -1,0 +1,1434 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probeSha256": "12de9278ccbe9099a3655718a1a7d2fb82a721d8914b22cb27407b592e272457",
+  "collectorSha256": "e940b655785f6e28bbc981b86c7c62770375c1adc12e596785f8e59ab1ef7308",
+  "errors": [],
+  "result": {
+    "matchesSelector": {
+      "descriptor": {
+        "enumerable": true,
+        "configurable": true,
+        "value": [
+          "webkitMatchesSelector",
+          1,
+          false
+        ],
+        "writable": true
+      },
+      "distinct": true,
+      "results": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        false,
+        true
+      ],
+      "svg": [
+        true,
+        true
+      ],
+      "coerced": [
+        true,
+        {
+          "value": false
+        }
+      ],
+      "grammar": [
+        [
+          ":scope",
+          {
+            "value": true
+          }
+        ],
+        [
+          "::before",
+          {
+            "value": false
+          }
+        ],
+        [
+          "p::after",
+          {
+            "value": false
+          }
+        ],
+        [
+          "p:hover",
+          {
+            "value": false
+          }
+        ],
+        [
+          ":scope > p",
+          {
+            "value": false
+          }
+        ],
+        [
+          ":is(p, q)",
+          {
+            "value": true
+          }
+        ],
+        [
+          ":where(p)",
+          {
+            "value": true
+          }
+        ],
+        [
+          ":not(p)",
+          {
+            "value": false
+          }
+        ],
+        [
+          ":not(section) > p",
+          {
+            "value": false
+          }
+        ],
+        [
+          ":first-child",
+          {
+            "value": true
+          }
+        ],
+        [
+          ":nth-child(1 of p)",
+          {
+            "value": true
+          }
+        ],
+        [
+          ":popover-open",
+          {
+            "value": false
+          }
+        ],
+        [
+          ":defined",
+          {
+            "value": true
+          }
+        ],
+        [
+          "*|p",
+          {
+            "value": true
+          }
+        ],
+        [
+          "p,",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': 'p,' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          "p >",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': 'p >' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          "> p",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': '> p' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          "p {",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': 'p {' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          "p }",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': 'p }' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          "p { color: red } p",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': 'p { color: red } p' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          "[data-k='{']",
+          {
+            "value": false
+          }
+        ],
+        [
+          "#1a",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': '#1a' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          ".1a",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': '.1a' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          "p:nth-child(foo)",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': 'p:nth-child(foo)' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          ":unknown-pseudo",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': ':unknown-pseudo' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          "p::unknown",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': 'p::unknown' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          "a\\:b",
+          {
+            "value": false
+          }
+        ],
+        [
+          "p !",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': 'p !' is not a valid selector.",
+            "dom": true
+          }
+        ],
+        [
+          "  p  ",
+          {
+            "value": true
+          }
+        ],
+        [
+          " ",
+          {
+            "name": "SyntaxError",
+            "message": "Failed to execute 'webkitMatchesSelector' on 'Element': ' ' is not a valid selector.",
+            "dom": true
+          }
+        ]
+      ],
+      "invalid": {
+        "name": "SyntaxError",
+        "message": "Failed to execute 'webkitMatchesSelector' on 'Element': '[' is not a valid selector.",
+        "dom": true
+      },
+      "empty": {
+        "name": "SyntaxError",
+        "message": "Failed to execute 'webkitMatchesSelector' on 'Element': The provided selector is empty.",
+        "dom": true
+      },
+      "missing": {
+        "name": "TypeError",
+        "message": "Failed to execute 'webkitMatchesSelector' on 'Element': 1 argument required, but only 0 present.",
+        "dom": false
+      },
+      "symbol": {
+        "name": "TypeError",
+        "message": "Failed to execute 'webkitMatchesSelector' on 'Element': Cannot convert a Symbol value to a string",
+        "dom": false
+      },
+      "brand": [
+        {
+          "name": "TypeError",
+          "message": "Illegal invocation",
+          "dom": false
+        },
+        {
+          "name": "TypeError",
+          "message": "Illegal invocation",
+          "dom": false
+        },
+        {
+          "name": "TypeError",
+          "message": "Illegal invocation",
+          "dom": false
+        }
+      ]
+    },
+    "handlers": [
+      {
+        "name": "onbeforecopy",
+        "owners": [
+          "Element"
+        ],
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get onbeforecopy",
+            0,
+            false
+          ],
+          "set": [
+            "set onbeforecopy",
+            1,
+            false
+          ]
+        },
+        "own": false,
+        "initial": null,
+        "attribute": {
+          "html": {
+            "before": null,
+            "compiled": [
+              "onbeforecopy",
+              1,
+              "function onbeforecopy(event) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "div",
+              "beforecopy",
+              1
+            ],
+            "removed": null
+          },
+          "svg": {
+            "before": null,
+            "compiled": [
+              "onbeforecopy",
+              1,
+              "function onbeforecopy(evt) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "rect",
+              "beforecopy",
+              1
+            ],
+            "removed": null
+          },
+          "math": {
+            "before": null,
+            "compiled": [
+              "onbeforecopy",
+              1,
+              "function onbeforecopy(event) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "mi",
+              "beforecopy",
+              1
+            ],
+            "removed": null
+          },
+          "foreign": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "none": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          }
+        },
+        "dispatched": false,
+        "prevented": true,
+        "firstOrder": [
+          "before",
+          [
+            "first",
+            true,
+            "beforecopy",
+            1
+          ],
+          "after"
+        ],
+        "replacedOrder": [
+          "before",
+          "replacement",
+          "after"
+        ],
+        "afterAttribute": {
+          "order": [
+            "before",
+            "after"
+          ],
+          "fired": "beforecopy"
+        },
+        "afterRemove": {
+          "order": [
+            "before",
+            "after"
+          ],
+          "value": null
+        },
+        "cleared": [
+          "before",
+          "after"
+        ],
+        "bubbling": [
+          [
+            3,
+            true
+          ]
+        ],
+        "svgCalls": 1,
+        "values": {
+          "object": "same-object",
+          "string": null,
+          "number": null,
+          "undefined": null,
+          "true": null
+        },
+        "brand": [
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          }
+        ]
+      },
+      {
+        "name": "onbeforecut",
+        "owners": [
+          "Element"
+        ],
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get onbeforecut",
+            0,
+            false
+          ],
+          "set": [
+            "set onbeforecut",
+            1,
+            false
+          ]
+        },
+        "own": false,
+        "initial": null,
+        "attribute": {
+          "html": {
+            "before": null,
+            "compiled": [
+              "onbeforecut",
+              1,
+              "function onbeforecut(event) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "div",
+              "beforecut",
+              1
+            ],
+            "removed": null
+          },
+          "svg": {
+            "before": null,
+            "compiled": [
+              "onbeforecut",
+              1,
+              "function onbeforecut(evt) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "rect",
+              "beforecut",
+              1
+            ],
+            "removed": null
+          },
+          "math": {
+            "before": null,
+            "compiled": [
+              "onbeforecut",
+              1,
+              "function onbeforecut(event) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "mi",
+              "beforecut",
+              1
+            ],
+            "removed": null
+          },
+          "foreign": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "none": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          }
+        },
+        "dispatched": false,
+        "prevented": true,
+        "firstOrder": [
+          "before",
+          [
+            "first",
+            true,
+            "beforecut",
+            1
+          ],
+          "after"
+        ],
+        "replacedOrder": [
+          "before",
+          "replacement",
+          "after"
+        ],
+        "afterAttribute": {
+          "order": [
+            "before",
+            "after"
+          ],
+          "fired": "beforecut"
+        },
+        "afterRemove": {
+          "order": [
+            "before",
+            "after"
+          ],
+          "value": null
+        },
+        "cleared": [
+          "before",
+          "after"
+        ],
+        "bubbling": [
+          [
+            3,
+            true
+          ]
+        ],
+        "svgCalls": 1,
+        "values": {
+          "object": "same-object",
+          "string": null,
+          "number": null,
+          "undefined": null,
+          "true": null
+        },
+        "brand": [
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          }
+        ]
+      },
+      {
+        "name": "onbeforepaste",
+        "owners": [
+          "Element"
+        ],
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get onbeforepaste",
+            0,
+            false
+          ],
+          "set": [
+            "set onbeforepaste",
+            1,
+            false
+          ]
+        },
+        "own": false,
+        "initial": null,
+        "attribute": {
+          "html": {
+            "before": null,
+            "compiled": [
+              "onbeforepaste",
+              1,
+              "function onbeforepaste(event) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "div",
+              "beforepaste",
+              1
+            ],
+            "removed": null
+          },
+          "svg": {
+            "before": null,
+            "compiled": [
+              "onbeforepaste",
+              1,
+              "function onbeforepaste(evt) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "rect",
+              "beforepaste",
+              1
+            ],
+            "removed": null
+          },
+          "math": {
+            "before": null,
+            "compiled": [
+              "onbeforepaste",
+              1,
+              "function onbeforepaste(event) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "mi",
+              "beforepaste",
+              1
+            ],
+            "removed": null
+          },
+          "foreign": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "none": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          }
+        },
+        "dispatched": false,
+        "prevented": true,
+        "firstOrder": [
+          "before",
+          [
+            "first",
+            true,
+            "beforepaste",
+            1
+          ],
+          "after"
+        ],
+        "replacedOrder": [
+          "before",
+          "replacement",
+          "after"
+        ],
+        "afterAttribute": {
+          "order": [
+            "before",
+            "after"
+          ],
+          "fired": "beforepaste"
+        },
+        "afterRemove": {
+          "order": [
+            "before",
+            "after"
+          ],
+          "value": null
+        },
+        "cleared": [
+          "before",
+          "after"
+        ],
+        "bubbling": [
+          [
+            3,
+            true
+          ]
+        ],
+        "svgCalls": 1,
+        "values": {
+          "object": "same-object",
+          "string": null,
+          "number": null,
+          "undefined": null,
+          "true": null
+        },
+        "brand": [
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          }
+        ]
+      },
+      {
+        "name": "onsearch",
+        "owners": [
+          "Element"
+        ],
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get onsearch",
+            0,
+            false
+          ],
+          "set": [
+            "set onsearch",
+            1,
+            false
+          ]
+        },
+        "own": false,
+        "initial": null,
+        "attribute": {
+          "html": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "svg": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "math": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "foreign": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "none": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          }
+        },
+        "dispatched": false,
+        "prevented": true,
+        "firstOrder": [
+          "before",
+          [
+            "first",
+            true,
+            "search",
+            1
+          ],
+          "after"
+        ],
+        "replacedOrder": [
+          "before",
+          "replacement",
+          "after"
+        ],
+        "afterAttribute": {
+          "order": [
+            "before",
+            "replacement",
+            "after"
+          ],
+          "fired": null
+        },
+        "afterRemove": {
+          "order": [
+            "before",
+            "replacement",
+            "after"
+          ],
+          "value": [
+            "",
+            0,
+            "function () {\n      order.push(\"replacement\");\n    }"
+          ]
+        },
+        "cleared": [
+          "before",
+          "after"
+        ],
+        "bubbling": [
+          [
+            3,
+            true
+          ]
+        ],
+        "svgCalls": 1,
+        "values": {
+          "object": "same-object",
+          "string": null,
+          "number": null,
+          "undefined": null,
+          "true": null
+        },
+        "brand": [
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          }
+        ]
+      },
+      {
+        "name": "onfullscreenchange",
+        "owners": [
+          "Element"
+        ],
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get onfullscreenchange",
+            0,
+            false
+          ],
+          "set": [
+            "set onfullscreenchange",
+            1,
+            false
+          ]
+        },
+        "own": false,
+        "initial": null,
+        "attribute": {
+          "html": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "svg": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "math": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "foreign": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "none": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          }
+        },
+        "dispatched": false,
+        "prevented": true,
+        "firstOrder": [
+          "before",
+          [
+            "first",
+            true,
+            "fullscreenchange",
+            1
+          ],
+          "after"
+        ],
+        "replacedOrder": [
+          "before",
+          "replacement",
+          "after"
+        ],
+        "afterAttribute": {
+          "order": [
+            "before",
+            "replacement",
+            "after"
+          ],
+          "fired": null
+        },
+        "afterRemove": {
+          "order": [
+            "before",
+            "replacement",
+            "after"
+          ],
+          "value": [
+            "",
+            0,
+            "function () {\n      order.push(\"replacement\");\n    }"
+          ]
+        },
+        "cleared": [
+          "before",
+          "after"
+        ],
+        "bubbling": [
+          [
+            3,
+            true
+          ]
+        ],
+        "svgCalls": 1,
+        "values": {
+          "object": "same-object",
+          "string": null,
+          "number": null,
+          "undefined": null,
+          "true": null
+        },
+        "brand": [
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          }
+        ]
+      },
+      {
+        "name": "onfullscreenerror",
+        "owners": [
+          "Element"
+        ],
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get onfullscreenerror",
+            0,
+            false
+          ],
+          "set": [
+            "set onfullscreenerror",
+            1,
+            false
+          ]
+        },
+        "own": false,
+        "initial": null,
+        "attribute": {
+          "html": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "svg": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "math": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "foreign": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "none": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          }
+        },
+        "dispatched": false,
+        "prevented": true,
+        "firstOrder": [
+          "before",
+          [
+            "first",
+            true,
+            "fullscreenerror",
+            1
+          ],
+          "after"
+        ],
+        "replacedOrder": [
+          "before",
+          "replacement",
+          "after"
+        ],
+        "afterAttribute": {
+          "order": [
+            "before",
+            "replacement",
+            "after"
+          ],
+          "fired": null
+        },
+        "afterRemove": {
+          "order": [
+            "before",
+            "replacement",
+            "after"
+          ],
+          "value": [
+            "",
+            0,
+            "function () {\n      order.push(\"replacement\");\n    }"
+          ]
+        },
+        "cleared": [
+          "before",
+          "after"
+        ],
+        "bubbling": [
+          [
+            3,
+            true
+          ]
+        ],
+        "svgCalls": 1,
+        "values": {
+          "object": "same-object",
+          "string": null,
+          "number": null,
+          "undefined": null,
+          "true": null
+        },
+        "brand": [
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          }
+        ]
+      },
+      {
+        "name": "onwebkitfullscreenchange",
+        "owners": [
+          "Element"
+        ],
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get onwebkitfullscreenchange",
+            0,
+            false
+          ],
+          "set": [
+            "set onwebkitfullscreenchange",
+            1,
+            false
+          ]
+        },
+        "own": false,
+        "initial": null,
+        "attribute": {
+          "html": {
+            "before": null,
+            "compiled": [
+              "onwebkitfullscreenchange",
+              1,
+              "function onwebkitfullscreenchange(event) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "div",
+              "webkitfullscreenchange",
+              1
+            ],
+            "removed": null
+          },
+          "svg": {
+            "before": null,
+            "compiled": [
+              "onwebkitfullscreenchange",
+              1,
+              "function onwebkitfullscreenchange(evt) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "rect",
+              "webkitfullscreenchange",
+              1
+            ],
+            "removed": null
+          },
+          "math": {
+            "before": null,
+            "compiled": [
+              "onwebkitfullscreenchange",
+              1,
+              "function onwebkitfullscreenchange(event) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "mi",
+              "webkitfullscreenchange",
+              1
+            ],
+            "removed": null
+          },
+          "foreign": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "none": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          }
+        },
+        "dispatched": false,
+        "prevented": true,
+        "firstOrder": [
+          "before",
+          [
+            "first",
+            true,
+            "webkitfullscreenchange",
+            1
+          ],
+          "after"
+        ],
+        "replacedOrder": [
+          "before",
+          "replacement",
+          "after"
+        ],
+        "afterAttribute": {
+          "order": [
+            "before",
+            "after"
+          ],
+          "fired": "webkitfullscreenchange"
+        },
+        "afterRemove": {
+          "order": [
+            "before",
+            "after"
+          ],
+          "value": null
+        },
+        "cleared": [
+          "before",
+          "after"
+        ],
+        "bubbling": [
+          [
+            3,
+            true
+          ]
+        ],
+        "svgCalls": 1,
+        "values": {
+          "object": "same-object",
+          "string": null,
+          "number": null,
+          "undefined": null,
+          "true": null
+        },
+        "brand": [
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          }
+        ]
+      },
+      {
+        "name": "onwebkitfullscreenerror",
+        "owners": [
+          "Element"
+        ],
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get onwebkitfullscreenerror",
+            0,
+            false
+          ],
+          "set": [
+            "set onwebkitfullscreenerror",
+            1,
+            false
+          ]
+        },
+        "own": false,
+        "initial": null,
+        "attribute": {
+          "html": {
+            "before": null,
+            "compiled": [
+              "onwebkitfullscreenerror",
+              1,
+              "function onwebkitfullscreenerror(event) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "div",
+              "webkitfullscreenerror",
+              1
+            ],
+            "removed": null
+          },
+          "svg": {
+            "before": null,
+            "compiled": [
+              "onwebkitfullscreenerror",
+              1,
+              "function onwebkitfullscreenerror(evt) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "rect",
+              "webkitfullscreenerror",
+              1
+            ],
+            "removed": null
+          },
+          "math": {
+            "before": null,
+            "compiled": [
+              "onwebkitfullscreenerror",
+              1,
+              "function onwebkitfullscreenerror(event) {\nreturn [this.localName, arguments[0].type, arguments.length]\n}"
+            ],
+            "ran": [
+              "mi",
+              "webkitfullscreenerror",
+              1
+            ],
+            "removed": null
+          },
+          "foreign": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          },
+          "none": {
+            "before": null,
+            "compiled": null,
+            "ran": null,
+            "removed": null
+          }
+        },
+        "dispatched": false,
+        "prevented": true,
+        "firstOrder": [
+          "before",
+          [
+            "first",
+            true,
+            "webkitfullscreenerror",
+            1
+          ],
+          "after"
+        ],
+        "replacedOrder": [
+          "before",
+          "replacement",
+          "after"
+        ],
+        "afterAttribute": {
+          "order": [
+            "before",
+            "after"
+          ],
+          "fired": "webkitfullscreenerror"
+        },
+        "afterRemove": {
+          "order": [
+            "before",
+            "after"
+          ],
+          "value": null
+        },
+        "cleared": [
+          "before",
+          "after"
+        ],
+        "bubbling": [
+          [
+            3,
+            true
+          ]
+        ],
+        "svgCalls": 1,
+        "values": {
+          "object": "same-object",
+          "string": null,
+          "number": null,
+          "undefined": null,
+          "true": null
+        },
+        "brand": [
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          },
+          {
+            "name": "TypeError",
+            "message": "Illegal invocation",
+            "dom": false
+          }
+        ]
+      }
+    ],
+    "order": {
+      "seen": [
+        "idl"
+      ],
+      "compiled": "function",
+      "nulled": null,
+      "recompiled": 2
+    }
+  }
+}

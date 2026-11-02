@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#25 item 2",
+ "reason": "Non-visual elements the HTML drive strips (style/script/noscript/template/title/meta/link) still count as children, siblings and :has() descendants in the layout cascade, as in Chrome 156 (8a2238e). No corpus output changes (parity fdcb967 -> 8a2238e). P5b-W1.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json (scripts/html-document-chrome-control.mjs) *-empty / *-sibling* / has-style-child / meta-link-title-in-body-count cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs, crates/turbo-dom-layout/tests/tree_view.rs (stripped_elements_still_count_for_selectors)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

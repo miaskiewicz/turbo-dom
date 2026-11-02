@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#84",
+ "reason": "Absolutely positioned and fixed children add nothing to their parent's intrinsic widths. Fresh-target parity builds (git archive of each commit, own CARGO_TARGET_DIR per build; html2pdf refactor 923c89f napi plain + svg; surf static through the napi-free raster harness): 5b3efad -> 2504594: no corpus output changes (no corpus input has a shrink-to-fit box with a wider out-of-flow child). P5b-W7.",
+ "control": "intrinsic-oof-* in scripts/html-document-chrome-control.mjs",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (out_of_flow_children_add_no_intrinsic_width_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

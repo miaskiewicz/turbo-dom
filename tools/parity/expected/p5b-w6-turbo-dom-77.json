@@ -1,0 +1,24 @@
+{
+ "id": "miaskiewicz/turbo-dom#77",
+ "reason": "min-height wins over max-height and height on the static path. No existing corpus output changes (Fresh-target parity builds (turbo-html2pdf refactor 266b467 = 923c89f code, path-patched): turbo-dom 495d7bd (base) -> 1b832f2 (#75 item 1) -> 0e9f8a3 (#75 item 2) -> b5998db (#77) -> 18c5850 (#78) -> 3bd9953 (#76) -> d17e810 (+ extra inputs, merged refactor be87ef2): 0 changed at b5998db); the new extra input min-max-height.html pins it. P5b-W6.",
+ "control": "scripts/html-document-chrome-control.mjs min-max-height-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (min_height_wins_over_max_height_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ },
+ "added": {
+  "html2pdf-extra": [
+   "extra-min-max-height.boxes.json",
+   "extra-min-max-height.pdf",
+   "extra-min-max-height.ua.pdf"
+  ],
+  "surf-extra": [
+   "static-extra-min-max-height.png",
+   "static-extra-min-max-height.svg"
+  ]
+ }
+}

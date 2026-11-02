@@ -1,0 +1,53 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "recordedAt": "2026-10-14T00:02:09.310Z",
+  "fixture": "css_live_probe.js",
+  "effectiveExtensionFlags": [
+    "--disable-extensions"
+  ],
+  "result": {
+    "text": {
+      "reads": 0,
+      "retained": true,
+      "first": ".real",
+      "changed": true,
+      "current": ".updated",
+      "oldCount": 2
+    },
+    "media": {
+      "before": {
+        "media": "print",
+        "title": "real"
+      },
+      "media": "screen and (min-width: 10px), print",
+      "title": "updated",
+      "disabled": true,
+      "reads": 0
+    },
+    "declarations": {
+      "type": 4,
+      "selector": ".inside",
+      "color": "blue",
+      "fontType": 5,
+      "fontFamily": "updated",
+      "fontText": "@font-face { font-family: updated; src: url(\"font.woff2\"); }"
+    },
+    "descriptors": {
+      "src": "url(\"real.woff2\")",
+      "display": "swap",
+      "size": "120%",
+      "ascent": "90%",
+      "weight": "100 900",
+      "width": "",
+      "color": "blue"
+    },
+    "cssTextParse": {
+      "family": "secondary",
+      "src": "url(\"next.woff2\")",
+      "width": "",
+      "color": "",
+      "display": "swap"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+ "id": "miaskiewicz/turbo-surf#31",
+ "reason": "Live geometry no longer throws on tables and positioned inlines. C (3d4bcf8 + bf1c901): position:absolute/fixed blockify (display_of, every path) and an out-of-flow box in inline content keeps a zero-size place in its line instead of splitting the inline / the surrounding text into anonymous blocks; unsupported native inline constructs fail per element. Changed: html2pdf-extra conformance-17-combo-stage.ua.pdf only \u2014 #pin (absolute, after the inline-block #chip) is now laid out in the chip's line box, so its PDF/UA text span is a child of that line's P struct element instead of the stage's Div (the plain/svg PDFs, layoutBoxes and screenshots are byte-identical; bf1c901 keeps an anonymous inline-flow box from being #pin's containing block). A (0399f01): row boxes span their cells and carry used metrics \u2014 no corpus output changes (no corpus <tr> carries data-cid; rows paint nothing). B (9ffe8e6): live row-group boxes \u2014 live-only, no static output changes. Live surf corpus not re-run (surf napi not rebuilt; acceptance: turbo-surf live_geometry_throws.rs KNOWN_GAPS = &[] against this tree). P5b-W1.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json (scripts/live-geometry-chrome-control.mjs)",
+ "e2e": "crates/turbo-dom-layout/src/live/chrome_tests.rs, tests/native_inline_borders.rs, tests/native_block_inline.rs, tests/layout_table.rs (row_box_spans_its_cells_inside_the_border_spacing); turbo-surf rust/crates/turbo-surf-render/tests/live_geometry_throws.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [
+   "conformance-17-combo-stage.ua.pdf"
+  ],
+  "surf": [],
+  "surf-extra": []
+ }
+}

@@ -1,0 +1,116 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+  "probeSha256": "791e619829553bf743e3ce4b21049a1b73f565138bd32e120707ee8e8d3a8cbf",
+  "collectorSha256": "700a755df1701cfa30a95ca9f20800e81724f50ca7aafd6b46f77e87b2b91351",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "radio-dirty-lifecycle",
+      "result": {
+        "nonform-first": [
+          false,
+          true,
+          true
+        ],
+        "svg-first": [
+          false,
+          true,
+          true
+        ],
+        "html-case-first": [
+          false,
+          true,
+          true
+        ],
+        "form-first": [
+          true,
+          false,
+          true
+        ],
+        "shadow-open": [
+          true,
+          [
+            false,
+            true
+          ],
+          true,
+          [
+            false,
+            true
+          ]
+        ],
+        "shadow-closed": [
+          true,
+          [
+            false,
+            true
+          ],
+          true,
+          [
+            false,
+            true
+          ]
+        ],
+        "disabled": [
+          [
+            false,
+            true
+          ],
+          [
+            false,
+            true
+          ],
+          [
+            false,
+            true
+          ]
+        ],
+        "resetOrder": [
+          [
+            false,
+            false,
+            true
+          ],
+          "after",
+          [
+            false,
+            false,
+            true
+          ],
+          "after"
+        ],
+        "split": [
+          [
+            true,
+            true
+          ],
+          [
+            true,
+            false
+          ],
+          [
+            true,
+            false
+          ]
+        ],
+        "xml": [
+          true,
+          false,
+          "input",
+          "form"
+        ]
+      }
+    }
+  ]
+}

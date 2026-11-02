@@ -1,0 +1,115 @@
+[package]
+name = "turbo-dom-raster"
+edition = "2021"
+version = "0.6.0"
+license = "MIT"
+repository = "https://github.com/miaskiewicz/turbo-dom"
+readme = "README.md"
+rust-version = "1.89"
+description = "turbo-dom synthetic screenshot tier: HTML snapshot → turbo-dom-layout → PNG/SVG, no browser"
+
+# Relocated verbatim from turbo-surf-raster 0.5.5 (miaskiewicz/turbo-surf @ b1de4eb).
+
+[dependencies]
+# The layout + style + font engine (turbo-dom-layout, relocated from
+# turbo-html2pdf-core 0.3.9). We consume its public HTML→Fragment drive
+# (`layout_html`) + the `Fragment` display list and paint it ourselves, plus the shared
+# image layer: the PNG decode (`image::decode_png_rgba`), the header size probe and,
+# via `svg-rasterize`, the one SVG rasterizer (at 1x). Features explicit: its `svg`
+# feature (the PDF SVG pipeline) is never enabled from here.
+turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.6.0", default-features = false, features = [
+    "bundled-fonts",
+    "svg-rasterize",
+] }
+# Raster canvas + PNG encode (Pixmap::encode_png, default `png-format` feature).
+tiny-skia = "0.11"
+# Glyph outlines: we parse `FontFace::data()` bytes independently to trace each
+# glyph into a fill path (both the PNG and SVG painters share the trace).
+ttf-parser = "0.25"
+# Decode + scale fetched raster image bytes for painting: JPEG (zune-jpeg backend), GIF
+# (frame 0 composited onto the logical screen), WebP, BMP and ICO/CUR (pure Rust; P5b
+# turbo-surf#30) decode to RGBA here; PNG decodes through turbo-dom-layout's shared
+# decoder (byte-identical to this crate's `to_rgba8`). Also `imageops::resize` (Triangle)
+# for paint and the PNG re-encode of SVG `data:` URIs. TIFF stays off (Chrome does not
+# decode it).
+image = { version = "0.25", default-features = false, features = [
+    "png",
+    "jpeg",
+    "gif",
+    "webp",
+    "bmp",
+    "ico",
+] }
+# Parse the 2D-canvas op-log JSON (`canvas_ops_png`). Value-tree parse only — the op set is
+# small + forgiving (unknown ops are skipped), so no derive is needed.
+serde_json = "1"
+
+# --- `gpu-metal` (off by default) --------------------------------------------
+# Real-GPU (wgpu → Metal) rasterizer for the canvas op-log. All three are `optional` and only
+# pulled in by the `gpu-metal` feature; the default build links ZERO GPU crates and keeps the
+# tiny-skia replay.
+wgpu = { version = "22", optional = true }
+# Block on wgpu's async adapter/device/readback futures (offscreen, no async runtime).
+pollster = { version = "0.3", optional = true }
+# Tessellate canvas paths + glyph outlines into GPU triangles (fill + stroke).
+lyon_tessellation = { version = "1", optional = true }
+# Translate a page's GLSL-ES WebGL shaders for wgpu: `naga::front::glsl` → IR → validate →
+# `naga::back::wgsl`. Pinned to wgpu 22's naga so the WGSL it emits is accepted.
+naga = { version = "22", optional = true, features = ["glsl-in", "wgsl-out"] }
+# Decode the recorded WebGL `bufferData` bytes (the recorder base64s them for a lossless capture).
+base64 = { version = "0.22", optional = true }
+
+# --- `avif` (off by default) -------------------------------------------------
+# AVIF screenshot pixels (miaskiewicz/turbo-surf#30): rav1d, the BSD-2-Clause pure-Rust
+# port of dav1d, with its assembly off (no nasm / C toolchain) and two frame contexts (a
+# decode error with one aborts in 1.1.0: turbo-dom#94);
+# `libc` only for its `EAGAIN` result code. See src/avif.rs for the options assessed.
+# Without the feature an AVIF still lays out at its real size (turbo-dom-layout's
+# pure-Rust probe) and paints as the placeholder.
+rav1d = { version = "1.1.0", default-features = false, features = [
+    "bitdepth_8",
+    "bitdepth_16",
+], optional = true }
+libc = { version = "0.2", optional = true }
+
+# --- `jxl` (off by default) --------------------------------------------------
+# JPEG XL screenshot pixels (miaskiewicz/turbo-dom#45: Chrome 156 decodes JPEG XL):
+# jxl-oxide, the MIT OR Apache-2.0 pure-Rust decoder, without its `rayon` thread pool (one
+# thread, deterministic). See src/jxl.rs. Without the feature a JPEG XL still lays out at
+# its real size (turbo-dom-layout's header probe) and paints as the placeholder.
+jxl-oxide = { version = "0.12.6", default-features = false, optional = true }
+
+# --- `coretext` (off by default; macOS only) ---------------------------------
+# Rasterize canvas 2D TEXT via the system CoreText/CoreGraphics stack (the same one Chrome's Skia
+# uses for glyphs on macOS), so `getImageData` over rendered text matches a real Mac Chrome instead
+# of our ttf-parser+tiny-skia glyph raster. macOS-only system frameworks (no download, unlike Skia);
+# gated so non-macOS + the default build never reference them. Shapes stay on tiny-skia (already
+# pixel-matching), so this only swaps the glyph raster — no shape regression.
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = { version = "0.23", optional = true }
+core-text = { version = "20", optional = true }
+core-foundation = { version = "0.9", optional = true }
+
+[lints]
+workspace = true
+
+[features]
+# CoreText/CoreGraphics canvas-text raster (macOS only — the deps are macOS-gated, so on other
+# platforms this feature is inert). See the deps note above.
+coretext = ["dep:core-graphics", "dep:core-text", "dep:core-foundation"]
+# Real-GPU (wgpu → Metal) rasterization: `canvas_ops_png` (canvas 2D) + `webgl_readback` (a live
+# WebGL draw batch). On any GPU failure both transparently fall back, so enabling it never
+# regresses correctness — only the pixel backend changes.
+gpu-metal = ["dep:wgpu", "dep:pollster", "dep:lyon_tessellation", "dep:naga", "dep:base64"]
+# AVIF pixel decode for screenshots (pure Rust: rav1d without assembly). See src/avif.rs.
+avif = ["dep:rav1d", "dep:libc"]
+# JPEG XL pixel decode for screenshots (pure Rust: jxl-oxide, no thread pool). See src/jxl.rs.
+jxl = ["dep:jxl-oxide"]
+
+[dev-dependencies]
+# Screenshot tests build a fixture PNG and decode the rendered output to sample
+# pixels (verifying an image was painted, not a placeholder).
+tiny-skia = "0.11"
+# The image-layer differential test (src/image_paint.rs `shared_layer_tests`) keeps the
+# pre-consolidation SVG decode as its oracle (same pinned resvg as turbo-dom-layout).
+resvg = { version = "=0.45.1", default-features = false }

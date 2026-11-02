@@ -176,6 +176,8 @@ impl Tree {
         for states in self.custom_states.values() {
             charge(&mut work, 1 + states.len(), budget)?;
         }
+        charge(&mut work, self.custom_element_states.len(), budget)?;
+        charge(&mut work, self.fullscreen_stack.len(), budget)?;
         let before = self.storage_stats();
         let mut roots = vec![self.root()];
         roots.extend_from_slice(pins);
@@ -278,6 +280,8 @@ impl Tree {
                 return Err(CollectionError::BudgetExceeded);
             }
         }
+        // The parse buffer goes away: keep the creation-time custom element state it implies.
+        self.record_parsed_states(retained.iter().copied());
         let mut nodes = FxHashMap::default();
         let mut parents = Overlay::collected();
         let mut children = Overlay::collected();
@@ -317,6 +321,10 @@ impl Tree {
         self.form_props.retain(|(h, _), _| retained.contains(h));
         self.custom_states.retain(|node, _| retained.contains(node));
         self.custom_states.shrink_to_fit();
+        self.custom_element_states
+            .retain(|node, _| retained.contains(node));
+        self.custom_element_states.shrink_to_fit();
+        self.fullscreen_stack.retain(|node| retained.contains(node));
         self.element_namespaces.shrink_to_fit();
         self.attribute_nodes.shrink_to_fit();
         self.shadow_root_of_host.shrink_to_fit();
@@ -403,50 +411,38 @@ impl Tree {
     }
 
     fn projected_node_bytes(&self, node: Handle) -> usize {
-        let mut bytes = match self.node_type(node) {
-            NodeType::Document => 0,
-            NodeType::Element => {
-                if self.is_new(node) {
-                    match self.new_ref(node) {
-                        NewNode::Element { name, .. } => name.payload_bytes(),
-                        _ => 0,
-                    }
-                } else {
-                    self.local_name(node).map_or(0, str::len)
+        // A new node's type is its variant; the parse buffer holds only document,
+        // element, text, comment, doctype and template-content nodes.
+        let mut bytes = if self.is_new(node) {
+            match self.new_ref(node) {
+                NewNode::Element { name, .. } => name.payload_bytes(),
+                NewNode::Attribute { data, .. } => native_attribute_bytes(data),
+                NewNode::Text(_) | NewNode::Comment(_) => self.character_payload_bytes(node),
+                NewNode::ProcessingInstruction(data) => {
+                    data.target.payload_bytes() + self.character_payload_bytes(node)
                 }
+                NewNode::Doctype(data) => {
+                    data.name.payload_bytes()
+                        + data.public_id.payload_bytes()
+                        + data.system_id.payload_bytes()
+                }
+                NewNode::Fragment(label) => label.as_deref().map_or(0, str::len),
             }
-            NodeType::Attribute => self
-                .native_attribute_data(node)
-                .map_or(0, native_attribute_bytes),
-            NodeType::Text | NodeType::Comment => self.character_payload_bytes(node),
-            NodeType::ProcessingInstruction => {
-                let target_bytes = if self.is_new(node) {
-                    match self.new_ref(node) {
-                        NewNode::ProcessingInstruction(data) => data.target.payload_bytes(),
-                        _ => 0,
-                    }
-                } else {
-                    self.processing_instruction_target(node).map_or(0, str::len)
-                };
-                target_bytes + self.character_payload_bytes(node)
-            }
-            NodeType::Doctype => {
-                if self.is_new(node) {
-                    match self.new_ref(node) {
-                        NewNode::Doctype(data) => {
-                            data.name.payload_bytes()
-                                + data.public_id.payload_bytes()
-                                + data.system_id.payload_bytes()
-                        }
-                        _ => 0,
-                    }
-                } else {
+        } else {
+            match self.node_type(node) {
+                NodeType::Document => 0,
+                NodeType::Element => self.local_name(node).map_or(0, str::len),
+                NodeType::Text | NodeType::Comment => self.character_payload_bytes(node),
+                NodeType::Doctype => {
                     self.doctype_name(node).map_or(0, str::len)
                         + self.doctype_public_id(node).map_or(0, str::len)
                         + self.doctype_system_id(node).map_or(0, str::len)
                 }
+                NodeType::Fragment => self.node_label(node).map_or(0, str::len),
+                NodeType::Attribute | NodeType::ProcessingInstruction => {
+                    unreachable!("the parser buffer holds no attribute or processing instruction")
+                }
             }
-            NodeType::Fragment => self.node_label(node).map_or(0, str::len),
         };
         if self.node_type(node) == NodeType::Element {
             if let Some(attrs) = self.attrs_ov.get(node) {
@@ -481,11 +477,12 @@ impl Tree {
     fn materialize_node(&self, h: Handle) -> NewNode {
         if self.is_new(h) {
             let mut node = self.new_ref(h).clone();
+            // Only character nodes carry a text override.
             if let Some(value) = self.text_ov.get(h) {
-                match &mut node {
-                    NewNode::Text(data) | NewNode::Comment(data) => *data = value.clone(),
-                    NewNode::ProcessingInstruction(data) => data.data = value.clone(),
-                    _ => {}
+                if let NewNode::ProcessingInstruction(data) = &mut node {
+                    data.data = value.clone();
+                } else if let NewNode::Text(data) | NewNode::Comment(data) = &mut node {
+                    *data = value.clone();
                 }
             }
             return node;
@@ -501,24 +498,13 @@ impl Tree {
             NodeType::Comment => NewNode::Comment(super::DomString::from_units(
                 &self.node_value_utf16(h).unwrap_or_default(),
             )),
-            NodeType::ProcessingInstruction => {
-                NewNode::ProcessingInstruction(Box::new(super::ProcessingInstructionData {
-                    target: self
-                        .processing_instruction_target(h)
-                        .unwrap_or_default()
-                        .into(),
-                    data: super::DomString::from_units(
-                        &self.node_value_utf16(h).unwrap_or_default(),
-                    ),
-                }))
-            }
             NodeType::Doctype => NewNode::Doctype(Box::new(super::DoctypeData {
                 name: self.doctype_name(h).unwrap_or_default().into(),
                 public_id: self.doctype_public_id(h).unwrap_or_default().into(),
                 system_id: self.doctype_system_id(h).unwrap_or_default().into(),
             })),
             NodeType::Fragment => NewNode::Fragment(self.node_label(h).map(Into::into)),
-            NodeType::Attribute | NodeType::Document => {
+            NodeType::Attribute | NodeType::Document | NodeType::ProcessingInstruction => {
                 unreachable!("only parser nodes are materialized")
             }
         }
@@ -580,5 +566,113 @@ fn document_buffer() -> Soa {
         attr_prefixes: vec![],
         attr_values: vec![],
         strings: vec![],
+    }
+}
+
+/// Collection's graph checks against states the Tree API cannot build (P5-cov): each test
+/// corrupts one overlay the way a bug in a mutation path would, and the collector must
+/// refuse with `InvalidGraph` and leave every node and payload untouched.
+#[cfg(test)]
+mod integrity_tests {
+    use super::super::{Handle, Tree};
+    use super::{CollectionBudget, CollectionError};
+
+    fn budget() -> CollectionBudget {
+        CollectionBudget {
+            max_nodes: 10_000,
+            max_edges: 100_000,
+            max_payload_bytes: 1_000_000,
+        }
+    }
+
+    fn refused(tree: &mut Tree, pins: &[Handle], error: CollectionError) {
+        let before = tree.storage_stats();
+        let version = tree.version;
+        assert_eq!(tree.collect_unreachable(pins, budget()), Err(error));
+        assert_eq!(tree.storage_stats(), before);
+        assert_eq!(tree.version, version);
+    }
+
+    #[test]
+    fn a_parent_cycle_is_rejected() {
+        let mut tree = Tree::parse("");
+        let a = tree.create_element("a");
+        tree.ensure_children(a).push(a);
+        tree.parent_ov.insert(a, Some(a));
+        refused(&mut tree, &[a], CollectionError::InvalidGraph);
+        assert!(tree.is_live(a));
+    }
+
+    #[test]
+    fn a_dead_child_is_rejected() {
+        let mut tree = Tree::parse("<p></p>");
+        let p = tree.query_selector("p").unwrap();
+        let gone = tree.create_element("i");
+        tree.collect_unreachable(&[], budget()).unwrap();
+        assert!(!tree.is_live(gone));
+        tree.ensure_children(p).push(gone);
+        tree.parent_ov.insert(gone, Some(p));
+        refused(&mut tree, &[], CollectionError::InvalidGraph);
+    }
+
+    #[test]
+    fn a_child_whose_parent_points_elsewhere_is_rejected() {
+        let mut tree = Tree::parse("<p></p><q></q>");
+        let p = tree.query_selector("p").unwrap();
+        let q = tree.query_selector("q").unwrap();
+        let child = tree.create_element("i");
+        tree.append_child(p, child);
+        tree.parent_ov.insert(child, Some(q));
+        refused(&mut tree, &[], CollectionError::InvalidGraph);
+    }
+
+    #[test]
+    fn a_shadow_root_with_another_host_is_rejected() {
+        let mut tree = Tree::parse("<p></p><q></q>");
+        let p = tree.query_selector("p").unwrap();
+        let q = tree.query_selector("q").unwrap();
+        let shadow = tree.attach_shadow(p);
+        tree.host_of_shadow_root.insert(shadow, q);
+        refused(&mut tree, &[], CollectionError::InvalidGraph);
+    }
+
+    #[test]
+    fn a_pinned_node_missing_from_its_parents_children_is_rejected() {
+        let mut tree = Tree::parse("<p></p>");
+        let p = tree.query_selector("p").unwrap();
+        let orphan = tree.create_element("i");
+        // the node claims a parent whose child list does not hold it
+        tree.parent_ov.insert(orphan, Some(p));
+        refused(&mut tree, &[orphan], CollectionError::InvalidGraph);
+        // consistent again: it collects
+        tree.ensure_children(p).push(orphan);
+        assert!(tree.collect_unreachable(&[orphan], budget()).is_ok());
+        assert!(tree.is_live(orphan));
+    }
+
+    #[test]
+    fn pins_and_pending_records_count_against_the_edge_budget_together() {
+        let mut tree = Tree::parse("");
+        let root = tree.root();
+        let el = tree.create_element("i");
+        tree.start_recording();
+        tree.append_child(root, el);
+        let max_edges = 64;
+        let bounds = CollectionBudget {
+            max_edges,
+            ..budget()
+        };
+        // the pins alone fit (pins.len() <= max_edges), the record's nodes push it over
+        let pins = vec![root; max_edges];
+        let before = tree.storage_stats();
+        assert_eq!(
+            tree.collect_unreachable(&pins, bounds),
+            Err(CollectionError::BudgetExceeded)
+        );
+        assert_eq!(tree.storage_stats(), before);
+        // the same pending record with one pin fits the same budget
+        let report = tree.collect_unreachable(&[root], bounds).unwrap();
+        assert_eq!(report.reclaimed_nodes, 0);
+        assert!(tree.is_live(el));
     }
 }

@@ -1,0 +1,6394 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "selection_probe.js",
+  "probeSha256": "1b09e3c4ed25c4a697b5db10a4cbb53573c6408995b5340534cb1990bb1c1467",
+  "collectorSha256": "e6cadc004087a31da5ba698e45efbc62530e73d28f401d29b96226fa9ed3f94d",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "interface": {
+      "selection": [
+        [
+          "anchorNode",
+          {
+            "get": [
+              "get anchorNode",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "anchorOffset",
+          {
+            "get": [
+              "get anchorOffset",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "focusNode",
+          {
+            "get": [
+              "get focusNode",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "focusOffset",
+          {
+            "get": [
+              "get focusOffset",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "isCollapsed",
+          {
+            "get": [
+              "get isCollapsed",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "rangeCount",
+          {
+            "get": [
+              "get rangeCount",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "type",
+          {
+            "get": [
+              "get type",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "direction",
+          {
+            "get": [
+              "get direction",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "baseNode",
+          {
+            "get": [
+              "get baseNode",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "baseOffset",
+          {
+            "get": [
+              "get baseOffset",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "extentNode",
+          {
+            "get": [
+              "get extentNode",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "extentOffset",
+          {
+            "get": [
+              "get extentOffset",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "addRange",
+          {
+            "value": [
+              "addRange",
+              1
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "collapse",
+          {
+            "value": [
+              "collapse",
+              1
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "collapseToEnd",
+          {
+            "value": [
+              "collapseToEnd",
+              0
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "collapseToStart",
+          {
+            "value": [
+              "collapseToStart",
+              0
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "containsNode",
+          {
+            "value": [
+              "containsNode",
+              1
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "deleteFromDocument",
+          {
+            "value": [
+              "deleteFromDocument",
+              0
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "empty",
+          {
+            "value": [
+              "empty",
+              0
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "extend",
+          {
+            "value": [
+              "extend",
+              1
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "getComposedRanges",
+          {
+            "value": [
+              "getComposedRanges",
+              0
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "getRangeAt",
+          {
+            "value": [
+              "getRangeAt",
+              1
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "modify",
+          {
+            "value": [
+              "modify",
+              0
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "removeAllRanges",
+          {
+            "value": [
+              "removeAllRanges",
+              0
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "removeRange",
+          {
+            "value": [
+              "removeRange",
+              1
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "selectAllChildren",
+          {
+            "value": [
+              "selectAllChildren",
+              1
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "setBaseAndExtent",
+          {
+            "value": [
+              "setBaseAndExtent",
+              4
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "setPosition",
+          {
+            "value": [
+              "setPosition",
+              1
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "toString",
+          {
+            "value": [
+              "toString",
+              0
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          }
+        ],
+        [
+          "constructor",
+          {
+            "value": [
+              "Selection",
+              0
+            ],
+            "writable": true,
+            "enumerable": false,
+            "configurable": true
+          }
+        ],
+        [
+          "Symbol(Symbol.toStringTag)",
+          {
+            "value": "Selection",
+            "writable": false,
+            "enumerable": false,
+            "configurable": true
+          }
+        ]
+      ],
+      "constructor": [
+        "Selection",
+        0,
+        true,
+        [
+          "TypeError",
+          "Failed to construct 'Selection': Illegal constructor"
+        ],
+        [
+          "TypeError",
+          "Illegal constructor"
+        ]
+      ],
+      "getters": [
+        {
+          "value": [
+            "getSelection",
+            0
+          ],
+          "writable": true,
+          "enumerable": true,
+          "configurable": true
+        },
+        {
+          "value": [
+            "getSelection",
+            0
+          ],
+          "writable": true,
+          "enumerable": true,
+          "configurable": true
+        },
+        {
+          "value": [
+            "getSelection",
+            0
+          ],
+          "writable": true,
+          "enumerable": true,
+          "configurable": true
+        },
+        false
+      ],
+      "identity": [
+        true,
+        true,
+        "[object Selection]",
+        0
+      ],
+      "brands": [
+        [
+          "anchorNode",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "anchorOffset",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "focusNode",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "focusOffset",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "isCollapsed",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "rangeCount",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "type",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "direction",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "baseNode",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "baseOffset",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "extentNode",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "extentOffset",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "addRange",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "collapse",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "collapseToEnd",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "collapseToStart",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "containsNode",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "deleteFromDocument",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "empty",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "extend",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "getComposedRanges",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "getRangeAt",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "modify",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "removeAllRanges",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "removeRange",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "selectAllChildren",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "setBaseAndExtent",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "setPosition",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "toString",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ]
+      ],
+      "noContext": [
+        null,
+        null,
+        [
+          "TypeError",
+          "Illegal invocation"
+        ],
+        [
+          "TypeError",
+          "Illegal invocation"
+        ]
+      ],
+      "expand": {
+        "value": [
+          "expand",
+          0
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "opaque": [
+        [
+          [
+            "disconnect",
+            {
+              "value": [
+                "disconnect",
+                0
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "getBoundingClientRect",
+            {
+              "value": [
+                "getBoundingClientRect",
+                0
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "getClientRects",
+            {
+              "value": [
+                "getClientRects",
+                0
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "constructor",
+            {
+              "value": [
+                "OpaqueRange",
+                0
+              ],
+              "writable": true,
+              "enumerable": false,
+              "configurable": true
+            }
+          ],
+          [
+            "Symbol(Symbol.toStringTag)",
+            {
+              "value": "OpaqueRange",
+              "writable": false,
+              "enumerable": false,
+              "configurable": true
+            }
+          ]
+        ],
+        0,
+        true,
+        true,
+        {
+          "value": [
+            "OpaqueRange",
+            0
+          ],
+          "writable": true,
+          "enumerable": false,
+          "configurable": true
+        },
+        [
+          "TypeError",
+          "Failed to construct 'OpaqueRange': Illegal constructor"
+        ]
+      ],
+      "controls": [
+        [
+          [
+            "selectionStart",
+            {
+              "get": [
+                "get selectionStart",
+                0
+              ],
+              "set": [
+                "set selectionStart",
+                1
+              ],
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "selectionEnd",
+            {
+              "get": [
+                "get selectionEnd",
+                0
+              ],
+              "set": [
+                "set selectionEnd",
+                1
+              ],
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "selectionDirection",
+            {
+              "get": [
+                "get selectionDirection",
+                0
+              ],
+              "set": [
+                "set selectionDirection",
+                1
+              ],
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "select",
+            {
+              "value": [
+                "select",
+                0
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "setSelectionRange",
+            {
+              "value": [
+                "setSelectionRange",
+                2
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "setRangeText",
+            {
+              "value": [
+                "setRangeText",
+                1
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "createValueRange",
+            {
+              "value": [
+                "createValueRange",
+                2
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ]
+        ],
+        [
+          [
+            "selectionStart",
+            {
+              "get": [
+                "get selectionStart",
+                0
+              ],
+              "set": [
+                "set selectionStart",
+                1
+              ],
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "selectionEnd",
+            {
+              "get": [
+                "get selectionEnd",
+                0
+              ],
+              "set": [
+                "set selectionEnd",
+                1
+              ],
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "selectionDirection",
+            {
+              "get": [
+                "get selectionDirection",
+                0
+              ],
+              "set": [
+                "set selectionDirection",
+                1
+              ],
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "select",
+            {
+              "value": [
+                "select",
+                0
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "setSelectionRange",
+            {
+              "value": [
+                "setSelectionRange",
+                2
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "setRangeText",
+            {
+              "value": [
+                "setRangeText",
+                1
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ],
+          [
+            "createValueRange",
+            {
+              "value": [
+                "createValueRange",
+                2
+              ],
+              "writable": true,
+              "enumerable": true,
+              "configurable": true
+            }
+          ]
+        ]
+      ],
+      "controlBrands": [
+        [
+          "selectionStart",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "select",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "setSelectionRange",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "setRangeText",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        [
+          "createValueRange",
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ]
+      ],
+      "handlers": [
+        true,
+        true,
+        false,
+        true
+      ]
+    },
+    "api": {
+      "initial": [
+        "None",
+        null,
+        0,
+        null,
+        0,
+        0,
+        true,
+        "none",
+        null
+      ],
+      "argErrors": [
+        [
+          "TypeError",
+          "Failed to execute 'collapse' on 'Selection': 1 argument required, but only 0 present."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'collapse' on 'Selection': parameter 1 is not of type 'Node'."
+        ],
+        [
+          "IndexSizeError",
+          "Failed to execute 'collapse' on 'Selection': The offset 99 is larger than the node's length (4)."
+        ],
+        [
+          "IndexSizeError",
+          "Failed to execute 'collapse' on 'Selection': The offset 4294967295 is larger than the node's length (4)."
+        ],
+        [
+          "InvalidNodeTypeError",
+          "Failed to execute 'collapse' on 'Selection': The node provided is of type 'html'."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'setBaseAndExtent' on 'Selection': 4 arguments required, but only 2 present."
+        ],
+        [
+          "IndexSizeError",
+          "Failed to execute 'setBaseAndExtent' on 'Selection': There is no child at offset 9."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'setBaseAndExtent' on 'Selection': parameter 3 is not of type 'Node'."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'selectAllChildren' on 'Selection': 1 argument required, but only 0 present."
+        ],
+        [
+          "InvalidNodeTypeError",
+          "Failed to execute 'selectAllChildren' on 'Selection': The node provided is of type 'html'."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'selectAllChildren' on 'Selection': parameter 1 is not of type 'Node'."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'addRange' on 'Selection': parameter 1 is not of type 'Range'."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'addRange' on 'Selection': parameter 1 is not of type 'Range'."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'removeRange' on 'Selection': parameter 1 is not of type 'Range'."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'containsNode' on 'Selection': 1 argument required, but only 0 present."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'containsNode' on 'Selection': parameter 1 is not of type 'Node'."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'getRangeAt' on 'Selection': 1 argument required, but only 0 present."
+        ],
+        [
+          "IndexSizeError",
+          "Failed to execute 'getRangeAt' on 'Selection': 0 is not a valid index."
+        ],
+        [
+          "IndexSizeError",
+          "Failed to execute 'getRangeAt' on 'Selection': 4294967295 is not a valid index."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'extend' on 'Selection': 1 argument required, but only 0 present."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'extend' on 'Selection': parameter 1 is not of type 'Node'."
+        ],
+        [
+          "InvalidStateError",
+          "Failed to execute 'extend' on 'Selection': This Selection object doesn't have any Ranges."
+        ],
+        [
+          "InvalidStateError",
+          "Failed to execute 'collapseToStart' on 'Selection': there is no selection."
+        ],
+        [
+          "InvalidStateError",
+          "Failed to execute 'collapseToEnd' on 'Selection': there is no selection."
+        ],
+        [
+          "NotFoundError",
+          "Failed to execute 'removeRange' on 'Selection': Range not found."
+        ]
+      ],
+      "conversion": [
+        [
+          "a",
+          "b",
+          "c",
+          "d:s",
+          "e:s",
+          "f:s",
+          "g"
+        ],
+        [
+          "Range",
+          "#one ",
+          4,
+          "#one ",
+          0,
+          1,
+          false,
+          "backward",
+          [
+            "#one ",
+            0,
+            "#one ",
+            4
+          ]
+        ]
+      ],
+      "nullBase": [
+        [
+          "ok",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ]
+      ],
+      "nullExtent": [
+        [
+          "ok",
+          null
+        ],
+        [
+          "Caret",
+          "P#p",
+          0,
+          "P#p",
+          0,
+          1,
+          true,
+          "none",
+          [
+            "P#p",
+            0,
+            "P#p",
+            0
+          ]
+        ]
+      ],
+      "collapseNull": [
+        [
+          "ok",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ]
+      ],
+      "setPosition": [
+        [
+          "ok",
+          null
+        ],
+        [
+          "Caret",
+          "#one ",
+          3,
+          "#one ",
+          3,
+          1,
+          true,
+          "none",
+          [
+            "#one ",
+            3,
+            "#one ",
+            3
+          ]
+        ],
+        [
+          "ok",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ]
+      ],
+      "empty": [
+        [
+          "ok",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ]
+      ],
+      "getRangeAtIndex": [
+        [
+          "IndexSizeError",
+          "Failed to execute 'getRangeAt' on 'Selection': 1 is not a valid index."
+        ],
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          true
+        ]
+      ],
+      "selectAllText": [
+        "Caret",
+        "#one ",
+        0,
+        "#one ",
+        0,
+        1,
+        true,
+        "none",
+        [
+          "#one ",
+          0,
+          "#one ",
+          0
+        ]
+      ],
+      "selectAllElement": [
+        "Range",
+        "P#p",
+        0,
+        "P#p",
+        3,
+        1,
+        false,
+        "forward",
+        [
+          "P#p",
+          0,
+          "P#p",
+          3
+        ]
+      ],
+      "selectAllDocument": [
+        "Range",
+        "#document",
+        0,
+        "#document",
+        2,
+        1,
+        false,
+        "forward",
+        [
+          "#document",
+          0,
+          "#document",
+          2
+        ]
+      ],
+      "ignored": [
+        [
+          "Caret",
+          "#one ",
+          1,
+          "#one ",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "#one ",
+            1,
+            "#one ",
+            1
+          ]
+        ],
+        [
+          "Caret",
+          "#one ",
+          1,
+          "#one ",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "#one ",
+            1,
+            "#one ",
+            1
+          ]
+        ],
+        [
+          "Caret",
+          "#one ",
+          1,
+          "#one ",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "#one ",
+            1,
+            "#one ",
+            1
+          ]
+        ],
+        [
+          "Caret",
+          "#one ",
+          1,
+          "#one ",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "#one ",
+            1,
+            "#one ",
+            1
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ]
+      ],
+      "otherDocument": [
+        [
+          "Caret",
+          "#one ",
+          1,
+          "#one ",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "#one ",
+            1,
+            "#one ",
+            1
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ]
+      ],
+      "extendErrors": [
+        [
+          "IndexSizeError",
+          "Failed to execute 'extend' on 'Selection': The offset 99 is larger than the node's length (4)."
+        ],
+        [
+          "InvalidNodeTypeError",
+          "Failed to execute 'extend' on 'Selection': The node provided is of type 'html'."
+        ]
+      ],
+      "containsEmpty": [
+        false,
+        false
+      ]
+    },
+    "state": {
+      "twoAdds": [
+        [
+          "Range",
+          "#abcdef",
+          1,
+          "#abcdef",
+          3,
+          1,
+          false,
+          "none",
+          [
+            "#abcdef",
+            1,
+            "#abcdef",
+            3
+          ]
+        ],
+        true
+      ],
+      "sbeBackward": [
+        "Range",
+        "#abcdef",
+        4,
+        "#abcdef",
+        1,
+        1,
+        false,
+        "backward",
+        [
+          "#abcdef",
+          1,
+          "#abcdef",
+          4
+        ]
+      ],
+      "collapseToStart": [
+        "Caret",
+        "#abcdef",
+        1,
+        "#abcdef",
+        1,
+        1,
+        true,
+        "none",
+        [
+          "#abcdef",
+          1,
+          "#abcdef",
+          1
+        ]
+      ],
+      "collapseToEnd": [
+        "Caret",
+        "#abcdef",
+        4,
+        "#abcdef",
+        4,
+        1,
+        true,
+        "none",
+        [
+          "#abcdef",
+          4,
+          "#abcdef",
+          4
+        ]
+      ],
+      "extendAcross": [
+        "Range",
+        "#abcdef",
+        1,
+        "#abcdef",
+        0,
+        1,
+        false,
+        "backward",
+        [
+          "#abcdef",
+          0,
+          "#abcdef",
+          1
+        ]
+      ],
+      "extendToAnchor": [
+        "Caret",
+        "#abcdef",
+        1,
+        "#abcdef",
+        1,
+        1,
+        true,
+        "none",
+        [
+          "#abcdef",
+          1,
+          "#abcdef",
+          1
+        ]
+      ],
+      "selectAllKeepsDirection": [
+        "Range",
+        "P#p",
+        0,
+        "P#p",
+        1,
+        1,
+        false,
+        "forward",
+        [
+          "P#p",
+          0,
+          "P#p",
+          1
+        ]
+      ],
+      "addRangeDirection": [
+        "Range",
+        "#abcdef",
+        2,
+        "#ghijkl",
+        3,
+        1,
+        false,
+        "none",
+        [
+          "#abcdef",
+          2,
+          "#ghijkl",
+          3
+        ]
+      ],
+      "addThenExtend": [
+        "Range",
+        "#abcdef",
+        2,
+        "#ghijkl",
+        5,
+        1,
+        false,
+        "forward",
+        [
+          "#abcdef",
+          2,
+          "#ghijkl",
+          5
+        ]
+      ],
+      "backwardAcross": [
+        "Range",
+        "#ghijkl",
+        3,
+        "#abcdef",
+        2,
+        1,
+        false,
+        "backward",
+        [
+          "#abcdef",
+          2,
+          "#ghijkl",
+          3
+        ]
+      ],
+      "rangeEditResetsDirection": [
+        "Range",
+        "#abcdef",
+        1,
+        "#ghijkl",
+        3,
+        1,
+        false,
+        "none",
+        [
+          "#abcdef",
+          1,
+          "#ghijkl",
+          3
+        ]
+      ],
+      "rangeEditCollapse": [
+        "Caret",
+        "#abcdef",
+        2,
+        "#abcdef",
+        2,
+        1,
+        true,
+        "none",
+        [
+          "#abcdef",
+          2,
+          "#abcdef",
+          2
+        ]
+      ],
+      "equivalentBoundary": [
+        "Range",
+        "#ghijkl",
+        0,
+        "#abcdef",
+        6,
+        1,
+        false,
+        "backward",
+        [
+          "#abcdef",
+          6,
+          "#ghijkl",
+          0
+        ]
+      ],
+      "elementTextEquivalent": [
+        "Range",
+        "P#p",
+        1,
+        "#abcdef",
+        6,
+        1,
+        false,
+        "backward",
+        [
+          "#abcdef",
+          6,
+          "P#p",
+          1
+        ]
+      ],
+      "bodyTextEquivalent": [
+        "Range",
+        "BODY",
+        1,
+        "#abcdef",
+        6,
+        1,
+        false,
+        "backward",
+        [
+          "#abcdef",
+          6,
+          "BODY",
+          1
+        ]
+      ],
+      "extendDetached": [
+        "Caret",
+        "#abcdef",
+        1,
+        "#abcdef",
+        1,
+        1,
+        true,
+        "none",
+        [
+          "#abcdef",
+          1,
+          "#abcdef",
+          1
+        ]
+      ],
+      "cleared": [
+        "None",
+        null,
+        0,
+        null,
+        0,
+        0,
+        true,
+        "none",
+        null
+      ]
+    },
+    "identity": {
+      "addRangeSame": [
+        true,
+        true
+      ],
+      "liveRangeEdit": [
+        [
+          "Range",
+          "#one ",
+          1,
+          "# three",
+          2,
+          1,
+          false,
+          "none",
+          [
+            "#one ",
+            1,
+            "# three",
+            2
+          ]
+        ],
+        true
+      ],
+      "extendNewRange": [
+        false,
+        [
+          "Range",
+          "#one ",
+          1,
+          "#one ",
+          0,
+          1,
+          false,
+          "backward",
+          [
+            "#one ",
+            0,
+            "#one ",
+            1
+          ]
+        ]
+      ],
+      "collapseNewRange": false,
+      "sameCollapseRecaches": false,
+      "oldRangeDetached": [
+        [
+          "Caret",
+          "#one ",
+          1,
+          "#one ",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "#one ",
+            1,
+            "#one ",
+            1
+          ]
+        ],
+        [
+          "#one ",
+          1,
+          "#four",
+          2
+        ]
+      ],
+      "selectNodeSync": [
+        [
+          "Range",
+          "BODY",
+          1,
+          "BODY",
+          2,
+          1,
+          false,
+          "none",
+          [
+            "BODY",
+            1,
+            "BODY",
+            2
+          ]
+        ],
+        true
+      ],
+      "detachedSync": [
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        [
+          "DIV",
+          0,
+          "DIV",
+          0
+        ]
+      ],
+      "insertNodeNoSync": [
+        [
+          "Range",
+          "#four",
+          2,
+          "#o",
+          1,
+          1,
+          false,
+          "backward",
+          [
+            "#o",
+            1,
+            "#four",
+            2
+          ]
+        ],
+        true
+      ],
+      "deleteContentsSync": [
+        [
+          "Range",
+          "BODY",
+          1,
+          "BODY",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "BODY",
+            1,
+            "BODY",
+            1
+          ]
+        ],
+        true,
+        "<p id=\"p\">ab</p><p id=\"q\">jkl</p>"
+      ],
+      "surroundSync": [
+        [
+          "Range",
+          "P#p",
+          1,
+          "P#p",
+          2,
+          1,
+          false,
+          "none",
+          [
+            "P#p",
+            1,
+            "P#p",
+            2
+          ]
+        ],
+        true,
+        "a<b>bcd</b>ef"
+      ],
+      "deleteFromDocument": [
+        [
+          "Range",
+          "BODY",
+          1,
+          "BODY",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "BODY",
+            1,
+            "BODY",
+            1
+          ]
+        ],
+        true,
+        "<p id=\"p\">a</p><p id=\"q\">ijkl</p>"
+      ],
+      "deleteFromDocumentCaret": [
+        [
+          "Caret",
+          "#ijkl",
+          1,
+          "#ijkl",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "#ijkl",
+            1,
+            "#ijkl",
+            1
+          ]
+        ],
+        "<p id=\"p\">a</p><p id=\"q\">ijkl</p>"
+      ],
+      "deleteFromDocumentNone": [
+        "None",
+        null,
+        0,
+        null,
+        0,
+        0,
+        true,
+        "none",
+        null
+      ]
+    },
+    "mutation": {
+      "insertBefore": [
+        "Range",
+        "BODY",
+        3,
+        "BODY",
+        2,
+        1,
+        false,
+        "backward",
+        [
+          "BODY",
+          2,
+          "BODY",
+          3
+        ]
+      ],
+      "removeInserted": [
+        "Range",
+        "BODY",
+        2,
+        "BODY",
+        1,
+        1,
+        false,
+        "backward",
+        [
+          "BODY",
+          1,
+          "BODY",
+          2
+        ]
+      ],
+      "removeFocus": [
+        "Range",
+        "#ghi",
+        2,
+        "BODY",
+        0,
+        1,
+        false,
+        "backward",
+        [
+          "BODY",
+          0,
+          "#ghi",
+          2
+        ]
+      ],
+      "removeAnchor": [
+        "Range",
+        "BODY",
+        1,
+        "BODY",
+        0,
+        1,
+        false,
+        "backward",
+        [
+          "BODY",
+          0,
+          "BODY",
+          1
+        ]
+      ],
+      "removeFocusText": [
+        "Range",
+        "#abc",
+        1,
+        "P#q",
+        0,
+        1,
+        false,
+        "forward",
+        [
+          "#abc",
+          1,
+          "P#q",
+          0
+        ]
+      ],
+      "split": [
+        "Range",
+        "#a",
+        1,
+        "#bc",
+        1,
+        1,
+        false,
+        "forward",
+        [
+          "#a",
+          1,
+          "#bc",
+          1
+        ]
+      ],
+      "normalize": [
+        "Range",
+        "#abc",
+        1,
+        "#abc",
+        2,
+        1,
+        false,
+        "forward",
+        [
+          "#abc",
+          1,
+          "#abc",
+          2
+        ]
+      ],
+      "replaceData": [
+        "Caret",
+        "#xyz",
+        0,
+        "#xyz",
+        0,
+        1,
+        true,
+        "none",
+        [
+          "#xyz",
+          0,
+          "#xyz",
+          0
+        ]
+      ],
+      "textContent": [
+        "Caret",
+        "P#p",
+        0,
+        "P#p",
+        0,
+        1,
+        true,
+        "none",
+        [
+          "P#p",
+          0,
+          "P#p",
+          0
+        ]
+      ],
+      "innerHTML": [
+        "Caret",
+        "BODY",
+        0,
+        "BODY",
+        0,
+        1,
+        true,
+        "none",
+        [
+          "BODY",
+          0,
+          "BODY",
+          0
+        ]
+      ],
+      "deleteAnchorBefore": [
+        "Range",
+        "#f",
+        1,
+        "#abc",
+        2,
+        1,
+        false,
+        "backward",
+        [
+          "#abc",
+          2,
+          "#f",
+          1
+        ]
+      ],
+      "deleteFocusAfter": [
+        "Range",
+        "#def",
+        3,
+        "#ab",
+        2,
+        1,
+        false,
+        "backward",
+        [
+          "#ab",
+          2,
+          "#def",
+          3
+        ]
+      ],
+      "insertAnchor": [
+        "Range",
+        "#Xdef",
+        4,
+        "#abc",
+        2,
+        1,
+        false,
+        "backward",
+        [
+          "#abc",
+          2,
+          "#Xdef",
+          4
+        ]
+      ],
+      "bothDeleted": [
+        "Range",
+        "#",
+        0,
+        "#ab",
+        2,
+        1,
+        false,
+        "backward",
+        [
+          "#ab",
+          2,
+          "#",
+          0
+        ]
+      ],
+      "rangeExtract": [
+        "Range",
+        "BODY",
+        1,
+        "BODY",
+        1,
+        1,
+        true,
+        "none",
+        [
+          "BODY",
+          1,
+          "BODY",
+          1
+        ]
+      ],
+      "rangeClone": [
+        "Range",
+        "#def",
+        3,
+        "#abc",
+        2,
+        1,
+        false,
+        "backward",
+        [
+          "#abc",
+          2,
+          "#def",
+          3
+        ]
+      ],
+      "hiddenBetween": [
+        "Range",
+        "BODY",
+        1,
+        "BODY",
+        0,
+        1,
+        false,
+        "backward",
+        [
+          "BODY",
+          0,
+          "BODY",
+          1
+        ]
+      ]
+    },
+    "events": {
+      "collapse": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "sameCollapse": [
+        0,
+        []
+      ],
+      "coalesced": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "revert": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "removeAll": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "removeAllEmpty": [
+        0,
+        []
+      ],
+      "addRange": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "addRangeIgnored": [
+        0,
+        []
+      ],
+      "rangeEdit": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "directionOnly": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "directionFlag": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "modify": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "modifyNoop": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "modifyFails": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "removeUnrelated": [
+        0,
+        []
+      ],
+      "removeContaining": [
+        0,
+        []
+      ],
+      "insertBefore": [
+        0,
+        []
+      ],
+      "dataInside": [
+        0,
+        []
+      ],
+      "dataBefore": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "dataOutside": [
+        0,
+        []
+      ],
+      "split": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "splitAfter": [
+        0,
+        []
+      ],
+      "normalize": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "attribute": [
+        0,
+        []
+      ],
+      "handler": [
+        0,
+        [
+          [
+            "doc",
+            false,
+            false,
+            false,
+            true,
+            "Event",
+            2
+          ]
+        ]
+      ],
+      "handlerLog": [
+        "selectionchange"
+      ],
+      "shadowTarget": [
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc",
+        "doc"
+      ]
+    },
+    "shadow": {
+      "views": [
+        false,
+        false,
+        true,
+        "[object Selection]",
+        false
+      ],
+      "light": [
+        [
+          "Range",
+          "#light one",
+          1,
+          "#light two",
+          2,
+          1,
+          false,
+          "forward",
+          [
+            "#light one",
+            1,
+            "#light two",
+            2
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        "ight one\n\nli"
+      ],
+      "open": [
+        [
+          "Range",
+          "#open text",
+          1,
+          "#open text",
+          4,
+          1,
+          false,
+          "forward",
+          [
+            "#open text",
+            1,
+            "#open text",
+            4
+          ]
+        ],
+        [
+          "Range",
+          "#open text",
+          1,
+          "#open text",
+          4,
+          1,
+          false,
+          "forward",
+          [
+            "#open text",
+            1,
+            "#open text",
+            4
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        "pen",
+        true,
+        false
+      ],
+      "closed": [
+        [
+          "Range",
+          "#closed text",
+          1,
+          "#closed text",
+          4,
+          1,
+          false,
+          "forward",
+          [
+            "#closed text",
+            1,
+            "#closed text",
+            4
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        [
+          "Range",
+          "#closed text",
+          1,
+          "#closed text",
+          4,
+          1,
+          false,
+          "forward",
+          [
+            "#closed text",
+            1,
+            "#closed text",
+            4
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ]
+      ],
+      "nested": [
+        [
+          "Range",
+          "#nested text",
+          1,
+          "#nested text",
+          4,
+          1,
+          false,
+          "forward",
+          [
+            "#nested text",
+            1,
+            "#nested text",
+            4
+          ]
+        ],
+        [
+          "Range",
+          "#root",
+          1,
+          "#root",
+          1,
+          1,
+          true,
+          "forward",
+          [
+            "#root",
+            1,
+            "#root",
+            1
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        [
+          "Range",
+          "#nested text",
+          1,
+          "#nested text",
+          4,
+          1,
+          false,
+          "forward",
+          [
+            "#nested text",
+            1,
+            "#nested text",
+            4
+          ]
+        ]
+      ],
+      "openToNested": [
+        [
+          "Range",
+          "#nested text",
+          4,
+          "#nested text",
+          4,
+          1,
+          true,
+          "forward",
+          [
+            "#nested text",
+            4,
+            "#nested text",
+            4
+          ]
+        ],
+        [
+          "Range",
+          "#open text",
+          1,
+          "DIV#nh",
+          0,
+          1,
+          false,
+          "forward",
+          [
+            "#open text",
+            1,
+            "DIV#nh",
+            0
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ]
+      ],
+      "lightBackToOpen": [
+        [
+          "Range",
+          "#light two",
+          2,
+          "#light two",
+          2,
+          1,
+          true,
+          "backward",
+          [
+            "#light two",
+            2,
+            "#light two",
+            2
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "backward",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "backward",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "backward",
+          null
+        ]
+      ],
+      "openToLight": [
+        [
+          "Range",
+          "#light two",
+          3,
+          "#light two",
+          3,
+          1,
+          true,
+          "forward",
+          [
+            "#light two",
+            3,
+            "#light two",
+            3
+          ]
+        ],
+        [
+          "Range",
+          "#open text",
+          2,
+          "#root",
+          2,
+          1,
+          false,
+          "forward",
+          [
+            "#open text",
+            2,
+            "#root",
+            2
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        "en text\n"
+      ],
+      "viaRoot": [
+        [
+          "Range",
+          "BODY",
+          1,
+          "BODY",
+          1,
+          1,
+          true,
+          "forward",
+          [
+            "BODY",
+            1,
+            "BODY",
+            1
+          ]
+        ],
+        [
+          "Range",
+          "#open text",
+          2,
+          "#open text",
+          5,
+          1,
+          false,
+          "forward",
+          [
+            "#open text",
+            2,
+            "#open text",
+            5
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "forward",
+          null
+        ]
+      ],
+      "rootCollapseLight": [
+        [
+          "Caret",
+          "#light one",
+          1,
+          "#light one",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "#light one",
+            1,
+            "#light one",
+            1
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ]
+      ],
+      "rootRemove": [
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ]
+      ],
+      "rootExtendLight": [
+        [
+          "Caret",
+          "#light two",
+          2,
+          "#light two",
+          2,
+          1,
+          true,
+          "none",
+          [
+            "#light two",
+            2,
+            "#light two",
+            2
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ]
+      ],
+      "docExtendNested": [
+        [
+          "Caret",
+          "#nested text",
+          3,
+          "#nested text",
+          3,
+          1,
+          true,
+          "none",
+          [
+            "#nested text",
+            3,
+            "#nested text",
+            3
+          ]
+        ],
+        [
+          "Caret",
+          "#root",
+          1,
+          "#root",
+          1,
+          1,
+          true,
+          "none",
+          [
+            "#root",
+            1,
+            "#root",
+            1
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        [
+          "Caret",
+          "#nested text",
+          3,
+          "#nested text",
+          3,
+          1,
+          true,
+          "none",
+          [
+            "#nested text",
+            3,
+            "#nested text",
+            3
+          ]
+        ]
+      ],
+      "addShadowRange": [
+        [
+          "Range",
+          "#open text",
+          0,
+          "#open text",
+          4,
+          1,
+          false,
+          "none",
+          [
+            "#open text",
+            0,
+            "#open text",
+            4
+          ]
+        ],
+        [
+          "Range",
+          "#open text",
+          0,
+          "#open text",
+          4,
+          1,
+          false,
+          "none",
+          [
+            "#open text",
+            0,
+            "#open text",
+            4
+          ]
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          null
+        ],
+        true,
+        false,
+        [
+          "NotFoundError",
+          "Failed to execute 'removeRange' on 'Selection': Range not found."
+        ],
+        [
+          "Range",
+          "#open text",
+          0,
+          "#open text",
+          4,
+          1,
+          false,
+          "none",
+          [
+            "#open text",
+            0,
+            "#open text",
+            4
+          ]
+        ]
+      ],
+      "contains": [
+        true,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false
+      ],
+      "composed": [
+        [
+          [
+            "StaticRange",
+            "BODY",
+            1,
+            "BODY",
+            2
+          ]
+        ],
+        [
+          [
+            "StaticRange",
+            "#open text",
+            0,
+            "#nested text",
+            3
+          ]
+        ],
+        [
+          [
+            "StaticRange",
+            "#open text",
+            0,
+            "#root",
+            2
+          ]
+        ],
+        [
+          [
+            "StaticRange",
+            "#open text",
+            0,
+            "#nested text",
+            3
+          ]
+        ],
+        [
+          [
+            "StaticRange",
+            "BODY",
+            1,
+            "BODY",
+            2
+          ]
+        ],
+        [
+          [
+            "StaticRange",
+            "BODY",
+            1,
+            "BODY",
+            2
+          ]
+        ],
+        [
+          [
+            "StaticRange",
+            "BODY",
+            1,
+            "BODY",
+            2
+          ]
+        ],
+        [
+          [
+            "StaticRange",
+            "BODY",
+            1,
+            "BODY",
+            2
+          ]
+        ],
+        [
+          [
+            "StaticRange",
+            "BODY",
+            1,
+            "BODY",
+            2
+          ]
+        ]
+      ],
+      "composedErrors": [
+        [
+          "TypeError",
+          "Failed to execute 'getComposedRanges' on 'Selection': Failed to read the 'shadowRoots' property from 'GetComposedRangesOptions': The provided value cannot be converted to a sequence."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'getComposedRanges' on 'Selection': Failed to read the 'shadowRoots' property from 'GetComposedRangesOptions': Failed to convert value to 'ShadowRoot'."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'getComposedRanges' on 'Selection': Failed to read the 'shadowRoots' property from 'GetComposedRangesOptions': Failed to convert value to 'ShadowRoot'."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'getComposedRanges' on 'Selection': The provided value is not of type 'GetComposedRangesOptions'."
+        ]
+      ],
+      "composedIdentity": [
+        false,
+        false,
+        true,
+        false
+      ],
+      "composedBackward": [
+        [
+          "StaticRange",
+          "#light one",
+          1,
+          "#light two",
+          2
+        ]
+      ],
+      "composedStatic": [
+        1,
+        2
+      ],
+      "composedEmpty": [],
+      "crossShadow": [
+        [
+          "Range",
+          "# three",
+          3,
+          "# three",
+          3,
+          1,
+          true,
+          "forward",
+          [
+            "# three",
+            3,
+            "# three",
+            3
+          ]
+        ],
+        [
+          "Range",
+          "#shadow text",
+          2,
+          "#shadow text",
+          11,
+          1,
+          false,
+          "forward",
+          [
+            "#shadow text",
+            2,
+            "#shadow text",
+            11
+          ]
+        ],
+        [
+          [
+            "StaticRange",
+            "#shadow text",
+            2,
+            "# three",
+            3
+          ]
+        ],
+        [
+          [
+            "StaticRange",
+            "BODY",
+            0,
+            "# three",
+            3
+          ]
+        ]
+      ],
+      "selectAllSkipsShadow": [
+        [
+          "Range",
+          "BODY",
+          0,
+          "BODY",
+          2,
+          1,
+          false,
+          "forward",
+          [
+            "BODY",
+            0,
+            "BODY",
+            2
+          ]
+        ],
+        "\"one two three\""
+      ]
+    },
+    "text": {
+      "boundaries": [
+        "\"\\nde\"",
+        "\"bc\\n\\n\"",
+        "\"\\n\"",
+        "\"bc\\n\\nde\"",
+        "\"\""
+      ],
+      "children": [
+        "\"abc\\n\\n\"",
+        "\"def\\n\\n\"",
+        "\"x y z\\n\"",
+        "\"a  b\\n c\\n\"",
+        "\"\\nc1\\tc2\\n\"",
+        "\"i1\\ni2\\n\"",
+        "\"br\\nafter\\n\"",
+        "\"\"",
+        "\"\"",
+        "\"\"",
+        "\"\"",
+        "\"\"",
+        "\"\\nhead\\n\"",
+        "\"flat\\n\\n\"",
+        "\"q\""
+      ],
+      "all": "\"abc\\n\\ndef\\n\\nx y z\\na  b\\n c\\nc1\\tc2\\ni1\\ni2\\nbr\\nafter\\n\\nhead\\nflat\\n\\nq\"",
+      "whitespace": [
+        "\" y\"",
+        "\"y \"",
+        "\"x \"",
+        "\"  b\\n \"",
+        "\"\""
+      ],
+      "rangeToString": [
+        "\"abc\\n\\ndef\\n\\nx y z\"",
+        "\"abcdefxhid  y   z\""
+      ],
+      "mixed": "\"one\\ntwo\\n\\nthree\\ntail sp end\\na\\n\\nb\"",
+      "inline": "\"Hello bold it!\\n\\nUP\\n\\n nb sp \""
+    },
+    "modify": {
+      "charForward": [
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          1
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          3
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          4
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          5
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          6
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          7
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          9
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          10
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          11
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          12
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          15
+        ]
+      ],
+      "charBackward": [
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          12
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          11
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          10
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          9
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          7
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          6
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          5
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          4
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          3
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2
+        ]
+      ],
+      "wordForward": [
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          5
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          6
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          11
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          19
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          20
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          25
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          31
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          32
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          35
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          36
+        ]
+      ],
+      "wordBackward": [
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          37
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          35
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          33
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          31
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          26
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          21
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          19
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          12
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          7
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          5
+        ]
+      ],
+      "wordRight": [
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          5
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          6
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          11
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          19
+        ]
+      ],
+      "wordLeft": [
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          7
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          5
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          0
+        ]
+      ],
+      "sentenceForward": [
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          21
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          33
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          37
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          38
+        ],
+        [
+          "#  lead ",
+          2
+        ]
+      ],
+      "sentenceBackward": [
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          37
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          33
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          21
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          0
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          0
+        ]
+      ],
+      "sentenceBoundaryForward": [
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          21
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          33
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          37
+        ]
+      ],
+      "sentenceBoundaryBackward": [
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          21
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          0
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          0
+        ]
+      ],
+      "inlineChars": [
+        [
+          "#  lead ",
+          3
+        ],
+        [
+          "#  lead ",
+          4
+        ],
+        [
+          "#  lead ",
+          5
+        ],
+        [
+          "#  lead ",
+          6
+        ],
+        [
+          "#  lead ",
+          7
+        ],
+        [
+          "#bo",
+          1
+        ],
+        [
+          "#bo",
+          2
+        ],
+        [
+          "#ld  ",
+          1
+        ],
+        [
+          "#ld  ",
+          2
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          0
+        ]
+      ],
+      "inlineCharsBack": [
+        [
+          "#ld  ",
+          1
+        ],
+        [
+          "#bo",
+          2
+        ],
+        [
+          "#bo",
+          1
+        ],
+        [
+          "#  lead ",
+          7
+        ],
+        [
+          "#  lead ",
+          6
+        ],
+        [
+          "#  lead ",
+          5
+        ],
+        [
+          "#  lead ",
+          4
+        ],
+        [
+          "#  lead ",
+          3
+        ],
+        [
+          "#  lead ",
+          2
+        ],
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          38
+        ]
+      ],
+      "inlineWords": [
+        [
+          "#  lead ",
+          6
+        ],
+        [
+          "#ld  ",
+          2
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          0
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          5
+        ]
+      ],
+      "inlineWordsBack": [
+        [
+          "#ld  ",
+          2
+        ],
+        [
+          "#  lead ",
+          7
+        ],
+        [
+          "#  lead ",
+          2
+        ]
+      ],
+      "punctuationWords": [
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          5
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          10
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          11
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          13
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          17
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          22
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          24
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          25
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          26
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          27
+        ]
+      ],
+      "punctuationWordsBack": [
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          28
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          26
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          25
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          24
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          23
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          18
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          14
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          11
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          10
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          6
+        ]
+      ],
+      "graphemes": [
+        [
+          "#áb 👍🏽c",
+          2
+        ],
+        [
+          "#áb 👍🏽c",
+          3
+        ],
+        [
+          "#áb 👍🏽c",
+          4
+        ],
+        [
+          "#áb 👍🏽c",
+          8
+        ],
+        [
+          "#áb 👍🏽c",
+          9
+        ],
+        [
+          "#áb 👍🏽c",
+          9
+        ]
+      ],
+      "graphemesBack": [
+        [
+          "#áb 👍🏽c",
+          8
+        ],
+        [
+          "#áb 👍🏽c",
+          4
+        ],
+        [
+          "#áb 👍🏽c",
+          3
+        ],
+        [
+          "#áb 👍🏽c",
+          2
+        ],
+        [
+          "#áb 👍🏽c",
+          0
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          31
+        ]
+      ],
+      "paragraphBoundary": [
+        [
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            38
+          ],
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            38
+          ]
+        ],
+        [
+          [
+            "#don't stop-me now 3.14 e.g. foo",
+            0
+          ],
+          [
+            "#don't stop-me now 3.14 e.g. foo",
+            0
+          ]
+        ]
+      ],
+      "lineBoundary": [
+        [
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            38
+          ],
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            38
+          ]
+        ],
+        [
+          [
+            "#don't stop-me now 3.14 e.g. foo",
+            0
+          ],
+          [
+            "#don't stop-me now 3.14 e.g. foo",
+            0
+          ]
+        ]
+      ],
+      "documentBoundary": [
+        [
+          [
+            "#áb 👍🏽c",
+            9
+          ],
+          [
+            "#áb 👍🏽c",
+            9
+          ]
+        ],
+        [
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0
+          ],
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0
+          ]
+        ]
+      ],
+      "lineFromStart": [
+        [
+          [
+            "#  lead ",
+            2
+          ],
+          [
+            "#don't stop-me now 3.14 e.g. foo",
+            0
+          ],
+          [
+            "#áb 👍🏽c",
+            0
+          ],
+          [
+            "#áb 👍🏽c",
+            9
+          ]
+        ],
+        [
+          [
+            "#  lead ",
+            2
+          ],
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0
+          ],
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0
+          ]
+        ]
+      ],
+      "paragraphFromStart": [
+        [
+          "#  lead ",
+          2
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          0
+        ],
+        [
+          "#áb 👍🏽c",
+          0
+        ]
+      ],
+      "lineMidline": [
+        [
+          [
+            "#  lead ",
+            6
+          ],
+          [
+            "#don't stop-me now 3.14 e.g. foo",
+            3
+          ],
+          [
+            "#áb 👍🏽c",
+            4
+          ],
+          [
+            "#áb 👍🏽c",
+            9
+          ]
+        ],
+        [
+          [
+            "#  lead ",
+            6
+          ],
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            3
+          ],
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0
+          ],
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0
+          ]
+        ]
+      ],
+      "paragraphMidline": [
+        [
+          "#  lead ",
+          6
+        ],
+        [
+          "#don't stop-me now 3.14 e.g. foo",
+          3
+        ],
+        [
+          "#áb 👍🏽c",
+          4
+        ],
+        [
+          "#áb 👍🏽c",
+          9
+        ]
+      ],
+      "extendWord": [
+        [
+          [
+            "Range",
+            "#Hello,  big   world. It's  fine! Ok? x",
+            9,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            11,
+            1,
+            false,
+            "forward",
+            [
+              "#Hello,  big   world. It's  fine! Ok? x",
+              9,
+              "#Hello,  big   world. It's  fine! Ok? x",
+              11
+            ]
+          ],
+          "\"ig\""
+        ],
+        [
+          [
+            "Range",
+            "#Hello,  big   world. It's  fine! Ok? x",
+            9,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            8,
+            1,
+            false,
+            "backward",
+            [
+              "#Hello,  big   world. It's  fine! Ok? x",
+              8,
+              "#Hello,  big   world. It's  fine! Ok? x",
+              9
+            ]
+          ],
+          "\"b\""
+        ],
+        [
+          [
+            "Range",
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            6,
+            1,
+            false,
+            "forward",
+            [
+              "#Hello,  big   world. It's  fine! Ok? x",
+              0,
+              "#Hello,  big   world. It's  fine! Ok? x",
+              6
+            ]
+          ],
+          "\"Hello,\""
+        ]
+      ],
+      "extendSentence": [
+        [
+          "Range",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          0,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          21,
+          1,
+          false,
+          "forward",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            21
+          ]
+        ],
+        "\"Hello, big world. \""
+      ],
+      "extendCharacters": [
+        [
+          "Range",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          0,
+          1,
+          false,
+          "backward",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2
+          ]
+        ],
+        "\"He\""
+      ],
+      "extendBoundaryGrows": [
+        [
+          [
+            "Range",
+            "#Hello,  big   world. It's  fine! Ok? x",
+            38,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            8,
+            1,
+            false,
+            "backward",
+            [
+              "#Hello,  big   world. It's  fine! Ok? x",
+              8,
+              "#Hello,  big   world. It's  fine! Ok? x",
+              38
+            ]
+          ],
+          "\"big world. It's fine! Ok? x\""
+        ],
+        [
+          [
+            "Range",
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            10,
+            1,
+            false,
+            "forward",
+            [
+              "#Hello,  big   world. It's  fine! Ok? x",
+              0,
+              "#Hello,  big   world. It's  fine! Ok? x",
+              10
+            ]
+          ],
+          "\"Hello, bi\""
+        ],
+        [
+          [
+            "Range",
+            "#Hello,  big   world. It's  fine! Ok? x",
+            0,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            10,
+            1,
+            false,
+            "forward",
+            [
+              "#Hello,  big   world. It's  fine! Ok? x",
+              0,
+              "#Hello,  big   world. It's  fine! Ok? x",
+              10
+            ]
+          ],
+          "\"Hello, bi\""
+        ]
+      ],
+      "extendWordAcrossBase": [
+        [
+          "Range",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          9,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          8,
+          1,
+          false,
+          "backward",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            8,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            9
+          ]
+        ],
+        "\"b\""
+      ],
+      "extendBackwardSelection": [
+        "Range",
+        "#Hello,  big   world. It's  fine! Ok? x",
+        4,
+        "#Hello,  big   world. It's  fine! Ok? x",
+        3,
+        1,
+        false,
+        "backward",
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          3,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          4
+        ]
+      ],
+      "extendNonDirectional": [
+        "Range",
+        "#Hello,  big   world. It's  fine! Ok? x",
+        4,
+        "#Hello,  big   world. It's  fine! Ok? x",
+        1,
+        1,
+        false,
+        "backward",
+        [
+          "#Hello,  big   world. It's  fine! Ok? x",
+          1,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          4
+        ]
+      ],
+      "moveFromRange": [
+        [
+          "Caret",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          4,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          4,
+          1,
+          true,
+          "none",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            4,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            4
+          ]
+        ],
+        [
+          "Caret",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          1,
+          true,
+          "none",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2
+          ]
+        ],
+        [
+          "Caret",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          5,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          5,
+          1,
+          true,
+          "none",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            5,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            5
+          ]
+        ],
+        [
+          "Caret",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          38,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          38,
+          1,
+          true,
+          "none",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            38,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            38
+          ]
+        ]
+      ],
+      "args": [
+        [
+          "Caret",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          1,
+          true,
+          "none",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2
+          ]
+        ],
+        [
+          "Caret",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          1,
+          true,
+          "none",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2
+          ]
+        ],
+        [
+          "Caret",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          1,
+          true,
+          "none",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2
+          ]
+        ],
+        [
+          "Caret",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          1,
+          true,
+          "none",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2
+          ]
+        ],
+        [
+          "Caret",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          1,
+          true,
+          "none",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2
+          ]
+        ],
+        [
+          "Caret",
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          "#Hello,  big   world. It's  fine! Ok? x",
+          2,
+          1,
+          true,
+          "none",
+          [
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2,
+            "#Hello,  big   world. It's  fine! Ok? x",
+            2
+          ]
+        ]
+      ],
+      "elementStarts": [
+        [
+          "Caret",
+          "#  lead ",
+          3,
+          "#  lead ",
+          3,
+          1,
+          true,
+          "none",
+          [
+            "#  lead ",
+            3,
+            "#  lead ",
+            3
+          ]
+        ],
+        [
+          "Caret",
+          "BODY",
+          0,
+          "BODY",
+          0,
+          1,
+          true,
+          "none",
+          [
+            "BODY",
+            0,
+            "BODY",
+            0
+          ]
+        ],
+        [
+          "Caret",
+          "#  lead ",
+          3,
+          "#  lead ",
+          3,
+          1,
+          true,
+          "none",
+          [
+            "#  lead ",
+            3,
+            "#  lead ",
+            3
+          ]
+        ]
+      ],
+      "none": [
+        "None",
+        null,
+        0,
+        null,
+        0,
+        0,
+        true,
+        "none",
+        null
+      ],
+      "tableEdges": [
+        [
+          [
+            "BODY",
+            1
+          ],
+          [
+            "#c1",
+            0
+          ],
+          [
+            "#c1",
+            1
+          ],
+          [
+            "#c1",
+            2
+          ],
+          [
+            "#c2",
+            0
+          ],
+          [
+            "#c2",
+            1
+          ]
+        ],
+        [
+          [
+            "BODY",
+            2
+          ],
+          [
+            "#c2",
+            2
+          ],
+          [
+            "#c2",
+            1
+          ]
+        ]
+      ]
+    },
+    "expand": {
+      "word": [
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          6,
+          "#Hello big world. Second sentence here! Third?",
+          9,
+          "\"big\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          6,
+          "#Hello big world. Second sentence here! Third?",
+          9,
+          "\"big\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          5,
+          "#Hello big world. Second sentence here! Third?",
+          6,
+          "\" \""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          0,
+          "#Hello big world. Second sentence here! Third?",
+          9,
+          "\"Hello big\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Next ",
+          5,
+          "#graph text.",
+          5,
+          "\"paragraph\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#e.g. U.S.A. a.b",
+          1,
+          "#e.g. U.S.A. a.b",
+          2,
+          "\".\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#e.g. U.S.A. a.b",
+          0,
+          "#e.g. U.S.A. a.b",
+          1,
+          "\"e\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          45,
+          "#Hello big world. Second sentence here! Third?",
+          45,
+          "\"\""
+        ]
+      ],
+      "sentence": [
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          17,
+          "#Hello big world. Second sentence here! Third?",
+          39,
+          "\"Second sentence here! \""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          39,
+          "#Hello big world. Second sentence here! Third?",
+          45,
+          "\"Third?\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          0,
+          "#Hello big world. Second sentence here! Third?",
+          39,
+          "\"Hello big world. Second sentence here! \""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          0,
+          "#Hello big world. Second sentence here! Third?",
+          17,
+          "\"Hello big world. \""
+        ]
+      ],
+      "block": [
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          0,
+          "#Hello big world. Second sentence here! Third?",
+          45,
+          "\"Hello big world. Second sentence here! Third?\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          0,
+          "#graph text.",
+          11,
+          "\"Hello big world. Second sentence here! Third?Next paragraph text.\""
+        ]
+      ],
+      "document": [
+        [
+          "ok",
+          null
+        ],
+        "#Hello big world. Second sentence here! Third?",
+        0,
+        "#e.g. U.S.A. a.b",
+        15,
+        "\"Hello big world. Second sentence here! Third?Next paragraph text.Laste.g. U.S.A. a.b\""
+      ],
+      "invalid": [
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          3,
+          "#Hello big world. Second sentence here! Third?",
+          3,
+          "\"\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          3,
+          "#Hello big world. Second sentence here! Third?",
+          3,
+          "\"\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          7,
+          "#Hello big world. Second sentence here! Third?",
+          7,
+          "\"\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          7,
+          "#Hello big world. Second sentence here! Third?",
+          7,
+          "\"\""
+        ],
+        [
+          [
+            "ok",
+            null
+          ],
+          "#Hello big world. Second sentence here! Third?",
+          6,
+          "#Hello big world. Second sentence here! Third?",
+          9,
+          "\"big\""
+        ]
+      ],
+      "detached": [
+        [
+          "ok",
+          null
+        ],
+        "#one two",
+        1,
+        "#one two",
+        1
+      ],
+      "brand": [
+        "TypeError",
+        "Illegal invocation"
+      ],
+      "static": [
+        "TypeError",
+        "Illegal invocation"
+      ]
+    },
+    "controls": {
+      "initial": [
+        [
+          0,
+          0,
+          "none"
+        ],
+        [
+          0,
+          0,
+          "none"
+        ],
+        [
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null
+        ],
+        [
+          0,
+          0,
+          "none"
+        ],
+        [
+          0,
+          0,
+          "none"
+        ]
+      ],
+      "ssrUnfocused": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          [
+            1,
+            4,
+            "none"
+          ],
+          [
+            "Caret",
+            "#abc",
+            1,
+            "#abc",
+            1,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "inputEventShape": [
+        [
+          true,
+          false,
+          false,
+          true,
+          2
+        ],
+        [
+          "doc",
+          3
+        ]
+      ],
+      "ssrSame": [
+        [],
+        null
+      ],
+      "ssrClamp": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          5,
+          11,
+          "backward"
+        ]
+      ],
+      "ssrStartGtEnd": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          3,
+          3,
+          "none"
+        ]
+      ],
+      "directionOnly": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          3,
+          3,
+          "forward"
+        ]
+      ],
+      "directionNull": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          3,
+          3,
+          "none"
+        ]
+      ],
+      "directionBogus": [
+        [],
+        [
+          3,
+          3,
+          "none"
+        ]
+      ],
+      "startNull": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          0,
+          3,
+          "none"
+        ]
+      ],
+      "endBig": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          0,
+          11,
+          "none"
+        ]
+      ],
+      "endNegative": [
+        [],
+        [
+          0,
+          11,
+          "none"
+        ]
+      ],
+      "startPastEnd": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          11,
+          11,
+          "none"
+        ]
+      ],
+      "valueUnfocused": [
+        [
+          "sc:i"
+        ],
+        [
+          9,
+          9,
+          "none"
+        ]
+      ],
+      "valueSame": [
+        [],
+        [
+          9,
+          9,
+          "none"
+        ]
+      ],
+      "selectUnfocused": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          [
+            0,
+            9,
+            "none"
+          ],
+          "i",
+          [
+            "Range",
+            "BODY",
+            1,
+            "BODY",
+            1,
+            1,
+            true,
+            "none",
+            "\"new value\""
+          ]
+        ]
+      ],
+      "selectAgain": [
+        [],
+        [
+          0,
+          9,
+          "none"
+        ]
+      ],
+      "focusSame": [
+        [],
+        [
+          "Range",
+          "BODY",
+          1,
+          "BODY",
+          1,
+          1,
+          true,
+          "none",
+          "\"new value\""
+        ]
+      ],
+      "ssrFocusedCaret": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          [
+            2,
+            2,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            1,
+            "BODY",
+            1,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "ssrFocusedBackward": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          [
+            2,
+            5,
+            "backward"
+          ],
+          [
+            "Range",
+            "BODY",
+            1,
+            "BODY",
+            1,
+            1,
+            true,
+            "backward",
+            "\"w v\""
+          ],
+          true,
+          [
+            "BODY",
+            1,
+            "BODY",
+            1
+          ]
+        ]
+      ],
+      "valueFocused": [
+        [
+          "sc:i"
+        ],
+        [
+          [
+            3,
+            3,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            1,
+            "BODY",
+            1,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "modifyWord": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          [
+            0,
+            3,
+            "forward"
+          ],
+          [
+            "Range",
+            "BODY",
+            1,
+            "BODY",
+            1,
+            1,
+            true,
+            "forward",
+            "\"abc\""
+          ]
+        ]
+      ],
+      "modifyChar": [
+        [
+          "sc:i"
+        ],
+        [
+          [
+            3,
+            3,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            1,
+            "BODY",
+            1,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "focusTextarea": [
+        [
+          "sc:ta"
+        ],
+        [
+          [
+            0,
+            0,
+            "none"
+          ],
+          [
+            3,
+            3,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "taParagraphBoundary": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          [
+            2,
+            8,
+            "forward"
+          ],
+          [
+            "Range",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "forward",
+            "\"ne one\""
+          ]
+        ]
+      ],
+      "taDocumentBoundary": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          [
+            17,
+            17,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "taBackWord": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          [
+            9,
+            9,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "taLineFromStart": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          [
+            9,
+            9,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "taLineMidline": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          [
+            11,
+            11,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "taCollapseToEnd": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          [
+            3,
+            3,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "taCachedCollapse": [
+        [
+          "sc:doc",
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          [
+            0,
+            0,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "taExtend": [
+        [
+          "sc:doc",
+          "sc:ta"
+        ],
+        [
+          [
+            0,
+            0,
+            "forward"
+          ],
+          [
+            "Caret",
+            "#def",
+            1,
+            "#def",
+            1,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "taContains": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          false,
+          false,
+          false
+        ]
+      ],
+      "taDeleteFromDocument": [
+        [],
+        [
+          "line one\nline two",
+          [
+            2,
+            7,
+            "none"
+          ],
+          [
+            "Range",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"ne on\""
+          ]
+        ]
+      ],
+      "taComposed": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          [
+            "BODY",
+            2,
+            "BODY",
+            3
+          ]
+        ]
+      ],
+      "apiWhileFocused": [
+        [
+          "sc:doc"
+        ],
+        [
+          "ta",
+          [
+            0,
+            0,
+            "none"
+          ],
+          [
+            "Caret",
+            "#abc",
+            2,
+            "#abc",
+            2,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "setStartOutside": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          [
+            2,
+            2,
+            "none"
+          ],
+          [
+            "Caret",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "backwardOutside": [
+        [
+          "sc:doc"
+        ],
+        [
+          0,
+          0,
+          "backward"
+        ]
+      ],
+      "blur": [
+        [],
+        [
+          "BODY",
+          [
+            2,
+            2,
+            "none"
+          ],
+          [
+            "Range",
+            "#def",
+            1,
+            "#abc",
+            1,
+            1,
+            false,
+            "backward",
+            "\"bc\\n\\n\\nedit me\\nd\""
+          ]
+        ]
+      ],
+      "ssrAfterBlur": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true",
+          "select:ta:true:false:true"
+        ],
+        [
+          [
+            1,
+            3,
+            "none"
+          ],
+          [
+            "Range",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"line\""
+          ]
+        ]
+      ],
+      "focusRestores": [
+        [
+          "sc:ta"
+        ],
+        [
+          [
+            1,
+            3,
+            "none"
+          ],
+          [
+            "Range",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"in\""
+          ]
+        ]
+      ],
+      "removeAllWhileFocused": [
+        [
+          "sc:doc"
+        ],
+        [
+          "ta",
+          [
+            0,
+            0,
+            "none"
+          ],
+          [
+            "None",
+            null,
+            0,
+            null,
+            0,
+            0,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "refocusNoop": [
+        [],
+        [
+          "None",
+          null,
+          0,
+          null,
+          0,
+          0,
+          true,
+          "none",
+          "\"\""
+        ]
+      ],
+      "rangeEditLeaves": [
+        [
+          "sc:doc",
+          "sc:ta"
+        ],
+        [
+          "ta",
+          [
+            "Range",
+            "#abc",
+            0,
+            "BODY",
+            2,
+            1,
+            false,
+            "none",
+            "\"abc\\n\\n\""
+          ]
+        ]
+      ],
+      "intoEditable": [
+        [
+          "sc:doc"
+        ],
+        [
+          "ce",
+          [
+            "Caret",
+            "#edit me",
+            2,
+            "#edit me",
+            2,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "outOfEditable": [
+        [
+          "sc:doc"
+        ],
+        [
+          "ce",
+          [
+            "Caret",
+            "#abc",
+            1,
+            "#abc",
+            1,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "srtSelect": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          "X one\nline two",
+          [
+            0,
+            1,
+            "none"
+          ],
+          [
+            "Range",
+            "BODY",
+            2,
+            "BODY",
+            2,
+            1,
+            true,
+            "none",
+            "\"X\""
+          ]
+        ]
+      ],
+      "srtEnd": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          "XYY one\nline two",
+          [
+            3,
+            3,
+            "none"
+          ]
+        ]
+      ],
+      "srtStart": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true"
+        ],
+        [
+          "Y one\nline two",
+          [
+            0,
+            0,
+            "none"
+          ]
+        ]
+      ],
+      "srtPreserve": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true",
+          "select:ta:true:false:true"
+        ],
+        [
+          "YZZZe\nline two",
+          [
+            1,
+            6,
+            "none"
+          ]
+        ]
+      ],
+      "srtDefault": [
+        [
+          "sc:ta",
+          "select:ta:true:false:true",
+          "select:ta:true:false:true"
+        ],
+        [
+          "YZQe\nline two",
+          [
+            2,
+            3,
+            "none"
+          ]
+        ]
+      ],
+      "srtBeyond": [
+        [
+          "sc:ta"
+        ],
+        [
+          "YZQe\nline twoQ",
+          [
+            2,
+            3,
+            "none"
+          ]
+        ]
+      ],
+      "srtErrors": [
+        [
+          "TypeError",
+          "Failed to execute 'setRangeText' on 'HTMLTextAreaElement': The provided value 'bogus' is not a valid enum value of type SelectionMode."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'setRangeText' on 'HTMLTextAreaElement': Overload resolution failed."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'setRangeText' on 'HTMLTextAreaElement': 1 argument required, but only 0 present."
+        ],
+        [
+          "IndexSizeError",
+          "Failed to execute 'setRangeText' on 'HTMLTextAreaElement': The provided start value (5) is larger than the provided end value (2)."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'setSelectionRange' on 'HTMLTextAreaElement': 2 arguments required, but only 1 present."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'setRangeText' on 'HTMLInputElement': Cannot convert a Symbol value to a string"
+        ]
+      ],
+      "srtUnfocused": [
+        [
+          "sc:i",
+          "select:i:true:false:true",
+          "select:i:true:false:true"
+        ],
+        [
+          "XYZello",
+          [
+            0,
+            4,
+            "none"
+          ]
+        ]
+      ],
+      "numberSelect": [
+        [
+          "sc:n",
+          "select:n:true:false:true"
+        ],
+        [
+          [
+            null,
+            null,
+            null
+          ],
+          "n",
+          [
+            "Range",
+            "BODY",
+            3,
+            "BODY",
+            3,
+            1,
+            true,
+            "none",
+            "\"42\""
+          ]
+        ]
+      ],
+      "numberErrors": [
+        [
+          "InvalidStateError",
+          "Failed to set the 'selectionStart' property on 'HTMLInputElement': The input element's type ('number') does not support selection."
+        ],
+        [
+          "InvalidStateError",
+          "Failed to set the 'selectionEnd' property on 'HTMLInputElement': The input element's type ('number') does not support selection."
+        ],
+        [
+          "InvalidStateError",
+          "Failed to set the 'selectionDirection' property on 'HTMLInputElement': The input element's type ('number') does not support selection."
+        ],
+        [
+          "InvalidStateError",
+          "Failed to execute 'setSelectionRange' on 'HTMLInputElement': The input element's type ('number') does not support selection."
+        ],
+        [
+          "InvalidStateError",
+          "Failed to execute 'setRangeText' on 'HTMLInputElement': The input element's type ('number') does not support selection."
+        ],
+        [
+          "InvalidStateError",
+          "Failed to execute 'setRangeText' on 'HTMLInputElement': The input element's type ('number') does not support selection."
+        ],
+        [
+          null,
+          null,
+          null
+        ]
+      ],
+      "checkboxSelect": [
+        [],
+        [
+          [
+            null,
+            null,
+            null
+          ],
+          "c",
+          [
+            "Range",
+            "BODY",
+            3,
+            "BODY",
+            3,
+            1,
+            true,
+            "none",
+            "\"42\""
+          ]
+        ]
+      ],
+      "emailSelect": [
+        [
+          "sc:e",
+          "select:e:true:false:true"
+        ],
+        [
+          [
+            null,
+            null,
+            null
+          ],
+          "e",
+          [
+            "Range",
+            "BODY",
+            5,
+            "BODY",
+            5,
+            1,
+            true,
+            "none",
+            "\"a@b.c\""
+          ]
+        ]
+      ],
+      "emailValue": [
+        [
+          "sc:e"
+        ],
+        [
+          "Caret",
+          "BODY",
+          5,
+          "BODY",
+          5,
+          1,
+          true,
+          "none",
+          "\"\""
+        ]
+      ],
+      "typeChange": [
+        [
+          "sc:i",
+          "select:i:true:false:true"
+        ],
+        [
+          [
+            null,
+            null,
+            null
+          ]
+        ]
+      ],
+      "typeBack": [
+        [],
+        [
+          0,
+          0,
+          "none"
+        ]
+      ],
+      "removeFocused": [
+        [],
+        [
+          "BODY",
+          [
+            "Caret",
+            "BODY",
+            1,
+            "BODY",
+            1,
+            1,
+            true,
+            "none",
+            "\"\""
+          ]
+        ]
+      ],
+      "detached": [
+        [],
+        [
+          [
+            3,
+            3,
+            "none"
+          ],
+          [
+            1,
+            2,
+            "backward"
+          ],
+          [
+            0,
+            3,
+            "none"
+          ],
+          false
+        ]
+      ],
+      "textareaDefault": [
+        [],
+        [
+          [
+            0,
+            0,
+            "none"
+          ],
+          [
+            [
+              1,
+              2,
+              "none"
+            ],
+            "xy!"
+          ],
+          [
+            0,
+            0,
+            "none"
+          ],
+          [
+            1,
+            2,
+            "none"
+          ],
+          "dirty"
+        ]
+      ],
+      "inputDefault": [
+        [],
+        [
+          [
+            2,
+            4,
+            "none"
+          ],
+          "xy"
+        ]
+      ],
+      "handlers": [
+        [],
+        [
+          "h:selectionchange",
+          "h:select"
+        ]
+      ]
+    },
+    "opaque": {
+      "basic": [
+        "[object OpaqueRange]",
+        [
+          1,
+          5,
+          false
+        ],
+        false,
+        false,
+        true,
+        [],
+        "{}"
+      ],
+      "srtBefore": [
+        3,
+        8,
+        false
+      ],
+      "srtAfter": [
+        2,
+        7,
+        false
+      ],
+      "srtInside": [
+        2,
+        6,
+        false
+      ],
+      "srtCover": [
+        1,
+        1,
+        true
+      ],
+      "srtAtStart": [
+        2,
+        8,
+        false
+      ],
+      "srtAtEnd": [
+        2,
+        7,
+        false
+      ],
+      "valueSame": [
+        2,
+        7,
+        false
+      ],
+      "valueChange": [
+        0,
+        0,
+        true
+      ],
+      "defaultValueDirty": [
+        [
+          2,
+          7,
+          false
+        ],
+        "hello world"
+      ],
+      "selectionIndependent": [
+        2,
+        7,
+        false
+      ],
+      "textareaDirtyDefault": [
+        [
+          1,
+          5,
+          false
+        ],
+        "abc def ghi"
+      ],
+      "textareaDelete": [
+        0,
+        2,
+        false
+      ],
+      "disconnect": [
+        [
+          0,
+          0,
+          true
+        ],
+        0
+      ],
+      "removed": [
+        0,
+        0,
+        true
+      ],
+      "reinserted": [
+        0,
+        0,
+        true
+      ],
+      "removedUnread": [
+        0,
+        0,
+        true
+      ],
+      "detached": [
+        [
+          1,
+          3,
+          false
+        ],
+        0
+      ],
+      "detachedThenConnected": [
+        2,
+        4,
+        false
+      ],
+      "errors": [
+        [
+          "TypeError",
+          "Failed to execute 'createValueRange' on 'HTMLInputElement': 2 arguments required, but only 0 present."
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'createValueRange' on 'HTMLInputElement': 2 arguments required, but only 1 present."
+        ],
+        [
+          "ok",
+          [
+            5,
+            5,
+            true
+          ]
+        ],
+        [
+          "IndexSizeError",
+          "Failed to execute 'createValueRange' on 'HTMLInputElement': Start or end offset exceeds value length."
+        ],
+        [
+          "IndexSizeError",
+          "Failed to execute 'createValueRange' on 'HTMLInputElement': Start or end offset exceeds value length."
+        ],
+        [
+          "ok",
+          [
+            0,
+            0,
+            true
+          ]
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'createValueRange' on 'HTMLTextAreaElement': 2 arguments required, but only 0 present."
+        ],
+        [
+          "IndexSizeError",
+          "Failed to execute 'createValueRange' on 'HTMLTextAreaElement': Start or end offset exceeds value length."
+        ],
+        [
+          "ok",
+          [
+            3,
+            3,
+            true
+          ]
+        ]
+      ],
+      "types": [
+        [
+          "text",
+          [
+            "ok",
+            [
+              0,
+              0,
+              true
+            ]
+          ]
+        ],
+        [
+          "search",
+          [
+            "ok",
+            [
+              0,
+              0,
+              true
+            ]
+          ]
+        ],
+        [
+          "url",
+          [
+            "ok",
+            [
+              0,
+              0,
+              true
+            ]
+          ]
+        ],
+        [
+          "tel",
+          [
+            "ok",
+            [
+              0,
+              0,
+              true
+            ]
+          ]
+        ],
+        [
+          "password",
+          [
+            "ok",
+            [
+              0,
+              0,
+              true
+            ]
+          ]
+        ],
+        [
+          "email",
+          [
+            "NotSupportedError",
+            "Failed to execute 'createValueRange' on 'HTMLInputElement': <input> element must be of a text field type: text, search, url, tel, or password."
+          ]
+        ],
+        [
+          "number",
+          [
+            "NotSupportedError",
+            "Failed to execute 'createValueRange' on 'HTMLInputElement': <input> element must be of a text field type: text, search, url, tel, or password."
+          ]
+        ],
+        [
+          "hidden",
+          [
+            "NotSupportedError",
+            "Failed to execute 'createValueRange' on 'HTMLInputElement': <input> element must be of a text field type: text, search, url, tel, or password."
+          ]
+        ],
+        [
+          "checkbox",
+          [
+            "NotSupportedError",
+            "Failed to execute 'createValueRange' on 'HTMLInputElement': <input> element must be of a text field type: text, search, url, tel, or password."
+          ]
+        ],
+        [
+          "date",
+          [
+            "NotSupportedError",
+            "Failed to execute 'createValueRange' on 'HTMLInputElement': <input> element must be of a text field type: text, search, url, tel, or password."
+          ]
+        ]
+      ],
+      "brands": [
+        [
+          "TypeError",
+          "Illegal invocation"
+        ],
+        [
+          "TypeError",
+          "Illegal invocation"
+        ],
+        [
+          "TypeError",
+          "Illegal invocation"
+        ],
+        [
+          "ok",
+          0
+        ]
+      ],
+      "argOrder": [
+        "a",
+        "b"
+      ],
+      "typeChange": [
+        0,
+        0,
+        true
+      ]
+    }
+  }
+}

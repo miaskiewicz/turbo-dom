@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#87",
+ "reason": "SVGElement and the new MathMLElement carry style, dataset, nonce, tabIndex, autofocus, focus(), blur() and the on* handlers like Chrome (HTMLOrSVGElement / ElementCSSInlineStyle / GlobalEventHandlers mixins), brand-checked; MathML-namespace elements are MathMLElements (binding and npm runtime). No pinned page contains <svg> or <math> in its document. MEASURED as a proxy: the 117 pinned surf live pages (bin/corpus-surf.mjs inputs) were loaded into turbo-dom-browser-env at ed33331 and at this branch and the live dump's computed PROPS plus every element's style.cssText were read: all 117 identical. The pages' own scripts were not run by the proxy; those that touch style (harness/detection/fixtures/css-security.html: opacity; the React fixtures: display) use longhands whose spelling does not change, so the surf live dump is predicted unchanged (the surf corpus is rebuilt at surf integration). Static screenshots and the html2pdf corpora do not run the binding. P5b-X8.",
+ "control": "crates/turbo-dom-browser-env/src/svg_mathml_element_chrome156.json (scripts/select-element-chrome-control.mjs, Chrome for Testing 156.0.8078.4)",
+ "e2e": "crates/turbo-dom-browser-env/src/svg_mathml_element_tests.rs; test/svg.test.mjs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

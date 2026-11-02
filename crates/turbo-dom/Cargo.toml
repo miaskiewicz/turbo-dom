@@ -1,7 +1,9 @@
 [package]
 name = "turbo-dom"
-version = "0.5.8"
+version = "0.6.0"
 edition = "2021"
+# Consolidation MSRV for turbo-dom, -layout and -raster (smol_str 0.3.6 sets the floor).
+rust-version = "1.89"
 description = "Pure-Rust DOM runtime — lazy copy-on-write tree over an html5ever SoA, native Rust API, zero JS boundary. For in-process Rust consumers (crawlers, extractors, SSR)."
 license = "MIT"
 repository = "https://github.com/miaskiewicz/turbo-dom"
@@ -32,31 +34,18 @@ smol_str = "0.3"
 smallvec = "1"
 # The license-preserved UTF-16 tokenizer adapter uses the upstream diagnostics.
 log = "0.4"
+# CSS Syntax tokenizer for the Chrome-compatible value grammars in rtdom::css_values
+# (`zoom`), shared by turbo-dom-browser-env and native layout consumers.
+cssparser = "0.37"
+# Bidi character classes for `:dir()` auto directionality (the first strong character of
+# an element's text, HTML "auto directionality"). The hardcoded Unicode tables only.
+unicode-bidi = { version = "0.3.18", default-features = false, features = ["hardcoded-data"] }
 
-# Adopt clippy's opt-in `pedantic` group as a warn-level gate (CI's `-D warnings`
-# escalates it to an error). The lints allowed below don't fit a DOM / layout / parse
-# engine — "fixing" them would mangle correct, intentional code, so each is a
-# documented opt-out rather than a silent suppression.
-[lints.clippy]
-pedantic = { level = "warn", priority = -1 }
-# We bridge f64 layout math and integer indices/lengths with bounded, intentional casts.
-cast_possible_truncation = "allow"
-cast_precision_loss = "allow"
-cast_sign_loss = "allow"
-cast_possible_wrap = "allow"
-# Exact float comparisons here test canonical/sentinel values (e.g. `0.0`), not approximations.
-float_cmp = "allow"
-# Single-char names are idiomatic for the tokenizer / loop indices (`i`, `j`, `n`, `c`).
-many_single_char_names = "allow"
-# Test-time DOM oracle: it deliberately doesn't document every panic/error path.
-missing_panics_doc = "allow"
-missing_errors_doc = "allow"
-# A few config-ish structs legitimately carry several independent bool flags.
-struct_excessive_bools = "allow"
-# One large dispatch fn reads better intact than artificially split.
-too_many_lines = "allow"
-# We intentionally pin the concrete FxHashMap hasher rather than generalize over hashers.
-implicit_hasher = "allow"
+# clippy's opt-in `pedantic` group as a warn-level gate (CI's `-D warnings` escalates
+# it to an error), with the documented allow-list in the workspace root's
+# `[workspace.lints.clippy]` — shared with turbo-dom-layout and turbo-dom-raster.
+[lints]
+workspace = true
 
 [dev-dependencies]
 sha2 = "0.10"

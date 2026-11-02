@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#71",
+ "reason": "srcset/sizes reflection and <picture>/srcset source selection, via imageHost.selectSource/naturalSize. currentSrc is the selected URL without host state. Commit d35458a. No pinned surf input uses srcset, sizes, <picture> or <source> (grep of the parity cache). Static screenshots and the html2pdf corpora do not run the binding, and html2pdf manifests are byte-identical. Surf live loads change only once surf's load path calls selectSource (surf integration; prediction: no live dump changes). P5b-X7.",
+ "control": "crates/turbo-dom-browser-env/src/html_image_srcset_chrome156.json (crates/turbo-dom-browser-env/scripts/image-srcset-chrome-control.mjs)",
+ "e2e": "crates/turbo-dom-browser-env/src/html_image_srcset_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

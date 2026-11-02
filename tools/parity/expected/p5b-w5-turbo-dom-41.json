@@ -1,0 +1,47 @@
+{
+ "id": "miaskiewicz/turbo-dom#41",
+ "reason": "A last child's bottom margin is kept inside a parent with a bottom border/padding/definite height/own formatting context (incl. table cells, flex items) and otherwise collapses through, on every layout policy (the generic/PDF one dropped it). Changes the html2pdf template PDFs (their blocks end with margined children); conformance pages and screenshots (HTML-metrics policy) are unchanged. Fresh-target parity builds turbo-dom f55 -> f41 (P5b-W5 steps, html2pdf consol/p5b-w5 950754e): 32 existing outputs change. P5b-W5.",
+ "control": "scripts/html-document-chrome-control.mjs last-margin-* cases; turbo-html2pdf pagination_chrome exact-fill-child-margin",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (last_child_bottom_margins_like_chrome_156); turbo-html2pdf tests/pagination_chrome.rs",
+ "changes": {
+  "html2pdf": [
+   "template-invoice-cmyk.pdf",
+   "template-invoice-pdfa.pdf",
+   "template-invoice-plain.pdf",
+   "template-invoice-ua.pdf",
+   "template-legal-cmyk.pdf",
+   "template-legal-pdfa.pdf",
+   "template-legal-plain.pdf",
+   "template-legal-ua.pdf",
+   "template-mixed-cmyk.pdf",
+   "template-mixed-pdfa.pdf",
+   "template-mixed-plain.pdf",
+   "template-mixed-ua.pdf",
+   "template-report-cmyk.pdf",
+   "template-report-pdfa.pdf",
+   "template-report-plain.pdf",
+   "template-report-ua.pdf"
+  ],
+  "html2pdf-svg": [
+   "template-invoice-cmyk.pdf",
+   "template-invoice-pdfa.pdf",
+   "template-invoice-plain.pdf",
+   "template-invoice-ua.pdf",
+   "template-legal-cmyk.pdf",
+   "template-legal-pdfa.pdf",
+   "template-legal-plain.pdf",
+   "template-legal-ua.pdf",
+   "template-mixed-cmyk.pdf",
+   "template-mixed-pdfa.pdf",
+   "template-mixed-plain.pdf",
+   "template-mixed-ua.pdf",
+   "template-report-cmyk.pdf",
+   "template-report-pdfa.pdf",
+   "template-report-plain.pdf",
+   "template-report-ua.pdf"
+  ],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

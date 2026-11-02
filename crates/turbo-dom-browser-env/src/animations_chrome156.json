@@ -1,0 +1,3662 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "0c72a3018bf8a217453e9a9ba2b00e6f5b2b64709ec97deb6e00ce811583495c",
+  "probeSha256": "fb4c68a5e71016e5d7710f42fc5f672ef38f134de1c580776a2e3a5998379b91",
+  "collectorSha256": "968cefb88486f3b7ed97951afc64d032014654012165feb27452e06b63e9c3ad",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "animations-model",
+      "result": {
+        "brands": {
+          "Animation.cancel": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.commitStyles": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.finish": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get currentTime": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get effect": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get finished": {},
+          "Animation.get id": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get oncancel": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get onfinish": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get onremove": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get overallProgress": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get pending": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get playState": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get playbackRate": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get rangeEnd": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get rangeStart": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get ready": {},
+          "Animation.get replaceState": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get startTime": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.get timeline": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.pause": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.persist": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.play": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.reverse": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set currentTime": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set effect": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set id": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set oncancel": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set onfinish": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set onremove": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set playbackRate": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set rangeEnd": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set rangeStart": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set startTime": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.set timeline": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "Animation.updatePlaybackRate": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "AnimationEffect.getComputedTiming": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "AnimationEffect.getTiming": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "AnimationEffect.updateTiming": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "AnimationPlaybackEvent.get currentTime": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "AnimationPlaybackEvent.get timelineTime": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "AnimationTimeline.get currentTime": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "AnimationTimeline.get duration": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "KeyframeEffect.get composite": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "KeyframeEffect.get pseudoElement": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "KeyframeEffect.get target": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "KeyframeEffect.getKeyframes": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "KeyframeEffect.set composite": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "KeyframeEffect.set pseudoElement": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "KeyframeEffect.set target": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "KeyframeEffect.setKeyframes": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "animate": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "documentGetAnimations": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "elementGetAnimations": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "playbackEventCurrentTime": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "shadowGetAnimations": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ],
+          "timeline": [
+            "TypeError",
+            "Illegal invocation",
+            false
+          ]
+        },
+        "constructors": {
+          "animationCall": [
+            "TypeError",
+            "Failed to construct 'Animation': Please use the 'new' operator, this DOM object constructor cannot be called as a function.",
+            false
+          ],
+          "animationDefaults": [
+            null,
+            true,
+            null,
+            null,
+            1,
+            false,
+            "active",
+            "",
+            null,
+            null,
+            "idle",
+            true
+          ],
+          "badEffect": [
+            "TypeError",
+            "Failed to construct 'Animation': parameter 1 is not of type 'AnimationEffect'.",
+            false
+          ],
+          "badTimeline": [
+            "TypeError",
+            "Failed to construct 'Animation': parameter 2 is not of type 'AnimationTimeline'.",
+            false
+          ],
+          "documentTimeline": [
+            true,
+            true,
+            null,
+            "number"
+          ],
+          "effectBadKeyframes": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': parameter 2 is not of type 'object'.",
+            false
+          ],
+          "effectBadTarget": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': parameter 1 is not of type 'Element'.",
+            false
+          ],
+          "effectCopy": [
+            true,
+            1,
+            100,
+            "ease-in",
+            "add",
+            true
+          ],
+          "effectIllegal": [
+            "TypeError",
+            "Failed to construct 'AnimationEffect': Illegal constructor",
+            false
+          ],
+          "effectNoArgs": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': 1 argument required, but only 0 present.",
+            false
+          ],
+          "effectOneArg": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': parameter 1 is not of type 'KeyframeEffect'.",
+            false
+          ],
+          "effectStringKeyframes": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': parameter 2 is not of type 'object'.",
+            false
+          ],
+          "event": [
+            "finish",
+            5,
+            null,
+            true,
+            false,
+            false,
+            true,
+            "[object AnimationPlaybackEvent]"
+          ],
+          "eventBadInit": [
+            "TypeError",
+            "Failed to construct 'AnimationPlaybackEvent': The provided value is not of type 'AnimationPlaybackEventInit'.",
+            false
+          ],
+          "eventCall": [
+            "TypeError",
+            "Failed to construct 'AnimationPlaybackEvent': Please use the 'new' operator, this DOM object constructor cannot be called as a function.",
+            false
+          ],
+          "eventNoArgs": [
+            "TypeError",
+            "Failed to construct 'AnimationPlaybackEvent': 1 argument required, but only 0 present.",
+            false
+          ],
+          "eventNonFinite": [
+            "TypeError",
+            "Failed to construct 'AnimationPlaybackEvent': Failed to read the 'currentTime' property from 'AnimationPlaybackEventInit': The provided double value is non-finite.",
+            false
+          ],
+          "eventStrings": [
+            7,
+            3,
+            true
+          ],
+          "inactiveTimeline": [
+            false,
+            null,
+            true
+          ],
+          "nullTimeline": null,
+          "subclass": [
+            true,
+            true,
+            "idle",
+            true
+          ],
+          "timelineIllegal": [
+            "TypeError",
+            "Failed to construct 'AnimationTimeline': Illegal constructor",
+            false
+          ],
+          "timelineInfinite": [
+            "TypeError",
+            "Failed to construct 'DocumentTimeline': Failed to read the 'originTime' property from 'DocumentTimelineOptions': The provided double value is non-finite.",
+            false
+          ],
+          "timelineOptions": [
+            "TypeError",
+            "Failed to construct 'DocumentTimeline': The provided value is not of type 'DocumentTimelineOptions'.",
+            false
+          ],
+          "timelineOrigin": [
+            "number",
+            null,
+            true,
+            true
+          ],
+          "timelineOriginString": "number",
+          "undefinedTimeline": true
+        },
+        "control": [
+          [
+            "created",
+            "running",
+            true,
+            null,
+            0,
+            1
+          ],
+          [
+            "ready",
+            "running",
+            false,
+            0,
+            0,
+            1
+          ],
+          [
+            "same-ready",
+            true
+          ],
+          [
+            "pause",
+            "paused",
+            true,
+            0,
+            0,
+            1
+          ],
+          [
+            "pause-new-ready",
+            true
+          ],
+          [
+            "paused",
+            "paused",
+            false,
+            null,
+            0,
+            1
+          ],
+          [
+            "seek",
+            "paused",
+            false,
+            null,
+            40,
+            1
+          ],
+          [
+            "seek-style",
+            "0.4"
+          ],
+          [
+            "play",
+            "running",
+            true,
+            null,
+            40,
+            1
+          ],
+          [
+            "playing",
+            "running",
+            false,
+            -40,
+            40,
+            1
+          ],
+          [
+            "rate",
+            "running",
+            false,
+            -20,
+            40,
+            2
+          ],
+          [
+            "update-rate",
+            "running",
+            true,
+            -20,
+            40,
+            2
+          ],
+          [
+            "updated",
+            "running",
+            false,
+            -80,
+            40,
+            0.5
+          ],
+          [
+            "reverse",
+            "running",
+            true,
+            -80,
+            40,
+            0.5
+          ],
+          [
+            "reversed",
+            "running",
+            false,
+            80,
+            40,
+            -0.5
+          ],
+          [
+            "finish",
+            "finished",
+            false,
+            0,
+            0,
+            -0.5
+          ],
+          [
+            "finish-style",
+            "0"
+          ],
+          [
+            "a:finished",
+            "finished"
+          ],
+          [
+            "a:finish",
+            "finish",
+            0,
+            0,
+            true,
+            true,
+            false,
+            false,
+            true,
+            "finished"
+          ],
+          [
+            "raf-1"
+          ],
+          [
+            "raf-2"
+          ],
+          [
+            "replay",
+            "running",
+            true,
+            null,
+            100,
+            -0.5
+          ],
+          [
+            "cancel",
+            "idle",
+            false,
+            null,
+            null,
+            -0.5
+          ],
+          [
+            "cancel-style",
+            "1"
+          ],
+          [
+            "a:cancel",
+            "cancel",
+            null,
+            0,
+            true,
+            true,
+            false,
+            false,
+            true,
+            "idle"
+          ],
+          [
+            "start-time",
+            "running",
+            false,
+            -30,
+            30,
+            1
+          ],
+          [
+            "start-time-ready",
+            true
+          ],
+          [
+            "start-time-resolved"
+          ],
+          [
+            "past-end",
+            "finished",
+            false,
+            -150,
+            150,
+            1
+          ],
+          [
+            "b:finished",
+            "finished"
+          ],
+          [
+            "b:finish",
+            "finish",
+            150,
+            0,
+            true,
+            true,
+            false,
+            false,
+            true,
+            "finished"
+          ],
+          [
+            "rewound",
+            "running",
+            false,
+            -50,
+            50,
+            1
+          ],
+          [
+            "rewound-new-finished",
+            true
+          ],
+          [
+            "b:cancel",
+            "cancel",
+            null,
+            0,
+            true,
+            true,
+            false,
+            false,
+            true,
+            "idle"
+          ],
+          [
+            "null-play",
+            "running",
+            true,
+            null,
+            0,
+            1
+          ],
+          [
+            "null-finish",
+            "finished",
+            true,
+            null,
+            100,
+            1
+          ],
+          [
+            "n:finished",
+            "finished"
+          ],
+          [
+            "n:finish",
+            "finish",
+            100,
+            null,
+            true,
+            true,
+            false,
+            false,
+            true,
+            "finished"
+          ],
+          [
+            "n:cancel",
+            "cancel",
+            null,
+            null,
+            true,
+            true,
+            false,
+            false,
+            true,
+            "idle"
+          ]
+        ],
+        "easings": [
+          [
+            "ease",
+            "ease"
+          ],
+          [
+            "linear",
+            "linear"
+          ],
+          [
+            "ease-in",
+            "ease-in"
+          ],
+          [
+            "ease-out",
+            "ease-out"
+          ],
+          [
+            "ease-in-out",
+            "ease-in-out"
+          ],
+          [
+            "step-start",
+            "steps(1, start)"
+          ],
+          [
+            "step-end",
+            "steps(1)"
+          ],
+          [
+            "steps(3)",
+            "steps(3)"
+          ],
+          [
+            "steps(3, end)",
+            "steps(3)"
+          ],
+          [
+            "steps(3, jump-end)",
+            "steps(3)"
+          ],
+          [
+            "steps(3, jump-start)",
+            "steps(3, jump-start)"
+          ],
+          [
+            "steps(3,start)",
+            "steps(3, start)"
+          ],
+          [
+            "steps(3, jump-both)",
+            "steps(3, jump-both)"
+          ],
+          [
+            "steps(1, jump-none)",
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': 'steps(1, jump-none)' is not a valid value for easing",
+              false
+            ]
+          ],
+          [
+            "steps(2, jump-none)",
+            "steps(2, jump-none)"
+          ],
+          [
+            "cubic-bezier(0.25, 0.1, 0.25, 1)",
+            "cubic-bezier(0.25, 0.1, 0.25, 1)"
+          ],
+          [
+            "cubic-bezier(0,0,1,1)",
+            "cubic-bezier(0, 0, 1, 1)"
+          ],
+          [
+            "cubic-bezier( .5 , -2 , .5 , 3 )",
+            "cubic-bezier(0.5, -2, 0.5, 3)"
+          ],
+          [
+            "linear(0, 1)",
+            "linear(0 0%, 1 100%)"
+          ],
+          [
+            "linear(0 0% 50%, 1)",
+            "linear(0 0%, 0 50%, 1 100%)"
+          ],
+          [
+            "linear(0, 0.25, 1)",
+            "linear(0 0%, 0.25 50%, 1 100%)"
+          ],
+          [
+            "linear(1)",
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': 'linear(1)' is not a valid value for easing",
+              false
+            ]
+          ],
+          [
+            "linear()",
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': 'linear()' is not a valid value for easing",
+              false
+            ]
+          ],
+          [
+            "EASE",
+            "ease"
+          ],
+          [
+            " ease ",
+            "ease"
+          ],
+          [
+            "ease ease",
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': 'ease ease' is not a valid value for easing",
+              false
+            ]
+          ],
+          [
+            "initial",
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': 'initial' is not a valid value for easing",
+              false
+            ]
+          ],
+          [
+            "var(--x)",
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': 'var(--x)' is not a valid value for easing",
+              false
+            ]
+          ],
+          [
+            "steps(0)",
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': 'steps(0)' is not a valid value for easing",
+              false
+            ]
+          ],
+          [
+            "steps(1.5)",
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': 'steps(1.5)' is not a valid value for easing",
+              false
+            ]
+          ],
+          [
+            "linear(0, 1 120%)",
+            "linear(0 0%, 1 120%)"
+          ],
+          [
+            "linear(0 -10%, 1)",
+            "linear(0 -10%, 1 100%)"
+          ],
+          [
+            "cubic-bezier(0, 0, 1)",
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': 'cubic-bezier(0, 0, 1)' is not a valid value for easing",
+              false
+            ]
+          ]
+        ],
+        "getAnimations": {
+          "array": true,
+          "before": [
+            2,
+            0
+          ],
+          "cancelled": 2,
+          "child": [
+            "a1"
+          ],
+          "detached": [],
+          "document": [
+            "",
+            "",
+            "a1",
+            "a2",
+            "a4",
+            "a6",
+            "a11",
+            "a12"
+          ],
+          "fresh": true,
+          "host": [],
+          "p": [
+            "a2",
+            "a4",
+            "a6",
+            "a12"
+          ],
+          "retargeted": {
+            "child": [
+              "a1",
+              "a2"
+            ],
+            "p": [
+              "a4",
+              "a6",
+              "a12"
+            ]
+          },
+          "shadow": [
+            "a3"
+          ],
+          "subtree": [
+            "a1",
+            "a2",
+            "a4",
+            "a6",
+            "a12"
+          ]
+        },
+        "keyframeOrder": [
+          "offset",
+          "easing",
+          "composite",
+          "marginLeft",
+          "color",
+          "margin",
+          "opacity",
+          "computedOffset"
+        ],
+        "keyframes": {
+          "admission": {
+            "--": "-",
+            "---x": "---x",
+            "--Foo-Bar": "--Foo-Bar",
+            "--foo": "--foo",
+            "all": "-",
+            "animationName": "-",
+            "appearance": "appearance",
+            "background": "background",
+            "border": "border",
+            "contain": "-",
+            "containerType": "-",
+            "cssFloat": "cssFloat",
+            "cssOffset": "cssOffset",
+            "cursor": "cursor",
+            "direction": "-",
+            "display": "display",
+            "filter": "filter",
+            "float": "-",
+            "font": "font",
+            "inset": "inset",
+            "transition": "-",
+            "transitionProperty": "-",
+            "translate": "translate",
+            "unicodeBidi": "-",
+            "webkitTransform": "-",
+            "webkitUserSelect": "-",
+            "willChange": "-",
+            "writingMode": "-",
+            "zIndex": "zIndex"
+          },
+          "autoComposite": [
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0"
+            }
+          ],
+          "badBezier": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': 'cubic-bezier(1.1, 0, 0, 1)' is not a valid value for easing",
+            false
+          ],
+          "badComposite": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': Failed to read the 'composite' property from 'BaseKeyframe': The provided value 'bogus' is not a valid enum value of type CompositeOperationOrAuto.",
+            false
+          ],
+          "badEasing": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': 'bogus' is not a valid value for easing",
+            false
+          ],
+          "colors": [
+            {
+              "backgroundColor": "rgba(0, 0, 255, 0.5)",
+              "color": "rgb(255, 0, 0)",
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "transform": "rotate(45deg) scale(2)"
+            }
+          ],
+          "cyclicEasing": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "ease-in",
+              "offset": null,
+              "opacity": "0"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 0.5,
+              "easing": "ease-out",
+              "offset": null,
+              "opacity": "1"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "ease-in",
+              "offset": null,
+              "opacity": "0.5"
+            }
+          ],
+          "descending": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': Offsets must be monotonically non-decreasing.",
+            false
+          ],
+          "discrete": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "display": "none",
+              "easing": "linear",
+              "offset": null
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "visibility": "hidden"
+            }
+          ],
+          "dropped": [
+            {
+              "--x": "y",
+              "composite": "auto",
+              "computedOffset": 1,
+              "cssFloat": "left",
+              "easing": "linear",
+              "offset": null,
+              "transform": "translateX(10px)"
+            }
+          ],
+          "easings": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "cubic-bezier(0.1, 0.2, 0.3, 0.4)",
+              "offset": null,
+              "opacity": "1"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 0.5,
+              "easing": "steps(2, start)",
+              "offset": null,
+              "opacity": "0"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear(0 0%, 0.5 25%, 1 100%)",
+              "offset": null,
+              "opacity": "1"
+            }
+          ],
+          "emptyList": [
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "width": "5px"
+            }
+          ],
+          "excessComposite": [
+            {
+              "composite": "add",
+              "computedOffset": 0,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0"
+            },
+            {
+              "composite": "accumulate",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "1"
+            }
+          ],
+          "excessEasing": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': 'x' is not a valid value for easing",
+            false
+          ],
+          "excessOffsets": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "linear",
+              "offset": 0,
+              "opacity": "0"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 0.5,
+              "easing": "linear",
+              "offset": 0.5,
+              "opacity": "1"
+            }
+          ],
+          "indexed": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0",
+              "width": "0px"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 0.5,
+              "easing": "linear",
+              "offset": null,
+              "width": "10px"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "1",
+              "width": "20px"
+            }
+          ],
+          "indexedBadComposite": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': Failed to read the 'composite' property from 'BasePropertyIndexedKeyframe': The provided value 'bogus' is not a valid enum value of type CompositeOperationOrAuto.",
+            false
+          ],
+          "indexedBadEasing": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': 'bogus' is not a valid value for easing",
+            false
+          ],
+          "indexedDescending": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': Offsets must be monotonically non-decreasing.",
+            false
+          ],
+          "indexedLists": [
+            {
+              "composite": "add",
+              "computedOffset": 0,
+              "easing": "ease",
+              "offset": 0,
+              "opacity": "0"
+            },
+            {
+              "composite": "add",
+              "computedOffset": 0.5,
+              "easing": "linear",
+              "offset": 0.5,
+              "opacity": "1"
+            }
+          ],
+          "indexedRange": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': Offsets must be null or in the range [0,1].",
+            false
+          ],
+          "iterable": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0.25"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0.75"
+            }
+          ],
+          "kebab": [
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null
+            }
+          ],
+          "listInArray": [
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null
+            }
+          ],
+          "members": [
+            {
+              "composite": "add",
+              "computedOffset": 0.2,
+              "easing": "ease-in",
+              "offset": 0.2,
+              "opacity": "0"
+            },
+            {
+              "color": "red",
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "margin": "1px 2px",
+              "marginLeft": "10px",
+              "offset": null,
+              "opacity": "1"
+            }
+          ],
+          "monotonicBeforeEasing": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': Offsets must be monotonically non-decreasing.",
+            false
+          ],
+          "negativeZero": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "linear",
+              "offset": 0,
+              "opacity": "0"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "1"
+            }
+          ],
+          "nonObjectItem": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': Keyframes must be objects, or null or undefined",
+            false
+          ],
+          "nullItem": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null
+            }
+          ],
+          "nullOffsets": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "1"
+            }
+          ],
+          "nullish": [
+            [],
+            []
+          ],
+          "objectsBeforeEasing": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': Keyframes must be objects, or null or undefined",
+            false
+          ],
+          "offsetOnly": [
+            {
+              "composite": "auto",
+              "computedOffset": 0.5,
+              "easing": "linear",
+              "offset": 0.5
+            }
+          ],
+          "optionComposite": [
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0"
+            }
+          ],
+          "pair": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "1"
+            }
+          ],
+          "range": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': Offsets must be null or in the range [0,1].",
+            false
+          ],
+          "single": [
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0.5"
+            }
+          ],
+          "singleOffset": [
+            {
+              "composite": "auto",
+              "computedOffset": 0.5,
+              "easing": "linear",
+              "offset": 0.5,
+              "opacity": "0"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "1"
+            }
+          ],
+          "stringOffsets": [
+            [
+              {
+                "composite": "auto",
+                "computedOffset": 0.5,
+                "easing": "linear",
+                "offset": 0.5,
+                "opacity": "0"
+              }
+            ],
+            [
+              {
+                "composite": "auto",
+                "computedOffset": 0.5,
+                "easing": "linear",
+                "offset": 0.5,
+                "opacity": "0"
+              }
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': timeline offset must be of the form [timeline-range-name] <percentage>",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': timeline offset must be of the form [timeline-range-name] <percentage>",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': Failed to read the 'offset' property from 'BaseKeyframe': The provided double value is non-finite.",
+              false
+            ]
+          ],
+          "values": [
+            [
+              "opacity",
+              "0.50",
+              "0.5"
+            ],
+            [
+              "opacity",
+              ".5",
+              "0.5"
+            ],
+            [
+              "opacity",
+              "1e-1",
+              "0.1"
+            ],
+            [
+              "opacity",
+              "50%",
+              "0.5"
+            ],
+            [
+              "opacity",
+              " 1 ",
+              "1"
+            ],
+            [
+              "width",
+              "10.0px",
+              "10px"
+            ],
+            [
+              "width",
+              "0",
+              "0px"
+            ],
+            [
+              "width",
+              "10PX",
+              "10px"
+            ],
+            [
+              "width",
+              "auto",
+              "auto"
+            ],
+            [
+              "width",
+              "inherit",
+              "inherit"
+            ],
+            [
+              "width",
+              "var(--x)",
+              "var(--x)"
+            ],
+            [
+              "marginLeft",
+              "-0px",
+              "0px"
+            ],
+            [
+              "transform",
+              "translate(10px,20px)",
+              "translate(10px, 20px)"
+            ],
+            [
+              "transform",
+              "ROTATE(1turn)",
+              "rotate(1turn)"
+            ],
+            [
+              "transform",
+              "none",
+              "none"
+            ],
+            [
+              "transform",
+              "matrix(1,0,0,1,0,0)",
+              "matrix(1, 0, 0, 1, 0, 0)"
+            ],
+            [
+              "transform",
+              "translateX( 10px )",
+              "translateX(10px)"
+            ],
+            [
+              "color",
+              "RED",
+              "red"
+            ],
+            [
+              "color",
+              "transparent",
+              "transparent"
+            ],
+            [
+              "color",
+              "currentColor",
+              "currentcolor"
+            ],
+            [
+              "color",
+              "#ff000080",
+              "rgba(255, 0, 0, 0.5)"
+            ],
+            [
+              "color",
+              "hsl(120deg 100% 50%)",
+              "rgb(0, 255, 0)"
+            ],
+            [
+              "color",
+              "rgb(1.5, 2, 3)",
+              "rgb(2, 2, 3)"
+            ],
+            [
+              "backgroundColor",
+              "rgba(0,0,0,0.333333)",
+              "rgba(0, 0, 0, 0.333)"
+            ],
+            [
+              "cssFloat",
+              "LEFT",
+              "left"
+            ],
+            [
+              "display",
+              "Block",
+              "block"
+            ],
+            [
+              "fontWeight",
+              "bold",
+              "bold"
+            ],
+            [
+              "lineHeight",
+              "1.50",
+              "1.5"
+            ],
+            [
+              "margin",
+              "1px  2px",
+              "1px 2px"
+            ],
+            [
+              "width",
+              "1e1px",
+              "10px"
+            ],
+            [
+              "width",
+              "12.3456789px",
+              "12.3457px"
+            ],
+            [
+              "filter",
+              "blur(2px)",
+              "blur(2px)"
+            ]
+          ],
+          "zIndex": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "linear",
+              "offset": null
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "zIndex": "3"
+            }
+          ]
+        },
+        "members": {
+          "animateBadDuration": [
+            "TypeError",
+            "Failed to execute 'animate' on 'Element': duration must be non-negative or auto",
+            false
+          ],
+          "animateBadTimeline": [
+            "TypeError",
+            "Failed to execute 'animate' on 'Element': Failed to read the 'timeline' property from 'KeyframeAnimationOptions': Failed to convert value to 'AnimationTimeline'.",
+            false
+          ],
+          "animateNoArgs": [
+            "TypeError",
+            "Failed to execute 'animate' on 'Element': 1 argument required, but only 0 present.",
+            false
+          ],
+          "animateNullTimeline": [
+            null,
+            "idle",
+            false
+          ],
+          "animateNumber": [
+            "TypeError",
+            "Failed to execute 'animate' on 'Element': parameter 1 is not of type 'object'.",
+            false
+          ],
+          "animateOptions": [
+            "foo",
+            "running",
+            true,
+            50,
+            true,
+            true,
+            true
+          ],
+          "animateRange": [
+            "TypeError",
+            "Failed to execute 'animate' on 'Element': Animation range must be a name <length-percent> pair",
+            false
+          ],
+          "animateStringOptions": [
+            "TypeError",
+            "Failed to execute 'animate' on 'Element': duration must be non-negative or auto",
+            false
+          ],
+          "commitDetached": [
+            "InvalidStateError",
+            "Failed to execute 'commitStyles' on 'Animation': Target element is not rendered.",
+            true
+          ],
+          "commitNoTarget": [
+            "NoModificationAllowedError",
+            "Failed to execute 'commitStyles' on 'Animation': Animation not associated with a styled element",
+            true
+          ],
+          "commitPseudo": [
+            "NoModificationAllowedError",
+            "Failed to execute 'commitStyles' on 'Animation': Animation not associated with a styled element",
+            true
+          ],
+          "compositeSetter": [
+            "replace",
+            "accumulate"
+          ],
+          "currentTimeConversions": [
+            "Failed to set the 'currentTime' property on 'Animation': The provided double value is non-finite.",
+            5,
+            1,
+            0,
+            7,
+            9
+          ],
+          "currentTimeNull": null,
+          "currentTimeUnresolve": [
+            "TypeError",
+            "Failed to set the 'currentTime' property on 'Animation': currentTime may not be changed from resolved to unresolved",
+            false
+          ],
+          "effectBad": [
+            "TypeError",
+            "Failed to set the 'effect' property on 'Animation': Failed to convert value to 'AnimationEffect'.",
+            false
+          ],
+          "effectSwap": [
+            null,
+            true,
+            true
+          ],
+          "finishInfinite": [
+            "InvalidStateError",
+            "Failed to execute 'finish' on 'Animation': Cannot finish Animation with an infinite target effect end.",
+            true
+          ],
+          "finishZeroRate": [
+            "InvalidStateError",
+            "Failed to execute 'finish' on 'Animation': Cannot finish Animation with a playbackRate of 0.",
+            true
+          ],
+          "getAnimationsBadOptions": [
+            "TypeError",
+            "Failed to execute 'getAnimations' on 'Element': The provided value is not of type 'GetAnimationsOptions'.",
+            false
+          ],
+          "handlers": [
+            null,
+            true,
+            true
+          ],
+          "id": "5",
+          "nullTimelineFinish": [
+            "paused",
+            100
+          ],
+          "nullTimelinePause": [
+            "paused",
+            0,
+            true
+          ],
+          "nullTimelinePlay": [
+            "running",
+            true,
+            0,
+            null
+          ],
+          "overallProgress": [
+            0,
+            0,
+            0.5,
+            1,
+            1,
+            null
+          ],
+          "overallZero": [
+            0,
+            1
+          ],
+          "pauseReversedInfinite": [
+            "InvalidStateError",
+            "Failed to execute 'pause' on 'Animation': Cannot play reversed Animation with infinite target effect end.",
+            true
+          ],
+          "play": [
+            "finished",
+            true,
+            0
+          ],
+          "playReversedInfinite": [
+            "InvalidStateError",
+            "Failed to execute 'play' on 'Animation': Cannot play reversed Animation with infinite target effect end.",
+            true
+          ],
+          "pseudoLegacy": [
+            "::after",
+            null
+          ],
+          "pseudoSetter": [
+            "SyntaxError",
+            "Failed to set the 'pseudoElement' property on 'KeyframeEffect': bogus is a syntactically invalid pseudo-element",
+            true
+          ],
+          "rates": [
+            "TypeError",
+            "Failed to set the 'playbackRate' property on 'Animation': The provided double value is non-finite.",
+            false
+          ],
+          "reverseInfinite": [
+            "InvalidStateError",
+            "Failed to execute 'reverse' on 'Animation': Cannot play reversed Animation with infinite target effect end.",
+            true
+          ],
+          "reverseNoTimeline": [
+            "InvalidStateError",
+            "Failed to execute 'reverse' on 'Animation': Cannot reverse an animation with no active timeline",
+            true
+          ],
+          "setKeyframes": [
+            {
+              "composite": "auto",
+              "computedOffset": 0,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "0.5"
+            },
+            {
+              "composite": "auto",
+              "computedOffset": 1,
+              "easing": "linear",
+              "offset": null,
+              "opacity": "1"
+            }
+          ],
+          "setKeyframesError": [
+            "TypeError",
+            "Failed to execute 'setKeyframes' on 'KeyframeEffect': Offsets must be null or in the range [0,1].",
+            false
+          ],
+          "setKeyframesNoArgs": [
+            "TypeError",
+            "Failed to execute 'setKeyframes' on 'KeyframeEffect': 1 argument required, but only 0 present.",
+            false
+          ],
+          "setKeyframesNumber": [
+            "TypeError",
+            "Failed to execute 'setKeyframes' on 'KeyframeEffect': parameter 1 is not of type 'object'.",
+            false
+          ],
+          "startTimeBad": [
+            "TypeError",
+            "Failed to set the 'startTime' property on 'Animation': The provided double value is non-finite.",
+            false
+          ],
+          "targetNull": null,
+          "targetSetter": [
+            "TypeError",
+            "Failed to set the 'target' property on 'KeyframeEffect': Failed to convert value to 'Element'.",
+            false
+          ],
+          "timelineBad": [
+            "TypeError",
+            "Failed to set the 'timeline' property on 'Animation': Failed to convert value to 'AnimationTimeline'.",
+            false
+          ],
+          "timelineSetter": [
+            null,
+            true
+          ],
+          "updateRateNaN": [
+            "TypeError",
+            "Failed to execute 'updatePlaybackRate' on 'Animation': The provided double value is non-finite.",
+            false
+          ],
+          "updateRateNoArgs": [
+            "TypeError",
+            "Failed to execute 'updatePlaybackRate' on 'Animation': 1 argument required, but only 0 present.",
+            false
+          ]
+        },
+        "pseudo": [
+          [
+            "::before",
+            "::before"
+          ],
+          [
+            ":before",
+            "::before"
+          ],
+          [
+            "::after",
+            "::after"
+          ],
+          [
+            ":after",
+            "::after"
+          ],
+          [
+            "::marker",
+            "::marker"
+          ],
+          [
+            ":marker",
+            [
+              "SyntaxError",
+              "Failed to construct 'KeyframeEffect': :marker is a syntactically invalid pseudo-element",
+              true
+            ]
+          ],
+          [
+            "::first-line",
+            "::first-line"
+          ],
+          [
+            "::selection",
+            "::selection"
+          ],
+          [
+            "::placeholder",
+            "::placeholder"
+          ],
+          [
+            "::backdrop",
+            "::backdrop"
+          ],
+          [
+            "::part(x)",
+            [
+              "SyntaxError",
+              "Failed to construct 'KeyframeEffect': ::part(x) is a syntactically invalid pseudo-element",
+              true
+            ]
+          ],
+          [
+            "::BEFORE",
+            "::before"
+          ],
+          [
+            "",
+            [
+              "SyntaxError",
+              "Failed to construct 'KeyframeEffect':  is a syntactically invalid pseudo-element",
+              true
+            ]
+          ],
+          [
+            "before",
+            [
+              "SyntaxError",
+              "Failed to construct 'KeyframeEffect': before is a syntactically invalid pseudo-element",
+              true
+            ]
+          ],
+          [
+            "::foo",
+            [
+              "SyntaxError",
+              "Failed to construct 'KeyframeEffect': ::foo is a syntactically invalid pseudo-element",
+              true
+            ]
+          ],
+          [
+            "::slotted(div)",
+            [
+              "SyntaxError",
+              "Failed to construct 'KeyframeEffect': ::slotted(div) is a syntactically invalid pseudo-element",
+              true
+            ]
+          ],
+          [
+            "::first-letter",
+            "::first-letter"
+          ]
+        ],
+        "pseudoNull": null,
+        "readOrder": [
+          "option:delay",
+          "option:direction",
+          "option:duration",
+          "option:easing",
+          "option:endDelay",
+          "option:fill",
+          "option:iterationStart",
+          "option:iterations",
+          "option:composite",
+          "option:pseudoElement",
+          "option:id",
+          "option:rangeEnd",
+          "option:rangeStart",
+          "option:timeline",
+          "keyframe:composite",
+          "keyframe:easing",
+          "keyframe:offset",
+          "keyframe:color",
+          "keyframe:opacity",
+          "keyframe:width"
+        ],
+        "replacement": [
+          [
+            "before",
+            "active",
+            "active",
+            "persisted",
+            "active",
+            "0px"
+          ],
+          [
+            "r1",
+            "remove",
+            10,
+            0,
+            "removed"
+          ],
+          [
+            "after",
+            "removed",
+            "active",
+            "persisted",
+            "active",
+            "20px",
+            "6px",
+            5
+          ],
+          [
+            "commit-removed",
+            "10px"
+          ],
+          [
+            "commit",
+            "0.5",
+            "rgb(50, 100, 25)",
+            "10px"
+          ]
+        ],
+        "shape": {
+          "Animation": {
+            "constructor": [
+              [
+                "length",
+                false,
+                true,
+                false,
+                "value",
+                0
+              ],
+              [
+                "name",
+                false,
+                true,
+                false,
+                "value",
+                "Animation"
+              ],
+              [
+                "prototype",
+                false,
+                false,
+                false,
+                "value",
+                "object"
+              ]
+            ],
+            "global": [
+              false,
+              true,
+              true
+            ],
+            "parent": "EventTarget",
+            "prototype": [
+              [
+                "effect",
+                true,
+                true,
+                "get",
+                "get effect",
+                0,
+                false,
+                "set",
+                "set effect",
+                1,
+                false
+              ],
+              [
+                "timeline",
+                true,
+                true,
+                "get",
+                "get timeline",
+                0,
+                false,
+                "set",
+                "set timeline",
+                1,
+                false
+              ],
+              [
+                "startTime",
+                true,
+                true,
+                "get",
+                "get startTime",
+                0,
+                false,
+                "set",
+                "set startTime",
+                1,
+                false
+              ],
+              [
+                "currentTime",
+                true,
+                true,
+                "get",
+                "get currentTime",
+                0,
+                false,
+                "set",
+                "set currentTime",
+                1,
+                false
+              ],
+              [
+                "playbackRate",
+                true,
+                true,
+                "get",
+                "get playbackRate",
+                0,
+                false,
+                "set",
+                "set playbackRate",
+                1,
+                false
+              ],
+              [
+                "rangeStart",
+                true,
+                true,
+                "get",
+                "get rangeStart",
+                0,
+                false,
+                "set",
+                "set rangeStart",
+                1,
+                false
+              ],
+              [
+                "rangeEnd",
+                true,
+                true,
+                "get",
+                "get rangeEnd",
+                0,
+                false,
+                "set",
+                "set rangeEnd",
+                1,
+                false
+              ],
+              [
+                "playState",
+                true,
+                true,
+                "get",
+                "get playState",
+                0,
+                false
+              ],
+              [
+                "replaceState",
+                true,
+                true,
+                "get",
+                "get replaceState",
+                0,
+                false
+              ],
+              [
+                "pending",
+                true,
+                true,
+                "get",
+                "get pending",
+                0,
+                false
+              ],
+              [
+                "id",
+                true,
+                true,
+                "get",
+                "get id",
+                0,
+                false,
+                "set",
+                "set id",
+                1,
+                false
+              ],
+              [
+                "onfinish",
+                true,
+                true,
+                "get",
+                "get onfinish",
+                0,
+                false,
+                "set",
+                "set onfinish",
+                1,
+                false
+              ],
+              [
+                "oncancel",
+                true,
+                true,
+                "get",
+                "get oncancel",
+                0,
+                false,
+                "set",
+                "set oncancel",
+                1,
+                false
+              ],
+              [
+                "onremove",
+                true,
+                true,
+                "get",
+                "get onremove",
+                0,
+                false,
+                "set",
+                "set onremove",
+                1,
+                false
+              ],
+              [
+                "finished",
+                true,
+                true,
+                "get",
+                "get finished",
+                0,
+                false
+              ],
+              [
+                "ready",
+                true,
+                true,
+                "get",
+                "get ready",
+                0,
+                false
+              ],
+              [
+                "cancel",
+                true,
+                true,
+                true,
+                "value",
+                "cancel",
+                0,
+                false
+              ],
+              [
+                "commitStyles",
+                true,
+                true,
+                true,
+                "value",
+                "commitStyles",
+                0,
+                false
+              ],
+              [
+                "finish",
+                true,
+                true,
+                true,
+                "value",
+                "finish",
+                0,
+                false
+              ],
+              [
+                "pause",
+                true,
+                true,
+                true,
+                "value",
+                "pause",
+                0,
+                false
+              ],
+              [
+                "persist",
+                true,
+                true,
+                true,
+                "value",
+                "persist",
+                0,
+                false
+              ],
+              [
+                "play",
+                true,
+                true,
+                true,
+                "value",
+                "play",
+                0,
+                false
+              ],
+              [
+                "reverse",
+                true,
+                true,
+                true,
+                "value",
+                "reverse",
+                0,
+                false
+              ],
+              [
+                "updatePlaybackRate",
+                true,
+                true,
+                true,
+                "value",
+                "updatePlaybackRate",
+                1,
+                false
+              ],
+              [
+                "overallProgress",
+                true,
+                true,
+                "get",
+                "get overallProgress",
+                0,
+                false
+              ],
+              [
+                "constructor",
+                false,
+                true,
+                true,
+                "value",
+                "Animation",
+                0,
+                true
+              ],
+              [
+                "Symbol(Symbol.toStringTag)",
+                false,
+                true,
+                false,
+                "value",
+                "Animation"
+              ]
+            ],
+            "prototypeParent": "EventTarget",
+            "tag": "[object Animation]"
+          },
+          "AnimationEffect": {
+            "constructor": [
+              [
+                "length",
+                false,
+                true,
+                false,
+                "value",
+                0
+              ],
+              [
+                "name",
+                false,
+                true,
+                false,
+                "value",
+                "AnimationEffect"
+              ],
+              [
+                "prototype",
+                false,
+                false,
+                false,
+                "value",
+                "object"
+              ]
+            ],
+            "global": [
+              false,
+              true,
+              true
+            ],
+            "parent": "",
+            "prototype": [
+              [
+                "getComputedTiming",
+                true,
+                true,
+                true,
+                "value",
+                "getComputedTiming",
+                0,
+                false
+              ],
+              [
+                "getTiming",
+                true,
+                true,
+                true,
+                "value",
+                "getTiming",
+                0,
+                false
+              ],
+              [
+                "updateTiming",
+                true,
+                true,
+                true,
+                "value",
+                "updateTiming",
+                0,
+                false
+              ],
+              [
+                "constructor",
+                false,
+                true,
+                true,
+                "value",
+                "AnimationEffect",
+                0,
+                true
+              ],
+              [
+                "Symbol(Symbol.toStringTag)",
+                false,
+                true,
+                false,
+                "value",
+                "AnimationEffect"
+              ]
+            ],
+            "prototypeParent": "Object",
+            "tag": "[object AnimationEffect]"
+          },
+          "AnimationPlaybackEvent": {
+            "constructor": [
+              [
+                "length",
+                false,
+                true,
+                false,
+                "value",
+                1
+              ],
+              [
+                "name",
+                false,
+                true,
+                false,
+                "value",
+                "AnimationPlaybackEvent"
+              ],
+              [
+                "prototype",
+                false,
+                false,
+                false,
+                "value",
+                "object"
+              ]
+            ],
+            "global": [
+              false,
+              true,
+              true
+            ],
+            "parent": "Event",
+            "prototype": [
+              [
+                "currentTime",
+                true,
+                true,
+                "get",
+                "get currentTime",
+                0,
+                false
+              ],
+              [
+                "timelineTime",
+                true,
+                true,
+                "get",
+                "get timelineTime",
+                0,
+                false
+              ],
+              [
+                "constructor",
+                false,
+                true,
+                true,
+                "value",
+                "AnimationPlaybackEvent",
+                1,
+                true
+              ],
+              [
+                "Symbol(Symbol.toStringTag)",
+                false,
+                true,
+                false,
+                "value",
+                "AnimationPlaybackEvent"
+              ]
+            ],
+            "prototypeParent": "Event",
+            "tag": "[object AnimationPlaybackEvent]"
+          },
+          "AnimationTimeline": {
+            "constructor": [
+              [
+                "length",
+                false,
+                true,
+                false,
+                "value",
+                0
+              ],
+              [
+                "name",
+                false,
+                true,
+                false,
+                "value",
+                "AnimationTimeline"
+              ],
+              [
+                "prototype",
+                false,
+                false,
+                false,
+                "value",
+                "object"
+              ]
+            ],
+            "global": [
+              false,
+              true,
+              true
+            ],
+            "parent": "",
+            "prototype": [
+              [
+                "currentTime",
+                true,
+                true,
+                "get",
+                "get currentTime",
+                0,
+                false
+              ],
+              [
+                "duration",
+                true,
+                true,
+                "get",
+                "get duration",
+                0,
+                false
+              ],
+              [
+                "constructor",
+                false,
+                true,
+                true,
+                "value",
+                "AnimationTimeline",
+                0,
+                true
+              ],
+              [
+                "Symbol(Symbol.toStringTag)",
+                false,
+                true,
+                false,
+                "value",
+                "AnimationTimeline"
+              ]
+            ],
+            "prototypeParent": "Object",
+            "tag": "[object AnimationTimeline]"
+          },
+          "DocumentTimeline": {
+            "constructor": [
+              [
+                "length",
+                false,
+                true,
+                false,
+                "value",
+                0
+              ],
+              [
+                "name",
+                false,
+                true,
+                false,
+                "value",
+                "DocumentTimeline"
+              ],
+              [
+                "prototype",
+                false,
+                false,
+                false,
+                "value",
+                "object"
+              ]
+            ],
+            "global": [
+              false,
+              true,
+              true
+            ],
+            "parent": "AnimationTimeline",
+            "prototype": [
+              [
+                "constructor",
+                false,
+                true,
+                true,
+                "value",
+                "DocumentTimeline",
+                0,
+                true
+              ],
+              [
+                "Symbol(Symbol.toStringTag)",
+                false,
+                true,
+                false,
+                "value",
+                "DocumentTimeline"
+              ]
+            ],
+            "prototypeParent": "AnimationTimeline",
+            "tag": "[object DocumentTimeline]"
+          },
+          "KeyframeEffect": {
+            "constructor": [
+              [
+                "length",
+                false,
+                true,
+                false,
+                "value",
+                1
+              ],
+              [
+                "name",
+                false,
+                true,
+                false,
+                "value",
+                "KeyframeEffect"
+              ],
+              [
+                "prototype",
+                false,
+                false,
+                false,
+                "value",
+                "object"
+              ]
+            ],
+            "global": [
+              false,
+              true,
+              true
+            ],
+            "parent": "AnimationEffect",
+            "prototype": [
+              [
+                "target",
+                true,
+                true,
+                "get",
+                "get target",
+                0,
+                false,
+                "set",
+                "set target",
+                1,
+                false
+              ],
+              [
+                "pseudoElement",
+                true,
+                true,
+                "get",
+                "get pseudoElement",
+                0,
+                false,
+                "set",
+                "set pseudoElement",
+                1,
+                false
+              ],
+              [
+                "composite",
+                true,
+                true,
+                "get",
+                "get composite",
+                0,
+                false,
+                "set",
+                "set composite",
+                1,
+                false
+              ],
+              [
+                "getKeyframes",
+                true,
+                true,
+                true,
+                "value",
+                "getKeyframes",
+                0,
+                false
+              ],
+              [
+                "setKeyframes",
+                true,
+                true,
+                true,
+                "value",
+                "setKeyframes",
+                1,
+                false
+              ],
+              [
+                "constructor",
+                false,
+                true,
+                true,
+                "value",
+                "KeyframeEffect",
+                1,
+                true
+              ],
+              [
+                "Symbol(Symbol.toStringTag)",
+                false,
+                true,
+                false,
+                "value",
+                "KeyframeEffect"
+              ]
+            ],
+            "prototypeParent": "AnimationEffect",
+            "tag": "[object KeyframeEffect]"
+          },
+          "members": {
+            "document": [
+              [
+                "timeline",
+                true,
+                true,
+                "get",
+                "get timeline",
+                0,
+                false
+              ],
+              [
+                "getAnimations",
+                true,
+                true,
+                true,
+                "value",
+                "getAnimations",
+                0,
+                false
+              ]
+            ],
+            "element": [
+              [
+                "animate",
+                true,
+                true,
+                true,
+                "value",
+                "animate",
+                1,
+                false
+              ],
+              [
+                "getAnimations",
+                true,
+                true,
+                true,
+                "value",
+                "getAnimations",
+                0,
+                false
+              ]
+            ],
+            "shadowRoot": [
+              [
+                "getAnimations",
+                true,
+                true,
+                true,
+                "value",
+                "getAnimations",
+                0,
+                false
+              ]
+            ]
+          }
+        },
+        "style": {
+          "add": [
+            [
+              "15px"
+            ]
+          ],
+          "alternate": [
+            [
+              "0.25"
+            ],
+            [
+              "0.75"
+            ],
+            [
+              "0.25"
+            ]
+          ],
+          "cascade": [
+            "rgb(100, 50, 0)",
+            "0.3",
+            "0.5",
+            "30px",
+            "1"
+          ],
+          "clamp": [
+            [
+              "0"
+            ],
+            [
+              "1"
+            ]
+          ],
+          "colorAdd": [
+            [
+              "rgb(100, 0, 0)"
+            ]
+          ],
+          "colors": [
+            [
+              "rgb(255, 0, 0)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            [
+              "rgb(170, 0, 85)",
+              "rgba(0, 0, 255, 0.333)"
+            ],
+            [
+              "rgb(128, 0, 128)",
+              "rgba(0, 0, 255, 0.5)"
+            ]
+          ],
+          "computedTiming": [
+            [
+              -5,
+              0.315356734265,
+              0,
+              "0.315357"
+            ],
+            [
+              0,
+              0.315356734265,
+              0,
+              "0.315357"
+            ],
+            [
+              20,
+              0.315356734265,
+              0,
+              "0.315357"
+            ],
+            [
+              70,
+              0,
+              1,
+              "0"
+            ],
+            [
+              120,
+              0.315356734265,
+              1,
+              "0.315357"
+            ],
+            [
+              170,
+              1,
+              2,
+              "1"
+            ],
+            [
+              219,
+              0.326162372867,
+              2,
+              "0.326162"
+            ],
+            [
+              220,
+              0.315356734265,
+              2,
+              "0.315357"
+            ],
+            [
+              225,
+              0.315356734265,
+              2,
+              "0.315357"
+            ],
+            [
+              230,
+              0.315356734265,
+              2,
+              "0.315357"
+            ]
+          ],
+          "currentColor": [
+            [
+              "rgb(128, 0, 0)"
+            ]
+          ],
+          "display": [
+            [
+              "none"
+            ],
+            [
+              "block"
+            ],
+            [
+              "block"
+            ],
+            [
+              "block"
+            ],
+            [
+              "block"
+            ]
+          ],
+          "displayPair": [
+            [
+              "block"
+            ],
+            [
+              "block"
+            ],
+            [
+              "inline"
+            ],
+            [
+              "inline"
+            ]
+          ],
+          "ease": [
+            [
+              "0.0947963"
+            ],
+            [
+              "0.802403"
+            ],
+            [
+              "0.994316"
+            ]
+          ],
+          "em": [
+            [
+              "32px"
+            ]
+          ],
+          "fillBoth": [
+            [
+              "0.2"
+            ],
+            [
+              "0.8"
+            ]
+          ],
+          "fillNone": [
+            [
+              "1"
+            ],
+            [
+              "1"
+            ]
+          ],
+          "float": [
+            [
+              "left"
+            ],
+            [
+              "left"
+            ],
+            [
+              "right"
+            ]
+          ],
+          "fractionalMargin": [
+            [
+              "13.3333px"
+            ]
+          ],
+          "fromNone": [
+            [
+              "matrix(1, 0, 0, 1, 0, 0)"
+            ],
+            [
+              "matrix(1.5, 0, 0, 1.5, 0, 0)"
+            ],
+            [
+              "none"
+            ]
+          ],
+          "implicit": [
+            [
+              "0.5"
+            ]
+          ],
+          "keyframeEasing": [
+            [
+              "0.0197225"
+            ],
+            [
+              "0.5"
+            ],
+            [
+              "0.980278"
+            ]
+          ],
+          "lengths": [
+            [
+              "0px",
+              "10px"
+            ],
+            [
+              "25px",
+              "12.5px"
+            ],
+            [
+              "50px",
+              "15px"
+            ]
+          ],
+          "linear": [
+            [
+              "0.32"
+            ],
+            [
+              "0.8"
+            ],
+            [
+              "0.893333"
+            ]
+          ],
+          "matrix": [
+            [
+              "matrix(1.5, 0, 0, 1.5, 5, 5)"
+            ]
+          ],
+          "mismatch": [
+            [
+              "matrix(0.965926, 0.258819, -0.258819, 0.965926, 5, 10)"
+            ]
+          ],
+          "opacity": [
+            [
+              "0"
+            ],
+            [
+              "0.25"
+            ],
+            [
+              "0.5"
+            ],
+            [
+              "1"
+            ]
+          ],
+          "opacityAccumulate": [
+            [
+              "1"
+            ]
+          ],
+          "opacityAdd": [
+            [
+              "1"
+            ]
+          ],
+          "pairs": [
+            [
+              "matrix(0.939693, 0.34202, -0.34202, 0.939693, 20, 0)"
+            ]
+          ],
+          "rotateScale": [
+            [
+              "matrix(1, 0, 0, 1, 0, 0)"
+            ],
+            [
+              "matrix(1.06066, 1.06066, -1.06066, 1.06066, 0, 0)"
+            ]
+          ],
+          "skew": [
+            [
+              "matrix(1, 0, 0.36397, 1, 0, 0)"
+            ]
+          ],
+          "steps": [
+            [
+              "0"
+            ],
+            [
+              "0"
+            ],
+            [
+              "0.333333"
+            ],
+            [
+              "0.666667"
+            ],
+            [
+              "1"
+            ]
+          ],
+          "transformAdd": [
+            [
+              "matrix(1, 0, 0, 1, 15, 0)"
+            ]
+          ],
+          "translate": [
+            [
+              "matrix(1, 0, 0, 1, 0, 0)"
+            ],
+            [
+              "matrix(1, 0, 0, 1, 33.333, 0)"
+            ],
+            [
+              "matrix(1, 0, 0, 1, 50, 0)"
+            ]
+          ],
+          "translateZ": [
+            [
+              "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 50, 1)"
+            ]
+          ],
+          "transparent": [
+            [
+              "rgba(255, 255, 255, 0.5)"
+            ]
+          ],
+          "visibility": [
+            [
+              "visible"
+            ],
+            [
+              "visible"
+            ],
+            [
+              "visible"
+            ],
+            [
+              "visible"
+            ]
+          ],
+          "visibilityHidden": [
+            [
+              "hidden"
+            ],
+            [
+              "hidden"
+            ],
+            [
+              "collapse"
+            ]
+          ],
+          "zIndex": [
+            [
+              "1"
+            ],
+            [
+              "2"
+            ],
+            [
+              "3"
+            ],
+            [
+              "3"
+            ]
+          ],
+          "zeroDuration": [
+            [
+              "0.9"
+            ]
+          ]
+        },
+        "timing": {
+          "auto": [
+            {
+              "delay": 0,
+              "direction": "normal",
+              "duration": "auto",
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "auto",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            {
+              "activeDuration": 0,
+              "currentIteration": null,
+              "delay": 0,
+              "direction": "normal",
+              "duration": 0,
+              "easing": "linear",
+              "endDelay": 0,
+              "endTime": 0,
+              "fill": "none",
+              "iterationStart": 0,
+              "iterations": 1,
+              "localTime": null,
+              "progress": null
+            }
+          ],
+          "badDuration": [
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': duration must be non-negative or auto",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': duration must be non-negative or auto",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': duration must be non-negative or auto",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': duration must be non-negative or auto",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': duration must be non-negative or auto",
+              false
+            ]
+          ],
+          "badEnums": [
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': Failed to read the 'fill' property from 'EffectTiming': The provided value 'x' is not a valid enum value of type FillMode.",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': Failed to read the 'direction' property from 'EffectTiming': The provided value 'x' is not a valid enum value of type PlaybackDirection.",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': 'x' is not a valid value for easing",
+              false
+            ]
+          ],
+          "badIterations": [
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': iterationCount must be non-negative",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': iterationCount must be non-negative",
+              false
+            ]
+          ],
+          "badPseudo": [
+            "SyntaxError",
+            "Failed to construct 'KeyframeEffect': bogus is a syntactically invalid pseudo-element",
+            true
+          ],
+          "badStart": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': iterationStart must be non-negative",
+            false
+          ],
+          "defaults": [
+            {
+              "delay": 0,
+              "direction": "normal",
+              "duration": "auto",
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "auto",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            {
+              "activeDuration": 0,
+              "currentIteration": null,
+              "delay": 0,
+              "direction": "normal",
+              "duration": 0,
+              "easing": "linear",
+              "endDelay": 0,
+              "endTime": 0,
+              "fill": "none",
+              "iterationStart": 0,
+              "iterations": 1,
+              "localTime": null,
+              "progress": null
+            }
+          ],
+          "full": [
+            {
+              "delay": 10,
+              "direction": "alternate",
+              "duration": 100,
+              "easing": "ease-out",
+              "endDelay": 5,
+              "fill": "both",
+              "iterationStart": 0.25,
+              "iterations": 2.5
+            },
+            {
+              "activeDuration": 250,
+              "currentIteration": null,
+              "delay": 10,
+              "direction": "alternate",
+              "duration": 100,
+              "easing": "ease-out",
+              "endDelay": 5,
+              "endTime": 265,
+              "fill": "both",
+              "iterationStart": 0.25,
+              "iterations": 2.5,
+              "localTime": null,
+              "progress": null
+            }
+          ],
+          "ignored": [
+            {
+              "delay": 0,
+              "direction": "normal",
+              "duration": "auto",
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "auto",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            {
+              "activeDuration": 0,
+              "currentIteration": null,
+              "delay": 0,
+              "direction": "normal",
+              "duration": 0,
+              "easing": "linear",
+              "endDelay": 0,
+              "endTime": 0,
+              "fill": "none",
+              "iterationStart": 0,
+              "iterations": 1,
+              "localTime": null,
+              "progress": null
+            }
+          ],
+          "infinite": [
+            [
+              {
+                "delay": 0,
+                "direction": "normal",
+                "duration": "Infinity",
+                "easing": "linear",
+                "endDelay": 0,
+                "fill": "auto",
+                "iterationStart": 0,
+                "iterations": 1
+              },
+              {
+                "activeDuration": "Infinity",
+                "currentIteration": null,
+                "delay": 0,
+                "direction": "normal",
+                "duration": "Infinity",
+                "easing": "linear",
+                "endDelay": 0,
+                "endTime": "Infinity",
+                "fill": "none",
+                "iterationStart": 0,
+                "iterations": 1,
+                "localTime": null,
+                "progress": null
+              }
+            ],
+            [
+              {
+                "delay": 0,
+                "direction": "normal",
+                "duration": 10,
+                "easing": "linear",
+                "endDelay": 0,
+                "fill": "auto",
+                "iterationStart": 0,
+                "iterations": "Infinity"
+              },
+              {
+                "activeDuration": "Infinity",
+                "currentIteration": null,
+                "delay": 0,
+                "direction": "normal",
+                "duration": 10,
+                "easing": "linear",
+                "endDelay": 0,
+                "endTime": "Infinity",
+                "fill": "none",
+                "iterationStart": 0,
+                "iterations": "Infinity",
+                "localTime": null,
+                "progress": null
+              }
+            ]
+          ],
+          "negativeEndDelay": [
+            {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 100,
+              "easing": "linear",
+              "endDelay": -50,
+              "fill": "auto",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            {
+              "activeDuration": 100,
+              "currentIteration": null,
+              "delay": 0,
+              "direction": "normal",
+              "duration": 100,
+              "easing": "linear",
+              "endDelay": -50,
+              "endTime": 50,
+              "fill": "none",
+              "iterationStart": 0,
+              "iterations": 1,
+              "localTime": null,
+              "progress": null
+            }
+          ],
+          "nonFiniteDelay": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': Failed to read the 'delay' property from 'EffectTiming': The provided double value is non-finite.",
+            false
+          ],
+          "nullOptions": [
+            {
+              "delay": 0,
+              "direction": "normal",
+              "duration": "auto",
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "auto",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            {
+              "activeDuration": 0,
+              "currentIteration": null,
+              "delay": 0,
+              "direction": "normal",
+              "duration": 0,
+              "easing": "linear",
+              "endDelay": 0,
+              "endTime": 0,
+              "fill": "none",
+              "iterationStart": 0,
+              "iterations": 1,
+              "localTime": null,
+              "progress": null
+            }
+          ],
+          "number": [
+            {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 100,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "auto",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            {
+              "activeDuration": 100,
+              "currentIteration": null,
+              "delay": 0,
+              "direction": "normal",
+              "duration": 100,
+              "easing": "linear",
+              "endDelay": 0,
+              "endTime": 100,
+              "fill": "none",
+              "iterationStart": 0,
+              "iterations": 1,
+              "localTime": null,
+              "progress": null
+            }
+          ],
+          "order": [
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': iterationStart must be non-negative",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': iterationCount must be non-negative",
+              false
+            ],
+            [
+              "TypeError",
+              "Failed to construct 'KeyframeEffect': duration must be non-negative or auto",
+              false
+            ]
+          ],
+          "stringOptions": [
+            {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 100,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "auto",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            {
+              "activeDuration": 100,
+              "currentIteration": null,
+              "delay": 0,
+              "direction": "normal",
+              "duration": 100,
+              "easing": "linear",
+              "endDelay": 0,
+              "endTime": 100,
+              "fill": "none",
+              "iterationStart": 0,
+              "iterations": 1,
+              "localTime": null,
+              "progress": null
+            }
+          ],
+          "timingBeforeKeyframes": [
+            "TypeError",
+            "Failed to construct 'KeyframeEffect': duration must be non-negative or auto",
+            false
+          ],
+          "zeroDuration": [
+            {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 0,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "forwards",
+              "iterationStart": 0,
+              "iterations": 3
+            },
+            {
+              "activeDuration": 0,
+              "currentIteration": null,
+              "delay": 0,
+              "direction": "normal",
+              "duration": 0,
+              "easing": "linear",
+              "endDelay": 0,
+              "endTime": 0,
+              "fill": "forwards",
+              "iterationStart": 0,
+              "iterations": 3,
+              "localTime": null,
+              "progress": null
+            }
+          ],
+          "zeroIterations": [
+            {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 100,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "auto",
+              "iterationStart": 0.5,
+              "iterations": 0
+            },
+            {
+              "activeDuration": 0,
+              "currentIteration": null,
+              "delay": 0,
+              "direction": "normal",
+              "duration": 100,
+              "easing": "linear",
+              "endDelay": 0,
+              "endTime": 0,
+              "fill": "none",
+              "iterationStart": 0.5,
+              "iterations": 0,
+              "localTime": null,
+              "progress": null
+            }
+          ]
+        },
+        "updateTiming": [
+          "undefined",
+          {
+            "delay": 0,
+            "direction": "normal",
+            "duration": 200,
+            "easing": "linear",
+            "endDelay": 0,
+            "fill": "backwards",
+            "iterationStart": 0,
+            "iterations": 1
+          },
+          [
+            "TypeError",
+            "Failed to execute 'updateTiming' on 'AnimationEffect': duration must be non-negative or auto",
+            false
+          ],
+          [
+            "TypeError",
+            "Failed to execute 'updateTiming' on 'AnimationEffect': The provided value is not of type 'OptionalEffectTiming'.",
+            false
+          ],
+          [
+            "TypeError",
+            "Failed to execute 'updateTiming' on 'AnimationEffect': iterationCount must be non-negative",
+            false
+          ],
+          [
+            "TypeError",
+            "Failed to execute 'updateTiming' on 'AnimationEffect': 'nope' is not a valid value for easing",
+            false
+          ],
+          [
+            "TypeError",
+            "Failed to execute 'updateTiming' on 'AnimationEffect': Failed to read the 'fill' property from 'OptionalEffectTiming': The provided value 'nope' is not a valid enum value of type FillMode.",
+            false
+          ],
+          [
+            "TypeError",
+            "Failed to execute 'updateTiming' on 'AnimationEffect': Failed to read the 'delay' property from 'OptionalEffectTiming': The provided double value is non-finite.",
+            false
+          ],
+          {
+            "delay": 0,
+            "direction": "normal",
+            "duration": 200,
+            "easing": "linear",
+            "endDelay": 0,
+            "fill": "backwards",
+            "iterationStart": 0,
+            "iterations": 1
+          },
+          "undefined",
+          "undefined",
+          "auto"
+        ]
+      }
+    }
+  ]
+}

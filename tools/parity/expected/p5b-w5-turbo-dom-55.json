@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#55",
+ "reason": "A table's extra width goes to its auto columns (equally when empty), only without auto columns to px ones. Fresh-target parity builds turbo-dom f64 -> f55 (P5b-W5 steps, html2pdf consol/p5b-w5 950754e): 0 existing outputs change. P5b-W5.",
+ "control": "scripts/html-document-chrome-control.mjs table-columns-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (extra_table_width_goes_to_auto_columns_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

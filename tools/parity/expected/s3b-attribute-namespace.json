@@ -1,0 +1,13 @@
+{
+ "id": "S3b/attribute-namespace",
+ "class": "attribute-namespace",
+ "reason": "`[href]` / `a[href^=\"#\"]`: the old matcher read attributes by local name, so a namespaced `xlink:href` matched; Chrome matches no-namespace attributes only. Consolidation S3b: the html2pdf / surf-static cascade parses and matches with turbo-dom's selector engine.",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cascade_cases/attribute-namespace)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

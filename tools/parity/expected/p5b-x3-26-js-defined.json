@@ -1,0 +1,13 @@
+{
+ "id": "P5b-X3/turbo-dom#26/js-defined",
+ "class": "npm JS engine :defined + custom element registry",
+ "reason": "Only the npm JS runtime (src/runtime) changes: :defined reads the custom element state kept like the Rust tree's, and the registry upgrades / constructs. The html2pdf corpora render through turbo-dom-layout (the Rust engine) and run no scripts, so no output is expected to change. The surf corpus is not measured by this slice.",
+ "control": "crates/turbo-dom-browser-env/src/custom_elements_defined_chrome156.json",
+ "e2e": "test/custom-elements-chrome.test.mjs, test/custom-elements.test.mjs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

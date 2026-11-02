@@ -1,0 +1,29 @@
+# Coverage config for turbo-dom-layout, carried over from turbo-html2pdf's
+# tarpaulin.toml for the files that moved here at the consolidation's S1 step.
+# Run from the workspace root:
+#   cargo tarpaulin --config crates/turbo-dom-layout/tarpaulin.toml
+# (The coverage + cc gate thresholds for this crate are decided from the P0
+# partition data; this file only keeps the feature-gated-module excludes. At S1
+# the crate's own tests covered 97.05% (7889/8129 lines); the rest — cascade
+# tokens, parts of the old selector matcher — was covered by turbo-html2pdf-core's
+# templating / directive tests. Since S2 the `t:` directives are html2pdf's; since S3b
+# selectors are turbo-dom's engine.)
+[default]
+packages = ["turbo-dom-layout"]
+# Pin the LLVM source-based engine on every platform (tarpaulin's `Auto` picks
+# `Llvm` on macOS but `Ptrace` on Linux, and the two disagree on line attribution).
+engine = "Llvm"
+exclude-files = [
+    # Other workspace members compiled as dependencies are not this crate's surface.
+    "crates/turbo-dom/*",
+    "src/*",
+    # Opt-in hot-path instrumentation (the `perf` feature); off in normal builds
+    # and covered functionally by the `--features perf` tests in tests/perf.rs.
+    "crates/turbo-dom-layout/src/perf.rs",
+    # Opt-in `svg` feature; off in normal builds — `resvg`/`usvg` are not even a
+    # dependency without `--features svg`, so this module is not compiled under
+    # default features and is not in the default coverage surface. Covered by the
+    # `--features svg` tests in tests/svg.rs. Listed defensively so a stray
+    # tarpaulin cfg quirk cannot flag the gated-out module.
+    "crates/turbo-dom-layout/src/svg.rs",
+]

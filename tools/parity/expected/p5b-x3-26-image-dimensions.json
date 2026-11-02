@@ -1,0 +1,13 @@
+{
+ "id": "P5b-X3/turbo-dom#26/image-dimensions",
+ "class": "HTMLImageElement width / height / x / y accessors",
+ "reason": "turbo-dom-browser-env gains the HTMLImageElement width / height reflecting IDL attributes and x / y, answered by the host's layout query (record.imageHost.setLayoutQuery) or Blink's not-rendered fallbacks. Only the V8 binding changes: the html2pdf corpora render through turbo-dom-layout and run no scripts, so no output is expected to change. The surf corpus is not measured by this slice.",
+ "control": "crates/turbo-dom-browser-env/src/html_image_chrome156.json (dimensions)",
+ "e2e": "crates/turbo-dom-browser-env/src/html_image_tests.rs (image_state_with_host_load_state_matches_chrome156_control, image_state_without_host_reports_not_loading_defaults, image_host_layout_query_contract), crates/turbo-dom-browser-env/tests/host_internals_api.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

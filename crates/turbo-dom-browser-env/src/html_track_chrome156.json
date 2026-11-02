@@ -1,0 +1,558 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "c0ebd644a09fd363f2c76e0e02cd01fd54ee86c1371399a4bf5b3fbcd2b46229",
+  "probeSha256": "6b2c130cdeabf98b3573fa3f235e78c3e0d959fa031d57b2d0a695c95585afb3",
+  "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "track",
+      "result": {
+        "iface": [
+          "function",
+          "function",
+          "function",
+          true,
+          true,
+          [
+            "TypeError",
+            "Failed to construct 'HTMLTrackElement': Illegal constructor"
+          ],
+          [
+            "TypeError",
+            "Failed to construct 'TextTrack': Illegal constructor"
+          ],
+          "HTMLTrackElement",
+          0
+        ],
+        "constants": [
+          [
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              0
+            ],
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              0
+            ]
+          ],
+          [
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              1
+            ],
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              1
+            ]
+          ],
+          [
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              2
+            ],
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              2
+            ]
+          ],
+          [
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              3
+            ],
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              3
+            ]
+          ]
+        ],
+        "members": [
+          [
+            "ERROR",
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              3
+            ]
+          ],
+          [
+            "LOADED",
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              2
+            ]
+          ],
+          [
+            "LOADING",
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              1
+            ]
+          ],
+          [
+            "NONE",
+            [
+              "number",
+              null,
+              null,
+              true,
+              false,
+              false,
+              0
+            ]
+          ],
+          [
+            "constructor",
+            [
+              "function",
+              null,
+              null,
+              false,
+              true,
+              true,
+              null
+            ]
+          ],
+          [
+            "default",
+            [
+              "accessor",
+              "get default",
+              "set default",
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "kind",
+            [
+              "accessor",
+              "get kind",
+              "set kind",
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "label",
+            [
+              "accessor",
+              "get label",
+              "set label",
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "readyState",
+            [
+              "accessor",
+              "get readyState",
+              null,
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "src",
+            [
+              "accessor",
+              "get src",
+              "set src",
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "srclang",
+            [
+              "accessor",
+              "get srclang",
+              "set srclang",
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "track",
+            [
+              "accessor",
+              "get track",
+              null,
+              true,
+              true,
+              null,
+              null
+            ]
+          ]
+        ],
+        "ttMembers": [
+          [
+            "activeCues",
+            [
+              "accessor",
+              "get activeCues",
+              null,
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "addCue",
+            [
+              "function",
+              null,
+              null,
+              true,
+              true,
+              true,
+              null
+            ]
+          ],
+          [
+            "constructor",
+            [
+              "function",
+              null,
+              null,
+              false,
+              true,
+              true,
+              null
+            ]
+          ],
+          [
+            "cues",
+            [
+              "accessor",
+              "get cues",
+              null,
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "id",
+            [
+              "accessor",
+              "get id",
+              null,
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "kind",
+            [
+              "accessor",
+              "get kind",
+              null,
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "label",
+            [
+              "accessor",
+              "get label",
+              null,
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "language",
+            [
+              "accessor",
+              "get language",
+              null,
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "mode",
+            [
+              "accessor",
+              "get mode",
+              "set mode",
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "oncuechange",
+            [
+              "accessor",
+              "get oncuechange",
+              "set oncuechange",
+              true,
+              true,
+              null,
+              null
+            ]
+          ],
+          [
+            "removeCue",
+            [
+              "function",
+              null,
+              null,
+              true,
+              true,
+              true,
+              null
+            ]
+          ]
+        ],
+        "parsed": [
+          true,
+          "HTMLTrackElement",
+          "[object HTMLTrackElement]",
+          "captions",
+          "https://x.test/a.vtt",
+          "en",
+          "L",
+          true,
+          0,
+          true,
+          true,
+          "captions",
+          "L",
+          "en",
+          "t",
+          "disabled",
+          null,
+          null,
+          null,
+          null,
+          "[object TextTrack]"
+        ],
+        "plain": [
+          true,
+          "HTMLTrackElement",
+          "[object HTMLTrackElement]",
+          "subtitles",
+          "https://x.test/dir/c.vtt",
+          "",
+          "",
+          false,
+          0,
+          true,
+          true,
+          "subtitles",
+          "",
+          "",
+          "p",
+          "disabled",
+          null,
+          null,
+          null,
+          null,
+          "[object TextTrack]"
+        ],
+        "made": [
+          true,
+          "HTMLTrackElement",
+          "[object HTMLTrackElement]",
+          "subtitles",
+          "",
+          "",
+          "",
+          false,
+          0,
+          true,
+          true,
+          "subtitles",
+          "",
+          "",
+          "",
+          "disabled",
+          null,
+          null,
+          null,
+          null,
+          "[object TextTrack]"
+        ],
+        "kinds": {
+          "null": [
+            "subtitles",
+            "subtitles"
+          ],
+          "": [
+            "metadata",
+            "metadata"
+          ],
+          "subtitles": [
+            "subtitles",
+            "subtitles"
+          ],
+          "CAPTIONS": [
+            "captions",
+            "captions"
+          ],
+          "descriptions": [
+            "descriptions",
+            "descriptions"
+          ],
+          "chapters": [
+            "chapters",
+            "chapters"
+          ],
+          "metadata": [
+            "metadata",
+            "metadata"
+          ],
+          "bogus": [
+            "metadata",
+            "metadata"
+          ],
+          " captions": [
+            "metadata",
+            "metadata"
+          ]
+        },
+        "setters": [
+          "chapters",
+          "de",
+          "X",
+          "",
+          "b.vtt",
+          "https://x.test/dir/b.vtt",
+          "chapters",
+          "X",
+          "de"
+        ],
+        "setters2": [
+          false,
+          "nonsense",
+          "metadata",
+          "metadata"
+        ],
+        "trackId": "tid",
+        "mode": [
+          "hidden",
+          "hidden",
+          "showing",
+          [
+            0,
+            "[object TextTrackCueList]"
+          ],
+          0,
+          0
+        ],
+        "emptySrc": [
+          "https://x.test/dir/",
+          ""
+        ],
+        "ttReadonly": [
+          "TypeError",
+          "Cannot set property kind of #<TextTrack> which has only a getter"
+        ],
+        "brand": [
+          [
+            "TypeError",
+            "Illegal invocation"
+          ],
+          [
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ]
+      }
+    }
+  ]
+}

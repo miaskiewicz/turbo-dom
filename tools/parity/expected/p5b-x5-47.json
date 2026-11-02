@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#47",
+ "reason": "turbo-dom-browser-env getComputedStyle(el, pseudoElt) parses pseudoElt like Chrome 156 (invalid pseudo-element -> empty declaration; no leading colon -> the element, except a bare before / after) and computes ::before / ::after (own rules, inheritance from the element, display inline blockified in flex / grid containers, content none / double-quoted strings); an element's content computes to normal. No corpus output changes: the surf live dump reads getComputedStyle(el) without a pseudo-element and does not read content (bin/corpus-surf.mjs PROPS); static screenshots and the html2pdf corpora do not run the binding. P5b-X5.",
+ "control": "crates/turbo-dom-browser-env/src/computed_defaults_chrome156.json (case pseudo-elements; scripts/select-element-chrome-control.mjs, Chrome for Testing 156.0.8078.4)",
+ "e2e": "crates/turbo-dom-browser-env/src/computed_defaults_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

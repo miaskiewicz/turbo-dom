@@ -133,6 +133,23 @@ test('::slotted(sel) styles slotted light nodes', () => {
   assert.equal(window.getComputedStyle(lit).color, 'rgb(0, 128, 0)'); // matches .hl
 });
 
+// Chrome 156 (getComputedStyle): the slot must match the selector's originating compound
+// and its combinators, and a sub-pseudo-element (::slotted(S)::before, #195) styles
+// generated content, never the slotted node.
+test('::slotted() rules match the slot against the rest of the selector', () => {
+  const { window, document } = fresh();
+  const host = document.getElementById('host');
+  host.innerHTML = '<span id="a">a</span><i id="b" slot="s">b</i><b id="c" slot="t">c</b>';
+  const root = host.attachShadow({ mode: 'open' });
+  root.innerHTML = '<style>::slotted(span)::before{color:red} .nope::slotted(i){color:red} '
+    + 'slot[name=t]::slotted(b){color:green} div ::slotted(span){color:blue}</style>'
+    + '<slot></slot><slot name="s"></slot><div><slot name="t"></slot></div>';
+  const color = (id) => window.getComputedStyle(host.querySelector(`#${id}`)).color;
+  assert.equal(color('a'), ''); // neither ::slotted(span)::before nor `div ::slotted(span)`
+  assert.equal(color('b'), ''); // the slot has no class "nope"
+  assert.equal(color('c'), 'rgb(0, 128, 0)');
+});
+
 test('inheritable props cross the boundary INTO shadow content; light DOM stays honest', () => {
   const { window, document } = fresh();
   const host = document.getElementById('host');

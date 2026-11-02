@@ -1,0 +1,926 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "edit_context_probe.js",
+  "probeSha256": "29e202d1738bfb61abbcb116bbf65abdfcdce0825d8d7713ca982b9bc76645b9",
+  "collectorSha256": "e6cadc004087a31da5ba698e45efbc62530e73d28f401d29b96226fa9ed3f94d",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "proto": [
+      "text",
+      "selectionStart",
+      "selectionEnd",
+      "characterBoundsRangeStart",
+      "ontextupdate",
+      "ontextformatupdate",
+      "oncharacterboundsupdate",
+      "oncompositionstart",
+      "oncompositionend",
+      "attachedElements",
+      "characterBounds",
+      "updateCharacterBounds",
+      "updateControlBounds",
+      "updateSelection",
+      "updateSelectionBounds",
+      "updateText",
+      "constructor",
+      "Symbol(Symbol.toStringTag)"
+    ],
+    "chain": [
+      true,
+      true,
+      "EditContext",
+      0
+    ],
+    "desc": {
+      "text": {
+        "get": [
+          "get text",
+          0
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "selectionStart": {
+        "get": [
+          "get selectionStart",
+          0
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "selectionEnd": {
+        "get": [
+          "get selectionEnd",
+          0
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "characterBoundsRangeStart": {
+        "get": [
+          "get characterBoundsRangeStart",
+          0
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "ontextupdate": {
+        "get": [
+          "get ontextupdate",
+          0
+        ],
+        "set": [
+          "set ontextupdate",
+          1
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "ontextformatupdate": {
+        "get": [
+          "get ontextformatupdate",
+          0
+        ],
+        "set": [
+          "set ontextformatupdate",
+          1
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "oncharacterboundsupdate": {
+        "get": [
+          "get oncharacterboundsupdate",
+          0
+        ],
+        "set": [
+          "set oncharacterboundsupdate",
+          1
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "oncompositionstart": {
+        "get": [
+          "get oncompositionstart",
+          0
+        ],
+        "set": [
+          "set oncompositionstart",
+          1
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "oncompositionend": {
+        "get": [
+          "get oncompositionend",
+          0
+        ],
+        "set": [
+          "set oncompositionend",
+          1
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "attachedElements": {
+        "value": [
+          "attachedElements",
+          0
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "characterBounds": {
+        "value": [
+          "characterBounds",
+          0
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "updateCharacterBounds": {
+        "value": [
+          "updateCharacterBounds",
+          2
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "updateControlBounds": {
+        "value": [
+          "updateControlBounds",
+          1
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "updateSelection": {
+        "value": [
+          "updateSelection",
+          2
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "updateSelectionBounds": {
+        "value": [
+          "updateSelectionBounds",
+          1
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "updateText": {
+        "value": [
+          "updateText",
+          3
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "constructor": {
+        "value": [
+          "EditContext",
+          0
+        ],
+        "writable": true,
+        "enumerable": false,
+        "configurable": true
+      }
+    },
+    "call": "TypeError: Failed to construct 'EditContext': Please use the 'new' operator, this DOM object constructor cannot be called as a function.",
+    "defaults": [
+      "",
+      0,
+      0,
+      0,
+      [],
+      [],
+      null
+    ],
+    "init": [
+      "hello",
+      2,
+      5
+    ],
+    "init2": [
+      "ok",
+      [
+        3,
+        1
+      ]
+    ],
+    "init3": [
+      "ok",
+      [
+        0
+      ]
+    ],
+    "init4": [
+      "ok",
+      [
+        0
+      ]
+    ],
+    "init5": [
+      "ok",
+      ""
+    ],
+    "init6": "TypeError: Failed to construct 'EditContext': The provided value is not of type 'EditContextInit'.",
+    "init7": [
+      "ok",
+      [
+        "se",
+        "ss",
+        "text"
+      ]
+    ],
+    "updateText": [
+      "ok",
+      "HELLO world",
+      "ok",
+      "HELLO X",
+      "ok",
+      "HEYO X",
+      "TypeError: Failed to execute 'updateText' on 'EditContext': 3 arguments required, but only 0 present.",
+      "TypeError: Failed to execute 'updateText' on 'EditContext': 3 arguments required, but only 1 present.",
+      "TypeError: Failed to execute 'updateText' on 'EditContext': 3 arguments required, but only 2 present.",
+      "ok",
+      "HEz",
+      "ok",
+      "HEzend"
+    ],
+    "updateSelection": [
+      "ok",
+      1,
+      3,
+      "ok",
+      4,
+      2,
+      "ok",
+      5,
+      5,
+      "TypeError: Failed to execute 'updateSelection' on 'EditContext': 2 arguments required, but only 0 present.",
+      "TypeError: Failed to execute 'updateSelection' on 'EditContext': 2 arguments required, but only 1 present."
+    ],
+    "selAfterText": [
+      5,
+      5
+    ],
+    "bounds": [
+      "ok",
+      "ok",
+      "TypeError: Failed to execute 'updateControlBounds' on 'EditContext': parameter 1 is not of type 'DOMRect'.",
+      "TypeError: Failed to execute 'updateControlBounds' on 'EditContext': 1 argument required, but only 0 present.",
+      "ok",
+      3,
+      [
+        "ok",
+        [
+          [
+            "DOMRect",
+            1,
+            2,
+            3,
+            4
+          ],
+          [
+            "DOMRect",
+            5,
+            6,
+            7,
+            8
+          ]
+        ]
+      ],
+      "TypeError: Failed to execute 'updateCharacterBounds' on 'EditContext': Failed to convert value to 'DOMRect'.",
+      "TypeError: Failed to execute 'updateCharacterBounds' on 'EditContext': 2 arguments required, but only 1 present.",
+      "TypeError: Failed to execute 'updateCharacterBounds' on 'EditContext': The provided value cannot be converted to a sequence.",
+      [
+        "ok",
+        false
+      ],
+      [
+        "ok",
+        false
+      ],
+      [
+        "ok",
+        1
+      ],
+      "TypeError: Failed to execute 'updateControlBounds' on 'EditContext': parameter 1 is not of type 'DOMRect'."
+    ],
+    "brands": [
+      "TypeError: Illegal invocation",
+      "TypeError: Illegal invocation",
+      "TypeError: Illegal invocation",
+      "TypeError: Illegal invocation",
+      "TypeError: Illegal invocation"
+    ],
+    "attach": [
+      [
+        "div",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "span",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "p",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "canvas",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "input",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ],
+      [
+        "textarea",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ],
+      [
+        "img",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ],
+      [
+        "article",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "aside",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "blockquote",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "body",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "button",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ],
+      [
+        "footer",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "h1",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "header",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "main",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "nav",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "section",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "a",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ],
+      [
+        "li",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ],
+      [
+        "td",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ],
+      [
+        "video",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ],
+      [
+        "pre",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ],
+      [
+        "dialog",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ],
+      [
+        "x-custom",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "custom-el",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "h6",
+        [
+          "ok",
+          true
+        ]
+      ],
+      [
+        "ul",
+        "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': This element does not support EditContext"
+      ]
+    ],
+    "attachSvg": [
+      "ok",
+      false
+    ],
+    "share": [
+      "ok",
+      "NotSupportedError: Failed to set the 'editContext' property on 'HTMLElement': An EditContext can be only be associated with a single element",
+      null,
+      1,
+      true,
+      "ok",
+      "ok",
+      0,
+      "ok",
+      true,
+      "TypeError: Failed to set the 'editContext' property on 'HTMLElement': Failed to convert value to 'EditContext'.",
+      "ok",
+      null,
+      "TypeError: Failed to set the 'editContext' property on 'HTMLElement': Failed to convert value to 'EditContext'."
+    ],
+    "shadowHost": "ok",
+    "editable": [
+      false,
+      "inherit",
+      true,
+      -1
+    ],
+    "exec": [
+      false,
+      false,
+      "abc",
+      "",
+      [],
+      [],
+      false
+    ],
+    "events": {
+      "textupdate": [
+        "ok",
+        [
+          "ab",
+          1,
+          3,
+          2,
+          2,
+          false,
+          false,
+          false
+        ]
+      ],
+      "textupdateDefault": [
+        "ok",
+        [
+          "",
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "textupdateNoType": "TypeError: Failed to construct 'TextUpdateEvent': 1 argument required, but only 0 present.",
+      "format": [
+        "ok",
+        [
+          1,
+          1,
+          2,
+          "wavy",
+          "thin",
+          true,
+          false
+        ]
+      ],
+      "formatDefault": [
+        "ok",
+        [
+          0,
+          0,
+          "none",
+          "none"
+        ]
+      ],
+      "formatBad": "TypeError: Failed to construct 'TextFormat': Failed to read the 'underlineStyle' property from 'TextFormatInit': The provided value 'bogus' is not a valid enum value of type UnderlineStyle.",
+      "formatBad2": "TypeError: Failed to construct 'TextFormat': Failed to read the 'underlineThickness' property from 'TextFormatInit': The provided value 'Thin' is not a valid enum value of type UnderlineThickness.",
+      "formatDict": "TypeError: Failed to construct 'TextFormatUpdateEvent': Failed to read the 'textFormats' property from 'TextFormatUpdateEventInit': Failed to convert value to 'TextFormat'.",
+      "cbu": [
+        "ok",
+        [
+          2,
+          5,
+          false
+        ]
+      ],
+      "cbuDefault": [
+        "ok",
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "evDesc": {
+      "TextUpdateEvent": [
+        true,
+        1,
+        {
+          "updateRangeStart": {
+            "get": [
+              "get updateRangeStart",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "updateRangeEnd": {
+            "get": [
+              "get updateRangeEnd",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "text": {
+            "get": [
+              "get text",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "selectionStart": {
+            "get": [
+              "get selectionStart",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "selectionEnd": {
+            "get": [
+              "get selectionEnd",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "constructor": {
+            "value": [
+              "TextUpdateEvent",
+              1
+            ],
+            "writable": true,
+            "enumerable": false,
+            "configurable": true
+          }
+        },
+        "TypeError: Failed to construct 'TextUpdateEvent': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+      ],
+      "TextFormatUpdateEvent": [
+        true,
+        1,
+        {
+          "getTextFormats": {
+            "value": [
+              "getTextFormats",
+              0
+            ],
+            "writable": true,
+            "enumerable": true,
+            "configurable": true
+          },
+          "constructor": {
+            "value": [
+              "TextFormatUpdateEvent",
+              1
+            ],
+            "writable": true,
+            "enumerable": false,
+            "configurable": true
+          }
+        },
+        "TypeError: Failed to construct 'TextFormatUpdateEvent': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+      ],
+      "TextFormat": [
+        true,
+        0,
+        {
+          "rangeStart": {
+            "get": [
+              "get rangeStart",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "rangeEnd": {
+            "get": [
+              "get rangeEnd",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "underlineStyle": {
+            "get": [
+              "get underlineStyle",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "underlineThickness": {
+            "get": [
+              "get underlineThickness",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "constructor": {
+            "value": [
+              "TextFormat",
+              0
+            ],
+            "writable": true,
+            "enumerable": false,
+            "configurable": true
+          }
+        },
+        "TypeError: Failed to construct 'TextFormat': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+      ],
+      "CharacterBoundsUpdateEvent": [
+        true,
+        1,
+        {
+          "rangeStart": {
+            "get": [
+              "get rangeStart",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "rangeEnd": {
+            "get": [
+              "get rangeEnd",
+              0
+            ],
+            "enumerable": true,
+            "configurable": true
+          },
+          "constructor": {
+            "value": [
+              "CharacterBoundsUpdateEvent",
+              1
+            ],
+            "writable": true,
+            "enumerable": false,
+            "configurable": true
+          }
+        },
+        "TypeError: Failed to construct 'CharacterBoundsUpdateEvent': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+      ]
+    },
+    "handlers": [
+      true,
+      null
+    ],
+    "htmlDesc": {
+      "get": [
+        "get editContext",
+        0
+      ],
+      "set": [
+        "set editContext",
+        1
+      ],
+      "enumerable": true,
+      "configurable": true
+    },
+    "globals": [
+      [
+        "EditContext",
+        {
+          "value": [
+            "EditContext",
+            0
+          ],
+          "writable": true,
+          "enumerable": false,
+          "configurable": true
+        }
+      ],
+      [
+        "TextUpdateEvent",
+        {
+          "value": [
+            "TextUpdateEvent",
+            1
+          ],
+          "writable": true,
+          "enumerable": false,
+          "configurable": true
+        }
+      ],
+      [
+        "TextFormatUpdateEvent",
+        {
+          "value": [
+            "TextFormatUpdateEvent",
+            1
+          ],
+          "writable": true,
+          "enumerable": false,
+          "configurable": true
+        }
+      ],
+      [
+        "TextFormat",
+        {
+          "value": [
+            "TextFormat",
+            0
+          ],
+          "writable": true,
+          "enumerable": false,
+          "configurable": true
+        }
+      ],
+      [
+        "CharacterBoundsUpdateEvent",
+        {
+          "value": [
+            "CharacterBoundsUpdateEvent",
+            1
+          ],
+          "writable": true,
+          "enumerable": false,
+          "configurable": true
+        }
+      ]
+    ],
+    "aria": {
+      "el": [
+        "TypeError: Failed to execute 'ariaNotify' on 'Element': 1 argument required, but only 0 present.",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "TypeError: Failed to execute 'ariaNotify' on 'Element': Failed to read the 'priority' property from 'AriaNotificationOptions': The provided value 'bogus' is not a valid enum value of type AriaNotifyPriority.",
+        "TypeError: Failed to execute 'ariaNotify' on 'Element': Failed to read the 'priority' property from 'AriaNotificationOptions': The provided value 'High' is not a valid enum value of type AriaNotifyPriority.",
+        "TypeError: Failed to execute 'ariaNotify' on 'Element': The provided value is not of type 'AriaNotificationOptions'.",
+        "ok",
+        "TypeError: Failed to execute 'ariaNotify' on 'Element': Cannot convert a Symbol value to a string",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "order": [
+        "msg",
+        "priority"
+      ],
+      "doc": [
+        "ok",
+        "ok",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation"
+      ],
+      "svg": "ok",
+      "detached": "ok",
+      "xml": "ok",
+      "desc": [
+        [
+          "function",
+          "ariaNotify",
+          1,
+          true,
+          true,
+          true
+        ],
+        [
+          "function",
+          "ariaNotify",
+          1,
+          true,
+          true,
+          true
+        ]
+      ],
+      "where": [
+        [
+          "Element",
+          true
+        ],
+        [
+          "Document",
+          true
+        ],
+        [
+          "HTMLElement",
+          false
+        ],
+        [
+          "Node",
+          false
+        ],
+        [
+          "DocumentFragment",
+          false
+        ],
+        [
+          "ShadowRoot",
+          false
+        ]
+      ]
+    }
+  }
+}

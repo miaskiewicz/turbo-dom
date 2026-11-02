@@ -1,0 +1,515 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "80b9f80c9d4874ae7957b3b6532d94027b1c416744759381df4a2902d36eb1b3",
+  "probeSha256": "3ec0ba33ab456d7e3f82881a3f687a31a3738763eb6749372a51efd7a73867a4",
+  "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "shadow-events",
+      "result": {
+        "composedBubbles": {
+          "log": [
+            "W|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "D|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "HTML|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "BODY|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "outer|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "host|2|host|-|st sa SR:host host outer BODY HTML D W",
+            "SR:host|1|st|-|st sa SR:host host outer BODY HTML D W",
+            "sa|1|st|-|st sa SR:host host outer BODY HTML D W",
+            "st|2|st|-|st sa SR:host host outer BODY HTML D W",
+            "st|2|st|-|st sa SR:host host outer BODY HTML D W",
+            "sa|3|st|-|st sa SR:host host outer BODY HTML D W",
+            "SR:host|3|st|-|st sa SR:host host outer BODY HTML D W",
+            "host|2|host|-|st sa SR:host host outer BODY HTML D W",
+            "outer|3|host|-|st sa SR:host host outer BODY HTML D W",
+            "BODY|3|host|-|st sa SR:host host outer BODY HTML D W",
+            "HTML|3|host|-|st sa SR:host host outer BODY HTML D W",
+            "D|3|host|-|st sa SR:host host outer BODY HTML D W",
+            "W|3|host|-|st sa SR:host host outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "host",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "uncomposed": {
+          "log": [
+            "SR:host|1|st|-|st sa SR:host",
+            "sa|1|st|-|st sa SR:host",
+            "st|2|st|-|st sa SR:host",
+            "st|2|st|-|st sa SR:host",
+            "sa|3|st|-|st sa SR:host",
+            "SR:host|3|st|-|st sa SR:host"
+          ],
+          "result": true,
+          "after": [
+            null,
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "composedNoBubble": {
+          "log": [
+            "W|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "D|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "HTML|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "BODY|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "outer|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "host|2|host|-|st sa SR:host host outer BODY HTML D W",
+            "SR:host|1|st|-|st sa SR:host host outer BODY HTML D W",
+            "sa|1|st|-|st sa SR:host host outer BODY HTML D W",
+            "st|2|st|-|st sa SR:host host outer BODY HTML D W",
+            "st|2|st|-|st sa SR:host host outer BODY HTML D W",
+            "host|2|host|-|st sa SR:host host outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "host",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "slotted": {
+          "log": [
+            "W|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "D|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "HTML|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "BODY|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "outer|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "host|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "SR:host|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "sa|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "slot|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "light|2|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "light|2|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "slot|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "sa|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "SR:host|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "host|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "outer|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "BODY|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "HTML|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "D|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "W|3|light|-|light slot sa SR:host host outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "light",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "slottedUncomposed": {
+          "log": [
+            "W|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "D|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "HTML|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "BODY|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "outer|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "host|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "SR:host|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "sa|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "slot|1|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "light|2|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "light|2|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "slot|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "sa|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "SR:host|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "host|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "outer|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "BODY|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "HTML|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "D|3|light|-|light slot sa SR:host host outer BODY HTML D W",
+            "W|3|light|-|light slot sa SR:host host outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "light",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "closed": {
+          "log": [
+            "W|1|chost|-|chost outer BODY HTML D W",
+            "D|1|chost|-|chost outer BODY HTML D W",
+            "HTML|1|chost|-|chost outer BODY HTML D W",
+            "BODY|1|chost|-|chost outer BODY HTML D W",
+            "outer|1|chost|-|chost outer BODY HTML D W",
+            "chost|2|chost|-|chost outer BODY HTML D W",
+            "SR:chost|1|ct|-|ct ca SR:chost chost outer BODY HTML D W",
+            "ca|1|ct|-|ct ca SR:chost chost outer BODY HTML D W",
+            "ct|2|ct|-|ct ca SR:chost chost outer BODY HTML D W",
+            "ct|2|ct|-|ct ca SR:chost chost outer BODY HTML D W",
+            "ca|3|ct|-|ct ca SR:chost chost outer BODY HTML D W",
+            "SR:chost|3|ct|-|ct ca SR:chost chost outer BODY HTML D W",
+            "chost|2|chost|-|chost outer BODY HTML D W",
+            "outer|3|chost|-|chost outer BODY HTML D W",
+            "BODY|3|chost|-|chost outer BODY HTML D W",
+            "HTML|3|chost|-|chost outer BODY HTML D W",
+            "D|3|chost|-|chost outer BODY HTML D W",
+            "W|3|chost|-|chost outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "chost",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "closedUncomposed": {
+          "log": [
+            "SR:chost|1|ct|-|ct ca SR:chost",
+            "ca|1|ct|-|ct ca SR:chost",
+            "ct|2|ct|-|ct ca SR:chost",
+            "ct|2|ct|-|ct ca SR:chost",
+            "ca|3|ct|-|ct ca SR:chost",
+            "SR:chost|3|ct|-|ct ca SR:chost"
+          ],
+          "result": true,
+          "after": [
+            null,
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "nested": {
+          "log": [
+            "W|1|chost|-|chost outer BODY HTML D W",
+            "D|1|chost|-|chost outer BODY HTML D W",
+            "HTML|1|chost|-|chost outer BODY HTML D W",
+            "BODY|1|chost|-|chost outer BODY HTML D W",
+            "outer|1|chost|-|chost outer BODY HTML D W",
+            "chost|2|chost|-|chost outer BODY HTML D W",
+            "SR:chost|1|nhost|-|nt SR:nhost nhost ca SR:chost chost outer BODY HTML D W",
+            "ca|1|nhost|-|nt SR:nhost nhost ca SR:chost chost outer BODY HTML D W",
+            "nhost|2|nhost|-|nt SR:nhost nhost ca SR:chost chost outer BODY HTML D W",
+            "SR:nhost|1|nt|-|nt SR:nhost nhost ca SR:chost chost outer BODY HTML D W",
+            "nt|2|nt|-|nt SR:nhost nhost ca SR:chost chost outer BODY HTML D W",
+            "nt|2|nt|-|nt SR:nhost nhost ca SR:chost chost outer BODY HTML D W",
+            "SR:nhost|3|nt|-|nt SR:nhost nhost ca SR:chost chost outer BODY HTML D W",
+            "nhost|2|nhost|-|nt SR:nhost nhost ca SR:chost chost outer BODY HTML D W",
+            "ca|3|nhost|-|nt SR:nhost nhost ca SR:chost chost outer BODY HTML D W",
+            "SR:chost|3|nhost|-|nt SR:nhost nhost ca SR:chost chost outer BODY HTML D W",
+            "chost|2|chost|-|chost outer BODY HTML D W",
+            "outer|3|chost|-|chost outer BODY HTML D W",
+            "BODY|3|chost|-|chost outer BODY HTML D W",
+            "HTML|3|chost|-|chost outer BODY HTML D W",
+            "D|3|chost|-|chost outer BODY HTML D W",
+            "W|3|chost|-|chost outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "chost",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "atRoot": {
+          "log": [
+            "W|1|host|-|SR:host host outer BODY HTML D W",
+            "D|1|host|-|SR:host host outer BODY HTML D W",
+            "HTML|1|host|-|SR:host host outer BODY HTML D W",
+            "BODY|1|host|-|SR:host host outer BODY HTML D W",
+            "outer|1|host|-|SR:host host outer BODY HTML D W",
+            "host|2|host|-|SR:host host outer BODY HTML D W",
+            "SR:host|2|SR:host|-|SR:host host outer BODY HTML D W",
+            "SR:host|2|SR:host|-|SR:host host outer BODY HTML D W",
+            "host|2|host|-|SR:host host outer BODY HTML D W",
+            "outer|3|host|-|SR:host host outer BODY HTML D W",
+            "BODY|3|host|-|SR:host host outer BODY HTML D W",
+            "HTML|3|host|-|SR:host host outer BODY HTML D W",
+            "D|3|host|-|SR:host host outer BODY HTML D W",
+            "W|3|host|-|SR:host host outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "host",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "atHost": {
+          "log": [
+            "W|1|host|-|host outer BODY HTML D W",
+            "D|1|host|-|host outer BODY HTML D W",
+            "HTML|1|host|-|host outer BODY HTML D W",
+            "BODY|1|host|-|host outer BODY HTML D W",
+            "outer|1|host|-|host outer BODY HTML D W",
+            "host|2|host|-|host outer BODY HTML D W",
+            "host|2|host|-|host outer BODY HTML D W",
+            "outer|3|host|-|host outer BODY HTML D W",
+            "BODY|3|host|-|host outer BODY HTML D W",
+            "HTML|3|host|-|host outer BODY HTML D W",
+            "D|3|host|-|host outer BODY HTML D W",
+            "W|3|host|-|host outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "host",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "stoppedAtHost": {
+          "log": [
+            "W|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "D|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "HTML|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "BODY|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "outer|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "host|2|host|-|st sa SR:host host outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "host",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "stoppedAtRoot": {
+          "log": [
+            "W|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "D|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "HTML|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "BODY|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "outer|1|host|-|st sa SR:host host outer BODY HTML D W",
+            "host|2|host|-|st sa SR:host host outer BODY HTML D W",
+            "SR:host|1|st|-|st sa SR:host host outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "host",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "detached": {
+          "log": [
+            "dhost|2|dhost|-|dt SR:dhost dhost",
+            "SR:dhost|1|dt|-|dt SR:dhost dhost",
+            "dt|2|dt|-|dt SR:dhost dhost",
+            "dt|2|dt|-|dt SR:dhost dhost",
+            "SR:dhost|3|dt|-|dt SR:dhost dhost",
+            "dhost|2|dhost|-|dt SR:dhost dhost"
+          ],
+          "result": true,
+          "after": [
+            "dhost",
+            "-",
+            0,
+            0,
+            null
+          ]
+        },
+        "relatedSameTree": {
+          "log": [
+            "SR:host|1|st|sa|st sa SR:host",
+            "sa|1|st|sa|st sa SR:host",
+            "st|2|st|sa|st sa SR:host",
+            "st|2|st|sa|st sa SR:host",
+            "sa|3|st|sa|st sa SR:host",
+            "SR:host|3|st|sa|st sa SR:host"
+          ],
+          "result": true,
+          "after": [
+            null,
+            null,
+            0,
+            0,
+            null
+          ]
+        },
+        "relatedOutside": {
+          "log": [
+            "W|1|host|outer|st sa SR:host host outer BODY HTML D W",
+            "D|1|host|outer|st sa SR:host host outer BODY HTML D W",
+            "HTML|1|host|outer|st sa SR:host host outer BODY HTML D W",
+            "BODY|1|host|outer|st sa SR:host host outer BODY HTML D W",
+            "outer|1|host|outer|st sa SR:host host outer BODY HTML D W",
+            "host|2|host|outer|st sa SR:host host outer BODY HTML D W",
+            "SR:host|1|st|outer|st sa SR:host host outer BODY HTML D W",
+            "sa|1|st|outer|st sa SR:host host outer BODY HTML D W",
+            "st|2|st|outer|st sa SR:host host outer BODY HTML D W",
+            "st|2|st|outer|st sa SR:host host outer BODY HTML D W",
+            "sa|3|st|outer|st sa SR:host host outer BODY HTML D W",
+            "SR:host|3|st|outer|st sa SR:host host outer BODY HTML D W",
+            "host|2|host|outer|st sa SR:host host outer BODY HTML D W",
+            "outer|3|host|outer|st sa SR:host host outer BODY HTML D W",
+            "BODY|3|host|outer|st sa SR:host host outer BODY HTML D W",
+            "HTML|3|host|outer|st sa SR:host host outer BODY HTML D W",
+            "D|3|host|outer|st sa SR:host host outer BODY HTML D W",
+            "W|3|host|outer|st sa SR:host host outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "host",
+            "outer",
+            0,
+            0,
+            null
+          ]
+        },
+        "relatedFromOutside": {
+          "log": [
+            "W|1|outer|host|outer BODY HTML D W",
+            "D|1|outer|host|outer BODY HTML D W",
+            "HTML|1|outer|host|outer BODY HTML D W",
+            "BODY|1|outer|host|outer BODY HTML D W",
+            "outer|2|outer|host|outer BODY HTML D W",
+            "outer|2|outer|host|outer BODY HTML D W",
+            "BODY|3|outer|host|outer BODY HTML D W",
+            "HTML|3|outer|host|outer BODY HTML D W",
+            "D|3|outer|host|outer BODY HTML D W",
+            "W|3|outer|host|outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "outer",
+            "host",
+            0,
+            0,
+            null
+          ]
+        },
+        "relatedClosed": {
+          "log": [
+            "W|1|chost|light|chost outer BODY HTML D W",
+            "D|1|chost|light|chost outer BODY HTML D W",
+            "HTML|1|chost|light|chost outer BODY HTML D W",
+            "BODY|1|chost|light|chost outer BODY HTML D W",
+            "outer|1|chost|light|chost outer BODY HTML D W",
+            "chost|2|chost|light|chost outer BODY HTML D W",
+            "SR:chost|1|ct|light|ct ca SR:chost chost outer BODY HTML D W",
+            "ca|1|ct|light|ct ca SR:chost chost outer BODY HTML D W",
+            "ct|2|ct|light|ct ca SR:chost chost outer BODY HTML D W",
+            "ct|2|ct|light|ct ca SR:chost chost outer BODY HTML D W",
+            "ca|3|ct|light|ct ca SR:chost chost outer BODY HTML D W",
+            "SR:chost|3|ct|light|ct ca SR:chost chost outer BODY HTML D W",
+            "chost|2|chost|light|chost outer BODY HTML D W",
+            "outer|3|chost|light|chost outer BODY HTML D W",
+            "BODY|3|chost|light|chost outer BODY HTML D W",
+            "HTML|3|chost|light|chost outer BODY HTML D W",
+            "D|3|chost|light|chost outer BODY HTML D W",
+            "W|3|chost|light|chost outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "chost",
+            "light",
+            0,
+            0,
+            null
+          ]
+        },
+        "relatedIsHost": {
+          "log": [
+            "SR:host|1|st|host|st sa SR:host",
+            "sa|1|st|host|st sa SR:host",
+            "st|2|st|host|st sa SR:host",
+            "st|2|st|host|st sa SR:host",
+            "sa|3|st|host|st sa SR:host",
+            "SR:host|3|st|host|st sa SR:host"
+          ],
+          "result": true,
+          "after": [
+            null,
+            null,
+            0,
+            0,
+            null
+          ]
+        },
+        "focusRelatedClosed": {
+          "log": [
+            "W|1|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "D|1|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "HTML|1|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "BODY|1|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "outer|1|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "host|1|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "SR:host|1|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "sa|1|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "slot|1|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "light|2|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "light|2|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "slot|3|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "sa|3|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "SR:host|3|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "host|3|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "outer|3|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "BODY|3|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "HTML|3|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "D|3|light|chost|light slot sa SR:host host outer BODY HTML D W",
+            "W|3|light|chost|light slot sa SR:host host outer BODY HTML D W"
+          ],
+          "result": true,
+          "after": [
+            "light",
+            "chost",
+            0,
+            0,
+            null
+          ]
+        },
+        "focusRelatedNested": {
+          "log": [
+            "SR:chost|1|ct|nhost|ct ca SR:chost",
+            "ca|1|ct|nhost|ct ca SR:chost",
+            "ct|2|ct|nhost|ct ca SR:chost",
+            "ct|2|ct|nhost|ct ca SR:chost",
+            "ca|3|ct|nhost|ct ca SR:chost",
+            "SR:chost|3|ct|nhost|ct ca SR:chost"
+          ],
+          "result": true,
+          "after": [
+            null,
+            null,
+            0,
+            0,
+            null
+          ]
+        }
+      }
+    }
+  ]
+}

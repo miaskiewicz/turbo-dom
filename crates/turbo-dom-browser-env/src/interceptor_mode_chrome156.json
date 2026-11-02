@@ -1,0 +1,208 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "timeZone": "UTC",
+  "casesSha256": "7e121a67016a1b0fd49ebf32db547fd873cdefbc0192ee2150dfba5606c60bb5",
+  "probeSha256": "1680c2c30df6fb9cd6b76fbc1863183a51420a477d6d210f00a903709c4551b1",
+  "collectorSha256": "85844539831be26d1ae72c0b643fc2968ddf277c82efc540e5baa867c013c3e2",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--host-resolver-rules=MAP * 127.0.0.1",
+    "--ignore-certificate-errors",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "interceptor-modes",
+      "result": {
+        "all": {
+          "sloppySetIndex": {
+            "value": "no-throw"
+          },
+          "strictSetIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLAllCollection': Indexed property setter is not supported.",
+            "typeError": true
+          },
+          "strictCallsSloppySet": {
+            "value": "no-throw"
+          },
+          "evalStrictSet": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLAllCollection': Indexed property setter is not supported.",
+            "typeError": true
+          },
+          "assignIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLAllCollection': Indexed property setter is not supported.",
+            "typeError": true
+          },
+          "reflectSetIndex": {
+            "value": true
+          },
+          "defineIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLAllCollection': Index property setter is not supported.",
+            "typeError": true
+          },
+          "defineAccessorIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLAllCollection': Accessor properties are not allowed.",
+            "typeError": true
+          },
+          "reflectDefineIndex": {
+            "value": true
+          },
+          "reflectDefineAccessorIndex": {
+            "value": true
+          },
+          "sloppyDeleteIndex": {
+            "value": false
+          },
+          "strictDeleteIndex": {
+            "name": "TypeError",
+            "message": "Failed to delete an indexed property [0] from 'HTMLAllCollection': Index property deleter is not supported.",
+            "typeError": true
+          },
+          "reflectDeleteIndex": {
+            "value": false
+          },
+          "sloppySetNamed": {
+            "value": "no-throw"
+          },
+          "strictSetNamed": {
+            "name": "TypeError",
+            "message": "Failed to set a named property 'first' on 'HTMLAllCollection': Named property setter is not supported.",
+            "typeError": true
+          },
+          "assignNamed": {
+            "name": "TypeError",
+            "message": "Failed to set a named property 'first' on 'HTMLAllCollection': Named property setter is not supported.",
+            "typeError": true
+          },
+          "reflectSetNamed": {
+            "value": true
+          },
+          "defineNamed": {
+            "name": "TypeError",
+            "message": "Failed to set a named property 'first' on 'HTMLAllCollection': Named property setter is not supported.",
+            "typeError": true
+          },
+          "defineAccessorNamed": {
+            "name": "TypeError",
+            "message": "Failed to set a named property 'first' on 'HTMLAllCollection': Named property setter is not supported.",
+            "typeError": true
+          },
+          "reflectDefineNamed": {
+            "value": true
+          },
+          "reflectDefineAccessorNamed": {
+            "value": true
+          },
+          "sloppyDeleteNamed": {
+            "value": false
+          },
+          "strictDeleteNamed": {
+            "name": "TypeError",
+            "message": "Failed to delete a named property 'first' from 'HTMLAllCollection': Named property deleter is not supported.",
+            "typeError": true
+          },
+          "reflectDeleteNamed": {
+            "value": false
+          }
+        },
+        "allIntact": [
+          7,
+          "html,head,body,div,select,option,option",
+          "first"
+        ],
+        "select": {
+          "sloppySetIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+            "typeError": true
+          },
+          "strictSetIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+            "typeError": true
+          },
+          "strictCallsSloppySet": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+            "typeError": true
+          },
+          "evalStrictSet": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+            "typeError": true
+          },
+          "assignIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+            "typeError": true
+          },
+          "reflectSetIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+            "typeError": true
+          },
+          "defineIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+            "typeError": true
+          },
+          "defineAccessorIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': Accessor properties are not allowed.",
+            "typeError": true
+          },
+          "reflectDefineIndex": {
+            "name": "TypeError",
+            "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+            "typeError": true
+          },
+          "reflectDefineAccessorIndex": {
+            "value": true
+          },
+          "sloppyDeleteIndex": {
+            "value": false
+          },
+          "strictDeleteIndex": {
+            "name": "TypeError",
+            "message": "Failed to delete an indexed property [0] from 'HTMLSelectElement': Index property deleter is not supported.",
+            "typeError": true
+          },
+          "reflectDeleteIndex": {
+            "value": false
+          }
+        },
+        "selectIntact": [
+          "a",
+          "b"
+        ],
+        "selectStrictWrongType": {
+          "name": "TypeError",
+          "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+          "typeError": true
+        },
+        "selectSloppyWrongType": {
+          "name": "TypeError",
+          "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+          "typeError": true
+        },
+        "selectReflectWrongType": {
+          "name": "TypeError",
+          "message": "Failed to set an indexed property [0] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+          "typeError": true
+        }
+      }
+    }
+  ]
+}

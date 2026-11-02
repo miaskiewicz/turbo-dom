@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#23/image-factory",
+ "class": "Image() legacy factory, HTMLImageElement.prototype.decode",
+ "reason": "new Image(w, h) is the native legacy factory (width/height attributes, no own src, no fake onload) and decode() is a prototype operation following the host's image state. Binding-only (turbo-dom-browser-env bootstrap JS): the html2pdf corpora never run it, so no output is expected to change. turbo-surf keeps its own globalThis.Image until its follow-up removes it.",
+ "control": "crates/turbo-dom-browser-env/src/html_image_chrome156.json (factory, own, decode)",
+ "e2e": "crates/turbo-dom-browser-env/src/html_image_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

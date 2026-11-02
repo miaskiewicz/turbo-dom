@@ -1,0 +1,62 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "probeSha256": "d603f6cc2488720c6145d78cb3c1ef3a0ae732f25ba366d04bf936155cf48538",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "name": "default",
+      "parent": "rgb(0, 0, 0)",
+      "child": "rgb(0, 0, 0)"
+    },
+    {
+      "name": "inherited",
+      "parent": "rgb(0, 128, 0)",
+      "child": "rgb(0, 128, 0)"
+    },
+    {
+      "name": "inherit",
+      "parent": "rgb(0, 128, 0)",
+      "child": "rgb(0, 128, 0)"
+    },
+    {
+      "name": "initial",
+      "parent": "rgb(0, 128, 0)",
+      "child": "rgb(0, 0, 0)"
+    },
+    {
+      "name": "unset",
+      "parent": "rgb(0, 128, 0)",
+      "child": "rgb(0, 128, 0)"
+    },
+    {
+      "name": "currentColor",
+      "parent": "rgb(0, 128, 0)",
+      "child": "rgb(0, 128, 0)"
+    },
+    {
+      "name": "CanvasText",
+      "parent": "rgb(0, 128, 0)",
+      "child": "rgb(0, 0, 0)"
+    },
+    {
+      "name": "live",
+      "color": "rgb(0, 0, 255)"
+    },
+    {
+      "name": "disconnected",
+      "parent": "",
+      "child": ""
+    }
+  ]
+}

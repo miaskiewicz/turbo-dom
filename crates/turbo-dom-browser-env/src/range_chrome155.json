@@ -1,0 +1,270 @@
+{
+  "browserVersion": "Chrome/155.0.8059.40",
+  "collectorSha256": "5d5159a12d0e827b3c6a29ec6b1c7f54a360d8024b0a98b1bed15ef2cc3df966",
+  "result": {
+    "contents": {
+      "text": {
+        "cloneContents": {
+          "selected": "bcd",
+          "output": "bcd",
+          "remaining": "<p>abcdef</p>",
+          "boundary": {
+            "collapsed": false,
+            "node": "#text:abcdef",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        },
+        "extractContents": {
+          "selected": "bcd",
+          "output": "bcd",
+          "remaining": "<p>aef</p>",
+          "boundary": {
+            "collapsed": true,
+            "node": "#text:aef",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        },
+        "deleteContents": {
+          "selected": "bcd",
+          "output": null,
+          "remaining": "<p>aef</p>",
+          "boundary": {
+            "collapsed": true,
+            "node": "#text:aef",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        },
+        "surroundContents": {
+          "selected": "bcd",
+          "output": "bcd",
+          "remaining": "<p>a<mark>bcd</mark>ef</p>",
+          "boundary": {
+            "collapsed": false,
+            "node": "p",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        }
+      },
+      "nested": {
+        "cloneContents": {
+          "selected": "bcdefg",
+          "output": "<b>b<i>cd</i>ef</b><em>g</em>",
+          "remaining": "<div><b>ab<i>cd</i>ef</b><em>gh</em><u>ij</u></div>",
+          "boundary": {
+            "collapsed": false,
+            "node": "#text:ab",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        },
+        "extractContents": {
+          "selected": "bcdefg",
+          "output": "<b>b<i>cd</i>ef</b><em>g</em>",
+          "remaining": "<div><b>a</b><em>h</em><u>ij</u></div>",
+          "boundary": {
+            "collapsed": true,
+            "node": "div",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        },
+        "deleteContents": {
+          "selected": "bcdefg",
+          "output": null,
+          "remaining": "<div><b>a</b><em>h</em><u>ij</u></div>",
+          "boundary": {
+            "collapsed": true,
+            "node": "div",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        },
+        "surroundContents": {
+          "selected": "bcdefg",
+          "remaining": "<div><b>ab<i>cd</i>ef</b><em>gh</em><u>ij</u></div>",
+          "boundary": {
+            "collapsed": false,
+            "node": "#text:ab",
+            "offset": 1
+          },
+          "error": "InvalidStateError",
+          "movedOriginal": false
+        }
+      },
+      "siblings": {
+        "cloneContents": {
+          "selected": "yz",
+          "output": "<b>y</b><i>z</i>",
+          "remaining": "<div><a>x</a><b>y</b><i>z</i><u>w</u></div>",
+          "boundary": {
+            "collapsed": false,
+            "node": "div",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        },
+        "extractContents": {
+          "selected": "yz",
+          "output": "<b>y</b><i>z</i>",
+          "remaining": "<div><a>x</a><u>w</u></div>",
+          "boundary": {
+            "collapsed": true,
+            "node": "div",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": true
+        },
+        "deleteContents": {
+          "selected": "yz",
+          "output": null,
+          "remaining": "<div><a>x</a><u>w</u></div>",
+          "boundary": {
+            "collapsed": true,
+            "node": "div",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        },
+        "surroundContents": {
+          "selected": "yz",
+          "output": "<b>y</b><i>z</i>",
+          "remaining": "<div><a>x</a><mark><b>y</b><i>z</i></mark><u>w</u></div>",
+          "boundary": {
+            "collapsed": false,
+            "node": "div",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        }
+      },
+      "surroundElement": {
+        "cloneContents": {
+          "selected": "cd",
+          "output": "<b>cd</b>",
+          "remaining": "<p>ab<b>cd</b>ef</p>",
+          "boundary": {
+            "collapsed": false,
+            "node": "p",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        },
+        "extractContents": {
+          "selected": "cd",
+          "output": "<b>cd</b>",
+          "remaining": "<p>abef</p>",
+          "boundary": {
+            "collapsed": true,
+            "node": "p",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": true
+        },
+        "deleteContents": {
+          "selected": "cd",
+          "output": null,
+          "remaining": "<p>abef</p>",
+          "boundary": {
+            "collapsed": true,
+            "node": "p",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        },
+        "surroundContents": {
+          "selected": "cd",
+          "output": "<b>cd</b>",
+          "remaining": "<p>ab<mark><b>cd</b></mark>ef</p>",
+          "boundary": {
+            "collapsed": false,
+            "node": "p",
+            "offset": 1
+          },
+          "error": null,
+          "movedOriginal": false
+        }
+      }
+    },
+    "errors": {
+      "largeOffset": {
+        "name": "IndexSizeError"
+      },
+      "negativeOffset": {
+        "name": "IndexSizeError"
+      },
+      "doctype": {
+        "name": "InvalidNodeTypeError"
+      },
+      "rootSelect": {
+        "name": "InvalidNodeTypeError"
+      },
+      "detachedBefore": {
+        "name": "InvalidNodeTypeError"
+      },
+      "missingArgument": {
+        "name": "TypeError"
+      },
+      "forgedClone": {
+        "name": "TypeError"
+      },
+      "invalidParent": {
+        "name": "InvalidNodeTypeError"
+      },
+      "badComparison": {
+        "name": "NotSupportedError"
+      },
+      "foreignComparison": {
+        "name": "WrongDocumentError"
+      },
+      "doctypePoint": {
+        "name": "InvalidNodeTypeError"
+      }
+    },
+    "comparisons": {
+      "modes": [
+        -1,
+        1,
+        -1,
+        -1
+      ],
+      "points": [
+        -1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "inside": [
+        false,
+        true,
+        true,
+        true,
+        false
+      ],
+      "foreignInside": false,
+      "retarget": {
+        "start": true,
+        "end": true,
+        "collapsed": true
+      }
+    }
+  }
+}

@@ -48,7 +48,9 @@ pub fn destroy(doc: u32) {
     DOCS.with(|d| {
         let mut v = d.borrow_mut();
         if (doc as usize) < v.len() {
-            v[doc as usize] = Doc { soa: core::parse_html_soa("") };
+            v[doc as usize] = Doc {
+                soa: core::parse_html_soa(""),
+            };
         }
     });
 }
@@ -97,7 +99,11 @@ pub fn node_type(doc: u32, h: u32) -> u8 {
 pub fn tag_id(doc: u32, h: u32) -> i32 {
     with_doc(doc, |d| {
         let i = h as usize;
-        if d.soa.node_type[i] == ELEMENT_NODE { d.soa.tag_id[i] as i32 } else { -1 }
+        if d.soa.node_type[i] == ELEMENT_NODE {
+            d.soa.tag_id[i] as i32
+        } else {
+            -1
+        }
     })
 }
 #[wasm_bindgen]
@@ -127,7 +133,9 @@ pub fn text_id(doc: u32, h: u32) -> i32 {
 #[wasm_bindgen]
 #[must_use]
 pub fn get_attr_id(doc: u32, h: u32, name: &str) -> i32 {
-    with_doc(doc, |d| attr_value_id(&d.soa, h as usize, name).map_or(-1, |v| v as i32))
+    with_doc(doc, |d| {
+        attr_value_id(&d.soa, h as usize, name).map_or(-1, |v| v as i32)
+    })
 }
 
 /// NAIVE getAttribute: returns the value String (per-call UTF-8 marshal).
@@ -178,9 +186,17 @@ fn attr_value_id(soa: &Soa, i: usize, name: &str) -> Option<u32> {
 pub fn node_record(doc: u32, h: u32) -> Vec<i32> {
     with_doc(doc, |d| {
         let i = h as usize;
-        let tag = if d.soa.node_type[i] == ELEMENT_NODE { d.soa.tag_id[i] as i32 } else { -1 };
+        let tag = if d.soa.node_type[i] == ELEMENT_NODE {
+            d.soa.tag_id[i] as i32
+        } else {
+            -1
+        };
         let start = d.soa.attr_start[i];
-        let count = if start < 0 { 0 } else { d.soa.attr_count[i] as usize };
+        let count = if start < 0 {
+            0
+        } else {
+            d.soa.attr_count[i] as usize
+        };
         let mut out = Vec::with_capacity(3 + count * 2);
         out.push(tag);
         out.push(d.soa.parent[i]);
@@ -223,7 +239,11 @@ struct Compound<'a> {
 
 fn parse_compound(sel: &str) -> Compound<'_> {
     let s = sel.trim();
-    let mut c = Compound { tag: None, id: None, classes: Vec::new() };
+    let mut c = Compound {
+        tag: None,
+        id: None,
+        classes: Vec::new(),
+    };
     let mut i = 0;
     let bytes = s.as_bytes();
     // leading type selector

@@ -1,0 +1,13 @@
+{
+ "id": "S3b/unknown-pseudo",
+ "class": "unknown-pseudo",
+ "reason": "Pseudo-classes the old parser did not know (or wrote in another case) were dropped, so the rule matched as if they were absent; Chrome drops a rule with an unknown pseudo-class / pseudo-element (or one it rejects: `:matches()`, `:-moz-any()`, `:selected`) and evaluates the ones it knows (`:lang()`, `:defined`, `:scope`, `:FIRST-CHILD`). Consolidation S3b: the html2pdf / surf-static cascade parses and matches with turbo-dom's selector engine.",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cascade_cases/unknown-pseudo-class, cascade_cases/cascade-only-pseudos)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

@@ -30,13 +30,13 @@ values without lossy UTF-8 conversion. In schema version 2 an ill-formed scalar
 The collector still executes the original unmodified probe and original selector.
 
 Chrome rejects `s`/`S` and their escaped spelling in ordinary selector lists and
-`:not`; forgiving `:is`/`:where` discard that invalid arm. Public Rust selector
-support for standards-defined `s` matching is a separate policy and must not be
-claimed as Chrome agreement. The bounded public Rust default policy covers the
+`:not`; forgiving `:is`/`:where` discard that invalid arm. turbo-dom rejects `s` the
+same way (miaskiewicz/turbo-dom#24; it used to be a documented Rust extension). The
+bounded public Rust default policy covers the
 three measured HTML `input[type]`, `button[type]` and `ol[type]` cases, with
 ASCII-normalized HTML attribute names; SVG/XML behavior remains case-sensitive by default. This does
-not claim all HTML enumerated attributes. Tests identify 57 Chrome-comparable
-cases and retain seven `s`-policy cases separately for browser-binding admission.
+not claim all HTML enumerated attributes. Tests compare all 64 cases, the seven
+`s`-modifier cases included.
 
 This control covers attribute matching and these specific API boundaries. It does
 not certify the complete selector grammar or all HTML enumerated attributes.

@@ -32,14 +32,13 @@ pub enum NodeType {
 }
 
 impl NodeType {
-    /// Read a node type back from the `SoA`'s untyped `u8` column. Total over every
-    /// value the parser core writes (see the node-type constants in `core`).
+    /// Read a node type back from the `SoA`'s untyped `u8` column (or a parsed
+    /// `core::Node`). Total over every value the parser core writes: the HTML parser
+    /// never produces attribute or processing-instruction nodes.
     fn from_u8(v: u8) -> NodeType {
         match v {
             1 => NodeType::Element,
-            2 => NodeType::Attribute,
             3 => NodeType::Text,
-            7 => NodeType::ProcessingInstruction,
             8 => NodeType::Comment,
             9 => NodeType::Document,
             10 => NodeType::Doctype,
@@ -63,12 +62,7 @@ pub enum Namespace {
 
 impl Namespace {
     fn from_u8(v: u8) -> Namespace {
-        match v {
-            1 => Namespace::Svg,
-            2 => Namespace::MathMl,
-            3 => Namespace::Other,
-            _ => Namespace::Html,
-        }
+        Namespace::from_id(v)
     }
 
     /// Build a `Namespace` from its NUMBER (0 HTML, 1 SVG, 2 `MathML`; anything else HTML) —
@@ -173,19 +167,21 @@ impl NewNode {
             _ => Namespace::Html,
         }
     }
-    /// The element's local name, if this is an element.
-    fn element_name(&self) -> Option<&str> {
-        match self {
-            NewNode::Element { name, .. } => Some(name),
-            _ => None,
-        }
+    /// The element's local name. Callers check the node is an element first (a new
+    /// node's [`NodeType`] is its variant).
+    fn element_name(&self) -> &str {
+        let NewNode::Element { name, .. } = self else {
+            unreachable!("element_name of a non-element")
+        };
+        name
     }
-    /// The character data, if this is a text or comment node.
-    fn char_data(&self) -> Option<&str> {
+    /// The character data. Callers check the node is a text, comment or processing
+    /// instruction node first.
+    fn char_data(&self) -> &str {
         match self {
-            NewNode::Text(s) | NewNode::Comment(s) => Some(s),
-            NewNode::ProcessingInstruction(value) => Some(&value.data),
-            _ => None,
+            NewNode::ProcessingInstruction(value) => &value.data,
+            NewNode::Text(s) | NewNode::Comment(s) => s,
+            _ => unreachable!("char_data of a non-character node"),
         }
     }
 }
@@ -557,9 +553,21 @@ pub use utf16::Utf16MutationEvent;
 #[path = "custom_states.rs"]
 mod custom_states;
 
+#[path = "custom_element_state.rs"]
+mod custom_element_state;
+#[path = "fullscreen_state.rs"]
+mod fullscreen_state;
+#[cfg(test)]
+pub(crate) use custom_element_state::is_custom_element_name;
+pub use custom_element_state::CustomElementState;
+
 #[path = "storage.rs"]
 mod storage;
+
+#[path = "tree_access.rs"]
+mod tree_access;
 pub use storage::{CollectionBudget, CollectionError, CollectionReport, StorageStats};
+pub use tree_access::{LocalAttributes, ParseOptions};
 
 pub struct Tree {
     buf: Soa,
@@ -605,6 +613,11 @@ pub struct Tree {
     /// form-state pseudo-classes in query.rs). Empty on the parse/no-interaction path.
     form_props: FxHashMap<(Handle, FormProp), bool>,
     custom_states: FxHashMap<Handle, FxHashSet<Box<[u16]>>>,
+    /// Embedder-reported (and import-time) custom element states; absent = derived at read
+    /// time from the element's creation (`custom_element_state.rs`).
+    custom_element_states: FxHashMap<Handle, CustomElementState>,
+    /// The embedder-reported fullscreen stack, bottom first (`fullscreen_state.rs`).
+    fullscreen_stack: Vec<Handle>,
 }
 
 /// The boolean IDL form-state properties whose selector semantics can diverge from the
@@ -631,6 +644,11 @@ impl Tree {
     #[must_use]
     pub fn parse(html: &str) -> Tree {
         let (buf, compat_mode) = core::parse_html_soa_with_compat_mode(html);
+        Self::from_soa(buf, compat_mode)
+    }
+
+    /// A fresh tree viewing a parsed `SoA` buffer (no overlays yet).
+    fn from_soa(buf: Soa, compat_mode: &'static str) -> Tree {
         let buf_len = buf.node_type.len() as u32;
         Tree {
             buf,
@@ -658,6 +676,8 @@ impl Tree {
             mutation_name_units: FxHashMap::default(),
             form_props: FxHashMap::default(),
             custom_states: FxHashMap::default(),
+            custom_element_states: FxHashMap::default(),
+            fullscreen_stack: Vec::new(),
         }
     }
 
@@ -748,7 +768,7 @@ impl Tree {
             return None;
         }
         if self.is_new(h) {
-            self.new_ref(h).element_name()
+            Some(self.new_ref(h).element_name())
         } else {
             Some(&self.buf.tag_names[self.buf.tag_id[h.idx()] as usize])
         }
@@ -1301,12 +1321,9 @@ impl Tree {
             return None;
         }
         if self.is_new(h) {
-            return if nt == NodeType::Element {
-                self.new_ref(h).element_name()
-            } else if let NewNode::Fragment(label) = self.new_ref(h) {
-                label.as_deref()
-            } else {
-                None
+            return match self.new_ref(h) {
+                NewNode::Fragment(label) => label.as_deref(),
+                element => Some(element.element_name()),
             };
         }
         Some(&self.buf.tag_names[self.buf.tag_id[h.idx()] as usize])
@@ -1351,20 +1368,16 @@ impl Tree {
 
     // ----------------------------------------------------------------- text
     /// The immutable target of a processing instruction.
+    /// None for every other node (the parser never produces processing instructions,
+    /// so only created ones have a target).
     pub fn processing_instruction_target(&self, h: Handle) -> Option<&str> {
-        if self.node_type(h) != NodeType::ProcessingInstruction {
+        if !self.is_new(h) {
             return None;
         }
-        if self.is_new(h) {
-            return match self.new_ref(h) {
-                NewNode::ProcessingInstruction(value) => Some(&value.target),
-                _ => None,
-            };
+        match self.new_ref(h) {
+            NewNode::ProcessingInstruction(value) => Some(&value.target),
+            _ => None,
         }
-        self.buf
-            .tag_names
-            .get(self.buf.tag_id[h.idx()] as usize)
-            .map(String::as_str)
     }
 
     pub fn node_value(&self, h: Handle) -> Option<String> {
@@ -1382,10 +1395,7 @@ impl Tree {
             return Some(t.to_string());
         }
         if self.is_new(h) {
-            return self
-                .new_ref(h)
-                .char_data()
-                .map(std::string::ToString::to_string);
+            return Some(self.new_ref(h).char_data().to_string());
         }
         // buffer text/comment nodes always have text_id >= 0 (core pools every
         // string); .get + default keeps this total and coverable.
@@ -1483,9 +1493,7 @@ impl Tree {
         previous_sibling: Option<Handle>,
         next_sibling: Option<Handle>,
     ) {
-        if !self.is_recording() {
-            return;
-        }
+        debug_assert!(self.is_recording(), "callers record only while recording");
         let rec = crate::rtdom::mutations::MutationRecord::child_list(
             parent,
             added.into_iter().collect(),
@@ -1695,14 +1703,16 @@ impl Tree {
         }
     }
 
-    fn fragment_insertion_would_cycle(&self, parent: Handle, fragment: Handle) -> bool {
-        let children = self.children(fragment);
+    /// DOM pre-insert validity step 2: `node` is a host-including inclusive ancestor of
+    /// `parent`, so inserting it there would build a parent cycle (Chrome:
+    /// `HierarchyRequestError`).
+    fn is_inclusive_ancestor(&self, node: Handle, parent: Handle) -> bool {
         let mut ancestor = Some(parent);
-        while let Some(node) = ancestor {
-            if children.contains(&node) {
+        while let Some(n) = ancestor {
+            if n == node {
                 return true;
             }
-            ancestor = self.parent(node);
+            ancestor = self.parent(n).or_else(|| self.shadow_host(n));
         }
         false
     }
@@ -1710,16 +1720,12 @@ impl Tree {
     pub fn append_child(&mut self, parent: Handle, child: Handle) {
         if self.node_type(child) == NodeType::Attribute
             || self.node_type(parent) == NodeType::Attribute
+            || self.is_inclusive_ancestor(child, parent)
         {
             return;
         }
         if self.node_type(child) == NodeType::Fragment {
-            if parent == child || self.fragment_insertion_would_cycle(parent, child) {
-                return;
-            }
-            for node in self.children(child) {
-                self.append_child(parent, node);
-            }
+            self.insert_nodes(parent, &[child], Anchor::Before(None), Vec::new());
             return;
         }
         self.detach(child);
@@ -1740,18 +1746,20 @@ impl Tree {
     pub fn insert_before(&mut self, parent: Handle, child: Handle, reference: Option<Handle>) {
         if self.node_type(child) == NodeType::Attribute
             || self.node_type(parent) == NodeType::Attribute
+            || self.is_inclusive_ancestor(child, parent)
         {
             return;
         }
         if self.node_type(child) == NodeType::Fragment {
-            if parent == child || self.fragment_insertion_would_cycle(parent, child) {
-                return;
-            }
-            for node in self.children(child) {
-                self.insert_before(parent, node, reference);
-            }
+            self.insert_nodes(parent, &[child], Anchor::Before(reference), Vec::new());
             return;
         }
+        // A node inserted before itself goes before its next sibling (DOM pre-insert).
+        let reference = if reference == Some(child) {
+            self.next_sibling(child)
+        } else {
+            reference
+        };
         self.detach(child);
         let list = self.ensure_children(parent);
         match reference.and_then(|r| list.iter().position(|&x| x == r)) {
@@ -2044,9 +2052,14 @@ impl Tree {
     /// Insert `nodes` (in order) immediately before `h` within `h`'s parent. No-op if detached.
     pub fn before(&mut self, h: Handle, nodes: &[Handle]) {
         let Some(p) = self.parent(h) else { return };
-        for &n in nodes {
-            self.insert_before(p, n, Some(h));
+        if nodes.iter().any(|&n| self.is_inclusive_ancestor(n, p)) {
+            return;
         }
+        // DOM: anchor after h's viable previous sibling (the first one not being moved).
+        let sibs = self.children(p);
+        let i = sibs.iter().position(|&x| x == h).unwrap_or(0);
+        let previous = sibs[..i].iter().rev().copied().find(|s| !nodes.contains(s));
+        self.insert_nodes(p, nodes, Anchor::After(previous), Vec::new());
     }
     /// The "viable next sibling" used by `after`/`replaceWith`: `h`'s first following
     /// sibling that is NOT itself in `nodes`. Per the DOM spec these methods anchor the
@@ -2061,38 +2074,112 @@ impl Tree {
     /// Insert `nodes` (in order) immediately after `h` within `h`'s parent.
     pub fn after(&mut self, h: Handle, nodes: &[Handle]) {
         let Some(p) = self.parent(h) else { return };
-        let next = self.viable_next_sibling(h, nodes);
-        for &n in nodes {
-            self.insert_before(p, n, next);
+        if nodes.iter().any(|&n| self.is_inclusive_ancestor(n, p)) {
+            return;
         }
+        let next = self.viable_next_sibling(h, nodes);
+        self.insert_nodes(p, nodes, Anchor::Before(next), Vec::new());
     }
     /// Replace `h` with `nodes` (in order) in `h`'s parent.
     pub fn replace_with(&mut self, h: Handle, nodes: &[Handle]) {
         let Some(p) = self.parent(h) else { return };
-        let next = self.viable_next_sibling(h, nodes);
-        // Insert before the viable next sibling so order is preserved, then remove h. (If a
-        // node in `nodes` is h itself it is first detached by insert_before — harmless; spec
-        // dedups similarly.)
-        for &n in nodes {
-            if n != h {
-                self.insert_before(p, n, next);
-            }
+        if nodes.iter().any(|&n| self.is_inclusive_ancestor(n, p)) {
+            return;
         }
-        self.remove_child(p, h);
+        let next = self.viable_next_sibling(h, nodes);
+        // h is replaced in the same record as the insertion, unless h is itself one of the
+        // moved nodes (then it is simply moved).
+        let replaced = if nodes.contains(&h) {
+            Vec::new()
+        } else {
+            vec![h]
+        };
+        self.insert_nodes(p, nodes, Anchor::Before(next), replaced);
     }
     /// Replace all children of `h` with `nodes` (in order).
     pub fn replace_children(&mut self, h: Handle, nodes: &[Handle]) {
-        for c in self.children(h) {
-            self.remove_child(h, c);
+        if nodes.iter().any(|&n| self.is_inclusive_ancestor(n, h)) {
+            return;
         }
+        let replaced = self.children(h);
+        self.insert_nodes(h, nodes, Anchor::Before(None), replaced);
+    }
+
+    /// Insert `nodes` (fragments flattened) into `parent` at `anchor`, removing `replaced`
+    /// children of `parent` first, with ONE childList record for the whole change, as the
+    /// DOM does when it converts `nodes` into a fragment. A node moved from another parent
+    /// still records its removal there; a fragment records the removal of its children.
+    fn insert_nodes(
+        &mut self,
+        parent: Handle,
+        nodes: &[Handle],
+        anchor: Anchor,
+        replaced: Vec<Handle>,
+    ) {
+        let mut flat = Vec::with_capacity(nodes.len());
         for &n in nodes {
-            self.append_child(h, n);
+            match self.node_type(n) {
+                NodeType::Attribute => {}
+                NodeType::Fragment => {
+                    let kids = self.children(n);
+                    let log = self.mutation_log.take();
+                    for &k in &kids {
+                        self.remove_child(n, k);
+                    }
+                    self.mutation_log = log;
+                    if self.is_recording() && !kids.is_empty() {
+                        let rec = crate::rtdom::mutations::MutationRecord::child_list(
+                            n,
+                            Vec::new(),
+                            kids.clone(),
+                        );
+                        self.record_event(rec, None, None, None);
+                    }
+                    flat.extend(kids);
+                }
+                _ => {
+                    self.detach(n);
+                    flat.push(n);
+                }
+            }
+        }
+        let reference = match anchor {
+            Anchor::Before(reference) => reference,
+            Anchor::After(Some(previous)) => self.next_sibling(previous),
+            Anchor::After(None) => self.first_child(parent),
+        };
+        let replaced: Vec<Handle> = replaced
+            .into_iter()
+            .filter(|&c| self.parent(c) == Some(parent))
+            .collect();
+        let log = self.mutation_log.take();
+        for &c in &replaced {
+            self.remove_child(parent, c);
+        }
+        let previous =
+            reference.map_or_else(|| self.last_child(parent), |r| self.previous_sibling(r));
+        for &n in &flat {
+            self.insert_before(parent, n, reference);
+        }
+        self.mutation_log = log;
+        if self.is_recording() && !(flat.is_empty() && replaced.is_empty()) {
+            let rec = crate::rtdom::mutations::MutationRecord::child_list(parent, flat, replaced);
+            self.record_event(rec, previous, reference, None);
         }
     }
     /// `insertAdjacentElement(position, element)` — position is beforebegin | afterbegin | beforeend
     /// | afterend (case-insensitive). Returns true if inserted.
     pub fn insert_adjacent_element(&mut self, h: Handle, position: &str, el: Handle) -> bool {
-        match position.to_ascii_lowercase().as_str() {
+        let position = position.to_ascii_lowercase();
+        // The node `el` goes into: `h`'s parent for beforebegin/afterend, else `h`.
+        let target = match position.as_str() {
+            "beforebegin" | "afterend" => self.parent(h),
+            _ => Some(h),
+        };
+        if target.is_some_and(|t| self.is_inclusive_ancestor(el, t)) {
+            return false;
+        }
+        match position.as_str() {
             "beforebegin" => {
                 if self.parent(h).is_some() {
                     self.before(h, &[el]);
@@ -2136,15 +2223,9 @@ impl Tree {
             "afterend" => self.after(h, &kids),
             "afterbegin" => {
                 let first = self.first_child(h);
-                for &k in &kids {
-                    self.insert_before(h, k, first);
-                }
+                self.insert_nodes(h, &kids, Anchor::Before(first), Vec::new());
             }
-            _ => {
-                for &k in &kids {
-                    self.append_child(h, k);
-                }
-            } // beforeend (default)
+            _ => self.insert_nodes(h, &kids, Anchor::Before(None), Vec::new()), // beforeend (default)
         }
         core::discard_node(frag);
     }
@@ -2235,13 +2316,19 @@ impl Tree {
                     };
                     self.set_attribute_ns(h, namespace, &qualified, &a.value);
                 }
+                // fragment parsing reads the `is` value at creation, like the initial parse
+                if ns == Namespace::Html
+                    && n.attrs
+                        .iter()
+                        .any(|a| a.prefix.is_empty() && a.name == "is")
+                {
+                    self.custom_element_states
+                        .insert(h, CustomElementState::Undefined);
+                }
                 h
             }
             NodeType::Fragment => self.create_document_fragment(),
             NodeType::Comment => self.create_comment(&n.value),
-            NodeType::ProcessingInstruction => {
-                self.create_processing_instruction(&n.name, &n.value)
-            }
             _ => self.create_text_node(&n.value),
         }
     }
@@ -2309,7 +2396,8 @@ impl Tree {
         out
     }
 
-    /// Short-circuiting DFS over `root`'s descendant ELEMENTS (excluding `root`):
+    /// Short-circuiting DFS over `root`'s descendant ELEMENTS (excluding `root`; template
+    /// content is not a descendant — `for_each_light_child`):
     /// returns true as soon as `pred` does, WITHOUT materializing a descendant
     /// `Vec`. Children are pushed alloc-free (push then reverse the just-added
     /// segment) so traversal stays document-order. Mirrors the JS `someDescendant`;
@@ -2333,14 +2421,14 @@ impl Tree {
     ) -> bool {
         let mut stack: Vec<Handle> = Vec::new();
         let base = stack.len();
-        self.for_each_child(root, |c| stack.push(c));
+        self.for_each_light_child(root, |c| stack.push(c));
         stack[base..].reverse();
         while let Some(h) = stack.pop() {
             if self.node_type(h) == NodeType::Element && pred(h) {
                 return true;
             }
             let base = stack.len();
-            self.for_each_child(h, |c| stack.push(c));
+            self.for_each_light_child(h, |c| stack.push(c));
             stack[base..].reverse();
         }
         false
@@ -2373,6 +2461,15 @@ fn ns_id(namespace: &str) -> Namespace {
         "math" => Namespace::MathMl,
         _ => Namespace::Html,
     }
+}
+
+/// Where `Tree::insert_nodes` inserts: before a reference child (`None`: at the end), or
+/// right after a previous sibling (`None`: at the start), resolved once the moved nodes
+/// are detached.
+#[derive(Clone, Copy)]
+enum Anchor {
+    Before(Option<Handle>),
+    After(Option<Handle>),
 }
 
 #[cfg(test)]

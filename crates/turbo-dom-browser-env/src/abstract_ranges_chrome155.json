@@ -1,0 +1,212 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "probeSha256": "fdee805faa7617329ef9dd6b36d1934104e52e83911fb541c304b613002321fb",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "shapes": [
+      {
+        "name": "AbstractRange",
+        "length": 0,
+        "source": "function AbstractRange() { [native code] }",
+        "enumerable": false,
+        "keys": [
+          "Symbol(Symbol.toStringTag)",
+          "collapsed",
+          "constructor",
+          "endOffset",
+          "startOffset"
+        ],
+        "parent": "Object",
+        "constructorParent": ""
+      },
+      {
+        "name": "NodeRange",
+        "length": 0,
+        "source": "function NodeRange() { [native code] }",
+        "enumerable": false,
+        "keys": [
+          "Symbol(Symbol.toStringTag)",
+          "constructor",
+          "endContainer",
+          "startContainer"
+        ],
+        "parent": "AbstractRange",
+        "constructorParent": "AbstractRange"
+      },
+      {
+        "name": "Range",
+        "length": 0,
+        "source": "function Range() { [native code] }",
+        "enumerable": false,
+        "parent": "NodeRange",
+        "constructorParent": "NodeRange"
+      },
+      {
+        "name": "StaticRange",
+        "length": 1,
+        "source": "function StaticRange() { [native code] }",
+        "enumerable": false,
+        "keys": [
+          "Symbol(Symbol.toStringTag)",
+          "constructor"
+        ],
+        "parent": "NodeRange",
+        "constructorParent": "NodeRange"
+      }
+    ],
+    "getters": [
+      [
+        "startContainer",
+        2,
+        true,
+        true,
+        true,
+        "get startContainer",
+        0,
+        "TypeError"
+      ],
+      [
+        "startOffset",
+        3,
+        true,
+        true,
+        true,
+        "get startOffset",
+        0,
+        "TypeError"
+      ],
+      [
+        "endContainer",
+        2,
+        true,
+        true,
+        true,
+        "get endContainer",
+        0,
+        "TypeError"
+      ],
+      [
+        "endOffset",
+        3,
+        true,
+        true,
+        true,
+        "get endOffset",
+        0,
+        "TypeError"
+      ],
+      [
+        "collapsed",
+        3,
+        true,
+        true,
+        true,
+        "get collapsed",
+        0,
+        "TypeError"
+      ]
+    ],
+    "illegal": [
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError"
+    ],
+    "reads": [
+      "endContainer",
+      "endOffset",
+      "startContainer",
+      "startOffset"
+    ],
+    "initial": [
+      true,
+      true,
+      true,
+      false,
+      true,
+      1,
+      4
+    ],
+    "loose": [
+      [
+        100,
+        200,
+        false
+      ],
+      [
+        4294967295,
+        1,
+        false
+      ],
+      [
+        4,
+        1,
+        false
+      ],
+      [
+        0,
+        0,
+        true
+      ],
+      [
+        1,
+        4,
+        false
+      ]
+    ],
+    "roots": [
+      true,
+      true,
+      false
+    ],
+    "invalidNodes": [
+      "TypeError",
+      "TypeError",
+      "InvalidNodeTypeError",
+      "InvalidNodeTypeError"
+    ],
+    "failure": "TypeError",
+    "failureReads": [
+      "endContainer",
+      "endOffset"
+    ],
+    "mutation": [
+      1,
+      4,
+      0,
+      1
+    ],
+    "detached": [
+      true,
+      true
+    ],
+    "subclass": [
+      true,
+      true,
+      true
+    ],
+    "brands": [
+      "TypeError",
+      "TypeError",
+      "TypeError"
+    ],
+    "poison": [
+      0,
+      true,
+      4
+    ]
+  }
+}

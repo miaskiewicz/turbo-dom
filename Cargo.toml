@@ -1,13 +1,53 @@
 [workspace]
 # The root package (turbo-dom-parser) plus the standalone Rust-native DOM runtime
-# crate published to crates.io as `turbo-dom`. The parser ships to npm.
-members = ["crates/turbo-dom"]
+# crate published to crates.io as `turbo-dom`, plus the add-on crates:
+# `turbo-dom-browser-env` (rtdom <-> V8 browser binding), `turbo-dom-layout` (HTML/CSS
+# layout engine) and `turbo-dom-raster` (screenshot painter), the last two relocated
+# from turbo-html2pdf-core / turbo-surf-raster. The parser ships to npm.
+members = ["crates/turbo-dom", "crates/turbo-dom-browser-env", "crates/turbo-dom-layout", "crates/turbo-dom-raster"]
+# turbo-dom-v8 is generated (crates/turbo-dom-v8/scripts/generate.py) into the
+# gitignored crates/turbo-dom-v8/crate/ and built as its own standalone package, so a
+# fresh checkout resolves this workspace without generating V8 first.
+exclude = ["crates/turbo-dom-v8"]
+
+# The pedantic clippy gate shared by the turbo-dom, turbo-dom-layout and
+# turbo-dom-raster crates (`[lints] workspace = true`; the root parser package keeps its
+# own copy below, which adds one FFI-specific allowance; turbo-dom-browser-env is
+# lint-exempt by design). The allowed lints don't fit a DOM / layout / raster engine —
+# "fixing" them would mangle correct, intentional code, so each is a documented opt-out
+# rather than a silent suppression. Item-level `#[allow]`s in layout/raster carry their
+# reason inline.
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+# We bridge f64 layout math and integer indices/lengths with bounded, intentional casts.
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+# Exact float comparisons here test canonical/sentinel values (e.g. `0.0`), not approximations.
+float_cmp = "allow"
+# Single-char names are idiomatic for the tokenizer / loop indices (`i`, `j`, `n`, `c`).
+many_single_char_names = "allow"
+# Test-time DOM oracle: it deliberately doesn't document every panic/error path.
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"
+# A few config-ish structs legitimately carry several independent bool flags.
+struct_excessive_bools = "allow"
+# One large dispatch fn reads better intact than artificially split.
+too_many_lines = "allow"
+# We intentionally pin the concrete FxHashMap hasher rather than generalize over hashers.
+implicit_hasher = "allow"
+# `f32::midpoint` rounds through f64, so `(a + b) / 2.0` -> `a.midpoint(b)` can move the
+# last bit of layout / paint geometry; outputs are pinned byte for byte, keep the f32 math.
+manual_midpoint = "allow"
 
 [package]
 name = "turbo-dom-parser"
-version = "0.5.8"
+version = "0.6.0"
 edition = "2021"
 description = "html5ever-backed native parser for turbo-dom (Layer 1)"
+# Ships to npm only (napi/wasm addon); never published to crates.io.
+publish = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -26,6 +66,10 @@ napi-derive = { version = "2", optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde-wasm-bindgen = { version = "0.6", optional = true }
+
+[dev-dependencies]
+# The Chrome 156 control fixture (src/core/conformance_tests.rs).
+serde_json = "1"
 
 [build-dependencies]
 napi-build = { version = "2", optional = true }
@@ -69,3 +113,9 @@ opt-level = 3
 [profile.profiling]
 inherits = "release"
 debug = true
+
+# Pre-publish only: resolve the generated turbo-dom-v8 fork from its candidate branch
+# (crates/turbo-dom-v8/scripts/push-candidate.sh). Remove once turbo-dom-v8 150.4.0 is
+# on crates.io (see PUBLISHING.md).
+[patch.crates-io]
+turbo-dom-v8 = { git = "https://github.com/miaskiewicz/turbo-dom", rev = "e9b36c8733ef1cf1073f7053a8c5931381c978c5" }

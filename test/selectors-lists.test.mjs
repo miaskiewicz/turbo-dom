@@ -136,8 +136,8 @@ test(':has(~ S) general sibling + relative selector list + empty arg', () => {
   assert.equal(r[0].getAttribute('id'), 'a');
   // a comma list of relative selectors: matches if ANY matches
   assert.equal(document.querySelectorAll('h3:has(~ p, ~ .none)').length, 1);
-  // empty :has() never matches
-  assert.equal(document.querySelectorAll('div:has()').length, 0);
+  // an empty :has() is a SyntaxError (Chrome 156)
+  assert.throws(() => document.querySelectorAll('div:has()'), SyntaxError);
 });
 
 test(':has() works through matches() on a single element', () => {

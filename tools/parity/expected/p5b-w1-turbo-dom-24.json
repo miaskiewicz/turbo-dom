@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#24 item 1",
+ "reason": "@media / @supports rules cascade at their block's source position (recursively), not after every top-level rule of the sheet, as Chrome 156 orders style rules (fdcb967). No corpus input has a matching conditional rule before a plain rule of equal specificity that it should lose to: no corpus output changes (parity base bc290f6 -> fdcb967). P5b-W1.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json (scripts/html-document-chrome-control.mjs) media-*/supports-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs, crates/turbo-dom-layout/tests/style.rs (at_rules_remember_their_source_position, conditional_rules_cascade_at_their_source_position)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

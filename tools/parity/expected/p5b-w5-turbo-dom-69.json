@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#69",
+ "reason": "Only legacy -webkit-* text-align (UA center/caption, align attributes) moves block children; plain center/right align inline content only. Fresh-target parity builds turbo-dom f41 -> f69 (P5b-W5 steps, html2pdf consol/p5b-w5 950754e): 0 existing outputs change. P5b-W5.",
+ "control": "scripts/html-document-chrome-control.mjs legacy-align-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (legacy_alignment_moves_blocks_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

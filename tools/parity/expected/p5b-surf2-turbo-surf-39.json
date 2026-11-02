@@ -1,0 +1,29 @@
+{
+ "id": "turbo-surf#39",
+ "reason": "live layout sizes loaded images from their natural size (resolver had no image sizes; a display:block 3x2 image laid out at 1280x0) \u2014 measured by P5b-surf2 at turbo-surf 37f6a4e vs its parent, turbo-dom pin 5157913",
+ "control": "turbo-surf rust/crates/turbo-surf-render/tests/fixtures/html_image_members_chrome156.json + image_formats chrome156",
+ "changes": {
+  "surf": [
+   "live-image-matrix__img-gif-animated.html",
+   "live-image-matrix__img-gif-offset-frame.html",
+   "live-image-matrix__img-gif.html",
+   "live-image-matrix__img-jpeg-baseline.html",
+   "live-image-matrix__img-jpeg-cmyk.html",
+   "live-image-matrix__img-jpeg-gray.html",
+   "live-image-matrix__img-jpeg-progressive.html",
+   "live-image-matrix__img-png-16bit.html",
+   "live-image-matrix__img-png-gray-alpha.html",
+   "live-image-matrix__img-png-gray.html",
+   "live-image-matrix__img-png-interlaced.html",
+   "live-image-matrix__img-png-palette-trns.html",
+   "live-image-matrix__img-svg-fractional.html",
+   "live-image-matrix__img-svg-huge.html",
+   "live-image-matrix__img-svg-small.html",
+   "live-image-matrix__img-svg-viewbox-only.html",
+   "live-image-matrix__img-webp-lossless.html",
+   "live-image-matrix__img-webp-lossy.html",
+   "live-turbo-html2pdf__benches__conformance__fixtures__56-img-percent-width-aspect.html",
+   "live-turbo-html2pdf__benches__conformance__fixtures__57-img-intrinsic-in-flex.html"
+  ]
+ }
+}

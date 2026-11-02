@@ -1,0 +1,14 @@
+{
+ "id": "P5b/turbo-dom#18/disabled-fieldset",
+ "class": "disabled-fieldset",
+ "reason": ":disabled/:enabled follow HTML \"actually disabled\" (disabled fieldset ancestors outside the first legend, option via optgroup / owner select; only form controls match either) (7112fa4). Measured: no parity-corpus output changes (html2pdf, html2pdf-svg, html2pdf-extra vs b-main; surf static vs S5).",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cases/disabled-fieldset)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "surf_static": "turbo-dom-raster static screenshots (the surf static tier) of every surf static + extra input: byte-identical to S5 (74bcc5c), PNG + SVG + system-fonts passes.",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

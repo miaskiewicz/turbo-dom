@@ -1,0 +1,188 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "43c4d88fe7b2e275355dccd9ef30d85bb09ac9fb285f72021fa2a6d871680b50",
+  "probeSha256": "14726898835946c026a0d5fa82c74d2351606ceb168b7d50aa993010e9027397",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "result": {
+        "descriptors": [
+          [
+            "size",
+            [
+              true,
+              true,
+              null,
+              "get size",
+              0
+            ]
+          ],
+          [
+            "add",
+            [
+              true,
+              true,
+              true,
+              "add",
+              1
+            ]
+          ],
+          [
+            "clear",
+            [
+              true,
+              true,
+              true,
+              "clear",
+              0
+            ]
+          ],
+          [
+            "delete",
+            [
+              true,
+              true,
+              true,
+              "delete",
+              1
+            ]
+          ],
+          [
+            "entries",
+            [
+              true,
+              true,
+              true,
+              "entries",
+              0
+            ]
+          ],
+          [
+            "forEach",
+            [
+              true,
+              true,
+              true,
+              "forEach",
+              1
+            ]
+          ],
+          [
+            "has",
+            [
+              true,
+              true,
+              true,
+              "has",
+              1
+            ]
+          ],
+          [
+            "keys",
+            [
+              true,
+              true,
+              true,
+              "keys",
+              0
+            ]
+          ],
+          [
+            "values",
+            [
+              true,
+              true,
+              true,
+              "values",
+              0
+            ]
+          ],
+          [
+            "constructor",
+            [
+              false,
+              true,
+              true,
+              "CustomStateSet",
+              0
+            ]
+          ]
+        ],
+        "iteratorAliases": [
+          true,
+          false
+        ],
+        "iterator": [
+          "[object CustomStateSet Iterator]",
+          [
+            "next"
+          ],
+          [
+            "Symbol(Symbol.toStringTag)"
+          ],
+          true,
+          "next",
+          0
+        ],
+        "live": [
+          {
+            "done": false,
+            "value": "one"
+          },
+          {
+            "done": false,
+            "value": "three"
+          },
+          {
+            "done": true
+          },
+          {
+            "done": false,
+            "value": "four"
+          }
+        ],
+        "foreach": [
+          [
+            "one",
+            "one",
+            true,
+            true
+          ],
+          [
+            "three",
+            "three",
+            true,
+            true
+          ],
+          [
+            "four",
+            "four",
+            true,
+            true
+          ]
+        ],
+        "failures": [
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ]
+      }
+    }
+  ]
+}

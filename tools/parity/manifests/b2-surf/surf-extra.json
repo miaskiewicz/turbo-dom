@@ -1,0 +1,14 @@
+{
+  "static-extra-img-avif.png": "86979ae55768886af5dc424c2ebad38eaf9045e32f1d079a5d774956f364908c",
+  "static-extra-img-avif.svg": "7b392bbe910302489f78c5cadb42aa28623b0901dde1d8415404ae4f024cacb9",
+  "static-extra-img-jpeg-corrupt.png": "bcad331b9fb74e958c31dfcb89e0db7e06a93810ba640e799536f500917885e3",
+  "static-extra-img-jpeg-corrupt.svg": "565b4fcab291bf07435cd9bffaf26af414686f8658582f5955efe5bbd30b6dd0",
+  "static-extra-img-jpeg-exif-orient6.png": "9afda5284a62d0f4f198076406c25234d9724b2fce65a51eaf22b824c8a19a00",
+  "static-extra-img-jpeg-exif-orient6.svg": "2edb168e925c249655907b07142c9282bab2273f780ae5f0f67816f2f01710ab",
+  "static-extra-img-png-truncated.png": "d25c1add3d94aa4977b51ce689951646ece5cef036e803966b69cbea7247c619",
+  "static-extra-img-png-truncated.svg": "3a96ec5717c5a17744ffc191d6bb4ef5e7ea5268de1e83755b2fe7580e1bae7f",
+  "static-extra-xref-anchors.png": "8afb54765b99386e169a6e7f1c008c45c92f116f179053d37b623addbf74ebe2",
+  "static-extra-xref-anchors.svg": "3545d42b2cdc8dc8f5911cc5329e530a7b8762a708b92685affa325f93a47dee",
+  "static-extra-xref-plain-html.png": "a7e815c93efb3e778e7d5834065b60baf514e01ebdb86d5b435a24aeae3626e3",
+  "static-extra-xref-plain-html.svg": "fdc82a03e983cc400d40353c9cdde999bbb32de2183ab34935e4d9417923c306"
+}

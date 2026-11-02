@@ -1,0 +1,4 @@
+# turbo-dom-v8's generator hashes the generated crate, which includes these files copied
+# byte for byte (own tests, rustfmt.toml) and patches applied to LF upstream sources: keep
+# them LF on every checkout (Windows autocrlf would change pins.json's tree hash).
+crates/turbo-dom-v8/** text eol=lf

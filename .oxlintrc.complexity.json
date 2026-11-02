@@ -1,0 +1,12 @@
+// Cyclomatic-complexity gate for the JS runtime (`npm run complexity:js`, CI job
+// `complexity / js (cc <= 15)`). Only ESLint's `complexity` rule is enabled: every other
+// category is off so this config never doubles as a general linter. The limit is the
+// repo-wide cc <= 15 (CLAUDE.md "Complexity gates"); there is no allow-list or baseline.
+{
+  "categories": {
+    "correctness": "off"
+  },
+  "rules": {
+    "eslint/complexity": ["error", { "max": 15 }]
+  }
+}

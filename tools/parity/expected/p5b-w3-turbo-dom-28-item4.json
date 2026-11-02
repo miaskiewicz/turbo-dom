@@ -1,0 +1,23 @@
+{
+ "id": "miaskiewicz/turbo-dom#28 item 4",
+ "reason": "Floats blockify and inline-table is an atomic inline-level table; floats inside line content take a place in the line; a table's intrinsic widths are its columns + border-spacing (df4a880). template-mixed changes through the last: its flex item holding a table now measures the table's max-content. parity 84622c1 -> df4a880; layoutBoxes vs Chrome 156: 172 -> 172, none worse. P5b-W3.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json + crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json float-* / inline-table-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs, crates/turbo-dom-layout/src/live/chrome_tests.rs, crates/turbo-dom-layout/src/layout/value.rs (display_tests), crates/turbo-dom-layout/tests/native_block_inline.rs",
+ "changes": {
+  "html2pdf": [
+   "template-mixed-cmyk.pdf",
+   "template-mixed-pdfa.pdf",
+   "template-mixed-plain.pdf",
+   "template-mixed-ua.pdf"
+  ],
+  "html2pdf-svg": [
+   "template-mixed-cmyk.pdf",
+   "template-mixed-pdfa.pdf",
+   "template-mixed-plain.pdf",
+   "template-mixed-ua.pdf"
+  ],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

@@ -1,0 +1,1492 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "dom_mutation_validity_probe.js",
+  "probeSha256": "bc418ec6778bf96626ea5875ed58daeafe11f53af0f8a3d7cc0b3f3504368b85",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "matrix": {
+      "append": {
+        "element<element": [
+          "ok",
+          "B"
+        ],
+        "element<text": [
+          "ok",
+          "#text"
+        ],
+        "element<pi": [
+          "ok",
+          "p"
+        ],
+        "element<comment": [
+          "ok",
+          "#comment"
+        ],
+        "element<doctype": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "element<fragment": [
+          "ok",
+          "I,#text"
+        ],
+        "element<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "element<twoElementFragment": [
+          "ok",
+          "I,U"
+        ],
+        "element<textFragment": [
+          "ok",
+          "#text"
+        ],
+        "element<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "element<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<element": [
+          "ok",
+          "B"
+        ],
+        "fragment<text": [
+          "ok",
+          "#text"
+        ],
+        "fragment<pi": [
+          "ok",
+          "p"
+        ],
+        "fragment<comment": [
+          "ok",
+          "#comment"
+        ],
+        "fragment<doctype": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<fragment": [
+          "ok",
+          "I,#text"
+        ],
+        "fragment<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "fragment<twoElementFragment": [
+          "ok",
+          "I,U"
+        ],
+        "fragment<textFragment": [
+          "ok",
+          "#text"
+        ],
+        "fragment<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<element": [
+          "ok",
+          "b"
+        ],
+        "empty<text": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<pi": [
+          "ok",
+          "p"
+        ],
+        "empty<comment": [
+          "ok",
+          "#comment"
+        ],
+        "empty<doctype": [
+          "ok",
+          "html"
+        ],
+        "empty<fragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "empty<twoElementFragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<textFragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "withElement<element": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<text": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<pi": [
+          "ok",
+          "root,p"
+        ],
+        "withElement<comment": [
+          "ok",
+          "root,#comment"
+        ],
+        "withElement<doctype": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<fragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<emptyFragment": [
+          "ok",
+          "root"
+        ],
+        "withElement<twoElementFragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<textFragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<attr": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<document": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withDoctype<element": [
+          "ok",
+          "d,b"
+        ],
+        "withDoctype<text": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<pi": [
+          "ok",
+          "d,p"
+        ],
+        "withDoctype<comment": [
+          "ok",
+          "d,#comment"
+        ],
+        "withDoctype<doctype": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<fragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<emptyFragment": [
+          "ok",
+          "d"
+        ],
+        "withDoctype<twoElementFragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<textFragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<attr": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<document": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withBoth<element": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<text": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<pi": [
+          "ok",
+          "html,HTML,p"
+        ],
+        "withBoth<comment": [
+          "ok",
+          "html,HTML,#comment"
+        ],
+        "withBoth<doctype": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<fragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<emptyFragment": [
+          "ok",
+          "html,HTML"
+        ],
+        "withBoth<twoElementFragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<textFragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<attr": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<document": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ]
+      },
+      "prepend": {
+        "element<element": [
+          "ok",
+          "B"
+        ],
+        "element<text": [
+          "ok",
+          "#text"
+        ],
+        "element<pi": [
+          "ok",
+          "p"
+        ],
+        "element<comment": [
+          "ok",
+          "#comment"
+        ],
+        "element<doctype": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "element<fragment": [
+          "ok",
+          "I,#text"
+        ],
+        "element<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "element<twoElementFragment": [
+          "ok",
+          "I,U"
+        ],
+        "element<textFragment": [
+          "ok",
+          "#text"
+        ],
+        "element<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "element<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<element": [
+          "ok",
+          "B"
+        ],
+        "fragment<text": [
+          "ok",
+          "#text"
+        ],
+        "fragment<pi": [
+          "ok",
+          "p"
+        ],
+        "fragment<comment": [
+          "ok",
+          "#comment"
+        ],
+        "fragment<doctype": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<fragment": [
+          "ok",
+          "I,#text"
+        ],
+        "fragment<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "fragment<twoElementFragment": [
+          "ok",
+          "I,U"
+        ],
+        "fragment<textFragment": [
+          "ok",
+          "#text"
+        ],
+        "fragment<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<element": [
+          "ok",
+          "b"
+        ],
+        "empty<text": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<pi": [
+          "ok",
+          "p"
+        ],
+        "empty<comment": [
+          "ok",
+          "#comment"
+        ],
+        "empty<doctype": [
+          "ok",
+          "html"
+        ],
+        "empty<fragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "empty<twoElementFragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<textFragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "withElement<element": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<text": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<pi": [
+          "ok",
+          "p,root"
+        ],
+        "withElement<comment": [
+          "ok",
+          "#comment,root"
+        ],
+        "withElement<doctype": [
+          "ok",
+          "html,root"
+        ],
+        "withElement<fragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<emptyFragment": [
+          "ok",
+          "root"
+        ],
+        "withElement<twoElementFragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<textFragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<attr": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<document": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withDoctype<element": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<text": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<pi": [
+          "ok",
+          "p,d"
+        ],
+        "withDoctype<comment": [
+          "ok",
+          "#comment,d"
+        ],
+        "withDoctype<doctype": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<fragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<emptyFragment": [
+          "ok",
+          "d"
+        ],
+        "withDoctype<twoElementFragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<textFragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<attr": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<document": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withBoth<element": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<text": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<pi": [
+          "ok",
+          "p,html,HTML"
+        ],
+        "withBoth<comment": [
+          "ok",
+          "#comment,html,HTML"
+        ],
+        "withBoth<doctype": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<fragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<emptyFragment": [
+          "ok",
+          "html,HTML"
+        ],
+        "withBoth<twoElementFragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<textFragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<attr": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<document": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ]
+      },
+      "replaceChildren": {
+        "element<element": [
+          "ok",
+          "B"
+        ],
+        "element<text": [
+          "ok",
+          "#text"
+        ],
+        "element<pi": [
+          "ok",
+          "p"
+        ],
+        "element<comment": [
+          "ok",
+          "#comment"
+        ],
+        "element<doctype": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "element<fragment": [
+          "ok",
+          "I,#text"
+        ],
+        "element<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "element<twoElementFragment": [
+          "ok",
+          "I,U"
+        ],
+        "element<textFragment": [
+          "ok",
+          "#text"
+        ],
+        "element<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "element<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<element": [
+          "ok",
+          "B"
+        ],
+        "fragment<text": [
+          "ok",
+          "#text"
+        ],
+        "fragment<pi": [
+          "ok",
+          "p"
+        ],
+        "fragment<comment": [
+          "ok",
+          "#comment"
+        ],
+        "fragment<doctype": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<fragment": [
+          "ok",
+          "I,#text"
+        ],
+        "fragment<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "fragment<twoElementFragment": [
+          "ok",
+          "I,U"
+        ],
+        "fragment<textFragment": [
+          "ok",
+          "#text"
+        ],
+        "fragment<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<element": [
+          "ok",
+          "b"
+        ],
+        "empty<text": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<pi": [
+          "ok",
+          "p"
+        ],
+        "empty<comment": [
+          "ok",
+          "#comment"
+        ],
+        "empty<doctype": [
+          "ok",
+          "html"
+        ],
+        "empty<fragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "empty<twoElementFragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<textFragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "withElement<element": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<text": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<pi": [
+          "ok",
+          "p"
+        ],
+        "withElement<comment": [
+          "ok",
+          "#comment"
+        ],
+        "withElement<doctype": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<fragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "withElement<twoElementFragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<textFragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<attr": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<document": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withDoctype<element": [
+          "ok",
+          "b"
+        ],
+        "withDoctype<text": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<pi": [
+          "ok",
+          "p"
+        ],
+        "withDoctype<comment": [
+          "ok",
+          "#comment"
+        ],
+        "withDoctype<doctype": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<fragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "withDoctype<twoElementFragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<textFragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<attr": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<document": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withBoth<element": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<text": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<pi": [
+          "ok",
+          "p"
+        ],
+        "withBoth<comment": [
+          "ok",
+          "#comment"
+        ],
+        "withBoth<doctype": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<fragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<emptyFragment": [
+          "ok",
+          ""
+        ],
+        "withBoth<twoElementFragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<textFragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<attr": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<document": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ]
+      },
+      "appendChild": {
+        "element<element": [
+          "B",
+          "B"
+        ],
+        "element<text": [
+          "#text",
+          "#text"
+        ],
+        "element<pi": [
+          "p",
+          "p"
+        ],
+        "element<comment": [
+          "#comment",
+          "#comment"
+        ],
+        "element<doctype": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "element<fragment": [
+          "#document-fragment",
+          "I,#text"
+        ],
+        "element<emptyFragment": [
+          "#document-fragment",
+          ""
+        ],
+        "element<twoElementFragment": [
+          "#document-fragment",
+          "I,U"
+        ],
+        "element<textFragment": [
+          "#document-fragment",
+          "#text"
+        ],
+        "element<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "element<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<element": [
+          "B",
+          "B"
+        ],
+        "fragment<text": [
+          "#text",
+          "#text"
+        ],
+        "fragment<pi": [
+          "p",
+          "p"
+        ],
+        "fragment<comment": [
+          "#comment",
+          "#comment"
+        ],
+        "fragment<doctype": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<fragment": [
+          "#document-fragment",
+          "I,#text"
+        ],
+        "fragment<emptyFragment": [
+          "#document-fragment",
+          ""
+        ],
+        "fragment<twoElementFragment": [
+          "#document-fragment",
+          "I,U"
+        ],
+        "fragment<textFragment": [
+          "#document-fragment",
+          "#text"
+        ],
+        "fragment<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<element": [
+          "b",
+          "b"
+        ],
+        "empty<text": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<pi": [
+          "p",
+          "p"
+        ],
+        "empty<comment": [
+          "#comment",
+          "#comment"
+        ],
+        "empty<doctype": [
+          "html",
+          "html"
+        ],
+        "empty<fragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<emptyFragment": [
+          "#document-fragment",
+          ""
+        ],
+        "empty<twoElementFragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<textFragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "withElement<element": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<text": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<pi": [
+          "p",
+          "root,p"
+        ],
+        "withElement<comment": [
+          "#comment",
+          "root,#comment"
+        ],
+        "withElement<doctype": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<fragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<emptyFragment": [
+          "#document-fragment",
+          "root"
+        ],
+        "withElement<twoElementFragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<textFragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<attr": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<document": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withDoctype<element": [
+          "b",
+          "d,b"
+        ],
+        "withDoctype<text": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<pi": [
+          "p",
+          "d,p"
+        ],
+        "withDoctype<comment": [
+          "#comment",
+          "d,#comment"
+        ],
+        "withDoctype<doctype": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<fragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<emptyFragment": [
+          "#document-fragment",
+          "d"
+        ],
+        "withDoctype<twoElementFragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<textFragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<attr": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<document": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withBoth<element": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<text": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<pi": [
+          "p",
+          "html,HTML,p"
+        ],
+        "withBoth<comment": [
+          "#comment",
+          "html,HTML,#comment"
+        ],
+        "withBoth<doctype": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<fragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<emptyFragment": [
+          "#document-fragment",
+          "html,HTML"
+        ],
+        "withBoth<twoElementFragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<textFragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<attr": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<document": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ]
+      },
+      "insertBeforeFirst": {
+        "element<element": [
+          "B",
+          "B"
+        ],
+        "element<text": [
+          "#text",
+          "#text"
+        ],
+        "element<pi": [
+          "p",
+          "p"
+        ],
+        "element<comment": [
+          "#comment",
+          "#comment"
+        ],
+        "element<doctype": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "element<fragment": [
+          "#document-fragment",
+          "I,#text"
+        ],
+        "element<emptyFragment": [
+          "#document-fragment",
+          ""
+        ],
+        "element<twoElementFragment": [
+          "#document-fragment",
+          "I,U"
+        ],
+        "element<textFragment": [
+          "#document-fragment",
+          "#text"
+        ],
+        "element<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "element<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<element": [
+          "B",
+          "B"
+        ],
+        "fragment<text": [
+          "#text",
+          "#text"
+        ],
+        "fragment<pi": [
+          "p",
+          "p"
+        ],
+        "fragment<comment": [
+          "#comment",
+          "#comment"
+        ],
+        "fragment<doctype": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<fragment": [
+          "#document-fragment",
+          "I,#text"
+        ],
+        "fragment<emptyFragment": [
+          "#document-fragment",
+          ""
+        ],
+        "fragment<twoElementFragment": [
+          "#document-fragment",
+          "I,U"
+        ],
+        "fragment<textFragment": [
+          "#document-fragment",
+          "#text"
+        ],
+        "fragment<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "fragment<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<element": [
+          "b",
+          "b"
+        ],
+        "empty<text": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<pi": [
+          "p",
+          "p"
+        ],
+        "empty<comment": [
+          "#comment",
+          "#comment"
+        ],
+        "empty<doctype": [
+          "html",
+          "html"
+        ],
+        "empty<fragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<emptyFragment": [
+          "#document-fragment",
+          ""
+        ],
+        "empty<twoElementFragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<textFragment": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<attr": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "empty<document": [
+          "HierarchyRequestError",
+          ""
+        ],
+        "withElement<element": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<text": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<pi": [
+          "p",
+          "p,root"
+        ],
+        "withElement<comment": [
+          "#comment",
+          "#comment,root"
+        ],
+        "withElement<doctype": [
+          "html",
+          "html,root"
+        ],
+        "withElement<fragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<emptyFragment": [
+          "#document-fragment",
+          "root"
+        ],
+        "withElement<twoElementFragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<textFragment": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<attr": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withElement<document": [
+          "HierarchyRequestError",
+          "root"
+        ],
+        "withDoctype<element": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<text": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<pi": [
+          "p",
+          "p,d"
+        ],
+        "withDoctype<comment": [
+          "#comment",
+          "#comment,d"
+        ],
+        "withDoctype<doctype": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<fragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<emptyFragment": [
+          "#document-fragment",
+          "d"
+        ],
+        "withDoctype<twoElementFragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<textFragment": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<attr": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withDoctype<document": [
+          "HierarchyRequestError",
+          "d"
+        ],
+        "withBoth<element": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<text": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<pi": [
+          "p",
+          "p,html,HTML"
+        ],
+        "withBoth<comment": [
+          "#comment",
+          "#comment,html,HTML"
+        ],
+        "withBoth<doctype": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<fragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<emptyFragment": [
+          "#document-fragment",
+          "html,HTML"
+        ],
+        "withBoth<twoElementFragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<textFragment": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<attr": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ],
+        "withBoth<document": [
+          "HierarchyRequestError",
+          "html,HTML"
+        ]
+      }
+    },
+    "placement": {
+      "doctypeAfterElement": [
+        "HierarchyRequestError",
+        "html,HTML"
+      ],
+      "doctypeBeforeElement": [
+        "HierarchyRequestError",
+        "html,HTML"
+      ],
+      "elementBeforeDoctype": [
+        "HierarchyRequestError",
+        "html"
+      ],
+      "elementAfterDoctype": [
+        "ok",
+        "html,Z"
+      ],
+      "secondDoctype": [
+        "HierarchyRequestError",
+        "html"
+      ],
+      "commentBeforeDoctype": [
+        "ok",
+        "#comment,html,HTML"
+      ],
+      "replaceDoctypeWithElement": [
+        "ok",
+        "Z"
+      ],
+      "replaceElementWithDoctype": [
+        "ok",
+        "y"
+      ],
+      "replaceChildrenTwoElements": [
+        "HierarchyRequestError",
+        "html,HTML"
+      ],
+      "replaceChildrenDoctypeAfterElement": [
+        "HierarchyRequestError",
+        "html,HTML"
+      ],
+      "replaceChildrenDoctypeElement": [
+        "HierarchyRequestError",
+        "html,HTML"
+      ],
+      "replaceChildrenText": [
+        "HierarchyRequestError",
+        "html,HTML"
+      ],
+      "beforeElementText": [
+        "HierarchyRequestError",
+        "html,HTML"
+      ],
+      "afterDoctypeElement": [
+        "HierarchyRequestError",
+        "html,HTML"
+      ],
+      "beforeDoctypeElement": [
+        "HierarchyRequestError",
+        "html"
+      ],
+      "afterElementDoctype": [
+        "HierarchyRequestError",
+        "HTML"
+      ],
+      "moveBeforeText": [
+        "HierarchyRequestError",
+        "html,HTML"
+      ],
+      "moveBeforeElementBeforeDoctype": [
+        "HierarchyRequestError",
+        "html"
+      ],
+      "replaceChildDoctypeWithElement": [
+        "ok",
+        "Z"
+      ],
+      "insertBeforeElementBeforeDoctype": [
+        "HierarchyRequestError",
+        "html"
+      ]
+    },
+    "cycles": {
+      "self": "HierarchyRequestError",
+      "ancestor": "HierarchyRequestError",
+      "ancestorPrepend": "HierarchyRequestError",
+      "ancestorBefore": "HierarchyRequestError",
+      "ancestorAfter": "HierarchyRequestError",
+      "ancestorReplaceWith": "HierarchyRequestError",
+      "ancestorReplaceChildren": "HierarchyRequestError",
+      "hostIntoShadow": "HierarchyRequestError",
+      "hostIntoShadowBefore": "HierarchyRequestError",
+      "shadowRootAppend": "ok",
+      "sameFragmentTwice": [
+        "ok",
+        "#text,Y",
+        0
+      ],
+      "tree": [
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    "viablePrevious": "X,Y,Z",
+    "viableNext": "X,Z,Y",
+    "viableNextChain": "Y,X,Z",
+    "viablePreviousChain": "Z,X,Y",
+    "adopted": [
+      true,
+      "EM,#text",
+      ""
+    ],
+    "adoptedFragment": [
+      "FF",
+      true
+    ],
+    "moveBefore": {
+      "foreign": "HierarchyRequestError",
+      "foreignChild": "NotFoundError",
+      "notChild": "NotFoundError",
+      "disconnected": "HierarchyRequestError",
+      "text": "FF,#text"
+    },
+    "conversions": {
+      "appendSymbol": "TypeError",
+      "prependThrows": "RangeError",
+      "beforeSymbol": "TypeError",
+      "afterThrows": "RangeError",
+      "replaceWithSymbol": "TypeError",
+      "replaceChildrenThrows": "RangeError",
+      "insertBeforeString": "TypeError",
+      "insertBeforeObject": "TypeError",
+      "insertBeforeForeign": "NotFoundError",
+      "appendChildString": "TypeError",
+      "afterless": "TypeError",
+      "tree": "SPAN"
+    }
+  }
+}

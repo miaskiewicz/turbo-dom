@@ -1,0 +1,247 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "probeSha256": "ee5abcff638eb0e0b124a4574f8dd34588cd85ea3c6c3a7ff8b9f1b3bf12e57d",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "shape": {
+      "registry": "function",
+      "tag": "[object CustomElementRegistry]",
+      "parent": true,
+      "instance": true,
+      "own": [
+        "define",
+        "get",
+        "getName",
+        "initialize",
+        "upgrade",
+        "whenDefined",
+        "constructor",
+        "Symbol(Symbol.toStringTag)"
+      ],
+      "global": {
+        "enumerable": true,
+        "configurable": true,
+        "get": true,
+        "set": false
+      },
+      "construct": "[object CustomElementRegistry]",
+      "html": "TypeError"
+    },
+    "methods": {
+      "define": {
+        "length": 2,
+        "name": "define",
+        "native": true,
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "get": false,
+          "set": false
+        },
+        "borrow": "TypeError"
+      },
+      "get": {
+        "length": 1,
+        "name": "get",
+        "native": true,
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "get": false,
+          "set": false
+        },
+        "borrow": "TypeError"
+      },
+      "getName": {
+        "length": 1,
+        "name": "getName",
+        "native": true,
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "get": false,
+          "set": false
+        },
+        "borrow": "TypeError"
+      },
+      "upgrade": {
+        "length": 1,
+        "name": "upgrade",
+        "native": true,
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "get": false,
+          "set": false
+        },
+        "borrow": "TypeError"
+      },
+      "whenDefined": {
+        "length": 1,
+        "name": "whenDefined",
+        "native": true,
+        "descriptor": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "get": false,
+          "set": false
+        },
+        "borrow": {}
+      }
+    },
+    "names": [
+      [
+        "plain",
+        "SyntaxError"
+      ],
+      [
+        "X-upper",
+        "SyntaxError"
+      ],
+      [
+        "x-UPPER",
+        "SyntaxError"
+      ],
+      [
+        "annotation-xml",
+        "SyntaxError"
+      ],
+      [
+        "font-face",
+        "SyntaxError"
+      ],
+      [
+        "x-",
+        "undefined"
+      ],
+      [
+        "x-a",
+        "undefined"
+      ],
+      [
+        "x-😀",
+        "undefined"
+      ],
+      [
+        "x-\ud800",
+        "undefined"
+      ]
+    ],
+    "duplicates": [
+      "NotSupportedError",
+      "NotSupportedError"
+    ],
+    "get": [
+      true,
+      true,
+      "x-unique",
+      null,
+      "TypeError",
+      "TypeError",
+      "TypeError"
+    ],
+    "when": {
+      "samePending": true,
+      "invalidSync": "returned",
+      "invalid": "SyntaxError",
+      "value": true,
+      "fulfilled": true
+    },
+    "reads": [
+      "connectedCallback",
+      "disconnectedCallback",
+      "connectedMoveCallback",
+      "adoptedCallback",
+      "attributeChangedCallback",
+      "observedAttributes"
+    ],
+    "upgrade": {
+      "same": true,
+      "prototype": true,
+      "constructor": true,
+      "instance": true
+    },
+    "lifecycle": [
+      [
+        "construct",
+        "x-late",
+        true
+      ],
+      [
+        "attribute",
+        "data-v",
+        null,
+        "before",
+        null
+      ],
+      [
+        "connected",
+        true
+      ],
+      [
+        "attribute",
+        "data-v",
+        "before",
+        "after",
+        null
+      ],
+      [
+        "disconnected",
+        true
+      ],
+      [
+        "connected",
+        true
+      ],
+      [
+        "disconnected",
+        true
+      ],
+      [
+        "adopted",
+        true,
+        true
+      ],
+      [
+        "connected",
+        true
+      ]
+    ],
+    "constructed": [
+      true,
+      true,
+      "x-unique",
+      "x-unique",
+      true,
+      false,
+      0,
+      0
+    ],
+    "detached": {
+      "before": 0,
+      "instanceBefore": false,
+      "after": 1,
+      "instanceAfter": true
+    },
+    "shadow": [
+      1,
+      true
+    ]
+  }
+}

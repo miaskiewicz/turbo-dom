@@ -14,6 +14,11 @@ import { getParser, setParserMode } from './parser.mjs';
 export { Document } from './dom.mjs';
 export * from './dom.mjs';
 
+// Custom element state seam (public API): the state behind `:defined` (custom-elements.mjs),
+// for embedders that upgrade elements themselves — the JS twin of the Rust engine's
+// Tree::custom_element_state / set_custom_element_state.
+export { customElementState, setCustomElementState } from './custom-elements.mjs';
+
 // Parser-selection seam (public API): inject a ready binding for a node-free host,
 // or force 'wasm' | 'native' | 'auto'. See parser.mjs.
 export { setParser, setParserMode, getParser } from './parser.mjs';

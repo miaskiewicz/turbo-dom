@@ -1,0 +1,1 @@
+[{"id":"private-computed-style-intrinsics","headers":[],"html":"<!doctype html><head><style>.target {width:17px;color:red}</style></head><body><div class=target id=target></div>"}]

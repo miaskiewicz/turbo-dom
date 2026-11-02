@@ -1,0 +1,13 @@
+{
+ "id": "S3b/nth-of-s",
+ "class": "nth-child(An+B of S)",
+ "reason": ":nth-child(An+B of S): the old parser read `An+B of S` as a garbled An+B; now supported. Consolidation S3b: the html2pdf / surf-static cascade parses and matches with turbo-dom's selector engine.",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cases/nth-of-s)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

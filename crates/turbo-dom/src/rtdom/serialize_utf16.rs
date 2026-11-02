@@ -10,8 +10,8 @@ fn escaped(out: &mut Vec<u16>, units: &[u16], attribute: bool) {
             38 => Some("&amp;"),
             160 => Some("&nbsp;"),
             34 if attribute => Some("&quot;"),
-            60 if !attribute => Some("&lt;"),
-            62 if !attribute => Some("&gt;"),
+            60 => Some("&lt;"),
+            62 => Some("&gt;"),
             _ => None,
         };
         if let Some(entity) = entity {
@@ -56,8 +56,14 @@ fn node<'a>(tree: &'a Tree, handle: Handle, parent: Option<&'a str>, out: &mut V
                     continue;
                 }
                 pending.push(Task::Close(tag));
+                // raw text keys on the qualified name, like Chrome 156 (<h:script> escapes)
+                let raw_key = if html && tree.prefix(handle).is_none() {
+                    local
+                } else {
+                    ""
+                };
                 for child in tree.children(handle).into_iter().rev() {
-                    pending.push(Task::Node(child, Some(if html { local } else { "" })));
+                    pending.push(Task::Node(child, Some(raw_key)));
                 }
             }
             NodeType::Text => {

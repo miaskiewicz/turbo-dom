@@ -1,0 +1,135 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "probeSha256": "a05f0af6e80acb1eee082c6f4fe85c423fc0750220282267d2458b9f814170d3",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "borrowWhen": "TypeError",
+    "callConstructor": "TypeError",
+    "names": [
+      [
+        "x-×",
+        "undefined"
+      ],
+      [
+        "x-;",
+        "undefined"
+      ],
+      [
+        "x-￾",
+        "undefined"
+      ],
+      [
+        "x-󰀀",
+        "undefined"
+      ],
+      [
+        "x-󯿿",
+        "undefined"
+      ],
+      [
+        "a:b-x",
+        "undefined"
+      ]
+    ],
+    "options": [
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "undefined",
+      "undefined",
+      "NotSupportedError",
+      "NotSupportedError",
+      "undefined",
+      "NotSupportedError"
+    ],
+    "conversion": "SyntaxError",
+    "conversionOrder": [
+      "extends"
+    ],
+    "sameConstructorOtherRegistry": "undefined",
+    "globalRegistry": [
+      true,
+      true
+    ],
+    "builtin": [
+      "button",
+      null,
+      true,
+      true,
+      null,
+      "<button is=\"x-button\"></button>",
+      false,
+      null
+    ],
+    "wrongSuperclass": "TypeError",
+    "failures": [
+      [
+        false,
+        "x-add-attribute",
+        null,
+        true
+      ],
+      [
+        false,
+        "x-other-result"
+      ],
+      [
+        false,
+        "x-throws"
+      ]
+    ],
+    "errors": [
+      [
+        "NotSupportedError",
+        true
+      ],
+      [
+        "NotSupportedError",
+        true
+      ],
+      [
+        "RangeError",
+        true
+      ]
+    ],
+    "scoped": [
+      true,
+      true,
+      3,
+      true,
+      "undefined",
+      false
+    ],
+    "initialize": [
+      true,
+      "undefined",
+      true,
+      "undefined",
+      "undefined",
+      "undefined"
+    ],
+    "events": [
+      [
+        "ctor",
+        "button",
+        null
+      ],
+      [
+        "ctor",
+        "button",
+        null
+      ]
+    ]
+  }
+}

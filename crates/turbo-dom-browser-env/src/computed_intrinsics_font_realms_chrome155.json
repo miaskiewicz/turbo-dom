@@ -1,0 +1,46 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "probeSha256": "7541560fcf593d3ed21af2b9ee121b6e7bfc6dacea3eef25b0e29c2bb339e47f",
+  "collectorSha256": "09c6f14e992b00cc8f5fe5bd4c6f71e22648cf3244ba9cf8ee91dc187e422b15",
+  "errors": [],
+  "result": {
+    "before": {
+      "borrowed": [
+        "10px / 15px monospace",
+        "10px",
+        "15px"
+      ],
+      "own": [
+        "10px / 15px monospace",
+        "10px",
+        "15px"
+      ]
+    },
+    "adopted": {
+      "retained": [
+        "10px / 20px serif",
+        "10px",
+        "20px"
+      ],
+      "own": [
+        "10px / 20px serif",
+        "10px",
+        "20px"
+      ]
+    },
+    "retired": {
+      "retained": [
+        "",
+        "",
+        ""
+      ],
+      "fresh": [
+        "",
+        "",
+        ""
+      ],
+      "defaultView": true
+    }
+  }
+}

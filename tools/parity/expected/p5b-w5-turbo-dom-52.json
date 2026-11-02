@@ -1,0 +1,24 @@
+{
+ "id": "miaskiewicz/turbo-dom#52",
+ "reason": "A partially clipped clip:rect() box keeps its box and paints (raster PNG/SVG, PDF) only inside its clip region; only an absolutely positioned box whose clip keeps nothing (sr-only) is left out; clip on a non-absolutely-positioned box is ignored. Every corpus clip:rect() is the sr-only pattern, so no existing output changes (parity turbo-dom 1eb2d80 + h2p 46b483d -> 57a128e + 950754e: 0 changed); the new extra input clip-rect.html pins it. P5b-W5.",
+ "control": "scripts/paint-chrome-control.mjs clip-* cases",
+ "e2e": "crates/turbo-dom-raster/tests/paint_chrome.rs (clip_rect_clips_the_box_and_its_descendants_like_chrome_156, svg_screenshot_clips_with_a_clip_path); turbo-html2pdf tests/clip_rect.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ },
+ "added": {
+  "html2pdf-extra": [
+   "extra-clip-rect.boxes.json",
+   "extra-clip-rect.pdf",
+   "extra-clip-rect.ua.pdf"
+  ],
+  "surf-extra": [
+   "static-extra-clip-rect.png",
+   "static-extra-clip-rect.svg"
+  ]
+ }
+}

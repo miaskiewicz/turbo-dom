@@ -1,0 +1,657 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "recordedAt": "2026-10-25T11:36:02.854Z",
+  "fixture": "shadow_html_probe.js",
+  "probeSha256": "8174a493ee7f479abce0bae699bb9503e3241ce1902e2ac5672af16f9bb950e6",
+  "flags": [
+    "--headless=new",
+    "--disable-extensions"
+  ],
+  "result": {
+    "descriptors": {
+      "ShadowRoot": {
+        "activeElement": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get activeElement",
+            0
+          ],
+          "set": null
+        },
+        "clonable": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get clonable",
+            0
+          ],
+          "set": null
+        },
+        "delegatesFocus": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get delegatesFocus",
+            0
+          ],
+          "set": null
+        },
+        "fullscreenElement": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get fullscreenElement",
+            0
+          ],
+          "set": [
+            "set fullscreenElement",
+            1
+          ]
+        },
+        "getHTML": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "getHTML",
+            0
+          ]
+        },
+        "onslotchange": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get onslotchange",
+            0
+          ],
+          "set": [
+            "set onslotchange",
+            1
+          ]
+        },
+        "pictureInPictureElement": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get pictureInPictureElement",
+            0
+          ],
+          "set": null
+        },
+        "pointerLockElement": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get pointerLockElement",
+            0
+          ],
+          "set": null
+        },
+        "serializable": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get serializable",
+            0
+          ],
+          "set": null
+        },
+        "setHTMLUnsafe": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "setHTMLUnsafe",
+            1
+          ]
+        },
+        "styleSheets": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get styleSheets",
+            0
+          ],
+          "set": null
+        }
+      },
+      "Element": {
+        "getHTML": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "getHTML",
+            0
+          ]
+        },
+        "setHTMLUnsafe": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "setHTMLUnsafe",
+            1
+          ]
+        }
+      }
+    },
+    "brands": {
+      "activeElement": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "clonable": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "delegatesFocus": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "fullscreenElement": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "getHTML": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "onslotchange": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "pictureInPictureElement": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "pointerLockElement": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "serializable": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "setHTMLUnsafe": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "styleSheets": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "Element.getHTML": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "Element.setHTMLUnsafe": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      "setters": [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ]
+    },
+    "init": [
+      [
+        "open",
+        false,
+        false,
+        false,
+        "named"
+      ],
+      [
+        "closed",
+        true,
+        true,
+        true,
+        "manual"
+      ],
+      [
+        "open",
+        true,
+        false,
+        true,
+        "named"
+      ],
+      [
+        "open",
+        true,
+        false,
+        false,
+        "named"
+      ]
+    ],
+    "getHTML": {
+      "plain": "<p>light &amp; <i>shade</i></p>",
+      "serializable": "<template shadowrootmode=\"open\" shadowrootdelegatesfocus=\"\" shadowrootserializable=\"\" shadowrootclonable=\"\"><span>in<b>x</b></span><slot></slot></template><p>light &amp; <i>shade</i></p>",
+      "truthy": "<template shadowrootmode=\"open\" shadowrootdelegatesfocus=\"\" shadowrootserializable=\"\" shadowrootclonable=\"\"><span>in<b>x</b></span><slot></slot></template><p>light &amp; <i>shade</i></p>",
+      "falsy": "<p>light &amp; <i>shade</i></p>",
+      "listed": "<template shadowrootmode=\"open\" shadowrootdelegatesfocus=\"\" shadowrootserializable=\"\" shadowrootclonable=\"\"><span>in<b>x</b></span><slot></slot></template><p>light &amp; <i>shade</i></p>",
+      "listedClosed": "<template shadowrootmode=\"open\" shadowrootdelegatesfocus=\"\" shadowrootserializable=\"\" shadowrootclonable=\"\"><span><template shadowrootmode=\"closed\"><i>closed</i><style>i{color:red}</style></template>in<b>x</b></span><slot></slot></template><p>light &amp; <i>shade</i></p>",
+      "listedOnlyInner": "<p>light &amp; <i>shade</i></p>",
+      "unrelated": "<p>light &amp; <i>shade</i></p>",
+      "root": "<span>in<b>x</b></span><slot></slot>",
+      "rootSerializable": "<span><template shadowrootmode=\"closed\"><i>closed</i><style>i{color:red}</style></template>in<b>x</b></span><slot></slot>",
+      "innerHTML": "<p>light &amp; <i>shade</i></p>",
+      "nullOptions": "<p>light &amp; <i>shade</i></p>",
+      "template": [
+        "<b>t</b>",
+        "<b>t</b>"
+      ],
+      "void": [
+        "",
+        "",
+        1
+      ]
+    },
+    "getHTMLErrors": [
+      {
+        "error": "TypeError",
+        "message": "Failed to execute 'getHTML' on 'Element': The provided value is not of type 'GetHTMLOptions'."
+      },
+      {
+        "error": "TypeError",
+        "message": "Failed to execute 'getHTML' on 'Element': The provided value is not of type 'GetHTMLOptions'."
+      },
+      {
+        "error": "TypeError",
+        "message": "Failed to execute 'getHTML' on 'Element': Failed to read the 'shadowRoots' property from 'GetHTMLOptions': The provided value cannot be converted to a sequence."
+      },
+      {
+        "error": "TypeError",
+        "message": "Failed to execute 'getHTML' on 'Element': Failed to read the 'shadowRoots' property from 'GetHTMLOptions': The provided value cannot be converted to a sequence."
+      },
+      {
+        "error": "TypeError",
+        "message": "Failed to execute 'getHTML' on 'Element': Failed to read the 'shadowRoots' property from 'GetHTMLOptions': Failed to convert value to 'ShadowRoot'."
+      },
+      {
+        "error": "TypeError",
+        "message": "Failed to execute 'getHTML' on 'Element': Failed to read the 'shadowRoots' property from 'GetHTMLOptions': Failed to convert value to 'ShadowRoot'."
+      },
+      {
+        "error": "TypeError",
+        "message": "Failed to execute 'getHTML' on 'Element': Failed to read the 'shadowRoots' property from 'GetHTMLOptions': Failed to convert value to 'ShadowRoot'."
+      }
+    ],
+    "getHTMLRootErrors": [
+      {
+        "error": "TypeError",
+        "message": "Failed to execute 'getHTML' on 'ShadowRoot': The provided value is not of type 'GetHTMLOptions'."
+      }
+    ],
+    "getHTMLReads": [
+      "serializableShadowRoots",
+      "shadowRoots"
+    ],
+    "setHTMLUnsafe": {
+      "records": [
+        [
+          "childList",
+          2,
+          2
+        ]
+      ],
+      "innerHTML": "<div id=\"a\">tail</div><template shadowrootmode=\"open\">top-level</template>",
+      "declared": [
+        "open",
+        true,
+        true,
+        true,
+        "named"
+      ],
+      "declaredHTML": "<b>s</b><span></span>",
+      "deepClosed": null,
+      "serialized": "<div id=\"a\"><template shadowrootmode=\"open\" shadowrootdelegatesfocus=\"\" shadowrootserializable=\"\" shadowrootclonable=\"\"><b>s</b><span><template shadowrootmode=\"closed\" shadowrootserializable=\"\">deep</template></span></template>tail</div><template shadowrootmode=\"open\">top-level</template>",
+      "contextRoot": null,
+      "topLevel": "template:top-level"
+    },
+    "duplicates": [
+      "<div><template shadowrootmode=\"open\">two</template><template shadowrootmode=\"closed\">three</template></div><p><template shadowrootmode=\"bogus\">b</template></p><input><template shadowrootmode=\"open\">void</template><a><template shadowrootmode=\"open\">anchor</template></a><x-host></x-host>",
+      "one",
+      "custom"
+    ],
+    "reattach": [
+      {
+        "error": "NotSupportedError",
+        "message": "Failed to execute 'attachShadow' on 'Element': The requested mode does not match the existing declarative shadow root's mode"
+      },
+      [
+        true,
+        "",
+        [
+          "open",
+          true,
+          false,
+          false,
+          "named"
+        ]
+      ],
+      {
+        "error": "NotSupportedError",
+        "message": "Failed to execute 'attachShadow' on 'Element': Shadow root cannot be created on a host which already hosts a shadow tree."
+      }
+    ],
+    "templateContent": [
+      "<template><div></div></template>",
+      "inside"
+    ],
+    "templateTarget": [
+      0,
+      1,
+      "tt",
+      "<div></div>"
+    ],
+    "rootTarget": [
+      "<span></span>cell",
+      "<template shadowrootmode=\"open\" shadowrootserializable=\"\"><span><template shadowrootmode=\"open\" shadowrootserializable=\"\">nested</template></span>cell</template>"
+    ],
+    "setHTMLUnsafeArgs": [
+      {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTMLUnsafe' on 'Element': 1 argument required, but only 0 present."
+      },
+      {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTMLUnsafe' on 'ShadowRoot': 1 argument required, but only 0 present."
+      },
+      {
+        "value": "null"
+      },
+      {
+        "value": "undefined"
+      },
+      {
+        "value": "<b>object</b>"
+      },
+      {
+        "error": "TypeError"
+      }
+    ],
+    "innerHTMLIgnoresDeclarative": [
+      "<div><template shadowrootmode=\"open\">x</template></div>",
+      null
+    ],
+    "clone": {
+      "closed": [
+        null,
+        {
+          "error": "NotSupportedError",
+          "message": "Failed to execute 'attachShadow' on 'Element': Shadow root cannot be created on a host which already hosts a shadow tree."
+        }
+      ],
+      "shallow": [
+        0,
+        "<span>in<b>x</b></span><slot></slot>",
+        [
+          "open",
+          true,
+          true,
+          true,
+          "named"
+        ],
+        false
+      ],
+      "deep": [
+        "<p>light &amp; <i>shade</i></p>",
+        "<span>in<b>x</b></span><slot></slot>",
+        null
+      ],
+      "declarative": [
+        "",
+        true,
+        {
+          "error": "NotSupportedError",
+          "message": "Failed to execute 'attachShadow' on 'Element': Shadow root cannot be created on a host which already hosts a shadow tree."
+        }
+      ],
+      "declarativeFresh": [
+        true,
+        "",
+        {
+          "error": "NotSupportedError",
+          "message": "Failed to execute 'attachShadow' on 'Element': Shadow root cannot be created on a host which already hosts a shadow tree."
+        }
+      ],
+      "nonClonable": null,
+      "nested": [
+        "<i>2</i>",
+        "<div></div>",
+        0,
+        true,
+        true,
+        "<i>2</i>",
+        "<p>1</p>"
+      ],
+      "manual": [
+        "open",
+        true,
+        true,
+        false,
+        "manual"
+      ]
+    },
+    "activeElement": [
+      [
+        null,
+        null,
+        null,
+        "body"
+      ],
+      [
+        "input",
+        null,
+        null,
+        "div"
+      ],
+      [
+        "p",
+        "input",
+        null,
+        "div"
+      ],
+      [
+        null,
+        null,
+        null,
+        "input"
+      ]
+    ],
+    "fullscreen": [
+      null,
+      null,
+      null,
+      {
+        "value": null
+      }
+    ],
+    "styleSheets": {
+      "detached": 0,
+      "documentBefore": 0,
+      "connected": [
+        2,
+        true,
+        true,
+        "print",
+        true
+      ],
+      "live": [
+        3,
+        true
+      ],
+      "nested": [
+        3,
+        1
+      ],
+      "adopted": 3,
+      "link": [
+        3,
+        null
+      ],
+      "removed": 2,
+      "shape": [
+        [
+          "0",
+          "1"
+        ],
+        "[object StyleSheetList]",
+        {
+          "error": "TypeError",
+          "message": "Failed to execute 'item' on 'StyleSheetList': 1 argument required, but only 0 present."
+        },
+        2
+      ],
+      "disconnected": 0
+    },
+    "onslotchange": {
+      "initial": null,
+      "assigned": true,
+      "seen": [
+        [
+          true,
+          "slotchange",
+          true,
+          true
+        ]
+      ],
+      "object": true,
+      "primitive": null,
+      "cleared": null,
+      "afterClear": 1,
+      "attribute": null
+    }
+  }
+}

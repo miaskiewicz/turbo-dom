@@ -1,0 +1,956 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "157c52ec0b721c4e37657a2769a7fb9d3461ac2bd683d4241f90500e221c4024",
+  "probeSha256": "df0336893e01cb7dfcf2b40f6690bdfb21d5ab7fe750a688e0e2a03aee21b021",
+  "collectorSha256": "eff66fa3d1ac0bb8d9cd965e2d7fdb9f6ef3fa41d0a8ca092898c3208a567e9a",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "interface-members",
+      "result": {
+        "mediaConstants": [
+          [
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 0
+            },
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 0
+            },
+            0,
+            0
+          ],
+          [
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 1
+            },
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 1
+            },
+            1,
+            1
+          ],
+          [
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 2
+            },
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 2
+            },
+            2,
+            2
+          ],
+          [
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 3
+            },
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 3
+            },
+            3,
+            3
+          ],
+          [
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 0
+            },
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 0
+            },
+            0,
+            0
+          ],
+          [
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 1
+            },
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 1
+            },
+            1,
+            1
+          ],
+          [
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 2
+            },
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 2
+            },
+            2,
+            2
+          ],
+          [
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 3
+            },
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 3
+            },
+            3,
+            3
+          ],
+          [
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 4
+            },
+            {
+              "c": false,
+              "e": true,
+              "w": false,
+              "v": 4
+            },
+            4,
+            4
+          ]
+        ],
+        "mediaLoadingDesc": {
+          "c": true,
+          "e": true,
+          "get": {
+            "name": "get loading",
+            "length": 0
+          },
+          "set": {
+            "name": "set loading",
+            "length": 1
+          }
+        },
+        "mediaLoading": [
+          [
+            "eager",
+            null
+          ],
+          [
+            "lazy",
+            "lazy"
+          ],
+          [
+            "lazy",
+            "LAZY"
+          ],
+          [
+            "eager",
+            "eager"
+          ],
+          [
+            "eager",
+            "bogus"
+          ],
+          [
+            "eager",
+            ""
+          ],
+          [
+            "eager",
+            "null"
+          ],
+          [
+            "eager",
+            "7"
+          ],
+          [
+            "eager"
+          ],
+          [
+            "eager"
+          ]
+        ],
+        "mediaLoadingBrand": [
+          "throw",
+          "TypeError"
+        ],
+        "scriptSupports": [
+          {
+            "c": true,
+            "e": true,
+            "w": true,
+            "v": {
+              "name": "supports",
+              "length": 1
+            }
+          },
+          true,
+          true,
+          true,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false,
+          "throw",
+          [
+            "ok",
+            true
+          ]
+        ],
+        "plugins": [
+          {
+            "c": true,
+            "e": true,
+            "get": {
+              "name": "get plugins",
+              "length": 0
+            },
+            "set": "undefined"
+          },
+          true,
+          "[object HTMLCollection]"
+        ],
+        "toBlob": {
+          "c": true,
+          "e": true,
+          "w": true,
+          "v": {
+            "name": "toBlob",
+            "length": 1
+          }
+        },
+        "fragmentDirective": [
+          {
+            "c": true,
+            "e": true,
+            "get": {
+              "name": "get fragmentDirective",
+              "length": 0
+            },
+            "set": "undefined"
+          },
+          {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 0
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "FragmentDirective"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "FragmentDirective",
+                  "length": 0
+                }
+              },
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "FragmentDirective"
+              }
+            },
+            "parent": true,
+            "protoParent": true,
+            "construct": "TypeError",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "FragmentDirective",
+                "length": 0
+              }
+            }
+          },
+          "[object FragmentDirective]",
+          true,
+          0,
+          "throw",
+          false
+        ],
+        "pseudoShape": [
+          {
+            "c": true,
+            "e": true,
+            "w": true,
+            "v": {
+              "name": "pseudo",
+              "length": 1
+            }
+          },
+          {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 0
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "CSSPseudoElement"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "type": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get type",
+                  "length": 0
+                },
+                "set": "undefined"
+              },
+              "element": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get element",
+                  "length": 0
+                },
+                "set": "undefined"
+              },
+              "parent": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get parent",
+                  "length": 0
+                },
+                "set": "undefined"
+              },
+              "pseudo": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "pseudo",
+                  "length": 1
+                }
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "CSSPseudoElement",
+                  "length": 0
+                }
+              },
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "CSSPseudoElement"
+              }
+            },
+            "parent": true,
+            "protoParent": true,
+            "construct": "TypeError",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "CSSPseudoElement",
+                "length": 0
+              }
+            }
+          }
+        ],
+        "pseudoTypes": [
+          [
+            "::before",
+            [
+              "ok",
+              [
+                "::before",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::after",
+            [
+              "ok",
+              [
+                "::after",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::marker",
+            [
+              "ok",
+              [
+                "::marker",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::backdrop",
+            [
+              "ok",
+              [
+                "::backdrop",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::first-line",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::first-letter",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::selection",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::placeholder",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::file-selector-button",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::view-transition",
+            [
+              "ok",
+              [
+                "::view-transition",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::view-transition-group(x)",
+            [
+              "ok",
+              [
+                "::view-transition-group",
+                true,
+                false,
+                true
+              ]
+            ]
+          ],
+          [
+            "::view-transition-group(*)",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::view-transition-image-pair(x)",
+            [
+              "ok",
+              [
+                "::view-transition-image-pair",
+                true,
+                false,
+                true
+              ]
+            ]
+          ],
+          [
+            "::view-transition-old(x)",
+            [
+              "ok",
+              [
+                "::view-transition-old",
+                true,
+                false,
+                true
+              ]
+            ]
+          ],
+          [
+            "::view-transition-new(x)",
+            [
+              "ok",
+              [
+                "::view-transition-new",
+                true,
+                false,
+                true
+              ]
+            ]
+          ],
+          [
+            "::view-transition-group()",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::column",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::scroll-marker",
+            [
+              "ok",
+              [
+                "::scroll-marker",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::scroll-marker-group",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::scroll-button(left)",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::picker(select)",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::checkmark",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::picker-icon",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::details-content",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::part(x)",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::slotted(x)",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            ":before",
+            [
+              "ok",
+              [
+                "::before",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            ":after",
+            [
+              "ok",
+              [
+                "::after",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            ":marker",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            ":first-line",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "before",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::BEFORE",
+            [
+              "ok",
+              [
+                "::before",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::Marker",
+            [
+              "ok",
+              [
+                "::marker",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            " ::before",
+            [
+              "ok",
+              [
+                "::before",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::before ",
+            [
+              "ok",
+              [
+                "::before",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::bogus",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::cue",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::highlight(x)",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::search-text",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::target-text",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::spelling-error",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::before::marker",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "null",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "7",
+            [
+              "ok",
+              null
+            ]
+          ]
+        ],
+        "pseudoGroup": [
+          true,
+          true,
+          false,
+          "::view-transition-group",
+          true,
+          true,
+          true,
+          false,
+          [
+            true,
+            true,
+            true,
+            true,
+            false,
+            false,
+            false,
+            true,
+            true
+          ],
+          true,
+          false
+        ],
+        "pseudoNested": [
+          [
+            "::marker",
+            [
+              "ok",
+              [
+                "::marker",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::before",
+            [
+              "ok",
+              [
+                "::before",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::after",
+            [
+              "ok",
+              [
+                "::after",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            "::backdrop",
+            [
+              "ok",
+              [
+                "::backdrop",
+                true,
+                true,
+                true
+              ]
+            ]
+          ],
+          [
+            ":marker",
+            [
+              "ok",
+              null
+            ]
+          ],
+          [
+            "::MARKER",
+            [
+              "ok",
+              [
+                "::marker",
+                true,
+                true,
+                true
+              ]
+            ]
+          ]
+        ],
+        "pseudoMarkerNested": [
+          "ok",
+          false
+        ],
+        "pseudoMisc": [
+          "TypeError",
+          "TypeError",
+          true,
+          true,
+          [],
+          [],
+          false,
+          "TypeError",
+          "TypeError"
+        ],
+        "pseudoDetached": [
+          "::before",
+          true,
+          true,
+          true
+        ]
+      }
+    }
+  ]
+}

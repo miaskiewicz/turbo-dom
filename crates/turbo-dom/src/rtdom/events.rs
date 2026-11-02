@@ -91,7 +91,11 @@ pub struct Dom {
 
 impl Dom {
     pub fn new(tree: Tree) -> Dom {
-        Dom { tree, listeners: HashMap::new(), next_id: 0 }
+        Dom {
+            tree,
+            listeners: HashMap::new(),
+            next_id: 0,
+        }
     }
     #[must_use]
     pub fn parse(html: &str) -> Dom {
@@ -184,10 +188,7 @@ impl Dom {
                         };
                         if want && list[i].event_type == event.event_type {
                             // invoke
-                            let mut cb = std::mem::replace(
-                                &mut list[i].cb,
-                                Box::new(|_, _| {}),
-                            );
+                            let mut cb = std::mem::replace(&mut list[i].cb, Box::new(|_, _| {}));
                             cb(&mut self.tree, event);
                             // restore the (possibly still-registered) callback
                             if i < list.len() {
@@ -245,9 +246,27 @@ mod tests {
         let div = find(&dom, "div");
         let log = Rc::new(RefCell::new(Vec::<&'static str>::new()));
         let (l1, l2, l3) = (log.clone(), log.clone(), log.clone());
-        dom.add_event_listener(button, "click", false, false, Box::new(move |_, _| l1.borrow_mut().push("button")));
-        dom.add_event_listener(section, "click", false, false, Box::new(move |_, _| l2.borrow_mut().push("section")));
-        dom.add_event_listener(div, "click", false, false, Box::new(move |_, _| l3.borrow_mut().push("div")));
+        dom.add_event_listener(
+            button,
+            "click",
+            false,
+            false,
+            Box::new(move |_, _| l1.borrow_mut().push("button")),
+        );
+        dom.add_event_listener(
+            section,
+            "click",
+            false,
+            false,
+            Box::new(move |_, _| l2.borrow_mut().push("section")),
+        );
+        dom.add_event_listener(
+            div,
+            "click",
+            false,
+            false,
+            Box::new(move |_, _| l3.borrow_mut().push("div")),
+        );
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(button, &mut ev);
         assert_eq!(*log.borrow(), vec!["button", "section", "div"]);
@@ -260,8 +279,20 @@ mod tests {
         let div = find(&dom, "div");
         let log = Rc::new(RefCell::new(Vec::<&'static str>::new()));
         let (lc, lt) = (log.clone(), log.clone());
-        dom.add_event_listener(div, "click", true, false, Box::new(move |_, _| lc.borrow_mut().push("div-capture")));
-        dom.add_event_listener(button, "click", false, false, Box::new(move |_, _| lt.borrow_mut().push("button-target")));
+        dom.add_event_listener(
+            div,
+            "click",
+            true,
+            false,
+            Box::new(move |_, _| lc.borrow_mut().push("div-capture")),
+        );
+        dom.add_event_listener(
+            button,
+            "click",
+            false,
+            false,
+            Box::new(move |_, _| lt.borrow_mut().push("button-target")),
+        );
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(button, &mut ev);
         assert_eq!(*log.borrow(), vec!["div-capture", "button-target"]);
@@ -274,8 +305,20 @@ mod tests {
         let div = find(&dom, "div");
         let hit = Rc::new(RefCell::new(false));
         let h = hit.clone();
-        dom.add_event_listener(button, "click", false, false, Box::new(|_, e| e.stop_propagation()));
-        dom.add_event_listener(div, "click", false, false, Box::new(move |_, _| *h.borrow_mut() = true));
+        dom.add_event_listener(
+            button,
+            "click",
+            false,
+            false,
+            Box::new(|_, e| e.stop_propagation()),
+        );
+        dom.add_event_listener(
+            div,
+            "click",
+            false,
+            false,
+            Box::new(move |_, _| *h.borrow_mut() = true),
+        );
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(button, &mut ev);
         assert!(!*hit.borrow());
@@ -285,7 +328,13 @@ mod tests {
     fn prevent_default_reflected_in_return() {
         let mut dom = Dom::parse("<a href=x>link</a>");
         let a = find(&dom, "a");
-        dom.add_event_listener(a, "click", false, false, Box::new(|_, e| e.prevent_default()));
+        dom.add_event_listener(
+            a,
+            "click",
+            false,
+            false,
+            Box::new(|_, e| e.prevent_default()),
+        );
         let mut ev = Event::new("click", true, true);
         let ok = dom.dispatch_event(a, &mut ev);
         assert!(!ok);
@@ -296,10 +345,16 @@ mod tests {
     fn listener_can_mutate_tree() {
         let mut dom = Dom::parse("<ul><li>1</li></ul>");
         let ul = find(&dom, "ul");
-        dom.add_event_listener(ul, "add", false, false, Box::new(|tree, _| {
-            let li = tree.create_element("li");
-            tree.append_child(ul_of(tree), li);
-        }));
+        dom.add_event_listener(
+            ul,
+            "add",
+            false,
+            false,
+            Box::new(|tree, _| {
+                let li = tree.create_element("li");
+                tree.append_child(ul_of(tree), li);
+            }),
+        );
         let mut ev = Event::new("add", true, false);
         dom.dispatch_event(ul, &mut ev);
         assert_eq!(dom.tree.get_elements_by_tag_name("li").len(), 2);
@@ -325,7 +380,13 @@ mod tests {
         let b = find(&dom, "button");
         let count = Rc::new(RefCell::new(0));
         let c = count.clone();
-        dom.add_event_listener(b, "click", false, true, Box::new(move |_, _| *c.borrow_mut() += 1));
+        dom.add_event_listener(
+            b,
+            "click",
+            false,
+            true,
+            Box::new(move |_, _| *c.borrow_mut() += 1),
+        );
         for _ in 0..3 {
             let mut ev = Event::new("click", true, true);
             dom.dispatch_event(b, &mut ev);
@@ -341,11 +402,23 @@ mod tests {
         let b = find(&dom, "button");
         let log = Rc::new(RefCell::new(Vec::<&'static str>::new()));
         let (l1, l2) = (log.clone(), log.clone());
-        dom.add_event_listener(b, "click", false, false, Box::new(move |_, e| {
-            l1.borrow_mut().push("first");
-            e.stop_immediate_propagation();
-        }));
-        dom.add_event_listener(b, "click", false, false, Box::new(move |_, _| l2.borrow_mut().push("second")));
+        dom.add_event_listener(
+            b,
+            "click",
+            false,
+            false,
+            Box::new(move |_, e| {
+                l1.borrow_mut().push("first");
+                e.stop_immediate_propagation();
+            }),
+        );
+        dom.add_event_listener(
+            b,
+            "click",
+            false,
+            false,
+            Box::new(move |_, _| l2.borrow_mut().push("second")),
+        );
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(b, &mut ev);
         assert_eq!(*log.borrow(), vec!["first"]);
@@ -359,11 +432,23 @@ mod tests {
         let b = find(&dom, "button");
         let log = Rc::new(RefCell::new(Vec::<&'static str>::new()));
         let (l1, l2) = (log.clone(), log.clone());
-        dom.add_event_listener(b, "click", false, true, Box::new(move |_, e| {
-            l1.borrow_mut().push("once");
-            e.stop_immediate_propagation();
-        }));
-        dom.add_event_listener(b, "click", false, false, Box::new(move |_, _| l2.borrow_mut().push("second")));
+        dom.add_event_listener(
+            b,
+            "click",
+            false,
+            true,
+            Box::new(move |_, e| {
+                l1.borrow_mut().push("once");
+                e.stop_immediate_propagation();
+            }),
+        );
+        dom.add_event_listener(
+            b,
+            "click",
+            false,
+            false,
+            Box::new(move |_, _| l2.borrow_mut().push("second")),
+        );
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(b, &mut ev);
         assert_eq!(*log.borrow(), vec!["once"]);
@@ -377,7 +462,13 @@ mod tests {
         let b = find(&dom, "button");
         let hit = Rc::new(RefCell::new(false));
         let h = hit.clone();
-        let id = dom.add_event_listener(b, "click", false, false, Box::new(move |_, _| *h.borrow_mut() = true));
+        let id = dom.add_event_listener(
+            b,
+            "click",
+            false,
+            false,
+            Box::new(move |_, _| *h.borrow_mut() = true),
+        );
         dom.remove_event_listener(b, id);
         // also exercise the no-such-target branch (no panic)
         dom.remove_event_listener(Handle(99999), id);
@@ -396,9 +487,27 @@ mod tests {
         let log = Rc::new(RefCell::new(Vec::<&'static str>::new()));
         let (lc, lt, lb) = (log.clone(), log.clone(), log.clone());
         // capture on ancestor, target listener, and a bubble listener on ancestor
-        dom.add_event_listener(div, "focus", true, false, Box::new(move |_, _| lc.borrow_mut().push("div-capture")));
-        dom.add_event_listener(button, "focus", false, false, Box::new(move |_, _| lt.borrow_mut().push("button-target")));
-        dom.add_event_listener(div, "focus", false, false, Box::new(move |_, _| lb.borrow_mut().push("div-bubble")));
+        dom.add_event_listener(
+            div,
+            "focus",
+            true,
+            false,
+            Box::new(move |_, _| lc.borrow_mut().push("div-capture")),
+        );
+        dom.add_event_listener(
+            button,
+            "focus",
+            false,
+            false,
+            Box::new(move |_, _| lt.borrow_mut().push("button-target")),
+        );
+        dom.add_event_listener(
+            div,
+            "focus",
+            false,
+            false,
+            Box::new(move |_, _| lb.borrow_mut().push("div-bubble")),
+        );
         let mut ev = Event::new("focus", false, false); // bubbles = false
         dom.dispatch_event(button, &mut ev);
         assert_eq!(*log.borrow(), vec!["div-capture", "button-target"]);
@@ -416,7 +525,13 @@ mod tests {
         let b = find(&dom, "button");
         let count = Rc::new(RefCell::new(0));
         let c = count.clone();
-        dom.add_event_listener(b, "click", false, false, Box::new(move |_, _| *c.borrow_mut() += 1));
+        dom.add_event_listener(
+            b,
+            "click",
+            false,
+            false,
+            Box::new(move |_, _| *c.borrow_mut() += 1),
+        );
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(b, &mut ev);
         let mut ev2 = Event::new("click", true, true);
@@ -436,13 +551,25 @@ mod tests {
         let s1 = seen.clone();
         // capture on ancestor: observes current_target == div, phase == Capturing,
         // then stops propagation -> target listener must NOT run, break 'outer (~206).
-        dom.add_event_listener(div, "click", true, false, Box::new(move |_, e| {
-            s1.borrow_mut().push((e.current_target, e.phase));
-            e.stop_propagation();
-        }));
+        dom.add_event_listener(
+            div,
+            "click",
+            true,
+            false,
+            Box::new(move |_, e| {
+                s1.borrow_mut().push((e.current_target, e.phase));
+                e.stop_propagation();
+            }),
+        );
         let target_hit = Rc::new(RefCell::new(false));
         let th = target_hit.clone();
-        dom.add_event_listener(button, "click", false, false, Box::new(move |_, _| *th.borrow_mut() = true));
+        dom.add_event_listener(
+            button,
+            "click",
+            false,
+            false,
+            Box::new(move |_, _| *th.borrow_mut() = true),
+        );
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(button, &mut ev);
         assert_eq!(*seen.borrow(), vec![(Some(div), Phase::Capturing)]);
@@ -459,7 +586,10 @@ mod tests {
         let mut dom = Dom::parse("<div><button>x</button></div>");
         let button = find(&dom, "button");
         let mut ev = Event::new("click", true, true);
-        assert_eq!(ev.target, None, "unset target is None, not the document root");
+        assert_eq!(
+            ev.target, None,
+            "unset target is None, not the document root"
+        );
         assert_eq!(ev.current_target, None);
         // the listener-less fast path still sets target...
         dom.dispatch_event(button, &mut ev);
@@ -468,9 +598,15 @@ mod tests {
         // ...and so does the full dispatch path, as seen from inside a handler.
         let seen = Rc::new(RefCell::new(None));
         let s1 = seen.clone();
-        dom.add_event_listener(button, "click", false, false, Box::new(move |_, e| {
-            *s1.borrow_mut() = e.target;
-        }));
+        dom.add_event_listener(
+            button,
+            "click",
+            false,
+            false,
+            Box::new(move |_, e| {
+                *s1.borrow_mut() = e.target;
+            }),
+        );
         let mut ev2 = Event::new("click", true, true);
         dom.dispatch_event(button, &mut ev2);
         assert_eq!(*seen.borrow(), Some(button));

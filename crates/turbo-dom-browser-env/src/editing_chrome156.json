@@ -1,0 +1,6383 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "editing_probe.js",
+  "probeSha256": "4eb84d8667c5447aa3219caf543ebd9a6fd93e57902d7345420a036ad5627d74",
+  "collectorSha256": "e6cadc004087a31da5ba698e45efbc62530e73d28f401d29b96226fa9ed3f94d",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "interface": {
+      "document": [
+        "designMode",
+        "oncommand",
+        "execCommand",
+        "queryCommandEnabled",
+        "queryCommandIndeterm",
+        "queryCommandState",
+        "queryCommandSupported",
+        "queryCommandValue"
+      ],
+      "descriptors": {
+        "execCommand": {
+          "value": [
+            "execCommand",
+            1
+          ],
+          "writable": true,
+          "enumerable": true,
+          "configurable": true
+        },
+        "queryCommandEnabled": {
+          "value": [
+            "queryCommandEnabled",
+            1
+          ],
+          "writable": true,
+          "enumerable": true,
+          "configurable": true
+        },
+        "queryCommandIndeterm": {
+          "value": [
+            "queryCommandIndeterm",
+            1
+          ],
+          "writable": true,
+          "enumerable": true,
+          "configurable": true
+        },
+        "queryCommandState": {
+          "value": [
+            "queryCommandState",
+            1
+          ],
+          "writable": true,
+          "enumerable": true,
+          "configurable": true
+        },
+        "queryCommandSupported": {
+          "value": [
+            "queryCommandSupported",
+            1
+          ],
+          "writable": true,
+          "enumerable": true,
+          "configurable": true
+        },
+        "queryCommandValue": {
+          "value": [
+            "queryCommandValue",
+            1
+          ],
+          "writable": true,
+          "enumerable": true,
+          "configurable": true
+        },
+        "designMode": {
+          "get": [
+            "get designMode",
+            0
+          ],
+          "set": [
+            "set designMode",
+            1
+          ],
+          "enumerable": true,
+          "configurable": true
+        }
+      },
+      "html": {
+        "contentEditable": {
+          "get": [
+            "get contentEditable",
+            0
+          ],
+          "set": [
+            "set contentEditable",
+            1
+          ],
+          "enumerable": true,
+          "configurable": true
+        },
+        "isContentEditable": {
+          "get": [
+            "get isContentEditable",
+            0
+          ],
+          "enumerable": true,
+          "configurable": true
+        }
+      },
+      "getTargetRanges": {
+        "value": [
+          "getTargetRanges",
+          0
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "own": []
+    },
+    "table": {
+      "AlignCenter": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "BackColor": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "BackwardDelete": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Bold": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          "false"
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Copy": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "CreateLink": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Cut": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "DefaultParagraphSeparator": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          "div"
+        ],
+        [
+          "ok",
+          true
+        ]
+      ],
+      "Delete": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "DeleteBackward": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "DeleteWordBackward": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "FindString": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "FontName": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "FontSize": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "FontSizeDelta": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "ForeColor": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "FormatBlock": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "ForwardDelete": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "HiliteColor": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "IgnoreSpelling": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Indent": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertBacktab": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertHorizontalRule": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertHTML": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertImage": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertLineBreak": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertNestedOrderedList": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertNestedUnorderedList": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertNewline": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertOrderedList": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          "false"
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertParagraph": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertTab": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertText": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "InsertUnorderedList": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          "false"
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Italic": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          "false"
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "JustifyCenter": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "JustifyFull": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "JustifyLeft": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "JustifyNone": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "JustifyRight": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "MakeTextWritingDirectionLeftToRight": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "MoveDown": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Outdent": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "OverWrite": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Paste": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "PasteAndMatchStyle": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "PasteGlobalSelection": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Print": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Redo": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "RemoveFormat": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Scroll": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "SelectAll": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          true
+        ]
+      ],
+      "SelectLine": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Strikethrough": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          "false"
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "StyleWithCSS": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          true
+        ]
+      ],
+      "Subscript": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          "false"
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Superscript": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          "false"
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "ToggleBold": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Transpose": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Underline": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          "false"
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Undo": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Unlink": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Unscript": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "Unselect": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "UseCSS": [
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          true
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          true
+        ]
+      ],
+      "Yank": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "decreaseFontSize": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "insertBrOnReturn": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ],
+      "foo": [
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          false
+        ],
+        [
+          "ok",
+          ""
+        ],
+        [
+          "ok",
+          false
+        ]
+      ]
+    },
+    "documents": {
+      "xml": [
+        "InvalidStateError: Failed to execute 'execCommand' on 'Document': execCommand is only supported on HTML documents.",
+        "InvalidStateError: Failed to execute 'queryCommandSupported' on 'Document': queryCommandSupported is only supported on HTML documents.",
+        "InvalidStateError: Failed to execute 'queryCommandEnabled' on 'Document': queryCommandEnabled is only supported on HTML documents.",
+        "InvalidStateError: Failed to execute 'queryCommandState' on 'Document': queryCommandState is only supported on HTML documents.",
+        "InvalidStateError: Failed to execute 'queryCommandValue' on 'Document': queryCommandValue is only supported on HTML documents.",
+        "InvalidStateError: Failed to execute 'queryCommandIndeterm' on 'Document': queryCommandIndeterm is only supported on HTML documents."
+      ],
+      "inert": [
+        "ok",
+        [
+          false,
+          false,
+          false,
+          false,
+          "",
+          false,
+          "off"
+        ]
+      ]
+    },
+    "args": [
+      "TypeError: Failed to execute 'execCommand' on 'Document': 1 argument required, but only 0 present.",
+      "TypeError: Failed to execute 'queryCommandState' on 'Document': 1 argument required, but only 0 present.",
+      "TypeError: Failed to execute 'queryCommandValue' on 'Document': 1 argument required, but only 0 present.",
+      "TypeError: Failed to execute 'execCommand' on 'Document': Cannot convert a Symbol value to a string",
+      [
+        "ok",
+        false
+      ],
+      "TypeError: Failed to execute 'execCommand' on 'Document': Cannot convert a Symbol value to a string",
+      "TypeError: Failed to execute 'queryCommandEnabled' on 'Document': Cannot convert a Symbol value to a string",
+      "TypeError: Illegal invocation",
+      "TypeError: Illegal invocation",
+      "TypeError: Illegal invocation",
+      [
+        "cmd",
+        "value"
+      ],
+      [
+        "cmd",
+        "value",
+        "InvalidStateError"
+      ],
+      [
+        "ok",
+        true
+      ],
+      [
+        "ok",
+        false
+      ],
+      [
+        "ok",
+        false
+      ]
+    ],
+    "designMode": [
+      "on",
+      "off",
+      "off",
+      "off",
+      "on",
+      "off"
+    ],
+    "contentEditable": [
+      [
+        "true",
+        "true",
+        true
+      ],
+      [
+        "false",
+        "false",
+        false
+      ],
+      [
+        "plaintext-only",
+        "plaintext-only",
+        true
+      ],
+      [
+        null,
+        "inherit",
+        false
+      ],
+      [
+        "true",
+        "true",
+        true
+      ],
+      [
+        "plaintext-only",
+        "plaintext-only",
+        true
+      ],
+      "SyntaxError: Failed to set the 'contentEditable' property on 'HTMLElement': The value provided ('bogus') is not one of 'true', 'false', 'plaintext-only', or 'inherit'.",
+      "SyntaxError: Failed to set the 'contentEditable' property on 'HTMLElement': The value provided ('') is not one of 'true', 'false', 'plaintext-only', or 'inherit'.",
+      "SyntaxError: Failed to set the 'contentEditable' property on 'HTMLElement': The value provided ('true ') is not one of 'true', 'false', 'plaintext-only', or 'inherit'."
+    ],
+    "contentEditableRead": [
+      [
+        "true",
+        true,
+        true
+      ],
+      [
+        "true",
+        true,
+        true
+      ],
+      [
+        "true",
+        true,
+        true
+      ],
+      [
+        "false",
+        false,
+        false
+      ],
+      [
+        "plaintext-only",
+        true,
+        true
+      ],
+      [
+        "plaintext-only",
+        true,
+        true
+      ],
+      [
+        "inherit",
+        false,
+        false
+      ],
+      [
+        "inherit",
+        false,
+        false
+      ]
+    ],
+    "contentEditableBrand": [
+      "TypeError: Illegal invocation",
+      "TypeError: Illegal invocation",
+      "TypeError: Failed to set the 'contentEditable' property on 'HTMLElement': Cannot convert a Symbol value to a string"
+    ],
+    "cases": [
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">heX|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">heX|o</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>hello|</div>\" ~ \"insertText\" ~ \" \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">hello&nbsp;|</div>",
+          [
+            "input,e,true,true,false,true,insertText, ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>|hello</div>\" ~ \"insertText\" ~ \" \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">&nbsp;|hello</div>",
+          [
+            "input,e,true,true,false,true,insertText, ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ \" \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he |llo</div>",
+          [
+            "input,e,true,true,false,true,insertText, ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ \"  a  b\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he&nbsp; a  b|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,  a  b,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he |llo</div>\" ~ \"insertText\" ~ \" \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he&nbsp; |llo</div>",
+          [
+            "input,e,true,true,false,true,insertText, ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he&nbsp;|llo</div>\" ~ \"insertText\" ~ \"x\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he x|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,x,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ \"   \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he&nbsp; &nbsp;|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,   ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>hello|</div>\" ~ \"insertText\" ~ \"    \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">hello&nbsp; &nbsp;&nbsp;|</div>",
+          [
+            "input,e,true,true,false,true,insertText,    ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>|hello</div>\" ~ \"insertText\" ~ \"   \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">&nbsp; &nbsp;|hello</div>",
+          [
+            "input,e,true,true,false,true,insertText,   ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ \"a  \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">hea&nbsp; |llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,a  ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>hello|</div>\" ~ \"insertText\" ~ \"a b \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">helloa b&nbsp;|</div>",
+          [
+            "input,e,true,true,false,true,insertText,a b ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a <b>|b</b></div>\" ~ \"insertText\" ~ \" \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a&nbsp;&nbsp;|<b>b</b></div>",
+          [
+            "input,e,true,true,false,true,insertText, ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>a</b>| b</div>\" ~ \"insertText\" ~ \" \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b>a&nbsp;|</b> b</div>",
+          [
+            "input,e,true,true,false,true,insertText, ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|&nbsp;&nbsp;b</div>\" ~ \"insertText\" ~ \"x\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">ax|&nbsp; b</div>",
+          [
+            "input,e,true,true,false,true,insertText,x,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>{}<br></div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">X|</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>^<br></p></div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>X|</p></div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>^hello</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">X|hello</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>hello^</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">helloX|</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>hello</b>^</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b>helloX|</b></div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he<b>|llo</b></div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">heX|<b>llo</b></div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>^</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">X|</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a<b>[b</b>c]d</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a<b>X|</b>d</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a<b>[b]</b>c</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a<b>X|</b>c</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ \"a\\nb\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">hea<div>b|llo</div></div>",
+          [
+            "input,e,true,true,false,true,insertText,a,false,,0,",
+            "input,e,true,true,false,true,insertText,,false,,0,",
+            "input,e,true,true,false,true,insertText,b,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ \"\\t\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"white-space:pre\">\t|</span>llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,\t,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ \"\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"insertText\" ~ \"\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he|o</div>",
+          [
+            "input,e,true,true,false,true,insertText,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"insertText\" ~ \" \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he |o</div>",
+          [
+            "input,e,true,true,false,true,insertText, ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>a[b</p><p>c]d</p></div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>aX|d</p></div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"INSERTtext\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">heX|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ 5",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he5|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,5,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ null",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">henull|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,null,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertText\" ~ \"😀\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he😀|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,😀,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"bold\"],[\"insertText\",\"X\"],[\"insertText\",\"Y\"]]",
+        [
+          [
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<b>XY|</b>llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,",
+            "input,e,true,true,false,true,insertText,Y,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"bold\"],[\"italic\"],[\"insertText\",\"X\"]]",
+        [
+          [
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<b><i>X|</i></b>llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>he|llo</b></div>\" ~ [[\"bold\"],[\"insertText\",\"X\"]]",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\"><b>he</b>X|<b>llo</b></div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"bold\"],[\"bold\"],[\"insertText\",\"X\"]]",
+        [
+          [
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he‖X|‖llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"italic\"],[\"insertText\",\"X\"]]",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<i>X|</i>llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"underline\"],[\"insertText\",\"X\"]]",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<u>X|</u>llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"foreColor\",\"red\"],[\"insertText\",\"X\"]]",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<font color=\"#ff0000\">X|</font>llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"createLink\",\"http://x/\"],[\"insertText\",\"X\"]]",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<a href=\"http://x/\">X|</a>llo</div>",
+          [
+            "input,e,true,true,false,true,insertLink,http://x/,false,,0,",
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"bold\"],[\"insertText\",\"X\"]] ~ undefined",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"font-weight: bold;\">X|</span>llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertHTML\" ~ \"<b>X</b>\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<b>X|</b>llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"insertHTML\" ~ \"<i>X</i>y\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<i>X</i>y|‖o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertHTML\" ~ \"<p>X</p>\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">heX|llo<br></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertHTML\" ~ \"X<br>Y\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">heX<br>Y|‖llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"insertHTML\" ~ \"\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he|o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertHTML\" ~ \"<span style=\\\"color: red\\\">X</span>\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"color: red\">X|</span>llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertHTML\" ~ \"<script>1</script>X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<script>1</script>X|‖llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|b</div>\" ~ \"insertHTML\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">aX|b</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|b</div>\" ~ \"insertHTML\" ~ \"X Y\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">aX Y|b</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|b</div>\" ~ \"insertHTML\" ~ \" X \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a X |b</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|b</div>\" ~ \"insertHTML\" ~ \"<div>X</div>\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">aX|b<br></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|b</div>\" ~ \"insertHTML\" ~ \"<p>X</p><p>Y</p>\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">aX<br>Y|b</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>a|b</p></div>\" ~ \"insertHTML\" ~ \"<p>X</p>\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>aX|b</p></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|b</div>\" ~ \"insertHTML\" ~ \"<img src=x>\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a<img src=\"x\">^b</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>^</div>\" ~ \"insertHTML\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">X|</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|b</div>\" ~ \"insertHTML\" ~ \"<!--c-->X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a<!--c-->X|‖b</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|b</div>\" ~ \"insertHTML\" ~ \"<b></b>\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a|<b></b>b</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertHorizontalRule\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<hr>^llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertHorizontalRule\" ~ \"rule\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<hr id=\"rule\">^llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertImage\" ~ \"http://x/i.png\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<img src=\"http://x/i.png\">^llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"insertImage\" ~ \"http://x/i.png\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<img src=\"http://x/i.png\">^o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertImage\" ~ \"\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<img>^llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">h|llo</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he|o</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>|hello</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">|hello</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>ab</p><p>|cd</p></div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>ab|cd</p></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>a[b</p><p>c]d</p></div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>a|d</p></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>a[b</p><p>cd</p><p>e]f</p></div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>a|f</p></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>ab<br>|cd</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">ab|‖cd</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a<b>b</b>|c</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a|‖c</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a<b>b|</b>c</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a|‖c</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">^<br></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>[hello]</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">^<br></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>[hello]</p></div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>^<br></p></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>[a</p><p>b]</p></div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>^<br></p></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a<b>[b]</b>c</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a|‖c</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>a</p><p>^<br></p></div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>a|</p></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a<img src=x>|b</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a|‖b</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>ab</p>|cd</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>ab|cd</p></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>ab<p>|cd</p></div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">ab|cd</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><ul><li>a</li><li>|b</li></ul></div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><ul><li>a|b</li></ul></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a [b] c</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a&nbsp;| c</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a b| c</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a&nbsp;| c</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a  |b</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a|b</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>&#x1F600;|x</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">|x</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>é|x</div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">e|x</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>x|é</div>\" ~ \"forwardDelete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">x|</div>",
+          [
+            "input,e,true,true,false,true,deleteContentForward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"forwardDelete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he|lo</div>",
+          [
+            "input,e,true,true,false,true,deleteContentForward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>ab|</p><p>cd</p></div>\" ~ \"forwardDelete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>ab|cd</p></div>",
+          [
+            "input,e,true,true,false,true,deleteContentForward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>hello|</div>\" ~ \"forwardDelete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">hello|</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>a|</p><p><br></p></div>\" ~ \"forwardDelete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>a|</p></div>",
+          [
+            "input,e,true,true,false,true,deleteContentForward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a|<img src=x>b</div>\" ~ \"forwardDelete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a|‖b</div>",
+          [
+            "input,e,true,true,false,true,deleteContentForward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>ab|<br>cd</div>\" ~ \"forwardDelete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">ab|‖cd</div>",
+          [
+            "input,e,true,true,false,true,deleteContentForward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"forwardDelete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he|o</div>",
+          [
+            "input,e,true,true,false,true,deleteContentForward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<div>|llo</div></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>hello|</div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">hello<div>^<br></div></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>|hello</div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><div><br></div>|hello</div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>he|llo</p></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>he</p><p>|llo</p></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>hello|</p></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>hello</p><p>^<br></p></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>|hello</p></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p><br></p><p>|hello</p></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p><b>he|llo</b></p></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p><b>he</b></p><p><b>|llo</b></p></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p id=q class=c>he|llo</p></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p id=\"q\" class=\"c\">he</p><p id=\"q\" class=\"c\">|llo</p></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<div>|o</div></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><ul><li>he|llo</li></ul></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><ul><li>he</li><li>|llo</li></ul></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><ul><li>a</li><li>^<br></li></ul></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><ul><li>a</li></ul><div>^<br></div></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><h1>hello|</h1></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><h1>hello</h1><div>^<br></div></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><h1>he|llo</h1></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><h1>he</h1><h1>|llo</h1></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><table><tr><td>a|b</td></tr></table></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><table><tbody><tr><td>a<br>|b</td></tr></tbody></table></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><pre>he|llo</pre></div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><pre>he<br>|llo</pre></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"defaultParagraphSeparator\",\"p\"],[\"insertParagraph\"]]",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<p>|llo</p></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertLineBreak\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<br>|llo</div>",
+          [
+            "input,e,true,true,false,true,insertLineBreak,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>hello|</div>\" ~ \"insertLineBreak\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">hello<br>^<br></div>",
+          [
+            "input,e,true,true,false,true,insertLineBreak,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>|hello</div>\" ~ \"insertLineBreak\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><br>|hello</div>",
+          [
+            "input,e,true,true,false,true,insertLineBreak,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><pre>he|llo</pre></div>\" ~ \"insertLineBreak\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><pre>he<br>|llo</pre></div>",
+          [
+            "input,e,true,true,false,true,insertLineBreak,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"insertLineBreak\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<br>|o</div>",
+          [
+            "input,e,true,true,false,true,insertLineBreak,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<b>[ll]</b>o</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"italic\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<i>[ll]</i>o</div>",
+          [
+            "input,e,true,true,false,true,formatItalic,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"underline\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<u>[ll]</u>o</div>",
+          [
+            "input,e,true,true,false,true,formatUnderline,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"strikethrough\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<strike>[ll]</strike>o</div>",
+          [
+            "input,e,true,true,false,true,formatStrikeThrough,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"subscript\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<sub>[ll]</sub>o</div>",
+          [
+            "input,e,true,true,false,true,formatSubscript,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"superscript\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<sup>[ll]</sup>o</div>",
+          [
+            "input,e,true,true,false,true,formatSuperscript,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"bold\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"font-weight: bold;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"italic\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"font-style: italic;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,formatItalic,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"underline\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"text-decoration-line: underline;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,formatUnderline,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"strikethrough\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"text-decoration-line: line-through;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,formatStrikeThrough,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"subscript\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"vertical-align: sub;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,formatSubscript,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"superscript\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"vertical-align: super;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,formatSuperscript,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>he[ll]o</b></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b>he</b>[ll]<b>o</b></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>[hello]</b></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">[hello]</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>[he<b>ll]o</b></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b>[he‖ll]‖o</b></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>[he</b>ll]o</div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">[he‖ll]‖o</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a[b<i>c</i>d]e</div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a<b>[b<i>c</i>d]</b>e</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><strong>he[ll]o</strong></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><strong>he</strong>[ll]<strong>o</strong></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><span style=\\\"font-weight: bold\\\">he[ll]o</span></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><span style=\"font-weight: bold\">he</span>[ll]<span style=\"font-weight: bold\">o</span></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><span style=\\\"font-weight:bold;color:red\\\">he[ll]o</span></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><span style=\"font-weight:bold;color:red\">he</span><span style=\"color: red;\">[ll]</span><span style=\"font-weight:bold;color:red\">o</span></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><span style=\\\"color:red\\\">he[ll]o</span></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><span style=\"color:red\">he<b>[ll]</b>o</span></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b id=q class=c>a b[c]d e</b></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b id=\"q\" class=\"c\">a b</b><span class=\"c\">[c]</span><b class=\"c\">d e</b></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>a<i>x</i>he[ll]o</b></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b>a<i>x</i>he</b>[ll]<b>o</b></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><i><b>he[ll]o</b></i></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><i><b>he</b>[ll]<b>o</b></i></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>he</b>[ll]<b>o</b></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b>he‖[ll]‖o</b></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]<b>o</b></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<b>[ll]‖o</b></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>h</b>e[ll]o</div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b>h</b>e<b>[ll]</b>o</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><h1>he[ll]o</h1></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><h1>he<span style=\"font-weight: normal;\">[ll]</span>o</h1></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a[b<br>c]d</div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a<b>[b<br>c]</b>d</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a[b<img src=\\\"x\\\">c]d</div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a<b>[b<img src=\"x\">c]</b>d</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>a[b</p><p>c]d</p></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>a<b>[b</b></p><p><b>c]</b>d</p></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>{hello}</div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b>[hello]</b></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a[b c]d</div>\" ~ \"italic\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a<i>[b c]</i>d</div>",
+          [
+            "input,e,true,true,false,true,formatItalic,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><em>he[ll]o</em></div>\" ~ \"italic\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><em>he</em>[ll]<em>o</em></div>",
+          [
+            "input,e,true,true,false,true,formatItalic,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><i>he[ll]o</i></div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><i>he<b>[ll]</b>o</i></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><u>he[ll]o</u></div>\" ~ \"underline\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><u>he</u>[ll]<u>o</u></div>",
+          [
+            "input,e,true,true,false,true,formatUnderline,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><a href=\\\"/\\\">he[ll]o</a></div>\" ~ \"underline\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><a href=\"/\">he‖[ll]‖o</a></div>",
+          [
+            "input,e,true,true,false,true,formatUnderline,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><s>he[ll]o</s></div>\" ~ \"strikethrough\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><s>he</s>[ll]<s>o</s></div>",
+          [
+            "input,e,true,true,false,true,formatStrikeThrough,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><u>he[ll]o</u></div>\" ~ \"strikethrough\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><u>he<strike>[ll]</strike>o</u></div>",
+          [
+            "input,e,true,true,false,true,formatStrikeThrough,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><sub>he[ll]o</sub></div>\" ~ \"superscript\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><sub>he</sub><sup>[ll]</sup><sub>o</sub></div>",
+          [
+            "input,e,true,true,false,true,formatSuperscript,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>he[ll]o</b></div>\" ~ \"bold\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b>he</b>[ll]<b>o</b></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><span style=\\\"font-weight: bold;\\\">he[ll]o</span></div>\" ~ \"bold\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><span style=\"font-weight: bold;\">he</span>[ll]<span style=\"font-weight: bold;\">o</span></div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ [[\"bold\"],[\"bold\"]]",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he‖[ll]‖o</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,",
+            "input,e,true,true,false,true,formatBold,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ [[\"bold\"],[\"italic\"]]",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<b><i>[ll]</i></b>o</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,",
+            "input,e,true,true,false,true,formatItalic,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ [[\"bold\"],[\"italic\"]] ~ undefined",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"font-weight: bold; font-style: italic;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,",
+            "input,e,true,true,false,true,formatItalic,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"bold\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"foreColor\" ~ \"red\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<font color=\"#ff0000\">[ll]</font>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"foreColor\" ~ \"#00ff00\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<font color=\"#00ff00\">[ll]</font>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"foreColor\" ~ \"rgb(1, 2, 3)\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<font color=\"#010203\">[ll]</font>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"foreColor\" ~ \"bogus\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he[ll]o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"foreColor\" ~ \"\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he[ll]o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"foreColor\" ~ \"red\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"color: red;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><font color=\\\"#ff0000\\\">he[ll]o</font></div>\" ~ \"foreColor\" ~ \"blue\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><font color=\"#ff0000\">he</font><font color=\"#0000ff\">[ll]</font><font color=\"#ff0000\">o</font></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"backColor\" ~ \"red\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"background-color: red;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"backColor\" ~ \"transparent\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he‖[ll]‖o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"hiliteColor\" ~ \"red\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"background-color: red;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"fontName\" ~ \"Arial\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<font face=\"Arial\">[ll]</font>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"fontName\" ~ \"\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he[ll]o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"fontSize\" ~ \"5\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<font size=\"5\">[ll]</font>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"fontSize\" ~ \"9\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<font size=\"7\">[ll]</font>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"fontSize\" ~ \"+1\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<font size=\"4\">[ll]</font>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"fontSize\" ~ \"x\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he[ll]o</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"fontSize\" ~ \"5\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<span style=\"font-size: x-large;\">[ll]</span>o</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"createLink\" ~ \"http://x/\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<a href=\"http://x/\">[ll]</a>o</div>",
+          [
+            "input,e,true,true,false,true,insertLink,http://x/,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"createLink\" ~ \"http://x/\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he<a href=\"http://x/\">[http://x/]</a>llo</div>",
+          [
+            "input,e,true,true,false,true,insertLink,http://x/,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"createLink\" ~ \"\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he[ll]o</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><a href=\\\"http://y/\\\">he[ll]o</a></div>\" ~ \"createLink\" ~ \"http://x/\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><a href=\"http://y/\">he</a><a href=\"http://x/\">[ll]</a><a href=\"http://y/\">o</a></div>",
+          [
+            "input,e,true,true,false,true,insertLink,http://x/,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><a href=\\\"http://x/\\\">he[ll]o</a></div>\" ~ \"unlink\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><a href=\"http://x/\">he</a>[ll]<a href=\"http://x/\">o</a></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><a href=\\\"http://x/\\\">he|llo</a></div>\" ~ \"unlink\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\"><a href=\"http://x/\">he|llo</a></div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>a[b<a href=\\\"http://x/\\\">cd</a>e]f</div>\" ~ \"unlink\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">a‖[b‖cd‖e]‖f</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><b>h[e<i>l</i>l]o</b></div>\" ~ \"removeFormat\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><b>h</b>[e‖l‖l]<b>o</b></div>",
+          [
+            "input,e,true,true,false,true,formatRemove,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>h[e<span style=\\\"color: red\\\">l</span><a href=\\\"http://x/\\\">l</a>]o</div>\" ~ \"removeFormat\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">h‖[e‖l<a href=\"http://x/\">l]</a>o</div>",
+          [
+            "input,e,true,true,false,true,formatRemove,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"removeFormat\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"formatBlock\" ~ \"h1\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><h1>he|llo</h1></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"formatBlock\" ~ \"<pre>\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><pre>he|llo</pre></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"formatBlock\" ~ \"P\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>he|llo</p></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>he|llo</p></div>\" ~ \"formatBlock\" ~ \"blockquote\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><blockquote>he|llo</blockquote></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>he|llo</p></div>\" ~ \"formatBlock\" ~ \"p\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p>he|llo</p></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>a[b</p><p>c]d</p></div>\" ~ \"formatBlock\" ~ \"h2\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><h2>a[b<br>c]d</h2></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"formatBlock\" ~ \"span\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"formatBlock\" ~ \"1x\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"formatBlock\" ~ \"\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"formatBlock\" ~ \"div\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><div>he|llo</div></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>ab<br>c|d<br>ef</div>\" ~ \"formatBlock\" ~ \"h3\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">ab<br><h3>c|d</h3>ef</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertOrderedList\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><ol><li>|hello</li></ol></div>",
+          [
+            "input,e,true,true,false,true,insertOrderedList,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"insertUnorderedList\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><ul><li>|hello</li></ul></div>",
+          [
+            "input,e,true,true,false,true,insertUnorderedList,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><ul><li>he|llo</li></ul></div>\" ~ \"insertUnorderedList\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          [
+            "input,e,true,true,false,true,insertUnorderedList,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><ul><li>he|llo</li></ul></div>\" ~ \"insertOrderedList\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><ol><li>he|llo</li></ol></div>",
+          [
+            "input,e,true,true,false,true,insertOrderedList,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>a[b</p><p>c]d</p></div>\" ~ \"insertOrderedList\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p><ol><li>a[b</li><li>c]d</li></ol></p></div>",
+          [
+            "input,e,true,true,false,true,insertOrderedList,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><ul><li>a</li><li>b|</li><li>c</li></ul></div>\" ~ \"insertUnorderedList\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><ul><li>a</li></ul>b|<br><ul><li>c</li></ul></div>",
+          [
+            "input,e,true,true,false,true,insertUnorderedList,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"justifyCenter\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><div style=\"text-align: center;\">he|llo</div></div>",
+          [
+            "input,e,true,true,false,true,formatJustifyCenter,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><p>he|llo</p></div>\" ~ \"justifyRight\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><p style=\"text-align: right;\">he|llo</p></div>",
+          [
+            "input,e,true,true,false,true,formatJustifyRight,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"indent\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\"><blockquote style=\"margin: 0 0 0 40px; border: none; padding: 0px;\">he|llo</blockquote></div>",
+          [
+            "input,e,true,true,false,true,formatIndent,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><blockquote style=\\\"margin: 0 0 0 40px; border: none; padding: 0px;\\\">he|llo</blockquote></div>\" ~ \"outdent\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          [
+            "input,e,true,true,false,true,formatOutdent,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"selectAll\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">[hello]</div>",
+          [
+            "selectstart,e,true,true,true,false"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e>he|llo</div>\" ~ \"selectAll\"",
+        [
+          true,
+          "<div id=\"e\">[hello]</div>",
+          [
+            "selectstart,BODY,true,true,true,false"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"unselect\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">hello</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e>he[ll]o</div>\" ~ \"unselect\"",
+        [
+          true,
+          "<div id=\"e\">hello</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e>he|llo</div>\" ~ \"unselect\"",
+        [
+          false,
+          "<div id=\"e\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e>he|llo</div>\" ~ \"findString\" ~ \"l\"",
+        [
+          true,
+          "<div id=\"e\">he[l]lo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e>hello |world</div>\" ~ \"findString\" ~ \"o\"",
+        [
+          true,
+          "<div id=\"e\">hello w[o]rld</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e>hello |world</div>\" ~ \"findString\" ~ \"H\"",
+        [
+          true,
+          "<div id=\"e\">[h]ello world</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e>hello world|</div>\" ~ \"findString\" ~ \"zz\"",
+        [
+          false,
+          "<div id=\"e\">hello world|</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e>hello world|</div>\" ~ \"findString\" ~ \"\"",
+        [
+          false,
+          "<div id=\"e\">hello world|</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"transpose\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">hle|lo</div>",
+          [
+            "beforeinput,e,true,true,true,true,insertTranspose,le,false,,1,StaticRange,#text,1,#text,3",
+            "input,e,true,true,false,true,insertTranspose,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>hello|</div>\" ~ \"transpose\" ~ undefined",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"\">helol|</div>",
+          [
+            "beforeinput,e,true,true,true,true,insertTranspose,ol,false,,1,StaticRange,#text,3,#text,5",
+            "input,e,true,true,false,true,insertTranspose,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"transpose\" ~ undefined",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he[ll]o</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"copy\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he[ll]o</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ \"cut\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he[ll]o</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"paste\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"pasteAndMatchStyle\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e>he|llo</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          false,
+          "<div id=\"e\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=false>he|llo</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"false\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable><span contenteditable=false>a|b</span></div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\"><span contenteditable=\"false\">a|b</span></div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=TRUE>he|llo</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"TRUE\">heX|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=plaintext-only>he[ll]o</div>\" ~ \"bold\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"plaintext-only\">he[ll]o</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=plaintext-only>he|llo</div>\" ~ \"insertText\" ~ \"X\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"plaintext-only\">heX|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=plaintext-only>he|llo</div>\" ~ \"insertText\" ~ \"  \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"plaintext-only\">he  |llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,  ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=plaintext-only>hello|</div>\" ~ \"insertText\" ~ \" \"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"plaintext-only\">hello |</div>",
+          [
+            "input,e,true,true,false,true,insertText, ,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=plaintext-only>he|llo</div>\" ~ \"insertText\" ~ \"a\\nb\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"plaintext-only\">hea<div>b|llo</div></div>",
+          [
+            "input,e,true,true,false,true,insertText,a,false,,0,",
+            "input,e,true,true,false,true,insertText,,false,,0,",
+            "input,e,true,true,false,true,insertText,b,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=plaintext-only>he|llo</div>\" ~ \"insertHTML\" ~ \"<b>X</b>\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"plaintext-only\">heX|llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=plaintext-only>he|llo</div>\" ~ \"insertParagraph\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"plaintext-only\">he<div>|llo</div></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=plaintext-only>he|llo</div>\" ~ \"insertLineBreak\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"plaintext-only\">he‖\n‖|llo</div>",
+          [
+            "input,e,true,true,false,true,insertLineBreak,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable=plaintext-only><b>he[ll]o</b></div>\" ~ \"delete\"",
+        [
+          true,
+          "<div id=\"e\" contenteditable=\"plaintext-only\"><b>he|o</b></div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"foo\" ~ \"X\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"undo\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ \"redo\"",
+        [
+          false,
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          []
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"insertText\",\"A\"],[\"insertText\",\"B\"],[\"bold\"],[\"undo\"],[\"undo\"],[\"redo\"],[\"insertText\",\"C\"],[\"redo\"],[\"undo\"],[\"undo\"],[\"undo\"]]",
+        [
+          [
+            true,
+            true,
+            true,
+            true,
+            false,
+            true,
+            true,
+            false,
+            true,
+            true,
+            false
+          ],
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,A,false,,0,",
+            "input,e,true,true,false,true,insertText,B,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,",
+            "input,e,true,true,false,true,historyRedo,,false,,0,",
+            "input,e,true,true,false,true,insertText,C,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"insertText\",\"A\"],[\"bold\"],[\"insertText\",\"B\"],[\"undo\"]]",
+        [
+          [
+            true,
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          [
+            "input,e,true,true,false,true,insertText,A,false,,0,",
+            "input,e,true,true,false,true,insertText,B,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ [[\"bold\"],[\"undo\"],[\"redo\"],[\"undo\"]]",
+        [
+          [
+            true,
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he[ll]o</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,",
+            "input,e,true,true,false,true,historyRedo,,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"insertHTML\",\"<b>X</b>\"],[\"insertText\",\"Y\"],[\"undo\"],[\"undo\"],[\"redo\"]]",
+        [
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<b>X|</b>llo</div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,",
+            "input,e,true,true,false,true,insertText,Y,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,",
+            "input,e,true,true,false,true,historyRedo,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"delete\"],[\"delete\"],[\"undo\"]]",
+        [
+          [
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">]he[llo</div>",
+          [
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,",
+            "input,e,true,true,false,true,deleteContentBackward,,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"insertParagraph\"],[\"insertText\",\"X\"],[\"undo\"],[\"redo\"]]",
+        [
+          [
+            true,
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<div>X|llo</div></div>",
+          [
+            "input,e,true,true,false,true,insertParagraph,,false,,0,",
+            "input,e,true,true,false,true,insertText,X,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,",
+            "input,e,true,true,false,true,historyRedo,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"formatBlock\",\"h1\"],[\"undo\"],[\"redo\"]]",
+        [
+          [
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\"><h1>he|llo</h1></div>",
+          [
+            "input,e,true,true,false,true,,,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,",
+            "input,e,true,true,false,true,historyRedo,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"insertOrderedList\"],[\"undo\"]]",
+        [
+          [
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he|llo</div>",
+          [
+            "input,e,true,true,false,true,insertOrderedList,,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he[ll]o</div>\" ~ [[\"bold\"],[\"italic\"],[\"undo\"],[\"undo\"],[\"redo\"],[\"redo\"]]",
+        [
+          [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he<b><i>[ll]</i></b>o</div>",
+          [
+            "input,e,true,true,false,true,formatBold,,false,,0,",
+            "input,e,true,true,false,true,formatItalic,,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,",
+            "input,e,true,true,false,true,historyRedo,,false,,0,",
+            "input,e,true,true,false,true,historyRedo,,false,,0,"
+          ]
+        ]
+      ],
+      [
+        "\"<div id=e contenteditable>he|llo</div>\" ~ [[\"forwardDelete\"],[\"forwardDelete\"],[\"insertText\",\"X\"],[\"undo\"]]",
+        [
+          [
+            true,
+            true,
+            true,
+            true
+          ],
+          "<div id=\"e\" contenteditable=\"\">he[ll]o</div>",
+          [
+            "input,e,true,true,false,true,deleteContentForward,,false,,0,",
+            "input,e,true,true,false,true,deleteContentForward,,false,,0,",
+            "input,e,true,true,false,true,insertText,X,false,,0,",
+            "input,e,true,true,false,true,historyUndo,,false,,0,"
+          ]
+        ]
+      ]
+    ],
+    "typingClosedBySelection": "<div id=\"e\" contenteditable=\"\">heA|llo</div>",
+    "removedHost": [
+      false,
+      false,
+      "heAllo"
+    ],
+    "recursion": [
+      false,
+      true,
+      true,
+      "<div id=\"e\" contenteditable=\"\">heX|llo</div>"
+    ],
+    "selectstartCanceled": [
+      true,
+      "<div id=\"e\" contenteditable=\"\">he|llo</div>"
+    ],
+    "transposeCanceled": [
+      false,
+      "<div id=\"e\" contenteditable=\"\">he|llo</div>"
+    ],
+    "selectionDuringInput": [
+      "#text",
+      3,
+      "heXllo"
+    ],
+    "typingStyleState": [
+      [
+        true,
+        "true"
+      ],
+      [
+        true,
+        "true"
+      ],
+      [
+        false,
+        "false"
+      ]
+    ],
+    "typingStyleCleared": [
+      false,
+      false
+    ],
+    "state": [
+      true,
+      true,
+      "",
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      [
+        true,
+        "p"
+      ],
+      [
+        true,
+        "div"
+      ],
+      [
+        true,
+        "div"
+      ],
+      [
+        true,
+        "div"
+      ],
+      [
+        true,
+        "div"
+      ],
+      [
+        true,
+        "p"
+      ]
+    ],
+    "design": [
+      [
+        true,
+        "<div id=\"e\">heX|llo</div>",
+        [
+          "input,BODY,true,true,false,true,insertText,X,false,,0,"
+        ]
+      ],
+      [
+        true,
+        "<div id=\"e\">he<b>[ll]</b>o</div>",
+        [
+          "input,BODY,true,true,false,true,formatBold,,false,,0,"
+        ]
+      ],
+      [
+        false,
+        "<div id=\"e\" contenteditable=\"false\">he|llo</div>",
+        []
+      ],
+      [
+        true,
+        "<div id=\"e\">he</div><div id=\"e\">|llo</div>",
+        [
+          "input,BODY,true,true,false,true,insertParagraph,,false,,0,"
+        ]
+      ],
+      [
+        true,
+        "<div id=\"e\">[hello]</div>",
+        [
+          "selectstart,BODY,true,true,true,false"
+        ]
+      ],
+      [
+        true,
+        true,
+        true,
+        true
+      ]
+    ],
+    "queries": [
+      [
+        "<div id=e contenteditable>he|llo</div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable>he[ll]o</div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:1,0,0,\"\"",
+          "removeFormat:1,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:0,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e>he|llo</div>",
+        [
+          "bold:0,0,0,\"false\"",
+          "italic:0,0,0,\"false\"",
+          "underline:0,0,0,\"false\"",
+          "strikethrough:0,0,0,\"false\"",
+          "subscript:0,0,0,\"false\"",
+          "superscript:0,0,0,\"false\"",
+          "insertOrderedList:0,0,0,\"false\"",
+          "insertUnorderedList:0,0,0,\"false\"",
+          "justifyCenter:0,0,0,\"left\"",
+          "justifyLeft:0,1,0,\"left\"",
+          "justifyRight:0,0,0,\"left\"",
+          "justifyFull:0,0,0,\"left\"",
+          "formatBlock:0,0,0,\"\"",
+          "fontName:0,0,0,\"Times\"",
+          "fontSize:0,0,0,\"3\"",
+          "foreColor:0,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:0,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:0,0,0,\"\"",
+          "createLink:0,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:0,0,0,\"\"",
+          "forwardDelete:0,0,0,\"\"",
+          "insertText:0,0,0,\"\"",
+          "insertHTML:0,0,0,\"\"",
+          "insertParagraph:0,0,0,\"\"",
+          "insertLineBreak:0,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:0,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:0,0,0,\"\"",
+          "outdent:0,0,0,\"\"",
+          "insertImage:0,0,0,\"\"",
+          "insertHorizontalRule:0,0,0,\"\"",
+          "transpose:0,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:0,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e>he[ll]o</div>",
+        [
+          "bold:0,0,0,\"false\"",
+          "italic:0,0,0,\"false\"",
+          "underline:0,0,0,\"false\"",
+          "strikethrough:0,0,0,\"false\"",
+          "subscript:0,0,0,\"false\"",
+          "superscript:0,0,0,\"false\"",
+          "insertOrderedList:0,0,0,\"false\"",
+          "insertUnorderedList:0,0,0,\"false\"",
+          "justifyCenter:0,0,0,\"left\"",
+          "justifyLeft:0,1,0,\"left\"",
+          "justifyRight:0,0,0,\"left\"",
+          "justifyFull:0,0,0,\"left\"",
+          "formatBlock:0,0,0,\"\"",
+          "fontName:0,0,0,\"Times\"",
+          "fontSize:0,0,0,\"3\"",
+          "foreColor:0,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:0,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:0,0,0,\"\"",
+          "createLink:0,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:0,0,0,\"\"",
+          "forwardDelete:0,0,0,\"\"",
+          "insertText:0,0,0,\"\"",
+          "insertHTML:0,0,0,\"\"",
+          "insertParagraph:0,0,0,\"\"",
+          "insertLineBreak:0,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:0,0,0,\"\"",
+          "outdent:0,0,0,\"\"",
+          "insertImage:0,0,0,\"\"",
+          "insertHorizontalRule:0,0,0,\"\"",
+          "transpose:0,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:0,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable=plaintext-only>he[ll]o</div>",
+        [
+          "bold:0,0,0,\"false\"",
+          "italic:0,0,0,\"false\"",
+          "underline:0,0,0,\"false\"",
+          "strikethrough:0,0,0,\"false\"",
+          "subscript:0,0,0,\"false\"",
+          "superscript:0,0,0,\"false\"",
+          "insertOrderedList:0,0,0,\"false\"",
+          "insertUnorderedList:0,0,0,\"false\"",
+          "justifyCenter:0,0,0,\"left\"",
+          "justifyLeft:0,1,0,\"left\"",
+          "justifyRight:0,0,0,\"left\"",
+          "justifyFull:0,0,0,\"left\"",
+          "formatBlock:0,0,0,\"\"",
+          "fontName:0,0,0,\"Times\"",
+          "fontSize:0,0,0,\"3\"",
+          "foreColor:0,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:0,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:0,0,0,\"\"",
+          "createLink:0,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:0,0,0,\"\"",
+          "outdent:0,0,0,\"\"",
+          "insertImage:0,0,0,\"\"",
+          "insertHorizontalRule:0,0,0,\"\"",
+          "transpose:0,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:0,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable=plaintext-only>he|llo</div>",
+        [
+          "bold:0,0,0,\"false\"",
+          "italic:0,0,0,\"false\"",
+          "underline:0,0,0,\"false\"",
+          "strikethrough:0,0,0,\"false\"",
+          "subscript:0,0,0,\"false\"",
+          "superscript:0,0,0,\"false\"",
+          "insertOrderedList:0,0,0,\"false\"",
+          "insertUnorderedList:0,0,0,\"false\"",
+          "justifyCenter:0,0,0,\"left\"",
+          "justifyLeft:0,1,0,\"left\"",
+          "justifyRight:0,0,0,\"left\"",
+          "justifyFull:0,0,0,\"left\"",
+          "formatBlock:0,0,0,\"\"",
+          "fontName:0,0,0,\"Times\"",
+          "fontSize:0,0,0,\"3\"",
+          "foreColor:0,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:0,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:0,0,0,\"\"",
+          "createLink:0,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:0,0,0,\"\"",
+          "outdent:0,0,0,\"\"",
+          "insertImage:0,0,0,\"\"",
+          "insertHorizontalRule:0,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:0,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><b>he|llo</b></div>",
+        [
+          "bold:1,1,0,\"true\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><b>he</b>|llo</div>",
+        [
+          "bold:1,1,0,\"true\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable>he|<b>llo</b></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable>[he<b>ll]o</b></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:1,0,0,\"\"",
+          "removeFormat:1,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:0,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><b>[he</b>ll]o</div>",
+        [
+          "bold:1,1,0,\"true\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:1,0,0,\"\"",
+          "removeFormat:1,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:0,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><h1>he[ll]o</h1></div>",
+        [
+          "bold:1,1,0,\"true\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"h1\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"6\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:1,0,0,\"\"",
+          "removeFormat:1,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:0,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><ol><li>he|llo</li></ol></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,1,0,\"true\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><ul><li>he|llo</li></ul></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,1,0,\"true\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><ul><li>[a</li><li>b]</li></ul></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,1,0,\"true\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:1,0,0,\"\"",
+          "removeFormat:1,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:0,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><p style=\"text-align:center\">he|llo</p></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,1,0,\"center\"",
+          "justifyLeft:1,0,0,\"center\"",
+          "justifyRight:1,0,0,\"center\"",
+          "justifyFull:1,0,0,\"center\"",
+          "formatBlock:1,0,0,\"p\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><i><u><a href=\"/\">he|llo</a></u></i></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,1,0,\"true\"",
+          "underline:1,1,0,\"true\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 238)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><sub>h|i</sub><sup>x</sup></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,1,0,\"true\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"2\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><font face=\"Arial\" size=\"5\" color=\"red\">h|i</font></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Arial\"",
+          "fontSize:1,0,0,\"5\"",
+          "foreColor:1,0,0,\"rgb(255, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><span style=\"background-color: red; font-family: Georgia; font-size: 20px; color: rgb(0,128,0)\">h|i</span></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Georgia\"",
+          "fontSize:1,0,0,\"4\"",
+          "foreColor:1,0,0,\"rgb(0, 128, 0)\"",
+          "backColor:1,0,0,\"rgb(255, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><blockquote>a|b</blockquote><pre>c</pre></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"blockquote\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><strike>a|b</strike></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,1,0,\"true\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><span style=\"text-decoration: underline line-through; font-style: italic; font-weight: 700; vertical-align: super\">a|b</span></div>",
+        [
+          "bold:1,1,0,\"true\"",
+          "italic:1,1,0,\"true\"",
+          "underline:1,1,0,\"true\"",
+          "strikethrough:1,1,0,\"true\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,1,0,\"true\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><span style=\"font-weight: 300\">a|b</span></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable><b><span style=\"font-weight: normal\">a|b</span></b></div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<div id=e contenteditable>^</div>",
+        [
+          "bold:1,0,0,\"false\"",
+          "italic:1,0,0,\"false\"",
+          "underline:1,0,0,\"false\"",
+          "strikethrough:1,0,0,\"false\"",
+          "subscript:1,0,0,\"false\"",
+          "superscript:1,0,0,\"false\"",
+          "insertOrderedList:1,0,0,\"false\"",
+          "insertUnorderedList:1,0,0,\"false\"",
+          "justifyCenter:1,0,0,\"left\"",
+          "justifyLeft:1,1,0,\"left\"",
+          "justifyRight:1,0,0,\"left\"",
+          "justifyFull:1,0,0,\"left\"",
+          "formatBlock:1,0,0,\"\"",
+          "fontName:1,0,0,\"Times\"",
+          "fontSize:1,0,0,\"3\"",
+          "foreColor:1,0,0,\"rgb(0, 0, 0)\"",
+          "backColor:1,0,0,\"rgba(0, 0, 0, 0)\"",
+          "hiliteColor:1,0,0,\"\"",
+          "createLink:1,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:1,0,0,\"\"",
+          "forwardDelete:1,0,0,\"\"",
+          "insertText:1,0,0,\"\"",
+          "insertHTML:1,0,0,\"\"",
+          "insertParagraph:1,0,0,\"\"",
+          "insertLineBreak:1,0,0,\"\"",
+          "selectAll:0,0,0,\"\"",
+          "unselect:1,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:1,0,0,\"\"",
+          "outdent:1,0,0,\"\"",
+          "insertImage:1,0,0,\"\"",
+          "insertHorizontalRule:1,0,0,\"\"",
+          "transpose:1,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:1,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ],
+      [
+        "<p id=e>no selection</p>",
+        [
+          "bold:0,0,0,\"false\"",
+          "italic:0,0,0,\"false\"",
+          "underline:0,0,0,\"false\"",
+          "strikethrough:0,0,0,\"false\"",
+          "subscript:0,0,0,\"false\"",
+          "superscript:0,0,0,\"false\"",
+          "insertOrderedList:0,0,0,\"false\"",
+          "insertUnorderedList:0,0,0,\"false\"",
+          "justifyCenter:0,0,0,\"\"",
+          "justifyLeft:0,0,0,\"\"",
+          "justifyRight:0,0,0,\"\"",
+          "justifyFull:0,0,0,\"\"",
+          "formatBlock:0,0,0,\"\"",
+          "fontName:0,0,0,\"\"",
+          "fontSize:0,0,0,\"\"",
+          "foreColor:0,0,0,\"\"",
+          "backColor:0,0,0,\"\"",
+          "hiliteColor:0,0,0,\"\"",
+          "createLink:0,0,0,\"\"",
+          "styleWithCSS:1,0,0,\"\"",
+          "useCSS:1,0,0,\"\"",
+          "defaultParagraphSeparator:1,0,0,\"div\"",
+          "undo:1,0,0,\"\"",
+          "redo:0,0,0,\"\"",
+          "delete:0,0,0,\"\"",
+          "forwardDelete:0,0,0,\"\"",
+          "insertText:0,0,0,\"\"",
+          "insertHTML:0,0,0,\"\"",
+          "insertParagraph:0,0,0,\"\"",
+          "insertLineBreak:0,0,0,\"\"",
+          "selectAll:1,0,0,\"\"",
+          "unselect:0,0,0,\"\"",
+          "unlink:0,0,0,\"\"",
+          "removeFormat:0,0,0,\"\"",
+          "copy:0,0,0,\"\"",
+          "cut:0,0,0,\"\"",
+          "paste:0,0,0,\"\"",
+          "indent:0,0,0,\"\"",
+          "outdent:0,0,0,\"\"",
+          "insertImage:0,0,0,\"\"",
+          "insertHorizontalRule:0,0,0,\"\"",
+          "transpose:0,0,0,\"\"",
+          "findString:1,0,0,\"\"",
+          "print:1,0,0,\"\"",
+          "fontSizeDelta:0,0,0,\"\"",
+          "pasteAndMatchStyle:0,0,0,\"\""
+        ]
+      ]
+    ],
+    "textControls": {
+      "input": [
+        true,
+        false,
+        [
+          true,
+          "heXo",
+          3,
+          3,
+          [
+            "input,i,true,true,false,true,insertText,X,false,,0,"
+          ]
+        ],
+        [
+          true,
+          "heo",
+          2,
+          2,
+          [
+            "input,i,true,true,false,true,deleteContentBackward,,false,,0,"
+          ]
+        ],
+        [
+          true,
+          "heXo",
+          2,
+          3,
+          [
+            "input,i,true,true,false,true,historyUndo,,false,,0,"
+          ]
+        ],
+        [
+          true,
+          "heo",
+          2,
+          2,
+          [
+            "input,i,true,true,false,true,historyRedo,,false,,0,"
+          ]
+        ],
+        [
+          false,
+          "heo",
+          2,
+          2,
+          []
+        ],
+        [
+          true,
+          "heYo",
+          3,
+          3,
+          [
+            "input,i,true,true,false,true,insertText,Y,false,,0,"
+          ]
+        ],
+        [
+          true,
+          "heYo",
+          3,
+          3,
+          []
+        ],
+        [
+          true,
+          "heYo",
+          3,
+          3,
+          []
+        ],
+        [
+          true,
+          "heYo",
+          0,
+          4,
+          [
+            "selectstart,i,true,true,true,false",
+            "select,i,true,true,false,false"
+          ]
+        ],
+        [
+          true,
+          "",
+          0,
+          0,
+          [
+            "input,i,true,true,false,true,deleteContentForward,,false,,0,"
+          ]
+        ],
+        [
+          true,
+          "a b",
+          3,
+          3,
+          [
+            "input,i,true,true,false,true,insertText,a b,false,,0,"
+          ]
+        ]
+      ],
+      "textarea": [
+        [
+          true,
+          "helloa\nb",
+          8,
+          8,
+          [
+            "input,t,true,true,false,true,insertText,a,false,,0,",
+            "input,t,true,true,false,true,insertText,,false,,0,",
+            "input,t,true,true,false,true,insertText,b,false,,0,"
+          ]
+        ],
+        [
+          true,
+          "helloa\nb\n",
+          9,
+          9,
+          [
+            "input,t,true,true,false,true,insertParagraph,,false,,0,"
+          ]
+        ],
+        [
+          true,
+          "helloa\nb\n\n",
+          10,
+          10,
+          [
+            "input,t,true,true,false,true,insertLineBreak,,false,,0,"
+          ]
+        ],
+        [
+          true,
+          "helloa\nb\n\n  ",
+          12,
+          12,
+          [
+            "input,t,true,true,false,true,insertText,  ,false,,0,"
+          ]
+        ],
+        [
+          true,
+          "hello",
+          5,
+          5,
+          [
+            "input,t,true,true,false,true,historyUndo,,false,,0,"
+          ]
+        ]
+      ],
+      "readonly": [
+        false,
+        [
+          false,
+          "ro",
+          0,
+          0,
+          []
+        ]
+      ]
+    }
+  }
+}

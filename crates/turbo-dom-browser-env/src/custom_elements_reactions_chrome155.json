@@ -1,0 +1,194 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "probeSha256": "3a6a3b290e0beddfc6f79a78d73e9e1a8ba87c83adae8728b616aa76100399bf",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "names": [
+      [
+        "x-a:b",
+        "undefined"
+      ],
+      [
+        "x-a!",
+        "undefined"
+      ],
+      [
+        "x-a?",
+        "undefined"
+      ],
+      [
+        "x-a\"",
+        "undefined"
+      ],
+      [
+        "x-a'",
+        "undefined"
+      ],
+      [
+        "x-a=",
+        "undefined"
+      ],
+      [
+        "x-a[",
+        "undefined"
+      ],
+      [
+        "x-a]",
+        "undefined"
+      ],
+      [
+        "x-a\\",
+        "undefined"
+      ],
+      [
+        "x-a`",
+        "undefined"
+      ],
+      [
+        "x-a\u0001",
+        "undefined"
+      ],
+      [
+        "x-a",
+        "undefined"
+      ],
+      [
+        "x-a ",
+        "SyntaxError"
+      ],
+      [
+        "x-a/",
+        "SyntaxError"
+      ],
+      [
+        "x-a>",
+        "SyntaxError"
+      ]
+    ],
+    "observed": [
+      "TypeError",
+      "undefined",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError"
+    ],
+    "methodConversions": [
+      null,
+      "TypeError",
+      "TypeError",
+      "TypeError"
+    ],
+    "phases": [
+      [
+        "ctor-before"
+      ],
+      [
+        "ctor-after"
+      ],
+      [
+        "attribute",
+        null,
+        "old"
+      ],
+      [
+        "connected"
+      ],
+      [
+        "after-define"
+      ],
+      [
+        "defined"
+      ]
+    ],
+    "failedUpgrade": [
+      true,
+      "new",
+      []
+    ],
+    "clones": [
+      true,
+      "body",
+      "v",
+      false,
+      true,
+      [
+        [
+          "ctor",
+          "x-clone",
+          "v"
+        ],
+        [
+          "attribute",
+          null,
+          "v"
+        ]
+      ]
+    ],
+    "moves": [
+      [
+        "disconnected",
+        true
+      ],
+      [
+        "connected",
+        true
+      ],
+      [
+        "disconnected",
+        true
+      ],
+      [
+        "connected",
+        true
+      ],
+      [
+        "disconnected",
+        false
+      ],
+      [
+        "adopted",
+        true,
+        true
+      ],
+      [
+        "connected",
+        true
+      ]
+    ],
+    "binding": [
+      [
+        0,
+        0,
+        false
+      ],
+      [
+        0,
+        1,
+        true
+      ]
+    ],
+    "initialized": [
+      true,
+      true
+    ],
+    "errors": [
+      [
+        "Error",
+        true
+      ]
+    ]
+  }
+}

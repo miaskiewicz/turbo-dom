@@ -1,0 +1,14 @@
+{
+ "id": "turbo-dom#95",
+ "class": "raster-svg-borders-shadows-avif-gbr-canvas-colours",
+ "reason": "SVG rounded borders along the radius (ae879ab), blurred shadows of any size with the blur capped at 256px (f6c85a9), exact AVIF identity/GBR (e97f025), canvas colours through rtdom::color::parse_color (872a1b2), from consol/cov-raster. No corpus input has a rounded border in an SVG screenshot that differs, a >8192px blurred shadow, a blur above 256px, an identity-matrix AVIF or a canvas op log. Measured with fresh target dirs, before = edde7dc (git archive), after = consol/p5b-r1: html2pdf / html2pdf-svg / html2pdf-extra manifests byte-identical (turbo-html2pdf napi built against each side's turbo-dom + turbo-dom-layout); surf static tier (turbo-dom-raster screenshot_png / screenshot_svg at 1280x800 of 133 surf static + image-matrix + extra inputs, plain, caller-assets and system-fonts passes, 477 outputs) byte-identical by default and with avif + jxl. P5b-R1.",
+ "control": "crates/turbo-dom-raster/tests/fixtures/{paint,canvas_ops,avif_decode}_chrome156.json (scripts/paint-chrome-control.mjs, canvas-ops-chrome-control.mjs, raster-avif-chrome-control.mjs, Chrome for Testing 156.0.8078.4)",
+ "e2e": "crates/turbo-dom-raster/tests/{paint_chrome,canvas_ops_chrome,avif_decode_chrome}.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

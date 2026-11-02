@@ -1,0 +1,203 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "probe": "canvas_state_probe.js",
+  "probeSha256": "4c84882c113c96956a38ad6cab77bd6c544332db4f8e3ecf50206163c1396c90",
+  "collectorSha256": "e6cadc004087a31da5ba698e45efbc62530e73d28f401d29b96226fa9ed3f94d",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "nested": [
+      [
+        [
+          "#000000",
+          "#000000",
+          "rgba(0, 0, 0, 0)",
+          1,
+          "source-over",
+          1,
+          "butt",
+          "miter",
+          10,
+          0,
+          0,
+          0,
+          0,
+          "10px sans-serif",
+          "start",
+          "alphabetic",
+          "inherit",
+          true,
+          "low"
+        ],
+        []
+      ],
+      [
+        [
+          "#ff0000",
+          "#00ff00",
+          "rgba(0, 0, 255, 0.5)",
+          0.5,
+          "multiply",
+          3,
+          "round",
+          "bevel",
+          4,
+          2,
+          5,
+          6,
+          7,
+          "20px serif",
+          "center",
+          "top",
+          "rtl",
+          false,
+          "high"
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      [
+        [
+          "#0000ff",
+          "#ffff00",
+          "#ff00ff",
+          0.25,
+          "xor",
+          8,
+          "square",
+          "round",
+          2,
+          9,
+          1,
+          -2,
+          -3,
+          "bold 12px monospace",
+          "right",
+          "middle",
+          "ltr",
+          true,
+          "medium"
+        ],
+        [
+          3,
+          4,
+          5,
+          3,
+          4,
+          5
+        ]
+      ],
+      [
+        [
+          "#ff0000",
+          "#00ff00",
+          "rgba(0, 0, 255, 0.5)",
+          0.5,
+          "multiply",
+          3,
+          "round",
+          "bevel",
+          4,
+          2,
+          5,
+          6,
+          7,
+          "20px serif",
+          "center",
+          "top",
+          "rtl",
+          false,
+          "high"
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      [
+        [
+          "#000000",
+          "#000000",
+          "rgba(0, 0, 0, 0)",
+          1,
+          "source-over",
+          1,
+          "butt",
+          "miter",
+          10,
+          0,
+          0,
+          0,
+          0,
+          "10px sans-serif",
+          "start",
+          "alphabetic",
+          "inherit",
+          true,
+          "low"
+        ],
+        []
+      ],
+      [
+        [
+          "#ff0000",
+          "#00ff00",
+          "rgba(0, 0, 255, 0.5)",
+          0.5,
+          "multiply",
+          3,
+          "round",
+          "bevel",
+          4,
+          2,
+          5,
+          6,
+          7,
+          "20px serif",
+          "center",
+          "top",
+          "rtl",
+          false,
+          "high"
+        ],
+        []
+      ]
+    ],
+    "emptyRestore": [
+      "#ff0000",
+      4
+    ],
+    "doubleSave": [
+      "#222222",
+      "#111111",
+      "#111111",
+      "#111111"
+    ],
+    "gradient": true,
+    "paints": [
+      [
+        255,
+        0,
+        0,
+        255
+      ],
+      [
+        0,
+        255,
+        0,
+        255
+      ]
+    ]
+  }
+}

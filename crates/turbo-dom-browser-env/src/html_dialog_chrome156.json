@@ -1,0 +1,4553 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "html_dialog_probe.js",
+  "probeSha256": "745cc61ff59a5be3538398c53c7a91dcc8aeb17999597ec9ec861b10995b979d",
+  "collectorSha256": "e6cadc004087a31da5ba698e45efbc62530e73d28f401d29b96226fa9ed3f94d",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "interface": {
+      "ownKeys": [
+        "open",
+        "returnValue",
+        "closedBy",
+        "close",
+        "requestClose",
+        "show",
+        "showModal",
+        "constructor",
+        "Symbol(Symbol.toStringTag)"
+      ],
+      "chain": true,
+      "tag": "[object HTMLDialogElement]",
+      "instance": true,
+      "parsed": true,
+      "svg": false,
+      "foreign": false,
+      "construct": "TypeError",
+      "length": 0
+    },
+    "descriptors": {
+      "open": {
+        "get": [
+          "get open",
+          0
+        ],
+        "set": [
+          "set open",
+          1
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "returnValue": {
+        "get": [
+          "get returnValue",
+          0
+        ],
+        "set": [
+          "set returnValue",
+          1
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "closedBy": {
+        "get": [
+          "get closedBy",
+          0
+        ],
+        "set": [
+          "set closedBy",
+          1
+        ],
+        "enumerable": true,
+        "configurable": true
+      },
+      "close": {
+        "value": [
+          "close",
+          0
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "requestClose": {
+        "value": [
+          "requestClose",
+          0
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "show": {
+        "value": [
+          "show",
+          0
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "showModal": {
+        "value": [
+          "showModal",
+          0
+        ],
+        "writable": true,
+        "enumerable": true,
+        "configurable": true
+      },
+      "constructor": {
+        "value": [
+          "HTMLDialogElement",
+          0
+        ],
+        "writable": true,
+        "enumerable": false,
+        "configurable": true
+      }
+    },
+    "brands": {
+      "div": [
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation"
+      ],
+      "svg": [
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation"
+      ],
+      "object": [
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation"
+      ],
+      "proto": [
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation"
+      ],
+      "text": [
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation"
+      ],
+      "order": [
+        "TypeError: Illegal invocation",
+        "TypeError: Illegal invocation"
+      ]
+    },
+    "reflection": {
+      "open": [
+        [
+          "true",
+          "",
+          true
+        ],
+        [
+          "0",
+          null,
+          false
+        ],
+        [
+          "yes",
+          "",
+          true
+        ],
+        [
+          "",
+          null,
+          false
+        ],
+        [
+          "null",
+          null,
+          false
+        ],
+        [
+          "[object Object]",
+          "",
+          true
+        ],
+        [
+          "bigint",
+          "",
+          true
+        ]
+      ],
+      "openAttribute": true,
+      "foreignOpen": false,
+      "closedBySetter": [
+        [
+          "null",
+          "null",
+          "none"
+        ],
+        [
+          "undefined",
+          "undefined",
+          "none"
+        ],
+        [
+          "ANY",
+          "ANY",
+          "any"
+        ],
+        [
+          "closeRequest",
+          "closeRequest",
+          "closerequest"
+        ],
+        [
+          "bogus",
+          "bogus",
+          "none"
+        ],
+        [
+          "42",
+          "42",
+          "none"
+        ]
+      ],
+      "closedBySymbol": "TypeError: Failed to set the 'closedBy' property on 'HTMLDialogElement': Cannot convert a Symbol value to a string",
+      "mutations": [
+        [
+          "open",
+          null
+        ],
+        [
+          "open",
+          ""
+        ],
+        [
+          "open",
+          null
+        ],
+        [
+          "open",
+          ""
+        ],
+        [
+          "open",
+          null
+        ],
+        [
+          "open",
+          ""
+        ]
+      ],
+      "closedBy": {
+        "null": [
+          "none",
+          "none",
+          "closerequest",
+          "closerequest",
+          "none"
+        ],
+        "": [
+          "none",
+          "none",
+          "closerequest",
+          "closerequest",
+          "none"
+        ],
+        "any": [
+          "any",
+          "any",
+          "any",
+          "any",
+          "any"
+        ],
+        "ANY": [
+          "any",
+          "any",
+          "any",
+          "any",
+          "any"
+        ],
+        " any": [
+          "none",
+          "none",
+          "closerequest",
+          "closerequest",
+          "none"
+        ],
+        "closerequest": [
+          "closerequest",
+          "closerequest",
+          "closerequest",
+          "closerequest",
+          "closerequest"
+        ],
+        "CloseRequest": [
+          "closerequest",
+          "closerequest",
+          "closerequest",
+          "closerequest",
+          "closerequest"
+        ],
+        "none": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "NONE": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "auto": [
+          "none",
+          "none",
+          "closerequest",
+          "closerequest",
+          "none"
+        ],
+        "bogus": [
+          "none",
+          "none",
+          "closerequest",
+          "closerequest",
+          "none"
+        ]
+      },
+      "returnValue": [
+        "",
+        "5",
+        "null",
+        "undefined",
+        "object",
+        "",
+        "TypeError: Failed to set the 'returnValue' property on 'HTMLDialogElement': Cannot convert a Symbol value to a string",
+        "",
+        "start",
+        "start",
+        "null",
+        "7",
+        "7",
+        "TypeError: Failed to execute 'close' on 'HTMLDialogElement': Cannot convert a Symbol value to a string",
+        true,
+        "7",
+        "converted",
+        false,
+        "converted",
+        "converted",
+        "null",
+        "TypeError: Failed to execute 'requestClose' on 'HTMLDialogElement': Cannot convert a Symbol value to a string",
+        true,
+        false,
+        "42",
+        "42",
+        ""
+      ]
+    },
+    "exceptions": {
+      "closedConnected": [
+        "ok",
+        true,
+        "ok",
+        true,
+        true
+      ],
+      "closedDisconnected": [
+        "ok",
+        true,
+        "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The element is not in a Document.",
+        false,
+        false
+      ],
+      "openNonModal": [
+        "ok",
+        true,
+        "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+        true,
+        false
+      ],
+      "openAttribute": [
+        "ok",
+        true,
+        "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+        true,
+        false
+      ],
+      "openModal": [
+        "InvalidStateError: Failed to execute 'show' on 'HTMLDialogElement': The dialog is already open as a modal dialog, and therefore cannot be opened as a non-modal dialog.",
+        true,
+        "ok",
+        true,
+        true
+      ],
+      "openDisconnected": [
+        "ok",
+        true,
+        "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+        true,
+        false
+      ],
+      "modalAttributeRemoved": [
+        "ok",
+        true,
+        "ok",
+        true,
+        true
+      ],
+      "modalRemoved": [
+        "ok",
+        true,
+        "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+        true,
+        false
+      ],
+      "popoverShowing": [
+        "ok",
+        true,
+        "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a Popover, and therefore cannot be opened as a modal dialog.",
+        false,
+        false
+      ],
+      "popoverHidden": [
+        "ok",
+        true,
+        "ok",
+        true,
+        true
+      ],
+      "inactiveDocument": [
+        "ok",
+        true,
+        "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': Invalid for dialogs within documents that are not fully active.",
+        false,
+        false
+      ]
+    },
+    "transitions": {
+      "show": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "showModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            true,
+            true,
+            "",
+            "closerequest",
+            true
+          ]
+        ]
+      },
+      "close": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "x",
+            "none",
+            true
+          ]
+        ]
+      },
+      "closeModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "x",
+            "none",
+            true
+          ]
+        ]
+      },
+      "closeParsedOpen": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "p",
+            "none",
+            true
+          ]
+        ]
+      },
+      "closeClosed": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "showOpen": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "showModalModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            true,
+            true,
+            "",
+            "closerequest",
+            true
+          ]
+        ]
+      },
+      "showModalNonModal": {
+        "result": "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "showModalModalRemoved": {
+        "result": "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestClose": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            true,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "r",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestCloseNonModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            false,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "r",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestCloseParsedOpen": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            false,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "r",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestCloseAttributeOpen": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            false,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "r",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestCloseClosedByNone": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            true,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "r",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestCloseClosedByAny": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            false,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "r",
+            "any",
+            true
+          ]
+        ]
+      },
+      "requestCloseClosed": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestCloseDisconnected": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": []
+      },
+      "requestCloseReinserted": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            false,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "r",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestClosePrevented": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            true,
+            true
+          ],
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            true,
+            true
+          ],
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            true,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            true,
+            true,
+            "",
+            "closerequest",
+            true
+          ]
+        ]
+      },
+      "requestClosePreventedThenClose": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            true,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestCloseNested": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            true,
+            true
+          ],
+          "nested:true",
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "nested",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestCloseCloseInCancel": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            true,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "inner",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requestCloseRemoveInCancel": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            true,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            false
+          ]
+        ]
+      },
+      "cancelShow": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "cancelShowModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "removeInBeforetoggleShow": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            false
+          ]
+        ]
+      },
+      "removeInBeforetoggleShowModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "",
+            "none",
+            false
+          ]
+        ]
+      },
+      "openInBeforetoggleShowModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "nestedShowModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          "ok"
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            true,
+            true,
+            "",
+            "closerequest",
+            true
+          ]
+        ]
+      },
+      "nestedShow": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          "ok"
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "popoverInBeforetoggle": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "closeInBeforetoggle": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ],
+          "ok"
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "outer",
+            "none",
+            true
+          ]
+        ]
+      },
+      "removeInBeforetoggleClose": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "outer",
+            "none",
+            false
+          ]
+        ]
+      },
+      "showCloseShow": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",true,false,true]"
+        ],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "a",
+            "none",
+            true
+          ]
+        ]
+      },
+      "closeShowClose": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]",
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "b",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requeueAcrossDialogs": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "a",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          [
+            "beforetoggle",
+            "b",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          [
+            "beforetoggle",
+            "a",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "b",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ],
+          [
+            "toggle",
+            "a",
+            "ToggleEvent",
+            "closed>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "b",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ],
+          [
+            "toggle",
+            "a",
+            "ToggleEvent",
+            "closed>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"a\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "a",
+            false,
+            false,
+            false,
+            "",
+            "none",
+            true
+          ],
+          [
+            "b",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "requeueReopen": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "a",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          [
+            "beforetoggle",
+            "b",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ],
+          [
+            "beforetoggle",
+            "a",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ],
+          [
+            "beforetoggle",
+            "a",
+            "ToggleEvent",
+            "closed>open",
+            true,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "b",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ],
+          [
+            "toggle",
+            "a",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "b",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ],
+          [
+            "toggle",
+            "a",
+            "ToggleEvent",
+            "closed>open",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "others": [
+          "[\"close\",\"a\",\"Event\",null,false,false,false,true,\"none\",true,false,true]"
+        ],
+        "state": [
+          [
+            "a",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ],
+          [
+            "b",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "openAttributeAdded": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "openAttributeRemoved": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "modalOpenAttributeRemoved": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            false,
+            true,
+            false,
+            "",
+            "closerequest",
+            true
+          ]
+        ]
+      },
+      "modalOpenAttributeRestored": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "cancel",
+            "d",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            true,
+            true
+          ],
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            true,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "again",
+            "none",
+            true
+          ]
+        ]
+      },
+      "removeModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            false
+          ]
+        ]
+      },
+      "removeModalParent": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            false
+          ]
+        ]
+      },
+      "removeModalShadow": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          "inner:true:false:none"
+        ],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": []
+      },
+      "moveModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            true
+          ]
+        ]
+      },
+      "reinsertedModalClose": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "beforetoggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "d",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"d\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": [
+          [
+            "d",
+            false,
+            false,
+            false,
+            "after",
+            "none",
+            true
+          ]
+        ]
+      },
+      "adoptModal": {
+        "result": [
+          "ok",
+          {}
+        ],
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            false,
+            true,
+            "",
+            "none",
+            false
+          ]
+        ]
+      },
+      "cloneModal": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          [
+            "clone",
+            true,
+            false,
+            "",
+            "InvalidStateError"
+          ]
+        ],
+        "microtask": [],
+        "firstTask": [],
+        "toggles": [],
+        "others": [],
+        "state": [
+          [
+            "d",
+            true,
+            true,
+            true,
+            "kept",
+            "closerequest",
+            true
+          ]
+        ]
+      },
+      "requestCloseDetachedThenShown": {
+        "result": "ok",
+        "microtaskDone": true,
+        "taskDone": true,
+        "sync": [
+          "open:true",
+          [
+            "cancel",
+            "late",
+            "Event",
+            null,
+            true,
+            false,
+            false,
+            true,
+            "none",
+            true,
+            false,
+            true
+          ],
+          [
+            "beforetoggle",
+            "late",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            true,
+            false,
+            true
+          ],
+          "open:false:s"
+        ],
+        "microtask": [],
+        "firstTask": [
+          [
+            "toggle",
+            "late",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "toggles": [
+          [
+            "toggle",
+            "late",
+            "ToggleEvent",
+            "open>closed",
+            false,
+            false,
+            false,
+            true,
+            null,
+            false,
+            false,
+            false
+          ]
+        ],
+        "others": [
+          "[\"close\",\"late\",\"Event\",null,false,false,false,true,\"none\",false,false,false]"
+        ],
+        "state": []
+      }
+    },
+    "popovers": {
+      "hide": [
+        "p:open",
+        "m:open",
+        "p:closed",
+        [
+          "show",
+          false,
+          true
+        ],
+        "p:open",
+        "p:closed",
+        [
+          "showModal",
+          false,
+          true
+        ],
+        "inner:open",
+        [
+          "inner",
+          true
+        ],
+        [
+          "afterClose",
+          true
+        ],
+        "h:open",
+        "h:closed",
+        "inner:closed",
+        [
+          "hint",
+          false
+        ]
+      ],
+      "ancestors": [
+        true,
+        true,
+        true,
+        false
+      ]
+    },
+    "selectors": {
+      "initial": [
+        [],
+        [
+          "c",
+          "det"
+        ],
+        [
+          "a",
+          "b",
+          "det2",
+          "sel",
+          "plain"
+        ]
+      ],
+      "nested": [
+        [
+          "a",
+          "b"
+        ],
+        [
+          "a",
+          "b",
+          "c",
+          "det"
+        ],
+        [
+          "a",
+          "b"
+        ],
+        [
+          "a",
+          "b"
+        ],
+        [
+          "a",
+          "b",
+          "c"
+        ],
+        true,
+        "a",
+        [
+          "ab"
+        ],
+        [
+          "c"
+        ]
+      ],
+      "caseInsensitive": [
+        true,
+        true,
+        true
+      ],
+      "afterTopClose": [
+        "a"
+      ],
+      "attributeRemoved": [
+        [
+          "a"
+        ],
+        [
+          "c",
+          "det"
+        ]
+      ],
+      "afterReopen": [
+        [
+          "a"
+        ],
+        [
+          "a",
+          "c",
+          "det"
+        ]
+      ],
+      "details": [
+        "c",
+        "det2"
+      ],
+      "syntax": [
+        [
+          ":modal()",
+          "SyntaxError"
+        ],
+        [
+          ":open()",
+          "SyntaxError"
+        ],
+        [
+          ":modal(x)",
+          "SyntaxError"
+        ],
+        [
+          ":not(:modal())",
+          "SyntaxError"
+        ],
+        [
+          ":has(:open())",
+          "SyntaxError"
+        ],
+        [
+          ":is(:modal(",
+          false
+        ],
+        [
+          ":is(:modal())",
+          false
+        ],
+        [
+          ":is(:modal(x), dialog)",
+          true
+        ],
+        [
+          ":where(div:open())",
+          false
+        ],
+        [
+          ":is(:not(:modal()))",
+          false
+        ],
+        [
+          ":is(:open",
+          true
+        ],
+        [
+          "dialog:is(:open",
+          true
+        ],
+        [
+          "dialog:where(:open",
+          true
+        ]
+      ],
+      "fragment": [
+        1,
+        true,
+        false
+      ],
+      "detached": [
+        true,
+        false
+      ],
+      "shadow": [
+        true,
+        null,
+        "s",
+        false
+      ],
+      "markup": [
+        "<dialog id=\"a\" open=\"\"><button id=\"ab\">a</button></dialog>",
+        false,
+        true
+      ]
+    },
+    "focus": {
+      "empty": [
+        "d",
+        "pre",
+        "d",
+        "pre"
+      ],
+      "button": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "input": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "nested": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "autofocus": [
+        "y",
+        "pre",
+        "y",
+        "pre"
+      ],
+      "autofocusNested": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "dialogAutofocus": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "autofocusDisabled": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "autofocusDiv": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "autofocusTabindex": [
+        "y",
+        "pre",
+        "y",
+        "pre"
+      ],
+      "autofocusInert": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "tabindex": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "tabindexNegative": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "tabindexInvalid": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "disabled": [
+        "d",
+        "pre",
+        "d",
+        "pre"
+      ],
+      "fieldsetDisabled": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "link": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "svgLink": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "inputHidden": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "select": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "iframe": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "contenteditable": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "audioControls": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "audioPlain": [
+        "d",
+        "pre",
+        "d",
+        "pre"
+      ],
+      "label": [
+        "d",
+        "pre",
+        "d",
+        "pre"
+      ],
+      "hiddenAttribute": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "hiddenUntilFound": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "inlineNone": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "ancestorNone": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "sheetNone": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "visibilityHidden": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "inheritedVisibility": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "inert": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "innerClosedDialog": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "innerOpenDialog": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "closedDetails": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "openDetails": [
+        "x",
+        "pre",
+        "x",
+        "pre"
+      ],
+      "detailsSecondSummary": [
+        "y",
+        "pre",
+        "y",
+        "pre"
+      ],
+      "nonModalMovedAway": "other",
+      "nonModalOnDialog": "pre",
+      "modalInert": [
+        "x",
+        "x"
+      ],
+      "modalRestore": "pre",
+      "restoreRemoved": "x",
+      "nestedModals": [
+        "bb",
+        "bb",
+        "ab",
+        "pre"
+      ],
+      "modalRemovedFocus": [
+        "body",
+        "ok",
+        "other"
+      ],
+      "popoverBelowModal": "x"
+    },
+    "form": {
+      "button": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:bv",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "bv",
+        false,
+        null
+      ],
+      "buttonNoValue": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:init",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "init",
+        false,
+        null
+      ],
+      "buttonEmptyValue": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "",
+        false,
+        null
+      ],
+      "input": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:iv",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "iv",
+        false,
+        null
+      ],
+      "inputNoValue": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:init",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "init",
+        false,
+        null
+      ],
+      "image": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:0,0",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "0,0",
+        false,
+        null
+      ],
+      "formmethod": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:fm",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "fm",
+        false,
+        null
+      ],
+      "formmethodUppercase": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:up",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "up",
+        false,
+        null
+      ],
+      "formmethodOther": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:ok",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "ok",
+        false,
+        null
+      ],
+      "noAncestorDialog": [
+        "ok",
+        [
+          "submit:s",
+          "sync:true:init"
+        ],
+        0,
+        true,
+        "init",
+        false,
+        null
+      ],
+      "formAttributeOutside": [
+        "ok",
+        [
+          "submit:s",
+          "sync:true:init"
+        ],
+        0,
+        true,
+        "init",
+        false,
+        null
+      ],
+      "closedDialog": [
+        "ok",
+        [
+          "submit:s",
+          "sync:false:init"
+        ],
+        0,
+        false,
+        "init",
+        false,
+        null
+      ],
+      "nestedDialogs": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:v",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "v",
+        false,
+        true
+      ],
+      "deepForm": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:deep",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "deep",
+        false,
+        null
+      ],
+      "canceledSubmit": [
+        "ok",
+        [
+          "submit:s",
+          "sync:true:init"
+        ],
+        0,
+        true,
+        "init",
+        false,
+        null
+      ],
+      "invalid": [
+        "ok",
+        [
+          "sync:true:init"
+        ],
+        0,
+        true,
+        "init",
+        false,
+        null
+      ],
+      "novalidate": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:v",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "v",
+        false,
+        null
+      ],
+      "modal": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:mv",
+          "toggle:d:closed>closed"
+        ],
+        1,
+        false,
+        "mv",
+        false,
+        null
+      ],
+      "submitMethod": [
+        "ok",
+        [
+          "beforetoggle:d:open>closed",
+          "sync:false:",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "",
+        false,
+        null
+      ],
+      "requestSubmit": [
+        "ok",
+        [
+          "submit:null",
+          "beforetoggle:d:open>closed",
+          "sync:false:",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "",
+        false,
+        null
+      ],
+      "requestSubmitButton": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:bv",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "bv",
+        false,
+        null
+      ],
+      "requestSubmitInputNoValue": [
+        "ok",
+        [
+          "submit:s",
+          "beforetoggle:d:open>closed",
+          "sync:false:init",
+          "toggle:d:open>closed"
+        ],
+        1,
+        false,
+        "init",
+        false,
+        null
+      ],
+      "submitDisconnectedForm": [
+        "ok",
+        [
+          "sync:true:init"
+        ],
+        0,
+        true,
+        "init",
+        false,
+        null
+      ]
+    },
+    "invokers": {
+      "showModal": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "beforetoggle",
+            "b",
+            true,
+            "open"
+          ],
+          [
+            "toggle",
+            "b",
+            true,
+            "open"
+          ]
+        ],
+        0,
+        [
+          true,
+          true,
+          ""
+        ],
+        true,
+        ""
+      ],
+      "showModalUppercase": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "beforetoggle",
+            "b",
+            true,
+            "open"
+          ],
+          [
+            "toggle",
+            "b",
+            true,
+            "open"
+          ]
+        ],
+        0,
+        [
+          true,
+          true,
+          ""
+        ],
+        true,
+        ""
+      ],
+      "showModalPopoverOpen": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "toggle",
+            null,
+            false,
+            "open"
+          ]
+        ],
+        0,
+        [
+          false,
+          false,
+          ""
+        ],
+        false,
+        ""
+      ],
+      "showModalNonModal": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ]
+        ],
+        0,
+        [
+          true,
+          false,
+          ""
+        ],
+        true,
+        ""
+      ],
+      "showModalRemovedInBeforetoggle": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "beforetoggle",
+            "b",
+            true,
+            "open"
+          ]
+        ],
+        0,
+        [
+          false,
+          false,
+          ""
+        ],
+        false,
+        ""
+      ],
+      "showModalDisconnected": [
+        [],
+        0,
+        [
+          false,
+          false,
+          ""
+        ],
+        false,
+        ""
+      ],
+      "closeNoValue": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "beforetoggle",
+            "b",
+            true,
+            "closed"
+          ],
+          [
+            "toggle",
+            "b",
+            true,
+            "closed"
+          ]
+        ],
+        1,
+        [
+          false,
+          false,
+          "init"
+        ],
+        false,
+        "init"
+      ],
+      "closeEmptyValue": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "beforetoggle",
+            "b",
+            true,
+            "closed"
+          ],
+          [
+            "toggle",
+            "b",
+            true,
+            "closed"
+          ]
+        ],
+        1,
+        [
+          false,
+          false,
+          ""
+        ],
+        false,
+        ""
+      ],
+      "closeModal": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "beforetoggle",
+            "b",
+            true,
+            "closed"
+          ],
+          [
+            "toggle",
+            "b",
+            true,
+            "closed"
+          ]
+        ],
+        1,
+        [
+          false,
+          false,
+          "m"
+        ],
+        false,
+        "m"
+      ],
+      "closeCommandCanceled": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ]
+        ],
+        0,
+        [
+          true,
+          false,
+          ""
+        ],
+        true,
+        ""
+      ],
+      "requestCloseCanceled": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "cancel",
+            "none",
+            false,
+            null
+          ]
+        ],
+        0,
+        [
+          true,
+          false,
+          ""
+        ],
+        true,
+        ""
+      ],
+      "requestCloseNoValue": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "cancel",
+            "none",
+            false,
+            null
+          ],
+          [
+            "beforetoggle",
+            "b",
+            true,
+            "closed"
+          ],
+          [
+            "toggle",
+            "b",
+            true,
+            "closed"
+          ]
+        ],
+        1,
+        [
+          false,
+          false,
+          "init"
+        ],
+        false,
+        "init"
+      ],
+      "requestCloseClosedByNone": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "cancel",
+            "none",
+            false,
+            null
+          ],
+          [
+            "beforetoggle",
+            "b",
+            true,
+            "closed"
+          ],
+          [
+            "toggle",
+            "b",
+            true,
+            "closed"
+          ]
+        ],
+        1,
+        [
+          false,
+          false,
+          "n"
+        ],
+        false,
+        "n"
+      ],
+      "requestCloseModal": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "cancel",
+            "none",
+            false,
+            null
+          ],
+          [
+            "beforetoggle",
+            "b",
+            true,
+            "closed"
+          ],
+          [
+            "toggle",
+            "b",
+            true,
+            "closed"
+          ]
+        ],
+        1,
+        [
+          false,
+          false,
+          "rm"
+        ],
+        false,
+        "rm"
+      ],
+      "showPopoverOnDialog": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ],
+          [
+            "beforetoggle",
+            "b",
+            true,
+            "open"
+          ],
+          [
+            "toggle",
+            "b",
+            true,
+            "open"
+          ]
+        ],
+        0,
+        [
+          false,
+          false,
+          ""
+        ],
+        false,
+        ""
+      ],
+      "disabledInvoker": [
+        [],
+        0,
+        [
+          false,
+          false,
+          ""
+        ],
+        false,
+        ""
+      ],
+      "customCommand": [
+        [
+          [
+            "command",
+            "b",
+            true,
+            null
+          ]
+        ],
+        0,
+        [
+          true,
+          false,
+          ""
+        ],
+        true,
+        ""
+      ],
+      "divTarget": [
+        [],
+        0,
+        [
+          false,
+          false,
+          null
+        ],
+        false,
+        null
+      ]
+    }
+  }
+}

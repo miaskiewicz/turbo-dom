@@ -1,0 +1,20 @@
+<!doctype html><html><head><title>dsd</title><template shadowrootmode="open" id="inhead"><b>head</b></template></head><body>
+<div id="open"><template shadowrootmode="open"><span>open</span><slot></slot></template><i>light</i></div>
+<div id="closed"><template shadowrootmode="closed"><span>closed</span></template></div>
+<div id="flags"><template shadowrootmode="closed" shadowrootserializable shadowrootclonable shadowrootdelegatesfocus><span>flags</span></template></div>
+<div id="upper"><template shadowrootmode="OPEN" shadowrootserializable shadowrootclonable><span>upper</span></template></div>
+<div id="bad"><template shadowrootmode="nope"><span>bad</span></template></div>
+<a id="badhost"><template shadowrootmode="open"><span>a</span></template></a>
+<div id="twice"><template shadowrootmode="open"><span>one</span></template><template shadowrootmode="open"><span>two</span></template></div>
+<div id="nested"><template shadowrootmode="open"><section id="inner"><template shadowrootmode="open" shadowrootserializable><p>deep</p></template></section></template></div>
+<div id="script"><template shadowrootmode="open"><script>window.dsdScriptRan = 1;</script><b>after</b></template></div>
+<custom-host id="custom"><template shadowrootmode="open"><b>c</b></template></custom-host>
+<template id="plain"><div id="intpl"><template shadowrootmode="open"><b>tpl</b></template></div></template>
+<div id="later"><span>before</span><template shadowrootmode="open" shadowrootclonable><b>late</b></template><span>after</span></div>
+<table><tr><td id="cell"><template shadowrootmode="open"><b>cell</b></template></td></tr></table>
+<div id="manual"><template shadowrootmode="open" shadowrootslotassignment="manual"><slot></slot></template>x</div>
+<div id="manualUpper"><template shadowrootmode="open" shadowrootslotassignment="MANUAL"><slot></slot></template>x</div>
+<div id="named"><template shadowrootmode="open" shadowrootslotassignment="bogus"><slot></slot></template>x</div>
+<p id="para"><template shadowrootmode="closed" shadowrootserializable><em>p</em><template shadowrootmode="open"><b>stays</b></template></template></p>
+<span id="withform"><template shadowrootmode="open"><input id="field" value="v"><style>b{color:red}</style></template></span>
+</body></html>

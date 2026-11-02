@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#30",
+ "reason": "turbo-dom-browser-env getComputedStyle models the top layer: a dialog shown with showModal() (:modal) computes position fixed, top/bottom 0px, max-width/max-height calc(100% - 6px - 2em) at its font size, overflow auto and visibility visible; a top-layer element (modal dialog, open popover) whose position is static/relative/sticky computes to absolute; getComputedStyle(el, '::backdrop') reads the backdrop (block, absolute outside the top layer / fixed at inset 0 inside it, rgba(0, 0, 0, 0.1) behind a modal dialog, author ::backdrop rules, visibility/color/font from the element). No corpus output changes: the surf live dump reads getComputedStyle(el) without a pseudo-element, and no pinned surf / html2pdf / image-matrix page opens a dialog or popover (no showModal / showPopover / popovertarget / commandfor / <dialog> in any input); static screenshots and the html2pdf corpora do not run the binding. P5b-X5.",
+ "control": "crates/turbo-dom-browser-env/src/computed_defaults_chrome156.json (case dialog-top-layer; scripts/select-element-chrome-control.mjs, Chrome for Testing 156.0.8078.4)",
+ "e2e": "crates/turbo-dom-browser-env/src/computed_defaults_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

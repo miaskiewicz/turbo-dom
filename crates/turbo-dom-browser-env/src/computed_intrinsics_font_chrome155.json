@@ -1,0 +1,1001 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "probeSha256": "57273d6e0cf3a11bfba4cea2793051eb73a7139a5cbd5fb654fead2452341e08",
+  "collectorSha256": "09c6f14e992b00cc8f5fe5bd4c6f71e22648cf3244ba9cf8ee91dc187e422b15",
+  "errors": [],
+  "result": {
+    "lifecycle": {
+      "disconnectedRetained": [
+        "",
+        ""
+      ],
+      "inert": {
+        "font": "",
+        "fontFamily": "",
+        "fontSize": "",
+        "fontStyle": "",
+        "fontWeight": "",
+        "fontStretch": "",
+        "fontVariantCaps": "",
+        "lineHeight": "",
+        "properties": [
+          "",
+          "",
+          ""
+        ]
+      },
+      "template": {
+        "font": "",
+        "fontFamily": "",
+        "fontSize": "",
+        "fontStyle": "",
+        "fontWeight": "",
+        "fontStretch": "",
+        "fontVariantCaps": "",
+        "lineHeight": "",
+        "properties": [
+          "",
+          "",
+          ""
+        ]
+      },
+      "shadow": {
+        "font": "10px / 15px monospace",
+        "fontFamily": "monospace",
+        "fontSize": "10px",
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "fontStretch": "100%",
+        "fontVariantCaps": "normal",
+        "lineHeight": "15px",
+        "properties": [
+          "10px / 15px monospace",
+          "10px",
+          "15px"
+        ]
+      },
+      "slotted": {
+        "font": "30px / 60px serif",
+        "fontFamily": "serif",
+        "fontSize": "30px",
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "fontStretch": "100%",
+        "fontVariantCaps": "normal",
+        "lineHeight": "60px",
+        "properties": [
+          "30px / 60px serif",
+          "30px",
+          "60px"
+        ]
+      },
+      "slottedLive": {
+        "font": "25px / 50px serif",
+        "fontFamily": "serif",
+        "fontSize": "25px",
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "fontStretch": "100%",
+        "fontVariantCaps": "normal",
+        "lineHeight": "50px",
+        "properties": [
+          "25px / 50px serif",
+          "25px",
+          "50px"
+        ]
+      },
+      "manualSlot": {
+        "font": "30px / 60px serif",
+        "fontFamily": "serif",
+        "fontSize": "30px",
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "fontStretch": "100%",
+        "fontVariantCaps": "normal",
+        "lineHeight": "60px",
+        "properties": [
+          "30px / 60px serif",
+          "30px",
+          "60px"
+        ]
+      },
+      "unassigned": {
+        "font": "",
+        "fontFamily": "",
+        "fontSize": "",
+        "fontStyle": "",
+        "fontWeight": "",
+        "fontStretch": "",
+        "fontVariantCaps": "",
+        "lineHeight": "",
+        "properties": [
+          "",
+          "",
+          ""
+        ]
+      },
+      "suppressedFallback": {
+        "font": "",
+        "fontFamily": "",
+        "fontSize": "",
+        "fontStyle": "",
+        "fontWeight": "",
+        "fontStretch": "",
+        "fontVariantCaps": "",
+        "lineHeight": "",
+        "properties": [
+          "",
+          "",
+          ""
+        ]
+      },
+      "suppressedDescendant": {
+        "font": "",
+        "fontFamily": "",
+        "fontSize": "",
+        "fontStyle": "",
+        "fontWeight": "",
+        "fontStretch": "",
+        "fontVariantCaps": "",
+        "lineHeight": "",
+        "properties": [
+          "",
+          "",
+          ""
+        ]
+      }
+    },
+    "defaults": {
+      "font": "16px Times",
+      "fontFamily": "Times",
+      "fontSize": "16px",
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "fontStretch": "100%",
+      "fontVariantCaps": "normal",
+      "lineHeight": "normal",
+      "properties": [
+        "16px Times",
+        "16px",
+        "normal"
+      ]
+    },
+    "rows": [
+      {
+        "name": "initial",
+        "parentStyle": "",
+        "childStyle": "",
+        "value": {
+          "font": "16px serif",
+          "fontFamily": "serif",
+          "fontSize": "16px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "16px serif",
+            "16px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "hidden",
+        "parentStyle": "display:none",
+        "childStyle": "",
+        "value": {
+          "font": "16px serif",
+          "fontFamily": "serif",
+          "fontSize": "16px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "16px serif",
+            "16px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "longhands",
+        "parentStyle": "font-family:monospace;font-size:20px;line-height:1.5",
+        "childStyle": "",
+        "value": {
+          "font": "20px / 30px monospace",
+          "fontFamily": "monospace",
+          "fontSize": "20px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "30px",
+          "properties": [
+            "20px / 30px monospace",
+            "20px",
+            "30px"
+          ]
+        }
+      },
+      {
+        "name": "shorthand",
+        "parentStyle": "font:italic small-caps bold 20px/150% \"Example Family\",serif",
+        "childStyle": "",
+        "value": {
+          "font": "italic small-caps 700 20px / 30px \"Example Family\", serif",
+          "fontFamily": "\"Example Family\", serif",
+          "fontSize": "20px",
+          "fontStyle": "italic",
+          "fontWeight": "700",
+          "fontStretch": "100%",
+          "fontVariantCaps": "small-caps",
+          "lineHeight": "30px",
+          "properties": [
+            "italic small-caps 700 20px / 30px \"Example Family\", serif",
+            "20px",
+            "30px"
+          ]
+        }
+      },
+      {
+        "name": "quoted-comma",
+        "parentStyle": "font-family:\"A,B\",serif;font-size:18px",
+        "childStyle": "",
+        "value": {
+          "font": "18px \"A,B\", serif",
+          "fontFamily": "\"A,B\", serif",
+          "fontSize": "18px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "18px \"A,B\", serif",
+            "18px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "unitless-inheritance",
+        "parentStyle": "font-size:20px;line-height:1.5",
+        "childStyle": "font-size:10px",
+        "value": {
+          "font": "10px / 15px serif",
+          "fontFamily": "serif",
+          "fontSize": "10px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "15px",
+          "properties": [
+            "10px / 15px serif",
+            "10px",
+            "15px"
+          ]
+        }
+      },
+      {
+        "name": "percentage-inheritance",
+        "parentStyle": "font-size:20px;line-height:150%",
+        "childStyle": "font-size:10px",
+        "value": {
+          "font": "10px / 30px serif",
+          "fontFamily": "serif",
+          "fontSize": "10px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "30px",
+          "properties": [
+            "10px / 30px serif",
+            "10px",
+            "30px"
+          ]
+        }
+      },
+      {
+        "name": "length-inheritance",
+        "parentStyle": "font-size:20px;line-height:30px",
+        "childStyle": "font-size:10px",
+        "value": {
+          "font": "10px / 30px serif",
+          "fontFamily": "serif",
+          "fontSize": "10px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "30px",
+          "properties": [
+            "10px / 30px serif",
+            "10px",
+            "30px"
+          ]
+        }
+      },
+      {
+        "name": "em-line-height",
+        "parentStyle": "font-size:20px;line-height:1.25em",
+        "childStyle": "font-size:10px",
+        "value": {
+          "font": "10px / 25px serif",
+          "fontFamily": "serif",
+          "fontSize": "10px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "25px",
+          "properties": [
+            "10px / 25px serif",
+            "10px",
+            "25px"
+          ]
+        }
+      },
+      {
+        "name": "zero-line-height",
+        "parentStyle": "font-size:20px;line-height:0",
+        "childStyle": "",
+        "value": {
+          "font": "20px / 0px serif",
+          "fontFamily": "serif",
+          "fontSize": "20px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "0px",
+          "properties": [
+            "20px / 0px serif",
+            "20px",
+            "0px"
+          ]
+        }
+      },
+      {
+        "name": "font-size-em",
+        "parentStyle": "font-size:20px",
+        "childStyle": "font-size:2em",
+        "value": {
+          "font": "40px serif",
+          "fontFamily": "serif",
+          "fontSize": "40px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "40px serif",
+            "40px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "font-size-rem",
+        "parentStyle": "font-size:20px",
+        "childStyle": "font-size:2rem",
+        "value": {
+          "font": "32px serif",
+          "fontFamily": "serif",
+          "fontSize": "32px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "32px serif",
+            "32px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "font-size-percent",
+        "parentStyle": "font-size:20px",
+        "childStyle": "font-size:150%",
+        "value": {
+          "font": "30px serif",
+          "fontFamily": "serif",
+          "fontSize": "30px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "30px serif",
+            "30px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "font-size-zero",
+        "parentStyle": "font-size:20px",
+        "childStyle": "font-size:0",
+        "value": {
+          "font": "0px serif",
+          "fontFamily": "serif",
+          "fontSize": "0px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "0px serif",
+            "0px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "fractional-font",
+        "parentStyle": "font-size:13px;line-height:1.3333333",
+        "childStyle": "font-size:133.333333%",
+        "value": {
+          "font": "17.3333px / 23.1111px serif",
+          "fontFamily": "serif",
+          "fontSize": "17.3333px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "23.1111px",
+          "properties": [
+            "17.3333px / 23.1111px serif",
+            "17.3333px",
+            "23.1111px"
+          ]
+        }
+      },
+      {
+        "name": "initial-values",
+        "parentStyle": "font:italic bold 24px/2 monospace",
+        "childStyle": "font:initial",
+        "value": {
+          "font": "16px Times",
+          "fontFamily": "Times",
+          "fontSize": "16px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "16px Times",
+            "16px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "inherit-values",
+        "parentStyle": "font:italic bold 24px/2 monospace",
+        "childStyle": "font:inherit",
+        "value": {
+          "font": "italic 700 24px / 48px monospace",
+          "fontFamily": "monospace",
+          "fontSize": "24px",
+          "fontStyle": "italic",
+          "fontWeight": "700",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "48px",
+          "properties": [
+            "italic 700 24px / 48px monospace",
+            "24px",
+            "48px"
+          ]
+        }
+      },
+      {
+        "name": "unset-values",
+        "parentStyle": "font:italic bold 24px/2 monospace",
+        "childStyle": "font:unset",
+        "value": {
+          "font": "italic 700 24px / 48px monospace",
+          "fontFamily": "monospace",
+          "fontSize": "24px",
+          "fontStyle": "italic",
+          "fontWeight": "700",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "48px",
+          "properties": [
+            "italic 700 24px / 48px monospace",
+            "24px",
+            "48px"
+          ]
+        }
+      },
+      {
+        "name": "revert-values",
+        "parentStyle": "font:italic bold 24px/2 monospace",
+        "childStyle": "font:revert",
+        "value": {
+          "font": "italic 700 24px / 48px monospace",
+          "fontFamily": "monospace",
+          "fontSize": "24px",
+          "fontStyle": "italic",
+          "fontWeight": "700",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "48px",
+          "properties": [
+            "italic 700 24px / 48px monospace",
+            "24px",
+            "48px"
+          ]
+        }
+      },
+      {
+        "name": "revert-layer-values",
+        "parentStyle": "font:italic bold 24px/2 monospace",
+        "childStyle": "font:revert-layer",
+        "value": {
+          "font": "italic 700 24px / 48px monospace",
+          "fontFamily": "monospace",
+          "fontSize": "24px",
+          "fontStyle": "italic",
+          "fontWeight": "700",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "48px",
+          "properties": [
+            "italic 700 24px / 48px monospace",
+            "24px",
+            "48px"
+          ]
+        }
+      },
+      {
+        "name": "lighter",
+        "parentStyle": "font-weight:700",
+        "childStyle": "font-weight:lighter",
+        "value": {
+          "font": "16px serif",
+          "fontFamily": "serif",
+          "fontSize": "16px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "16px serif",
+            "16px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "bolder",
+        "parentStyle": "font-weight:400",
+        "childStyle": "font-weight:bolder",
+        "value": {
+          "font": "700 16px serif",
+          "fontFamily": "serif",
+          "fontSize": "16px",
+          "fontStyle": "normal",
+          "fontWeight": "700",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "700 16px serif",
+            "16px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "stretch",
+        "parentStyle": "font:20px serif;font-stretch:condensed",
+        "childStyle": "",
+        "value": {
+          "font": "condensed 20px serif",
+          "fontFamily": "serif",
+          "fontSize": "20px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "75%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "condensed 20px serif",
+            "20px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "oblique",
+        "parentStyle": "font-style:oblique",
+        "childStyle": "",
+        "value": {
+          "font": "oblique 16px serif",
+          "fontFamily": "serif",
+          "fontSize": "16px",
+          "fontStyle": "oblique",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "oblique 16px serif",
+            "16px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "negative-font-calc",
+        "parentStyle": "font-size:calc(1px - 10px)",
+        "childStyle": "",
+        "value": {
+          "font": "0px serif",
+          "fontFamily": "serif",
+          "fontSize": "0px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "0px serif",
+            "0px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "negative-line-calc",
+        "parentStyle": "line-height:calc(1px - 10px)",
+        "childStyle": "",
+        "value": {
+          "font": "16px / 0px serif",
+          "fontFamily": "serif",
+          "fontSize": "16px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "0px",
+          "properties": [
+            "16px / 0px serif",
+            "16px",
+            "0px"
+          ]
+        }
+      },
+      {
+        "name": "variant-after-font",
+        "parentStyle": "font:20px serif;font-variant:small-caps",
+        "childStyle": "",
+        "value": {
+          "font": "small-caps 20px serif",
+          "fontFamily": "serif",
+          "fontSize": "20px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "small-caps",
+          "lineHeight": "normal",
+          "properties": [
+            "small-caps 20px serif",
+            "20px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "calc-line-inheritance",
+        "parentStyle": "font-size:20px;line-height:calc(1em + 10px)",
+        "childStyle": "font-size:10px",
+        "value": {
+          "font": "10px / 30px serif",
+          "fontFamily": "serif",
+          "fontSize": "10px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "30px",
+          "properties": [
+            "10px / 30px serif",
+            "10px",
+            "30px"
+          ]
+        }
+      },
+      {
+        "name": "calc-font-size",
+        "parentStyle": "font-size:20px",
+        "childStyle": "font-size:calc(1em + 2px)",
+        "value": {
+          "font": "22px serif",
+          "fontFamily": "serif",
+          "fontSize": "22px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "22px serif",
+            "22px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "scalar-calc-line-inheritance",
+        "parentStyle": "font-size:20px;line-height:calc(1 + 1)",
+        "childStyle": "font-size:10px",
+        "value": {
+          "font": "10px / 20px serif",
+          "fontFamily": "serif",
+          "fontSize": "10px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "20px",
+          "properties": [
+            "10px / 20px serif",
+            "10px",
+            "20px"
+          ]
+        }
+      },
+      {
+        "name": "mixedcase-em",
+        "parentStyle": "font-size:20px;line-height:1.5EM",
+        "childStyle": "font-size:2eM",
+        "value": {
+          "font": "40px / 30px serif",
+          "fontFamily": "serif",
+          "fontSize": "40px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "30px",
+          "properties": [
+            "40px / 30px serif",
+            "40px",
+            "30px"
+          ]
+        }
+      },
+      {
+        "name": "mixedcase-rem-px",
+        "parentStyle": "font-size:20px",
+        "childStyle": "font-size:2ReM;line-height:2pX",
+        "value": {
+          "font": "32px / 2px serif",
+          "fontFamily": "serif",
+          "fontSize": "32px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "2px",
+          "properties": [
+            "32px / 2px serif",
+            "32px",
+            "2px"
+          ]
+        }
+      },
+      {
+        "name": "mixedcase-pt-pc",
+        "parentStyle": "font-size:20px",
+        "childStyle": "font-size:18Pt;line-height:1pC",
+        "value": {
+          "font": "24px / 16px serif",
+          "fontFamily": "serif",
+          "fontSize": "24px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "16px",
+          "properties": [
+            "24px / 16px serif",
+            "24px",
+            "16px"
+          ]
+        }
+      },
+      {
+        "name": "mixedcase-absolute-calc",
+        "parentStyle": "",
+        "childStyle": "font-size:CALC(1IN + 2.54CM + 25.4MM + 101.6Q + 6PC + 72PT + 1PX);line-height:CALC(1eM + 1pX)",
+        "value": {
+          "font": "577px / 578px serif",
+          "fontFamily": "serif",
+          "fontSize": "577px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "578px",
+          "properties": [
+            "577px / 578px serif",
+            "577px",
+            "578px"
+          ]
+        }
+      },
+      {
+        "name": "uppercase-shorthand",
+        "parentStyle": "font:ITALIC SMALL-CAPS BOLD 20PX/2 SERIF",
+        "childStyle": "",
+        "value": {
+          "font": "italic small-caps 700 20px / 40px serif",
+          "fontFamily": "serif",
+          "fontSize": "20px",
+          "fontStyle": "italic",
+          "fontWeight": "700",
+          "fontStretch": "100%",
+          "fontVariantCaps": "small-caps",
+          "lineHeight": "40px",
+          "properties": [
+            "italic small-caps 700 20px / 40px serif",
+            "20px",
+            "40px"
+          ]
+        }
+      },
+      {
+        "name": "mixedcase-inherit",
+        "parentStyle": "font:italic bold 20px/1.5 monospace",
+        "childStyle": "font:InHeRiT",
+        "value": {
+          "font": "italic 700 20px / 30px monospace",
+          "fontFamily": "monospace",
+          "fontSize": "20px",
+          "fontStyle": "italic",
+          "fontWeight": "700",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "30px",
+          "properties": [
+            "italic 700 20px / 30px monospace",
+            "20px",
+            "30px"
+          ]
+        }
+      },
+      {
+        "name": "uppercase-normal-smaller",
+        "parentStyle": "font:italic bold 20px/2 serif",
+        "childStyle": "font-style:NORMAL;font-weight:NORMAL;font-variant-caps:NORMAL;line-height:NORMAL;font-size:SMALLER;font-family:MoNoSpAcE",
+        "value": {
+          "font": "16.6667px monospace",
+          "fontFamily": "monospace",
+          "fontSize": "16.6667px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "16.6667px monospace",
+            "16.6667px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "uppercase-initial",
+        "parentStyle": "font:italic bold 24px/2 monospace",
+        "childStyle": "font:INITIAL",
+        "value": {
+          "font": "16px Times",
+          "fontFamily": "Times",
+          "fontSize": "16px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "16px Times",
+            "16px",
+            "normal"
+          ]
+        }
+      },
+      {
+        "name": "uppercase-revert-layer",
+        "parentStyle": "font:20px/1.5 monospace",
+        "childStyle": "font:REVERT-LAYER",
+        "value": {
+          "font": "20px / 30px monospace",
+          "fontFamily": "monospace",
+          "fontSize": "20px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "30px",
+          "properties": [
+            "20px / 30px monospace",
+            "20px",
+            "30px"
+          ]
+        }
+      },
+      {
+        "name": "mixedcase-family",
+        "parentStyle": "",
+        "childStyle": "font-family:\"MiXeD Family\", mOnOsPaCe;font-size:18PX",
+        "value": {
+          "font": "18px \"MiXeD Family\", monospace",
+          "fontFamily": "\"MiXeD Family\", monospace",
+          "fontSize": "18px",
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "fontStretch": "100%",
+          "fontVariantCaps": "normal",
+          "lineHeight": "normal",
+          "properties": [
+            "18px \"MiXeD Family\", monospace",
+            "18px",
+            "normal"
+          ]
+        }
+      }
+    ],
+    "detached": {
+      "font": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "fontStyle": "",
+      "fontWeight": "",
+      "fontStretch": "",
+      "fontVariantCaps": "",
+      "lineHeight": "",
+      "properties": [
+        "",
+        "",
+        ""
+      ]
+    },
+    "live": [
+      "20px / 30px monospace",
+      "30px",
+      "10px / 15px monospace",
+      "15px",
+      "10px / 25px monospace",
+      "25px",
+      "12px / 25px monospace",
+      "25px"
+    ],
+    "coercion": [
+      "14px",
+      1
+    ],
+    "wrongReceiver": "TypeError",
+    "invalidReceiverConversion": "TypeError",
+    "invalidReceiverSymbol": "TypeError",
+    "invalidConversions": 0,
+    "symbol": "TypeError"
+  }
+}

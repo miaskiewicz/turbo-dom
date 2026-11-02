@@ -1,0 +1,16 @@
+--- a/src/array_buffer.rs
++++ b/src/array_buffer.rs
+@@ -235,10 +235,9 @@
+ 
+ #[test]
+ fn test_default_allocator() {
+-  crate::V8::initialize_platform(
+-    crate::new_default_platform(0, false).make_shared(),
+-  );
+-  crate::V8::initialize();
++  // turbo-dom-v8: share the crate's one-time initialization; initializing V8
++  // directly here panics whichever other lib test initializes second.
++  crate::initialize_v8();
+   new_default_allocator();
+ }
+ 

@@ -1,0 +1,13 @@
+{
+ "id": "turbo-surf#32/image-state",
+ "class": "HTMLImageElement image-state accessors",
+ "reason": "complete/naturalWidth/naturalHeight/currentSrc become prototype accessors with not-loading defaults plus a host hook (document record imageHost.setState). turbo-surf keeps its per-instance own properties (which shadow the accessors) until it adopts the hook, and the one corpus page reading them (harness/detection/fixtures/lifecycle.html) stores the values in a global, not in the dumped DOM, so no output is expected to change.",
+ "control": "crates/turbo-dom-browser-env/src/html_image_chrome156.json",
+ "e2e": "crates/turbo-dom-browser-env/src/html_image_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

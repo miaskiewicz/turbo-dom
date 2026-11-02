@@ -1,0 +1,54 @@
+[package]
+name = "turbo-dom-browser-env"
+version = "0.6.0"
+edition = "2021"
+rust-version = "1.91"
+description = "Browser environment over turbo-dom: the native rtdom <-> V8 DOM binding (window, document, CSSOM, forms, events) used by turbo-test and turbo-surf."
+license = "MIT"
+repository = "https://github.com/miaskiewicz/turbo-dom"
+readme = "README.md"
+keywords = ["dom", "v8", "browser", "testing"]
+categories = ["web-programming", "development-tools::testing"]
+
+[dependencies]
+# V8 bindings: turbo-dom's rusty_v8 fork (crates/turbo-dom-v8), which carries the
+# interceptor ShouldThrowOnError fix. `~150.4` admits fork patch releases only.
+v8 = { package = "turbo-dom-v8", version = "~150.4" }
+# The DOM itself. The alias keeps the `turbo_dom_parser::` paths the binding uses.
+turbo-dom-parser = { package = "turbo-dom", path = "../turbo-dom", version = "0.6.0" }
+# CSS Syntax, selector and declaration validation for the CSSOM facade.
+lightningcss = { version = "1.0.0-alpha.71", default-features = false }
+cssparser = "0.37"
+serde_json = "1"
+url = "2.5"
+# Public-suffix registry for document.domain's top-level-domain check (Blink
+# includes private registries such as github.io).
+psl = "2"
+# The CSS export JSON contract (css_snapshot).
+serde = { version = "1", features = ["derive"] }
+
+[features]
+# The fork's PropertyCallbackArguments::should_throw_on_error accessor is the
+# interceptor mode source (guarded by `assert!(v8::FORK_SHOULD_THROW_FIX)`). Native
+# SDKs without the fork fix (turbo-surf's engine-154/155 overlay) enable
+# `native-sdk-frame-read` explicitly.
+default = []
+# Read the interceptor's should-throw mode from the V8 frame instead of the
+# fork's PropertyCallbackArguments::should_throw_on_error accessor.
+native-sdk-frame-read = []
+# Doc-hidden host-only access to native documents for embedders (turbo-surf's
+# native layout and resource discovery). Never reachable from page JS.
+host-internals = []
+# Probe/control/case data constants for embedders' Chrome-parity tests.
+test-support = []
+
+[dev-dependencies]
+sha2 = "0.10"
+
+[[test]]
+name = "host_internals_api"
+required-features = ["host-internals"]
+
+[[test]]
+name = "test_support_api"
+required-features = ["test-support"]

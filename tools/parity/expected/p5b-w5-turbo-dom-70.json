@@ -1,0 +1,19 @@
+{
+ "id": "miaskiewicz/turbo-dom#70",
+ "reason": "UA th { font-weight: bold; text-align: center }: header cells are bold and their inline content centred. Fresh-target parity builds turbo-dom f69 (3440f39) -> f70 (1d24a2e) (html2pdf consol/p5b-w5 950754e): the xref-anchors extra page (it has <th> cells) changes in html2pdf-extra (PDF, PDF/UA) and its static screenshots; the added table-caption input changes too (declared added by #51). P5b-W5.",
+ "control": "scripts/html-document-chrome-control.mjs th-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (header_cells_are_bold_and_centred_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [
+   "extra-xref-anchors.pdf",
+   "extra-xref-anchors.ua.pdf"
+  ],
+  "surf": [],
+  "surf-extra": [
+   "static-extra-xref-anchors.png",
+   "static-extra-xref-anchors.svg"
+  ]
+ }
+}

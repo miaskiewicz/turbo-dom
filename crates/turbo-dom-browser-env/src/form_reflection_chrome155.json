@@ -1,0 +1,591 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "6595f660c9641d1ac282de48c4319d1f9fdfe08ddc819b8e03dedfbfbd47e9f3",
+  "probeSha256": "db3d637e2032d399f7cf1eb32d210c7c5f96c37957b2ddb5843f915ba0146030",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "result": {
+        "descriptors": {
+          "action": [
+            true,
+            true,
+            "get action",
+            0,
+            "set action",
+            1
+          ],
+          "method": [
+            true,
+            true,
+            "get method",
+            0,
+            "set method",
+            1
+          ],
+          "enctype": [
+            true,
+            true,
+            "get enctype",
+            0,
+            "set enctype",
+            1
+          ],
+          "encoding": [
+            true,
+            true,
+            "get encoding",
+            0,
+            "set encoding",
+            1
+          ],
+          "target": [
+            true,
+            true,
+            "get target",
+            0,
+            "set target",
+            1
+          ],
+          "name": [
+            true,
+            true,
+            "get name",
+            0,
+            "set name",
+            1
+          ],
+          "acceptCharset": [
+            true,
+            true,
+            "get acceptCharset",
+            0,
+            "set acceptCharset",
+            1
+          ],
+          "autocomplete": [
+            true,
+            true,
+            "get autocomplete",
+            0,
+            "set autocomplete",
+            1
+          ],
+          "rel": [
+            true,
+            true,
+            "get rel",
+            0,
+            "set rel",
+            1
+          ]
+        },
+        "defaults": {
+          "action": "<document>",
+          "method": "get",
+          "enctype": "application/x-www-form-urlencoded",
+          "encoding": "application/x-www-form-urlencoded",
+          "target": "",
+          "name": "",
+          "acceptCharset": "",
+          "autocomplete": "on",
+          "rel": ""
+        },
+        "values": {
+          "action": [
+            [
+              "<document>",
+              ""
+            ],
+            [
+              "<origin>/MiXeD",
+              "MiXeD"
+            ],
+            [
+              "<origin>/POST",
+              "POST"
+            ],
+            [
+              "<origin>/dialog",
+              "dialog"
+            ],
+            [
+              "<origin>/multipart/form-data",
+              "multipart/form-data"
+            ],
+            [
+              "<origin>/text/plain",
+              "text/plain"
+            ],
+            [
+              "<origin>/off",
+              "off"
+            ],
+            [
+              "<origin>/null",
+              "null"
+            ],
+            [
+              "<origin>/a%EF%BF%BDb",
+              "a�b"
+            ]
+          ],
+          "method": [
+            [
+              "get",
+              ""
+            ],
+            [
+              "get",
+              "MiXeD"
+            ],
+            [
+              "post",
+              "POST"
+            ],
+            [
+              "dialog",
+              "dialog"
+            ],
+            [
+              "get",
+              "multipart/form-data"
+            ],
+            [
+              "get",
+              "text/plain"
+            ],
+            [
+              "get",
+              "off"
+            ],
+            [
+              "get",
+              "null"
+            ],
+            [
+              "get",
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              }
+            ]
+          ],
+          "enctype": [
+            [
+              "application/x-www-form-urlencoded",
+              ""
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              "MiXeD"
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              "POST"
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              "dialog"
+            ],
+            [
+              "multipart/form-data",
+              "multipart/form-data"
+            ],
+            [
+              "text/plain",
+              "text/plain"
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              "off"
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              "null"
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              }
+            ]
+          ],
+          "encoding": [
+            [
+              "application/x-www-form-urlencoded",
+              ""
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              "MiXeD"
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              "POST"
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              "dialog"
+            ],
+            [
+              "multipart/form-data",
+              "multipart/form-data"
+            ],
+            [
+              "text/plain",
+              "text/plain"
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              "off"
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              "null"
+            ],
+            [
+              "application/x-www-form-urlencoded",
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              }
+            ]
+          ],
+          "target": [
+            [
+              "",
+              ""
+            ],
+            [
+              "MiXeD",
+              "MiXeD"
+            ],
+            [
+              "POST",
+              "POST"
+            ],
+            [
+              "dialog",
+              "dialog"
+            ],
+            [
+              "multipart/form-data",
+              "multipart/form-data"
+            ],
+            [
+              "text/plain",
+              "text/plain"
+            ],
+            [
+              "off",
+              "off"
+            ],
+            [
+              "null",
+              "null"
+            ],
+            [
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              },
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              }
+            ]
+          ],
+          "name": [
+            [
+              "",
+              ""
+            ],
+            [
+              "MiXeD",
+              "MiXeD"
+            ],
+            [
+              "POST",
+              "POST"
+            ],
+            [
+              "dialog",
+              "dialog"
+            ],
+            [
+              "multipart/form-data",
+              "multipart/form-data"
+            ],
+            [
+              "text/plain",
+              "text/plain"
+            ],
+            [
+              "off",
+              "off"
+            ],
+            [
+              "null",
+              "null"
+            ],
+            [
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              },
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              }
+            ]
+          ],
+          "acceptCharset": [
+            [
+              "",
+              ""
+            ],
+            [
+              "MiXeD",
+              "MiXeD"
+            ],
+            [
+              "POST",
+              "POST"
+            ],
+            [
+              "dialog",
+              "dialog"
+            ],
+            [
+              "multipart/form-data",
+              "multipart/form-data"
+            ],
+            [
+              "text/plain",
+              "text/plain"
+            ],
+            [
+              "off",
+              "off"
+            ],
+            [
+              "null",
+              "null"
+            ],
+            [
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              },
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              }
+            ]
+          ],
+          "autocomplete": [
+            [
+              "on",
+              ""
+            ],
+            [
+              "on",
+              "MiXeD"
+            ],
+            [
+              "on",
+              "POST"
+            ],
+            [
+              "on",
+              "dialog"
+            ],
+            [
+              "on",
+              "multipart/form-data"
+            ],
+            [
+              "on",
+              "text/plain"
+            ],
+            [
+              "off",
+              "off"
+            ],
+            [
+              "on",
+              "null"
+            ],
+            [
+              "on",
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              }
+            ]
+          ],
+          "rel": [
+            [
+              "",
+              ""
+            ],
+            [
+              "MiXeD",
+              "MiXeD"
+            ],
+            [
+              "POST",
+              "POST"
+            ],
+            [
+              "dialog",
+              "dialog"
+            ],
+            [
+              "multipart/form-data",
+              "multipart/form-data"
+            ],
+            [
+              "text/plain",
+              "text/plain"
+            ],
+            [
+              "off",
+              "off"
+            ],
+            [
+              "null",
+              "null"
+            ],
+            [
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              },
+              {
+                "utf16": [
+                  97,
+                  55296,
+                  98
+                ]
+              }
+            ]
+          ]
+        },
+        "errors": {
+          "action": "TypeError",
+          "actionSymbol": "TypeError",
+          "method": "TypeError",
+          "methodSymbol": "TypeError",
+          "enctype": "TypeError",
+          "enctypeSymbol": "TypeError",
+          "encoding": "TypeError",
+          "encodingSymbol": "TypeError",
+          "target": "TypeError",
+          "targetSymbol": "TypeError",
+          "name": "TypeError",
+          "nameSymbol": "TypeError",
+          "acceptCharset": "TypeError",
+          "acceptCharsetSymbol": "TypeError",
+          "autocomplete": "TypeError",
+          "autocompleteSymbol": "TypeError",
+          "rel": "TypeError",
+          "relSymbol": "TypeError"
+        },
+        "actions": [
+          "<document>",
+          "<document>",
+          "https://base.example/dir/child?q=1",
+          "https://base.example/up",
+          "http://[/",
+          "https:",
+          "http://bad%20host/",
+          "https://[::1/",
+          "http://%25zz/",
+          "https://a:bad/",
+          "nosuch:abc",
+          "https://[invalid]/x",
+          "https://base.example/dir/#x"
+        ],
+        "relList": {
+          "same": true,
+          "tag": "[object DOMTokenList]",
+          "descriptor": [
+            true,
+            true,
+            "get relList",
+            0,
+            "set relList",
+            1
+          ],
+          "supports": {
+            "noopener": true,
+            "noreferrer": true,
+            "opener": true,
+            "external": false,
+            "help": false,
+            "next": false,
+            "search": false,
+            "tag": false,
+            "NOOPENER": true
+          },
+          "tokens": [
+            "noopener",
+            "next",
+            "external"
+          ],
+          "attribute": "noopener next external",
+          "assigned": [
+            "opener"
+          ]
+        }
+      }
+    }
+  ]
+}

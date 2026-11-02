@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#83",
+ "reason": "A width: auto float is shrink-to-fit: min(max(min-content, available net of its margins), max-content), then min-width / max-width. Fresh-target parity builds (git archive of each commit, own CARGO_TARGET_DIR per build; html2pdf refactor 923c89f napi plain + svg; surf static through the napi-free raster harness): dcd53ea -> 5b3efad: no corpus output changes (no corpus input has an auto-width float narrower than its min-content container or with min/max-width). P5b-W7.",
+ "control": "float-shrink-* in scripts/html-document-chrome-control.mjs",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (floats_shrink_to_fit_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

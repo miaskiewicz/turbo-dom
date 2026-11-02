@@ -1,0 +1,42 @@
+[
+  {
+    "id": "sink-enforce",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "require-trusted-types-for 'script'"
+      ]
+    ],
+    "html": "<!doctype html><html data-case=\"sink-enforce\"><head></head><body></body></html>"
+  },
+  {
+    "id": "sink-report",
+    "headers": [
+      [
+        "Content-Security-Policy-Report-Only",
+        "require-trusted-types-for 'script'"
+      ]
+    ],
+    "html": "<!doctype html><html data-case=\"sink-report\"><head></head><body></body></html>"
+  },
+  {
+    "id": "sink-default",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "trusted-types default alpha; require-trusted-types-for 'script'"
+      ]
+    ],
+    "html": "<!doctype html><html data-case=\"sink-default\"><head></head><body></body></html>"
+  },
+  {
+    "id": "sink-default-null",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "trusted-types default alpha; require-trusted-types-for 'script'"
+      ]
+    ],
+    "html": "<!doctype html><html data-case=\"sink-default-null\"><head></head><body></body></html>"
+  }
+]

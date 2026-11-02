@@ -1,0 +1,122 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "recordedAt": "2026-10-14T11:52:24.034Z",
+  "result": {
+    "names": [
+      {
+        "value": [
+          55296
+        ],
+        "errors": {
+          "element": [
+            55296
+          ],
+          "attribute": [
+            55296
+          ],
+          "elementNS": [
+            55296
+          ],
+          "attributeNS": [
+            55296
+          ]
+        }
+      },
+      {
+        "value": [
+          56320
+        ],
+        "errors": {
+          "element": [
+            56320
+          ],
+          "attribute": [
+            56320
+          ],
+          "elementNS": [
+            56320
+          ],
+          "attributeNS": [
+            56320
+          ]
+        }
+      },
+      {
+        "value": [
+          65533
+        ],
+        "errors": {
+          "element": [
+            65533
+          ],
+          "attribute": [
+            65533
+          ],
+          "elementNS": [
+            65533
+          ],
+          "attributeNS": [
+            65533
+          ]
+        }
+      }
+    ],
+    "namespaces": [
+      {
+        "element": [
+          55296
+        ],
+        "attr": [
+          55296
+        ]
+      },
+      {
+        "element": [
+          56320
+        ],
+        "attr": [
+          56320
+        ]
+      },
+      {
+        "element": [
+          65533
+        ],
+        "attr": [
+          65533
+        ]
+      }
+    ],
+    "equality": {
+      "text": false,
+      "attr": false,
+      "clone": true
+    },
+    "namespaceValues": [
+      "0",
+      "1",
+      "2"
+    ],
+    "attributes": [
+      {
+        "namespace": [
+          55296
+        ],
+        "value": "0"
+      },
+      {
+        "namespace": [
+          56320
+        ],
+        "value": "1"
+      },
+      {
+        "namespace": [
+          65533
+        ],
+        "value": "2"
+      }
+    ]
+  }
+}

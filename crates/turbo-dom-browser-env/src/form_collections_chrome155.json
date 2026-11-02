@@ -1,0 +1,500 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "f9256b5b3547b609a60ad50e207527febcf8f15646045ed40972d32d885d932c",
+  "probeSha256": "cd6448edf8d1005504b836bf8e0cb3f8dbddbc15f4f7daf03de369a75a6a99a9",
+  "collectorSha256": "700a755df1701cfa30a95ca9f20800e81724f50ca7aafd6b46f77e87b2b91351",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "live-form-collections",
+      "result": {
+        "HTMLFormControlsCollection": {
+          "name": "HTMLFormControlsCollection",
+          "length": 0,
+          "prototypeWritable": false,
+          "ownKeys": [
+            "namedItem",
+            "constructor",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.iterator)"
+          ],
+          "parent": "HTMLCollection",
+          "prototypeParent": "HTMLCollection",
+          "members": {
+            "namedItem": {
+              "enumerable": true,
+              "configurable": true,
+              "writable": true,
+              "name": "namedItem",
+              "length": 1
+            },
+            "constructor": {
+              "enumerable": false,
+              "configurable": true,
+              "writable": true,
+              "name": "HTMLFormControlsCollection",
+              "length": 0
+            },
+            "Symbol(Symbol.toStringTag)": {
+              "enumerable": false,
+              "configurable": true,
+              "writable": false
+            },
+            "Symbol(Symbol.iterator)": {
+              "enumerable": false,
+              "configurable": true,
+              "writable": true,
+              "name": "values",
+              "length": 0
+            }
+          },
+          "illegalConstructor": "TypeError"
+        },
+        "RadioNodeList": {
+          "name": "RadioNodeList",
+          "length": 0,
+          "prototypeWritable": false,
+          "ownKeys": [
+            "value",
+            "constructor",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.iterator)"
+          ],
+          "parent": "NodeList",
+          "prototypeParent": "NodeList",
+          "members": {
+            "value": {
+              "enumerable": true,
+              "configurable": true,
+              "get": "get value",
+              "getLength": 0,
+              "set": "set value",
+              "setLength": 1
+            },
+            "constructor": {
+              "enumerable": false,
+              "configurable": true,
+              "writable": true,
+              "name": "RadioNodeList",
+              "length": 0
+            },
+            "Symbol(Symbol.toStringTag)": {
+              "enumerable": false,
+              "configurable": true,
+              "writable": false
+            },
+            "Symbol(Symbol.iterator)": {
+              "enumerable": false,
+              "configurable": true,
+              "writable": true,
+              "name": "values",
+              "length": 0
+            }
+          },
+          "illegalConstructor": "TypeError"
+        },
+        "formShape": {
+          "elements": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "get elements",
+            "length": 0,
+            "setter": false
+          },
+          "length": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "get length",
+            "length": 0,
+            "setter": false
+          },
+          "Symbol(Symbol.iterator)": {
+            "enumerable": false,
+            "configurable": true,
+            "name": "values",
+            "length": 0,
+            "writable": true,
+            "setter": false
+          }
+        },
+        "initial": {
+          "same": true,
+          "tag": "[object HTMLFormControlsCollection]",
+          "html": true,
+          "own": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "external",
+            "outside",
+            "first",
+            "group",
+            "radio1",
+            "radio2",
+            "fieldset",
+            "nested",
+            "output",
+            "object",
+            "button",
+            "select",
+            "textarea"
+          ],
+          "keys": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "external",
+            "outside",
+            "first",
+            "group",
+            "radio1",
+            "radio2",
+            "fieldset",
+            "nested",
+            "output",
+            "object",
+            "button",
+            "select",
+            "textarea"
+          ],
+          "ids": [
+            "external",
+            "first",
+            "radio1",
+            "radio2",
+            "fieldset",
+            "nested",
+            "output",
+            "object",
+            "button",
+            "select",
+            "textarea"
+          ],
+          "formLength": 11,
+          "formIteration": [
+            "external",
+            "first",
+            "radio1",
+            "radio2",
+            "fieldset",
+            "nested",
+            "output",
+            "object",
+            "button",
+            "select",
+            "textarea"
+          ],
+          "iteratorIdentity": true
+        },
+        "named": {
+          "tag": "[object RadioNodeList]",
+          "nodeList": true,
+          "ids": [
+            "first",
+            "radio1",
+            "radio2"
+          ],
+          "sameMethod": true,
+          "sameProperty": true,
+          "empty": null,
+          "missing": null,
+          "value": ""
+        },
+        "radio": [
+          [
+            "two",
+            false,
+            true,
+            null,
+            null
+          ],
+          [
+            "two",
+            false,
+            true,
+            null,
+            null
+          ],
+          [
+            "one",
+            true,
+            false,
+            null,
+            null
+          ],
+          [
+            "one",
+            true,
+            false,
+            null,
+            null
+          ]
+        ],
+        "directChecked": "two",
+        "liveAdded": [
+          [
+            "external",
+            "first",
+            "radio1",
+            "radio2",
+            "fieldset",
+            "nested",
+            "output",
+            "object",
+            "button",
+            "select",
+            "textarea",
+            "late"
+          ],
+          [
+            "first",
+            "radio1",
+            "radio2",
+            "late"
+          ],
+          4
+        ],
+        "liveRemoved": [
+          [
+            "first",
+            "late"
+          ],
+          [
+            "external",
+            "first",
+            "radio1",
+            "fieldset",
+            "nested",
+            "output",
+            "object",
+            "button",
+            "select",
+            "textarea",
+            "late"
+          ],
+          2
+        ],
+        "finalNamed": [
+          [],
+          null
+        ],
+        "collisions": {
+          "length": "number",
+          "namedItem": "function",
+          "lookupLength": true,
+          "lookupMethod": true,
+          "enumerable": true,
+          "index": {
+            "writable": false,
+            "enumerable": true,
+            "configurable": true
+          }
+        },
+        "numeric": {
+          "numericNamed": false,
+          "negativeNamed": true,
+          "lookup": true,
+          "own": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "external",
+            "outside",
+            "renamed-id",
+            "changed",
+            "radio1",
+            "renamed",
+            "fieldset",
+            "nested",
+            "output",
+            "object",
+            "button",
+            "select",
+            "textarea",
+            "late",
+            "length",
+            "namedItem",
+            "99",
+            "-1"
+          ],
+          "keys": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "external",
+            "outside",
+            "renamed-id",
+            "changed",
+            "radio1",
+            "renamed",
+            "fieldset",
+            "nested",
+            "output",
+            "object",
+            "button",
+            "select",
+            "textarea",
+            "late",
+            "length",
+            "namedItem",
+            "99",
+            "-1"
+          ]
+        },
+        "errors": [
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ],
+        "baseBorrows": {
+          "collection": "external",
+          "nodeList": null,
+          "length": 13
+        },
+        "associated": {
+          "listed": [
+            "external",
+            "renamed-id",
+            "radio1",
+            "fieldset",
+            "nested",
+            "output",
+            "object",
+            "button",
+            "select",
+            "textarea",
+            "late",
+            "length",
+            "99",
+            "associated-control"
+          ],
+          "named": true
+        },
+        "ownerChange": [
+          "renamed-id",
+          "radio1",
+          "fieldset",
+          "nested",
+          "output",
+          "object",
+          "button",
+          "select",
+          "textarea",
+          "late",
+          "length",
+          "99",
+          "associated-control"
+        ],
+        "ownerRestored": [
+          "external",
+          "renamed-id",
+          "radio1",
+          "fieldset",
+          "nested",
+          "output",
+          "object",
+          "button",
+          "select",
+          "textarea",
+          "late",
+          "length",
+          "99",
+          "associated-control"
+        ],
+        "mutations": [
+          [
+            "0",
+            true,
+            false,
+            true,
+            false,
+            false
+          ],
+          [
+            "external",
+            true,
+            false,
+            true,
+            false,
+            false
+          ],
+          [
+            "99",
+            true,
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            "500",
+            true,
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            "custom",
+            true,
+            true,
+            true,
+            true,
+            true
+          ]
+        ]
+      }
+    }
+  ]
+}

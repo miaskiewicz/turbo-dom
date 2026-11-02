@@ -1,0 +1,2575 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "casesSha256": "e9eb53ba87fc27ccf6d7de73c55cdcec06b414d9afe27faab2560219c0b9dae5",
+  "probeSha256": "d8dae34f94079179d1ee669840a8ba8d3887e468fc30f7ee9f32832e8f40f236",
+  "collectorSha256": "28c5e30fd556dffcaac973373d4fb0ad0202ab6f168b14f0950b55bf28054fe8",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "shape",
+      "result": {
+        "global": {
+          "key": "trustedTypes",
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get trustedTypes",
+            0
+          ],
+          "set": null
+        },
+        "factory": [],
+        "interfaces": [
+          {
+            "name": "TrustedTypePolicyFactory",
+            "global": {
+              "key": "TrustedTypePolicyFactory",
+              "enumerable": false,
+              "configurable": true,
+              "writable": true,
+              "type": "function",
+              "name": "TrustedTypePolicyFactory",
+              "length": 0
+            },
+            "constructor": [
+              {
+                "key": "length",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "number",
+                "value": 0
+              },
+              {
+                "key": "name",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "string",
+                "value": "TrustedTypePolicyFactory"
+              },
+              {
+                "key": "prototype",
+                "enumerable": false,
+                "configurable": false,
+                "writable": false,
+                "type": "object"
+              }
+            ],
+            "prototype": [
+              {
+                "key": "emptyHTML",
+                "enumerable": true,
+                "configurable": true,
+                "get": [
+                  "get emptyHTML",
+                  0
+                ],
+                "set": null
+              },
+              {
+                "key": "emptyScript",
+                "enumerable": true,
+                "configurable": true,
+                "get": [
+                  "get emptyScript",
+                  0
+                ],
+                "set": null
+              },
+              {
+                "key": "defaultPolicy",
+                "enumerable": true,
+                "configurable": true,
+                "get": [
+                  "get defaultPolicy",
+                  0
+                ],
+                "set": null
+              },
+              {
+                "key": "createPolicy",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "createPolicy",
+                "length": 1
+              },
+              {
+                "key": "getAttributeType",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "getAttributeType",
+                "length": 2
+              },
+              {
+                "key": "getPropertyType",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "getPropertyType",
+                "length": 2
+              },
+              {
+                "key": "getTypeMapping",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "getTypeMapping",
+                "length": 0
+              },
+              {
+                "key": "isHTML",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "isHTML",
+                "length": 1
+              },
+              {
+                "key": "isScript",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "isScript",
+                "length": 1
+              },
+              {
+                "key": "isScriptURL",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "isScriptURL",
+                "length": 1
+              },
+              {
+                "key": "constructor",
+                "enumerable": false,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "TrustedTypePolicyFactory",
+                "length": 0
+              },
+              {
+                "key": "Symbol(Symbol.toStringTag)",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "string",
+                "value": "TrustedTypePolicyFactory"
+              }
+            ],
+            "construct": {
+              "error": "TypeError",
+              "message": "Failed to construct 'TrustedTypePolicyFactory': Illegal constructor"
+            }
+          },
+          {
+            "name": "TrustedTypePolicy",
+            "global": {
+              "key": "TrustedTypePolicy",
+              "enumerable": false,
+              "configurable": true,
+              "writable": true,
+              "type": "function",
+              "name": "TrustedTypePolicy",
+              "length": 0
+            },
+            "constructor": [
+              {
+                "key": "length",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "number",
+                "value": 0
+              },
+              {
+                "key": "name",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "string",
+                "value": "TrustedTypePolicy"
+              },
+              {
+                "key": "prototype",
+                "enumerable": false,
+                "configurable": false,
+                "writable": false,
+                "type": "object"
+              }
+            ],
+            "prototype": [
+              {
+                "key": "name",
+                "enumerable": true,
+                "configurable": true,
+                "get": [
+                  "get name",
+                  0
+                ],
+                "set": null
+              },
+              {
+                "key": "createHTML",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "createHTML",
+                "length": 1
+              },
+              {
+                "key": "createScript",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "createScript",
+                "length": 1
+              },
+              {
+                "key": "createScriptURL",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "createScriptURL",
+                "length": 1
+              },
+              {
+                "key": "constructor",
+                "enumerable": false,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "TrustedTypePolicy",
+                "length": 0
+              },
+              {
+                "key": "Symbol(Symbol.toStringTag)",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "string",
+                "value": "TrustedTypePolicy"
+              }
+            ],
+            "construct": {
+              "error": "TypeError",
+              "message": "Failed to construct 'TrustedTypePolicy': Illegal constructor"
+            }
+          },
+          {
+            "name": "TrustedHTML",
+            "global": {
+              "key": "TrustedHTML",
+              "enumerable": false,
+              "configurable": true,
+              "writable": true,
+              "type": "function",
+              "name": "TrustedHTML",
+              "length": 0
+            },
+            "constructor": [
+              {
+                "key": "length",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "number",
+                "value": 0
+              },
+              {
+                "key": "name",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "string",
+                "value": "TrustedHTML"
+              },
+              {
+                "key": "prototype",
+                "enumerable": false,
+                "configurable": false,
+                "writable": false,
+                "type": "object"
+              }
+            ],
+            "prototype": [
+              {
+                "key": "toJSON",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "toJSON",
+                "length": 0
+              },
+              {
+                "key": "toString",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "toString",
+                "length": 0
+              },
+              {
+                "key": "constructor",
+                "enumerable": false,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "TrustedHTML",
+                "length": 0
+              },
+              {
+                "key": "Symbol(Symbol.toStringTag)",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "string",
+                "value": "TrustedHTML"
+              }
+            ],
+            "construct": {
+              "error": "TypeError",
+              "message": "Failed to construct 'TrustedHTML': Illegal constructor"
+            }
+          },
+          {
+            "name": "TrustedScript",
+            "global": {
+              "key": "TrustedScript",
+              "enumerable": false,
+              "configurable": true,
+              "writable": true,
+              "type": "function",
+              "name": "TrustedScript",
+              "length": 0
+            },
+            "constructor": [
+              {
+                "key": "length",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "number",
+                "value": 0
+              },
+              {
+                "key": "name",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "string",
+                "value": "TrustedScript"
+              },
+              {
+                "key": "prototype",
+                "enumerable": false,
+                "configurable": false,
+                "writable": false,
+                "type": "object"
+              }
+            ],
+            "prototype": [
+              {
+                "key": "toJSON",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "toJSON",
+                "length": 0
+              },
+              {
+                "key": "toString",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "toString",
+                "length": 0
+              },
+              {
+                "key": "constructor",
+                "enumerable": false,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "TrustedScript",
+                "length": 0
+              },
+              {
+                "key": "Symbol(Symbol.toStringTag)",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "string",
+                "value": "TrustedScript"
+              }
+            ],
+            "construct": {
+              "error": "TypeError",
+              "message": "Failed to construct 'TrustedScript': Illegal constructor"
+            }
+          },
+          {
+            "name": "TrustedScriptURL",
+            "global": {
+              "key": "TrustedScriptURL",
+              "enumerable": false,
+              "configurable": true,
+              "writable": true,
+              "type": "function",
+              "name": "TrustedScriptURL",
+              "length": 0
+            },
+            "constructor": [
+              {
+                "key": "length",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "number",
+                "value": 0
+              },
+              {
+                "key": "name",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "string",
+                "value": "TrustedScriptURL"
+              },
+              {
+                "key": "prototype",
+                "enumerable": false,
+                "configurable": false,
+                "writable": false,
+                "type": "object"
+              }
+            ],
+            "prototype": [
+              {
+                "key": "toJSON",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "toJSON",
+                "length": 0
+              },
+              {
+                "key": "toString",
+                "enumerable": true,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "toString",
+                "length": 0
+              },
+              {
+                "key": "constructor",
+                "enumerable": false,
+                "configurable": true,
+                "writable": true,
+                "type": "function",
+                "name": "TrustedScriptURL",
+                "length": 0
+              },
+              {
+                "key": "Symbol(Symbol.toStringTag)",
+                "enumerable": false,
+                "configurable": true,
+                "writable": false,
+                "type": "string",
+                "value": "TrustedScriptURL"
+              }
+            ],
+            "construct": {
+              "error": "TypeError",
+              "message": "Failed to construct 'TrustedScriptURL': Illegal constructor"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "values",
+      "result": {
+        "rows": [
+          {
+            "method": "createHTML",
+            "type": "object",
+            "keys": [],
+            "tag": "[object TrustedHTML]",
+            "units": [
+              55296,
+              88,
+              57343
+            ],
+            "json": "\"\\ud800X\\udfff\"",
+            "is": true,
+            "proxyIs": false,
+            "fakeIs": false,
+            "other": [
+              true,
+              false,
+              false
+            ],
+            "methods": [
+              {
+                "name": "toString",
+                "units": [
+                  55296,
+                  88,
+                  57343
+                ],
+                "bad": {
+                  "error": "TypeError",
+                  "message": "Illegal invocation"
+                }
+              },
+              {
+                "name": "toJSON",
+                "units": [
+                  55296,
+                  88,
+                  57343
+                ],
+                "bad": {
+                  "error": "TypeError",
+                  "message": "Illegal invocation"
+                }
+              }
+            ]
+          },
+          {
+            "method": "createScript",
+            "type": "object",
+            "keys": [],
+            "tag": "[object TrustedScript]",
+            "units": [
+              55296,
+              88,
+              57343
+            ],
+            "json": "\"\\ud800X\\udfff\"",
+            "is": true,
+            "proxyIs": false,
+            "fakeIs": false,
+            "other": [
+              false,
+              true,
+              false
+            ],
+            "methods": [
+              {
+                "name": "toString",
+                "units": [
+                  55296,
+                  88,
+                  57343
+                ],
+                "bad": {
+                  "error": "TypeError",
+                  "message": "Illegal invocation"
+                }
+              },
+              {
+                "name": "toJSON",
+                "units": [
+                  55296,
+                  88,
+                  57343
+                ],
+                "bad": {
+                  "error": "TypeError",
+                  "message": "Illegal invocation"
+                }
+              }
+            ]
+          },
+          {
+            "method": "createScriptURL",
+            "type": "object",
+            "keys": [],
+            "tag": "[object TrustedScriptURL]",
+            "units": [
+              65533,
+              88,
+              65533
+            ],
+            "json": "\"�X�\"",
+            "is": true,
+            "proxyIs": false,
+            "fakeIs": false,
+            "other": [
+              false,
+              false,
+              true
+            ],
+            "methods": [
+              {
+                "name": "toString",
+                "units": [
+                  65533,
+                  88,
+                  65533
+                ],
+                "bad": {
+                  "error": "TypeError",
+                  "message": "Illegal invocation"
+                }
+              },
+              {
+                "name": "toJSON",
+                "units": [
+                  65533,
+                  88,
+                  65533
+                ],
+                "bad": {
+                  "error": "TypeError",
+                  "message": "Illegal invocation"
+                }
+              }
+            ]
+          }
+        ],
+        "emptyHTML": {
+          "tag": "[object TrustedHTML]",
+          "same": true,
+          "is": true,
+          "text": ""
+        },
+        "emptyScript": {
+          "tag": "[object TrustedScript]",
+          "same": true,
+          "is": true,
+          "text": ""
+        },
+        "defaultPolicy": null,
+        "policyName": "alpha",
+        "policyShape": []
+      }
+    },
+    {
+      "id": "callbacks",
+      "result": {
+        "trace": [
+          "name",
+          "get:createHTML",
+          "get:createScript",
+          "get:createScriptURL",
+          "input",
+          [
+            "createHTML",
+            "object",
+            [
+              "input",
+              7,
+              {
+                "x": 1
+              }
+            ]
+          ],
+          "resultToString"
+        ],
+        "units": [
+          55296,
+          88,
+          57343
+        ],
+        "name": "alpha"
+      }
+    },
+    {
+      "id": "missing-rules",
+      "result": {
+        "noOptions": {
+          "ok": true,
+          "value": "no-options"
+        },
+        "methods": [
+          {
+            "name": "createHTML",
+            "noArgument": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createHTML' on 'TrustedTypePolicy': 1 argument required, but only 0 present."
+            },
+            "input": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createHTML' on 'TrustedTypePolicy': Policy alpha's TrustedTypePolicyOptions did not specify a 'createHTML' member."
+            }
+          },
+          {
+            "name": "createScript",
+            "noArgument": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createScript' on 'TrustedTypePolicy': 1 argument required, but only 0 present."
+            },
+            "input": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createScript' on 'TrustedTypePolicy': Policy alpha's TrustedTypePolicyOptions did not specify a 'createScript' member."
+            }
+          },
+          {
+            "name": "createScriptURL",
+            "noArgument": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createScriptURL' on 'TrustedTypePolicy': 1 argument required, but only 0 present."
+            },
+            "input": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createScriptURL' on 'TrustedTypePolicy': Policy alpha's TrustedTypePolicyOptions did not specify a 'createScriptURL' member."
+            }
+          }
+        ],
+        "trace": [
+          "createHTML",
+          "createScript",
+          "createScriptURL"
+        ],
+        "policyWithoutName": {
+          "error": "TypeError",
+          "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': 1 argument required, but only 0 present."
+        }
+      }
+    },
+    {
+      "id": "option-conversion",
+      "result": [
+        {
+          "type": "null",
+          "result": {
+            "ok": true,
+            "value": "p0"
+          }
+        },
+        {
+          "type": "undefined",
+          "result": {
+            "ok": true,
+            "value": "p1"
+          }
+        },
+        {
+          "type": "number",
+          "result": {
+            "error": "TypeError",
+            "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': The provided value is not of type 'TrustedTypePolicyOptions'."
+          }
+        },
+        {
+          "type": "string",
+          "result": {
+            "error": "TypeError",
+            "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': The provided value is not of type 'TrustedTypePolicyOptions'."
+          }
+        },
+        {
+          "type": "boolean",
+          "result": {
+            "error": "TypeError",
+            "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': The provided value is not of type 'TrustedTypePolicyOptions'."
+          }
+        },
+        {
+          "type": "symbol",
+          "result": {
+            "error": "TypeError",
+            "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': The provided value is not of type 'TrustedTypePolicyOptions'."
+          }
+        },
+        {
+          "callbackType": "null",
+          "result": {
+            "error": "TypeError",
+            "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Failed to read the 'createHTML' property from 'TrustedTypePolicyOptions': The given value is not a function."
+          }
+        },
+        {
+          "callbackType": "undefined",
+          "result": {
+            "error": "TypeError",
+            "message": "Failed to execute 'createHTML' on 'TrustedTypePolicy': Policy c1's TrustedTypePolicyOptions did not specify a 'createHTML' member."
+          }
+        },
+        {
+          "callbackType": "number",
+          "result": {
+            "error": "TypeError",
+            "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Failed to read the 'createHTML' property from 'TrustedTypePolicyOptions': The given value is not a function."
+          }
+        },
+        {
+          "callbackType": "string",
+          "result": {
+            "error": "TypeError",
+            "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Failed to read the 'createHTML' property from 'TrustedTypePolicyOptions': The given value is not a function."
+          }
+        },
+        {
+          "callbackType": "boolean",
+          "result": {
+            "error": "TypeError",
+            "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Failed to read the 'createHTML' property from 'TrustedTypePolicyOptions': The given value is not a function."
+          }
+        }
+      ]
+    },
+    {
+      "id": "mapping",
+      "result": {
+        "attributes": [
+          [
+            [
+              "script",
+              "src"
+            ],
+            "TrustedScriptURL"
+          ],
+          [
+            [
+              "SCRIPT",
+              "SRC"
+            ],
+            "TrustedScriptURL"
+          ],
+          [
+            [
+              "iframe",
+              "srcdoc"
+            ],
+            "TrustedHTML"
+          ],
+          [
+            [
+              "div",
+              "onclick"
+            ],
+            "TrustedScript"
+          ],
+          [
+            [
+              "DIV",
+              "ONLOAD"
+            ],
+            "TrustedScript"
+          ],
+          [
+            [
+              "script",
+              "text"
+            ],
+            null
+          ],
+          [
+            [
+              "script",
+              "href",
+              "http://www.w3.org/2000/svg",
+              "http://www.w3.org/1999/xlink"
+            ],
+            "TrustedScriptURL"
+          ],
+          [
+            [
+              "script",
+              "href",
+              "http://www.w3.org/2000/svg"
+            ],
+            "TrustedScriptURL"
+          ],
+          [
+            [
+              "img",
+              "src"
+            ],
+            null
+          ],
+          [
+            [
+              "a",
+              "href"
+            ],
+            null
+          ],
+          [
+            [
+              "*",
+              "onclick"
+            ],
+            "TrustedScript"
+          ],
+          [
+            [
+              "svg",
+              "onload",
+              "http://www.w3.org/2000/svg"
+            ],
+            "TrustedScript"
+          ],
+          [
+            [
+              "div",
+              "onclick",
+              "http://www.w3.org/1999/xhtml",
+              "urn:other"
+            ],
+            null
+          ],
+          [
+            [
+              "script",
+              "src",
+              null
+            ],
+            "TrustedScriptURL"
+          ],
+          [
+            [
+              "script",
+              "src",
+              ""
+            ],
+            "TrustedScriptURL"
+          ]
+        ],
+        "properties": [
+          [
+            [
+              "script",
+              "text"
+            ],
+            "TrustedScript"
+          ],
+          [
+            [
+              "script",
+              "textContent"
+            ],
+            "TrustedScript"
+          ],
+          [
+            [
+              "script",
+              "innerText"
+            ],
+            "TrustedScript"
+          ],
+          [
+            [
+              "script",
+              "src"
+            ],
+            "TrustedScriptURL"
+          ],
+          [
+            [
+              "iframe",
+              "srcdoc"
+            ],
+            "TrustedHTML"
+          ],
+          [
+            [
+              "div",
+              "innerHTML"
+            ],
+            "TrustedHTML"
+          ],
+          [
+            [
+              "div",
+              "outerHTML"
+            ],
+            "TrustedHTML"
+          ],
+          [
+            [
+              "*",
+              "innerHTML"
+            ],
+            "TrustedHTML"
+          ],
+          [
+            [
+              "SCRIPT",
+              "TEXT"
+            ],
+            null
+          ],
+          [
+            [
+              "div",
+              "textContent"
+            ],
+            null
+          ],
+          [
+            [
+              "svg",
+              "innerHTML",
+              "http://www.w3.org/2000/svg"
+            ],
+            "TrustedHTML"
+          ],
+          [
+            [
+              "script",
+              "href",
+              "http://www.w3.org/2000/svg"
+            ],
+            "TrustedScriptURL"
+          ]
+        ],
+        "missing": [
+          [
+            "getAttributeType",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'getAttributeType' on 'TrustedTypePolicyFactory': 2 arguments required, but only 0 present."
+            }
+          ],
+          [
+            "getPropertyType",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'getPropertyType' on 'TrustedTypePolicyFactory': 2 arguments required, but only 0 present."
+            }
+          ]
+        ],
+        "typeMapping": {
+          "embed": {
+            "attributes": {
+              "src": "TrustedScriptURL"
+            },
+            "properties": {
+              "src": "TrustedScriptURL"
+            }
+          },
+          "iframe": {
+            "attributes": {
+              "srcdoc": "TrustedHTML"
+            },
+            "properties": {
+              "srcdoc": "TrustedHTML"
+            }
+          },
+          "object": {
+            "attributes": {
+              "codebase": "TrustedScriptURL",
+              "data": "TrustedScriptURL"
+            },
+            "properties": {
+              "codeBase": "TrustedScriptURL",
+              "data": "TrustedScriptURL"
+            }
+          },
+          "script": {
+            "attributes": {
+              "src": "TrustedScriptURL",
+              "href": "TrustedScriptURL"
+            },
+            "properties": {
+              "innerText": "TrustedScript",
+              "src": "TrustedScriptURL",
+              "text": "TrustedScript",
+              "textContent": "TrustedScript",
+              "href": "TrustedScriptURL"
+            }
+          },
+          "*": {
+            "attributes": {
+              "onabort": "TrustedScript",
+              "onabortpayment": "TrustedScript",
+              "onactivate": "TrustedScript",
+              "onactive": "TrustedScript",
+              "onaddsourcebuffer": "TrustedScript",
+              "onaddstream": "TrustedScript",
+              "onaddtrack": "TrustedScript",
+              "onadvertisementreceived": "TrustedScript",
+              "onafterprint": "TrustedScript",
+              "onanimationcancel": "TrustedScript",
+              "onanimationend": "TrustedScript",
+              "onanimationiteration": "TrustedScript",
+              "onanimationstart": "TrustedScript",
+              "onappinstalled": "TrustedScript",
+              "onaudioend": "TrustedScript",
+              "onaudioprocess": "TrustedScript",
+              "onaudiostart": "TrustedScript",
+              "onautofill": "TrustedScript",
+              "onauxclick": "TrustedScript",
+              "onbackgroundfetchabort": "TrustedScript",
+              "onbackgroundfetchclick": "TrustedScript",
+              "onbackgroundfetchfail": "TrustedScript",
+              "onbackgroundfetchsuccess": "TrustedScript",
+              "onbeforecopy": "TrustedScript",
+              "onbeforecreatepolicy": "TrustedScript",
+              "onbeforecut": "TrustedScript",
+              "onbeforefilter": "TrustedScript",
+              "onbeforeinput": "TrustedScript",
+              "onbeforeinstallprompt": "TrustedScript",
+              "onbeforematch": "TrustedScript",
+              "onbeforepaste": "TrustedScript",
+              "onbeforeprint": "TrustedScript",
+              "onbeforetoggle": "TrustedScript",
+              "onbeforeunload": "TrustedScript",
+              "onbeforexrselect": "TrustedScript",
+              "onbegin": "TrustedScript",
+              "onbeginevent": "TrustedScript",
+              "onbitrateinfochange": "TrustedScript",
+              "onblocked": "TrustedScript",
+              "onblur": "TrustedScript",
+              "onboundary": "TrustedScript",
+              "onbufferedamountlow": "TrustedScript",
+              "oncancel": "TrustedScript",
+              "oncanmakepayment": "TrustedScript",
+              "oncanplay": "TrustedScript",
+              "oncanplaythrough": "TrustedScript",
+              "oncapturedmousechange": "TrustedScript",
+              "oncapturehandlechange": "TrustedScript",
+              "onchange": "TrustedScript",
+              "oncharacterboundsupdate": "TrustedScript",
+              "oncharacteristicvaluechanged": "TrustedScript",
+              "onchargingchange": "TrustedScript",
+              "onchargingtimechange": "TrustedScript",
+              "onclick": "TrustedScript",
+              "onclipboardchange": "TrustedScript",
+              "onclose": "TrustedScript",
+              "onclosing": "TrustedScript",
+              "oncommand": "TrustedScript",
+              "oncomplete": "TrustedScript",
+              "oncompositionend": "TrustedScript",
+              "oncompositionstart": "TrustedScript",
+              "oncompositionupdate": "TrustedScript",
+              "onconfigurationchange": "TrustedScript",
+              "onconnect": "TrustedScript",
+              "onconnecting": "TrustedScript",
+              "onconnectionavailable": "TrustedScript",
+              "onconnectionstatechange": "TrustedScript",
+              "oncontentdelete": "TrustedScript",
+              "oncontentvisibilityautostatechange": "TrustedScript",
+              "oncontextlost": "TrustedScript",
+              "oncontextmenu": "TrustedScript",
+              "oncontextoverflow": "TrustedScript",
+              "oncontextrestored": "TrustedScript",
+              "oncontrollerchange": "TrustedScript",
+              "oncookiechange": "TrustedScript",
+              "oncopy": "TrustedScript",
+              "oncuechange": "TrustedScript",
+              "oncurrententrychange": "TrustedScript",
+              "oncurrentscreenchange": "TrustedScript",
+              "oncut": "TrustedScript",
+              "ondataavailable": "TrustedScript",
+              "ondatachannel": "TrustedScript",
+              "ondblclick": "TrustedScript",
+              "ondequeue": "TrustedScript",
+              "ondevicechange": "TrustedScript",
+              "ondevicemotion": "TrustedScript",
+              "ondeviceorientation": "TrustedScript",
+              "ondeviceorientationabsolute": "TrustedScript",
+              "ondischargingtimechange": "TrustedScript",
+              "ondisconnect": "TrustedScript",
+              "ondispose": "TrustedScript",
+              "ondomactivate": "TrustedScript",
+              "ondomcontentloaded": "TrustedScript",
+              "ondomfocusin": "TrustedScript",
+              "ondomfocusout": "TrustedScript",
+              "ondownloadprogress": "TrustedScript",
+              "ondrag": "TrustedScript",
+              "ondragend": "TrustedScript",
+              "ondragenter": "TrustedScript",
+              "ondragleave": "TrustedScript",
+              "ondragover": "TrustedScript",
+              "ondragstart": "TrustedScript",
+              "ondrop": "TrustedScript",
+              "ondurationchange": "TrustedScript",
+              "onelementgeometryupdate": "TrustedScript",
+              "onemptied": "TrustedScript",
+              "onencrypted": "TrustedScript",
+              "onend": "TrustedScript",
+              "onended": "TrustedScript",
+              "onendevent": "TrustedScript",
+              "onenter": "TrustedScript",
+              "onenterpictureinpicture": "TrustedScript",
+              "onerror": "TrustedScript",
+              "onexit": "TrustedScript",
+              "onfetch": "TrustedScript",
+              "onfinish": "TrustedScript",
+              "onfocus": "TrustedScript",
+              "onfocusin": "TrustedScript",
+              "onfocusout": "TrustedScript",
+              "onformdata": "TrustedScript",
+              "onframeratechange": "TrustedScript",
+              "onfreeze": "TrustedScript",
+              "onfullscreenchange": "TrustedScript",
+              "onfullscreenerror": "TrustedScript",
+              "ongamepadconnected": "TrustedScript",
+              "ongamepaddisconnected": "TrustedScript",
+              "ongamepadrawinputchanged": "TrustedScript",
+              "ongatheringstatechange": "TrustedScript",
+              "ongattserverdisconnected": "TrustedScript",
+              "ongeometrychange": "TrustedScript",
+              "ongestureflingstart": "TrustedScript",
+              "ongesturelongpress": "TrustedScript",
+              "ongestureshowpress": "TrustedScript",
+              "ongesturetap": "TrustedScript",
+              "ongesturetapdown": "TrustedScript",
+              "ongesturetapunconfirmed": "TrustedScript",
+              "ongotpointercapture": "TrustedScript",
+              "onhashchange": "TrustedScript",
+              "onhdrheadroomchange": "TrustedScript",
+              "onicecandidate": "TrustedScript",
+              "onicecandidateerror": "TrustedScript",
+              "oniceconnectionstatechange": "TrustedScript",
+              "onicegatheringstatechange": "TrustedScript",
+              "oninactive": "TrustedScript",
+              "oninput": "TrustedScript",
+              "oninputreport": "TrustedScript",
+              "oninputsourceschange": "TrustedScript",
+              "oninstall": "TrustedScript",
+              "oninstallresult": "TrustedScript",
+              "oninterest": "TrustedScript",
+              "oninterfacerequest": "TrustedScript",
+              "oninvalid": "TrustedScript",
+              "onjobstatechange": "TrustedScript",
+              "onkeydown": "TrustedScript",
+              "onkeyframerequest": "TrustedScript",
+              "onkeypress": "TrustedScript",
+              "onkeystatuseschange": "TrustedScript",
+              "onkeyup": "TrustedScript",
+              "onlanguagechange": "TrustedScript",
+              "onleavepictureinpicture": "TrustedScript",
+              "onlevelchange": "TrustedScript",
+              "onload": "TrustedScript",
+              "onloadeddata": "TrustedScript",
+              "onloadedmetadata": "TrustedScript",
+              "onloadend": "TrustedScript",
+              "onloading": "TrustedScript",
+              "onloadingdone": "TrustedScript",
+              "onloadingerror": "TrustedScript",
+              "onloadstart": "TrustedScript",
+              "onlocation": "TrustedScript",
+              "onloseinterest": "TrustedScript",
+              "onlostpointercapture": "TrustedScript",
+              "onmanagedconfigurationchange": "TrustedScript",
+              "onmark": "TrustedScript",
+              "onmessage": "TrustedScript",
+              "onmessageerror": "TrustedScript",
+              "onmidimessage": "TrustedScript",
+              "onmousedown": "TrustedScript",
+              "onmouseenter": "TrustedScript",
+              "onmouseleave": "TrustedScript",
+              "onmousemove": "TrustedScript",
+              "onmouseout": "TrustedScript",
+              "onmouseover": "TrustedScript",
+              "onmouseup": "TrustedScript",
+              "onmousewheel": "TrustedScript",
+              "onmove": "TrustedScript",
+              "onmute": "TrustedScript",
+              "onnavigate": "TrustedScript",
+              "onnavigateerror": "TrustedScript",
+              "onnavigatesuccess": "TrustedScript",
+              "onnegotiationneeded": "TrustedScript",
+              "onnomatch": "TrustedScript",
+              "onnotificationclick": "TrustedScript",
+              "onnotificationclose": "TrustedScript",
+              "onoffline": "TrustedScript",
+              "ononline": "TrustedScript",
+              "onopen": "TrustedScript",
+              "onorientationchange": "TrustedScript",
+              "onoverscrollcancel": "TrustedScript",
+              "onoverscrollchanging": "TrustedScript",
+              "onoverscrollend": "TrustedScript",
+              "onoverscrollstart": "TrustedScript",
+              "onpagehide": "TrustedScript",
+              "onpagereveal": "TrustedScript",
+              "onpageshow": "TrustedScript",
+              "onpageswap": "TrustedScript",
+              "onpaint": "TrustedScript",
+              "onpaste": "TrustedScript",
+              "onpause": "TrustedScript",
+              "onpayerdetailchange": "TrustedScript",
+              "onpaymentmethodchange": "TrustedScript",
+              "onpaymentrequest": "TrustedScript",
+              "onperiodicsync": "TrustedScript",
+              "onplay": "TrustedScript",
+              "onplaying": "TrustedScript",
+              "onpointercancel": "TrustedScript",
+              "onpointerdown": "TrustedScript",
+              "onpointerenter": "TrustedScript",
+              "onpointerleave": "TrustedScript",
+              "onpointerlockchange": "TrustedScript",
+              "onpointerlockerror": "TrustedScript",
+              "onpointermove": "TrustedScript",
+              "onpointerout": "TrustedScript",
+              "onpointerover": "TrustedScript",
+              "onpointerrawupdate": "TrustedScript",
+              "onpointerup": "TrustedScript",
+              "onpopoverhide": "TrustedScript",
+              "onpopovershow": "TrustedScript",
+              "onpopstate": "TrustedScript",
+              "onprerenderingchange": "TrustedScript",
+              "onprioritychange": "TrustedScript",
+              "onprocessorerror": "TrustedScript",
+              "onprogress": "TrustedScript",
+              "onpromptaction": "TrustedScript",
+              "onpromptdismiss": "TrustedScript",
+              "onpush": "TrustedScript",
+              "onpushsubscriptionchange": "TrustedScript",
+              "onquotaoverflow": "TrustedScript",
+              "onratechange": "TrustedScript",
+              "onreading": "TrustedScript",
+              "onreadingerror": "TrustedScript",
+              "onreadystatechange": "TrustedScript",
+              "onredraw": "TrustedScript",
+              "onreflectionchange": "TrustedScript",
+              "onrejectionhandled": "TrustedScript",
+              "onrelease": "TrustedScript",
+              "onremove": "TrustedScript",
+              "onremovesourcebuffer": "TrustedScript",
+              "onremovestream": "TrustedScript",
+              "onremovetrack": "TrustedScript",
+              "onrepeat": "TrustedScript",
+              "onrepeatevent": "TrustedScript",
+              "onreset": "TrustedScript",
+              "onresize": "TrustedScript",
+              "onresourcetimingbufferfull": "TrustedScript",
+              "onresult": "TrustedScript",
+              "onresume": "TrustedScript",
+              "onrtcsenderencodedsource": "TrustedScript",
+              "onrtctransform": "TrustedScript",
+              "onsamplebufferfull": "TrustedScript",
+              "onscreenschange": "TrustedScript",
+              "onscroll": "TrustedScript",
+              "onscrollend": "TrustedScript",
+              "onscrollsnapchange": "TrustedScript",
+              "onscrollsnapchanging": "TrustedScript",
+              "onsearch": "TrustedScript",
+              "onsecuritypolicyviolation": "TrustedScript",
+              "onseeked": "TrustedScript",
+              "onseeking": "TrustedScript",
+              "onselect": "TrustedScript",
+              "onselectedcandidatepairchange": "TrustedScript",
+              "onselectend": "TrustedScript",
+              "onselectionchange": "TrustedScript",
+              "onselectstart": "TrustedScript",
+              "onshippingaddresschange": "TrustedScript",
+              "onshippingoptionchange": "TrustedScript",
+              "onshow": "TrustedScript",
+              "onsignalingstatechange": "TrustedScript",
+              "onsinkchange": "TrustedScript",
+              "onslotchange": "TrustedScript",
+              "onsoundend": "TrustedScript",
+              "onsoundstart": "TrustedScript",
+              "onsourceclose": "TrustedScript",
+              "onsourceended": "TrustedScript",
+              "onsourceopen": "TrustedScript",
+              "onspeechend": "TrustedScript",
+              "onspeechstart": "TrustedScript",
+              "onsqueeze": "TrustedScript",
+              "onsqueezeend": "TrustedScript",
+              "onsqueezestart": "TrustedScript",
+              "onstalled": "TrustedScript",
+              "onstart": "TrustedScript",
+              "onstatechange": "TrustedScript",
+              "onstop": "TrustedScript",
+              "onstorage": "TrustedScript",
+              "onstream": "TrustedScript",
+              "onsubmit": "TrustedScript",
+              "onsuccess": "TrustedScript",
+              "onsuspend": "TrustedScript",
+              "onsync": "TrustedScript",
+              "onterminate": "TrustedScript",
+              "ontextformatupdate": "TrustedScript",
+              "ontextinput": "TrustedScript",
+              "ontextupdate": "TrustedScript",
+              "ontimeout": "TrustedScript",
+              "ontimeupdate": "TrustedScript",
+              "ontimezonechange": "TrustedScript",
+              "ontoggle": "TrustedScript",
+              "ontonechange": "TrustedScript",
+              "ontoolactivated": "TrustedScript",
+              "ontoolcancel": "TrustedScript",
+              "ontoolchange": "TrustedScript",
+              "ontouchcancel": "TrustedScript",
+              "ontouchend": "TrustedScript",
+              "ontouchmove": "TrustedScript",
+              "ontouchstart": "TrustedScript",
+              "ontrack": "TrustedScript",
+              "ontransitioncancel": "TrustedScript",
+              "ontransitionend": "TrustedScript",
+              "ontransitionrun": "TrustedScript",
+              "ontransitionstart": "TrustedScript",
+              "ontypechange": "TrustedScript",
+              "onuareplaceend": "TrustedScript",
+              "onuareplacestart": "TrustedScript",
+              "onunbounded": "TrustedScript",
+              "onuncapturederror": "TrustedScript",
+              "onunhandledrejection": "TrustedScript",
+              "onunload": "TrustedScript",
+              "onunmute": "TrustedScript",
+              "onupdate": "TrustedScript",
+              "onupdateend": "TrustedScript",
+              "onupdatefound": "TrustedScript",
+              "onupdatestart": "TrustedScript",
+              "onupgradeneeded": "TrustedScript",
+              "onvalidationstatuschange": "TrustedScript",
+              "onversionchange": "TrustedScript",
+              "onvisibilitychange": "TrustedScript",
+              "onvisibilitymaskchange": "TrustedScript",
+              "onvoiceschanged": "TrustedScript",
+              "onvolumechange": "TrustedScript",
+              "onwaiting": "TrustedScript",
+              "onwaitingforkey": "TrustedScript",
+              "onwebglcontextcreationerror": "TrustedScript",
+              "onwebglcontextlost": "TrustedScript",
+              "onwebglcontextrestored": "TrustedScript",
+              "onwebkitanimationend": "TrustedScript",
+              "onwebkitanimationiteration": "TrustedScript",
+              "onwebkitanimationstart": "TrustedScript",
+              "onwebkitbeforetextinserted": "TrustedScript",
+              "onwebkiteditablecontentchanged": "TrustedScript",
+              "onwebkitfullscreenchange": "TrustedScript",
+              "onwebkitfullscreenerror": "TrustedScript",
+              "onwebkitspeechchange": "TrustedScript",
+              "onwebkittransitionend": "TrustedScript",
+              "onwebkitvisibilitychange": "TrustedScript",
+              "onwheel": "TrustedScript",
+              "onwritablechange": "TrustedScript",
+              "onwrite": "TrustedScript",
+              "onwriteend": "TrustedScript",
+              "onwritestart": "TrustedScript",
+              "onzoomlevelchange": "TrustedScript"
+            },
+            "properties": {
+              "innerHTML": "TrustedHTML",
+              "outerHTML": "TrustedHTML"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "brands",
+      "result": {
+        "factoryMethods": [
+          [
+            "createPolicy",
+            {
+              "error": "TypeError",
+              "message": "Illegal invocation"
+            }
+          ],
+          [
+            "isHTML",
+            {
+              "error": "TypeError",
+              "message": "Illegal invocation"
+            }
+          ],
+          [
+            "isScript",
+            {
+              "error": "TypeError",
+              "message": "Illegal invocation"
+            }
+          ],
+          [
+            "isScriptURL",
+            {
+              "error": "TypeError",
+              "message": "Illegal invocation"
+            }
+          ],
+          [
+            "getPropertyType",
+            {
+              "error": "TypeError",
+              "message": "Illegal invocation"
+            }
+          ],
+          [
+            "getAttributeType",
+            {
+              "error": "TypeError",
+              "message": "Illegal invocation"
+            }
+          ]
+        ],
+        "policyMethods": [
+          [
+            "createHTML",
+            {
+              "error": "TypeError",
+              "message": "Illegal invocation"
+            }
+          ],
+          [
+            "createScript",
+            {
+              "error": "TypeError",
+              "message": "Illegal invocation"
+            }
+          ],
+          [
+            "createScriptURL",
+            {
+              "error": "TypeError",
+              "message": "Illegal invocation"
+            }
+          ]
+        ],
+        "defaultGetter": {
+          "error": "TypeError",
+          "message": "Illegal invocation"
+        },
+        "nameGetter": {
+          "error": "TypeError",
+          "message": "Illegal invocation"
+        },
+        "symbolInput": {
+          "error": "TypeError",
+          "message": "Failed to execute 'createHTML' on 'TrustedTypePolicy': Cannot convert a Symbol value to a string"
+        },
+        "htmlToScript": false
+      }
+    },
+    {
+      "id": "cross-realm",
+      "result": {
+        "parentAccepts": true,
+        "childAccepts": true,
+        "parentInstance": false,
+        "childInstance": true,
+        "borrowed": "foreign",
+        "afterRemoval": "foreign"
+      }
+    },
+    {
+      "id": "edge-cases",
+      "result": {
+        "rows": [
+          [
+            "alpha",
+            {
+              "ok": true,
+              "value": "alpha"
+            }
+          ],
+          [
+            "alpha",
+            {
+              "ok": true,
+              "value": "alpha"
+            }
+          ],
+          [
+            "",
+            {
+              "ok": true,
+              "value": ""
+            }
+          ],
+          [
+            "with space",
+            {
+              "ok": true,
+              "value": "with space"
+            }
+          ],
+          [
+            "bad'name",
+            {
+              "ok": true,
+              "value": "bad'name"
+            }
+          ],
+          [
+            "with:colon",
+            {
+              "ok": true,
+              "value": "with:colon"
+            }
+          ],
+          [
+            "default",
+            {
+              "ok": true,
+              "value": "default"
+            }
+          ],
+          [
+            "default",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy with name \"default\" already exists."
+            }
+          ]
+        ],
+        "returns": [
+          [
+            "object",
+            {
+              "ok": true,
+              "value": ""
+            },
+            {
+              "ok": true,
+              "value": ""
+            }
+          ],
+          [
+            "undefined",
+            {
+              "ok": true,
+              "value": ""
+            },
+            {
+              "ok": true,
+              "value": ""
+            }
+          ],
+          [
+            "number",
+            {
+              "ok": true,
+              "value": "1"
+            },
+            {
+              "ok": true,
+              "value": "1"
+            }
+          ],
+          [
+            "boolean",
+            {
+              "ok": true,
+              "value": "false"
+            },
+            {
+              "ok": true,
+              "value": "false"
+            }
+          ],
+          [
+            "symbol",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'invoke' on 'CreateHTMLCallback': Failed to execute 'createHTML' on 'TrustedTypePolicy': Cannot convert a Symbol value to a string"
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'invoke' on 'CreateURLCallback': Failed to execute 'createScriptURL' on 'TrustedTypePolicy': Cannot convert a Symbol value to a string"
+            }
+          ]
+        ],
+        "callbackReceiver": "undefined",
+        "mappings": [
+          [
+            null,
+            null
+          ],
+          [
+            "",
+            {
+              "embed": {
+                "attributes": {
+                  "src": "TrustedScriptURL"
+                },
+                "properties": {
+                  "src": "TrustedScriptURL"
+                }
+              },
+              "iframe": {
+                "attributes": {
+                  "srcdoc": "TrustedHTML"
+                },
+                "properties": {
+                  "srcdoc": "TrustedHTML"
+                }
+              },
+              "object": {
+                "attributes": {
+                  "codebase": "TrustedScriptURL",
+                  "data": "TrustedScriptURL"
+                },
+                "properties": {
+                  "codeBase": "TrustedScriptURL",
+                  "data": "TrustedScriptURL"
+                }
+              },
+              "script": {
+                "attributes": {
+                  "src": "TrustedScriptURL",
+                  "href": "TrustedScriptURL"
+                },
+                "properties": {
+                  "innerText": "TrustedScript",
+                  "src": "TrustedScriptURL",
+                  "text": "TrustedScript",
+                  "textContent": "TrustedScript",
+                  "href": "TrustedScriptURL"
+                }
+              },
+              "*": {
+                "attributes": {
+                  "onabort": "TrustedScript",
+                  "onabortpayment": "TrustedScript",
+                  "onactivate": "TrustedScript",
+                  "onactive": "TrustedScript",
+                  "onaddsourcebuffer": "TrustedScript",
+                  "onaddstream": "TrustedScript",
+                  "onaddtrack": "TrustedScript",
+                  "onadvertisementreceived": "TrustedScript",
+                  "onafterprint": "TrustedScript",
+                  "onanimationcancel": "TrustedScript",
+                  "onanimationend": "TrustedScript",
+                  "onanimationiteration": "TrustedScript",
+                  "onanimationstart": "TrustedScript",
+                  "onappinstalled": "TrustedScript",
+                  "onaudioend": "TrustedScript",
+                  "onaudioprocess": "TrustedScript",
+                  "onaudiostart": "TrustedScript",
+                  "onautofill": "TrustedScript",
+                  "onauxclick": "TrustedScript",
+                  "onbackgroundfetchabort": "TrustedScript",
+                  "onbackgroundfetchclick": "TrustedScript",
+                  "onbackgroundfetchfail": "TrustedScript",
+                  "onbackgroundfetchsuccess": "TrustedScript",
+                  "onbeforecopy": "TrustedScript",
+                  "onbeforecreatepolicy": "TrustedScript",
+                  "onbeforecut": "TrustedScript",
+                  "onbeforefilter": "TrustedScript",
+                  "onbeforeinput": "TrustedScript",
+                  "onbeforeinstallprompt": "TrustedScript",
+                  "onbeforematch": "TrustedScript",
+                  "onbeforepaste": "TrustedScript",
+                  "onbeforeprint": "TrustedScript",
+                  "onbeforetoggle": "TrustedScript",
+                  "onbeforeunload": "TrustedScript",
+                  "onbeforexrselect": "TrustedScript",
+                  "onbegin": "TrustedScript",
+                  "onbeginevent": "TrustedScript",
+                  "onbitrateinfochange": "TrustedScript",
+                  "onblocked": "TrustedScript",
+                  "onblur": "TrustedScript",
+                  "onboundary": "TrustedScript",
+                  "onbufferedamountlow": "TrustedScript",
+                  "oncancel": "TrustedScript",
+                  "oncanmakepayment": "TrustedScript",
+                  "oncanplay": "TrustedScript",
+                  "oncanplaythrough": "TrustedScript",
+                  "oncapturedmousechange": "TrustedScript",
+                  "oncapturehandlechange": "TrustedScript",
+                  "onchange": "TrustedScript",
+                  "oncharacterboundsupdate": "TrustedScript",
+                  "oncharacteristicvaluechanged": "TrustedScript",
+                  "onchargingchange": "TrustedScript",
+                  "onchargingtimechange": "TrustedScript",
+                  "onclick": "TrustedScript",
+                  "onclipboardchange": "TrustedScript",
+                  "onclose": "TrustedScript",
+                  "onclosing": "TrustedScript",
+                  "oncommand": "TrustedScript",
+                  "oncomplete": "TrustedScript",
+                  "oncompositionend": "TrustedScript",
+                  "oncompositionstart": "TrustedScript",
+                  "oncompositionupdate": "TrustedScript",
+                  "onconfigurationchange": "TrustedScript",
+                  "onconnect": "TrustedScript",
+                  "onconnecting": "TrustedScript",
+                  "onconnectionavailable": "TrustedScript",
+                  "onconnectionstatechange": "TrustedScript",
+                  "oncontentdelete": "TrustedScript",
+                  "oncontentvisibilityautostatechange": "TrustedScript",
+                  "oncontextlost": "TrustedScript",
+                  "oncontextmenu": "TrustedScript",
+                  "oncontextoverflow": "TrustedScript",
+                  "oncontextrestored": "TrustedScript",
+                  "oncontrollerchange": "TrustedScript",
+                  "oncookiechange": "TrustedScript",
+                  "oncopy": "TrustedScript",
+                  "oncuechange": "TrustedScript",
+                  "oncurrententrychange": "TrustedScript",
+                  "oncurrentscreenchange": "TrustedScript",
+                  "oncut": "TrustedScript",
+                  "ondataavailable": "TrustedScript",
+                  "ondatachannel": "TrustedScript",
+                  "ondblclick": "TrustedScript",
+                  "ondequeue": "TrustedScript",
+                  "ondevicechange": "TrustedScript",
+                  "ondevicemotion": "TrustedScript",
+                  "ondeviceorientation": "TrustedScript",
+                  "ondeviceorientationabsolute": "TrustedScript",
+                  "ondischargingtimechange": "TrustedScript",
+                  "ondisconnect": "TrustedScript",
+                  "ondispose": "TrustedScript",
+                  "ondomactivate": "TrustedScript",
+                  "ondomcontentloaded": "TrustedScript",
+                  "ondomfocusin": "TrustedScript",
+                  "ondomfocusout": "TrustedScript",
+                  "ondownloadprogress": "TrustedScript",
+                  "ondrag": "TrustedScript",
+                  "ondragend": "TrustedScript",
+                  "ondragenter": "TrustedScript",
+                  "ondragleave": "TrustedScript",
+                  "ondragover": "TrustedScript",
+                  "ondragstart": "TrustedScript",
+                  "ondrop": "TrustedScript",
+                  "ondurationchange": "TrustedScript",
+                  "onelementgeometryupdate": "TrustedScript",
+                  "onemptied": "TrustedScript",
+                  "onencrypted": "TrustedScript",
+                  "onend": "TrustedScript",
+                  "onended": "TrustedScript",
+                  "onendevent": "TrustedScript",
+                  "onenter": "TrustedScript",
+                  "onenterpictureinpicture": "TrustedScript",
+                  "onerror": "TrustedScript",
+                  "onexit": "TrustedScript",
+                  "onfetch": "TrustedScript",
+                  "onfinish": "TrustedScript",
+                  "onfocus": "TrustedScript",
+                  "onfocusin": "TrustedScript",
+                  "onfocusout": "TrustedScript",
+                  "onformdata": "TrustedScript",
+                  "onframeratechange": "TrustedScript",
+                  "onfreeze": "TrustedScript",
+                  "onfullscreenchange": "TrustedScript",
+                  "onfullscreenerror": "TrustedScript",
+                  "ongamepadconnected": "TrustedScript",
+                  "ongamepaddisconnected": "TrustedScript",
+                  "ongamepadrawinputchanged": "TrustedScript",
+                  "ongatheringstatechange": "TrustedScript",
+                  "ongattserverdisconnected": "TrustedScript",
+                  "ongeometrychange": "TrustedScript",
+                  "ongestureflingstart": "TrustedScript",
+                  "ongesturelongpress": "TrustedScript",
+                  "ongestureshowpress": "TrustedScript",
+                  "ongesturetap": "TrustedScript",
+                  "ongesturetapdown": "TrustedScript",
+                  "ongesturetapunconfirmed": "TrustedScript",
+                  "ongotpointercapture": "TrustedScript",
+                  "onhashchange": "TrustedScript",
+                  "onhdrheadroomchange": "TrustedScript",
+                  "onicecandidate": "TrustedScript",
+                  "onicecandidateerror": "TrustedScript",
+                  "oniceconnectionstatechange": "TrustedScript",
+                  "onicegatheringstatechange": "TrustedScript",
+                  "oninactive": "TrustedScript",
+                  "oninput": "TrustedScript",
+                  "oninputreport": "TrustedScript",
+                  "oninputsourceschange": "TrustedScript",
+                  "oninstall": "TrustedScript",
+                  "oninstallresult": "TrustedScript",
+                  "oninterest": "TrustedScript",
+                  "oninterfacerequest": "TrustedScript",
+                  "oninvalid": "TrustedScript",
+                  "onjobstatechange": "TrustedScript",
+                  "onkeydown": "TrustedScript",
+                  "onkeyframerequest": "TrustedScript",
+                  "onkeypress": "TrustedScript",
+                  "onkeystatuseschange": "TrustedScript",
+                  "onkeyup": "TrustedScript",
+                  "onlanguagechange": "TrustedScript",
+                  "onleavepictureinpicture": "TrustedScript",
+                  "onlevelchange": "TrustedScript",
+                  "onload": "TrustedScript",
+                  "onloadeddata": "TrustedScript",
+                  "onloadedmetadata": "TrustedScript",
+                  "onloadend": "TrustedScript",
+                  "onloading": "TrustedScript",
+                  "onloadingdone": "TrustedScript",
+                  "onloadingerror": "TrustedScript",
+                  "onloadstart": "TrustedScript",
+                  "onlocation": "TrustedScript",
+                  "onloseinterest": "TrustedScript",
+                  "onlostpointercapture": "TrustedScript",
+                  "onmanagedconfigurationchange": "TrustedScript",
+                  "onmark": "TrustedScript",
+                  "onmessage": "TrustedScript",
+                  "onmessageerror": "TrustedScript",
+                  "onmidimessage": "TrustedScript",
+                  "onmousedown": "TrustedScript",
+                  "onmouseenter": "TrustedScript",
+                  "onmouseleave": "TrustedScript",
+                  "onmousemove": "TrustedScript",
+                  "onmouseout": "TrustedScript",
+                  "onmouseover": "TrustedScript",
+                  "onmouseup": "TrustedScript",
+                  "onmousewheel": "TrustedScript",
+                  "onmove": "TrustedScript",
+                  "onmute": "TrustedScript",
+                  "onnavigate": "TrustedScript",
+                  "onnavigateerror": "TrustedScript",
+                  "onnavigatesuccess": "TrustedScript",
+                  "onnegotiationneeded": "TrustedScript",
+                  "onnomatch": "TrustedScript",
+                  "onnotificationclick": "TrustedScript",
+                  "onnotificationclose": "TrustedScript",
+                  "onoffline": "TrustedScript",
+                  "ononline": "TrustedScript",
+                  "onopen": "TrustedScript",
+                  "onorientationchange": "TrustedScript",
+                  "onoverscrollcancel": "TrustedScript",
+                  "onoverscrollchanging": "TrustedScript",
+                  "onoverscrollend": "TrustedScript",
+                  "onoverscrollstart": "TrustedScript",
+                  "onpagehide": "TrustedScript",
+                  "onpagereveal": "TrustedScript",
+                  "onpageshow": "TrustedScript",
+                  "onpageswap": "TrustedScript",
+                  "onpaint": "TrustedScript",
+                  "onpaste": "TrustedScript",
+                  "onpause": "TrustedScript",
+                  "onpayerdetailchange": "TrustedScript",
+                  "onpaymentmethodchange": "TrustedScript",
+                  "onpaymentrequest": "TrustedScript",
+                  "onperiodicsync": "TrustedScript",
+                  "onplay": "TrustedScript",
+                  "onplaying": "TrustedScript",
+                  "onpointercancel": "TrustedScript",
+                  "onpointerdown": "TrustedScript",
+                  "onpointerenter": "TrustedScript",
+                  "onpointerleave": "TrustedScript",
+                  "onpointerlockchange": "TrustedScript",
+                  "onpointerlockerror": "TrustedScript",
+                  "onpointermove": "TrustedScript",
+                  "onpointerout": "TrustedScript",
+                  "onpointerover": "TrustedScript",
+                  "onpointerrawupdate": "TrustedScript",
+                  "onpointerup": "TrustedScript",
+                  "onpopoverhide": "TrustedScript",
+                  "onpopovershow": "TrustedScript",
+                  "onpopstate": "TrustedScript",
+                  "onprerenderingchange": "TrustedScript",
+                  "onprioritychange": "TrustedScript",
+                  "onprocessorerror": "TrustedScript",
+                  "onprogress": "TrustedScript",
+                  "onpromptaction": "TrustedScript",
+                  "onpromptdismiss": "TrustedScript",
+                  "onpush": "TrustedScript",
+                  "onpushsubscriptionchange": "TrustedScript",
+                  "onquotaoverflow": "TrustedScript",
+                  "onratechange": "TrustedScript",
+                  "onreading": "TrustedScript",
+                  "onreadingerror": "TrustedScript",
+                  "onreadystatechange": "TrustedScript",
+                  "onredraw": "TrustedScript",
+                  "onreflectionchange": "TrustedScript",
+                  "onrejectionhandled": "TrustedScript",
+                  "onrelease": "TrustedScript",
+                  "onremove": "TrustedScript",
+                  "onremovesourcebuffer": "TrustedScript",
+                  "onremovestream": "TrustedScript",
+                  "onremovetrack": "TrustedScript",
+                  "onrepeat": "TrustedScript",
+                  "onrepeatevent": "TrustedScript",
+                  "onreset": "TrustedScript",
+                  "onresize": "TrustedScript",
+                  "onresourcetimingbufferfull": "TrustedScript",
+                  "onresult": "TrustedScript",
+                  "onresume": "TrustedScript",
+                  "onrtcsenderencodedsource": "TrustedScript",
+                  "onrtctransform": "TrustedScript",
+                  "onsamplebufferfull": "TrustedScript",
+                  "onscreenschange": "TrustedScript",
+                  "onscroll": "TrustedScript",
+                  "onscrollend": "TrustedScript",
+                  "onscrollsnapchange": "TrustedScript",
+                  "onscrollsnapchanging": "TrustedScript",
+                  "onsearch": "TrustedScript",
+                  "onsecuritypolicyviolation": "TrustedScript",
+                  "onseeked": "TrustedScript",
+                  "onseeking": "TrustedScript",
+                  "onselect": "TrustedScript",
+                  "onselectedcandidatepairchange": "TrustedScript",
+                  "onselectend": "TrustedScript",
+                  "onselectionchange": "TrustedScript",
+                  "onselectstart": "TrustedScript",
+                  "onshippingaddresschange": "TrustedScript",
+                  "onshippingoptionchange": "TrustedScript",
+                  "onshow": "TrustedScript",
+                  "onsignalingstatechange": "TrustedScript",
+                  "onsinkchange": "TrustedScript",
+                  "onslotchange": "TrustedScript",
+                  "onsoundend": "TrustedScript",
+                  "onsoundstart": "TrustedScript",
+                  "onsourceclose": "TrustedScript",
+                  "onsourceended": "TrustedScript",
+                  "onsourceopen": "TrustedScript",
+                  "onspeechend": "TrustedScript",
+                  "onspeechstart": "TrustedScript",
+                  "onsqueeze": "TrustedScript",
+                  "onsqueezeend": "TrustedScript",
+                  "onsqueezestart": "TrustedScript",
+                  "onstalled": "TrustedScript",
+                  "onstart": "TrustedScript",
+                  "onstatechange": "TrustedScript",
+                  "onstop": "TrustedScript",
+                  "onstorage": "TrustedScript",
+                  "onstream": "TrustedScript",
+                  "onsubmit": "TrustedScript",
+                  "onsuccess": "TrustedScript",
+                  "onsuspend": "TrustedScript",
+                  "onsync": "TrustedScript",
+                  "onterminate": "TrustedScript",
+                  "ontextformatupdate": "TrustedScript",
+                  "ontextinput": "TrustedScript",
+                  "ontextupdate": "TrustedScript",
+                  "ontimeout": "TrustedScript",
+                  "ontimeupdate": "TrustedScript",
+                  "ontimezonechange": "TrustedScript",
+                  "ontoggle": "TrustedScript",
+                  "ontonechange": "TrustedScript",
+                  "ontoolactivated": "TrustedScript",
+                  "ontoolcancel": "TrustedScript",
+                  "ontoolchange": "TrustedScript",
+                  "ontouchcancel": "TrustedScript",
+                  "ontouchend": "TrustedScript",
+                  "ontouchmove": "TrustedScript",
+                  "ontouchstart": "TrustedScript",
+                  "ontrack": "TrustedScript",
+                  "ontransitioncancel": "TrustedScript",
+                  "ontransitionend": "TrustedScript",
+                  "ontransitionrun": "TrustedScript",
+                  "ontransitionstart": "TrustedScript",
+                  "ontypechange": "TrustedScript",
+                  "onuareplaceend": "TrustedScript",
+                  "onuareplacestart": "TrustedScript",
+                  "onunbounded": "TrustedScript",
+                  "onuncapturederror": "TrustedScript",
+                  "onunhandledrejection": "TrustedScript",
+                  "onunload": "TrustedScript",
+                  "onunmute": "TrustedScript",
+                  "onupdate": "TrustedScript",
+                  "onupdateend": "TrustedScript",
+                  "onupdatefound": "TrustedScript",
+                  "onupdatestart": "TrustedScript",
+                  "onupgradeneeded": "TrustedScript",
+                  "onvalidationstatuschange": "TrustedScript",
+                  "onversionchange": "TrustedScript",
+                  "onvisibilitychange": "TrustedScript",
+                  "onvisibilitymaskchange": "TrustedScript",
+                  "onvoiceschanged": "TrustedScript",
+                  "onvolumechange": "TrustedScript",
+                  "onwaiting": "TrustedScript",
+                  "onwaitingforkey": "TrustedScript",
+                  "onwebglcontextcreationerror": "TrustedScript",
+                  "onwebglcontextlost": "TrustedScript",
+                  "onwebglcontextrestored": "TrustedScript",
+                  "onwebkitanimationend": "TrustedScript",
+                  "onwebkitanimationiteration": "TrustedScript",
+                  "onwebkitanimationstart": "TrustedScript",
+                  "onwebkitbeforetextinserted": "TrustedScript",
+                  "onwebkiteditablecontentchanged": "TrustedScript",
+                  "onwebkitfullscreenchange": "TrustedScript",
+                  "onwebkitfullscreenerror": "TrustedScript",
+                  "onwebkitspeechchange": "TrustedScript",
+                  "onwebkittransitionend": "TrustedScript",
+                  "onwebkitvisibilitychange": "TrustedScript",
+                  "onwheel": "TrustedScript",
+                  "onwritablechange": "TrustedScript",
+                  "onwrite": "TrustedScript",
+                  "onwriteend": "TrustedScript",
+                  "onwritestart": "TrustedScript",
+                  "onzoomlevelchange": "TrustedScript"
+                },
+                "properties": {
+                  "innerHTML": "TrustedHTML",
+                  "outerHTML": "TrustedHTML"
+                }
+              }
+            }
+          ],
+          [
+            "http://www.w3.org/1999/xhtml",
+            null
+          ],
+          [
+            "http://www.w3.org/2000/svg",
+            null
+          ],
+          [
+            "urn:unknown",
+            null
+          ]
+        ],
+        "symbolNames": {
+          "error": "TypeError",
+          "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Cannot convert a Symbol value to a string"
+        },
+        "getMissingOne": {
+          "error": "TypeError",
+          "message": "Failed to execute 'getPropertyType' on 'TrustedTypePolicyFactory': 2 arguments required, but only 1 present."
+        },
+        "propertyCase": [
+          [
+            [
+              "SCRIPT",
+              "text"
+            ],
+            "TrustedScript"
+          ],
+          [
+            [
+              "script",
+              "Text"
+            ],
+            null
+          ],
+          [
+            [
+              "script",
+              "src",
+              "urn:unknown"
+            ],
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "id": "policy-csp-allowlist",
+      "result": {
+        "rows": [
+          {
+            "name": "alpha",
+            "result": {
+              "ok": true,
+              "value": "alpha"
+            }
+          },
+          {
+            "name": "other",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy \"other\" disallowed."
+            }
+          },
+          {
+            "name": "alpha",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy with name \"alpha\" already exists."
+            }
+          },
+          {
+            "name": "default",
+            "result": {
+              "ok": true,
+              "value": "default"
+            }
+          },
+          {
+            "name": "default",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy with name \"default\" already exists."
+            }
+          },
+          {
+            "name": "",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy \"\" disallowed."
+            }
+          }
+        ],
+        "defaultName": "default",
+        "violations": [
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "other"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "alpha"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "default"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "policy-csp-none",
+      "result": {
+        "rows": [
+          {
+            "name": "alpha",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy \"alpha\" disallowed."
+            }
+          },
+          {
+            "name": "other",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy \"other\" disallowed."
+            }
+          },
+          {
+            "name": "alpha",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy \"alpha\" disallowed."
+            }
+          },
+          {
+            "name": "default",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy \"default\" disallowed."
+            }
+          },
+          {
+            "name": "default",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy \"default\" disallowed."
+            }
+          },
+          {
+            "name": "",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy \"\" disallowed."
+            }
+          }
+        ],
+        "defaultName": null,
+        "violations": [
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "alpha"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "other"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "alpha"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "default"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "default"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "policy-csp-wildcard",
+      "result": {
+        "rows": [
+          {
+            "name": "alpha",
+            "result": {
+              "ok": true,
+              "value": "alpha"
+            }
+          },
+          {
+            "name": "other",
+            "result": {
+              "ok": true,
+              "value": "other"
+            }
+          },
+          {
+            "name": "alpha",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy with name \"alpha\" already exists."
+            }
+          },
+          {
+            "name": "default",
+            "result": {
+              "ok": true,
+              "value": "default"
+            }
+          },
+          {
+            "name": "default",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy with name \"default\" already exists."
+            }
+          },
+          {
+            "name": "",
+            "result": {
+              "ok": true,
+              "value": ""
+            }
+          }
+        ],
+        "defaultName": "default",
+        "violations": [
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "alpha"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "default"
+          }
+        ]
+      }
+    },
+    {
+      "id": "policy-csp-duplicates",
+      "result": {
+        "rows": [
+          {
+            "name": "alpha",
+            "result": {
+              "ok": true,
+              "value": "alpha"
+            }
+          },
+          {
+            "name": "other",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy \"other\" disallowed."
+            }
+          },
+          {
+            "name": "alpha",
+            "result": {
+              "ok": true,
+              "value": "alpha"
+            }
+          },
+          {
+            "name": "default",
+            "result": {
+              "ok": true,
+              "value": "default"
+            }
+          },
+          {
+            "name": "default",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy with name \"default\" already exists."
+            }
+          },
+          {
+            "name": "",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy \"\" disallowed."
+            }
+          }
+        ],
+        "defaultName": "default",
+        "violations": [
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "other"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": "default"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "enforce",
+            "sample": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "policy-csp-report-only",
+      "result": {
+        "rows": [
+          {
+            "name": "alpha",
+            "result": {
+              "ok": true,
+              "value": "alpha"
+            }
+          },
+          {
+            "name": "other",
+            "result": {
+              "ok": true,
+              "value": "other"
+            }
+          },
+          {
+            "name": "alpha",
+            "result": {
+              "ok": true,
+              "value": "alpha"
+            }
+          },
+          {
+            "name": "default",
+            "result": {
+              "ok": true,
+              "value": "default"
+            }
+          },
+          {
+            "name": "default",
+            "result": {
+              "error": "TypeError",
+              "message": "Failed to execute 'createPolicy' on 'TrustedTypePolicyFactory': Policy with name \"default\" already exists."
+            }
+          },
+          {
+            "name": "",
+            "result": {
+              "ok": true,
+              "value": ""
+            }
+          }
+        ],
+        "defaultName": "default",
+        "violations": [
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "report",
+            "sample": "other"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "report",
+            "sample": "alpha"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "report",
+            "sample": "default"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "report",
+            "sample": "default"
+          },
+          {
+            "effectiveDirective": "trusted-types",
+            "blockedURI": "trusted-types-policy",
+            "disposition": "report",
+            "sample": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "default-sinks",
+      "result": {
+        "trace": [
+          [
+            "html",
+            "X",
+            [
+              "TrustedHTML",
+              "Element innerHTML"
+            ]
+          ],
+          [
+            "script",
+            "void 0",
+            [
+              "TrustedScript",
+              "HTMLScriptElement text"
+            ]
+          ],
+          [
+            "url",
+            "/script.js",
+            [
+              "TrustedScriptURL",
+              "HTMLScriptElement src"
+            ]
+          ]
+        ],
+        "html": "<b>X</b>",
+        "text": "void 0",
+        "src": "/script.js",
+        "defaultSame": true
+      }
+    }
+  ]
+}

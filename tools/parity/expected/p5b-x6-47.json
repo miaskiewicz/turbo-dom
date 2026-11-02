@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#47 (remaining pseudo-elements)",
+ "reason": "turbo-dom-browser-env getComputedStyle(el, pseudoElt) computes the remaining UA-styled pseudo-elements (::marker, ::placeholder, ::file-selector-button, ::details-content, ::picker(select), ::picker-icon, ::checkmark, ::first-line, ::first-letter, the highlights, ::scroll-marker-group, ::column, ::-webkit-scrollbar*, ::scroll-button(), the view-transition tree) with Chrome 156's UA values, accepted author properties and inheritance; ::scroll-marker and invalid arguments read empty; ::cue and unknown -webkit- / -internal- names read the element. Element reads are unchanged. No corpus output changes: the surf live dump reads getComputedStyle(el) without a pseudo-element (bin/corpus-surf.mjs PROPS); static screenshots and the html2pdf corpora do not run the binding. P5b-X6.",
+ "control": "crates/turbo-dom-browser-env/src/computed_defaults_chrome156.json (cases pseudo-ua-forms, pseudo-ua; scripts/select-element-chrome-control.mjs, Chrome for Testing 156.0.8078.4)",
+ "e2e": "crates/turbo-dom-browser-env/src/computed_defaults_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

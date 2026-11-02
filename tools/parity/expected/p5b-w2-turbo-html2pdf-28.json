@@ -1,0 +1,13 @@
+{
+ "id": "turbo-html2pdf#28",
+ "reason": "Test gates only: turbo-html2pdf CI clippy + tests the core with --features svg, --all-features (perf budgets) and --no-default-features; native_inline_coverage gated on bundled-fonts; the perf font.shape budget restated for the bounded shape cache (+ a repeated-runs dedupe test). No engine code changes, so no corpus output changes. P5b-W2.",
+ "control": "none (no behaviour change)",
+ "e2e": "turbo-html2pdf .github/workflows/ci.yml, crates/turbo-html2pdf-core/tests/perf.rs, tests/native_inline_coverage.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

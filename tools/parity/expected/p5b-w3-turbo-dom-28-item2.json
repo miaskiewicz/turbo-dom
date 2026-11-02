@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#28 item 2",
+ "reason": "An out-of-flow box adds its own margins once: static position = margin edge of the hypothetical box, right-anchored boxes keep margin-right inside the inset (932a2b4). No corpus output changes (parity beae5be -> 932a2b4). P5b-W3.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json + crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json abs-static-position-* / abs-inset-margins cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs, crates/turbo-dom-layout/src/live/chrome_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

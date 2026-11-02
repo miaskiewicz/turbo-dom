@@ -1,0 +1,14 @@
+{
+ "id": "turbo-dom#104",
+ "class": "selectedcontent",
+ "reason": "<selectedcontent> is filled with a clone of the selected option's content after parsing, in rtdom and the npm parser (d97eccd, 85209d4, from consol/cov-core). The pass runs only when the input mentions selectedcontent; no corpus input does. Measured with fresh target dirs, before = edde7dc (git archive), after = consol/p5b-r1: html2pdf / html2pdf-svg / html2pdf-extra manifests byte-identical (turbo-html2pdf napi built against each side's turbo-dom + turbo-dom-layout); surf static tier (turbo-dom-raster screenshot_png / screenshot_svg at 1280x800 of 133 surf static + image-matrix + extra inputs, plain, caller-assets and system-fonts passes, 477 outputs) byte-identical by default and with avif + jxl. P5b-R1.",
+ "control": "crates/turbo-dom/tests/fixtures/rtdom_core_chrome156.json (scripts/rtdom-core-chrome-control.mjs, selectedcontent_* rows)",
+ "e2e": "crates/turbo-dom/tests/rtdom_core_chrome.rs, test/fragments-core-chrome.test.mjs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

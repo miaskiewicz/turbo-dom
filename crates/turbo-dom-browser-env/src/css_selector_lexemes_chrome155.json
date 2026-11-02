@@ -1,0 +1,78 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "probeSha256": "4394777c987b10ed5de24f3096e9616e3d165c727de8602da54b21dd0ee46d47",
+  "result": [
+    {
+      "initial": [
+        "x"
+      ],
+      "roundtrip": [
+        "x"
+      ],
+      "assigned": [
+        "x"
+      ],
+      "width": "43px",
+      "length": 2
+    },
+    {
+      "initial": [
+        "y"
+      ],
+      "roundtrip": [
+        "y"
+      ],
+      "assigned": [
+        "y"
+      ],
+      "width": "43px",
+      "length": 2
+    },
+    {
+      "initial": [
+        "z"
+      ],
+      "roundtrip": [
+        "z"
+      ],
+      "assigned": [
+        "z"
+      ],
+      "width": "43px",
+      "length": 2
+    },
+    {
+      "initial": [
+        "x",
+        "y"
+      ],
+      "roundtrip": [
+        "x",
+        "y"
+      ],
+      "assigned": [
+        "x",
+        "y"
+      ],
+      "width": "43px",
+      "length": 2
+    },
+    {
+      "initial": [
+        "x",
+        "z"
+      ],
+      "roundtrip": [
+        "x",
+        "z"
+      ],
+      "assigned": [
+        "x",
+        "z"
+      ],
+      "width": "43px",
+      "length": 2
+    }
+  ]
+}

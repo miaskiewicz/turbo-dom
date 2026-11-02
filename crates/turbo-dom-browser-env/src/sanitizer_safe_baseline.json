@@ -1,0 +1,596 @@
+{
+  "browserVersion": "156.0.8078.47",
+  "source": "new Sanitizer({}).removeUnsafe() then get() in Chrome: the built-in safe baseline removeElements and the event handler content attributes removeUnsafe() removes (src/sanitizer_chrome156.json re-verifies this)",
+  "removeElements": [
+    {
+      "name": "base",
+      "namespace": "http://www.w3.org/1999/xhtml"
+    },
+    {
+      "name": "embed",
+      "namespace": "http://www.w3.org/1999/xhtml"
+    },
+    {
+      "name": "frame",
+      "namespace": "http://www.w3.org/1999/xhtml"
+    },
+    {
+      "name": "iframe",
+      "namespace": "http://www.w3.org/1999/xhtml"
+    },
+    {
+      "name": "object",
+      "namespace": "http://www.w3.org/1999/xhtml"
+    },
+    {
+      "name": "script",
+      "namespace": "http://www.w3.org/1999/xhtml"
+    },
+    {
+      "name": "script",
+      "namespace": "http://www.w3.org/2000/svg"
+    },
+    {
+      "name": "use",
+      "namespace": "http://www.w3.org/2000/svg"
+    }
+  ],
+  "removeAttributes": [
+    {
+      "name": "onabort",
+      "namespace": null
+    },
+    {
+      "name": "onactivate",
+      "namespace": null
+    },
+    {
+      "name": "onafterprint",
+      "namespace": null
+    },
+    {
+      "name": "onanimationcancel",
+      "namespace": null
+    },
+    {
+      "name": "onanimationend",
+      "namespace": null
+    },
+    {
+      "name": "onanimationiteration",
+      "namespace": null
+    },
+    {
+      "name": "onanimationstart",
+      "namespace": null
+    },
+    {
+      "name": "onautofill",
+      "namespace": null
+    },
+    {
+      "name": "onauxclick",
+      "namespace": null
+    },
+    {
+      "name": "onbeforecopy",
+      "namespace": null
+    },
+    {
+      "name": "onbeforecut",
+      "namespace": null
+    },
+    {
+      "name": "onbeforefilter",
+      "namespace": null
+    },
+    {
+      "name": "onbeforeinput",
+      "namespace": null
+    },
+    {
+      "name": "onbeforepaste",
+      "namespace": null
+    },
+    {
+      "name": "onbeforeprint",
+      "namespace": null
+    },
+    {
+      "name": "onbeforetoggle",
+      "namespace": null
+    },
+    {
+      "name": "onbeforeunload",
+      "namespace": null
+    },
+    {
+      "name": "onbegin",
+      "namespace": null
+    },
+    {
+      "name": "onblur",
+      "namespace": null
+    },
+    {
+      "name": "oncancel",
+      "namespace": null
+    },
+    {
+      "name": "oncanplay",
+      "namespace": null
+    },
+    {
+      "name": "oncanplaythrough",
+      "namespace": null
+    },
+    {
+      "name": "onchange",
+      "namespace": null
+    },
+    {
+      "name": "onclick",
+      "namespace": null
+    },
+    {
+      "name": "onclose",
+      "namespace": null
+    },
+    {
+      "name": "oncommand",
+      "namespace": null
+    },
+    {
+      "name": "oncontentvisibilityautostatechange",
+      "namespace": null
+    },
+    {
+      "name": "oncontextlost",
+      "namespace": null
+    },
+    {
+      "name": "oncontextmenu",
+      "namespace": null
+    },
+    {
+      "name": "oncontextrestored",
+      "namespace": null
+    },
+    {
+      "name": "oncopy",
+      "namespace": null
+    },
+    {
+      "name": "oncuechange",
+      "namespace": null
+    },
+    {
+      "name": "oncut",
+      "namespace": null
+    },
+    {
+      "name": "ondblclick",
+      "namespace": null
+    },
+    {
+      "name": "ondrag",
+      "namespace": null
+    },
+    {
+      "name": "ondragend",
+      "namespace": null
+    },
+    {
+      "name": "ondragenter",
+      "namespace": null
+    },
+    {
+      "name": "ondragleave",
+      "namespace": null
+    },
+    {
+      "name": "ondragover",
+      "namespace": null
+    },
+    {
+      "name": "ondragstart",
+      "namespace": null
+    },
+    {
+      "name": "ondrop",
+      "namespace": null
+    },
+    {
+      "name": "ondurationchange",
+      "namespace": null
+    },
+    {
+      "name": "onemptied",
+      "namespace": null
+    },
+    {
+      "name": "onend",
+      "namespace": null
+    },
+    {
+      "name": "onended",
+      "namespace": null
+    },
+    {
+      "name": "onerror",
+      "namespace": null
+    },
+    {
+      "name": "onfocus",
+      "namespace": null
+    },
+    {
+      "name": "onfocusin",
+      "namespace": null
+    },
+    {
+      "name": "onfocusout",
+      "namespace": null
+    },
+    {
+      "name": "onformdata",
+      "namespace": null
+    },
+    {
+      "name": "ongotpointercapture",
+      "namespace": null
+    },
+    {
+      "name": "onhashchange",
+      "namespace": null
+    },
+    {
+      "name": "oninput",
+      "namespace": null
+    },
+    {
+      "name": "oninstallresult",
+      "namespace": null
+    },
+    {
+      "name": "oninvalid",
+      "namespace": null
+    },
+    {
+      "name": "onkeydown",
+      "namespace": null
+    },
+    {
+      "name": "onkeypress",
+      "namespace": null
+    },
+    {
+      "name": "onkeyup",
+      "namespace": null
+    },
+    {
+      "name": "onlanguagechange",
+      "namespace": null
+    },
+    {
+      "name": "onload",
+      "namespace": null
+    },
+    {
+      "name": "onloadeddata",
+      "namespace": null
+    },
+    {
+      "name": "onloadedmetadata",
+      "namespace": null
+    },
+    {
+      "name": "onloadstart",
+      "namespace": null
+    },
+    {
+      "name": "onlocation",
+      "namespace": null
+    },
+    {
+      "name": "onlostpointercapture",
+      "namespace": null
+    },
+    {
+      "name": "onmessage",
+      "namespace": null
+    },
+    {
+      "name": "onmessageerror",
+      "namespace": null
+    },
+    {
+      "name": "onmousedown",
+      "namespace": null
+    },
+    {
+      "name": "onmouseenter",
+      "namespace": null
+    },
+    {
+      "name": "onmouseleave",
+      "namespace": null
+    },
+    {
+      "name": "onmousemove",
+      "namespace": null
+    },
+    {
+      "name": "onmouseout",
+      "namespace": null
+    },
+    {
+      "name": "onmouseover",
+      "namespace": null
+    },
+    {
+      "name": "onmouseup",
+      "namespace": null
+    },
+    {
+      "name": "onmousewheel",
+      "namespace": null
+    },
+    {
+      "name": "onmove",
+      "namespace": null
+    },
+    {
+      "name": "onoffline",
+      "namespace": null
+    },
+    {
+      "name": "ononline",
+      "namespace": null
+    },
+    {
+      "name": "onorientationchange",
+      "namespace": null
+    },
+    {
+      "name": "onpagehide",
+      "namespace": null
+    },
+    {
+      "name": "onpageshow",
+      "namespace": null
+    },
+    {
+      "name": "onpaste",
+      "namespace": null
+    },
+    {
+      "name": "onpause",
+      "namespace": null
+    },
+    {
+      "name": "onplay",
+      "namespace": null
+    },
+    {
+      "name": "onplaying",
+      "namespace": null
+    },
+    {
+      "name": "onpointercancel",
+      "namespace": null
+    },
+    {
+      "name": "onpointerdown",
+      "namespace": null
+    },
+    {
+      "name": "onpointerenter",
+      "namespace": null
+    },
+    {
+      "name": "onpointerleave",
+      "namespace": null
+    },
+    {
+      "name": "onpointermove",
+      "namespace": null
+    },
+    {
+      "name": "onpointerout",
+      "namespace": null
+    },
+    {
+      "name": "onpointerover",
+      "namespace": null
+    },
+    {
+      "name": "onpointerrawupdate",
+      "namespace": null
+    },
+    {
+      "name": "onpointerup",
+      "namespace": null
+    },
+    {
+      "name": "onpopstate",
+      "namespace": null
+    },
+    {
+      "name": "onprogress",
+      "namespace": null
+    },
+    {
+      "name": "onpromptaction",
+      "namespace": null
+    },
+    {
+      "name": "onpromptdismiss",
+      "namespace": null
+    },
+    {
+      "name": "onratechange",
+      "namespace": null
+    },
+    {
+      "name": "onrepeat",
+      "namespace": null
+    },
+    {
+      "name": "onreset",
+      "namespace": null
+    },
+    {
+      "name": "onresize",
+      "namespace": null
+    },
+    {
+      "name": "onscroll",
+      "namespace": null
+    },
+    {
+      "name": "onscrollend",
+      "namespace": null
+    },
+    {
+      "name": "onscrollsnapchange",
+      "namespace": null
+    },
+    {
+      "name": "onscrollsnapchanging",
+      "namespace": null
+    },
+    {
+      "name": "onsearch",
+      "namespace": null
+    },
+    {
+      "name": "onsecuritypolicyviolation",
+      "namespace": null
+    },
+    {
+      "name": "onseeked",
+      "namespace": null
+    },
+    {
+      "name": "onseeking",
+      "namespace": null
+    },
+    {
+      "name": "onselect",
+      "namespace": null
+    },
+    {
+      "name": "onselectionchange",
+      "namespace": null
+    },
+    {
+      "name": "onselectstart",
+      "namespace": null
+    },
+    {
+      "name": "onshow",
+      "namespace": null
+    },
+    {
+      "name": "onslotchange",
+      "namespace": null
+    },
+    {
+      "name": "onstalled",
+      "namespace": null
+    },
+    {
+      "name": "onstorage",
+      "namespace": null
+    },
+    {
+      "name": "onstream",
+      "namespace": null
+    },
+    {
+      "name": "onsubmit",
+      "namespace": null
+    },
+    {
+      "name": "onsuspend",
+      "namespace": null
+    },
+    {
+      "name": "ontimeupdate",
+      "namespace": null
+    },
+    {
+      "name": "ontimezonechange",
+      "namespace": null
+    },
+    {
+      "name": "ontoggle",
+      "namespace": null
+    },
+    {
+      "name": "ontouchcancel",
+      "namespace": null
+    },
+    {
+      "name": "ontouchend",
+      "namespace": null
+    },
+    {
+      "name": "ontouchmove",
+      "namespace": null
+    },
+    {
+      "name": "ontouchstart",
+      "namespace": null
+    },
+    {
+      "name": "ontransitionend",
+      "namespace": null
+    },
+    {
+      "name": "onunload",
+      "namespace": null
+    },
+    {
+      "name": "onvalidationstatuschange",
+      "namespace": null
+    },
+    {
+      "name": "onvolumechange",
+      "namespace": null
+    },
+    {
+      "name": "onwaiting",
+      "namespace": null
+    },
+    {
+      "name": "onwebkitanimationend",
+      "namespace": null
+    },
+    {
+      "name": "onwebkitanimationiteration",
+      "namespace": null
+    },
+    {
+      "name": "onwebkitanimationstart",
+      "namespace": null
+    },
+    {
+      "name": "onwebkitfullscreenchange",
+      "namespace": null
+    },
+    {
+      "name": "onwebkitfullscreenerror",
+      "namespace": null
+    },
+    {
+      "name": "onwebkittransitionend",
+      "namespace": null
+    },
+    {
+      "name": "onwheel",
+      "namespace": null
+    }
+  ]
+}

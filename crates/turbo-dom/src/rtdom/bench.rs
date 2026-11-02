@@ -161,7 +161,11 @@ fn fixture(cards: usize) -> String {
             "<div class=\"card sx-{}\" data-testid=\"card-{}\" id=\"c{}\">\
 <h2 class=title>Title {}</h2><p class=body>Body text for card {}.</p>\
 <button class=btn type=button>Action</button></div>",
-            i % 7, i, i, i, i
+            i % 7,
+            i,
+            i,
+            i,
+            i
         );
     }
     s.push_str("</main></body></html>");
@@ -179,30 +183,51 @@ fn compare_all() {
 
     // D1 parse: unique HTML each iter (rtdom has no parse cache; keep it honest anyway)
     let mut i = 0u64;
-    let parse = bench(|| { i += 1; u64::from(Tree::parse(&format!("{html}<!--{i}-->")).node_count()) }, 400);
+    let parse = bench(
+        || {
+            i += 1;
+            u64::from(Tree::parse(&format!("{html}<!--{i}-->")).node_count())
+        },
+        400,
+    );
 
     // D2 construct + light query
     let mut j = 0u64;
-    let construct = bench(|| {
-        j += 1;
-        let t = Tree::parse(&format!("{html}<!--{j}-->"));
-        t.query_selector_all("div.card").len() as u64
-    }, 400);
+    let construct = bench(
+        || {
+            j += 1;
+            let t = Tree::parse(&format!("{html}<!--{j}-->"));
+            t.query_selector_all("div.card").len() as u64
+        },
+        400,
+    );
 
     // D3 per-node chatty access over a fixed element list
     let tree = Tree::parse(&html);
     let cards = tree.query_selector_all("div.card");
-    let per_node = bench(|| {
-        let mut s = 0u64;
-        for &el in cards.iter() {
-            if let Some(c) = tree.get_attribute(el, "class") { s += c.len() as u64; }
-            if let Some(t) = tree.get_attribute(el, "data-testid") { s += t.len() as u64; }
-            if let Some(t) = tree.tag_name(el) { s += t.len() as u64; }
-            let mut p = tree.parent(el);
-            while let Some(x) = p { s += 1; p = tree.parent(x); }
-        }
-        s
-    }, 400);
+    let per_node = bench(
+        || {
+            let mut s = 0u64;
+            for &el in cards.iter() {
+                if let Some(c) = tree.get_attribute(el, "class") {
+                    s += c.len() as u64;
+                }
+                if let Some(t) = tree.get_attribute(el, "data-testid") {
+                    s += t.len() as u64;
+                }
+                if let Some(t) = tree.tag_name(el) {
+                    s += t.len() as u64;
+                }
+                let mut p = tree.parent(el);
+                while let Some(x) = p {
+                    s += 1;
+                    p = tree.parent(x);
+                }
+            }
+            s
+        },
+        400,
+    );
 
     // D4 repeated query on an unchanged tree (version-cached)
     let repeated = bench(|| tree.query_selector_all("div.card").len() as u64, 400);
@@ -222,67 +247,131 @@ fn hotspot_report() {
     let mut rows: Vec<(String, Measure)> = Vec::new();
 
     // 1. parse (cold tree build per call)
-    rows.push(("parse(300 cards)".into(), measure(|| u64::from(Tree::parse(&html).node_count()), 300, 200)));
+    rows.push((
+        "parse(300 cards)".into(),
+        measure(|| u64::from(Tree::parse(&html).node_count()), 300, 200),
+    ));
 
     // 2. querySelectorAll cached (repeated query, unchanged tree = cache hit — RTL pattern)
-    rows.push(("qsa div.card (cached)".into(), measure(|| base.query_selector_all("div.card").len() as u64, 300, 5000)));
+    rows.push((
+        "qsa div.card (cached)".into(),
+        measure(
+            || base.query_selector_all("div.card").len() as u64,
+            300,
+            5000,
+        ),
+    ));
 
     // 3. querySelectorAll cold (fresh tree each time — full matcher walk, no cache benefit)
-    rows.push(("qsa div.card (cold tree)".into(), measure(|| {
-        let t = Tree::parse(&html);
-        t.query_selector_all(".card .title").len() as u64
-    }, 300, 200)));
+    rows.push((
+        "qsa div.card (cold tree)".into(),
+        measure(
+            || {
+                let t = Tree::parse(&html);
+                t.query_selector_all(".card .title").len() as u64
+            },
+            300,
+            200,
+        ),
+    ));
 
     // 4. getElementById (uncached full-tree walk)
-    rows.push(("getElementById".into(), measure(|| base.get_element_by_id("c250").map_or(0, |h| u64::from(h.0)), 300, 5000)));
+    rows.push((
+        "getElementById".into(),
+        measure(
+            || base.get_element_by_id("c250").map_or(0, |h| u64::from(h.0)),
+            300,
+            5000,
+        ),
+    ));
 
     // 5. getAttribute over all cards (per-node buffer scan)
-    rows.push(("getAttribute x3/card".into(), measure(|| {
-        let mut s = 0u64;
-        for &c in cards.iter() {
-            s += base.get_attribute(c, "class").map_or(0, |v| v.len() as u64);
-            s += base.get_attribute(c, "data-testid").map_or(0, |v| v.len() as u64);
-            s += base.get_attribute(c, "id").map_or(0, |v| v.len() as u64);
-        }
-        s
-    }, 300, 2000)));
+    rows.push((
+        "getAttribute x3/card".into(),
+        measure(
+            || {
+                let mut s = 0u64;
+                for &c in cards.iter() {
+                    s += base.get_attribute(c, "class").map_or(0, |v| v.len() as u64);
+                    s += base
+                        .get_attribute(c, "data-testid")
+                        .map_or(0, |v| v.len() as u64);
+                    s += base.get_attribute(c, "id").map_or(0, |v| v.len() as u64);
+                }
+                s
+            },
+            300,
+            2000,
+        ),
+    ));
 
     // 6. computed_style per card (cascade — rebuilds the rule index each call?)
-    rows.push(("getComputedStyle/card".into(), measure(|| {
-        let mut s = 0u64;
-        for &c in cards.iter() {
-            s += cascade::computed_style(&base, c).len() as u64;
-        }
-        s
-    }, 400, 200)));
+    rows.push((
+        "getComputedStyle/card".into(),
+        measure(
+            || {
+                let mut s = 0u64;
+                for &c in cards.iter() {
+                    s += cascade::computed_style(&base, c).len() as u64;
+                }
+                s
+            },
+            400,
+            200,
+        ),
+    ));
 
     // 7. serialize the whole grid
     let root = base.root();
-    rows.push(("serialize_inner(root)".into(), measure(|| serialize::serialize_inner(&base, root).len() as u64, 300, 1000)));
+    rows.push((
+        "serialize_inner(root)".into(),
+        measure(
+            || serialize::serialize_inner(&base, root).len() as u64,
+            300,
+            1000,
+        ),
+    ));
 
     // 8. dispatch listener-less (React fires thousands)
     {
         let mut dom = Dom::parse(&html);
         let btn = dom.tree.query_selector("button").unwrap();
-        rows.push(("dispatch listener-less".into(), measure(|| {
-            let mut e = Event::new("click", true, true);
-            u64::from(dom.dispatch_event(btn, &mut e))
-        }, 300, 5000)));
+        rows.push((
+            "dispatch listener-less".into(),
+            measure(
+                || {
+                    let mut e = Event::new("click", true, true);
+                    u64::from(dom.dispatch_event(btn, &mut e))
+                },
+                300,
+                5000,
+            ),
+        ));
     }
 
     // 9. mutation: append + setAttribute + remove (no observer)
-    rows.push(("mutate append+attr+remove".into(), measure(|| {
-        let mut t = Tree::parse("<div id=root></div>");
-        let root = t.query_selector("#root").unwrap();
-        let el = t.create_element("span");
-        t.set_attribute(el, "class", "x");
-        t.append_child(root, el);
-        t.remove_child(root, el);
-        t.version
-    }, 300, 2000)));
+    rows.push((
+        "mutate append+attr+remove".into(),
+        measure(
+            || {
+                let mut t = Tree::parse("<div id=root></div>");
+                let root = t.query_selector("#root").unwrap();
+                let el = t.create_element("span");
+                t.set_attribute(el, "class", "x");
+                t.append_child(root, el);
+                t.remove_child(root, el);
+                t.version
+            },
+            300,
+            2000,
+        ),
+    ));
 
     rows.sort_by(|a, b| a.1.ops_per_s.partial_cmp(&b.1.ops_per_s).unwrap());
-    print_report(&format!("rtdom hotspot report ({n} cards, best-of-6 ops/s, slowest first)"), &rows);
+    print_report(
+        &format!("rtdom hotspot report ({n} cards, best-of-6 ops/s, slowest first)"),
+        &rows,
+    );
 }
 
 /// Shared table printer: name | ops/s | ns/op | allocs/op | bytes/op.
@@ -293,7 +382,11 @@ fn print_report(title: &str, rows: &[(String, Measure)]) {
         "name", "ops/s", "ns/op", "allocs/op", "bytes/op"
     );
     for (name, m) in rows {
-        let ns = if m.ops_per_s > 0.0 { 1e9 / m.ops_per_s } else { 0.0 };
+        let ns = if m.ops_per_s > 0.0 {
+            1e9 / m.ops_per_s
+        } else {
+            0.0
+        };
         println!(
             "  {:<30} {:>12.0} {:>12.0} {:>11.1} {:>12.0}",
             name, m.ops_per_s, ns, m.allocs_per_op, m.bytes_per_op
@@ -389,40 +482,54 @@ fn large_tree_report() {
     // iteration, forcing a distinct cache key and a full document walk every
     // call while leaving the match set identical — the crawler's worst case.
     let varied: &[&str] = &[
-        ".card",                  // simple class
-        ".wrap .card",            // descendant
-        ".row > .card",           // child
-        ".wrap .row .card",       // .a .b .c
-        "[data-testid^=card]",    // attribute op (prefix)
-        ".row:nth-child(1)",      // structural pseudo
-        ".card:has(.flag)",       // relational
+        ".card",               // simple class
+        ".wrap .card",         // descendant
+        ".row > .card",        // child
+        ".wrap .row .card",    // .a .b .c
+        "[data-testid^=card]", // attribute op (prefix)
+        ".row:nth-child(1)",   // structural pseudo
+        ".card:has(.flag)",    // relational
     ];
 
     // 1. UNCACHED query_selector_all: unique selector string each call (no-match
     //    comma arm) so the version cache always misses and a full walk runs.
     {
         let mut k = 0usize;
-        rows.push(("qsa varied (UNCACHED)".into(), measure(|| {
-            let sel = format!("{}, #__u{k}", varied[k % varied.len()]);
-            k += 1;
-            base.query_selector_all(&sel).len() as u64
-        }, 400, 300)));
+        rows.push((
+            "qsa varied (UNCACHED)".into(),
+            measure(
+                || {
+                    let sel = format!("{}, #__u{k}", varied[k % varied.len()]);
+                    k += 1;
+                    base.query_selector_all(&sel).len() as u64
+                },
+                400,
+                300,
+            ),
+        ));
     }
 
     // 2. UNCACHED matches(h, sel) across every element, cycling selectors.
     {
         let mut k = 0usize;
-        rows.push(("matches varied/elem (UNCACHED)".into(), measure(|| {
-            let sel = varied[k % varied.len()];
-            k += 1;
-            let mut hits = 0u64;
-            for &el in elements.iter() {
-                if base.matches(el, sel) {
-                    hits += 1;
-                }
-            }
-            hits
-        }, 400, 30)));
+        rows.push((
+            "matches varied/elem (UNCACHED)".into(),
+            measure(
+                || {
+                    let sel = varied[k % varied.len()];
+                    k += 1;
+                    let mut hits = 0u64;
+                    for &el in elements.iter() {
+                        if base.matches(el, sel) {
+                            hits += 1;
+                        }
+                    }
+                    hits
+                },
+                400,
+                30,
+            ),
+        ));
     }
 
     // 3. :has-heavy querySelectorAll — exercises the descendant search inside
@@ -436,11 +543,18 @@ fn large_tree_report() {
             ".card:has(.btn)",
         ];
         let mut k = 0usize;
-        rows.push((":has qsa (UNCACHED)".into(), measure(|| {
-            let sel = format!("{}, #__h{k}", has_sels[k % has_sels.len()]);
-            k += 1;
-            base.query_selector_all(&sel).len() as u64
-        }, 400, 100)));
+        rows.push((
+            ":has qsa (UNCACHED)".into(),
+            measure(
+                || {
+                    let sel = format!("{}, #__h{k}", has_sels[k % has_sels.len()]);
+                    k += 1;
+                    base.query_selector_all(&sel).len() as u64
+                },
+                400,
+                100,
+            ),
+        ));
     }
 
     // 4. mutation churn: build a subtree of many nodes, append, then tear it

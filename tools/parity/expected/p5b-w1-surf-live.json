@@ -1,0 +1,18 @@
+{
+ "id": "turbo-surf#31/#36 (P5b-W1 live geometry)",
+ "reason": "live geometry: row/row-group boxes, sr-only blockified, auto tables shrink-to-fit, template display:none \u2014 surf live dumps (measured by P5b-surf2 at turbo-dom 79a94d3 vs 9553921); also listed by p5b-x3-surf-36",
+ "control": "crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json",
+ "changes": {
+  "surf": [
+   "live-turbo-html2pdf__benches__conformance__fixtures__07-table.html",
+   "live-turbo-html2pdf__benches__conformance__fixtures__29-table-valign-colspan.html",
+   "live-turbo-html2pdf__benches__conformance__fixtures__53-table-auto-min-content.html",
+   "live-turbo-html2pdf__benches__conformance__fixtures__54-table-border-spacing.html",
+   "live-turbo-html2pdf__benches__conformance__fixtures__55-table-empty-row-height.html",
+   "live-turbo-html2pdf__benches__conformance__fixtures__64-sr-only-clip-dropped.html",
+   "live-turbo-surf__harness__detection__sanitizer-declarative-scripts.html",
+   "live-turbo-surf__rust__crates__turbo-surf-render__src__declarative_shadow_page.html",
+   "live-turbo-surf__rust__crates__turbo-surf-render__tests__fixtures__react-streaming-hydration.html"
+  ]
+ }
+}

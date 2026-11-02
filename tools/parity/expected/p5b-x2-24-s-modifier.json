@@ -1,0 +1,13 @@
+{
+ "id": "P5b-X2/turbo-dom#24/s-modifier",
+ "class": "s attribute modifier",
+ "reason": "The CSS s (case-sensitive) attribute modifier is a SyntaxError / invalid rule like Chrome 156 (it was a Rust extension). No pinned corpus stylesheet or selector uses it, so no output is expected to change; measured against b-main with the s3b-*, p5b-* and turbo-* expectations.",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cases/malformed: [a=b s], [a=b S], [a=\"1\" s]); crates/turbo-dom/tests/fixtures/attribute-case/chrome155.json (7 s cases)",
+ "e2e": "crates/turbo-dom/tests/cascade_selectors_chrome.rs, crates/turbo-dom/tests/attribute_case.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

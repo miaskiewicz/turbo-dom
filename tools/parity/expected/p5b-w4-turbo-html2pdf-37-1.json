@@ -1,0 +1,13 @@
+{
+ "id": "turbo-html2pdf#37 item 1",
+ "reason": "A block split across pages paints a slice of its box (background, border, shadow) on every page it spans (box-decoration-break: slice), under its content; a block with no in-flow content is atomic (4157768). Attribution: napi builds (plain + svg, fresh target dirs, git-archived commits) of turbo-html2pdf consol/p5b-w4 against turbo-dom 79a94d3, each step vs the previous: e5bc800 -> 4157768: 0 outputs (no corpus input splits a painting block). P5b-W4.",
+ "control": "turbo-html2pdf crates/turbo-html2pdf-core/tests/fixtures/pagination_chrome156.json (scripts/pagination-chrome-control.mjs: Chrome for Testing 156.0.8078.4 page.pdf() of 600x400px @page boxes, pdftoppm -r 96) cases split-decorated, split-decorated-nested, split-decorated-after-content",
+ "e2e": "turbo-html2pdf crates/turbo-html2pdf-core/tests/pagination_chrome.rs; also through the emitted PDF (pdftoppm)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

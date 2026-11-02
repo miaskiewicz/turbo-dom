@@ -1,0 +1,14 @@
+{
+ "id": "P5b/turbo-dom#21/cascade-order",
+ "class": "cascade-order",
+ "reason": "turbo-dom-layout's cascade ranked candidate declarations by (importance, level, specificity, rule order + declaration index), so a declaration late in an earlier rule beat a later rule of equal specificity (`p{margin-top:1px;margin-bottom:1px;color:red} p{color:green}` resolved red). It now ranks by importance, origin (an !important UA declaration beats !important author ones), specificity, the rule's source order, then the declaration index (4aa66f9). Measured: no parity-corpus output changes (html2pdf, html2pdf-svg, html2pdf-extra vs b-main; surf static vs S5).",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cascade_cases/declaration-order, importance, inline-importance)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "surf_static": "turbo-dom-raster static screenshots (the surf static tier) of every surf static + extra input: byte-identical to S5 (74bcc5c), PNG + SVG + system-fonts passes.",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

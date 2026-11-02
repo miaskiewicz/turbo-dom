@@ -1,0 +1,107 @@
+[
+  {
+    "id": "shape",
+    "headers": [],
+    "html": "<!doctype html><html data-case=\"shape\"><head></head><body></body></html>"
+  },
+  {
+    "id": "values",
+    "headers": [],
+    "html": "<!doctype html><html data-case=\"values\"><head></head><body></body></html>"
+  },
+  {
+    "id": "callbacks",
+    "headers": [],
+    "html": "<!doctype html><html data-case=\"callbacks\"><head></head><body></body></html>"
+  },
+  {
+    "id": "missing-rules",
+    "headers": [],
+    "html": "<!doctype html><html data-case=\"missing-rules\"><head></head><body></body></html>"
+  },
+  {
+    "id": "option-conversion",
+    "headers": [],
+    "html": "<!doctype html><html data-case=\"option-conversion\"><head></head><body></body></html>"
+  },
+  {
+    "id": "mapping",
+    "headers": [],
+    "html": "<!doctype html><html data-case=\"mapping\"><head></head><body></body></html>"
+  },
+  {
+    "id": "brands",
+    "headers": [],
+    "html": "<!doctype html><html data-case=\"brands\"><head></head><body></body></html>"
+  },
+  {
+    "id": "cross-realm",
+    "headers": [],
+    "html": "<!doctype html><html data-case=\"cross-realm\"><head></head><body></body></html>"
+  },
+  {
+    "id": "edge-cases",
+    "headers": [],
+    "html": "<!doctype html><html data-case=\"edge-cases\"><head></head><body></body></html>"
+  },
+  {
+    "id": "policy-csp-allowlist",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "trusted-types alpha default"
+      ]
+    ],
+    "html": "<!doctype html><html data-case=\"policy-csp-allowlist\"><head></head><body></body></html>"
+  },
+  {
+    "id": "policy-csp-none",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "trusted-types 'none'"
+      ]
+    ],
+    "html": "<!doctype html><html data-case=\"policy-csp-none\"><head></head><body></body></html>"
+  },
+  {
+    "id": "policy-csp-wildcard",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "trusted-types *"
+      ]
+    ],
+    "html": "<!doctype html><html data-case=\"policy-csp-wildcard\"><head></head><body></body></html>"
+  },
+  {
+    "id": "policy-csp-duplicates",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "trusted-types alpha default 'allow-duplicates'"
+      ]
+    ],
+    "html": "<!doctype html><html data-case=\"policy-csp-duplicates\"><head></head><body></body></html>"
+  },
+  {
+    "id": "policy-csp-report-only",
+    "headers": [
+      [
+        "Content-Security-Policy-Report-Only",
+        "trusted-types alpha"
+      ]
+    ],
+    "html": "<!doctype html><html data-case=\"policy-csp-report-only\"><head></head><body></body></html>"
+  },
+  {
+    "id": "default-sinks",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "trusted-types default; require-trusted-types-for 'script'"
+      ]
+    ],
+    "html": "<!doctype html><html data-case=\"default-sinks\"><head></head><body></body></html>"
+  }
+]

@@ -1,0 +1,13 @@
+{
+ "id": "P5b-X2/turbo-dom#24/defined-upgrade",
+ "class": ":defined after customElements.define()",
+ "reason": "The tree keeps the HTML custom element state; the V8 binding reports upgrades, so :defined follows customElements.define(). Without a report the state is the creation-time one (custom element names and the parser's is attribute undefined, as before for every parsed document). The html2pdf corpora parse static documents and run no scripts: no output is expected to change. The surf corpus is not measured by this slice.",
+ "control": "crates/turbo-dom-browser-env/src/custom_elements_defined_chrome156.json; crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cases/defined, cascade_cases/cascade-only-pseudos)",
+ "e2e": "crates/turbo-dom-browser-env/src/custom_elements.rs (defined_follows_upgrades_matching_chrome156), crates/turbo-dom/tests/custom_element_state.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

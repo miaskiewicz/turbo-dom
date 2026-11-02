@@ -1,0 +1,13 @@
+{
+ "id": "P5b-X2/turbo-dom#24/rtdom-specificity",
+ "class": "rtdom::cascade specificity",
+ "reason": "rtdom::cascade (getComputedStyle through turbo-dom / the V8 binding) and the npm cascade.mjs rank rules by the parse_for_cascade item's Selectors 4 specificity instead of a per-token count. The html2pdf corpora style with turbo-dom-layout's cascade, which already used it, so no html2pdf output is expected to change; the surf corpus is not measured by this slice (surf's computed-style dumps come from its live layout cascade).",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cascade_cases/specificity-where, specificity-is-not-has, specificity-arguments, cascade-only-pseudos)",
+ "e2e": "crates/turbo-dom/tests/cascade_selectors_chrome.rs (check_rtdom_cascade_case), test/selectors-chrome.test.mjs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

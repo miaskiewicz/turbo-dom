@@ -1,0 +1,1473 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "b03ecf3504e851b6aa02b779834658da29f7aa5b4619eea115cd818d5562cdc9",
+  "probeSha256": "a6ff9bbd7aed33404a3ef87f949328968159ae78ee7348dcacca69a0125bbdea",
+  "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "svg-mathml-element",
+      "result": {
+        "repro": {
+          "flexGrow": "1",
+          "attribute": "flex-grow: 1;"
+        },
+        "descriptors": [
+          {
+            "owner": "Element",
+            "key": "style",
+            "missing": true
+          },
+          {
+            "owner": "Element",
+            "key": "dataset",
+            "missing": true
+          },
+          {
+            "owner": "Element",
+            "key": "nonce",
+            "missing": true
+          },
+          {
+            "owner": "Element",
+            "key": "tabIndex",
+            "missing": true
+          },
+          {
+            "owner": "Element",
+            "key": "autofocus",
+            "missing": true
+          },
+          {
+            "owner": "Element",
+            "key": "focus",
+            "missing": true
+          },
+          {
+            "owner": "Element",
+            "key": "blur",
+            "missing": true
+          },
+          {
+            "owner": "Element",
+            "key": "onclick",
+            "missing": true
+          },
+          {
+            "owner": "Element",
+            "key": "onfocus",
+            "missing": true
+          },
+          {
+            "owner": "HTMLElement",
+            "key": "style",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get style",
+            "setter": "set style",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "HTMLElement",
+            "key": "dataset",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get dataset",
+            "setter": null,
+            "getLength": 0,
+            "setLength": null
+          },
+          {
+            "owner": "HTMLElement",
+            "key": "nonce",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get nonce",
+            "setter": "set nonce",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "HTMLElement",
+            "key": "tabIndex",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get tabIndex",
+            "setter": "set tabIndex",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "HTMLElement",
+            "key": "autofocus",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get autofocus",
+            "setter": "set autofocus",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "HTMLElement",
+            "key": "focus",
+            "method": "function",
+            "name": "focus",
+            "length": 0,
+            "enumerable": true,
+            "configurable": true,
+            "writable": true
+          },
+          {
+            "owner": "HTMLElement",
+            "key": "blur",
+            "method": "function",
+            "name": "blur",
+            "length": 0,
+            "enumerable": true,
+            "configurable": true,
+            "writable": true
+          },
+          {
+            "owner": "HTMLElement",
+            "key": "onclick",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get onclick",
+            "setter": "set onclick",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "HTMLElement",
+            "key": "onfocus",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get onfocus",
+            "setter": "set onfocus",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "SVGElement",
+            "key": "style",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get style",
+            "setter": "set style",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "SVGElement",
+            "key": "dataset",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get dataset",
+            "setter": null,
+            "getLength": 0,
+            "setLength": null
+          },
+          {
+            "owner": "SVGElement",
+            "key": "nonce",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get nonce",
+            "setter": "set nonce",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "SVGElement",
+            "key": "tabIndex",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get tabIndex",
+            "setter": "set tabIndex",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "SVGElement",
+            "key": "autofocus",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get autofocus",
+            "setter": "set autofocus",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "SVGElement",
+            "key": "focus",
+            "method": "function",
+            "name": "focus",
+            "length": 0,
+            "enumerable": true,
+            "configurable": true,
+            "writable": true
+          },
+          {
+            "owner": "SVGElement",
+            "key": "blur",
+            "method": "function",
+            "name": "blur",
+            "length": 0,
+            "enumerable": true,
+            "configurable": true,
+            "writable": true
+          },
+          {
+            "owner": "SVGElement",
+            "key": "onclick",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get onclick",
+            "setter": "set onclick",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "SVGElement",
+            "key": "onfocus",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get onfocus",
+            "setter": "set onfocus",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "MathMLElement",
+            "key": "style",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get style",
+            "setter": "set style",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "MathMLElement",
+            "key": "dataset",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get dataset",
+            "setter": null,
+            "getLength": 0,
+            "setLength": null
+          },
+          {
+            "owner": "MathMLElement",
+            "key": "nonce",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get nonce",
+            "setter": "set nonce",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "MathMLElement",
+            "key": "tabIndex",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get tabIndex",
+            "setter": "set tabIndex",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "MathMLElement",
+            "key": "autofocus",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get autofocus",
+            "setter": "set autofocus",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "MathMLElement",
+            "key": "focus",
+            "method": "function",
+            "name": "focus",
+            "length": 0,
+            "enumerable": true,
+            "configurable": true,
+            "writable": true
+          },
+          {
+            "owner": "MathMLElement",
+            "key": "blur",
+            "method": "function",
+            "name": "blur",
+            "length": 0,
+            "enumerable": true,
+            "configurable": true,
+            "writable": true
+          },
+          {
+            "owner": "MathMLElement",
+            "key": "onclick",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get onclick",
+            "setter": "set onclick",
+            "getLength": 0,
+            "setLength": 1
+          },
+          {
+            "owner": "MathMLElement",
+            "key": "onfocus",
+            "enumerable": true,
+            "configurable": true,
+            "getter": "get onfocus",
+            "setter": "set onfocus",
+            "getLength": 0,
+            "setLength": 1
+          }
+        ],
+        "mathml": {
+          "type": "function",
+          "name": "MathMLElement",
+          "length": 0,
+          "parent": true,
+          "ctorParent": true,
+          "tag": "[object MathMLElement]",
+          "proto": true,
+          "parsed": [
+            true,
+            true
+          ],
+          "notSvg": [
+            false,
+            false,
+            false
+          ],
+          "constructed": "TypeError",
+          "windowDescriptor": {
+            "writable": true,
+            "enumerable": false,
+            "configurable": true
+          }
+        },
+        "elements": {
+          "svg": {
+            "has_style": true,
+            "has_dataset": true,
+            "has_nonce": true,
+            "has_tabIndex": true,
+            "has_autofocus": true,
+            "has_focus": true,
+            "has_blur": true,
+            "has_onclick": true,
+            "has_onfocus": true,
+            "styleTag": "[object CSSStyleDeclaration]",
+            "isDeclaration": true,
+            "same": true,
+            "emptyText": "",
+            "afterSet": "color: red; --x: 1;",
+            "fromAttribute": [
+              "2px",
+              "blue",
+              2
+            ],
+            "putForwards": [
+              "stroke: green;",
+              "green",
+              true
+            ],
+            "afterRemove": [
+              "",
+              0
+            ],
+            "afterRemoveAttribute": [
+              "",
+              0,
+              false
+            ],
+            "dataset": [
+              "x",
+              "1",
+              "fooBar,a",
+              true
+            ],
+            "nonce": [
+              "",
+              "n1",
+              "n2",
+              "n1"
+            ],
+            "tabIndex": [
+              -1,
+              3,
+              -1,
+              5,
+              "5"
+            ],
+            "autofocus": [
+              false,
+              true,
+              "",
+              false,
+              false
+            ],
+            "focus": [
+              [
+                false,
+                true,
+                ""
+              ],
+              [
+                true,
+                true,
+                "focus,blur"
+              ]
+            ],
+            "onclick": [
+              1,
+              "function",
+              "onclick"
+            ]
+          },
+          "rect": {
+            "has_style": true,
+            "has_dataset": true,
+            "has_nonce": true,
+            "has_tabIndex": true,
+            "has_autofocus": true,
+            "has_focus": true,
+            "has_blur": true,
+            "has_onclick": true,
+            "has_onfocus": true,
+            "styleTag": "[object CSSStyleDeclaration]",
+            "isDeclaration": true,
+            "same": true,
+            "emptyText": "",
+            "afterSet": "color: red; --x: 1;",
+            "fromAttribute": [
+              "2px",
+              "blue",
+              2
+            ],
+            "putForwards": [
+              "stroke: green;",
+              "green",
+              true
+            ],
+            "afterRemove": [
+              "",
+              0
+            ],
+            "afterRemoveAttribute": [
+              "",
+              0,
+              false
+            ],
+            "dataset": [
+              "x",
+              "1",
+              "fooBar,a",
+              true
+            ],
+            "nonce": [
+              "",
+              "n1",
+              "n2",
+              "n1"
+            ],
+            "tabIndex": [
+              -1,
+              3,
+              -1,
+              5,
+              "5"
+            ],
+            "autofocus": [
+              false,
+              true,
+              "",
+              false,
+              false
+            ],
+            "focus": [
+              [
+                false,
+                true,
+                ""
+              ],
+              [
+                true,
+                true,
+                "focus,blur"
+              ]
+            ],
+            "onclick": [
+              1,
+              "function",
+              "onclick"
+            ]
+          },
+          "svgA": {
+            "has_style": true,
+            "has_dataset": true,
+            "has_nonce": true,
+            "has_tabIndex": true,
+            "has_autofocus": true,
+            "has_focus": true,
+            "has_blur": true,
+            "has_onclick": true,
+            "has_onfocus": true,
+            "styleTag": "[object CSSStyleDeclaration]",
+            "isDeclaration": true,
+            "same": true,
+            "emptyText": "",
+            "afterSet": "color: red; --x: 1;",
+            "fromAttribute": [
+              "2px",
+              "blue",
+              2
+            ],
+            "putForwards": [
+              "stroke: green;",
+              "green",
+              true
+            ],
+            "afterRemove": [
+              "",
+              0
+            ],
+            "afterRemoveAttribute": [
+              "",
+              0,
+              false
+            ],
+            "dataset": [
+              "x",
+              "1",
+              "fooBar,a",
+              true
+            ],
+            "nonce": [
+              "",
+              "n1",
+              "n2",
+              "n1"
+            ],
+            "tabIndex": [
+              0,
+              3,
+              0,
+              5,
+              "5"
+            ],
+            "autofocus": [
+              false,
+              true,
+              "",
+              false,
+              false
+            ],
+            "focus": [
+              [
+                true,
+                true,
+                "focus,blur"
+              ],
+              [
+                true,
+                true,
+                "focus,blur"
+              ]
+            ],
+            "onclick": [
+              1,
+              "function",
+              "onclick"
+            ]
+          },
+          "math": {
+            "has_style": true,
+            "has_dataset": true,
+            "has_nonce": true,
+            "has_tabIndex": true,
+            "has_autofocus": true,
+            "has_focus": true,
+            "has_blur": true,
+            "has_onclick": true,
+            "has_onfocus": true,
+            "styleTag": "[object CSSStyleDeclaration]",
+            "isDeclaration": true,
+            "same": true,
+            "emptyText": "",
+            "afterSet": "color: red; --x: 1;",
+            "fromAttribute": [
+              "2px",
+              "blue",
+              2
+            ],
+            "putForwards": [
+              "stroke: green;",
+              "green",
+              true
+            ],
+            "afterRemove": [
+              "",
+              0
+            ],
+            "afterRemoveAttribute": [
+              "",
+              0,
+              false
+            ],
+            "dataset": [
+              "x",
+              "1",
+              "fooBar,a",
+              true
+            ],
+            "nonce": [
+              "",
+              "n1",
+              "n2",
+              "n1"
+            ],
+            "tabIndex": [
+              -1,
+              3,
+              -1,
+              5,
+              "5"
+            ],
+            "autofocus": [
+              false,
+              true,
+              "",
+              false,
+              false
+            ],
+            "focus": [
+              [
+                false,
+                true,
+                ""
+              ],
+              [
+                true,
+                true,
+                "focus,blur"
+              ]
+            ],
+            "onclick": [
+              1,
+              "function",
+              "onclick"
+            ]
+          },
+          "mi": {
+            "has_style": true,
+            "has_dataset": true,
+            "has_nonce": true,
+            "has_tabIndex": true,
+            "has_autofocus": true,
+            "has_focus": true,
+            "has_blur": true,
+            "has_onclick": true,
+            "has_onfocus": true,
+            "styleTag": "[object CSSStyleDeclaration]",
+            "isDeclaration": true,
+            "same": true,
+            "emptyText": "",
+            "afterSet": "color: red; --x: 1;",
+            "fromAttribute": [
+              "2px",
+              "blue",
+              2
+            ],
+            "putForwards": [
+              "stroke: green;",
+              "green",
+              true
+            ],
+            "afterRemove": [
+              "",
+              0
+            ],
+            "afterRemoveAttribute": [
+              "",
+              0,
+              false
+            ],
+            "dataset": [
+              "x",
+              "1",
+              "fooBar,a",
+              true
+            ],
+            "nonce": [
+              "",
+              "n1",
+              "n2",
+              "n1"
+            ],
+            "tabIndex": [
+              -1,
+              3,
+              -1,
+              5,
+              "5"
+            ],
+            "autofocus": [
+              false,
+              true,
+              "",
+              false,
+              false
+            ],
+            "focus": [
+              [
+                false,
+                true,
+                ""
+              ],
+              [
+                true,
+                true,
+                "focus,blur"
+              ]
+            ],
+            "onclick": [
+              1,
+              "function",
+              "onclick"
+            ]
+          },
+          "unknownNs": {
+            "has_style": false,
+            "has_dataset": false,
+            "has_nonce": false,
+            "has_tabIndex": false,
+            "has_autofocus": false,
+            "has_focus": false,
+            "has_blur": false,
+            "has_onclick": false,
+            "has_onfocus": false
+          }
+        },
+        "parsed": [
+          "red",
+          "blue",
+          "2px",
+          2,
+          "v",
+          2,
+          "red",
+          "w"
+        ],
+        "brand": [
+          [
+            "HTMLElement",
+            "style",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "style",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "style",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "style",
+            "other",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "dataset",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "dataset",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "dataset",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "dataset",
+            "other",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "nonce",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "nonce",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "nonce",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "nonce",
+            "other",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "tabIndex",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "tabIndex",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "tabIndex",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "tabIndex",
+            "other",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "autofocus",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "autofocus",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "autofocus",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "autofocus",
+            "other",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "focus",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "focus",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "focus",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "focus",
+            "other",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "blur",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "blur",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "blur",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "blur",
+            "other",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "click",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "click",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "click",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "click",
+            "other",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "onclick",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "onclick",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "onclick",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "onclick",
+            "other",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "style",
+            "html",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "style",
+            "svg",
+            "ok"
+          ],
+          [
+            "SVGElement",
+            "style",
+            "math",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "style",
+            "other",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "dataset",
+            "html",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "dataset",
+            "svg",
+            "ok"
+          ],
+          [
+            "SVGElement",
+            "dataset",
+            "math",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "dataset",
+            "other",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "nonce",
+            "html",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "nonce",
+            "svg",
+            "ok"
+          ],
+          [
+            "SVGElement",
+            "nonce",
+            "math",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "nonce",
+            "other",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "tabIndex",
+            "html",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "tabIndex",
+            "svg",
+            "ok"
+          ],
+          [
+            "SVGElement",
+            "tabIndex",
+            "math",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "tabIndex",
+            "other",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "autofocus",
+            "html",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "autofocus",
+            "svg",
+            "ok"
+          ],
+          [
+            "SVGElement",
+            "autofocus",
+            "math",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "autofocus",
+            "other",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "focus",
+            "html",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "focus",
+            "svg",
+            "ok"
+          ],
+          [
+            "SVGElement",
+            "focus",
+            "math",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "focus",
+            "other",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "blur",
+            "html",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "blur",
+            "svg",
+            "ok"
+          ],
+          [
+            "SVGElement",
+            "blur",
+            "math",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "blur",
+            "other",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "click",
+            "missing"
+          ],
+          [
+            "SVGElement",
+            "onclick",
+            "html",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "onclick",
+            "svg",
+            "ok"
+          ],
+          [
+            "SVGElement",
+            "onclick",
+            "math",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "onclick",
+            "other",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "style",
+            "html",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "style",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "style",
+            "math",
+            "ok"
+          ],
+          [
+            "MathMLElement",
+            "style",
+            "other",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "dataset",
+            "html",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "dataset",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "dataset",
+            "math",
+            "ok"
+          ],
+          [
+            "MathMLElement",
+            "dataset",
+            "other",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "nonce",
+            "html",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "nonce",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "nonce",
+            "math",
+            "ok"
+          ],
+          [
+            "MathMLElement",
+            "nonce",
+            "other",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "tabIndex",
+            "html",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "tabIndex",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "tabIndex",
+            "math",
+            "ok"
+          ],
+          [
+            "MathMLElement",
+            "tabIndex",
+            "other",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "autofocus",
+            "html",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "autofocus",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "autofocus",
+            "math",
+            "ok"
+          ],
+          [
+            "MathMLElement",
+            "autofocus",
+            "other",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "focus",
+            "html",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "focus",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "focus",
+            "math",
+            "ok"
+          ],
+          [
+            "MathMLElement",
+            "focus",
+            "other",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "blur",
+            "html",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "blur",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "blur",
+            "math",
+            "ok"
+          ],
+          [
+            "MathMLElement",
+            "blur",
+            "other",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "click",
+            "missing"
+          ],
+          [
+            "MathMLElement",
+            "onclick",
+            "html",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "onclick",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "onclick",
+            "math",
+            "ok"
+          ],
+          [
+            "MathMLElement",
+            "onclick",
+            "other",
+            "TypeError"
+          ]
+        ],
+        "focusRules": [
+          [
+            "svg-a-xlink-href",
+            true,
+            0
+          ],
+          [
+            "svg-a-no-href",
+            false,
+            0
+          ],
+          [
+            "svg-bogus-tabindex",
+            false,
+            -1
+          ],
+          [
+            "svg-negative-tabindex",
+            true,
+            -1
+          ],
+          [
+            "svg-in-math",
+            true,
+            0
+          ],
+          [
+            "svg-rect-in-html",
+            false,
+            0
+          ],
+          [
+            "svg-root-tabindex",
+            true,
+            0
+          ],
+          [
+            "svg-detached",
+            false,
+            0
+          ],
+          [
+            "svg-nested-foreign",
+            true,
+            0
+          ],
+          [
+            "mi-in-html",
+            true,
+            0
+          ],
+          [
+            "svg-in-g",
+            true,
+            0
+          ],
+          [
+            "svg-display-none",
+            false,
+            0
+          ],
+          [
+            "mi-hidden-host",
+            false,
+            0
+          ],
+          [
+            "math-in-svg",
+            false,
+            0
+          ]
+        ],
+        "inlineHandler": [
+          "function",
+          "onclick",
+          false,
+          2
+        ]
+      }
+    }
+  ]
+}

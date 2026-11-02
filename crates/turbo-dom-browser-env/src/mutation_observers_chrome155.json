@@ -1,0 +1,570 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "probeSha256": "8c8ff68ff04f625197d90979bd9625a6206fc9f3c2935e1cd2e0a8d4340297b9",
+  "collectorSha256": "5ca41ee6ba8fc353e7d794943488c458d6f7ddcc9e80a529f1200d3f0cfceacc",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "options": [
+      "TypeError",
+      "ok",
+      "ok",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "ok"
+    ],
+    "conversions": [
+      "attributeFilter",
+      "attributeOldValue",
+      "attributes",
+      "characterData",
+      "characterDataOldValue",
+      "childList",
+      "subtree"
+    ],
+    "attributesA": [
+      {
+        "type": "attributes",
+        "target": "observer-child",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "data-x",
+        "namespace": null,
+        "old": null,
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      },
+      {
+        "type": "attributes",
+        "target": "observer-child",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "data-x",
+        "namespace": null,
+        "old": "first",
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      },
+      {
+        "type": "attributes",
+        "target": "observer-child",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "data-x",
+        "namespace": null,
+        "old": "first",
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      },
+      {
+        "type": "attributes",
+        "target": "observer-child",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "data-x",
+        "namespace": "urn:observer",
+        "old": null,
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      }
+    ],
+    "attributesB": [
+      {
+        "type": "attributes",
+        "target": "observer-child",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "data-x",
+        "namespace": null,
+        "old": null,
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      },
+      {
+        "type": "attributes",
+        "target": "observer-child",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "data-x",
+        "namespace": null,
+        "old": null,
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      },
+      {
+        "type": "attributes",
+        "target": "observer-child",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "data-x",
+        "namespace": null,
+        "old": null,
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      }
+    ],
+    "overlap": [
+      {
+        "type": "attributes",
+        "target": "observer-child",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "data-x",
+        "namespace": null,
+        "old": "second",
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      }
+    ],
+    "characterData": [
+      {
+        "type": "characterData",
+        "target": "#text",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": null,
+        "namespace": null,
+        "old": "one",
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      },
+      {
+        "type": "characterData",
+        "target": "#text",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": null,
+        "namespace": null,
+        "old": "two",
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      }
+    ],
+    "children": [
+      {
+        "type": "childList",
+        "target": "observer-root",
+        "added": [
+          "before"
+        ],
+        "removed": [],
+        "previous": null,
+        "next": "observer-child",
+        "attribute": null,
+        "namespace": null,
+        "old": null,
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      },
+      {
+        "type": "childList",
+        "target": "observer-root",
+        "added": [
+          "after"
+        ],
+        "removed": [],
+        "previous": "observer-child",
+        "next": null,
+        "attribute": null,
+        "namespace": null,
+        "old": null,
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      },
+      {
+        "type": "childList",
+        "target": "observer-root",
+        "added": [],
+        "removed": [
+          "observer-child"
+        ],
+        "previous": "before",
+        "next": "after",
+        "attribute": null,
+        "namespace": null,
+        "old": null,
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      }
+    ],
+    "staticList": [
+      true,
+      true,
+      null,
+      []
+    ],
+    "staticAfter": 1,
+    "transientBefore": [
+      {
+        "type": "attributes",
+        "target": "observer-child",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "data-x",
+        "namespace": null,
+        "old": "third",
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      }
+    ],
+    "transientAfter": [],
+    "order": [
+      "promise-before",
+      "observer",
+      "promise-after"
+    ],
+    "callback": [
+      true,
+      true,
+      [
+        [
+          {
+            "type": "attributes",
+            "target": "observer-child",
+            "added": [],
+            "removed": [],
+            "previous": null,
+            "next": null,
+            "attribute": "data-order",
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          }
+        ]
+      ]
+    ],
+    "disconnect": [],
+    "compound": [
+      [
+        "fragment",
+        [
+          {
+            "type": "childList",
+            "target": "#document-fragment",
+            "added": [],
+            "removed": [
+              "f-one",
+              "f-two"
+            ],
+            "previous": null,
+            "next": null,
+            "attribute": null,
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          },
+          {
+            "type": "childList",
+            "target": "fragment",
+            "added": [
+              "f-one",
+              "f-two"
+            ],
+            "removed": [],
+            "previous": "f-old",
+            "next": null,
+            "attribute": null,
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          }
+        ]
+      ],
+      [
+        "empty-fragment",
+        []
+      ],
+      [
+        "replace",
+        [
+          {
+            "type": "childList",
+            "target": "replace",
+            "added": [
+              "r-new"
+            ],
+            "removed": [
+              "r-old"
+            ],
+            "previous": "r-before",
+            "next": "r-after",
+            "attribute": null,
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          }
+        ]
+      ],
+      [
+        "replace-self",
+        [
+          {
+            "type": "childList",
+            "target": "replace-self",
+            "added": [],
+            "removed": [
+              "s-old"
+            ],
+            "previous": "s-before",
+            "next": "s-after",
+            "attribute": null,
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          },
+          {
+            "type": "childList",
+            "target": "replace-self",
+            "added": [
+              "s-old"
+            ],
+            "removed": [],
+            "previous": "s-before",
+            "next": "s-after",
+            "attribute": null,
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          }
+        ]
+      ],
+      [
+        "replace-children",
+        [
+          {
+            "type": "childList",
+            "target": "replace-children",
+            "added": [
+              "a-new",
+              "b-new"
+            ],
+            "removed": [
+              "a-old",
+              "b-old"
+            ],
+            "previous": null,
+            "next": null,
+            "attribute": null,
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          }
+        ]
+      ],
+      [
+        "replace-retained",
+        [
+          {
+            "type": "childList",
+            "target": "replace-retained",
+            "added": [
+              "retained"
+            ],
+            "removed": [
+              "retained",
+              "discarded"
+            ],
+            "previous": null,
+            "next": null,
+            "attribute": null,
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          }
+        ]
+      ],
+      [
+        "variadic",
+        [
+          {
+            "type": "childList",
+            "target": "#document-fragment",
+            "added": [],
+            "removed": [
+              "v-one",
+              "v-two"
+            ],
+            "previous": null,
+            "next": null,
+            "attribute": null,
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          },
+          {
+            "type": "childList",
+            "target": "variadic",
+            "added": [
+              "v-one",
+              "v-two",
+              "v-three"
+            ],
+            "removed": [],
+            "previous": null,
+            "next": "v-old",
+            "attribute": null,
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          }
+        ]
+      ],
+      [
+        "inner-html",
+        [
+          {
+            "type": "childList",
+            "target": "inner-html",
+            "added": [
+              "markup-a",
+              "markup-b"
+            ],
+            "removed": [
+              "markup-old"
+            ],
+            "previous": null,
+            "next": null,
+            "attribute": null,
+            "namespace": null,
+            "old": null,
+            "recordBrand": "[object MutationRecord]",
+            "listBrand": "[object NodeList]"
+          }
+        ]
+      ]
+    ],
+    "crossDocumentFailure": [
+      "HierarchyRequestError",
+      [
+        {
+          "type": "childList",
+          "target": "source-first",
+          "added": [],
+          "removed": [
+            "first-node"
+          ],
+          "previous": null,
+          "next": null,
+          "attribute": null,
+          "namespace": null,
+          "old": null,
+          "recordBrand": "[object MutationRecord]",
+          "listBrand": "[object NodeList]"
+        },
+        {
+          "type": "childList",
+          "target": "source-second",
+          "added": [],
+          "removed": [
+            "second-node"
+          ],
+          "previous": null,
+          "next": null,
+          "attribute": null,
+          "namespace": null,
+          "old": null,
+          "recordBrand": "[object MutationRecord]",
+          "listBrand": "[object NodeList]"
+        }
+      ],
+      true,
+      true
+    ],
+    "inert": [
+      {
+        "type": "childList",
+        "target": "BODY",
+        "added": [
+          "inert-node"
+        ],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": null,
+        "namespace": null,
+        "old": null,
+        "recordBrand": "[object MutationRecord]",
+        "listBrand": "[object NodeList]"
+      }
+    ],
+    "shadow": [
+      [],
+      [
+        {
+          "type": "childList",
+          "target": "#document-fragment",
+          "added": [
+            "shadow-child"
+          ],
+          "removed": [],
+          "previous": null,
+          "next": null,
+          "attribute": null,
+          "namespace": null,
+          "old": null,
+          "recordBrand": "[object MutationRecord]",
+          "listBrand": "[object NodeList]"
+        }
+      ]
+    ],
+    "iteratorClose": [
+      "TypeError"
+    ],
+    "brands": [
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError"
+    ],
+    "members": [
+      "constructor",
+      "disconnect",
+      "observe",
+      "takeRecords"
+    ]
+  }
+}

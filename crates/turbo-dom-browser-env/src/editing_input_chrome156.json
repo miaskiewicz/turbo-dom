@@ -1,0 +1,261 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "steps": "editing_input_steps.json",
+  "stepsSha256": "e981b311ce39372bc3529e58b8208cf51d35d89b1e9a98531b1b2489f03d87d2",
+  "collectorSha256": "3d5b277affa53d9bfe50d0a5d545adb33b92d0a3cb780e42a9b87849bebd667c",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": [
+    "ok",
+    [
+      "<div id=\"e\" contenteditable=\"\">heXllo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      3,
+      3,
+      [
+        "beforeinput,e,true,true,true,insertText,X,StaticRange:#text:2:#text:2",
+        "input,e,true,false,true,insertText,X,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">heXYZllo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      5,
+      5,
+      [
+        "beforeinput,e,true,true,true,insertText,YZ,StaticRange:#text:3:#text:3",
+        "input,e,true,false,true,insertText,YZ,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">heXYllo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      4,
+      4,
+      [
+        "beforeinput,e,true,true,true,deleteContentBackward,,StaticRange:#text:4:#text:5",
+        "input,e,true,false,true,deleteContentBackward,,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">heXYlo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      4,
+      4,
+      [
+        "beforeinput,e,true,true,true,deleteContentForward,,StaticRange:#text:4:#text:5",
+        "input,e,true,false,true,deleteContentForward,,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">heXYlo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      3,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">heXYlo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      3,
+      [
+        "input,e,true,false,true,historyUndo,,"
+      ],
+      [
+        "<div id=\"e\" contenteditable=\"\">hQYlo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+        2,
+        2,
+        [
+          "beforeinput,e,true,true,true,insertText,Q,StaticRange:#text:1:#text:3",
+          "input,e,true,false,true,insertText,Q,"
+        ]
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">heXYZllo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      4,
+      6,
+      [
+        "input,e,true,false,true,historyUndo,,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">heXYZllo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">heXYZllo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "beforeinput,e,true,true,true,insertText,C,StaticRange:#text:1:#text:1"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">heXYZllo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      2,
+      2,
+      [],
+      true
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">he<b>B</b>XYZllo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "beforeinput,e,true,true,true,insertText,B,StaticRange:#text:2:#text:2",
+        "input,e,true,false,true,insertText,B,"
+      ],
+      true
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">he<b>B</b>XYZllo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">he<b>B</b>XYZllo</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      [
+        "beforeinput,e,true,true,true,deleteContentBackward,,StaticRange:#text:0:#text:0"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\"><p>ab</p><p>cd</p></div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\"><p>abcd</p></div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      2,
+      2,
+      [
+        "beforeinput,e,true,true,true,deleteContentBackward,,StaticRange:#text:2:P:0",
+        "input,e,true,false,true,deleteContentBackward,,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp;</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      2,
+      2,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp;&nbsp;</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      3,
+      3,
+      [
+        "beforeinput,e,true,true,true,insertText, ,StaticRange:#text:2:#text:2",
+        "input,e,true,false,true,insertText, ,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      4,
+      4,
+      [
+        "beforeinput,e,true,true,true,insertText,b,StaticRange:#text:3:#text:3",
+        "input,e,true,false,true,insertText,b,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      2,
+      2,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      2,
+      2,
+      [
+        "beforeinput,e,true,true,true,insertText,N,StaticRange:#text:2:#text:2"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      [],
+      "f"
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      [
+        "textupdate,Z,1,2,2,2,true,false,true"
+      ],
+      "aZc",
+      2,
+      2
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      [
+        "beforeinput,f,true,true,true,deleteContentBackward,,",
+        "textupdate,,1,2,1,1,true,false,true"
+      ],
+      "ac",
+      1,
+      1
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      [
+        "beforeinput,f,true,true,true,deleteContentForward,,",
+        "textupdate,,1,2,1,1,true,false,true"
+      ],
+      "a",
+      1,
+      1
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      [
+        "beforeinput,f,true,true,true,deleteContentBackward,,"
+      ],
+      "a",
+      0,
+      0
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">a&nbsp; b</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      0,
+      0,
+      [
+        "beforeinput,f,true,true,true,deleteContentBackward,,"
+      ],
+      "a",
+      1,
+      1
+    ]
+  ]
+}

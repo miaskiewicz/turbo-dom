@@ -1,0 +1,85 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "probeSha256": "054e65546c089c91bdf1fc5733a12cb2d30051311fc2703081ff7f873b736391",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "lifecycle": [
+      [
+        "disconnected",
+        false
+      ],
+      [
+        "adopted",
+        true,
+        false
+      ],
+      [
+        "connected",
+        false
+      ],
+      [
+        "attribute",
+        null,
+        "parent"
+      ],
+      [
+        "disconnected",
+        true
+      ],
+      [
+        "adopted",
+        false,
+        true
+      ],
+      [
+        "connected",
+        true
+      ],
+      [
+        "attribute",
+        "parent",
+        "child"
+      ],
+      [
+        "constructor"
+      ],
+      [
+        "constructor"
+      ],
+      [
+        "attribute",
+        null,
+        "child"
+      ]
+    ],
+    "brands": [
+      true,
+      true,
+      "x-realm"
+    ],
+    "borrowedCreate": [
+      true,
+      true
+    ],
+    "upgradeBorrow": "undefined",
+    "clone": [
+      true,
+      true
+    ],
+    "import": [
+      false,
+      true
+    ]
+  }
+}

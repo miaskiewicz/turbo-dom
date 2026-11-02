@@ -1,0 +1,30 @@
+(() => {
+  const units=value=>Array.from({length:value.length},(_,i)=>value.charCodeAt(i));
+  const outcome=fn=>{try{return fn()}catch(error){return {error:error.name}}};
+  const t=document.createElement('template'),other=document.createElement('template'),high=String.fromCharCode(0xd800);
+  t.innerHTML='<button id="inside" onclick="return \''+high+'\';">'+high+'</button><template id="nested"><i>nested</i></template>';
+  document.body.append(t,other);
+  const fragment=t.content,inert=fragment.ownerDocument,child=fragment.firstChild,nested=fragment.lastChild;
+  const result={descriptor:(()=>{const d=Object.getOwnPropertyDescriptor(HTMLTemplateElement.prototype,'content');return {enumerable:d.enumerable,configurable:d.configurable,set:typeof d.set,name:d.get.name,length:d.get.length,native:d.get.toString()}})(),shape:{same:t.content===fragment,type:fragment.nodeType,parent:fragment.parentNode,ownerDifferent:inert!==document,shared:other.content.ownerDocument===inert,nested:nested.content.ownerDocument===inert,child:child.ownerDocument===inert,defaultView:inert.defaultView,root:inert.documentElement,url:inert.URL,base:inert.baseURI,compat:inert.compatMode,charset:inert.characterSet,constructor:inert.constructor.name},initial:{templateChildren:t.childNodes.length,documentFind:document.querySelector('#inside')===null,fragmentFind:fragment.querySelector('#inside')===child,text:units(child.textContent),handler:child.onclick===null,bodyContains:document.body.textContent.includes(high),serialized:units(t.innerHTML)}};
+  const light=document.createElement('span');light.textContent='light';t.append(light);
+  result.light={templateChildren:Array.from(t.childNodes,node=>node.nodeName),contentChildren:fragment.childNodes.length,markupIgnoresLight:!t.innerHTML.includes('light'),outerIgnoresLight:!t.outerHTML.includes('light'),text:t.textContent};
+  const shallow=t.cloneNode(false),deep=t.cloneNode(true);
+  result.clone={shallowChildren:shallow.childNodes.length,shallowContent:shallow.content.childNodes.length,deepChildren:deep.childNodes.length,deepContent:deep.content.childNodes.length,deepOwner:deep.content.ownerDocument===inert,deepSeparate:deep.content!==fragment,deepMarkup:units(deep.innerHTML)};
+  const prototype=HTMLTemplateElement.prototype;
+  result.brand=[{},Object.create(prototype),document.createElement('div'),document.createElementNS('http://www.w3.org/2000/svg','template'),new Proxy(t,{})].map(value=>outcome(()=>Reflect.apply(Object.getOwnPropertyDescriptor(prototype,'content').get,value,[])===fragment));
+  result.cycles={self:outcome(()=>{fragment.append(t);return 'accepted'}),ancestor:(()=>{const host=document.createElement('section');host.append(t);document.body.append(host);return outcome(()=>{fragment.append(host);return 'accepted'})})(),unchanged:t.ownerDocument===document&&child.ownerDocument===inert};
+  const factory=document.implementation.createHTMLDocument('foreign');
+  const imported=factory.importNode(t,true);
+  result.import={owner:imported.ownerDocument===factory,contentOwner:imported.content.ownerDocument===factory,defaultView:imported.content.ownerDocument.defaultView,children:imported.content.childNodes.length,markup:units(imported.innerHTML)};
+  const saved=t.content;factory.adoptNode(t);
+  result.adoptInert={same:t.content===saved,owner:t.ownerDocument===factory,contentOwner:t.content.ownerDocument===factory,nested:t.content.lastChild.content.ownerDocument===factory,childOwner:child.ownerDocument===factory,handler:child.onclick===null};
+  document.adoptNode(t);
+  result.adoptActive={same:t.content===saved,owner:t.ownerDocument===document,contentOwner:t.content.ownerDocument===inert,nested:t.content.lastChild.content.ownerDocument===inert,childOwner:child.ownerDocument===inert};
+  document.body.append(child);
+  result.activation={owner:child.ownerDocument===document,handler:child.onclick===null?null:units(child.onclick.call(child,new Event('click'))),source:child.onclick===null?null:units(child.onclick.toString()),removed:t.content.firstChild!==child};
+  child.setAttribute('onclick',child.getAttribute('onclick'));
+  result.activation.reassigned=units(child.onclick.call(child,new Event('click')));
+  result.activation.reassignedSource=units(child.onclick.toString());
+  t.remove();other.remove();
+  return result;
+})()

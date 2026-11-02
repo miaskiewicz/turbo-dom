@@ -22,7 +22,6 @@ fn ascii_modifiers_cover_all_operators_and_do_not_fold_unicode() {
     assert!(tree.matches(node, "[data-v*='c d' i]"));
     for selector in [
         "[data-word=abc]",
-        "[data-word=abc s]",
         "[data-unicode='ä' i]",
         "[data-v^='' i]",
         "[data-v*='' i]",
@@ -30,9 +29,29 @@ fn ascii_modifiers_cover_all_operators_and_do_not_fold_unicode() {
     ] {
         assert!(!tree.matches_checked(node, selector).unwrap(), "{selector}");
     }
-    // Rust supports the CSS-standard sensitive modifier; Chrome155's JS admission
-    // rejects it. This assertion is a Rust contract, not a Chrome parity claim.
-    assert!(tree.matches_checked(node, "[data-word=AbC S]").unwrap());
+    // Chrome 156 rejects the CSS `s` (case-sensitive) modifier, and so does turbo-dom
+    // (turbo-dom#24): a SyntaxError in the checked APIs, never a match in the lenient ones.
+    for selector in [
+        "[data-word=AbC S]",
+        "[data-word=abc s]",
+        "[data-word='AbC' s]",
+        "[data-word=AbC \\73]",
+    ] {
+        assert!(tree.matches_checked(node, selector).is_err(), "{selector}");
+        assert!(
+            tree.query_selector_all_checked(selector).is_err(),
+            "{selector}"
+        );
+        assert!(!tree.matches(node, selector), "{selector}");
+        assert!(
+            !tree.matches_units(node, &selector.encode_utf16().collect::<Vec<_>>()),
+            "{selector}"
+        );
+        assert!(
+            turbo_dom::rtdom::query::parse_for_cascade(selector).is_err(),
+            "{selector}"
+        );
+    }
 }
 
 #[test]
@@ -65,13 +84,14 @@ fn quoted_literals_escapes_and_invalid_modifiers_are_distinct() {
 }
 
 #[test]
-fn html_input_type_default_and_explicit_sensitive_policy_are_namespace_bound() {
+fn html_input_type_default_case_policy_is_namespace_bound() {
     let tree = Tree::parse("<body><input id=lower type=hidden name=q><input id=upper type=HIDDEN name=q><textarea id=visible name=q></textarea><svg><input id=foreign type=HIDDEN></input></svg></body>");
     let lower = tree.query_selector("#lower").unwrap();
     let upper = tree.query_selector("#upper").unwrap();
     assert!(tree.matches(upper, "[type=hidden]"));
-    assert!(!tree.matches(upper, "[type=hidden s]"));
-    assert!(tree.matches(lower, "[type=hidden s]"));
+    assert!(tree.matches(lower, "[type=hidden]"));
+    // no `s` modifier to opt out of the HTML case-insensitive attribute list (Chrome 156)
+    assert!(tree.matches_checked(upper, "[type=hidden s]").is_err());
     assert_eq!(
         tree.query_selector("textarea[name=q],input[name=q]:not([type='hidden' i])"),
         tree.query_selector("#visible")
@@ -172,7 +192,7 @@ fn compare_case(tree: &Tree, case: &serde_json::Value) {
     }
 }
 #[test]
-fn independent_chrome_attribute_matrix_matches_the_rust_comparable_subset() {
+fn independent_chrome_attribute_matrix_matches_every_case() {
     use sha2::{Digest, Sha256};
     let fixture: serde_json::Value =
         serde_json::from_str(include_str!("fixtures/attribute-case/chrome155.json")).unwrap();
@@ -207,33 +227,14 @@ fn independent_chrome_attribute_matrix_matches_the_rust_comparable_subset() {
             &units(&row["valueUnits"]),
         );
     }
-    let mut comparable = 0;
-    let mut standards_sensitive = 0;
+    // Every case is compared, the seven `s` modifier controls included: turbo-dom rejects
+    // `s` like Chrome (turbo-dom#24; before that it was a documented Rust extension).
+    let mut compared = 0;
     for case in result["cases"].as_array().unwrap() {
-        // Chrome155 rejects s; the public Rust API deliberately supports its
-        // standards-defined exact comparison. Keep all seven raw controls.
-        if matches!(
-            case["name"].as_str().unwrap(),
-            "unsupported-s"
-                | "unsupported-S"
-                | "s-not"
-                | "s-list"
-                | "s-is-forgiving"
-                | "s-where-forgiving"
-                | "s-escaped"
-        ) {
-            assert!(tree
-                .query_selector_all_checked(
-                    &String::from_utf16(&units(&case["selectorUnits"])).unwrap()
-                )
-                .is_ok());
-            standards_sensitive += 1;
-        } else {
-            compare_case(&tree, case);
-            comparable += 1;
-        }
+        compare_case(&tree, case);
+        compared += 1;
     }
-    assert_eq!((comparable, standards_sensitive), (57, 7));
+    assert_eq!(compared, 64);
 }
 #[test]
 fn null_namespace_xml_controls_do_not_acquire_html_case_rules() {

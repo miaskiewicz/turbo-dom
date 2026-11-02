@@ -24,8 +24,8 @@ use turbo_dom::rtdom::cascade::{computed_style, get_property_value};
 use turbo_dom::rtdom::node_ref::DocumentExt;
 use turbo_dom::rtdom::serialize::{serialize_inner, serialize_outer};
 use turbo_dom::rtdom::tree::{Handle, Namespace, Tree};
-use turbo_dom::rtdom::{Dom, Event};
 use turbo_dom::rtdom::NodeRef;
+use turbo_dom::rtdom::{Dom, Event};
 
 /// Depth-first search for the first text node — exercises `children()` + `node_type_id()`.
 fn find_text(t: &Tree, h: Handle, out: &mut Option<Handle>) {
@@ -65,7 +65,11 @@ fn numeric_node_type_and_namespace_ids_are_stable() {
     let t = Tree::parse("hello");
     let mut text: Option<Handle> = None;
     find_text(&t, t.root(), &mut text);
-    assert_eq!(t.node_type_id(text.expect("a text node")), 3, "text nodeType == 3");
+    assert_eq!(
+        t.node_type_id(text.expect("a text node")),
+        3,
+        "text nodeType == 3"
+    );
 }
 
 #[test]
@@ -146,7 +150,13 @@ fn event_dispatch_surface_is_present() {
     let mut ev = Event::new("click", true, true);
     assert_eq!(ev.target, None);
     assert_eq!(ev.current_target, None);
-    let id = dom.add_event_listener(button, "click", false, false, Box::new(|_, e| e.prevent_default()));
+    let id = dom.add_event_listener(
+        button,
+        "click",
+        false,
+        false,
+        Box::new(|_, e| e.prevent_default()),
+    );
     let not_prevented = dom.dispatch_event(button, &mut ev);
     assert_eq!(ev.target, Some(button));
     assert!(!not_prevented, "dispatch_event returns !defaultPrevented");

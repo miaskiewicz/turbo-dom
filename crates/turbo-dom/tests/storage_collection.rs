@@ -229,18 +229,19 @@ fn budget_and_invalid_pin_failures_leave_all_storage_and_dom_state_unchanged() {
 }
 
 #[test]
-fn invalid_composed_ancestry_is_rejected_before_collection() {
+fn the_tree_api_cannot_build_a_parent_cycle_for_collection() {
+    // Inserting a node into itself (or into its own shadow root) is refused, so the
+    // collector's cycle check is reachable only through a corrupted overlay
+    // (storage.rs integrity_tests::a_parent_cycle_is_rejected).
     let mut tree = Tree::parse("");
     let a = tree.create_element("a");
     tree.append_child(a, a);
-    let before = tree.storage_stats();
-    assert_eq!(
-        tree.collect_unreachable(&[a], budget()),
-        Err(CollectionError::InvalidGraph)
-    );
-    assert_eq!(tree.storage_stats(), before);
+    let shadow = tree.attach_shadow(a);
+    tree.append_child(shadow, a);
+    assert_eq!(tree.parent(a), None);
+    assert!(tree.children(shadow).is_empty());
+    assert!(tree.collect_unreachable(&[a], budget()).is_ok());
     assert!(tree.is_live(a));
-    assert_eq!(tree.parent(a), Some(a));
 }
 
 #[test]

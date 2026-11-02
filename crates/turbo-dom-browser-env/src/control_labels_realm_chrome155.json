@@ -1,0 +1,42 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+  "probeSha256": "9f0a8de684aedf0d9b65410bc515933b8756a650a2be311f555099adb57eb822",
+  "collectorSha256": "700a755df1701cfa30a95ca9f20800e81724f50ca7aafd6b46f77e87b2b91351",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "radio-dirty-lifecycle",
+      "result": {
+        "parentBorrowFirst": [
+          false,
+          true,
+          true,
+          true
+        ],
+        "childBorrowFirst": [
+          true,
+          false,
+          true,
+          true
+        ],
+        "baseBorrow": "label",
+        "retained": [
+          1,
+          "child-input",
+          true
+        ]
+      }
+    }
+  ]
+}

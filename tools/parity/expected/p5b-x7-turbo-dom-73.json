@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#73",
+ "reason": "Reflected src/href getters parse against the document base URL through the native resolver (<base href>, empty attribute -> base URL). Commit e1d149b. The live dumps record no URLs, and no pinned surf input has a <base> element. The binding does not run in the static or html2pdf corpora; html2pdf manifests are byte-identical. Prediction: no surf live change (unmeasured). P5b-X7.",
+ "control": "crates/turbo-dom-browser-env/src/reflected_urls_chrome156.json",
+ "e2e": "crates/turbo-dom-browser-env/src/reflected_urls_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

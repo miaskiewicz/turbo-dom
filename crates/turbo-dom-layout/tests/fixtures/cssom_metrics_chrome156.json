@@ -1,0 +1,3004 @@
+{
+ "generator": "scripts/cssom-metrics-chrome-control.mjs",
+ "chrome": "156.0.8078.4",
+ "playwright_core": "1.61.0",
+ "viewport": [
+  1280,
+  800
+ ],
+ "cases": [
+  {
+   "id": "offset-static-in-body",
+   "html": "<!doctype html><style>body{margin:8px}</style><div data-cid=\"a\" style=\"width:10px;height:20px\"></div><div data-cid=\"w\" style=\"margin-left:5px\"><div data-cid=\"b\" style=\"width:10px;height:10px\"></div></div>",
+   "boxes": [
+    {
+     "cid": "a",
+     "offset": [
+      8,
+      8,
+      10,
+      20
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      20
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       10,
+       20
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      10,
+      20
+     ]
+    },
+    {
+     "cid": "w",
+     "offset": [
+      13,
+      28,
+      1259,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1259,
+      10
+     ],
+     "rects": [
+      [
+       13,
+       28,
+       1259,
+       10
+      ]
+     ],
+     "bounds": [
+      13,
+      28,
+      1259,
+      10
+     ]
+    },
+    {
+     "cid": "b",
+     "offset": [
+      13,
+      28,
+      10,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       13,
+       28,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      13,
+      28,
+      10,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offset-positioned-parent-padding-edge",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"p\" style=\"position:relative;border:5px solid;padding:3px;margin:10px;width:100px\"><div data-cid=\"c\" style=\"width:10px;height:10px;margin-left:4px\"></div><div data-cid=\"n\"><div data-cid=\"g\" style=\"width:5px;height:5px\"></div></div></div>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      10,
+      10,
+      116,
+      31
+     ],
+     "parent": "body",
+     "client": [
+      5,
+      5,
+      106,
+      21
+     ],
+     "rects": [
+      [
+       10,
+       10,
+       116,
+       31
+      ]
+     ],
+     "bounds": [
+      10,
+      10,
+      116,
+      31
+     ]
+    },
+    {
+     "cid": "c",
+     "offset": [
+      7,
+      3,
+      10,
+      10
+     ],
+     "parent": "p",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       22,
+       18,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      22,
+      18,
+      10,
+      10
+     ]
+    },
+    {
+     "cid": "n",
+     "offset": [
+      3,
+      13,
+      100,
+      5
+     ],
+     "parent": "p",
+     "client": [
+      0,
+      0,
+      100,
+      5
+     ],
+     "rects": [
+      [
+       18,
+       28,
+       100,
+       5
+      ]
+     ],
+     "bounds": [
+      18,
+      28,
+      100,
+      5
+     ]
+    },
+    {
+     "cid": "g",
+     "offset": [
+      3,
+      13,
+      5,
+      5
+     ],
+     "parent": "p",
+     "client": [
+      0,
+      0,
+      5,
+      5
+     ],
+     "rects": [
+      [
+       18,
+       28,
+       5,
+       5
+      ]
+     ],
+     "bounds": [
+      18,
+      28,
+      5,
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offset-transformed-parent",
+   "html": "<!doctype html><style>body{margin:0}</style><div style=\"height:7px\"></div><div data-cid=\"t\" style=\"transform:translateX(20px);border:2px solid;padding:1px;width:60px\"><div data-cid=\"c\" style=\"width:10px;height:10px;margin-left:3px\"></div></div>",
+   "boxes": [
+    {
+     "cid": "t",
+     "offset": [
+      0,
+      7,
+      66,
+      16
+     ],
+     "parent": "body",
+     "client": [
+      2,
+      2,
+      62,
+      12
+     ],
+     "rects": [
+      [
+       20,
+       7,
+       66,
+       16
+      ]
+     ],
+     "bounds": [
+      20,
+      7,
+      66,
+      16
+     ]
+    },
+    {
+     "cid": "c",
+     "offset": [
+      4,
+      1,
+      10,
+      10
+     ],
+     "parent": "t",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       26,
+       10,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      26,
+      10,
+      10,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offset-table-cell-parent",
+   "html": "<!doctype html><style>body{margin:0}td{padding:4px;border:1px solid}</style><table data-cid=\"t\"><tr data-cid=\"r\"><td data-cid=\"td\"><div data-cid=\"c\" style=\"width:10px;height:10px\"></div></td></tr></table>",
+   "boxes": [
+    {
+     "cid": "t",
+     "offset": [
+      0,
+      0,
+      24,
+      24
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      24,
+      24
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       24,
+       24
+      ]
+     ],
+     "bounds": [
+      0,
+      0,
+      24,
+      24
+     ]
+    },
+    {
+     "cid": "r",
+     "offset": [
+      2,
+      2,
+      20,
+      20
+     ],
+     "parent": "t",
+     "client": [
+      0,
+      0,
+      20,
+      20
+     ],
+     "rects": [
+      [
+       2,
+       2,
+       20,
+       20
+      ]
+     ],
+     "bounds": [
+      2,
+      2,
+      20,
+      20
+     ]
+    },
+    {
+     "cid": "td",
+     "offset": [
+      2,
+      2,
+      20,
+      20
+     ],
+     "parent": "t",
+     "client": [
+      1,
+      1,
+      18,
+      18
+     ],
+     "rects": [
+      [
+       2,
+       2,
+       20,
+       20
+      ]
+     ],
+     "bounds": [
+      2,
+      2,
+      20,
+      20
+     ]
+    },
+    {
+     "cid": "c",
+     "offset": [
+      4,
+      4,
+      10,
+      10
+     ],
+     "parent": "td",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       7,
+       7,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      7,
+      7,
+      10,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offset-display-contents-skipped",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"r\" style=\"position:relative;left:6px;top:4px\"><div data-cid=\"k\" style=\"display:contents;position:relative\"><div data-cid=\"c\" style=\"width:10px;height:10px;margin-top:3px\"></div></div></div>",
+   "boxes": [
+    {
+     "cid": "r",
+     "offset": [
+      6,
+      7,
+      1280,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1280,
+      10
+     ],
+     "rects": [
+      [
+       6,
+       7,
+       1280,
+       10
+      ]
+     ],
+     "bounds": [
+      6,
+      7,
+      1280,
+      10
+     ]
+    },
+    {
+     "cid": "k",
+     "offset": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "parent": null,
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [],
+     "bounds": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "cid": "c",
+     "offset": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "parent": "r",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       6,
+       7,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      6,
+      7,
+      10,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offset-fixed-and-hidden",
+   "html": "<!doctype html><style>body{margin:0}</style><div style=\"position:relative\"><div data-cid=\"f\" style=\"width:10px;height:10px;position:fixed;left:30px;top:40px\"></div><div data-cid=\"n\" style=\"display:none\"><div data-cid=\"nn\" style=\"width:5px;height:5px\"></div></div></div>",
+   "boxes": [
+    {
+     "cid": "f",
+     "offset": [
+      30,
+      40,
+      10,
+      10
+     ],
+     "parent": null,
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       30,
+       40,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      30,
+      40,
+      10,
+      10
+     ]
+    },
+    {
+     "cid": "n",
+     "offset": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "parent": null,
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [],
+     "bounds": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "cid": "nn",
+     "offset": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "parent": null,
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [],
+     "bounds": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offset-body-and-root",
+   "html": "<!doctype html><html data-cid=\"html\"><style>html{padding:3px}body{margin:5px}</style><body data-cid=\"body\"><div data-cid=\"d\"><div data-cid=\"c\" style=\"width:10px;height:10px\"></div></div></body></html>",
+   "boxes": [
+    {
+     "cid": "html",
+     "offset": [
+      0,
+      0,
+      1280,
+      26
+     ],
+     "parent": null,
+     "client": [
+      0,
+      0,
+      1280,
+      800
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       1280,
+       26
+      ]
+     ],
+     "bounds": [
+      0,
+      0,
+      1280,
+      26
+     ]
+    },
+    {
+     "cid": "body",
+     "offset": [
+      0,
+      0,
+      1264,
+      10
+     ],
+     "parent": null,
+     "client": [
+      0,
+      0,
+      1264,
+      10
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       10
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      10
+     ]
+    },
+    {
+     "cid": "d",
+     "offset": [
+      8,
+      8,
+      1264,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      10
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       10
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      10
+     ]
+    },
+    {
+     "cid": "c",
+     "offset": [
+      8,
+      8,
+      10,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      10,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offset-absolute-in-static-body",
+   "html": "<!doctype html><style>body{margin:8px}</style><div style=\"margin:10px\"><div data-cid=\"a\" style=\"width:10px;height:10px;position:absolute;left:12px;top:14px\"></div></div>",
+   "boxes": [
+    {
+     "cid": "a",
+     "offset": [
+      12,
+      14,
+      10,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       12,
+       14,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      12,
+      14,
+      10,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offset-nested-positioned",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"o\" style=\"position:absolute;left:20px;top:30px;border:4px solid\"><div data-cid=\"i\" style=\"position:relative;left:2px;top:3px;padding:6px\"><div data-cid=\"c\" style=\"width:8px;height:8px\"></div></div></div>",
+   "boxes": [
+    {
+     "cid": "o",
+     "offset": [
+      20,
+      30,
+      28,
+      28
+     ],
+     "parent": "body",
+     "client": [
+      4,
+      4,
+      20,
+      20
+     ],
+     "rects": [
+      [
+       20,
+       30,
+       28,
+       28
+      ]
+     ],
+     "bounds": [
+      20,
+      30,
+      28,
+      28
+     ]
+    },
+    {
+     "cid": "i",
+     "offset": [
+      2,
+      3,
+      20,
+      20
+     ],
+     "parent": "o",
+     "client": [
+      0,
+      0,
+      20,
+      20
+     ],
+     "rects": [
+      [
+       26,
+       37,
+       20,
+       20
+      ]
+     ],
+     "bounds": [
+      26,
+      37,
+      20,
+      20
+     ]
+    },
+    {
+     "cid": "c",
+     "offset": [
+      6,
+      6,
+      8,
+      8
+     ],
+     "parent": "i",
+     "client": [
+      0,
+      0,
+      8,
+      8
+     ],
+     "rects": [
+      [
+       32,
+       43,
+       8,
+       8
+      ]
+     ],
+     "bounds": [
+      32,
+      43,
+      8,
+      8
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offset-positioned-inline-parent",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p style=\"margin:0\">x <span data-cid=\"s\" style=\"position:relative;border-left:3px solid;padding-left:4px\">ab<b data-cid=\"b\" style=\"display:inline-block;width:10px;height:10px\"></b></span></p>",
+   "boxes": [
+    {
+     "cid": "s",
+     "offset": [
+      20,
+      8,
+      32,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       20,
+       8,
+       32.109375,
+       17
+      ]
+     ],
+     "bounds": [
+      20,
+      8,
+      32.109375,
+      17
+     ]
+    },
+    {
+     "cid": "b",
+     "offset": [
+      22,
+      4,
+      10,
+      10
+     ],
+     "parent": "s",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       42.109375,
+       12,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      42.109375,
+      12,
+      10,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offset-transformed-inline-is-not-a-parent",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p style=\"margin:0\">x <span data-cid=\"s\" style=\"transform:translateX(5px)\">ab<b data-cid=\"b\" style=\"display:inline-block;width:10px;height:10px\"></b></span></p>",
+   "boxes": [
+    {
+     "cid": "s",
+     "offset": [
+      20,
+      8,
+      25,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       20,
+       8,
+       25.109375,
+       17
+      ]
+     ],
+     "bounds": [
+      20,
+      8,
+      25.109375,
+      17
+     ]
+    },
+    {
+     "cid": "b",
+     "offset": [
+      35,
+      12,
+      10,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       35.109375,
+       12,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      35.109375,
+      12,
+      10,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "id": "client-metrics-boxes",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"a\" style=\"width:50px;height:20px;padding:3px 5px;border-width:1px 2px 3px 4px;border-style:solid\"></div><div data-cid=\"b\" style=\"box-sizing:border-box;width:40px;height:30px;padding:2px;border:6px solid\"></div>",
+   "boxes": [
+    {
+     "cid": "a",
+     "offset": [
+      0,
+      0,
+      66,
+      30
+     ],
+     "parent": "body",
+     "client": [
+      4,
+      1,
+      60,
+      26
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       66,
+       30
+      ]
+     ],
+     "bounds": [
+      0,
+      0,
+      66,
+      30
+     ]
+    },
+    {
+     "cid": "b",
+     "offset": [
+      0,
+      30,
+      40,
+      30
+     ],
+     "parent": "body",
+     "client": [
+      6,
+      6,
+      28,
+      18
+     ],
+     "rects": [
+      [
+       0,
+       30,
+       40,
+       30
+      ]
+     ],
+     "bounds": [
+      0,
+      30,
+      40,
+      30
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-one-line",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0\">Hello <span data-cid=\"s\">brave new</span> world</p>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      48,
+      8,
+      66,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       47.546875,
+       8,
+       66.1875,
+       17
+      ]
+     ],
+     "bounds": [
+      47.546875,
+      8,
+      66.1875,
+      17
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-wraps-over-lines",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0;width:120px\">Some words <span data-cid=\"s\">that wrap over two lines here</span> end</p>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      120,
+      54
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      120,
+      54
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       120,
+       54
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      120,
+      54
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      92,
+      8,
+      108,
+      53
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       91.5625,
+       8,
+       24,
+       17
+      ],
+      [
+       8,
+       26,
+       92.421875,
+       17
+      ],
+      [
+       8,
+       44,
+       61.75,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      107.5625,
+      53
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-nested-same-font",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><div data-cid=\"d\">a <span data-cid=\"o\">outer <span data-cid=\"i\">inner</span> tail</span></div>",
+   "boxes": [
+    {
+     "cid": "d",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "o",
+     "offset": [
+      19,
+      8,
+      94,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       19.109375,
+       8,
+       36.875,
+       17
+      ],
+      [
+       55.984375,
+       8,
+       32.875,
+       17
+      ],
+      [
+       88.859375,
+       8,
+       24.4375,
+       17
+      ]
+     ],
+     "bounds": [
+      19.109375,
+      8,
+      94.1875,
+      17
+     ]
+    },
+    {
+     "cid": "i",
+     "offset": [
+      56,
+      8,
+      33,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       55.984375,
+       8,
+       32.875,
+       17
+      ]
+     ],
+     "bounds": [
+      55.984375,
+      8,
+      32.875,
+      17
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-in-transformed-block",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><div data-cid=\"d\" style=\"transform:translate(30px,10px)\">x <span data-cid=\"s\">moved text</span></div>",
+   "boxes": [
+    {
+     "cid": "d",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       38,
+       18,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      38,
+      18,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      12,
+      0,
+      72,
+      17
+     ],
+     "parent": "d",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       50,
+       18,
+       71.546875,
+       17
+      ]
+     ],
+     "bounds": [
+      50,
+      18,
+      71.546875,
+      17
+     ]
+    }
+   ]
+  },
+  {
+   "id": "preserved-space-only-line",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><div data-cid=\"d\" style=\"white-space:pre\"><span data-cid=\"s\"></span>   </div><div data-cid=\"e\" style=\"width:10px;height:5px\"></div>",
+   "boxes": [
+    {
+     "cid": "d",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      8,
+      8,
+      0,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       0,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      0,
+      17
+     ]
+    },
+    {
+     "cid": "e",
+     "offset": [
+      8,
+      26,
+      10,
+      5
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      5
+     ],
+     "rects": [
+      [
+       8,
+       26,
+       10,
+       5
+      ]
+     ],
+     "bounds": [
+      8,
+      26,
+      10,
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-boxes-and-outside-viewport",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"a\" style=\"width:100px;height:50px\"></div><div data-cid=\"b\" style=\"position:absolute;left:50px;top:20px;width:100px;height:60px\"></div>",
+   "boxes": [
+    {
+     "cid": "a",
+     "offset": [
+      0,
+      0,
+      100,
+      50
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      100,
+      50
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       100,
+       50
+      ]
+     ],
+     "bounds": [
+      0,
+      0,
+      100,
+      50
+     ]
+    },
+    {
+     "cid": "b",
+     "offset": [
+      50,
+      20,
+      100,
+      60
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      100,
+      60
+     ],
+     "rects": [
+      [
+       50,
+       20,
+       100,
+       60
+      ]
+     ],
+     "bounds": [
+      50,
+      20,
+      100,
+      60
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 10,
+     "y": 10,
+     "hits": [
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 60,
+     "y": 30,
+     "hits": [
+      "b",
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 120,
+     "y": 70,
+     "hits": [
+      "b",
+      "html"
+     ]
+    },
+    {
+     "x": 500,
+     "y": 500,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "hits": [
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 0,
+     "y": 10,
+     "hits": [
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 10,
+     "y": 0,
+     "hits": [
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": -1,
+     "y": 10,
+     "hits": []
+    },
+    {
+     "x": 10,
+     "y": -1,
+     "hits": []
+    },
+    {
+     "x": 1280,
+     "y": 10,
+     "hits": []
+    },
+    {
+     "x": 10,
+     "y": 800,
+     "hits": []
+    },
+    {
+     "x": 1279,
+     "y": 799,
+     "hits": [
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-text",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0\">Hello <span data-cid=\"s\">brave new</span> world</p>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      48,
+      8,
+      66,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       47.546875,
+       8,
+       66.1875,
+       17
+      ]
+     ],
+     "bounds": [
+      47.546875,
+      8,
+      66.1875,
+      17
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 3,
+     "y": 9,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 12,
+     "y": 9,
+     "hits": [
+      "p",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 60,
+     "y": 9,
+     "hits": [
+      "s",
+      "p",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 300,
+     "y": 9,
+     "hits": [
+      "p",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 60,
+     "y": 40,
+     "hits": [
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-nested-inline-text",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0\"><span data-cid=\"o\">a <span data-cid=\"i\">bold</span></span> <span data-cid=\"ib\" style=\"display:inline-block;width:30px;height:10px\"></span></p>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "o",
+     "offset": [
+      8,
+      8,
+      40,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       11.109375,
+       17
+      ],
+      [
+       19.109375,
+       8,
+       28.453125,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      39.5625,
+      17
+     ]
+    },
+    {
+     "cid": "i",
+     "offset": [
+      19,
+      8,
+      28,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       19.109375,
+       8,
+       28.453125,
+       17
+      ]
+     ],
+     "bounds": [
+      19.109375,
+      8,
+      28.453125,
+      17
+     ]
+    },
+    {
+     "cid": "ib",
+     "offset": [
+      52,
+      12,
+      30,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      30,
+      10
+     ],
+     "rects": [
+      [
+       51.5625,
+       12,
+       30,
+       10
+      ]
+     ],
+     "bounds": [
+      51.5625,
+      12,
+      30,
+      10
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 20,
+     "y": 9,
+     "hits": [
+      "i",
+      "o",
+      "p",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 3,
+     "y": 9,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 60,
+     "y": 9,
+     "hits": [
+      "p",
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-block-text-baseline",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0\"><span data-cid=\"o\">a</span> <span data-cid=\"ib\" style=\"display:inline-block\"><span data-cid=\"t\">box</span></span></p>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "o",
+     "offset": [
+      8,
+      8,
+      7,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       7.109375,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      7.109375,
+      17
+     ]
+    },
+    {
+     "cid": "ib",
+     "offset": [
+      19,
+      8,
+      24,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      24,
+      18
+     ],
+     "rects": [
+      [
+       19.109375,
+       8,
+       24,
+       18
+      ]
+     ],
+     "bounds": [
+      19.109375,
+      8,
+      24,
+      18
+     ]
+    },
+    {
+     "cid": "t",
+     "offset": [
+      19,
+      8,
+      24,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       19.109375,
+       8,
+       24,
+       17
+      ]
+     ],
+     "bounds": [
+      19.109375,
+      8,
+      24,
+      17
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 3,
+     "y": 9,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 12,
+     "y": 9,
+     "hits": [
+      "o",
+      "p",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 30,
+     "y": 9,
+     "hits": [
+      "t",
+      "ib",
+      "p",
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-overflowing-text",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0;width:10px;white-space:nowrap\">Hello <span data-cid=\"s\">world</span></p><div data-cid=\"d\" style=\"width:10px;white-space:nowrap\"><span data-cid=\"c\" style=\"display:contents\">contents text</span></div>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      10,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       10,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      10,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      48,
+      8,
+      37,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       47.546875,
+       8,
+       37.328125,
+       17
+      ]
+     ],
+     "bounds": [
+      47.546875,
+      8,
+      37.328125,
+      17
+     ]
+    },
+    {
+     "cid": "d",
+     "offset": [
+      8,
+      26,
+      10,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       26,
+       10,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      26,
+      10,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "offset": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "parent": null,
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [],
+     "bounds": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 5,
+     "y": 9,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 30,
+     "y": 9,
+     "hits": [
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 50,
+     "y": 9,
+     "hits": [
+      "s",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 200,
+     "y": 9,
+     "hits": [
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 5,
+     "y": 27,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 40,
+     "y": 27,
+     "hits": [
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-hidden-text",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0\"><span data-cid=\"s\" style=\"visibility:hidden\">Hello</span> <span data-cid=\"v\">world</span></p>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      8,
+      8,
+      36,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       35.546875,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      35.546875,
+      17
+     ]
+    },
+    {
+     "cid": "v",
+     "offset": [
+      48,
+      8,
+      37,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       47.546875,
+       8,
+       37.328125,
+       17
+      ]
+     ],
+     "bounds": [
+      47.546875,
+      8,
+      37.328125,
+      17
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 10,
+     "y": 9,
+     "hits": [
+      "p",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 50,
+     "y": 9,
+     "hits": [
+      "v",
+      "p",
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-overflow-clip",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"c\" style=\"width:50px;height:50px;overflow:hidden;border:5px solid\"><div data-cid=\"k\" style=\"width:200px;height:200px\"></div></div>",
+   "boxes": [
+    {
+     "cid": "c",
+     "offset": [
+      0,
+      0,
+      60,
+      60
+     ],
+     "parent": "body",
+     "client": [
+      5,
+      5,
+      50,
+      50
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       60,
+       60
+      ]
+     ],
+     "bounds": [
+      0,
+      0,
+      60,
+      60
+     ]
+    },
+    {
+     "cid": "k",
+     "offset": [
+      5,
+      5,
+      200,
+      200
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      200,
+      200
+     ],
+     "rects": [
+      [
+       5,
+       5,
+       200,
+       200
+      ]
+     ],
+     "bounds": [
+      5,
+      5,
+      200,
+      200
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 20,
+     "y": 20,
+     "hits": [
+      "k",
+      "c",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 52,
+     "y": 20,
+     "hits": [
+      "k",
+      "c",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 57,
+     "y": 20,
+     "hits": [
+      "c",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 100,
+     "y": 20,
+     "hits": [
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 20,
+     "y": 100,
+     "hits": [
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-overflow-clip-text",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><div data-cid=\"c\" style=\"width:30px;height:18px;overflow:hidden;white-space:nowrap\"><span data-cid=\"s\">clipped text that overflows</span></div>",
+   "boxes": [
+    {
+     "cid": "c",
+     "offset": [
+      8,
+      8,
+      30,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      30,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       30,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      30,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      8,
+      8,
+      171,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       171.0625,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      171.0625,
+      17
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 10,
+     "y": 9,
+     "hits": [
+      "s",
+      "c",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 100,
+     "y": 9,
+     "hits": [
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-pointer-events-visibility",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"a\" style=\"width:100px;height:30px\"></div><div data-cid=\"b\" style=\"width:100px;height:30px;pointer-events:none\"></div><div data-cid=\"v\" style=\"visibility:hidden;width:100px;height:30px\"><div data-cid=\"vv\" style=\"width:50px;height:10px;visibility:visible\"></div></div>",
+   "boxes": [
+    {
+     "cid": "a",
+     "offset": [
+      0,
+      0,
+      100,
+      30
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      100,
+      30
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       100,
+       30
+      ]
+     ],
+     "bounds": [
+      0,
+      0,
+      100,
+      30
+     ]
+    },
+    {
+     "cid": "b",
+     "offset": [
+      0,
+      30,
+      100,
+      30
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      100,
+      30
+     ],
+     "rects": [
+      [
+       0,
+       30,
+       100,
+       30
+      ]
+     ],
+     "bounds": [
+      0,
+      30,
+      100,
+      30
+     ]
+    },
+    {
+     "cid": "v",
+     "offset": [
+      0,
+      60,
+      100,
+      30
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      100,
+      30
+     ],
+     "rects": [
+      [
+       0,
+       60,
+       100,
+       30
+      ]
+     ],
+     "bounds": [
+      0,
+      60,
+      100,
+      30
+     ]
+    },
+    {
+     "cid": "vv",
+     "offset": [
+      0,
+      60,
+      50,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      50,
+      10
+     ],
+     "rects": [
+      [
+       0,
+       60,
+       50,
+       10
+      ]
+     ],
+     "bounds": [
+      0,
+      60,
+      50,
+      10
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 10,
+     "y": 10,
+     "hits": [
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 10,
+     "y": 40,
+     "hits": [
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 10,
+     "y": 65,
+     "hits": [
+      "vv",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 70,
+     "y": 65,
+     "hits": [
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-text-pointer-events-none",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0\"><span data-cid=\"s\" style=\"pointer-events:none\">Hello</span> world</p>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      8,
+      8,
+      36,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       35.546875,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      35.546875,
+      17
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 10,
+     "y": 9,
+     "hits": [
+      "p",
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-display-contents-overflow",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"k\" style=\"display:contents;overflow:hidden\"><div data-cid=\"a\" style=\"width:50px;height:50px\"></div></div>",
+   "boxes": [
+    {
+     "cid": "k",
+     "offset": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "parent": null,
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [],
+     "bounds": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "cid": "a",
+     "offset": [
+      0,
+      0,
+      50,
+      50
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      50,
+      50
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       50,
+       50
+      ]
+     ],
+     "bounds": [
+      0,
+      0,
+      50,
+      50
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 10,
+     "y": 10,
+     "hits": [
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 60,
+     "y": 10,
+     "hits": [
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-list-marker",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><ol style=\"margin:0\"><li data-cid=\"li\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "li",
+     "offset": [
+      48,
+      8,
+      1224,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1224,
+      18
+     ],
+     "rects": [
+      [
+       48,
+       8,
+       1224,
+       18
+      ]
+     ],
+     "bounds": [
+      48,
+      8,
+      1224,
+      18
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 30,
+     "y": 9,
+     "hits": [
+      "ol",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 45,
+     "y": 9,
+     "hits": [
+      "li",
+      "ol",
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-clip-rect",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"a\" style=\"position:absolute;left:0;top:0;width:100px;height:100px;clip:rect(10px,60px,60px,10px)\"><div data-cid=\"k\" style=\"width:100px;height:100px\"></div></div>",
+   "boxes": [
+    {
+     "cid": "a",
+     "offset": [
+      0,
+      0,
+      100,
+      100
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      100,
+      100
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       100,
+       100
+      ]
+     ],
+     "bounds": [
+      0,
+      0,
+      100,
+      100
+     ]
+    },
+    {
+     "cid": "k",
+     "offset": [
+      0,
+      0,
+      100,
+      100
+     ],
+     "parent": "a",
+     "client": [
+      0,
+      0,
+      100,
+      100
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       100,
+       100
+      ]
+     ],
+     "bounds": [
+      0,
+      0,
+      100,
+      100
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 5,
+     "y": 5,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 20,
+     "y": 20,
+     "hits": [
+      "k",
+      "a",
+      "html"
+     ]
+    },
+    {
+     "x": 70,
+     "y": 20,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 20,
+     "y": 70,
+     "hits": [
+      "html"
+     ]
+    }
+   ]
+  }
+ ]
+}

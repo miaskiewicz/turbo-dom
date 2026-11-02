@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#45 item 2",
+ "reason": "JPEG XL images are probed (SizeHeader + ImageMetadata orientation, every build: bare codestream or ISOBMFF container) and, under turbo-dom-raster's off-by-default `jxl` feature, decoded with jxl-oxide, as Chrome 156 decodes them (0697bea probe, 6e0d563 decoder). No corpus input is JPEG XL (or starts with its signature): html2pdf napi of turbo-html2pdf d445050 against turbo-dom 765667e vs 316ec9b: 0 outputs in html2pdf / html2pdf-svg / html2pdf-extra; static harness (surf static screenshots, 123 inputs, default raster features) 316ec9b -> 765667e: 0 outputs. P5b-W4.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/image_formats_chrome156.json (scripts/image-formats-chrome-control.mjs, jxl-* cases: Chrome for Testing 156.0.8078.4; fixtures crates/turbo-dom-layout/tests/fixtures/images/jxl, jxl-rs test files, BSD-3-Clause)",
+ "e2e": "crates/turbo-dom-layout/tests/image_formats_chrome.rs, crates/turbo-dom-layout/src/image_jxl.rs unit tests, crates/turbo-dom-raster/tests/image_formats_chrome.rs (--features jxl)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

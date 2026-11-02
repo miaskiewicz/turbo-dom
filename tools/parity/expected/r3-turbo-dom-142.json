@@ -1,0 +1,21 @@
+{
+ "id": "turbo-dom#142",
+ "reason": "An inline-block holding text sits on its last line's baseline (turbo-dom f0fb306). Every changed output holds inline-blocks (buttons, chips, pills, nowrap tabs): their line box shrinks 4-8px and buttons move up 4px in border-cascade. Checked against frozen Chrome 156.0.8078.47 running the same DUMP script: new rects match Chrome within its 1/64px LayoutUnit rounding (old values were 4-8px off) for 9 of 10 live inputs; embedded-font-range buttons move from 3px to 1.5px off Chrome; react-streaming-hydration could not be reproduced from file:// in Chrome (streamed content), same pattern as react-document-hydration. Static border-cascade png/svg follow the same layout change. R3 repin of turbo-surf to turbo-dom f0fb306.",
+ "control": "crates/turbo-dom-layout/src/cssom_view/metrics_chrome_tests.rs",
+ "changes": {
+  "surf": [
+   "live-turbo-html2pdf__benches__conformance__fixtures__04-inline-line-height.html",
+   "live-turbo-html2pdf__benches__conformance__fixtures__47-box-sizing-border-box-height.html",
+   "live-turbo-html2pdf__benches__conformance__fixtures__50-whitespace-nowrap.html",
+   "live-turbo-html2pdf__benches__conformance__fixtures__51-inline-block-min-content.html",
+   "live-turbo-surf__harness__detection__fixtures__border-cascade.html",
+   "live-turbo-surf__harness__detection__fixtures__embedded-font-range-block-only.html",
+   "live-turbo-surf__harness__detection__fixtures__embedded-font-range-mixed.html",
+   "live-turbo-surf__rust__crates__turbo-surf-render__tests__fixtures__react-document-hydration.html",
+   "live-turbo-surf__rust__crates__turbo-surf-render__tests__fixtures__react-streaming-hydration.html",
+   "live-turbo-surf__rust__crates__turbo-surf-render__tests__fixtures__react-transition-suspense.html",
+   "static-turbo-surf__harness__detection__fixtures__border-cascade.png",
+   "static-turbo-surf__harness__detection__fixtures__border-cascade.svg"
+  ]
+ }
+}

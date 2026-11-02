@@ -1,0 +1,17 @@
+{
+ "id": "miaskiewicz/turbo-dom#28 item 7",
+ "reason": "Auto-width tables shrink to fit on every path; fixed layout only with a definite width; auto columns fill the table box (4a86c76). The only changed outputs are the layoutBoxes of conformance-53 (a width:auto collapsed table; its PDF is byte-identical: the transparent table box paints nothing) \u2014 every other corpus table has an explicit width. parity fafbc8a -> 4a86c76; layoutBoxes vs Chrome 156: 172 -> 172 (conformance-53 still differs through turbo-dom#49, auto-layout collapsed borders). P5b-W3.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json + crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json table-auto-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs, crates/turbo-dom-layout/src/live/chrome_tests.rs (auto_width_tables_shrink_to_fit_like_chrome_156)",
+ "changes": {
+  "html2pdf": [
+   "conformance-53-table-auto-min-content.boxes.json"
+  ],
+  "html2pdf-svg": [
+   "conformance-53-table-auto-min-content.boxes.json"
+  ],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

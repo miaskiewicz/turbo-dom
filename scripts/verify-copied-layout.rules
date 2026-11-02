@@ -1,0 +1,21 @@
+# scripts/verify-copied-layout.sh allow-listed scripted rewrites.
+# <destination glob><TAB><perl -pe expression>, applied to the source before comparing.
+crates/turbo-dom-layout/tests/*.rs	s/\bturbo_html2pdf_core\b/turbo_dom_layout/g
+crates/turbo-dom-raster/src/*.rs	s/\bturbo_html2pdf_core\b/turbo_dom_layout/g
+crates/turbo-dom-raster/tests/*.rs	s/\bturbo_html2pdf_core\b/turbo_dom_layout/g
+crates/turbo-dom-layout/src/html_layout.rs	s/\bcrate::template::markup::/crate::markup::/g
+crates/turbo-dom-layout/src/text/font.rs	s/\bcrate::emit::tounicode::reverse_cmap\b/crate::cmap::reverse_cmap/g
+crates/turbo-dom-raster/tests/*.rs	s/\bturbo_surf_raster\b/turbo_dom_raster/g
+crates/turbo-dom-layout/examples/*.rs	s/\bturbo_html2pdf_core\b/turbo_dom_layout/g
+crates/turbo-dom-layout/examples/font_startup.rs	s/-p turbo-html2pdf-core --example font_startup/-p turbo-dom-layout --example font_startup/g
+# Manual cross-crate visibility / test-support edits (S1 "small manual fixes"):
+crates/turbo-dom-layout/src/cmap.rs	s/^pub\(crate\) fn reverse_cmap\b/pub fn reverse_cmap/m
+crates/turbo-dom-layout/src/text/font.rs	s/^#\[cfg\(test\)\]\n(impl FontFace \{\n    pub\(crate\) fn collection_fixture_bytes)/#[cfg(any(test, feature = "test-support"))]\n$1/m
+crates/turbo-dom-layout/src/text/font.rs	s/^    pub\(crate\) fn collection_fixture_faces\(\)/    pub fn collection_fixture_faces()/m
+crates/turbo-dom-layout/src/text/font.rs	s/^#\[cfg\(test\)\]\n(fn relocate_fixture_tables)/#[cfg(any(test, feature = "test-support"))]\n$1/m
+# Doc-comment references to the old crate (docs rule):
+crates/turbo-dom-layout/src/perf.rs	s/cargo test -p turbo-html2pdf-core --features perf/cargo test -p turbo-dom-layout --features perf/g
+crates/turbo-dom-raster/src/lib.rs	s/The engine borrows turbo-html2pdf's native/The engine borrows turbo-dom-layout's native/
+crates/turbo-dom-raster/src/image_paint.rs	s/turbo-html2pdf(?=('s| only| uses| resolves))/turbo-dom-layout/g
+crates/turbo-dom-raster/src/style_extract.rs	s/turbo-html2pdf(?=('s| only| uses| resolves))/turbo-dom-layout/g
+crates/turbo-dom-raster/tests/screenshot.rs	s/\(turbo-html2pdf only ever sees/(turbo-dom-layout only ever sees/

@@ -22,13 +22,3 @@ macro_rules! unwrap_or_return {
     }};
 }
 pub(crate) use unwrap_or_return;
-
-macro_rules! time {
-    ($e:expr) => {{
-        let t0 = ::std::time::Instant::now();
-        let result = $e;
-        let dt = t0.elapsed().as_nanos() as u64;
-        (result, dt)
-    }};
-}
-pub(crate) use time;

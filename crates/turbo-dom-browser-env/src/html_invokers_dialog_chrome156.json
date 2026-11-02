@@ -1,0 +1,196 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "html_invokers_dialog_probe.js",
+  "probeSha256": "74833963215ca0dc38f49795d8811ab6a8f10aac59e7a564714b2f66be8c22c2",
+  "collectorSha256": "e6cadc004087a31da5ba698e45efbc62530e73d28f401d29b96226fa9ed3f94d",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "showModalClosed": {
+      "commandRows": [
+        [
+          "show-modal",
+          "b",
+          true,
+          true,
+          true
+        ]
+      ],
+      "steps": [
+        [
+          "command",
+          "b"
+        ],
+        [
+          "beforetoggle",
+          "b"
+        ],
+        [
+          "toggle",
+          "b"
+        ]
+      ],
+      "open": true,
+      "returnValue": ""
+    },
+    "showModalOpen": {
+      "commandRows": [
+        [
+          "show-modal",
+          "b",
+          true,
+          true,
+          true
+        ]
+      ],
+      "steps": [
+        [
+          "command",
+          "b"
+        ]
+      ],
+      "open": true,
+      "returnValue": ""
+    },
+    "closeOpen": {
+      "commandRows": [
+        [
+          "close",
+          "b",
+          true,
+          true,
+          true
+        ]
+      ],
+      "steps": [
+        [
+          "command",
+          "b"
+        ],
+        [
+          "beforetoggle",
+          "b"
+        ],
+        [
+          "toggle",
+          "b"
+        ],
+        [
+          "close",
+          "undefined"
+        ]
+      ],
+      "open": false,
+      "returnValue": "v"
+    },
+    "closeClosed": {
+      "commandRows": [
+        [
+          "close",
+          "b",
+          true,
+          true,
+          true
+        ]
+      ],
+      "steps": [
+        [
+          "command",
+          "b"
+        ]
+      ],
+      "open": false,
+      "returnValue": ""
+    },
+    "requestCloseOpen": {
+      "commandRows": [
+        [
+          "request-close",
+          "b",
+          true,
+          true,
+          true
+        ]
+      ],
+      "steps": [
+        [
+          "command",
+          "b"
+        ],
+        [
+          "cancel",
+          "undefined"
+        ],
+        [
+          "beforetoggle",
+          "b"
+        ],
+        [
+          "toggle",
+          "b"
+        ],
+        [
+          "close",
+          "undefined"
+        ]
+      ],
+      "open": false,
+      "returnValue": "v"
+    },
+    "requestCloseClosed": {
+      "commandRows": [
+        [
+          "request-close",
+          "b",
+          true,
+          true,
+          true
+        ]
+      ],
+      "steps": [
+        [
+          "command",
+          "b"
+        ]
+      ],
+      "open": false,
+      "returnValue": ""
+    },
+    "showModalPopoverDialog": {
+      "commandRows": [
+        [
+          "show-modal",
+          "b",
+          true,
+          true,
+          true
+        ]
+      ],
+      "steps": [
+        [
+          "command",
+          "b"
+        ],
+        [
+          "beforetoggle",
+          "b"
+        ],
+        [
+          "toggle",
+          "b"
+        ]
+      ],
+      "open": true,
+      "returnValue": ""
+    }
+  }
+}

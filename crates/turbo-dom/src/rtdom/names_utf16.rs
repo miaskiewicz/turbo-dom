@@ -126,11 +126,10 @@ impl Tree {
         if let Some(data) = self.attribute_data_units(node) {
             return data.prefix;
         }
-        if let Some(metadata) = self.element_namespaces.get(&node) {
-            return metadata.prefix.as_ref().map(DomString::units);
-        }
-        self.prefix(node)
-            .map(|prefix| prefix.encode_utf16().collect())
+        // `prefix()` reads exactly these two sources: everything else has no prefix.
+        self.element_namespaces
+            .get(&node)
+            .and_then(|metadata| metadata.prefix.as_ref().map(DomString::units))
     }
     #[must_use]
     pub fn tag_name_utf16(&self, node: Handle) -> Option<Vec<u16>> {

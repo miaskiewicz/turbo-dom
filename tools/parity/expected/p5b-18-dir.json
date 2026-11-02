@@ -1,0 +1,14 @@
+{
+ "id": "P5b/turbo-dom#18/dir",
+ "class": "dir",
+ "reason": ":dir(ltr|rtl) is evaluated with HTML directionality (dir attribute, dir=auto / bdi first strong character, tel inputs, inheritance) in the DOM APIs and stylesheets; it never matched (45a1797). Measured: no parity-corpus output changes (html2pdf, html2pdf-svg, html2pdf-extra vs b-main; surf static vs S5).",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cases/dir)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "surf_static": "turbo-dom-raster static screenshots (the surf static tier) of every surf static + extra input: byte-identical to S5 (74bcc5c), PNG + SVG + system-fonts passes.",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

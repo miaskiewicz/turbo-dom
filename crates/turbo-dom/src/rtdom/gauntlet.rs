@@ -37,10 +37,16 @@ fn full_stack_parse_query_cascade_event_mutate_serialize() {
     // --- getComputedStyle cascade ---
     // .card sets color:blue; #hero (id) sets color:green and wins on specificity.
     let hero_cs = cascade::computed_style(&dom.tree, cards[0]);
-    assert_eq!(cascade::get_property_value(&hero_cs, "color"), "rgb(0, 128, 0)"); // green
+    assert_eq!(
+        cascade::get_property_value(&hero_cs, "color"),
+        "rgb(0, 128, 0)"
+    ); // green
     let plain_cs = cascade::computed_style(&dom.tree, cards[1]);
-    assert_eq!(cascade::get_property_value(&plain_cs, "color"), "rgb(0, 0, 255)"); // blue
-    // honest absence
+    assert_eq!(
+        cascade::get_property_value(&plain_cs, "color"),
+        "rgb(0, 0, 255)"
+    ); // blue
+       // honest absence
     assert_eq!(cascade::get_property_value(&plain_cs, "margin-top"), "");
 
     // --- event dispatch whose handler mutates the tree ---
@@ -171,23 +177,39 @@ fn lazy_vs_eager_ab() {
         let work = || {
             let mut sink: u64 = 0;
             for &el in cards.iter() {
-                if let Some(c) = tree.get_attribute(el, "class") { sink += c.len() as u64; }
-                if let Some(t) = tree.get_attribute(el, "data-testid") { sink += t.len() as u64; }
-                for c in tree.children(el) { sink += tree.node_type(c) as u64; }
+                if let Some(c) = tree.get_attribute(el, "class") {
+                    sink += c.len() as u64;
+                }
+                if let Some(t) = tree.get_attribute(el, "data-testid") {
+                    sink += t.len() as u64;
+                }
+                for c in tree.children(el) {
+                    sink += tree.node_type(c) as u64;
+                }
                 let mut p = tree.parent(el);
-                while let Some(x) = p { sink += 1; p = tree.parent(x); }
+                while let Some(x) = p {
+                    sink += 1;
+                    p = tree.parent(x);
+                }
             }
             sink
         };
         let mut best = 0.0f64;
         let mut sink = 0u64;
         for _ in 0..6 {
-            for _ in 0..200 { sink = sink.wrapping_add(work()); }
+            for _ in 0..200 {
+                sink = sink.wrapping_add(work());
+            }
             let start = Instant::now();
             let mut iters = 0u64;
-            while start.elapsed().as_millis() < 400 { sink = sink.wrapping_add(work()); iters += 1; }
+            while start.elapsed().as_millis() < 400 {
+                sink = sink.wrapping_add(work());
+                iters += 1;
+            }
             let ops = iters as f64 / start.elapsed().as_secs_f64();
-            if ops > best { best = ops; }
+            if ops > best {
+                best = ops;
+            }
         }
         (best, sink % 100_003)
     };
@@ -204,14 +226,19 @@ fn lazy_vs_eager_ab() {
     println!("lazy-vs-eager A/B (same runtime, {n} cards):");
     println!("  lazy  (buffer reads, zero overlay alloc): {lazy_ops:.0} ops/s (sink {s1})");
     println!("  eager (full HashMap overlay inflate)     : {eager_ops:.0} ops/s (sink {s2})");
-    println!("  eager up-front inflate cost: {:.2} ms; lazy read path is {:.2}x eager", inflate_ms, lazy_ops / eager_ops);
+    println!(
+        "  eager up-front inflate cost: {:.2} ms; lazy read path is {:.2}x eager",
+        inflate_ms,
+        lazy_ops / eager_ops
+    );
 }
 
 #[test]
 fn innerhtml_then_query_and_serialize() {
     let mut dom = Dom::parse("<div id=root></div>");
     let root = dom.tree.query_selector("#root").unwrap();
-    dom.tree.set_inner_html(root, "<ul><li class=x>1</li><li class=x>2</li></ul>");
+    dom.tree
+        .set_inner_html(root, "<ul><li class=x>1</li><li class=x>2</li></ul>");
     assert_eq!(dom.tree.query_selector_all("li.x").len(), 2);
     assert_eq!(dom.tree.text_content(root), "12");
     let html = serialize::serialize_inner(&dom.tree, root);
