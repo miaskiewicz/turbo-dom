@@ -218,7 +218,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
             ..
         } => {
             // An outer shadow paints behind the box (before its fill/border) so the
-            // card sits on it; inset shadows are v1-unsupported.
+            // card sits on it; an inset one paints over the background, under the border.
             if let Some(sh) = shadow.filter(|s| !s.inset && s.color.a > 0) {
                 paint_box_shadow(pm, f, *border_radius, &sh, xf);
             }
@@ -229,6 +229,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
                 if let Some(g) = gradient {
                     paint_gradient(pm, f, *border_radius, g, xf);
                 }
+                paint_inset_shadow(pm, f, border, *border_radius, shadow.as_ref(), xf);
                 paint_round_border(pm, f, border, *border_radius, xf);
             } else {
                 if let Some(bg) = background {
@@ -237,6 +238,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
                 if let Some(g) = gradient {
                     paint_gradient(pm, f, 0.0, g, xf);
                 }
+                paint_inset_shadow(pm, f, border, 0.0, shadow.as_ref(), xf);
                 paint_border(pm, f, border, xf);
             }
         }
@@ -445,6 +447,85 @@ fn paint_box_shadow(
         color: sh.color,
     };
     blurred_shadow(pm, &silhouette, blur, xf, SHADOW_TILE, MAX_SHADOW_SCRATCH);
+}
+
+/// The padding box of `f` (its border box less the border widths) as `(x, y, w, h, r)`,
+/// `r` the corner radius less the widest border side (exact for a uniform border).
+pub(crate) fn padding_box(f: &Fragment, b: &BorderEdges, radius: f32) -> (f32, f32, f32, f32, f32) {
+    let (t, r, bo, l) = (
+        f32::from(b.top.width),
+        f32::from(b.right.width),
+        f32::from(b.bottom.width),
+        f32::from(b.left.width),
+    );
+    (
+        f.x + l,
+        f.y + t,
+        f.width - l - r,
+        f.height - t - bo,
+        (radius - t.max(r).max(bo).max(l)).max(0.0),
+    )
+}
+
+/// Paint an inset `box-shadow` (miaskiewicz/turbo-dom#192): the padding box in the shadow
+/// colour with a hole cut out of it — the padding box offset by `(offset_x, offset_y)`,
+/// shrunk by `spread` (its radius shrunk with it) and blurred by `blur`. Like Chrome it
+/// paints over the background and under the border, never outside the padding box.
+fn paint_inset_shadow(
+    pm: &mut Pixmap,
+    f: &Fragment,
+    border: &BorderEdges,
+    border_radius: f32,
+    shadow: Option<&BoxShadow>,
+    xf: Transform,
+) {
+    let Some(sh) = shadow.filter(|s| s.inset && s.color.a > 0) else {
+        return;
+    };
+    let (px, py, pw, ph, pr) = padding_box(f, border, border_radius);
+    // The scratch layers have the canvas's size, which tiny-skia already allocated.
+    let mut layer = Pixmap::new(pm.width(), pm.height()).expect("a canvas-sized layer");
+    fill_round_rect(&mut layer, px, py, pw, ph, pr, sh.color, xf);
+    let spread = sh.spread as f32;
+    let hole = Silhouette {
+        x: px + sh.offset_x as f32 + spread,
+        y: py + sh.offset_y as f32 + spread,
+        width: pw - 2.0 * spread,
+        height: ph - 2.0 * spread,
+        radius: (pr - spread).max(0.0),
+        color: Rgba { a: 255, ..sh.color },
+    };
+    if hole.width >= 0.5 && hole.height >= 0.5 {
+        let mut cut = Pixmap::new(pm.width(), pm.height()).expect("a canvas-sized layer");
+        let blur = shadow_blur(sh);
+        if blur < 0.5 {
+            fill_round_rect(
+                &mut cut,
+                hole.x,
+                hole.y,
+                hole.width,
+                hole.height,
+                hole.radius,
+                hole.color,
+                xf,
+            );
+        } else {
+            blurred_shadow(&mut cut, &hole, blur, xf, SHADOW_TILE, MAX_SHADOW_SCRATCH);
+        }
+        let out = PixmapPaint {
+            blend_mode: tiny_skia::BlendMode::DestinationOut,
+            ..PixmapPaint::default()
+        };
+        layer.draw_pixmap(0, 0, cut.as_ref(), &out, Transform::identity(), None);
+    }
+    pm.draw_pixmap(
+        0,
+        0,
+        layer.as_ref(),
+        &PixmapPaint::default(),
+        Transform::identity(),
+        None,
+    );
 }
 
 /// An outer shadow's corner radius for a box radius `r` and a `spread` (CSS Backgrounds 3
@@ -1441,8 +1522,9 @@ mod tests {
 
     #[test]
     fn inset_and_transparent_shadows_paint_nothing_around_the_box() {
-        // Inset shadows are not painted (a known gap: Chrome paints them inside the box), and
-        // a transparent one is nothing; an opaque outer one shows below the box.
+        // An inset shadow paints only inside the box (here its hole is offset wholly out of
+        // it, so the box is the shadow colour), and a transparent one is nothing; an opaque
+        // outer one shows below the box.
         let with_shadow = |inset: bool, a: u8| {
             with_box(plain(10.0, 10.0, 20.0, 10.0, Some(RED)), |_, sh, _, _| {
                 *sh = Some(BoxShadow {
@@ -1460,14 +1542,18 @@ mod tests {
             rgb(&render(&with_shadow(false, 255), 40, 40, &images), 20, 25),
             [0, 0, 255]
         );
-        for (inset, a) in [(true, 255), (false, 0), (true, 0)] {
+        for (inset, a, inside) in [
+            (true, 255, [0, 0, 255]),
+            (false, 0, [255, 0, 0]),
+            (true, 0, [255, 0, 0]),
+        ] {
             let pm = render(&with_shadow(inset, a), 40, 40, &images);
             assert_eq!(
                 rgb(&pm, 20, 25),
                 [255, 255, 255],
                 "inset {inset}, alpha {a}"
             );
-            assert_eq!(rgb(&pm, 20, 15), [255, 0, 0], "the box");
+            assert_eq!(rgb(&pm, 20, 15), inside, "the box");
         }
     }
 
