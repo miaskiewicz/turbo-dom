@@ -1,0 +1,547 @@
+//! Vertical writing modes (`writing-mode: vertical-rl` / `vertical-lr`,
+//! miaskiewicz/turbo-dom#234) through a logical-coordinate layer.
+//!
+//! The block and inline layout code works in one coordinate space whose `x` is the
+//! inline axis and `y` the block axis. A box whose writing mode differs from its
+//! parent's (a *writing-mode root*) is laid out in its own logical space: its subtree
+//! is restyled so the physical sides and sizes name their logical counterparts
+//! (`height` is the inline size of a vertical box, `margin-right` its block-start
+//! margin in `vertical-rl`, …), laid out with the ordinary block / inline code (so
+//! lines break at the inline — vertical — size, as in Chrome), and the resulting
+//! fragments and used box metrics are mapped back into the parent's space. The map
+//! composes: a horizontal box in a vertical parent is a root of its own, mapped into
+//! the parent's logical space and from there, with the parent, to physical space.
+//!
+//! A root whose block axis is the parent's inline axis (an *orthogonal flow*) sizes its
+//! `auto` inline size to fit its content within the available space (CSS Writing Modes 4
+//! §7.3): the parent's definite size along that axis, else the initial containing
+//! block's.
+use std::collections::HashMap;
+
+use super::block::Ctx;
+use super::fragment::{Fragment, FragmentContent, NodeId};
+use super::value::Edges;
+use crate::layout_snapshot::UsedBoxMetrics;
+use crate::ComputedStyle;
+
+/// A box's used writing mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum WritingMode {
+    #[default]
+    HorizontalTb,
+    VerticalRl,
+    VerticalLr,
+}
+
+/// Physical sides in CSS order.
+const SIDES: [&str; 4] = ["top", "right", "bottom", "left"];
+
+impl WritingMode {
+    /// The computed `writing-mode` of `style` (the `sideways-*` modes lay out as their
+    /// `vertical-*` counterparts; the legacy SVG `tb*` / `rl` keywords map as Chrome).
+    pub(crate) fn of(style: &ComputedStyle) -> WritingMode {
+        match style.get("writing-mode").map(str::trim) {
+            Some("vertical-rl" | "sideways-rl" | "tb-rl" | "tb") => WritingMode::VerticalRl,
+            Some("vertical-lr" | "sideways-lr") => WritingMode::VerticalLr,
+            _ => WritingMode::HorizontalTb,
+        }
+    }
+
+    pub(crate) fn vertical(self) -> bool {
+        self != WritingMode::HorizontalTb
+    }
+
+    /// For each logical side (`top` = block-start, `left` = inline-start, …, in
+    /// [`SIDES`] order), the physical side it is.
+    fn logical_sides(self) -> [usize; 4] {
+        match self {
+            WritingMode::HorizontalTb => [0, 1, 2, 3],
+            WritingMode::VerticalRl => [1, 2, 3, 0],
+            WritingMode::VerticalLr => [3, 2, 1, 0],
+        }
+    }
+
+    /// For each physical side, the logical side it is (the inverse of
+    /// [`Self::logical_sides`]).
+    fn physical_sides(self) -> [usize; 4] {
+        let from = self.logical_sides();
+        let mut inverse = [0; 4];
+        for (logical, &physical) in from.iter().enumerate() {
+            inverse[physical] = logical;
+        }
+        inverse
+    }
+}
+
+/// How sides and sizes of one logical space name those of another.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Relabel {
+    /// For each side of the target space, the source side it is.
+    sides: [usize; 4],
+    /// Whether the inline and block axes swap.
+    swap: bool,
+}
+
+impl Relabel {
+    /// From the space of `source` to the space of `target`.
+    pub(crate) fn between(source: WritingMode, target: WritingMode) -> Relabel {
+        let to_physical = source.physical_sides();
+        let from = target.logical_sides();
+        Relabel {
+            sides: from.map(|physical| to_physical[physical]),
+            swap: source.vertical() != target.vertical(),
+        }
+    }
+
+    fn edges(self, edges: Edges) -> Edges {
+        let source = [edges.top, edges.right, edges.bottom, edges.left];
+        Edges {
+            top: source[self.sides[0]],
+            right: source[self.sides[1]],
+            bottom: source[self.sides[2]],
+            left: source[self.sides[3]],
+        }
+    }
+
+    /// `style` with its physical sides and sizes relabelled into the target space.
+    /// Flow-relative properties (`margin-inline-start`, …) already name logical sides
+    /// and stay. A multi-value side shorthand fills the longhands it would set (a
+    /// longhand present wins, as in [`super::value`]) before they move.
+    pub(crate) fn style(self, style: &ComputedStyle) -> ComputedStyle {
+        let mut out = style.clone();
+        for (shorthand, longhand) in SIDE_GROUPS {
+            spread_shorthand(&mut out, shorthand, longhand);
+            let source: Vec<Option<String>> = SIDES
+                .iter()
+                .map(|side| out.remove(&longhand.replace('*', side)))
+                .collect();
+            for (target, side) in SIDES.iter().enumerate() {
+                if let Some(value) = &source[self.sides[target]] {
+                    out.set(&longhand.replace('*', side), value.clone());
+                }
+            }
+        }
+        if self.swap {
+            for (a, b) in AXIS_PAIRS {
+                let (va, vb) = (out.remove(a), out.remove(b));
+                if let Some(v) = vb {
+                    out.set(a, v);
+                }
+                if let Some(v) = va {
+                    out.set(b, v);
+                }
+            }
+        }
+        out
+    }
+}
+
+/// Side groups: the multi-value shorthand (if any) and the longhand pattern.
+const SIDE_GROUPS: [(&str, &str); 7] = [
+    ("margin", "margin-*"),
+    ("padding", "padding-*"),
+    ("inset", "*"),
+    ("border-width", "border-*-width"),
+    ("border-style", "border-*-style"),
+    ("border-color", "border-*-color"),
+    ("", "border-*"),
+];
+
+/// Properties that trade places when the axes swap.
+const AXIS_PAIRS: [(&str, &str); 4] = [
+    ("width", "height"),
+    ("min-width", "min-height"),
+    ("max-width", "max-height"),
+    ("overflow-x", "overflow-y"),
+];
+
+/// Replace a 2–4 value side shorthand by the longhands it sets (those not already
+/// present). A single value names every side alike and stays.
+fn spread_shorthand(style: &mut ComputedStyle, shorthand: &str, longhand: &str) {
+    if shorthand.is_empty() {
+        return;
+    }
+    let Some(value) = style.get(shorthand).map(str::to_string) else {
+        return;
+    };
+    let Some(expanded) = crate::style::expand_quad(shorthand, &value) else {
+        return;
+    };
+    if expanded.iter().all(|(_, v)| *v == expanded[0].1) {
+        return;
+    }
+    style.remove(shorthand);
+    for (side, (_, v)) in SIDES.iter().zip(expanded) {
+        let name = longhand.replace('*', side);
+        if style.get(&name).is_none() {
+            style.set(&name, v.to_string());
+        }
+    }
+}
+
+/// A fragment rectangle `(x, y, width, height)`.
+type Rect = (f32, f32, f32, f32);
+
+/// `rect` of a box laid out in the space of `mode` (relative to the root's origin, the
+/// root's block size being `block`) in physical coordinates relative to the root's
+/// physical top-left.
+fn to_physical(mode: WritingMode, (x, y, w, h): Rect, block: f32) -> Rect {
+    match mode {
+        WritingMode::HorizontalTb => (x, y, w, h),
+        WritingMode::VerticalLr => (y, x, h, w),
+        WritingMode::VerticalRl => (block - y - h, x, h, w),
+    }
+}
+
+/// The inverse of [`to_physical`] for the parent space of `mode`, local to a root
+/// whose physical width is `width`.
+fn from_physical(mode: WritingMode, (x, y, w, h): Rect, width: f32) -> Rect {
+    match mode {
+        WritingMode::HorizontalTb => (x, y, w, h),
+        WritingMode::VerticalLr => (y, x, h, w),
+        WritingMode::VerticalRl => (y, width - x - w, h, w),
+    }
+}
+
+/// Map a root's fragment tree (laid out at the origin of the space of `mode`) into
+/// the space of `parent`, local to the root's top-left there.
+fn map_tree(frag: &mut Fragment, mode: WritingMode, parent: WritingMode) {
+    let block = frag.height;
+    walk(frag, &mut |f| {
+        set_rect(f, to_physical(mode, rect(f), block), mode);
+    });
+    let width = frag.width;
+    walk(frag, &mut |f| {
+        set_rect(f, from_physical(parent, rect(f), width), parent);
+    });
+}
+
+fn rect(f: &Fragment) -> Rect {
+    (f.x, f.y, f.width, f.height)
+}
+
+/// Move `f` to `r`; a step through a vertical space turns its glyph runs a quarter.
+fn set_rect(f: &mut Fragment, r: Rect, mode: WritingMode) {
+    (f.x, f.y, f.width, f.height) = r;
+    if let (true, FragmentContent::TextLine { vertical, .. }) = (mode.vertical(), &mut f.content) {
+        *vertical = !*vertical;
+    }
+}
+
+fn walk(frag: &mut Fragment, f: &mut impl FnMut(&mut Fragment)) {
+    f(frag);
+    for child in &mut frag.children {
+        walk(child, f);
+    }
+}
+
+/// Used box metrics recorded in the space of `mode`, in the space of `parent`.
+fn map_metrics(metrics: &mut UsedBoxMetrics, mode: WritingMode, parent: WritingMode) {
+    let relabel = Relabel::between(mode, parent);
+    metrics.border = relabel.edges(metrics.border);
+    metrics.padding = relabel.edges(metrics.padding);
+    metrics.margin = relabel.edges(metrics.margin);
+    if relabel.swap {
+        std::mem::swap(&mut metrics.content_width, &mut metrics.content_height);
+    }
+}
+
+/// The context a writing-mode root swaps out while its subtree lays out in its own
+/// space.
+struct Saved {
+    writing: WritingMode,
+    floats: Vec<super::block::FloatRect>,
+    metrics: Option<HashMap<NodeId, UsedBoxMetrics>>,
+    cb: (f32, bool),
+}
+
+/// Lay out `lb` when it is a writing-mode root (its writing mode differs from the
+/// current space's): its border box at `(bx, by)` in the current space, `cb_width` the
+/// current containing block's inline size. `None` for any other box.
+pub(crate) fn layout_root(
+    lb: &super::boxgen::LayoutBox,
+    (bx, by): (f32, f32),
+    cb_width: f32,
+    parent_fs: f32,
+    ctx: &mut Ctx,
+) -> Option<Fragment> {
+    let mode = WritingMode::of(&lb.style);
+    let parent = ctx.writing;
+    if !lb.writing_root || mode == parent {
+        return None;
+    }
+    let relabel = Relabel::between(parent, mode);
+    let root = lb.relabelled(relabel);
+    let orthogonal = relabel.swap;
+    let available = if orthogonal {
+        orthogonal_available(parent, ctx)
+    } else {
+        cb_width
+    };
+    let saved = Saved {
+        writing: std::mem::replace(&mut ctx.writing, mode),
+        floats: std::mem::take(&mut ctx.floats),
+        metrics: ctx.used_metrics.as_mut().map(std::mem::take),
+        cb: (ctx.cb_h, ctx.cb_h_known),
+    };
+    if orthogonal {
+        // The root's block size resolves percentages against the parent's inline size.
+        (ctx.cb_h, ctx.cb_h_known) = (cb_width, true);
+    }
+    let mut frag = super::block::layout_root_box(&root, available, parent_fs, orthogonal, ctx);
+    ctx.writing = saved.writing;
+    ctx.floats = saved.floats;
+    (ctx.cb_h, ctx.cb_h_known) = saved.cb;
+    if let (Some(inner), Some(mut outer)) = (ctx.used_metrics.take(), saved.metrics) {
+        for (id, mut used) in inner {
+            map_metrics(&mut used, mode, parent);
+            outer.insert(id, used);
+        }
+        ctx.used_metrics = Some(outer);
+    }
+    map_tree(&mut frag, mode, parent);
+    frag.translate(bx, by);
+    Some(frag)
+}
+
+/// The space available to an orthogonal root's inline size: the containing block's
+/// definite size along it, else the initial containing block's (CSS Writing Modes 4
+/// §7.3).
+fn orthogonal_available(parent: WritingMode, ctx: &Ctx) -> f32 {
+    if ctx.cb_h_known && ctx.cb_h > 0.0 && ctx.cb_h < ctx.root_h.max(ctx.root_w) {
+        return ctx.cb_h;
+    }
+    if parent.vertical() {
+        ctx.root_w
+    } else if ctx.icb_h > 0.0 {
+        ctx.icb_h
+    } else {
+        ctx.root_h
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{layout_boxes, Diagnostics};
+
+    fn style(pairs: &[(&str, &str)]) -> ComputedStyle {
+        ComputedStyle::from_pairs(pairs.iter().copied())
+    }
+
+    #[test]
+    fn writing_mode_keywords() {
+        for (value, mode) in [
+            ("vertical-rl", WritingMode::VerticalRl),
+            ("sideways-rl", WritingMode::VerticalRl),
+            ("tb-rl", WritingMode::VerticalRl),
+            ("tb", WritingMode::VerticalRl),
+            ("vertical-lr", WritingMode::VerticalLr),
+            ("sideways-lr", WritingMode::VerticalLr),
+            ("horizontal-tb", WritingMode::HorizontalTb),
+            ("lr", WritingMode::HorizontalTb),
+        ] {
+            assert_eq!(
+                WritingMode::of(&style(&[("writing-mode", value)])),
+                mode,
+                "{value}"
+            );
+        }
+        assert_eq!(WritingMode::of(&style(&[])), WritingMode::HorizontalTb);
+    }
+
+    /// Physical sides name their logical counterparts: in vertical-rl the block-start
+    /// side is the right one and the inline-start side the top one; in vertical-lr the
+    /// block-start side is the left one. Sizes swap; logical properties stay.
+    #[test]
+    fn relabel_sides_and_sizes() {
+        let source = style(&[
+            ("margin", "1px 2px 3px 4px"),
+            ("margin-left", "9px"),
+            ("padding", "5px"),
+            ("border-right", "1px solid red"),
+            ("border-width", "1px 2px"),
+            ("top", "7px"),
+            ("width", "10px"),
+            ("min-height", "8px"),
+            ("overflow-x", "hidden"),
+            ("margin-inline-start", "6px"),
+        ]);
+        let rl =
+            Relabel::between(WritingMode::HorizontalTb, WritingMode::VerticalRl).style(&source);
+        for (name, value) in [
+            ("margin-top", Some("2px")),
+            ("margin-right", Some("3px")),
+            ("margin-bottom", Some("9px")),
+            ("margin-left", Some("1px")),
+            ("margin", None),
+            ("padding", Some("5px")),
+            ("border-top", Some("1px solid red")),
+            ("border-top-width", Some("2px")),
+            ("border-left-width", Some("1px")),
+            ("left", Some("7px")),
+            ("height", Some("10px")),
+            ("width", None),
+            ("min-width", Some("8px")),
+            ("overflow-y", Some("hidden")),
+            ("margin-inline-start", Some("6px")),
+        ] {
+            assert_eq!(rl.get(name), value, "vertical-rl {name}");
+        }
+        let lr =
+            Relabel::between(WritingMode::HorizontalTb, WritingMode::VerticalLr).style(&source);
+        assert_eq!(lr.get("margin-top"), Some("9px"));
+        assert_eq!(lr.get("margin-bottom"), Some("2px"));
+        // Back again, and between the two vertical modes (no axis swap).
+        let back = Relabel::between(WritingMode::VerticalRl, WritingMode::HorizontalTb).style(&rl);
+        assert_eq!(back.get("margin-left"), Some("9px"));
+        assert_eq!(back.get("width"), Some("10px"));
+        let flipped = Relabel::between(WritingMode::VerticalRl, WritingMode::VerticalLr).style(&rl);
+        assert_eq!(flipped.get("margin-top"), Some("9px"));
+        assert_eq!(flipped.get("height"), Some("10px"));
+        // An invalid shorthand stays as it is.
+        let odd = style(&[("margin", "1px 2px 3px 4px 5px")]);
+        let kept = Relabel::between(WritingMode::HorizontalTb, WritingMode::VerticalRl).style(&odd);
+        assert_eq!(kept.get("margin"), Some("1px 2px 3px 4px 5px"));
+    }
+
+    #[test]
+    fn used_metrics_map_to_the_parent_space() {
+        let edges = |t, r, b, l| Edges {
+            top: t,
+            right: r,
+            bottom: b,
+            left: l,
+        };
+        let mut used = UsedBoxMetrics {
+            inline_fragment: false,
+            border: edges(1.0, 2.0, 3.0, 4.0),
+            padding: edges(0.0, 0.0, 0.0, 0.0),
+            margin: edges(5.0, 6.0, 7.0, 8.0),
+            content_width: 10.0,
+            content_height: 20.0,
+            position: super::super::value::Position::Static,
+            display: super::super::value::Display::Block,
+        };
+        map_metrics(
+            &mut used,
+            WritingMode::VerticalRl,
+            WritingMode::HorizontalTb,
+        );
+        // Logical top (block-start) is physical right, logical left (inline-start) top.
+        assert_eq!(used.border, edges(4.0, 1.0, 2.0, 3.0));
+        assert_eq!(used.margin, edges(8.0, 5.0, 6.0, 7.0));
+        assert_eq!((used.content_width, used.content_height), (20.0, 10.0));
+    }
+
+    fn boxes(html: &str, viewport: (f32, f32)) -> Vec<crate::CidBox> {
+        let mut diags = Diagnostics::default();
+        layout_boxes(
+            html,
+            "",
+            viewport.0,
+            viewport.1,
+            &crate::test_support::fixture_fonts(),
+            &mut diags,
+        )
+        .unwrap()
+    }
+
+    fn rect(boxes: &[crate::CidBox], cid: &str) -> (f32, f32, f32, f32) {
+        let b = boxes.iter().find(|b| b.cid == cid).unwrap();
+        (b.x, b.y, b.width, b.height)
+    }
+
+    /// An orthogonal root's auto inline size fits its content within the containing
+    /// block's definite size, else the initial containing block's: here the viewport
+    /// height (static path) wraps the text, a definite parent height narrows it more.
+    #[test]
+    fn orthogonal_roots_fit_the_available_size() {
+        let html = "<body style='margin:0;font:16px/20px monospace'>\
+            <div data-cid=v style='writing-mode:vertical-rl'>aaaa bbbb cccc</div>\
+            <div style='height:50px'><div data-cid=w style='writing-mode:vertical-lr'>aaaa bbbb</div></div>\
+            <div data-cid=h style='writing-mode:vertical-rl;height:60px'><div data-cid=k style='writing-mode:horizontal-tb'>abc</div></div>";
+        let laid = boxes(html, (800.0, 70.0));
+        assert_eq!(
+            rect(&laid, "v").2,
+            60.0,
+            "three lines in the 70px viewport height"
+        );
+        assert_eq!(rect(&laid, "w").2, 40.0, "two lines in the 50px parent");
+        let h = rect(&laid, "h");
+        let k = rect(&laid, "k");
+        // A horizontal box in a vertical-rl parent fits its text, and sits at the
+        // parent's block-start (right) edge; the parent's block size is its width.
+        assert!(k.2 > 20.0 && k.2 < 40.0, "{k:?}");
+        assert_eq!((h.2, h.3), (k.2, 60.0));
+        assert_eq!((k.0 + k.2, k.1, k.3), (h.0 + h.2, h.1, 20.0));
+    }
+
+    /// Glyph runs laid out in a vertical space are flagged to paint turned; a horizontal
+    /// box inside keeps its runs upright.
+    #[test]
+    fn vertical_text_lines_are_flagged() {
+        fn collect(f: &Fragment, out: &mut Vec<(String, bool)>) {
+            if let FragmentContent::TextLine { text, vertical, .. } = &f.content {
+                out.push((text.clone(), *vertical));
+            }
+            for c in &f.children {
+                collect(c, out);
+            }
+        }
+        let mut diags = Diagnostics::default();
+        let galley = crate::layout_html(
+            "<body style='margin:0'><div style='writing-mode:vertical-rl;height:80px'>ab<div style='writing-mode:horizontal-tb'>cd</div></div>",
+            "",
+            400.0,
+            &crate::test_support::fixture_fonts(),
+            &mut diags,
+        )
+        .unwrap();
+        let mut flags = Vec::new();
+        collect(&galley, &mut flags);
+        assert_eq!(flags, [("ab".to_string(), true), ("cd".to_string(), false)]);
+    }
+
+    /// Every box kind relabels (the unsupported ones still lay out, and their reads
+    /// fail per element in a live snapshot).
+    #[test]
+    fn subtrees_of_every_kind_relabel() {
+        let html = "<body style='margin:0'><div data-cid=v style='writing-mode:vertical-lr;height:200px'>\
+            <ul><li>item</li></ul><div style='display:flex'><i>f</i></div><div style='display:grid'><i>g</i></div>\
+            <table><tr><td>t</td></tr></table><p>a<br><span style='padding:1px'>b</span><b style='display:inline-block'>c</b></p></div>";
+        let laid = boxes(html, (800.0, 600.0));
+        assert_eq!(rect(&laid, "v").3, 200.0);
+        assert!(rect(&laid, "v").2 > 0.0);
+    }
+
+    /// What the vertical layer does not lay out fails that element's reads only.
+    #[test]
+    fn unsupported_vertical_boxes_fail_per_element() {
+        use crate::layout_snapshot::SnapshotError;
+        let (tree, snapshot, _) = crate::live::testing::layout(
+            "<body><div id=v style='writing-mode:vertical-rl'>ok <span id=s>span</span>\
+             <div id=f style='display:flex'>f</div><img id=i><b id=ib style='display:inline-block'>b</b>\
+             <p id=c>\u{6f22}\u{5b57}</p><p id=u style='text-orientation:upright'>up</p><p id=e> </p></div>\
+             <p id=h style='writing-mode:vertical-lr;text-orientation:sideways'>side</p></body>",
+            "",
+            (800.0, 600.0),
+            Some(1.0),
+        );
+        let id = |selector| crate::live::testing::id(&tree, selector);
+        for supported in ["#v", "#s", "#e", "#h"] {
+            assert_eq!(
+                snapshot.unsupported_inline_geometry(id(supported)),
+                None,
+                "{supported}"
+            );
+        }
+        for unsupported in ["#f", "#i", "#ib", "#c", "#u"] {
+            assert_eq!(
+                snapshot.unsupported_inline_geometry(id(unsupported)),
+                Some(&SnapshotError::UnsupportedVerticalWriting),
+                "{unsupported}"
+            );
+        }
+    }
+}

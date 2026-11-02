@@ -200,6 +200,8 @@ const INHERITED: &[&str] = &[
     "line-height",
     "text-align",
     "direction",
+    "writing-mode",
+    "text-orientation",
     "text-indent",
     "letter-spacing",
     "word-spacing",
