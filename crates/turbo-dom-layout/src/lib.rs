@@ -56,5 +56,7 @@ pub use style::{
     TreeView,
 };
 pub use tag::{Attr, MarkerClassifier, MarkerKind, Tag};
-pub use text::{layout_text, Align, FontFace, FontRegistry, LineBox, TextStyle, WhiteSpace};
+pub use text::{
+    layout_text, Align, CanvasTextMetrics, FontFace, FontRegistry, LineBox, TextStyle, WhiteSpace,
+};
 pub use turbo_dom;

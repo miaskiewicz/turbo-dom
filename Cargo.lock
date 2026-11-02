@@ -2816,6 +2816,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "turbo-dom",
+ "turbo-dom-layout",
  "turbo-dom-v8",
  "url",
  "xml",

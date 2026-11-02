@@ -15,9 +15,7 @@ pub(super) fn glyph_advance(
     design_advance: i32,
     letter_spacing: f32,
 ) -> f64 {
-    let scalar = face.scale(font_size) * design_advance as f32;
-    let fixed = (scalar * 65536.0) as i32;
-    f64::from(fixed) / 65536.0 + f64::from(letter_spacing)
+    face.blink_glyph_advance(font_size, design_advance) + f64::from(letter_spacing)
 }
 
 pub(super) fn measure(
