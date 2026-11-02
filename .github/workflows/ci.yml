@@ -46,7 +46,10 @@ jobs:
       fail-fast: false
       matrix:
         # aarch64-apple-darwin only in the release run (inputs.darwin, see `on`).
-        include: ${{ fromJSON(inputs.darwin && '[{"os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-latest","target":"x86_64-unknown-linux-musl"},{"os":"ubuntu-24.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"macos-latest","target":"aarch64-apple-darwin"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]' || '[{"os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-latest","target":"x86_64-unknown-linux-musl"},{"os":"ubuntu-24.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]') }}
+        # Linux binaries build on ubuntu-22.04 (glibc 2.35): a binary needs at least the glibc it
+        # was linked against, and ubuntu-latest (26.04, glibc 2.43) broke consumers on 24.04.
+        # The glibc ceiling guard below enforces it.
+        include: ${{ fromJSON(inputs.darwin && '[{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-musl"},{"os":"ubuntu-22.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"macos-latest","target":"aarch64-apple-darwin"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]' || '[{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-musl"},{"os":"ubuntu-22.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -77,6 +80,11 @@ jobs:
         env:
           RUSTFLAGS: "-C strip=symbols"
         run: npx napi build --platform --release --target ${{ matrix.target }}
+
+      - name: glibc ceiling guard (linux addon runs on glibc >= 2.35)
+        if: contains(matrix.target, 'linux-gnu')
+        shell: bash
+        run: bash scripts/check-glibc-ceiling.sh *.node
 
       - uses: actions/upload-artifact@v4
         with:

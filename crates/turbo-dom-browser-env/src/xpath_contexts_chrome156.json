@@ -1,0 +1,432 @@
+{
+  "browser": "156.0.8078.47",
+  "fixture": "xpath_contexts_probe.js",
+  "probeSha256": "ad891b63f1ef08bd27a064488f0907e140927e5866800e7666d32c8140ec2124",
+  "result": {
+    "fragment_div": {
+      ".//span": [
+        "1:SPAN#fs"
+      ],
+      "//span": [
+        "1:SPAN#fs"
+      ],
+      "/": [
+        "11:#document-fragment"
+      ],
+      "/*": [
+        "1:DIV#fd",
+        "1:P"
+      ],
+      "/descendant::*": [
+        "1:DIV#fd",
+        "1:SPAN#fs",
+        "1:B",
+        "1:P"
+      ],
+      "ancestor::node()": [
+        "11:#document-fragment"
+      ],
+      "ancestor-or-self::*": [
+        "1:DIV#fd"
+      ],
+      "..": [
+        "11:#document-fragment"
+      ],
+      "following::*": [
+        "1:P"
+      ],
+      "preceding::*": [],
+      "following-sibling::*": [
+        "1:P"
+      ],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "fragment_span": {
+      ".//span": [],
+      "//span": [
+        "1:SPAN#fs"
+      ],
+      "/": [
+        "11:#document-fragment"
+      ],
+      "/*": [
+        "1:DIV#fd",
+        "1:P"
+      ],
+      "/descendant::*": [
+        "1:DIV#fd",
+        "1:SPAN#fs",
+        "1:B",
+        "1:P"
+      ],
+      "ancestor::node()": [
+        "11:#document-fragment",
+        "1:DIV#fd"
+      ],
+      "ancestor-or-self::*": [
+        "1:DIV#fd",
+        "1:SPAN#fs"
+      ],
+      "..": [
+        "1:DIV#fd"
+      ],
+      "following::*": [
+        "1:B",
+        "1:P"
+      ],
+      "preceding::*": [],
+      "following-sibling::*": [
+        "1:B"
+      ],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "fragment_text": {
+      ".//span": [],
+      "//span": [
+        "1:SPAN#fs"
+      ],
+      "/": [
+        "11:#document-fragment"
+      ],
+      "/*": [
+        "1:DIV#fd",
+        "1:P"
+      ],
+      "/descendant::*": [
+        "1:DIV#fd",
+        "1:SPAN#fs",
+        "1:B",
+        "1:P"
+      ],
+      "ancestor::node()": [
+        "11:#document-fragment",
+        "1:DIV#fd",
+        "1:SPAN#fs"
+      ],
+      "ancestor-or-self::*": [
+        "1:DIV#fd",
+        "1:SPAN#fs"
+      ],
+      "..": [
+        "1:SPAN#fs"
+      ],
+      "following::*": [
+        "1:B",
+        "1:P"
+      ],
+      "preceding::*": [],
+      "following-sibling::*": [],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "fragment_attr": {
+      ".//span": [],
+      "//span": [],
+      "/": [
+        "2:data-a"
+      ],
+      "/*": [],
+      "/descendant::*": [],
+      "ancestor::node()": [
+        "11:#document-fragment",
+        "1:DIV#fd"
+      ],
+      "ancestor-or-self::*": [
+        "1:DIV#fd"
+      ],
+      "..": [
+        "1:DIV#fd"
+      ],
+      "following::*": [
+        "1:SPAN#fs",
+        "1:B",
+        "1:P"
+      ],
+      "preceding::*": [],
+      "following-sibling::*": [],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "fragment": {
+      ".//span": "NotSupportedError",
+      "//span": "NotSupportedError",
+      "/": "NotSupportedError",
+      "/*": "NotSupportedError",
+      "/descendant::*": "NotSupportedError",
+      "ancestor::node()": "NotSupportedError",
+      "ancestor-or-self::*": "NotSupportedError",
+      "..": "NotSupportedError",
+      "following::*": "NotSupportedError",
+      "preceding::*": "NotSupportedError",
+      "following-sibling::*": "NotSupportedError",
+      "preceding-sibling::node()": "NotSupportedError",
+      "id('fs')": "NotSupportedError",
+      "id('ss')": "NotSupportedError",
+      "namespace::*": "NotSupportedError",
+      "count(namespace::node())": "NotSupportedError"
+    },
+    "shadow_div": {
+      ".//span": [
+        "1:SPAN#ss"
+      ],
+      "//span": [
+        "1:SPAN#ss"
+      ],
+      "/": [
+        "11:#document-fragment"
+      ],
+      "/*": [
+        "1:DIV#sd",
+        "1:I#si"
+      ],
+      "/descendant::*": [
+        "1:DIV#sd",
+        "1:SPAN#ss",
+        "1:I#si"
+      ],
+      "ancestor::node()": [
+        "11:#document-fragment"
+      ],
+      "ancestor-or-self::*": [
+        "1:DIV#sd"
+      ],
+      "..": [
+        "11:#document-fragment"
+      ],
+      "following::*": [
+        "1:I#si"
+      ],
+      "preceding::*": [],
+      "following-sibling::*": [
+        "1:I#si"
+      ],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [
+        "1:SPAN#ss"
+      ],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "shadow_span": {
+      ".//span": [],
+      "//span": [
+        "1:SPAN#ss"
+      ],
+      "/": [
+        "11:#document-fragment"
+      ],
+      "/*": [
+        "1:DIV#sd",
+        "1:I#si"
+      ],
+      "/descendant::*": [
+        "1:DIV#sd",
+        "1:SPAN#ss",
+        "1:I#si"
+      ],
+      "ancestor::node()": [
+        "11:#document-fragment",
+        "1:DIV#sd"
+      ],
+      "ancestor-or-self::*": [
+        "1:DIV#sd",
+        "1:SPAN#ss"
+      ],
+      "..": [
+        "1:DIV#sd"
+      ],
+      "following::*": [
+        "1:I#si"
+      ],
+      "preceding::*": [],
+      "following-sibling::*": [],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [
+        "1:SPAN#ss"
+      ],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "shadow_root": {
+      ".//span": "NotSupportedError",
+      "//span": "NotSupportedError",
+      "/": "NotSupportedError",
+      "/*": "NotSupportedError",
+      "/descendant::*": "NotSupportedError",
+      "ancestor::node()": "NotSupportedError",
+      "ancestor-or-self::*": "NotSupportedError",
+      "..": "NotSupportedError",
+      "following::*": "NotSupportedError",
+      "preceding::*": "NotSupportedError",
+      "following-sibling::*": "NotSupportedError",
+      "preceding-sibling::node()": "NotSupportedError",
+      "id('fs')": "NotSupportedError",
+      "id('ss')": "NotSupportedError",
+      "namespace::*": "NotSupportedError",
+      "count(namespace::node())": "NotSupportedError"
+    },
+    "detached_span": {
+      ".//span": [],
+      "//span": [
+        "1:SPAN#ds"
+      ],
+      "/": [
+        "1:ARTICLE#dt"
+      ],
+      "/*": [
+        "1:SPAN#ds"
+      ],
+      "/descendant::*": [
+        "1:SPAN#ds"
+      ],
+      "ancestor::node()": [
+        "1:ARTICLE#dt"
+      ],
+      "ancestor-or-self::*": [
+        "1:ARTICLE#dt",
+        "1:SPAN#ds"
+      ],
+      "..": [
+        "1:ARTICLE#dt"
+      ],
+      "following::*": [],
+      "preceding::*": [],
+      "following-sibling::*": [],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "html": {
+      ".//span": [],
+      "//span": [],
+      "/": [
+        "9:#document"
+      ],
+      "/*": [
+        "1:HTML"
+      ],
+      "/descendant::*": [
+        "1:HTML",
+        "1:HEAD",
+        "1:BODY",
+        "1:SCRIPT",
+        "1:SECTION#host",
+        "1:svg#sv",
+        "1:g#sg"
+      ],
+      "ancestor::node()": [
+        "9:#document"
+      ],
+      "ancestor-or-self::*": [
+        "1:HTML"
+      ],
+      "..": [
+        "9:#document"
+      ],
+      "following::*": [],
+      "preceding::*": [],
+      "following-sibling::*": [],
+      "preceding-sibling::node()": [
+        "10:html"
+      ],
+      "id('fs')": [],
+      "id('ss')": [],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "svg_g": {
+      ".//span": [],
+      "//span": [],
+      "/": [
+        "9:#document"
+      ],
+      "/*": [
+        "1:HTML"
+      ],
+      "/descendant::*": [
+        "1:HTML",
+        "1:HEAD",
+        "1:BODY",
+        "1:SCRIPT",
+        "1:SECTION#host",
+        "1:svg#sv",
+        "1:g#sg"
+      ],
+      "ancestor::node()": [
+        "9:#document",
+        "1:HTML",
+        "1:BODY",
+        "1:svg#sv"
+      ],
+      "ancestor-or-self::*": [
+        "1:HTML",
+        "1:BODY",
+        "1:svg#sv",
+        "1:g#sg"
+      ],
+      "..": [
+        "1:svg#sv"
+      ],
+      "following::*": [],
+      "preceding::*": [
+        "1:HEAD",
+        "1:SCRIPT",
+        "1:SECTION#host"
+      ],
+      "following-sibling::*": [],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "document": {
+      ".//span": [],
+      "//span": [],
+      "/": [
+        "9:#document"
+      ],
+      "/*": [
+        "1:HTML"
+      ],
+      "/descendant::*": [
+        "1:HTML",
+        "1:HEAD",
+        "1:BODY",
+        "1:SCRIPT",
+        "1:SECTION#host",
+        "1:svg#sv",
+        "1:g#sg"
+      ],
+      "ancestor::node()": [],
+      "ancestor-or-self::*": [],
+      "..": [],
+      "following::*": [],
+      "preceding::*": [],
+      "following-sibling::*": [],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    }
+  }
+}
