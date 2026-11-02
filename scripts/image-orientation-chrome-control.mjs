@@ -137,7 +137,7 @@ const quadrantCentres = (x, y, w, h) => [
   [x + (3 * w) / 4, y + (3 * h) / 4],
 ].map(([px, py]) => [Math.floor(px), Math.floor(py)]);
 
-const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 await page.setContent(html, { waitUntil: "load" });

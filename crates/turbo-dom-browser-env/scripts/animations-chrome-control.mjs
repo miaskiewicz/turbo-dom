@@ -33,6 +33,8 @@ const executable =
 const profile = mkdtempSync(join(tmpdir(), "turbo-animations-oracle-"));
 const flags = [
   "--headless=new",
+  "--use-mock-keychain",
+  "--password-store=basic",
   "--remote-debugging-pipe",
   "--user-data-dir=<fresh-profile>",
   "--no-first-run",

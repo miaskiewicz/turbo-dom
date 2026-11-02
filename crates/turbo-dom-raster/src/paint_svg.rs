@@ -130,6 +130,7 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             if let Some(g) = gradient {
                 paint_gradient(svg, f, *border_radius, g);
             }
+            paint_inset_shadow(svg, f, border, *border_radius, shadow.as_ref());
             if *border_radius > 0.5 {
                 paint_round_border(svg, f, border, *border_radius);
             } else {
@@ -242,6 +243,64 @@ fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: f32, sh: &Box
         "<rect x=\"{x:.2}\" y=\"{y:.2}\" width=\"{w:.2}\" height=\"{h:.2}\"{rr} {} filter=\"url(#{id})\"/>",
         fill_attrs(sh.color)
     );
+}
+
+/// Paint an inset `box-shadow` (miaskiewicz/turbo-dom#192) as the padding box in the
+/// shadow colour through a `<mask>` that cuts out the hole: the padding box offset, shrunk
+/// by the spread (radius with it) and blurred (`feGaussianBlur` inside the mask). The mask
+/// id is the document offset, unique.
+fn paint_inset_shadow(
+    svg: &mut String,
+    f: &Fragment,
+    border: &BorderEdges,
+    border_radius: f32,
+    shadow: Option<&BoxShadow>,
+) {
+    let Some(sh) = shadow.filter(|s| s.inset && s.color.a > 0) else {
+        return;
+    };
+    let (px, py, pw, ph, pr) = crate::paint_png::padding_box(f, border, border_radius);
+    if pw <= 0.0 || ph <= 0.0 {
+        return;
+    }
+    let spread = sh.spread as f32;
+    let (hx, hy) = (
+        px + sh.offset_x as f32 + spread,
+        py + sh.offset_y as f32 + spread,
+    );
+    let (hw, hh) = (pw - 2.0 * spread, ph - 2.0 * spread);
+    let id = svg.len();
+    let _ = write!(
+        svg,
+        "<mask id=\"inset{id}\" maskUnits=\"userSpaceOnUse\" x=\"{px:.2}\" y=\"{py:.2}\" width=\"{pw:.2}\" height=\"{ph:.2}\">\
+         <rect x=\"{px:.2}\" y=\"{py:.2}\" width=\"{pw:.2}\" height=\"{ph:.2}\" fill=\"#ffffff\"/>"
+    );
+    if hw >= 0.5 && hh >= 0.5 {
+        let blur = crate::paint_png::shadow_blur(sh);
+        let filter = if blur < 0.5 {
+            String::new()
+        } else {
+            let _ = write!(
+                svg,
+                "<filter id=\"insetblur{id}\" filterUnits=\"userSpaceOnUse\" x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\">\
+                 <feGaussianBlur stdDeviation=\"{:.2}\"/></filter>",
+                hx - 2.0 * blur,
+                hy - 2.0 * blur,
+                hw + 4.0 * blur,
+                hh + 4.0 * blur,
+                blur / 2.0
+            );
+            format!(" filter=\"url(#insetblur{id})\"")
+        };
+        let r = (pr - spread).max(0.0).min(hw / 2.0).min(hh / 2.0);
+        let _ = write!(
+            svg,
+            "<rect x=\"{hx:.2}\" y=\"{hy:.2}\" width=\"{hw:.2}\" height=\"{hh:.2}\" rx=\"{r:.2}\" ry=\"{r:.2}\" fill=\"#000000\"{filter}/>"
+        );
+    }
+    let _ = write!(svg, "</mask><g mask=\"url(#inset{id})\">");
+    rect_r(svg, px, py, pw, ph, sh.color, pr);
+    svg.push_str("</g>\n");
 }
 
 /// Paint a `linear-gradient(...)` background as a native SVG `<linearGradient>`
@@ -763,8 +822,43 @@ mod tests {
         assert!(
             svg(0.0, Some(shadow(0, 0, 400, 0, blue, false))).contains("stdDeviation=\"128.00\"")
         );
-        // Inset and transparent shadows emit nothing; a half-pixel one still does.
-        assert_eq!(svg(0.0, Some(shadow(0, 5, 0, 0, blue, true))), "");
+        // An inset shadow is a masked padding box (below); a transparent one emits nothing;
+        // a half-pixel one still does.
+        assert_eq!(svg(0.0, Some(shadow(0, 5, 0, 0, blue, true))), "<mask id=\"inset130\" maskUnits=\"userSpaceOnUse\" x=\"10.00\" y=\"10.00\" width=\"20.00\" height=\"10.00\">\
+             <rect x=\"10.00\" y=\"10.00\" width=\"20.00\" height=\"10.00\" fill=\"#ffffff\"/>\
+             <rect x=\"10.00\" y=\"15.00\" width=\"20.00\" height=\"10.00\" rx=\"0.00\" ry=\"0.00\" fill=\"#000000\"/></mask>\
+             <g mask=\"url(#inset130)\"><rect x=\"10.00\" y=\"10.00\" width=\"20.00\" height=\"10.00\" fill=\"#0000ff\"/>\n</g>\n"
+        );
+        // A blurred inset hole is blurred inside the mask; its radius is the padding-box
+        // radius less the spread, clamped to half the hole.
+        let blurred = svg(9.0, Some(shadow(0, 0, 4, 2, blue, true)));
+        assert!(
+            blurred.contains(
+                "<filter id=\"insetblur130\" filterUnits=\"userSpaceOnUse\" x=\"4.00\" y=\"4.00\" width=\"32.00\" height=\"22.00\"><feGaussianBlur stdDeviation=\"2.00\"/></filter>\
+                 <rect x=\"12.00\" y=\"12.00\" width=\"16.00\" height=\"6.00\" rx=\"3.00\" ry=\"3.00\" fill=\"#000000\" filter=\"url(#insetblur130)\"/>"
+            ),
+            "{blurred}"
+        );
+        // A spread past half the box leaves no hole: the whole padding box is the colour.
+        let full = svg(0.0, Some(shadow(0, 0, 0, 6, blue, true)));
+        assert!(
+            full.contains("fill=\"#ffffff\"/></mask>") && !full.contains("#000000"),
+            "{full}"
+        );
+        // A box with no padding box (its borders fill it) paints no inset shadow.
+        assert_eq!(
+            body(
+                &decorated(1.0, 2.0, 0.0, 0.0, 0.0, |s, _, _| {
+                    *s = Some(shadow(0, 0, 0, 0, blue, true));
+                }),
+                &HashMap::new(),
+            ),
+            ""
+        );
+        assert_eq!(
+            svg(0.0, Some(shadow(0, 5, 0, 0, Rgba::new(0, 0, 255, 0), true))),
+            ""
+        );
         assert_eq!(
             svg(
                 0.0,
