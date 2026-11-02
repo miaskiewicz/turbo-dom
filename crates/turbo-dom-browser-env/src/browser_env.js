@@ -2197,6 +2197,31 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       __tmValues.set(metrics, values);
       return metrics;
     };
+    // Text attributes (turbo-dom#237, canvas_text_attributes_chrome156.json): letterSpacing /
+    // wordSpacing take a CSS length (no percentage, unitless number, calc() or padding) and
+    // read back lowercased with the number reserialized; the enum attributes accept only
+    // their exact values. An invalid assignment is ignored. measureText passes them on.
+    var __cvLength = /^([+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?)(vmin|vmax|rem|px|em|ex|ch|vw|vh|pt|pc|in|cm|mm|q)$/i;
+    var __cvEnums = {
+      fontKerning: ['auto', 'normal', 'none'],
+      fontStretch: ['ultra-condensed', 'extra-condensed', 'condensed', 'semi-condensed', 'normal',
+        'semi-expanded', 'expanded', 'extra-expanded', 'ultra-expanded'],
+      textRendering: ['auto', 'optimizeSpeed', 'optimizeLegibility', 'geometricPrecision']
+    };
+    var __cvText = function(ctx){
+      var state = { letterSpacing: '0px', wordSpacing: '0px', fontKerning: 'auto', fontStretch: 'normal', textRendering: 'auto' };
+      Object.keys(state).forEach(function(name){
+        var allowed = __cvEnums[name];
+        Object.defineProperty(ctx, name, { configurable: true, enumerable: true,
+          get: function(){ return state[name]; },
+          set: function(value){
+            var text = String(value);
+            if (allowed) { if (allowed.indexOf(text) >= 0) state[name] = text; return; }
+            var length = __cvLength.exec(text);
+            if (length) state[name] = String(Number(length[1])) + length[2].toLowerCase();
+          } });
+      });
+    };
     var mkCanvasCtx = function(canvas){
       var noop = function(){};
       var paint = function(){ var p = { addColorStop: noop }; __cvPaints.add(p); return p; };
@@ -2232,7 +2257,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         measureText: function(s){
           var text = String(s);
           this._ops.push(['measureText', text, this.font]);
-          var m = canvasMeasureTextNative(text, String(this.font), String(this.textAlign), String(this.textBaseline), String(this.direction));
+          var m = canvasMeasureTextNative(text, String(this.font), String(this.textAlign), String(this.textBaseline), String(this.direction),
+            this.letterSpacing, this.wordSpacing, this.fontKerning, this.textRendering, +g.innerWidth || 0, +g.innerHeight || 0);
           // Native order -> the TextMetrics field order.
           return __textMetrics([m[0], m[1], m[2], m[5], m[6], m[3], m[4], m[7], m[8], m[9]]);
         },
@@ -2243,6 +2269,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         globalAlpha: 1, globalCompositeOperation: 'source-over', imageSmoothingEnabled: true, imageSmoothingQuality: 'low'
       };
       __cvStyles(ctx, canvas);
+      __cvText(ctx);
       // Record-only paint/path methods: log the call (args + relevant paint state) so the
       // readback hash reflects what was drawn, but perform no rasterization.
       var recorded = ['fillRect','clearRect','strokeRect','beginPath','closePath','moveTo','lineTo',
@@ -2260,7 +2287,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       // still log their call first, so the raster replay keeps its own matching stack.
       var drawingState = ['fillStyle','strokeStyle','shadowColor','globalAlpha','globalCompositeOperation',
         'lineWidth','lineCap','lineJoin','miterLimit','lineDashOffset','shadowBlur','shadowOffsetX',
-        'shadowOffsetY','font','textAlign','textBaseline','direction','imageSmoothingEnabled','imageSmoothingQuality'];
+        'shadowOffsetY','font','textAlign','textBaseline','direction','imageSmoothingEnabled','imageSmoothingQuality',
+        'letterSpacing','wordSpacing','fontKerning','fontStretch','textRendering'];
       var recordSave = ctx.save, recordRestore = ctx.restore;
       ctx.save = function(){
         recordSave.apply(this, arguments);

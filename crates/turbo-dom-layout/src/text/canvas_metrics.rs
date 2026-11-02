@@ -30,35 +30,96 @@ fn layout_unit(value: f32) -> f32 {
     (value * 64.0).round() / 64.0
 }
 
+/// How Blink's canvas font shapes a run (`fontKerning` / `textRendering`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum CanvasShaping {
+    /// `fontKerning: auto`: word by word (`CachingWordShaper`), kerning inside words only.
+    #[default]
+    WordByWord,
+    /// `fontKerning: none`: word by word without the `kern` feature.
+    NoKerning,
+    /// `fontKerning: normal`, `textRendering: optimizeLegibility | geometricPrecision`:
+    /// the whole run is shaped at once, so kerning pairs cross spaces.
+    WholeRun,
+}
+
+/// The canvas text attributes that change `measureText`: `letterSpacing` and
+/// `wordSpacing` in px (added after every character / every space, as Blink does) and the
+/// shaping mode.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct CanvasTextOptions {
+    pub letter_spacing: f32,
+    pub word_spacing: f32,
+    pub shaping: CanvasShaping,
+}
+
+/// The union of two ink rectangles `[left, right, ascent, descent]`.
+fn union(a: Option<[f32; 4]>, b: [f32; 4]) -> [f32; 4] {
+    a.map_or(b, |u| {
+        [
+            u[0].min(b[0]),
+            u[1].max(b[1]),
+            u[2].max(b[2]),
+            u[3].max(b[3]),
+        ]
+    })
+}
+
+/// The spacing after glyph `index` of `glyphs` (shaped from `segment`): nothing inside a
+/// cluster; at a cluster's end, `letter_spacing` per character and `word_spacing` per
+/// space of the cluster's text.
+fn spacing(
+    segment: &str,
+    glyphs: &[super::ShapedGlyph],
+    index: usize,
+    options: CanvasTextOptions,
+) -> f64 {
+    let start = glyphs[index].cluster as usize;
+    let end = match glyphs.get(index + 1) {
+        Some(next) if next.cluster as usize == start => return 0.0,
+        Some(next) => next.cluster as usize,
+        None => segment.len(),
+    };
+    let text = segment.get(start.min(end)..start.max(end)).unwrap_or("");
+    let chars = text.chars().count() as f32;
+    let spaces = text.matches(' ').count() as f32;
+    f64::from(options.letter_spacing * chars + options.word_spacing * spaces)
+}
+
 impl FontFace {
-    /// Canvas `measureText(text)` at `font_size` px: Blink's word-by-word 16.16 advances
-    /// for the width and the glyph positions, the union of the glyphs' outline boxes for
-    /// the ink box (zero when no glyph has ink), and the font and em boxes.
+    /// Canvas `measureText(text)` at `font_size` px with default text attributes
+    /// ([`Self::canvas_text_metrics_with`]).
     #[must_use]
     pub fn canvas_text_metrics(&self, text: &str, font_size: f32) -> CanvasTextMetrics {
-        let scale = self.scale(font_size);
+        self.canvas_text_metrics_with(text, font_size, CanvasTextOptions::default())
+    }
+
+    /// Canvas `measureText(text)` at `font_size` px under `options`: Blink's 16.16 glyph
+    /// advances plus the spacing for the width and the glyph positions, the union of the
+    /// glyphs' outline boxes for the ink box (zero when no glyph has ink), and the font and
+    /// em boxes.
+    #[must_use]
+    pub fn canvas_text_metrics_with(
+        &self,
+        text: &str,
+        font_size: f32,
+        options: CanvasTextOptions,
+    ) -> CanvasTextMetrics {
         let mut pen = 0.0f64;
         let mut ink: Option<[f32; 4]> = None;
-        for glyph in super::canvas_words(text).flat_map(|word| self.shape(word)) {
-            if let Some(b) = self.ttf().glyph_bounding_box(GlyphId(glyph.glyph_id)) {
-                let x = pen as f32 + glyph.x_offset as f32 * scale;
-                let y = glyph.y_offset as f32 * scale;
-                let rect = [
-                    x + f32::from(b.x_min) * scale,
-                    x + f32::from(b.x_max) * scale,
-                    y + f32::from(b.y_max) * scale,
-                    -(y + f32::from(b.y_min) * scale),
-                ];
-                ink = Some(ink.map_or(rect, |u| {
-                    [
-                        u[0].min(rect[0]),
-                        u[1].max(rect[1]),
-                        u[2].max(rect[2]),
-                        u[3].max(rect[3]),
-                    ]
-                }));
+        let segments: Vec<&str> = match options.shaping {
+            CanvasShaping::WholeRun => vec![text],
+            _ => super::canvas_words(text).collect(),
+        };
+        for segment in segments {
+            let glyphs = self.canvas_shape(segment, options.shaping);
+            for (index, glyph) in glyphs.iter().enumerate() {
+                if let Some(rect) = self.glyph_ink(glyph, pen as f32, font_size) {
+                    ink = Some(union(ink, rect));
+                }
+                pen += self.blink_glyph_advance(font_size, glyph.x_advance);
+                pen += spacing(segment, &glyphs, index, options);
             }
-            pen += self.blink_glyph_advance(font_size, glyph.x_advance);
         }
         let [left, right, ascent, descent] = ink.unwrap_or_default();
         let font = self.html_metrics(font_size);
@@ -74,6 +135,40 @@ impl FontFace {
             em_ascent,
             em_descent,
         }
+    }
+
+    /// The face's x-height in px (OS/2 `sxHeight`, else half the font size): the CSS `ex`.
+    #[must_use]
+    pub fn x_height_px(&self, font_size: f32) -> f32 {
+        self.ttf()
+            .x_height()
+            .map_or(font_size / 2.0, |h| f32::from(h) * self.scale(font_size))
+    }
+
+    fn canvas_shape(&self, text: &str, shaping: CanvasShaping) -> Vec<super::ShapedGlyph> {
+        if shaping != CanvasShaping::NoKerning {
+            return self.shape(text);
+        }
+        let mut buffer = rustybuzz::UnicodeBuffer::new();
+        buffer.push_str(text);
+        let no_kern =
+            rustybuzz::Feature::new(rustybuzz::ttf_parser::Tag::from_bytes(b"kern"), 0, ..);
+        let shaped = rustybuzz::shape(&self.faces.borrow_dependent().rb, &[no_kern], buffer);
+        super::collect_glyphs(&shaped)
+    }
+
+    /// The glyph's outline box at pen position `pen`, or `None` for a glyph without ink.
+    fn glyph_ink(&self, glyph: &super::ShapedGlyph, pen: f32, font_size: f32) -> Option<[f32; 4]> {
+        let scale = self.scale(font_size);
+        let b = self.ttf().glyph_bounding_box(GlyphId(glyph.glyph_id))?;
+        let x = pen + glyph.x_offset as f32 * scale;
+        let y = glyph.y_offset as f32 * scale;
+        Some([
+            x + f32::from(b.x_min) * scale,
+            x + f32::from(b.x_max) * scale,
+            y + f32::from(b.y_max) * scale,
+            -(y + f32::from(b.y_min) * scale),
+        ])
     }
 
     /// Blink `NormalizedTypoAscentAndDescent`: the OS/2 typo ascent / descent (else the
@@ -139,5 +234,58 @@ mod tests {
             }
         );
         assert_eq!(inter().canvas_text_metrics("", 16.0).width, 0.0);
+    }
+
+    fn serif() -> FontFace {
+        let path = format!(
+            "{}/assets/fonts/liberation-serif/LiberationSerif-Regular.ttf",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        FontFace::from_bytes(std::fs::read(path).unwrap(), "Liberation Serif", 400, false).unwrap()
+    }
+
+    /// Chrome 156 widths under the canvas text attributes (turbo-dom-browser-env's
+    /// `canvas_text_attributes_chrome156.json`, 16px).
+    #[test]
+    fn text_attributes_change_widths_like_chrome156() {
+        use super::{CanvasShaping, CanvasTextOptions};
+        let width = |face: &FontFace, text, options| {
+            face.canvas_text_metrics_with(text, 16.0, options).width
+        };
+        let shaped = |shaping| CanvasTextOptions {
+            shaping,
+            ..CanvasTextOptions::default()
+        };
+        let serif = serif();
+        assert_eq!(
+            width(&serif, "AVATAR Wave", shaped(CanvasShaping::WordByWord)),
+            99.507_812_5
+        );
+        assert_eq!(
+            width(&serif, "AVATAR Wave", shaped(CanvasShaping::WholeRun)),
+            99.218_75
+        );
+        assert_eq!(
+            width(&serif, "AVATAR Wave", shaped(CanvasShaping::NoKerning)),
+            107.968_75
+        );
+        let spaced = CanvasTextOptions {
+            letter_spacing: 2.0,
+            ..CanvasTextOptions::default()
+        };
+        let m = serif.canvas_text_metrics_with("AVATAR Wave", 16.0, spaced);
+        assert_eq!((m.width, m.ink_right), (121.507_812_5, 118.953_125));
+        let words = CanvasTextOptions {
+            letter_spacing: 1.0,
+            word_spacing: 3.0,
+            ..CanvasTextOptions::default()
+        };
+        assert_eq!(width(&inter(), "a b  c", words), 56.421_875);
+    }
+
+    #[test]
+    fn x_height_reads_the_os2_table() {
+        let x = inter().x_height_px(16.0);
+        assert!(x > 7.0 && x < 9.5, "{x}");
     }
 }

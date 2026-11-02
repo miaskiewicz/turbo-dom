@@ -4,7 +4,9 @@
 //! ([`FontFace::canvas_text_metrics`](turbo_dom_layout::FontFace::canvas_text_metrics));
 //! this module only parses the font and applies the `textAlign` / `textBaseline` offsets.
 use super::*;
-use turbo_dom_layout::{CanvasTextMetrics, FontRegistry};
+use turbo_dom_layout::{
+    CanvasShaping, CanvasTextMetrics, CanvasTextOptions, FontFace, FontRegistry,
+};
 use turbo_dom_parser::rtdom::css_shorthand;
 
 /// The fonts canvas `measureText` resolves `ctx.font` against, per context.
@@ -46,6 +48,7 @@ fn font_size(value: &str) -> Option<f32> {
         ("in", 96.0),
         ("cm", 96.0 / 2.54),
         ("mm", 96.0 / 25.4),
+        ("q", 96.0 / 101.6),
         ("rem", 10.0),
         ("em", 10.0),
         ("%", 0.1),
@@ -90,9 +93,64 @@ fn parse_font(value: &str) -> Option<CanvasFont> {
     Some(font)
 }
 
+/// The context's text attributes besides `font`, as the binding reflects them
+/// (`letterSpacing` / `wordSpacing` are already-validated CSS lengths), plus the viewport
+/// the `v*` units resolve against.
+#[derive(Debug, Default)]
+struct TextAttributes {
+    letter_spacing: String,
+    word_spacing: String,
+    kerning: String,
+    rendering: String,
+    viewport: (f32, f32),
+}
+
+/// The length units the binding's `letterSpacing` / `wordSpacing` accept (the JS setter's
+/// list; longer units first so `rem` / `vmin` never parse as `em` / `in`).
+const SPACING_UNITS: &[&str] = &[
+    "vmin", "vmax", "rem", "px", "em", "ex", "ch", "vw", "vh", "pt", "pc", "in", "cm", "mm", "q",
+];
+
+/// A validated canvas spacing length in px under `face` at `size` (`rem` is the 16px
+/// initial root size; `ch` is the advance of "0").
+fn spacing_px(value: &str, face: &FontFace, size: f32, viewport: (f32, f32)) -> f32 {
+    let Some((number, unit)) = SPACING_UNITS
+        .iter()
+        .find_map(|unit| Some((value.strip_suffix(unit)?.parse::<f32>().ok()?, *unit)))
+    else {
+        return 0.0;
+    };
+    let (w, h) = viewport;
+    let unit_px = match unit {
+        "em" => size,
+        "ex" => face.x_height_px(size),
+        "ch" => face.measure_canvas("0", size) as f32,
+        "vw" => w / 100.0,
+        "vh" => h / 100.0,
+        "vmin" => w.min(h) / 100.0,
+        "vmax" => w.max(h) / 100.0,
+        other => font_size(&format!("1{other}")).unwrap_or(0.0),
+    };
+    number * unit_px
+}
+
+/// `fontKerning` / `textRendering` to Blink's shaping mode.
+fn shaping(kerning: &str, rendering: &str) -> CanvasShaping {
+    match (kerning, rendering) {
+        ("none", _) => CanvasShaping::NoKerning,
+        ("normal", _) | (_, "optimizeLegibility" | "geometricPrecision") => CanvasShaping::WholeRun,
+        _ => CanvasShaping::WordByWord,
+    }
+}
+
 /// The run's metrics at the alphabetic baseline under `font` (an unparsable font measures
-/// as the default).
-fn measure(fonts: Option<&FontRegistry>, text: &str, font: &str) -> CanvasTextMetrics {
+/// as the default) and the other text attributes.
+fn measure(
+    fonts: Option<&FontRegistry>,
+    text: &str,
+    font: &str,
+    attributes: &TextAttributes,
+) -> CanvasTextMetrics {
     let font = parse_font(font).unwrap_or_else(default_font);
     let bundled;
     let registry = if let Some(fonts) = fonts {
@@ -105,7 +163,13 @@ fn measure(fonts: Option<&FontRegistry>, text: &str, font: &str) -> CanvasTextMe
     let face = registry
         .select(&families, font.weight, font.italic)
         .expect("turbo-dom-layout's bundled faces are always registered");
-    face.canvas_text_metrics(text, font.size)
+    let viewport = attributes.viewport;
+    let options = CanvasTextOptions {
+        letter_spacing: spacing_px(&attributes.letter_spacing, face, font.size, viewport),
+        word_spacing: spacing_px(&attributes.word_spacing, face, font.size, viewport),
+        shaping: shaping(&attributes.kerning, &attributes.rendering),
+    };
+    face.canvas_text_metrics_with(text, font.size, options)
 }
 
 /// How far the `textAlign` anchor sits right of the run's start.
@@ -159,7 +223,8 @@ fn fields(m: &CanvasTextMetrics, align: &str, baseline: &str, direction: &str) -
     ]
 }
 
-/// `__canvasMeasureTextNative(text, font, textAlign, textBaseline, direction)`: the
+/// `__canvasMeasureTextNative(text, font, textAlign, textBaseline, direction,
+/// letterSpacing, wordSpacing, fontKerning, textRendering, innerWidth, innerHeight)`: the
 /// `TextMetrics` fields ([`fields`]) as an array.
 pub(super) fn measure_text_native(
     scope: &mut v8::PinScope,
@@ -171,8 +236,22 @@ pub(super) fn measure_text_native(
     let align = arg_str(scope, &args, 2);
     let baseline = arg_str(scope, &args, 3);
     let direction = arg_str(scope, &args, 4);
+    let number =
+        |scope: &mut v8::PinScope, i| args.get(i).number_value(scope).unwrap_or(0.0) as f32;
+    let attributes = TextAttributes {
+        letter_spacing: arg_str(scope, &args, 5),
+        word_spacing: arg_str(scope, &args, 6),
+        kerning: arg_str(scope, &args, 7),
+        rendering: arg_str(scope, &args, 8),
+        viewport: (number(scope, 9), number(scope, 10)),
+    };
     let fonts = scope.get_current_context().get_slot::<CanvasFonts>();
-    let metrics = measure(fonts.as_deref().map(|fonts| &fonts.0), &text, &font);
+    let metrics = measure(
+        fonts.as_deref().map(|fonts| &fonts.0),
+        &text,
+        &font,
+        &attributes,
+    );
     let values = fields(&metrics, &align, &baseline, &direction)
         .map(|value| v8::Number::new(scope, value).into());
     rv.set(v8::Array::new_with_elements(scope, &values).into());
@@ -223,9 +302,43 @@ mod tests {
     #[test]
     fn an_unparsable_font_measures_as_the_default() {
         let fonts = FontRegistry::new();
+        let attributes = TextAttributes::default();
         assert_eq!(
-            measure(Some(&fonts), "Wave", "bogus"),
-            measure(None, "Wave", "10px sans-serif")
+            measure(Some(&fonts), "Wave", "bogus", &attributes),
+            measure(None, "Wave", "10px sans-serif", &attributes)
         );
+    }
+
+    #[test]
+    fn spacing_units_resolve_against_the_face_and_viewport() {
+        let fonts = FontRegistry::new();
+        let face = fonts.select(&["sans-serif"], 400, false).unwrap();
+        let viewport = (800.0, 600.0);
+        let px = |value| spacing_px(value, face, 20.0, viewport);
+        assert_eq!(px("2px"), 2.0);
+        assert_eq!(px("-1.5em"), -30.0);
+        assert_eq!(px("1e1px"), 10.0);
+        assert_eq!(px("2rem"), 20.0);
+        assert_eq!(px("1ex"), face.x_height_px(20.0));
+        assert_eq!(px("1ch"), face.measure_canvas("0", 20.0) as f32);
+        assert_eq!(
+            (px("1vw"), px("1vh"), px("1vmin"), px("1vmax")),
+            (8.0, 6.0, 6.0, 8.0)
+        );
+        assert_eq!(px("3pt"), 4.0);
+    }
+
+    #[test]
+    fn kerning_and_rendering_choose_the_shaping() {
+        assert_eq!(
+            shaping("none", "optimizeLegibility"),
+            CanvasShaping::NoKerning
+        );
+        assert_eq!(shaping("normal", "auto"), CanvasShaping::WholeRun);
+        assert_eq!(
+            shaping("auto", "geometricPrecision"),
+            CanvasShaping::WholeRun
+        );
+        assert_eq!(shaping("auto", "optimizeSpeed"), CanvasShaping::WordByWord);
     }
 }

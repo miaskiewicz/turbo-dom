@@ -121,8 +121,14 @@ fn checked_control(control: &str, probe: &str) -> Value {
     assert_eq!(control["browser"], "Chrome/156.0.8078.47");
     assert_eq!(control["errors"], serde_json::json!([]));
     let digest = Sha256::digest(probe.as_bytes());
-    let hex = digest.iter().map(|b| format!("{b:02x}")).collect::<String>();
-    assert_eq!(control["probeSha256"], hex, "control was captured from a different probe");
+    let hex = digest
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
+    assert_eq!(
+        control["probeSha256"], hex,
+        "control was captured from a different probe"
+    );
     control["result"].clone()
 }
 
@@ -150,18 +156,33 @@ fn text_metrics_interface_matches_chrome156() {
 #[test]
 fn text_attributes_match_chrome156() {
     const PROBE: &str = include_str!("canvas_text_attributes_probe.js");
-    let mut expected = checked_control(include_str!("canvas_text_attributes_chrome156.json"), PROBE);
+    let mut expected =
+        checked_control(include_str!("canvas_text_attributes_chrome156.json"), PROBE);
     let mut actual = run(Some(turbo_dom_layout::test_support::fixture_fonts()), PROBE);
     let rows = |value: &mut Value| value["widths"].take();
     let (actual_rows, expected_rows) = (rows(&mut actual), rows(&mut expected));
     let mut out = Vec::new();
     super::reference_target::probe_harness::differences("result", &actual, &expected, &mut out);
     let keys = ["width", "actualBoundingBoxLeft", "actualBoundingBoxRight"].map(Value::from);
-    let (a, e) = (actual_rows.as_array().unwrap(), expected_rows.as_array().unwrap());
+    let (a, e) = (
+        actual_rows.as_array().unwrap(),
+        expected_rows.as_array().unwrap(),
+    );
     assert_eq!(a.len(), e.len(), "width rows");
     for (a, e) in a.iter().zip(e) {
         assert_eq!((&a[0], &a[1], &a[2]), (&e[0], &e[1], &e[2]));
-        compare(&format!("{} {} {:?}", e[0], e[1], e[2]), &keys, &a[3], &e[3], &mut out);
+        compare(
+            &format!("{} {} {:?}", e[0], e[1], e[2]),
+            &keys,
+            &a[3],
+            &e[3],
+            &mut out,
+        );
     }
-    assert!(out.is_empty(), "{} differences:\n{}", out.len(), out.join("\n"));
+    assert!(
+        out.is_empty(),
+        "{} differences:\n{}",
+        out.len(),
+        out.join("\n")
+    );
 }
