@@ -32,6 +32,8 @@ const server = createServer((_request, response) => {
 await new Promise((done) => server.listen(0, "127.0.0.1", done));
 const flags = [
 	"--headless=new",
+	"--use-mock-keychain",
+	"--password-store=basic",
 	"--remote-debugging-pipe",
 	`--user-data-dir=${profile}`,
 	"--no-first-run",
