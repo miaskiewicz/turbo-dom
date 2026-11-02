@@ -665,7 +665,9 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
         ),
         word_breaking: super::inline::WordBreaking::from_computed(
             style.get("word-break"),
-            style.get("overflow-wrap").or_else(|| style.get("word-wrap")),
+            style
+                .get("overflow-wrap")
+                .or_else(|| style.get("word-wrap")),
             style.get("hyphens"),
         ),
     })
@@ -927,9 +929,9 @@ fn inline_sticky(
         let dx = if let Some(left) = kbs.inset_left.resolve(cw) {
             (left - rect.0).clamp(0.0, room)
         } else {
-            kbs.inset_right.resolve(cw).map_or(0.0, |right| {
-                (ctx.root_w - right - rect.2).clamp(-back, 0.0)
-            })
+            kbs.inset_right
+                .resolve(cw)
+                .map_or(0.0, |right| (ctx.root_w - right - rect.2).clamp(-back, 0.0))
         };
         translate_members(frags, &members, dx, 0.0);
         let px = |inset: LengthPct| match inset {
@@ -982,9 +984,13 @@ fn union_rect<'a>(
     for frag in frags {
         if frag.node_id == id {
             let r = (frag.x, frag.y, frag.x + frag.width, frag.y + frag.height);
-            out = Some(out.map_or(r, |o| (o.0.min(r.0), o.1.min(r.1), o.2.max(r.2), o.3.max(r.3))));
+            out = Some(out.map_or(r, |o| {
+                (o.0.min(r.0), o.1.min(r.1), o.2.max(r.2), o.3.max(r.3))
+            }));
         } else if let Some(r) = union_rect(frag.children.iter(), id) {
-            out = Some(out.map_or(r, |o| (o.0.min(r.0), o.1.min(r.1), o.2.max(r.2), o.3.max(r.3))));
+            out = Some(out.map_or(r, |o| {
+                (o.0.min(r.0), o.1.min(r.1), o.2.max(r.2), o.3.max(r.3))
+            }));
         }
     }
     out

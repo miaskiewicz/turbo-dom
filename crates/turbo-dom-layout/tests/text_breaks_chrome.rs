@@ -51,17 +51,21 @@ fn squash(text: &str) -> String {
 }
 
 fn check(ids: &[&str]) {
-    let control: serde_json::Value = serde_json::from_str(include_str!(
-        "fixtures/text-breaks/chrome156.json"
-    ))
-    .unwrap();
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/text-breaks/chrome156.json")).unwrap();
     assert_eq!(control["browser"], "Chrome/156.0.8078.47");
     let cases = control["result"]["breaks"].as_array().unwrap();
     let mut seen = 0;
-    for case in cases.iter().filter(|c| ids.contains(&c["id"].as_str().unwrap())) {
+    for case in cases
+        .iter()
+        .filter(|c| ids.contains(&c["id"].as_str().unwrap()))
+    {
         seen += 1;
         let id = case["id"].as_str().unwrap();
-        let got = lines(case["style"].as_str().unwrap(), case["text"].as_str().unwrap());
+        let got = lines(
+            case["style"].as_str().unwrap(),
+            case["text"].as_str().unwrap(),
+        );
         let want = case["lines"].as_array().unwrap();
         assert_eq!(
             got.iter().map(|l| squash(&l.0)).collect::<Vec<_>>(),

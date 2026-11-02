@@ -1130,7 +1130,8 @@ impl MarkedWords<'_> {
     }
     fn finish(mut self) -> Vec<Word> {
         if !self.current.is_empty() {
-            self.words.extend(breakable_words(self.current, self.runs, 0.0));
+            self.words
+                .extend(breakable_words(self.current, self.runs, 0.0));
         }
         self.words
     }
@@ -1172,7 +1173,8 @@ enum Opportunity {
 }
 
 fn opportunity(previous: &CharInfo, next: &CharInfo, runs: &[InlineRun]) -> Option<Opportunity> {
-    let joins = |c: char| crate::text::transform::is_mark(c) || matches!(c, '\u{200c}' | '\u{200d}');
+    let joins =
+        |c: char| crate::text::transform::is_mark(c) || matches!(c, '\u{200c}' | '\u{200d}');
     if joins(next.ch) || joins(previous.ch) || next.ch == '\u{ad}' {
         return None;
     }
@@ -1192,7 +1194,11 @@ fn opportunity(previous: &CharInfo, next: &CharInfo, runs: &[InlineRun]) -> Opti
 /// Split `items` (one word's characters and inline edges) at its `kind`
 /// opportunities. A split point sits before the next character, after the edges
 /// closing the previous one.
-fn split_items(items: Vec<SourceItem>, runs: &[InlineRun], kind: Opportunity) -> Vec<Vec<SourceItem>> {
+fn split_items(
+    items: Vec<SourceItem>,
+    runs: &[InlineRun],
+    kind: Opportunity,
+) -> Vec<Vec<SourceItem>> {
     let mut parts = vec![Vec::new()];
     let mut previous: Option<CharInfo> = None;
     let mut pending: Vec<SourceItem> = Vec::new();
@@ -1218,7 +1224,10 @@ fn split_items(items: Vec<SourceItem>, runs: &[InlineRun], kind: Opportunity) ->
             edge => pending.push(edge),
         }
     }
-    parts.last_mut().expect("parts is never empty").append(&mut pending);
+    parts
+        .last_mut()
+        .expect("parts is never empty")
+        .append(&mut pending);
     parts
 }
 
