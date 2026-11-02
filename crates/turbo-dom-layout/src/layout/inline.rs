@@ -1761,8 +1761,8 @@ fn fold_atom_metrics(atom: &InlineAtom, m: &mut Metrics) {
 
 /// The line-box metrics: the block `strut` seeds the height (so an empty line — a
 /// `<br><br>` gap — is exactly one strut tall), then each word's text segments and
-/// atoms grow it. The PDF policy floors the height at the font box; explicit
-/// HTML line-height permits negative leading and overlapping glyph font boxes.
+/// atoms grow it. An explicit line-height permits negative leading and overlapping
+/// glyph font boxes.
 pub(super) fn native_font_height(
     ascent: f32,
     descent: f32,
@@ -1890,7 +1890,7 @@ fn line_metrics(
     for word in words {
         fold_word_metrics(word, &mut m, capture_sources, scale);
     }
-    finish_line_height(&mut m, words, capture_sources);
+    finish_line_height(&mut m, words);
     m
 }
 
@@ -1920,9 +1920,11 @@ fn fold_edge_metrics(edge: &InlineEdge, m: &mut Metrics, scale: Option<f32>) {
     );
 }
 
-fn finish_line_height(metrics: &mut Metrics, words: &[Word], html_font_metrics: bool) {
-    // Atomic baseline placement still uses the existing ascent/descent policy.
-    if !html_font_metrics || words.iter().any(|word| word.atom.is_some()) {
+/// A line of text is exactly its used `line-height` tall, even below the font's content
+/// area (negative leading: adjacent lines' glyphs overlap, like Chrome; #178). Only a line
+/// holding an atom keeps the ascent/descent floor its baseline placement relies on.
+fn finish_line_height(metrics: &mut Metrics, words: &[Word]) {
+    if words.iter().any(|word| word.atom.is_some()) {
         metrics.height = metrics.height.max(metrics.ascent + metrics.descent);
     }
 }

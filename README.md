@@ -169,7 +169,6 @@ upstream rusty_v8's features (for example `simdutf`).
   - FileList and selector error text (#189)
   - RTL scroll and vertical writing (#190)
   - shaping and font metrics (#191)
-  - inset `box-shadow` (#192)
   - block and table layout residuals (#53–#102, #128, #178)
 - **The npm runtime has no layout:** `getBoundingClientRect()` returns zeros, and
   `getComputedStyle` is a partial cascade. It resolves real `<style>` rules and inline
