@@ -342,6 +342,28 @@ const CASES = [
     scroll: { s: [-50, 0], h: [-999, 0], f: [30, 0] },
     metrics: ["s", "h", "f"],
   },
+  // miaskiewicz/turbo-dom#238 item 3: an RTL root (`<html dir=rtl>` or `direction:rtl` on
+  // the root) lays the initial containing block's content from the right, so wider
+  // content overflows to the left and the viewport scrolls 0..-(scrollWidth -
+  // innerWidth). As CSS Writing Modes 3 §8 specifies for HTML, the root's used direction
+  // (and so the viewport's) is the body's when there is one.
+  ...[
+    ["rtl-viewport-root", `<html dir="rtl">`, { viewport: [0, 0] }],
+    ["rtl-viewport-root-scrolled", `<html dir="rtl">`, { viewport: [-120, 30] }],
+    ["rtl-viewport-root-clamped", `<html dir="rtl">`, { viewport: [40, 0] }],
+    ["rtl-viewport-root-style", `<html style="direction:rtl">`, { viewport: [-9999, 0] }],
+    ["rtl-viewport-body-only", `<html><body dir="rtl">`, { viewport: [0, 0] }],
+    ["rtl-viewport-body-ltr", `<html dir="rtl"><body dir="ltr">`, { viewport: [-50, 0] }],
+  ].map(([id, open, scroll]) => ({
+    id,
+    html:
+      `<!doctype html>${open}<style>${BASE}</style>` +
+      `${BOX(1500, 100, "w")}${BOX(100, 900, "t", "margin-bottom:30px")}` +
+      `<div data-cid="a" style="position:absolute;top:10px;width:20px;height:20px"></div>` +
+      `<div data-cid="r" style="position:absolute;right:-300px;top:40px;width:20px;height:20px"></div>`,
+    scroll,
+    viewport: true,
+  })),
   {
     id: "rtl-into-view",
     html: DOC(

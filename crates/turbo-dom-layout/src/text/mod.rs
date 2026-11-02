@@ -12,7 +12,10 @@ mod registry;
 pub(crate) mod transform;
 
 pub(crate) use font::cluster_ends;
-pub use font::{blink_font_size, CanvasTextMetrics, FontFace, HtmlFontMetrics, ShapedGlyph};
+pub use font::{
+    blink_font_size, CanvasShaping, CanvasTextMetrics, CanvasTextOptions, FontFace,
+    HtmlFontMetrics, ShapedGlyph,
+};
 pub use inline::{layout_text, Align, LineBox, TextStyle, WhiteSpace};
 pub use registry::{FontRegistry, SystemFontPolicy};
 pub use transform::{CaseLocale, CaseTransform, TextTransform};

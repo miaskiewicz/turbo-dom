@@ -523,7 +523,7 @@ fn canvas_words(text: &str) -> impl Iterator<Item = &str> {
 mod canvas_metrics;
 #[path = "font_utf16.rs"]
 mod utf16;
-pub use canvas_metrics::CanvasTextMetrics;
+pub use canvas_metrics::{CanvasShaping, CanvasTextMetrics, CanvasTextOptions};
 
 const SHAPE_CACHE_ENTRIES: usize = 128;
 const SHAPE_CACHE_BYTES: usize = 8 * 1024 * 1024;

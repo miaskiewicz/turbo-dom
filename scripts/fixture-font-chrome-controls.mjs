@@ -95,6 +95,16 @@ const CONTROLS = [
     "crates/turbo-dom-browser-env/src/canvas_measure_text_chrome156.json",
     [800, 600],
   ],
+  [
+    "crates/turbo-dom-browser-env/src/canvas_text_metrics_interface_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_text_metrics_interface_chrome156.json",
+    [800, 600],
+  ],
+  [
+    "crates/turbo-dom-browser-env/src/canvas_text_attributes_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_text_attributes_chrome156.json",
+    [800, 600],
+  ],
 ];
 const located = (path) => (path.startsWith("crates/") ? join(repo, path) : join(fixtures, path));
 
