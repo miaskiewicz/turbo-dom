@@ -70,7 +70,12 @@ Pushing a `v*` tag is the publish trigger and requires explicit release authoriz
 `publish.yml` then runs, in order:
 
 1. **ci** — the full CI workflow on the tag (napi binaries for linux x64 glibc/musl,
-   linux arm64, macOS arm64 and windows x64 are uploaded by its build matrix).
+   linux arm64, macOS arm64 and windows x64 are uploaded by its build matrix). Linux
+   binaries build on `ubuntu-22.04` / `ubuntu-22.04-arm` (glibc 2.35), never
+   `ubuntu-latest`: `scripts/check-glibc-ceiling.sh` fails any linux-gnu `.node` that needs
+   a `GLIBC_` version above 2.35 (0.6.0 was built on 26.04 / glibc 2.43 and broke 24.04
+   consumers). The npm job also runs on `ubuntu-22.04`, since `prepublishOnly` rebuilds the
+   linux-x64 addon there; it runs that build and the guard before `npm publish --ignore-scripts`.
 2. **preflight** — `check-versions.py --tag vX.Y.Z` (the tag equals every manifest
    version) and `check-no-selector-dual.sh`.
 3. **crates** (sequential, `CARGO_REGISTRY_TOKEN`):

@@ -90,6 +90,9 @@ mod termination_tests;
 #[cfg(test)]
 #[path = "trusted_controls_tests.rs"]
 mod trusted_controls_tests;
+#[cfg(test)]
+#[path = "xpath_contexts_tests.rs"]
+mod xpath_contexts_tests;
 
 #[cfg(test)]
 #[path = "engine_namespace_tests.rs"]

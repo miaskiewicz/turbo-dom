@@ -92,7 +92,7 @@ const server = createServer((request, response) => {
 });
 await new Promise((done) => server.listen(0, "127.0.0.1", done));
 const url = `http://127.0.0.1:${server.address().port}/page/`;
-const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const result = {};
 const errors = [];
 try {

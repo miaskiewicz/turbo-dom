@@ -467,7 +467,7 @@ const read = (cid) =>
     : cid === "body" || cid === "html"
       ? document.querySelector(cid)
       : document.querySelector(`[data-cid="${cid}"]`);
-const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 const frames = () => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
