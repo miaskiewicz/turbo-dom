@@ -82,6 +82,9 @@ mod private_natives_tests;
 #[path = "reflection_regressions_tests.rs"]
 mod reflection_regressions_tests;
 #[cfg(test)]
+#[path = "stale_nodes_tests.rs"]
+mod stale_nodes_tests;
+#[cfg(test)]
 #[path = "termination_tests.rs"]
 mod termination_tests;
 #[cfg(test)]

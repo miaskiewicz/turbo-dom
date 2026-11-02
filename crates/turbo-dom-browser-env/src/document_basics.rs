@@ -428,7 +428,7 @@ pub fn adopt<'s>(
             continue;
         };
         let handle_value = v8::Integer::new_from_unsigned(scope, handle.raw());
-        let id = v8::BigInt::new_from_u64(scope, target_id);
+        let id = owner_tag(scope, target_id);
         local.set_internal_field(0, handle_value.into());
         local.set_internal_field(1, id.into());
         DOM.with(|dom| {

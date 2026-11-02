@@ -504,10 +504,56 @@ struct DomState {
     custom_elements_active: bool,
     form_submission_blocked: bool,
     form_submission_handler: Option<v8::Weak<v8::Function>>,
+    /// This tree's generation: unique on the thread and never reused, not even across
+    /// [`reset`]. Wrappers carry it next to their DOM id (see [`owner_tag`]), so a wrapper
+    /// that outlives its tree never resolves against a later tree under the same id.
+    serial: u64,
 }
 
 thread_local! {
     static DOM: RefCell<Option<DomState>> = const { RefCell::new(None) };
+    static TREE_SERIAL: std::cell::Cell<u64> = const { std::cell::Cell::new(1) };
+}
+
+fn next_tree_serial() -> u64 {
+    TREE_SERIAL.with(|serial| {
+        let next = serial.get();
+        serial.set(next + 1);
+        next
+    })
+}
+
+/// Run `f` on the installed state of DOM `id`, wherever it is parked. `None` when that DOM
+/// has no tree, or its state is borrowed mutably right now.
+fn with_dom_state<R>(id: u64, f: impl FnOnce(&DomState) -> R) -> Option<R> {
+    if id == DOM_ID.with(|current| current.get()) {
+        return DOM.with(|dom| dom.try_borrow().ok()?.as_ref().map(f));
+    }
+    OTHER_DOMS.with(|doms| doms.try_borrow().ok()?.get(&id)?.dom.as_ref().map(f))
+}
+
+/// A wrapper's owner tag (internal field 1): its DOM id and that DOM's tree generation.
+fn owner_tag<'s>(scope: &mut v8::PinScope<'s, '_>, id: u64) -> v8::Local<'s, v8::BigInt> {
+    let serial = with_dom_state(id, |state| state.serial).unwrap_or(0);
+    // invariant: two words are far below V8's BigInt length limit
+    v8::BigInt::new_from_words(scope, false, &[id, serial]).unwrap()
+}
+
+/// The owner of a tagged wrapper: `Some(Some(id))` while its tree is still DOM `id`'s,
+/// `Some(None)` once that tree is gone (reset, or replaced by a new document), `None` for an
+/// object without an owner tag.
+fn tagged_owner(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> Option<Option<u64>> {
+    let tag = object
+        .get_internal_field(scope, 1)
+        .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())
+        .and_then(|value| v8::Local::<v8::BigInt>::try_from(value).ok())?;
+    let mut words = [0u64; 2];
+    let (_, words) = tag.to_words_array(&mut words);
+    // Tags are always two words: generations start at 1.
+    let id = words.first().copied().unwrap_or(0);
+    let serial = words.get(1).copied().unwrap_or(0);
+    let live = with_dom_state(id, |state| state.serial) == Some(serial);
+    Some(live.then_some(id))
 }
 
 // Native callbacks may enter through a node from another same-origin frame.
@@ -618,12 +664,12 @@ fn install_independent_tree(scope: &mut v8::PinScope, tree: Tree) {
 }
 
 fn dom_id_of(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> u64 {
-    if let Some(value) = object
-        .get_internal_field(scope, 1)
-        .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())
-        .and_then(|value| v8::Local::<v8::BigInt>::try_from(value).ok())
-    {
-        return value.u64_value().0;
+    match tagged_owner(scope, object) {
+        Some(Some(id)) => return id,
+        // A wrapper of a discarded tree routes nowhere new: it stays in the caller's DOM,
+        // where `handle_of` refuses it.
+        Some(None) => return DOM_ID.with(|id| id.get()),
+        None => {}
     }
     object
         .get_creation_context(scope)
@@ -695,6 +741,7 @@ fn parse_html_tree_with<'s>(
     let template = v8::Global::new(scope, template);
     DOM.with(|dom| {
         *dom.borrow_mut() = Some(DomState {
+            serial: next_tree_serial(),
             scripts: script_state::initial(&tree),
             parser_scripts: Vec::new(),
             resource_active: false,
@@ -927,7 +974,17 @@ fn handle_of(scope: &mut v8::PinScope, obj: v8::Local<v8::Object>) -> Option<Han
     if !v.is_uint32() {
         return None;
     }
-    v.uint32_value(scope).map(Handle::from_raw)
+    let handle = v.uint32_value(scope).map(Handle::from_raw)?;
+    // A wrapper names a node of its owner's tree only while that tree lives: one from a
+    // discarded tree (turbo-test#204), or a handle its tree never minted, is not a node
+    // (Chrome: a detached realm's wrapper), so no read can index past the tree.
+    match tagged_owner(scope, obj) {
+        Some(None) => None,
+        Some(Some(id)) if with_dom_state(id, |state| state.tree.is_live(handle)) == Some(false) => {
+            None
+        }
+        _ => Some(handle),
+    }
 }
 
 /// The node behind an element-template accessor's holder. Template accessors run only on
@@ -1237,7 +1294,7 @@ fn wrap_inner<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local
     };
     let h = v8::Integer::new_from_unsigned(scope, handle.raw());
     obj.set_internal_field(0, h.into());
-    let owner = v8::BigInt::new_from_u64(scope, DOM_ID.with(|id| id.get()));
+    let owner = owner_tag(scope, DOM_ID.with(|id| id.get()));
     obj.set_internal_field(1, owner.into());
     let projector = current_node_projector(scope);
     // Raw bootstrap probes run before projection has been installed. Once it
@@ -6371,7 +6428,7 @@ fn dom_accessor_dispatch(
     let raw = template.new_instance(scope).unwrap();
     let handle = v8::Integer::new_from_unsigned(scope, handle.raw());
     raw.set_internal_field(0, handle.into());
-    let owner = v8::BigInt::new_from_u64(scope, DOM_ID.with(|id| id.get()));
+    let owner = owner_tag(scope, DOM_ID.with(|id| id.get()));
     raw.set_internal_field(1, owner.into());
     // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, property).unwrap();
@@ -7218,6 +7275,7 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     };
     DOM.with(|d| {
         *d.borrow_mut() = Some(DomState {
+            serial: next_tree_serial(),
             scripts: script_state::initial(&tree),
             parser_scripts,
             resource_active: true,
