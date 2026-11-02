@@ -315,4 +315,13 @@ mod tests {
         assert_eq!(inter().cap_height_px(10.0), 7.275_390_6);
         assert_eq!(inter().ideographic_advance_px(10.0), None);
     }
+
+    /// With U+6C34 in the face, `ic` is its advance: `Ic Fixture` maps it to 900/1000 em,
+    /// and Chrome 156 measures 1ic = 9px at 10px (turbo-dom-browser-env's
+    /// `canvas_ic_unit_chrome156.json`).
+    #[test]
+    fn ideographic_advance_reads_the_water_glyph() {
+        let face = crate::test_support::ic_fixture_face();
+        assert_eq!(face.ideographic_advance_px(10.0), Some(9.0));
+    }
 }

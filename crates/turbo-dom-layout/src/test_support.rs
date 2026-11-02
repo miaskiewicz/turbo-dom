@@ -138,6 +138,20 @@ pub fn fixture_fonts() -> FontRegistry {
     registry
 }
 
+/// `Ic Fixture` (`ic-fixture/IcFixture.ttf`, written by `scripts/make-ic-fixture-font.py`):
+/// a box-glyph face mapping U+6C34 to a 0.9em advance, for the CSS `ic` unit (the fixture
+/// faces above have no CJK glyph). Chrome loads the same file through `@font-face`.
+#[must_use]
+pub fn ic_fixture_face() -> FontFace {
+    FontFace::from_bytes(
+        font_bytes("ic-fixture/IcFixture.ttf"),
+        "Ic Fixture",
+        400,
+        false,
+    )
+    .expect("IcFixture.ttf parses")
+}
+
 /// Build a [`ComputedStyle`] from `(property, value)` pairs.
 #[must_use]
 pub fn style(pairs: &[(&str, &str)]) -> ComputedStyle {
