@@ -58,8 +58,10 @@ consolidation's bug-fix round: turbo-dom f860fea, turbo-html2pdf 55f623a, turbo-
 equal to `b-main` plus the 883 declared changes of `expected/*.json`, so later work compares
 against it with no expect files), and `b-0.6.0` (the surf corpora at the 0.6.0 release heads: turbo-dom 0189e4d,
 turbo-surf 166d2d6; equal to `b-fixed` plus the 52 surf outputs declared by
-`expected/r3-turbo-dom-142.json` and `expected/r3-turbo-dom-176.json`, 0 undeclared; it holds only the surf
-corpora, so html2pdf runs keep comparing against `b-fixed`). Per-test cargo results for
+`expected/r3-turbo-dom-142.json` and `expected/r3-turbo-dom-176.json`, 0 undeclared; re-recorded on the
+published crates — turbo-dom 0.6.0, turbo-surf f790383 — after 219 static screenshots moved (≤0.5px glyph
+shifts from baseline pixel snapping, plus the visibility:hidden space fix in conformance 65 and empty opacity
+groups in css-security.svg), each checked against Chrome 156; it holds only the surf corpora, so html2pdf runs keep comparing against `b-fixed`). Per-test cargo results for
 `b-main` and `b2-surf` are in `manifests/<name>/tests/*.tsv`, produced by
 `bin/baseline-cargo.sh` + `bin/cargo-results.py` (binary, test, result).
 
