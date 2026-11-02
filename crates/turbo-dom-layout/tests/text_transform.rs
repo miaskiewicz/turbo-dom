@@ -304,7 +304,6 @@ fn length_changing_mappings_keep_the_source_cluster_offsets() {
 }
 
 #[test]
-#[ignore = "turbo-dom#214: fails until the fix"]
 fn greek_uppercase_drops_polytonic_marks_like_chrome_156() {
     // Oracle: the `greek` rows of tests/fixtures/text-breaks/chrome156.json (Chrome
     // 156.0.8078.47 headless `innerText` of `<p lang=el style=text-transform:uppercase>`):

@@ -233,6 +233,9 @@ fn greek_upper(chars: &[(usize, char)], index: usize) -> String {
         ch,
         '\u{300}' | '\u{301}' | '\u{342}' | '\u{313}' | '\u{314}' | '\u{345}'
     );
+    if let Some(letter) = polytonic(ch) {
+        return polytonic_upper(letter, chars, index);
+    }
     match ch {
         _ if greek_base && dropped => String::new(),
         '\u{344}' if greek_base => "\u{308}".into(),
@@ -251,6 +254,105 @@ fn greek_upper(chars: &[(usize, char)], index: usize) -> String {
         }
         _ => greek_plain_upper(ch),
     }
+}
+
+/// A precomposed letter of the Greek Extended block (U+1F00–U+1FFF), decomposed:
+/// its base letter (lowercase), whether it carries an accent or breathing, a
+/// dialytika, and a ypogegrammeni / prosgegrammeni (turbo-dom#214).
+#[derive(Clone, Copy)]
+struct Polytonic {
+    base: char,
+    accent: bool,
+    dialytika: bool,
+    iota: bool,
+}
+
+/// The [`Polytonic`] decomposition of `ch`; `None` outside the block's letters.
+fn polytonic(ch: char) -> Option<Polytonic> {
+    let code = u32::from(ch);
+    let row = |base: char, accent: bool, dialytika: bool, iota: bool| {
+        Some(Polytonic {
+            base,
+            accent,
+            dialytika,
+            iota,
+        })
+    };
+    // U+1F00–U+1F6F: eight breathing/accent variants per vowel, lower then upper.
+    const ROWS: [char; 7] = ['α', 'ε', 'η', 'ι', 'ο', 'υ', 'ω'];
+    match code {
+        0x1f00..=0x1f6f => {
+            let base = ROWS[((code - 0x1f00) / 0x10) as usize];
+            let assigned = match base {
+                'ε' | 'ο' => code & 0x7 <= 5,
+                'υ' => code & 0x8 == 0 || code & 0x1 == 1,
+                _ => true,
+            };
+            if assigned {
+                row(base, true, false, false)
+            } else {
+                None
+            }
+        }
+        // Varia / oxia pairs.
+        0x1f70..=0x1f7d => row(ROWS[((code - 0x1f70) / 2) as usize], true, false, false),
+        // Breathing (+ accent) with ypogegrammeni: α, η, ω.
+        0x1f80..=0x1faf => {
+            let base = ['α', 'η', 'ω'][((code - 0x1f80) / 0x10) as usize];
+            row(base, true, false, true)
+        }
+        _ => polytonic_rest(code),
+    }
+}
+
+/// U+1FB0–U+1FFF of [`polytonic`]: vrachy / macron, accents with ypogegrammeni,
+/// perispomeni, dialytika with accents and the rough-breathing rho.
+fn polytonic_rest(code: u32) -> Option<Polytonic> {
+    let (base, accent, dialytika, iota) = match code {
+        0x1fb0 | 0x1fb1 | 0x1fb8 | 0x1fb9 => ('α', false, false, false),
+        0x1fb2 | 0x1fb4 | 0x1fb7 => ('α', true, false, true),
+        0x1fb3 | 0x1fbc => ('α', false, false, true),
+        0x1fb6 | 0x1fba | 0x1fbb => ('α', true, false, false),
+        0x1fc2 | 0x1fc4 | 0x1fc7 => ('η', true, false, true),
+        0x1fc3 | 0x1fcc => ('η', false, false, true),
+        0x1fc6 | 0x1fca | 0x1fcb => ('η', true, false, false),
+        0x1fc8 | 0x1fc9 => ('ε', true, false, false),
+        0x1fd0 | 0x1fd1 | 0x1fd8 | 0x1fd9 => ('ι', false, false, false),
+        0x1fd2 | 0x1fd3 | 0x1fd7 => ('ι', true, true, false),
+        0x1fd6 | 0x1fda | 0x1fdb => ('ι', true, false, false),
+        0x1fe0 | 0x1fe1 | 0x1fe8 | 0x1fe9 => ('υ', false, false, false),
+        0x1fe2 | 0x1fe3 | 0x1fe7 => ('υ', true, true, false),
+        0x1fe4 | 0x1fe5 | 0x1fec => ('ρ', true, false, false),
+        0x1fe6 | 0x1fea | 0x1feb => ('υ', true, false, false),
+        0x1ff2 | 0x1ff4 | 0x1ff7 => ('ω', true, false, true),
+        0x1ff3 | 0x1ffc => ('ω', false, false, true),
+        0x1ff6 | 0x1ffa | 0x1ffb => ('ω', true, false, false),
+        0x1ff8 | 0x1ff9 => ('ο', true, false, false),
+        _ => return None,
+    };
+    Some(Polytonic {
+        base,
+        accent,
+        dialytika,
+        iota,
+    })
+}
+
+/// A Greek Extended letter's `el` uppercase: the plain capital, a dialytika kept
+/// (or gained after an accented vowel), and a ypogegrammeni as a capital iota.
+fn polytonic_upper(letter: Polytonic, chars: &[(usize, char)], index: usize) -> String {
+    let gains_dialytika = !letter.dialytika
+        && matches!(letter.base, 'ι' | 'υ')
+        && after_accented_vowel(chars, index).is_some();
+    let mut out = match (letter.base, letter.dialytika || gains_dialytika) {
+        ('ι', true) => "Ϊ".to_string(),
+        ('υ', true) => "Ϋ".to_string(),
+        (base, _) => base.to_uppercase().collect(),
+    };
+    if letter.iota {
+        out.push('Ι');
+    }
+    out
 }
 
 fn is_greek(ch: char) -> bool {
@@ -287,7 +389,7 @@ fn after_accented_vowel(chars: &[(usize, char)], index: usize) -> Option<bool> {
     let precomposed = matches!(
         letter,
         'ά' | 'έ' | 'ή' | 'ί' | 'ό' | 'ύ' | 'ώ' | 'Ά' | 'Έ' | 'Ή' | 'Ί' | 'Ό' | 'Ύ' | 'Ώ'
-    );
+    ) || polytonic(letter).is_some_and(|p| p.accent && !p.dialytika);
     let combining = matches!(
         letter,
         'α' | 'ε' | 'η' | 'ι' | 'ο' | 'υ' | 'ω' | 'Α' | 'Ε' | 'Η' | 'Ι' | 'Ο' | 'Υ' | 'Ω'
@@ -295,7 +397,8 @@ fn after_accented_vowel(chars: &[(usize, char)], index: usize) -> Option<bool> {
         .iter()
         .any(|m| matches!(m.1, '\u{300}' | '\u{301}' | '\u{342}'));
     // An ι/υ that itself gained a dialytika ends the context.
-    let iota_upsilon = matches!(letter, 'ι' | 'ί' | 'Ι' | 'Ί' | 'υ' | 'ύ' | 'Υ' | 'Ύ');
+    let iota_upsilon = matches!(letter, 'ι' | 'ί' | 'Ι' | 'Ί' | 'υ' | 'ύ' | 'Υ' | 'Ύ')
+        || polytonic(letter).is_some_and(|p| matches!(p.base, 'ι' | 'υ'));
     if !(precomposed || combining) || (iota_upsilon && after_accented_vowel(chars, at).is_some()) {
         return None;
     }
