@@ -97,6 +97,7 @@
   var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
+  var canvasMeasureTextNative=g.__canvasMeasureTextNative;delete g.__canvasMeasureTextNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
@@ -2194,7 +2195,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           return { data: data, width: w, height: h, colorSpace: 'srgb' };
         },
         createImageData: function(w,h){ if (w && w.width != null) { h = w.height; w = w.width; } return { data: new Uint8ClampedArray(Math.max(0,(w||0)*(h||0)*4)), width: w||0, height: h||0, colorSpace: 'srgb' }; },
-        measureText: function(s){ this._ops.push(['measureText', String(s||''), this.font]); var wdt = (String(s||'').length)*6; return { width: wdt, actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2, actualBoundingBoxLeft: 0, actualBoundingBoxRight: wdt, fontBoundingBoxAscent: 8, fontBoundingBoxDescent: 2 }; },
+        // measureText (turbo-dom#237, canvas_measure_text_chrome156.json): turbo-dom-layout
+        // measures the run in the host's fonts like Chrome 156; Chrome 156 leaves the
+        // emHeight* fields undefined.
+        measureText: function(s){
+          var text = String(s);
+          this._ops.push(['measureText', text, this.font]);
+          var m = canvasMeasureTextNative(text, String(this.font), String(this.textAlign), String(this.textBaseline), String(this.direction));
+          return { width: m[0], actualBoundingBoxLeft: m[1], actualBoundingBoxRight: m[2],
+            actualBoundingBoxAscent: m[3], actualBoundingBoxDescent: m[4], fontBoundingBoxAscent: m[5],
+            fontBoundingBoxDescent: m[6], hangingBaseline: m[7], alphabeticBaseline: m[8], ideographicBaseline: m[9] };
+        },
         isPointInPath: function(){ return false; }, isPointInStroke: function(){ return false; },
         lineWidth: 1, lineCap: 'butt', lineJoin: 'miter',
         miterLimit: 10, lineDashOffset: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0,

@@ -164,11 +164,14 @@ mod pointer_events;
 mod typed_om;
 pub use pointer_events::{host_pointer, PointerLockPolicy};
 #[cfg(test)]
-#[path = "canvas_style_tests.rs"]
-mod canvas_style_tests;
-#[cfg(test)]
 #[path = "canvas_measure_text_tests.rs"]
 mod canvas_measure_text_tests;
+#[cfg(test)]
+#[path = "canvas_style_tests.rs"]
+mod canvas_style_tests;
+#[path = "canvas_text.rs"]
+mod canvas_text;
+pub use canvas_text::set_canvas_fonts;
 #[path = "form_pseudo.rs"]
 mod form_pseudo;
 #[path = "html_text.rs"]
@@ -7107,18 +7110,6 @@ fn canvas_color_native(
     }
 }
 
-/// The fonts canvas `measureText` resolves `ctx.font` against, per context
-/// ([`set_canvas_fonts`]).
-struct CanvasFonts(turbo_dom_layout::FontRegistry);
-
-/// Give the canvases of `context` their fonts (turbo-dom#237): the host's registry of the
-/// page's loaded `@font-face` faces and whichever system fonts it lays the page out with
-/// (turbo-surf passes the registry its live layout uses). Without one the canvas measures
-/// with turbo-dom-layout's bundled faces.
-pub fn set_canvas_fonts(context: v8::Local<v8::Context>, fonts: turbo_dom_layout::FontRegistry) {
-    context.set_slot(std::rc::Rc::new(CanvasFonts(fonts)));
-}
-
 struct ComputedFontDefaults {
     family: String,
     size: f64,
@@ -7226,6 +7217,12 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         normalize_computed_color,
     );
     bind_method(scope, global, "__canvasColorNative", canvas_color_native);
+    bind_method(
+        scope,
+        global,
+        "__canvasMeasureTextNative",
+        canvas_text::measure_text_native,
+    );
     bind_method(
         scope,
         global,

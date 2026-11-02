@@ -455,11 +455,7 @@ impl FontFace {
     /// ([`blink_glyph_advance`](Self::blink_glyph_advance)).
     #[must_use]
     pub fn measure_canvas(&self, text: &str, font_size: f32) -> f64 {
-        text.split_inclusive(' ')
-            .flat_map(|word| match word.strip_suffix(' ') {
-                Some(head) => [head, " "],
-                None => [word, ""],
-            })
+        canvas_words(text)
             .flat_map(|word| self.shape(word))
             .map(|glyph| self.blink_glyph_advance(font_size, glyph.x_advance))
             .sum()
@@ -481,8 +477,21 @@ pub(crate) fn cluster_count(glyphs: &[ShapedGlyph]) -> usize {
     cluster_ends(glyphs).filter(|&end| end).count()
 }
 
+/// The words Blink's canvas font shapes separately (`CachingWordShaper`): every U+0020 is
+/// a word of its own.
+fn canvas_words(text: &str) -> impl Iterator<Item = &str> {
+    text.split_inclusive(' ')
+        .flat_map(|word| match word.strip_suffix(' ') {
+            Some(head) => [head, " "],
+            None => [word, ""],
+        })
+}
+
+#[path = "canvas_metrics.rs"]
+mod canvas_metrics;
 #[path = "font_utf16.rs"]
 mod utf16;
+pub use canvas_metrics::CanvasTextMetrics;
 
 const SHAPE_CACHE_ENTRIES: usize = 128;
 const SHAPE_CACHE_BYTES: usize = 8 * 1024 * 1024;

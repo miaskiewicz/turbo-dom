@@ -63,7 +63,7 @@ return.
 | seeding documents | `install_with_html`, `try_install_with_html` (`Err(SetupTerminated)` when a watchdog terminated setup), `install_html`, `install_with_html_source_positions`, `install_with_utf16_source_positions`, `install_independent_html`, `install_independent_html_units`, `install_independent_utf16_source_positions`, `install_independent_srcdoc_units` (never quirks) |
 | serializing | `document_html()` |
 | event loop | `flush_ownership(scope)` between tasks (wrapper ownership is reconciled in batches, so building n nodes is O(n)) |
-| realms and frames | `register_dom_exception`, `capture_window_event_interfaces`, `retire_custom_element_context`, `set_computed_font_defaults` |
+| realms and frames | `register_dom_exception`, `capture_window_event_interfaces`, `retire_custom_element_context`, `set_computed_font_defaults`, `set_canvas_fonts` (canvas `measureText` fonts: the page's loaded `@font-face` faces + system fonts as a turbo-dom-layout `FontRegistry`; bundled faces otherwise) |
 | engine namespace | `engine_namespace(scope)` (the realm's internal state object, held in a V8 private: page script cannot reach it), `run_engine_script(scope, source)` (runs `source` as a function body whose `__tsNs` parameter is that namespace; `ENGINE_NAMESPACE_PARAM`) |
 | embedding hooks (turbo-surf) | the other `pub fn`s: form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import (`parse_xml_document_units` parses `DOMParser`'s XML types into an `XMLDocument`, `<parsererror>` documents included), node nonces |
 

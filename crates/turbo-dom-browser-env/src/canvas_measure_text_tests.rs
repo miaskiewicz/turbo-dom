@@ -12,7 +12,7 @@ const CONTROL: &str = include_str!("canvas_measure_text_chrome156.json");
 
 /// Chrome's glyph ink bounds come from Skia's outline bounds in `f32` (the control carries
 /// their rounding noise, about 1e-5 px); widths and font metrics match exactly.
-const INK_TOLERANCE: f64 = 1e-3;
+const INK_TOLERANCE: f64 = 1e-4;
 
 fn run(fonts: Option<turbo_dom_layout::FontRegistry>, probe: &str) -> Value {
     super::tests::init_v8();
@@ -20,7 +20,10 @@ fn run(fonts: Option<turbo_dom_layout::FontRegistry>, probe: &str) -> Value {
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
-    install_with_html(scope, "<!doctype html><html><head></head><body></body></html>");
+    install_with_html(
+        scope,
+        "<!doctype html><html><head></head><body></body></html>",
+    );
     if let Some(fonts) = fonts {
         set_canvas_fonts(context, fonts);
     }
@@ -59,23 +62,43 @@ fn measure_text_matches_chrome156() {
     assert_eq!(control["browser"], "Chrome/156.0.8078.47");
     assert_eq!(control["errors"], serde_json::json!([]));
     let digest = Sha256::digest(PROBE.as_bytes());
-    let hex = digest.iter().map(|b| format!("{b:02x}")).collect::<String>();
-    assert_eq!(control["probeSha256"], hex, "control was captured from a different probe");
+    let hex = digest
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
+    assert_eq!(
+        control["probeSha256"], hex,
+        "control was captured from a different probe"
+    );
     let expected = &control["result"];
     let actual = run(Some(turbo_dom_layout::test_support::fixture_fonts()), PROBE);
     let keys = expected["keys"].as_array().unwrap();
     assert_eq!(&actual["keys"], &expected["keys"]);
     let mut out = Vec::new();
     for section in ["metrics", "aligned"] {
-        let (a, e) = (actual[section].as_array().unwrap(), expected[section].as_array().unwrap());
+        let (a, e) = (
+            actual[section].as_array().unwrap(),
+            expected[section].as_array().unwrap(),
+        );
         assert_eq!(a.len(), e.len(), "{section} rows");
         for (a, e) in a.iter().zip(e) {
             assert_eq!(a[0], e[0]);
             assert_eq!(a[1], e[1]);
-            compare(&format!("{section} {} {}", e[0], e[1]), keys, &a[2], &e[2], &mut out);
+            compare(
+                &format!("{section} {} {}", e[0], e[1]),
+                keys,
+                &a[2],
+                &e[2],
+                &mut out,
+            );
         }
     }
-    assert!(out.is_empty(), "{} differences:\n{}", out.len(), out.join("\n"));
+    assert!(
+        out.is_empty(),
+        "{} differences:\n{}",
+        out.len(),
+        out.join("\n")
+    );
 }
 
 /// Without host fonts the canvas measures with turbo-dom-layout's bundled faces (the
