@@ -7,6 +7,11 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed
+
+- turbo-dom-raster paints inset `box-shadow`s (PNG and SVG) inside the padding box, over the
+  background and under the border, with offset, spread and blur, like Chrome 156 (#192).
+
 ## [0.6.0] — turbo-dom consolidation
 
 turbo-dom becomes the home of the shared browser engine of turbo-html2pdf, turbo-test
