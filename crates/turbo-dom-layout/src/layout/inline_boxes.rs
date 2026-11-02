@@ -78,11 +78,11 @@ fn element_unsupported<'a>(
         ),
     }
 }
-/// What the vertical writing-mode layer does not lay out (miaskiewicz/turbo-dom#234):
-/// an ordinary inline whose writing mode differs from its parent's, any box in a
-/// vertical mode but a block container (flex, grid, table, inline-level atoms and
-/// replaced elements), and upright text (CJK under `text-orientation: mixed`, or
-/// `upright`) in one.
+/// What the vertical writing-mode layer does not lay out (miaskiewicz/turbo-dom#234,
+/// #239): an ordinary inline whose writing mode differs from its parent's, upright text
+/// (CJK under `text-orientation: mixed`, or `upright`), and a replaced element whose
+/// size falls back to a physical default (see [`physical_default_size`]). Block, flex,
+/// grid and table boxes, inline-level atoms and `<img>` lay out in the logical space.
 fn validate_writing(
     element: &crate::StyledElement,
     display: Display,
@@ -95,11 +95,27 @@ fn validate_writing(
     if !WritingMode::of(&element.style).vertical() {
         return Ok(());
     }
-    let block = matches!(display, Display::Block | Display::ListItem) || ordinary;
-    if !block || atomic_element(element) || upright_text(element) {
+    if upright_text(element) || physical_default_size(element, display) {
         return Err(SnapshotError::UnsupportedVerticalWriting);
     }
     Ok(())
+}
+/// A replaced element sized by a physical default the logical layer does not turn: an
+/// `<svg>` without both a width and a height (300x150), an `<iframe>`, `<canvas>`,
+/// `<video>`, `<object>` / `<embed>`, `<audio>` or form control (Chrome lays the form
+/// controls out vertically in a vertical mode). An `<img>` turns its intrinsic size.
+fn physical_default_size(element: &crate::StyledElement, display: Display) -> bool {
+    let crate::Tag::Html(name) = &element.tag else {
+        return false;
+    };
+    if display == Display::None || name == "img" || !atomic_element(element) {
+        return false;
+    }
+    let sized = |axis: &str| {
+        element.attrs.iter().any(|attr| attr.name == axis)
+            || element.style.get(axis).is_some_and(|v| v.trim() != "auto")
+    };
+    name != "svg" || !(sized("width") && sized("height"))
 }
 /// Whether the element's own text sets upright in a vertical line.
 fn upright_text(element: &crate::StyledElement) -> bool {
@@ -390,7 +406,8 @@ pub(super) fn positions(items: &[InlineItem], font: f32, width: f32, ctx: &Ctx) 
     }
     source.placement
 }
-pub(super) fn strut(bs: &BoxStyle, ctx: &Ctx) -> Option<(f32, f32)> {
+/// The block's strut `(ascent, descent)`, about the central baseline when `central`.
+pub(super) fn strut(bs: &BoxStyle, ctx: &Ctx, central: bool) -> Option<(f32, f32)> {
     let families = bs
         .font_families
         .iter()
@@ -399,9 +416,14 @@ pub(super) fn strut(bs: &BoxStyle, ctx: &Ctx) -> Option<(f32, f32)> {
     let face = ctx.fonts.select(&families, bs.font_weight, bs.italic)?;
     let scale = ctx.html_font_scale.unwrap_or(1.0);
     let font = face.html_metrics(bs.font_size * scale);
+    let (ascent, descent) = if central {
+        super::inline::central_metrics(font.ascent / scale, font.descent / scale, scale)
+    } else {
+        (font.ascent / scale, font.descent / scale)
+    };
     Some(super::inline::native_font_height(
-        font.ascent / scale,
-        font.descent / scale,
+        ascent,
+        descent,
         bs.line_height
             .unwrap_or((font.ascent + font.descent + font.line_gap) / scale),
         0.0,

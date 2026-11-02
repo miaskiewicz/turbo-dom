@@ -419,7 +419,7 @@ fn symbol_fragment(
     ctx: &super::block::Ctx,
 ) -> Option<(Fragment, f32, f32)> {
     let geometry = symbol_geometry(bs, ctx)?;
-    let (above, below) = super::inline_boxes::strut(bs, ctx)?;
+    let (above, below) = super::inline_boxes::strut(bs, ctx, false)?;
     let mut frag = empty_box(marker.node_id, 0.0, 0.0, geometry.box_width, above + below);
     let at = (1.0, above + geometry.top);
     frag.children.push(shape_fragment(

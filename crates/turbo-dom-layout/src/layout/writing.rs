@@ -73,6 +73,18 @@ impl WritingMode {
     }
 }
 
+/// Whether lines of a box with `style`, laid out in the space of `mode`, align on the
+/// ideographic central baseline: a vertical mode but `text-orientation: sideways` (or a
+/// `sideways-*` writing mode), Blink's `ComputedStyle::GetFontBaseline`
+/// (miaskiewicz/turbo-dom#239).
+pub(crate) fn central_baseline(mode: WritingMode, style: &ComputedStyle) -> bool {
+    let sideways = style.get("text-orientation").map(str::trim) == Some("sideways")
+        || style
+            .get("writing-mode")
+            .is_some_and(|value| value.trim().starts_with("sideways"));
+    mode.vertical() && !sideways
+}
+
 /// How sides and sizes of one logical space name those of another.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Relabel {
@@ -515,34 +527,81 @@ mod tests {
         assert!(rect(&laid, "v").2 > 0.0);
     }
 
-    /// What the vertical layer does not lay out fails that element's reads only.
+    /// What the vertical layer does not lay out fails that element's reads only:
+    /// upright text and replaced elements sized by a physical default.
     #[test]
     fn unsupported_vertical_boxes_fail_per_element() {
         use crate::layout_snapshot::SnapshotError;
         let (tree, snapshot, _) = crate::live::testing::layout(
             "<body><div id=v style='writing-mode:vertical-rl'>ok <span id=s>span</span>\
              <div id=f style='display:flex'>f</div><img id=i><b id=ib style='display:inline-block'>b</b>\
-             <p id=c>\u{6f22}\u{5b57}</p><p id=u style='text-orientation:upright'>up</p><p id=e> </p></div>\
+             <svg id=sv width=5 height=6></svg><svg id=ss style='width:5px;height:6px'></svg>\
+             <svg id=sw width=5></svg><svg id=sa width=5 style='height:auto'></svg><iframe id=if></iframe><input id=in>\
+             <p id=c>\u{6f22}\u{5b57}</p><p id=u style='text-orientation:upright'>up</p><p id=e> </p>\
+             <span id=n style='display:none'><input></span></div>\
              <p id=h style='writing-mode:vertical-lr;text-orientation:sideways'>side</p></body>",
             "",
             (800.0, 600.0),
             Some(1.0),
         );
         let id = |selector| crate::live::testing::id(&tree, selector);
-        for supported in ["#v", "#s", "#e", "#h"] {
+        for supported in [
+            "#v", "#s", "#e", "#h", "#f", "#i", "#ib", "#sv", "#ss", "#n",
+        ] {
             assert_eq!(
                 snapshot.unsupported_inline_geometry(id(supported)),
                 None,
                 "{supported}"
             );
         }
-        for unsupported in ["#f", "#i", "#ib", "#c", "#u"] {
+        for unsupported in ["#sw", "#sa", "#if", "#in", "#c", "#u"] {
             assert_eq!(
                 snapshot.unsupported_inline_geometry(id(unsupported)),
                 Some(&SnapshotError::UnsupportedVerticalWriting),
                 "{unsupported}"
             );
         }
+    }
+
+    /// The central baseline: a vertical line's fonts and baseline-less atoms centre on
+    /// it, a sideways one keeps the alphabetic baseline.
+    #[test]
+    fn vertical_lines_use_the_central_baseline() {
+        let style = |pairs: &[(&str, &str)]| ComputedStyle::from_pairs(pairs.iter().copied());
+        assert!(central_baseline(WritingMode::VerticalRl, &style(&[])));
+        assert!(!central_baseline(WritingMode::HorizontalTb, &style(&[])));
+        assert!(!central_baseline(
+            WritingMode::VerticalLr,
+            &style(&[("text-orientation", "sideways")])
+        ));
+        assert!(!central_baseline(
+            WritingMode::VerticalRl,
+            &style(&[("writing-mode", "sideways-rl")])
+        ));
+        // An empty inline-block centres in a 20px line (Chrome: x 4 of 12 wide); with
+        // `text-orientation: sideways` it sits on the alphabetic baseline instead.
+        let atom = |orientation: &str| {
+            let html = format!(
+                "<!doctype html><body style='margin:0;font:16px/20px monospace'>\
+                 <div style='writing-mode:vertical-rl;height:100px;text-orientation:{orientation}'>\
+                 a<span id=i style='display:inline-block;width:12px;height:30px'></span></div>"
+            );
+            let (tree, snapshot, _) = crate::live::testing::layout_with_fonts(
+                &html,
+                "",
+                (800.0, 600.0),
+                Some(1.0),
+                |_| {},
+                &crate::test_support::fixture_fonts(),
+            );
+            let id = crate::live::testing::id(&tree, "#i");
+            crate::cssom_view::metrics::element_geometry(&snapshot, id)
+                .unwrap()
+                .bounds
+                .x
+        };
+        assert_eq!(atom("mixed"), 4.0);
+        assert_ne!(atom("sideways"), 4.0);
     }
 
     /// A live snapshot relabels `<br>` source breaks and text list markers too, and a
