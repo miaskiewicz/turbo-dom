@@ -20,6 +20,9 @@ turbo-dom-parser = { package = "turbo-dom", path = "../turbo-dom", version = "0.
 lightningcss = { version = "1.0.0-alpha.71", default-features = false }
 cssparser = "0.37"
 serde_json = "1"
+# XML documents (DOMParser XML types): Chrome 156 parses XML with xml-rs, so its
+# well-formedness errors and positions are this crate's.
+xml = "1.4"
 url = "2.5"
 # Public-suffix registry for document.domain's top-level-domain check (Blink
 # includes private registries such as github.io).

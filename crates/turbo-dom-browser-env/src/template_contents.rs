@@ -565,7 +565,8 @@ pub(super) fn serialize_with<'s>(
                     shadow(scope, node, options, &mut pending, &mut out);
                 }
             }
-            3 => {
+            // Chrome's HTML serialization writes a CDATA section as escaped text.
+            3 | 4 => {
                 let value = with_tree(|tree| tree.node_value_utf16(handle))
                     .flatten()
                     .unwrap_or_default();

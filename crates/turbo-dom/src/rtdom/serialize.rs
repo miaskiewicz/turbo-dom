@@ -136,7 +136,8 @@ fn serialize_node<'a>(tree: &'a Tree, h: Handle, parent_tag: Option<&'a str>, ou
                     pending.push(Task::Node(child, Some(parent)));
                 }
             }
-            NodeType::Text => {
+            // Chrome's HTML serialization writes a CDATA section as escaped text.
+            NodeType::Text | NodeType::CDataSection => {
                 let data = tree.node_value(h).unwrap_or_default();
                 if parent_tag.is_some_and(is_raw_text) {
                     out.push_str(&data);
