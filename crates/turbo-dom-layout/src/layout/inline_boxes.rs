@@ -22,7 +22,7 @@ pub(crate) fn unsupported(
     nodes: &[crate::StyledNode],
 ) -> Vec<(&crate::StyledElement, crate::layout_snapshot::SnapshotError)> {
     let mut out = Vec::new();
-    collect_unsupported(nodes, false, &mut out);
+    collect_unsupported(nodes, (false, false), &mut out);
     out
 }
 type Unsupported<'a> = Vec<(
@@ -31,33 +31,43 @@ type Unsupported<'a> = Vec<(
 )>;
 fn collect_unsupported<'a>(
     nodes: &'a [crate::StyledNode],
-    inside: bool,
+    (inside, parent_rtl): (bool, bool),
     out: &mut Unsupported<'a>,
 ) {
     for node in nodes {
         if let crate::StyledNode::Element(element) = node {
-            element_unsupported(element, inside, out);
+            element_unsupported(element, (inside, parent_rtl), out);
         }
     }
 }
 fn element_unsupported<'a>(
     element: &'a crate::StyledElement,
-    inside: bool,
+    (inside, parent_rtl): (bool, bool),
     out: &mut Unsupported<'a>,
 ) {
+    let rtl = is_rtl(&element.style);
     let display = super::value::display_of(&element.style);
     if display == Display::None || matches!(&element.tag,crate::Tag::Html(name) if name=="br") {
         return;
     }
     if element.style.get("display") == Some("contents") {
-        return collect_unsupported(&element.children, inside, out);
+        return collect_unsupported(&element.children, (inside, parent_rtl), out);
     }
     let ordinary = ordinary_inline(element, display);
+    // An inline that only inherits its container's direction lays out in logical
+    // order, aligned by the container (approximate: no UAX #9 reordering, #238); one
+    // that changes direction opens a bidi embedding, which is unsupported.
+    if ordinary && rtl != parent_rtl {
+        return out.push((
+            element,
+            crate::layout_snapshot::SnapshotError::UnsupportedInlineWriting,
+        ));
+    }
     match validate_rendered_element(element, display, inside, ordinary) {
         Err(error) => out.push((element, error)),
         Ok(()) => collect_unsupported(
             &element.children,
-            inline_context(display, inside, ordinary),
+            (inline_context(display, inside, ordinary), rtl),
             out,
         ),
     }
@@ -167,11 +177,13 @@ fn validate_inline_style(
     }
     Ok(())
 }
+fn is_rtl(style: &ComputedStyle) -> bool {
+    style.get("direction").map(str::trim) == Some("rtl")
+}
 fn unsupported_writing(style: &ComputedStyle) -> bool {
-    style.get("direction") == Some("rtl")
-        || style
-            .get("writing-mode")
-            .is_some_and(|value| value != "horizontal-tb")
+    style
+        .get("writing-mode")
+        .is_some_and(|value| value != "horizontal-tb")
 }
 
 fn style(style: &ComputedStyle, font: f32, width: f32, scale: Option<f32>) -> BoxStyle {
