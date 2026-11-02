@@ -442,8 +442,21 @@ pub fn element_scroller(styles: &SourceStyles, id: SourceId) -> bool {
             || permits_scroll(overflow(&entry.style, "overflow-y")))
 }
 
+/// Whether the viewport is right-to-left: the root's used direction, which for HTML is
+/// its `<body>` child's when it has one (CSS Writing Modes 3 §8; Chrome 156,
+/// miaskiewicz/turbo-dom#238).
+fn viewport_rtl(styles: &SourceStyles, root: SourceId) -> bool {
+    let body = styles
+        .values()
+        .find(|entry| entry.parent == Some(root) && entry.tag.eq_ignore_ascii_case("body"));
+    body.or_else(|| styles.get(&root))
+        .is_some_and(|entry| has_value(&entry.style, "direction", "rtl"))
+}
+
 /// Viewport scrollable overflow: the initial containing block plus every
-/// in-flow or absolute descendant edge not owned by a nested clipping box.
+/// in-flow or absolute descendant edge not owned by a nested clipping box. An RTL
+/// viewport's overflow extends left instead (offsets `min_x..=0`), its content past
+/// the right edge unreachable, as an LTR one's past the left edge.
 pub fn viewport_metrics(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
@@ -453,7 +466,9 @@ pub fn viewport_metrics(
     let source = snapshot
         .source(root)
         .ok_or("native scroll source missing")?;
+    let rtl = viewport_rtl(styles, root);
     let mut right = size[0];
+    let mut left = 0.0f32;
     let mut bottom = size[1];
     for &index in source
         .fragment_indices
@@ -498,6 +513,13 @@ pub fn viewport_metrics(
                 .map(|point| if axis == 0 { point.x } else { point.y })
                 .fold(f32::NEG_INFINITY, f32::max)
         };
+        let quad_left = || {
+            fragment
+                .quad
+                .iter()
+                .map(|point| point.x)
+                .fold(f32::INFINITY, f32::min)
+        };
         let flow = fragment
             .used_box
             .filter(|_| position != Some(Position::Absolute))
@@ -510,26 +532,35 @@ pub fn viewport_metrics(
                         | Display::InlineFlex
                         | Display::InlineGrid
                 );
+                let inline_end = if rtl {
+                    used.margin.left
+                } else {
+                    used.margin.right
+                };
                 [
-                    if inline_level { used.margin.right } else { 0.0 },
+                    if inline_level { inline_end } else { 0.0 },
                     used.margin.bottom,
                 ]
             });
         if !blocked[0] {
-            right = right.max(quad(0) + flow[0]);
+            if rtl {
+                left = left.min(quad_left() - flow[0]);
+            } else {
+                right = right.max(quad(0) + flow[0]);
+            }
         }
         if !blocked[1] {
             bottom = bottom.max(quad(1) + flow[1]);
         }
     }
     Ok(ScrollMetrics {
-        width: rounded(right)?,
+        width: rounded(right - left)?,
         height: rounded(bottom)?,
         scroll_x: true,
         scroll_y: true,
         max_x: f64::from((right - size[0]).max(0.0)),
         max_y: f64::from((bottom - size[1]).max(0.0)),
-        min_x: 0.0,
+        min_x: f64::from(left),
     })
 }
 

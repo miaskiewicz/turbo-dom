@@ -637,7 +637,7 @@ fn preserved_newlines_break_lines_like_chrome_156() {
 }
 
 /// miaskiewicz/turbo-dom#238 item 2: the quirks-mode line height quirk on the static HTML
-/// path (a BackCompat document's lines take the block strut only for text / `<br>`; #190
+/// path (a `BackCompat` document's lines take the block strut only for text / `<br>`; #190
 /// covers the live path), plus its standards-mode control.
 fn quirks_strut_case(id: &str) -> bool {
     id.starts_with("quirks-strut-")
@@ -668,7 +668,7 @@ fn cid_identities(
     }
 }
 
-/// The static path styles a BackCompat document with the quirks-mode line strut marker
+/// The static path styles a `BackCompat` document with the quirks-mode line strut marker
 /// (`style_html_tree`), so its Chrome-metric HTML text layout (the snapshot every native
 /// HTML read and screenshot uses) lays the lines out like Chrome. `layout_boxes` stays on
 /// the PDF metric policy, whose line boxes have no baseline alignment (unrounded
