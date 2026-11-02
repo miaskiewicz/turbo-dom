@@ -141,3 +141,27 @@ fn text_metrics_interface_matches_chrome156() {
     super::reference_target::probe_harness::differences("result", &actual, &expected, &mut out);
     assert!(out.is_empty(), "{}", out.join("\n"));
 }
+
+/// letterSpacing / wordSpacing parse CSS lengths and ignore invalid values; fontKerning,
+/// fontStretch and textRendering accept only their enum values; save/restore keeps them;
+/// and measureText widths follow Chrome 156: spacing after every character (and every
+/// space), em against the current font, no kerning for `fontKerning: none`, whole-run
+/// shaping (kerning across spaces) for `normal` / optimizeLegibility / geometricPrecision.
+#[test]
+fn text_attributes_match_chrome156() {
+    const PROBE: &str = include_str!("canvas_text_attributes_probe.js");
+    let mut expected = checked_control(include_str!("canvas_text_attributes_chrome156.json"), PROBE);
+    let mut actual = run(Some(turbo_dom_layout::test_support::fixture_fonts()), PROBE);
+    let rows = |value: &mut Value| value["widths"].take();
+    let (actual_rows, expected_rows) = (rows(&mut actual), rows(&mut expected));
+    let mut out = Vec::new();
+    super::reference_target::probe_harness::differences("result", &actual, &expected, &mut out);
+    let keys = ["width", "actualBoundingBoxLeft", "actualBoundingBoxRight"].map(Value::from);
+    let (a, e) = (actual_rows.as_array().unwrap(), expected_rows.as_array().unwrap());
+    assert_eq!(a.len(), e.len(), "width rows");
+    for (a, e) in a.iter().zip(e) {
+        assert_eq!((&a[0], &a[1], &a[2]), (&e[0], &e[1], &e[2]));
+        compare(&format!("{} {} {:?}", e[0], e[1], e[2]), &keys, &a[3], &e[3], &mut out);
+    }
+    assert!(out.is_empty(), "{} differences:\n{}", out.len(), out.join("\n"));
+}
