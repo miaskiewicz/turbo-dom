@@ -235,6 +235,38 @@ const CASES = [
     html: DOC(`<div style="${at(600, 300)};width:100px;height:100px;background:#0000ff;box-shadow:0 0 400px #000000"></div>`),
     probes: [[550, 350], [500, 350], [450, 350], [650, 250], [650, 150], [400, 600]],
   },
+  // miaskiewicz/turbo-dom#192: inset shadows paint inside the padding box, over the
+  // background and under the border, with offset / spread / blur.
+  {
+    // An offset hard inset shadow is a band along the top and left padding edges.
+    id: "inset-hard-offset",
+    html: DOC(`<div style="${at(20, 20)};width:60px;height:60px;background:#00ff00;box-shadow:inset 10px 10px 0 #ff0000"></div>`),
+    probes: [[25, 50], [50, 25], [25, 25], [50, 50], [77, 50], [50, 77], [15, 50], [85, 85]],
+  },
+  {
+    // A spread ring sits inside a 4px border, which paints over nothing of it.
+    id: "inset-spread-border",
+    html: DOC(`<div style="${at(120, 20)};width:60px;height:60px;background:#00ff00;border:4px solid #0000ff;box-shadow:inset 0 0 0 6px #ff0000"></div>`),
+    probes: [[122, 54], [127, 54], [133, 54], [137, 54], [154, 54], [154, 27], [154, 33], [181, 54], [154, 86], [154, 82]],
+  },
+  {
+    // A rounded box: the ring follows the padding-box radius; corners outside stay the backdrop.
+    id: "inset-spread-round",
+    html: DOC(`<div style="${at(220, 20)};width:60px;height:60px;background:#00ff00;border-radius:20px;box-shadow:inset 0 0 0 6px #ff0000"></div>`),
+    probes: [[221, 21], [223, 50], [250, 23], [250, 50], [278, 79], [229, 29], [235, 35], [250, 77]],
+  },
+  {
+    // A blurred inset shadow: dark at the padding edge, fading to the background inside.
+    id: "inset-blur",
+    html: DOC(`<div style="${at(320, 20)};width:80px;height:80px;background:#00ff00;box-shadow:inset 0 0 10px 4px #ff0000"></div>`),
+    probes: [[321, 60], [323, 60], [360, 21], [360, 60], [345, 60], [340, 40], [398, 98]],
+  },
+  {
+    // A spread larger than half the box fills the whole padding box.
+    id: "inset-full",
+    html: DOC(`<div style="${at(420, 20)};width:40px;height:40px;background:#00ff00;border:2px solid #0000ff;box-shadow:inset 0 0 0 30px #ff0000"></div>`),
+    probes: [[442, 42], [425, 25], [421, 42], [442, 63]],
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
