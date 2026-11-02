@@ -718,6 +718,15 @@ mod tests {
     use super::{css_number, is_supported_property, parse, parse_media, parse_one, zoom_value};
 
     #[test]
+    fn a_rule_keeps_a_none_shadow() {
+        // Chrome 156: `.a { box-shadow: none }` keeps the declaration (MUI's Card writes it;
+        // turbo-dom#227). Lightning CSS reads `none` as an unparsed value.
+        assert_eq!(parse(".a{box-shadow:none;color:red}"), ".a { box-shadow: none; color: red; }");
+        assert_eq!(parse_one(".a{text-shadow:none}").as_deref(), Some(".a { text-shadow: none; }"));
+        assert_eq!(parse(".a{box-shadow:none none}"), ".a { }");
+    }
+
+    #[test]
     fn zoom_uses_chrome156_grammar_serialization_and_factors() {
         for (source, text, factor) in [
             ("2", "2", 2.0),
