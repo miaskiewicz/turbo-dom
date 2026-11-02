@@ -1564,9 +1564,11 @@
     const fields = ['duration', 'delay', 'iteration-count', 'direction', 'fill-mode', 'timing-function', 'play-state'];
     for (let i = 0; i < fields.length; i++) lists[fields[i]] = splitList(read('animation-' + fields[i]));
     const kept = [];
-    for (let i = 0; i < names.length; i++) {
+    // No CSS animation runs on an element that is not rendered (itself or an ancestor display:none).
+    const hidden = names.length && (read('display') === 'none' || !rendered(element));
+    for (let i = 0; i < names.length && !hidden; i++) {
       const name = names[i];
-      if (name === 'none' || read('display') === 'none') continue;
+      if (name === 'none') continue;
       if (!cssKeyframes) cssKeyframes = ns.cssKeyframes ? ns.cssKeyframes() : create(null);
       const rule = cssKeyframes[name];
       if (!rule) continue;
@@ -1579,14 +1581,34 @@
     for (let i = 0; i < state.animations.length; i++) if (!contains(kept, state.animations[i])) cssCancel(state.animations[i].animation);
     state.animations = kept;
   }
+  // The interpolable longhands `transition-property: all` covers (the value model's properties).
+  const SIDES = ['top', 'right', 'bottom', 'left'];
+  const ALL_PROPERTIES = (() => {
+    const out = [];
+    const add = name => { if (name !== 'display' && !contains(out, name)) push(out, name); };
+    const tables = [INITIAL, COLORS, UNIT_NUMBERS, INTEGERS, NUMBERS];
+    for (let t = 0; t < tables.length; t++) for (const name in tables[t]) add(name);
+    for (let i = 0; i < SIDES.length; i++) { add('margin-' + SIDES[i]); add('padding-' + SIDES[i]); add('border-' + SIDES[i] + '-width'); }
+    const more = ['font-size', 'min-width', 'min-height', 'max-width', 'max-height', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'outline-width', 'outline-offset', 'flex-basis', 'row-gap', 'column-gap'];
+    for (let i = 0; i < more.length; i++) add(more[i]);
+    return out;
+  })();
+  // Each transitioned longhand -> its index in the transition-* lists; a later entry wins.
+  function transitionedProperties(list) {
+    const out = create(null);
+    for (let i = 0; i < list.length; i++) {
+      if (list[i] === 'all') { for (let j = 0; j < ALL_PROPERTIES.length; j++) out[ALL_PROPERTIES[j]] = i; }
+      else if (Native('property', idlName(list[i])) === list[i]) out[list[i]] = i;
+    }
+    return out;
+  }
   function cssTransitions(element, read, underlying) {
-    const state = cssState(element), properties = splitList(read('transition-property'));
+    const state = cssState(element), properties = transitionedProperties(splitList(read('transition-property')));
     const durations = splitList(read('transition-duration')), delays = splitList(read('transition-delay')), easings = splitList(read('transition-timing-function'));
     // The transitions one style change starts share a generation (ordered by property name).
     const seen = create(null), generation = cssGeneration + 1;
-    for (let i = 0; i < properties.length; i++) {
-      const property = properties[i];
-      if (Native('property', idlName(property)) !== property || seen[property]) continue;
+    for (const property in properties) {
+      const i = properties[property];
       seen[property] = true;
       const value = underlying(property), before = state.values[property];
       state.values[property] = value;
