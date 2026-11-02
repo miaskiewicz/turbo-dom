@@ -123,7 +123,7 @@ fn capture(tree: &mut Tree, node: Handle) -> Result<Vec<Snapshot>, &'static str>
     let mut pending = vec![(node, None, false)];
     while let Some((node, parent, shadow)) = pending.pop() {
         let kind = tree.node_type_id(node);
-        if !matches!(kind, 1 | 2 | 3 | 7 | 8 | 10 | 11) {
+        if !matches!(kind, 1 | 2 | 3 | 4 | 7 | 8 | 10 | 11) {
             return Err("Adopting this native node kind is unsupported");
         }
         let attributes = tree
@@ -200,6 +200,7 @@ fn materialize(
                     &record.value,
                 ),
                 3 => tree.create_text_node_utf16(&record.value),
+                4 => tree.create_cdata_section_utf16(&record.value),
                 7 => tree.create_processing_instruction_units(&record.name, &record.value),
                 8 => tree.create_comment_utf16(&record.value),
                 10 => {
@@ -653,6 +654,18 @@ pub fn dispatch<'s>(
                 // invariant: engine-built name, far below V8's string length limit
                 rv.set(v8::String::new(scope, error).unwrap().into());
             }
+        }
+        "isXML" if kind == 9 => {
+            let xml = dom_implementation::is_xml_document(scope, node);
+            rv.set(v8::Boolean::new(scope, xml).into());
+        }
+        "createCDATA" if kind == 9 => {
+            // createCDATASection converted and validated the data with string().
+            let data = dom_units(scope, args.get(2)).expect("string data");
+            let node = with_tree_mut(|tree| tree.create_cdata_section_utf16(&data))
+                // invariant: an installed DOM tree is in scope
+                .unwrap();
+            rv.set(wrap(scope, node).into());
         }
         "createPI" if kind == 9 => {
             // createProcessingInstruction converted and validated both with string().

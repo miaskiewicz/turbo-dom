@@ -20,14 +20,15 @@ use turbo_dom_browser_env::browser_env::{
     is_native_event, is_native_event_target, is_native_xpath_object, light_dismiss,
     mark_event_trusted, modal_backdrop, native_event_target_has_listener, node_attribute,
     node_has_window_owner, node_nonce, node_parser_position, notify_user_activation,
-    parse_html_document_units, parser_scripts, prepare_script, process_close_watchers,
-    register_dom_exception, register_native_event_target, remove_mutation_consumer, reset,
-    reset_isolate, retire_custom_element_context, run_engine_script, script_document,
-    set_activation_host, set_document_domain_sandboxed, set_document_last_modified,
-    set_document_origin_keyed, set_document_resource_active, set_form_submission_blocked,
-    set_inert_document_initializer, set_interface_record, set_native_event_target_observer,
-    string_code_units, sweep_collected_documents, trusted_script_source, trusted_type_string,
-    ActivationQuery, NativeDomScope, PointerLockPolicy, ENGINE_NAMESPACE_PARAM,
+    parse_html_document_units, parse_xml_document_units, parser_scripts, prepare_script,
+    process_close_watchers, register_dom_exception, register_native_event_target,
+    remove_mutation_consumer, reset, reset_isolate, retire_custom_element_context,
+    run_engine_script, script_document, set_activation_host, set_document_domain_sandboxed,
+    set_document_last_modified, set_document_origin_keyed, set_document_resource_active,
+    set_form_submission_blocked, set_inert_document_initializer, set_interface_record,
+    set_native_event_target_observer, string_code_units, sweep_collected_documents,
+    trusted_script_source, trusted_type_string, ActivationQuery, NativeDomScope, PointerLockPolicy,
+    ENGINE_NAMESPACE_PARAM,
 };
 
 #[test]

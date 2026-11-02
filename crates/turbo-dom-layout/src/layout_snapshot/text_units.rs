@@ -99,6 +99,7 @@ mod tests {
                 NodeId(1),
                 SourceRecord {
                     inline_block_owners: Vec::new(),
+                    list_marker: false,
                     id: Some(SourceId(7)),
                     ancestors: vec![],
                 },
@@ -107,6 +108,7 @@ mod tests {
                 NodeId(2),
                 SourceRecord {
                     inline_block_owners: Vec::new(),
+                    list_marker: false,
                     id: None,
                     ancestors: vec![],
                 },
@@ -115,6 +117,7 @@ mod tests {
                 NodeId(3),
                 SourceRecord {
                     inline_block_owners: Vec::new(),
+                    list_marker: false,
                     id: Some(SourceId(8)),
                     ancestors: vec![],
                 },

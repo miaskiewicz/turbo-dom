@@ -56,8 +56,10 @@
   method(g.Document.prototype, 'createCDATASection', function (data) {
     check(this, [9]);
     if (!arguments.length) throw new TypeError('createCDATASection requires 1 argument');
-    string(data);
-    throw new ns.DOMException('CDATA sections are unsupported in HTML documents', 'NotSupportedError');
+    data = string(data);
+    if (!native('isXML', this)) throw new ns.DOMException("Failed to execute 'createCDATASection' on 'Document': This operation is not supported for HTML documents.", 'NotSupportedError');
+    if (data.includes(']]>')) throw new ns.DOMException("Failed to execute 'createCDATASection' on 'Document': String cannot contain ']]>' since that is the end delimiter of a CData section.", 'InvalidCharacterError');
+    return native('createCDATA', this, data);
   }, 1);
   property(g.ProcessingInstruction.prototype, 'target', function () { check(this, [7]); return native('piTarget', this); });
   const data = Object.getOwnPropertyDescriptor(g.CharacterData.prototype, 'data');

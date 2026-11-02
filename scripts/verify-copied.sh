@@ -276,9 +276,17 @@ browser_env.rs: D15 namespace_lookup_on_non_element_nodes_matches_chrome156 cont
 browser_env.rs: turbo-test#204 wrappers carry a tree generation next to their DOM id (owner_tag/tagged_owner); handle_of refuses a wrapper of a discarded tree or a handle its tree never minted
 document_basics.rs: turbo-test#204 adoption tags moved wrappers with the target tree's generation
 dom_ownership.rs: turbo-test#204 ownership grouping skips wrappers of a discarded tree
+browser_env.rs: turbo-dom#186 XML documents (xml_documents module, parse_xml_document_units, XMLSerializer install); CDATA sections are named #cdata-section, cloned / imported and read as character data
+document_basics.rs: turbo-dom#186 createCDATASection natives (isXML, createCDATA); adoption copies CDATA sections
+document_basics.js: turbo-dom#186 createCDATASection creates CDATA sections in XML documents (Chrome's NotSupportedError / InvalidCharacterError messages otherwise)
+template_contents.rs: turbo-dom#186 HTML serialization writes a CDATA section as escaped text
 animations.js: 0.7.0 turbo-dom#187 CSSAnimation / CSSTransition for declarative animations and transitions, created on style resolution; composite order transitions, CSS animations, script
 browser_env.js: 0.7.0 turbo-dom#187 private ns.cssKeyframes export of @keyframes rule records for CSS animations
 animations_tests.rs: 0.7.0 turbo-dom#187 css_animations Chrome 156 control test; control() accepts the frozen headless shell's HeadlessChrome product name; the keyframe-order KNOWN_GAP cites turbo-dom#233
+browser_env.rs: 0.7.0 turbo-dom#135 installed and parsed documents parse HTML processing instructions like Chrome 156 (Tree::set_processing_instructions / parse_utf16_with_processing_instructions)
+sanitizer.rs: 0.7.0 turbo-dom#135 parseHTML documents parse processing instructions like Chrome; Document-level processing instructions are kept, like comments
+sanitizer.js: 0.7.0 turbo-dom#135 a safe setHTML dictionary without processing-instruction lists allows none (Chrome 156)
+edge_probes_tests.rs: 0.7.0 turbo-dom#135 html_processing_instructions Chrome 156 control test; the sanitizer probe's processing-instruction KNOWN_GAP rows are gone
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -305,6 +313,7 @@ OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"
 OWNED="$OWNED css_animations_cases.json css_animations_chrome156.json css_animations_probe.js processing_instructions_chrome156.json processing_instructions_probe.js"
 OWNED="$OWNED page_patched_intrinsics_probe.js captured_intrinsics.js"
+OWNED="$OWNED xml_documents.rs xml_documents.js xml_documents_tests.rs xml_documents_probe.js xml_documents_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}
