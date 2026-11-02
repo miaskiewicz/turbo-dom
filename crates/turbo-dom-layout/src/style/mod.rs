@@ -78,6 +78,8 @@ textarea { display: inline-block; width: 200px; height: 3em; border: 1px solid #
 select, button { display: inline-block; border: 1px solid #a9a9a9; background-color: #efefef }
 button, select, meter, progress, input[type=button], input[type=submit], input[type=reset], input[type=color], input[type=checkbox], input[type=radio], input[type=search] { box-sizing: border-box }
 template { display: none }
+[dir=rtl i] { direction: rtl }
+[dir=ltr i] { direction: ltr }
 ";
 
 /// The user-agent rules a whole HTML document adds to [`UA_CSS`] when it is styled
@@ -108,6 +110,11 @@ box-sizing: border-box !important; min-width: 0 !important; max-width: none !imp
 min-height: 0 !important; max-height: none !important; width: 100% !important; \
 height: 100% !important; transform: none !important; \
 -internal-top-layer: fullscreen !important }";
+
+/// The internal property the live style pass sets on every element of a quirks-mode
+/// (`BackCompat`) document: its lines follow the line height quirk (a line takes the
+/// block's strut only for text directly in the block; miaskiewicz/turbo-dom#190).
+pub const QUIRKS_LINE_HEIGHT: &str = "-internal-quirks-line-height";
 
 static FULLSCREEN_UA_SHEET: std::sync::LazyLock<Stylesheet> =
     std::sync::LazyLock::new(|| parse_stylesheet(FULLSCREEN_UA_CSS));

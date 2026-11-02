@@ -812,6 +812,7 @@ fn layout_nonempty_lines(
 ) -> (Vec<Fragment>, f32) {
     let (cx, cy) = origin;
     let (mut pieces, atom_frags, directives) = build_inline_pieces(items, bs, cx, cy, cw, ctx);
+    let quirk_roots = quirks_line_height(lb).then(|| quirk_line_roots(items, &mut pieces));
     super::inline_boxes::native_atoms(
         &mut pieces,
         &atom_frags,
@@ -833,6 +834,7 @@ fn layout_nonempty_lines(
         text_indent: super::value::html_used_value(text_indent, ctx.html_font_scale),
         strut: line_strut(bs, ctx.fonts),
         strut_metrics: super::inline_boxes::strut(bs, ctx),
+        quirk_roots: quirk_roots.as_ref(),
         align: bs.text_align,
         font_size: bs.font_size,
         baselines: &placement.baselines,
@@ -1033,6 +1035,7 @@ struct ParagraphInputs<'a> {
     text_indent: f32,
     strut: f32,
     strut_metrics: Option<(f32, f32)>,
+    quirk_roots: Option<&'a HashSet<NodeId>>,
     align: Align,
     font_size: f32,
     baselines: &'a HashMap<NodeId, f32>,
@@ -1128,6 +1131,7 @@ fn paragraph(
                 original_units: ctx.original_units,
                 baselines: inputs.baselines,
                 strut_metrics: inputs.strut_metrics,
+                quirk_roots: inputs.quirk_roots,
             },
         )
     } else if ctx.text_capture.is_some() {
@@ -1377,6 +1381,69 @@ fn append_source_break(
         pieces.push(inline::Piece::SourceBreak(edge));
     }
 }
+/// Whether the block's document is in quirks mode, as the live style pass marks every
+/// element of one ([`crate::style::QUIRKS_LINE_HEIGHT`]).
+fn quirks_line_height(lb: &LayoutBox) -> bool {
+    lb.style.get(crate::style::QUIRKS_LINE_HEIGHT).is_some()
+}
+
+/// The quirks-mode line height quirk (Chrome 156, miaskiewicz/turbo-dom#190): the text
+/// and `<br>` sources directly in the block, whose lines alone take its strut; and an
+/// inline box contributes its own font metrics only through its text (and `<br>`s) or
+/// when it has an inline border or padding (not for a margin).
+fn quirk_line_roots(items: &[InlineItem], pieces: &mut [inline::Piece]) -> HashSet<NodeId> {
+    let mut roots = HashSet::new();
+    let mut decorated = HashSet::new();
+    let mut depth = 0usize;
+    for item in items {
+        match item {
+            InlineItem::Boundary {
+                node_id,
+                style,
+                start,
+            } => {
+                if *start {
+                    depth += 1;
+                    if inline_decorated(style) {
+                        decorated.insert(*node_id);
+                    }
+                } else {
+                    depth = depth.saturating_sub(1);
+                }
+            }
+            InlineItem::Text { node_id, .. } | InlineItem::SourceBreak { node_id, .. }
+                if depth == 0 =>
+            {
+                roots.insert(*node_id);
+            }
+            _ => {}
+        }
+    }
+    for piece in pieces {
+        match piece {
+            inline::Piece::Edge(edge) => {
+                edge.contributes_metrics &= decorated.contains(&edge.node_id);
+            }
+            inline::Piece::SourceBreak(edge) => edge.contributes_metrics = true,
+            _ => {}
+        }
+    }
+    roots
+}
+
+/// Whether an inline box has a non-zero inline-axis border or padding.
+fn inline_decorated(style: &crate::ComputedStyle) -> bool {
+    let used = super::value::resolve_box_style(
+        style,
+        super::value::ResolveCtx {
+            parent_font_size: DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        },
+    );
+    let border = used.border.widths();
+    border.left + border.right + used.padding.left + used.padding.right > 0.0
+}
+
 fn build_inline_pieces(
     items: &[InlineItem],
     bs: &BoxStyle,
@@ -1468,6 +1535,8 @@ struct FlowRun {
     cursor: f32,
     pending: f32,
     align: Align,
+    /// The container is `direction: rtl` (miaskiewicz/turbo-dom#190).
+    rtl: bool,
 }
 
 /// How a block container aligns its block-level children: by its `text-align` only
@@ -1694,6 +1763,7 @@ fn layout_block_flow(
         cursor: cy,
         pending: 0.0,
         align: block_align(bs),
+        rtl: bs.rtl && !(bs.legacy_align && bs.text_align == Align::Left),
     };
     let mut deferred: Vec<(&LayoutBox, (f32, f32))> = Vec::new();
     // Whether the margins of the next in-flow child were hoisted out this box's top by
@@ -1923,7 +1993,7 @@ fn layout_in_flow_kid(
     // `margin: … auto` centers it, and a legacy `text-align: -webkit-center` /
     // `-webkit-right` container (`<center>`, `align=center`) centers / right-aligns
     // block children (`block_align`).
-    let hx = block_h_offset(flow.align, kbs, kid, frag.width, region_w);
+    let hx = block_h_offset((flow.align, flow.rtl), kbs, kid, frag.width, region_w);
     if hx != 0.0 {
         frag.translate(hx, 0.0);
     }
@@ -2052,19 +2122,39 @@ fn flow_region(
 /// centers; otherwise the container's block alignment (`block_align`: a legacy
 /// `-webkit-*` `text-align`, as `<center>` and `align="center"` give) centers /
 /// right-aligns block children.
-fn block_h_offset(align: Align, kbs: &BoxStyle, kid: &LayoutBox, frag_w: f32, cw: f32) -> f32 {
+///
+/// An RTL container (`rtl`) places a box from its right content edge: an over-
+/// constrained box drops its left margin and overflows to the left (CSS 2.2 §10.3.3,
+/// Chrome 156; miaskiewicz/turbo-dom#190).
+fn block_h_offset(
+    (align, rtl): (Align, bool),
+    kbs: &BoxStyle,
+    kid: &LayoutBox,
+    frag_w: f32,
+    cw: f32,
+) -> f32 {
     let avail = (cw - kbs.margin.horizontal()).max(0.0);
+    let from_right = cw - frag_w - kbs.margin.right - kbs.margin.left;
     if frag_w >= avail - 0.5 {
-        return 0.0;
+        return if rtl { from_right } else { 0.0 };
     }
     if auto_x_margins(&kid.style) || align == Align::Center {
         return (cw - frag_w) / 2.0 - kbs.margin.left;
     }
     // A lone `margin-left: auto` absorbs the free space (CSS 2.2 §10.3.3).
     if align == Align::Right || auto_left_margin(&kid.style) {
-        return cw - frag_w - kbs.margin.right - kbs.margin.left;
+        return from_right;
+    }
+    // In RTL a lone `margin-right: auto` keeps the box at its left (start-free) side.
+    if rtl && !auto_right_margin(&kid.style) {
+        return from_right;
     }
     0.0
+}
+
+/// Whether `margin-right` is `auto`.
+fn auto_right_margin(s: &crate::style::ComputedStyle) -> bool {
+    s.get("margin-right").map(str::trim) == Some("auto")
 }
 
 /// Whether `margin-left` is `auto` (with `margin-right` definite: see [`auto_x_margins`]).

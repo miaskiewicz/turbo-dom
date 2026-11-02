@@ -1438,6 +1438,8 @@ struct Placer<'a> {
     html_font_scale: Option<f32>,
     advances: Option<inline_advances::Cursor>,
     strut_metrics: Option<(f32, f32)>,
+    /// Quirks mode (see [`NativeLineOptions::quirk_roots`]).
+    quirk_roots: Option<&'a std::collections::HashSet<NodeId>>,
     first_indent: f32,
     clearance: Option<&'a dyn Fn(f32, f32) -> f32>,
     out: Vec<SourceLine>,
@@ -1467,6 +1469,7 @@ impl<'a> Placer<'a> {
             html_font_scale,
             advances: html_font_scale.map(|scale| inline_advances::Cursor::new(scale, 0.0)),
             strut_metrics: None,
+            quirk_roots: None,
             first_indent: 0.0,
             clearance: None,
             out: Vec::new(),
@@ -1479,6 +1482,27 @@ impl<'a> Placer<'a> {
         }
     }
 
+    /// The strut a line of `words` takes: in quirks mode only a line holding text or a
+    /// `<br>` directly in the block gets it, any other line starts from nothing (the
+    /// line height quirk; Chrome 156, miaskiewicz/turbo-dom#190).
+    fn line_strut(&self, words: &[Word]) -> Option<(f32, f32)> {
+        let Some(roots) = self.quirk_roots else {
+            return self.strut_metrics;
+        };
+        let rooted = words.iter().any(|word| {
+            word.segs.iter().any(|seg| roots.contains(&seg.node_id))
+                || word
+                    .edges
+                    .iter()
+                    .any(|(_, edge)| roots.contains(&edge.node_id))
+        });
+        if rooted {
+            self.strut_metrics
+        } else {
+            self.strut_metrics.map(|_| (0.0, 0.0))
+        }
+    }
+
     /// Place the accumulated words into a line at the current `y`, advance `y` by
     /// its height, and re-query the float region for the next line.
     fn flush(&mut self) {
@@ -1486,6 +1510,7 @@ impl<'a> Placer<'a> {
             return;
         }
         let current = std::mem::take(&mut self.cur);
+        let strut_metrics = self.line_strut(&current);
         let mut next_open = self.open_edges.clone();
         for word in &current {
             for (_, edge) in &word.edges {
@@ -1502,7 +1527,7 @@ impl<'a> Placer<'a> {
             self.align,
             self.strut,
             &self.open_edges,
-            self.strut_metrics,
+            strut_metrics,
             (
                 self.capture_sources,
                 self.html_font_metrics,
@@ -2573,6 +2598,7 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
     }
     let mut placer = Placer::new(align, region, strut, (true, true, options.scale));
     placer.strut_metrics = options.strut_metrics;
+    placer.quirk_roots = options.quirk_roots;
     placer.first_indent = options.first_indent;
     placer.clearance = Some(options.clearance);
     for word in words {
@@ -2584,6 +2610,9 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
 pub(crate) struct NativeLineOptions<'a> {
     pub baselines: &'a std::collections::HashMap<NodeId, f32>,
     pub strut_metrics: Option<(f32, f32)>,
+    /// Quirks mode: the text and `<br>` sources directly in the block (not in an
+    /// inline box), whose lines alone take the block's strut. `None` in no-quirks mode.
+    pub quirk_roots: Option<&'a std::collections::HashSet<NodeId>>,
     pub scale: Option<f32>,
     pub first_indent: f32,
     pub clearance: &'a dyn Fn(f32, f32) -> f32,
