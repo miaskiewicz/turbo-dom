@@ -3,7 +3,8 @@
 // frozen headless Chrome and writes src/xml_documents_chrome156.json.
 //
 // Usage: PLAYWRIGHT_CORE=/path/to/playwright-core node scripts/xml-documents-chrome-control.mjs \
-//          --chrome /path/to/chrome-headless-shell [--out PATH]
+//          --chrome /path/to/chrome-headless-shell [--probe xml_inner_html] [--out PATH]
+// --probe names src/<probe>_probe.js (default xml_documents) and its <probe>_chrome156.json.
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -13,12 +14,13 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const { values } = parseArgs({ options: { chrome: { type: "string" }, out: { type: "string" } } });
+const { values } = parseArgs({ options: { chrome: { type: "string" }, out: { type: "string" }, probe: { type: "string" } } });
 if (!values.chrome) throw Error("Pass --chrome /absolute/chrome-headless-shell (Chrome 156.0.8078.47)");
-const out = resolve(values.out || join(root, "src/xml_documents_chrome156.json"));
+const name = values.probe || "xml_documents";
+const out = resolve(values.out || join(root, `src/${name}_chrome156.json`));
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_CORE || "playwright-core");
-const probe = readFileSync(join(root, "src/xml_documents_probe.js"), "utf8");
+const probe = readFileSync(join(root, `src/${name}_probe.js`), "utf8");
 const server = createServer((_request, response) => {
   response.setHeader("Content-Type", "text/html");
   response.end("<!doctype html><html><head></head><body></body></html>");
@@ -37,7 +39,7 @@ try {
   const oracle = {
     browser: `Chrome/${browser.version()}`,
     recordedAt: new Date().toISOString(),
-    fixture: "xml_documents_probe.js",
+    fixture: `${name}_probe.js`,
     probeSha256: createHash("sha256").update(probe).digest("hex"),
     result,
   };

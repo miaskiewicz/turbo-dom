@@ -65,3 +65,27 @@ fn xml_documents_match_the_chrome156_control() {
     assert!(differences.is_empty(), "{}", differences.join("\n"));
     assert_eq!(&actual, &control["result"]);
 }
+
+#[test]
+fn inner_and_outer_html_of_xml_documents_match_the_chrome156_control() {
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("xml_inner_html_chrome156.json")).unwrap();
+    assert_eq!(control["browser"], "Chrome/156.0.8078.47");
+    let probe = include_str!("xml_inner_html_probe.js");
+    let digest = sha2::Sha256::digest(probe.as_bytes());
+    let hex: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
+    assert_eq!(control["probeSha256"], hex, "recapture the control for the edited probe");
+    let actual = run(probe);
+    for section in ["getters", "innerSet", "outerSet"] {
+        let expected = control["result"][section].as_object().unwrap();
+        let differences: Vec<_> = expected
+            .iter()
+            .filter(|(key, value)| actual[section].get(key.as_str()) != Some(*value))
+            .map(|(key, value)| {
+                format!("{section}.{key}:\n  native={}\n  Chrome={value}", actual[section][key])
+            })
+            .collect();
+        assert!(differences.is_empty(), "{}", differences.join("\n"));
+    }
+    assert_eq!(&actual, &control["result"]);
+}
