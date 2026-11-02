@@ -544,4 +544,23 @@ mod tests {
             );
         }
     }
+
+    /// A live snapshot relabels `<br>` source breaks and text list markers too, and a
+    /// vertical-lr box in a vertical-rl one is a root without an axis swap.
+    #[test]
+    fn live_breaks_markers_and_same_axis_roots() {
+        let (tree, snapshot, _) = crate::live::testing::layout(
+            "<body style='margin:0;font:16px/20px monospace'><div style='writing-mode:vertical-rl;height:100px'>\
+             a<br>b<ol><li>x</li></ol><div id=lr style='writing-mode:vertical-lr;padding-left:3px'>ab</div></div></body>",
+            "",
+            (800.0, 600.0),
+            Some(1.0),
+        );
+        let id = crate::live::testing::id(&tree, "#lr");
+        let geometry = crate::cssom_view::metrics::element_geometry(&snapshot, id).unwrap();
+        assert_eq!(
+            (geometry.bounds.width, geometry.bounds.height),
+            (23.0, 100.0)
+        );
+    }
 }
