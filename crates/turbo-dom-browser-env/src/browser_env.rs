@@ -7226,6 +7226,12 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     bind_method(
         scope,
         global,
+        "__canvasLengthUnitNative",
+        canvas_text::length_unit_native,
+    );
+    bind_method(
+        scope,
+        global,
         "__computedStyleVersion",
         computed_style_version,
     );
