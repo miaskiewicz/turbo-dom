@@ -280,9 +280,9 @@ browser_env.rs: turbo-dom#186 XML documents (xml_documents module, parse_xml_doc
 document_basics.rs: turbo-dom#186 createCDATASection natives (isXML, createCDATA); adoption copies CDATA sections
 document_basics.js: turbo-dom#186 createCDATASection creates CDATA sections in XML documents (Chrome's NotSupportedError / InvalidCharacterError messages otherwise)
 template_contents.rs: turbo-dom#186 HTML serialization writes a CDATA section as escaped text
-animations.js: 0.7.0 turbo-dom#187 CSSAnimation / CSSTransition for declarative animations and transitions, created on style resolution; composite order transitions, CSS animations, script
+animations.js: 0.7.0 turbo-dom#187 CSSAnimation / CSSTransition for declarative animations and transitions, created on style resolution; composite order transitions, CSS animations, script; transition-property all, none under display:none ancestors; 0.7.0 turbo-dom#233 getKeyframes() property order = Blink's hash-map bucket order over Chrome 156 CSSPropertyIDs (scripts/blink-property-ids.py), boundary keyframes per GetComputedKeyframes
 browser_env.js: 0.7.0 turbo-dom#187 private ns.cssKeyframes export of @keyframes rule records for CSS animations
-animations_tests.rs: 0.7.0 turbo-dom#187 css_animations Chrome 156 control test; control() accepts the frozen headless shell's HeadlessChrome product name; the keyframe-order KNOWN_GAP cites turbo-dom#233
+animations_tests.rs: 0.7.0 turbo-dom#187 css_animations Chrome 156 control test; control() accepts the frozen headless shell's HeadlessChrome product name; turbo-dom#233 the keyframe order matches Chrome exactly (KNOWN_GAP removed)
 browser_env.rs: 0.7.0 turbo-dom#135 installed (page loads and source-position installs included) and parsed documents parse HTML processing instructions like Chrome 156 (Tree::set_processing_instructions / parse_utf16_with_processing_instructions)
 sanitizer.rs: 0.7.0 turbo-dom#135 parseHTML documents parse processing instructions like Chrome; Document-level processing instructions are kept, like comments
 sanitizer.js: 0.7.0 turbo-dom#135 a safe setHTML dictionary without processing-instruction lists allows none (Chrome 156)

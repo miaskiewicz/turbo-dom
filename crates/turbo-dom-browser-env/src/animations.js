@@ -191,7 +191,7 @@
   const NUMBERS = { __proto__: null, 'flex-grow': 1, 'flex-shrink': 1, 'font-weight': 1, 'line-height': 1, 'stroke-miterlimit': 1 };
   const COLORS = { __proto__: null, color: 1, 'background-color': 1, 'border-top-color': 1, 'border-right-color': 1, 'border-bottom-color': 1, 'border-left-color': 1, 'outline-color': 1, 'text-decoration-color': 1, 'column-rule-color': 1, 'caret-color': 1, 'accent-color': 1, fill: 1, stroke: 1, 'flood-color': 1, 'lighting-color': 1, 'stop-color': 1, 'text-emphasis-color': 1 };
   const INHERITED = { __proto__: null, color: 1, visibility: 1, 'line-height': 1, 'font-weight': 1, 'letter-spacing': 1, 'word-spacing': 1, 'text-indent': 1, 'caret-color': 1, 'accent-color': 1, fill: 1, stroke: 1, 'fill-opacity': 1, 'stroke-opacity': 1, orphans: 1, widows: 1, cursor: 1, 'pointer-events': 1 };
-  const INITIAL = { __proto__: null, opacity: '1', 'fill-opacity': '1', 'stroke-opacity': '1', 'flood-opacity': '1', 'stop-opacity': '1', transform: 'none', color: 'rgb(0, 0, 0)', 'background-color': 'rgba(0, 0, 0, 0)', 'z-index': 'auto', visibility: 'visible', display: 'inline', 'flex-grow': '0', 'flex-shrink': '1', 'font-weight': '400', 'line-height': 'normal', 'letter-spacing': 'normal', 'word-spacing': '0px', 'text-indent': '0px', width: 'auto', height: 'auto', top: 'auto', right: 'auto', bottom: 'auto', left: 'auto', 'outline-color': 'currentcolor', 'text-decoration-color': 'currentcolor', 'column-rule-color': 'currentcolor', 'caret-color': 'auto', 'accent-color': 'auto' };
+  const INITIAL = { __proto__: null, rotate: 'none', scale: 'none', translate: 'none', filter: 'none', opacity: '1', 'fill-opacity': '1', 'stroke-opacity': '1', 'flood-opacity': '1', 'stop-opacity': '1', transform: 'none', color: 'rgb(0, 0, 0)', 'background-color': 'rgba(0, 0, 0, 0)', 'z-index': 'auto', visibility: 'visible', display: 'inline', 'flex-grow': '0', 'flex-shrink': '1', 'font-weight': '400', 'line-height': 'normal', 'letter-spacing': 'normal', 'word-spacing': '0px', 'text-indent': '0px', width: 'auto', height: 'auto', top: 'auto', right: 'auto', bottom: 'auto', left: 'auto', 'outline-color': 'currentcolor', 'text-decoration-color': 'currentcolor', 'column-rule-color': 'currentcolor', 'caret-color': 'auto', 'accent-color': 'auto' };
   const lengthProperty = name => intrinsic.test(/(width|height|margin|padding|gap|radius|letter-spacing|word-spacing|text-indent)/, name) || intrinsic.test(/size$/, name) || intrinsic.test(/^inset/, name) || intrinsic.test(/^(top|right|bottom|left|flex-basis|outline-offset|column-width|column-gap)$/, name);
   const initialValue = name => INITIAL[name] !== undefined ? INITIAL[name] : intrinsic.test(/^border-(top|right|bottom|left)-color$/, name) ? 'currentcolor' : intrinsic.test(/^(margin|padding)-/, name) ? '0px' : intrinsic.test(/-radius$/, name) ? '0px' : '';
 
@@ -1232,7 +1232,8 @@
     const effect = effectRecord(this), out = [];
     for (let i = 0; i < effect.keyframes.length; i++) {
       const frame = effect.keyframes[i], object = { offset: frame.offset, easing: frame.easing, composite: frame.composite };
-      for (let j = 0; j < frame.values.length; j++) object[frame.values[j].idl] = frame.values[j].text;
+      const values = keyframeOrder(frame);
+      for (let j = 0; j < values.length; j++) object[values[j].idl] = values[j].text;
       object.computedOffset = frame.computed;
       push(out, object);
     }
@@ -1453,6 +1454,58 @@
     return { read, inherited };
   }
 
+  // ---- keyframe property order (turbo-dom#233) ----------------------------------------------
+  // Blink keeps a keyframe's properties in a WTF HashMap<PropertyHandle> whose hash is the raw
+  // CSSPropertyID, and getKeyframes() enumerates its buckets: open addressing with triangular
+  // probing (i += ++probe), 8 buckets to start, doubled (rehashed in bucket order) once
+  // keys * 2 >= buckets. CSSPropertyID values are Chrome 156's (css_properties.json5 at
+  // 156.0.8078.47: longhands then shorthands, each sorted by -priority, internal-visited first,
+  // then name; numbered from 2); scripts/blink-property-ids.py regenerates the list.
+  // Custom properties hash by name and keep their insertion order after the rest.
+  const BLINK_PROPERTIES = 'color-scheme forced-color-adjust math-depth position position-anchor text-size-adjust -internal-visited-color appearance color direction font-family font-feature-settings font-kerning font-language-override font-optical-sizing font-palette font-size font-size-adjust font-stretch font-style font-synthesis-small-caps font-synthesis-style font-synthesis-weight font-variant-alternates font-variant-caps font-variant-east-asian font-variant-emoji font-variant-ligatures font-variant-numeric font-variant-position font-variation-settings font-weight position-area text-orientation text-rendering text-spacing-trim -webkit-font-smoothing -webkit-locale -webkit-text-orientation -webkit-writing-mode writing-mode zoom -internal-forced-visited-color -internal-visited-background-color -internal-visited-border-block-end-color -internal-visited-border-block-start-color -internal-visited-border-bottom-color -internal-visited-border-inline-end-color -internal-visited-border-inline-start-color -internal-visited-border-left-color -internal-visited-border-right-color -internal-visited-border-top-color -internal-visited-caret-color -internal-visited-column-rule-color -internal-visited-fill -internal-visited-flood-color -internal-visited-lighting-color -internal-visited-outline-color -internal-visited-stop-color -internal-visited-stroke -internal-visited-text-decoration-color -internal-visited-text-emphasis-color -internal-visited-text-fill-color -internal-visited-text-stroke-color accent-color additive-symbols align-content align-items align-self alignment-baseline all -alternative-webkit-line-clamp-longhand anchor-name anchor-scope animation-composition animation-delay animation-direction animation-duration animation-fill-mode animation-iteration-count animation-name animation-play-state animation-range-end animation-range-start animation-timeline animation-timing-function animation-trigger app-region ascent-override aspect-ratio backdrop-filter backface-visibility background-attachment background-blend-mode background-clip background-color background-image background-origin background-position-x background-position-y background-repeat background-size base-palette base-url baseline-shift baseline-source block-ellipsis block-size border-block-end-color border-block-end-style border-block-end-width border-block-start-color border-block-start-style border-block-start-width border-bottom-color border-bottom-left-radius border-bottom-right-radius border-bottom-style border-bottom-width border-collapse border-end-end-radius border-end-start-radius border-image-outset border-image-repeat border-image-slice border-image-source border-image-width border-inline-end-color border-inline-end-style border-inline-end-width border-inline-start-color border-inline-start-style border-inline-start-width border-left-color border-left-style border-left-width border-right-color border-right-style border-right-width border-shape border-start-end-radius border-start-start-radius border-top-color border-top-left-radius border-top-right-radius border-top-style border-top-width bottom box-decoration-break box-shadow box-sizing break-after break-before break-inside buffered-rendering caption-side caret-animation caret-color caret-shape clear clip clip-path clip-rule color-interpolation color-interpolation-filters color-rendering column-count column-fill column-gap column-height column-rule-break column-rule-color column-rule-inset-cap-end column-rule-inset-cap-start column-rule-inset-junction-end column-rule-inset-junction-start column-rule-style column-rule-visibility-items column-rule-width column-span column-width column-wrap contain contain-intrinsic-block-size contain-intrinsic-height contain-intrinsic-inline-size contain-intrinsic-width container-name container-type content content-visibility continue corner-bottom-left-shape corner-bottom-right-shape corner-end-end-shape corner-end-start-shape corner-start-end-shape corner-start-start-shape corner-top-left-shape corner-top-right-shape counter-increment counter-reset counter-set cursor cx cy d descent-override display dominant-baseline dynamic-range-limit empty-cells fallback field-sizing fill fill-opacity fill-rule filter flex-basis flex-direction flex-grow flex-line-count flex-shrink flex-wrap float flood-color flood-opacity flow-tolerance font-display frame-sizing grid-auto-columns grid-auto-flow grid-auto-rows grid-column-end grid-column-start grid-lanes-direction grid-lanes-pack grid-row-end grid-row-start grid-template-areas grid-template-columns grid-template-rows hanging-punctuation hash height hostname hyphenate-character hyphenate-limit-chars hyphens image-animation image-orientation image-rendering inherits initial-letter initial-value inline-size inset-block-end inset-block-start inset-inline-end inset-inline-start interactivity interest-delay-end interest-delay-start -internal-align-content-block -internal-empty-line-height -internal-font-size-delta -internal-forced-background-color -internal-forced-border-color -internal-forced-color -internal-forced-outline-color -internal-overscroll-container -internal-overscroll-position -internal-unbounded interpolate-size isolation justify-content justify-items justify-self left letter-spacing lighting-color line-break line-clamp line-gap-override line-height link-parameters list-style-image list-style-position list-style-type margin-block-end margin-block-start margin-bottom margin-inline-end margin-inline-start margin-left margin-right margin-top margin-trim marker-end marker-mid marker-start mask-clip mask-image mask-mode mask-origin mask-repeat mask-size mask-type math-shift math-style max-block-size max-content-sizing max-height max-inline-size max-lines max-width min-block-size min-height min-inline-size min-width mix-blend-mode navigation negative object-fit object-position object-view-box offset-anchor offset-distance offset-path offset-position offset-rotate opacity order origin-trial-test-property orphans outline-color outline-offset outline-style outline-width overflow-anchor overflow-block overflow-clip-margin overflow-inline overflow-wrap overflow-x overflow-y overlay override-colors overscroll-behavior-block overscroll-behavior-inline overscroll-behavior-x overscroll-behavior-y overscroll-container-type pad padding-block-end padding-block-start padding-bottom padding-inline-end padding-inline-start padding-left padding-right padding-top page page-margin-safety page-orientation paint-order path-length pathname pattern perspective perspective-origin pointer-events port position-try-fallbacks position-try-order position-visibility prefix print-color-adjust protocol quotes r range reading-flow reading-order resize result right rotate row-gap row-rule-break row-rule-color row-rule-inset-cap-end row-rule-inset-cap-start row-rule-inset-junction-end row-rule-inset-junction-start row-rule-style row-rule-visibility-items row-rule-width ruby-align ruby-overhang ruby-position rule-overlap rx ry scale scroll-axis-lock scroll-behavior scroll-initial-target scroll-margin-block-end scroll-margin-block-start scroll-margin-bottom scroll-margin-inline-end scroll-margin-inline-start scroll-margin-left scroll-margin-right scroll-margin-top scroll-marker-group scroll-padding-block-end scroll-padding-block-start scroll-padding-bottom scroll-padding-inline-end scroll-padding-inline-start scroll-padding-left scroll-padding-right scroll-padding-top scroll-snap-align scroll-snap-stop scroll-snap-type scroll-target-group scroll-timeline-axis scroll-timeline-name scrollbar-color scrollbar-gutter scrollbar-width search shape-image-threshold shape-margin shape-outside shape-rendering size size-adjust speak speak-as src stop-color stop-opacity stroke stroke-dasharray stroke-dashoffset stroke-linecap stroke-linejoin stroke-miterlimit stroke-opacity stroke-width suffix symbols syntax system tab-size table-layout text-align text-align-last text-anchor text-autospace text-box-edge text-box-trim text-combine-upright text-decoration-color text-decoration-inset text-decoration-line text-decoration-skip-ink text-decoration-skip-spaces text-decoration-style text-decoration-thickness text-emphasis-color text-emphasis-position text-emphasis-style text-fit text-indent text-justify text-overflow text-shadow text-transform text-underline-offset text-underline-position text-wrap-mode text-wrap-style timeline-scope timeline-trigger-activation-range-end timeline-trigger-activation-range-start timeline-trigger-active-range-end timeline-trigger-active-range-start timeline-trigger-name timeline-trigger-source top touch-action transform transform-box transform-origin transform-style transition-behavior transition-delay transition-duration transition-property transition-timing-function translate trigger-scope types unicode-bidi unicode-range user-select vector-effect vertical-align view-timeline-axis view-timeline-inset view-timeline-name view-transition-class view-transition-group view-transition-name view-transition-scope visibility -webkit-border-horizontal-spacing -webkit-border-image -webkit-border-vertical-spacing -webkit-box-align -webkit-box-decoration-break -webkit-box-direction -webkit-box-flex -webkit-box-ordinal-group -webkit-box-orient -webkit-box-pack -webkit-box-reflect -webkit-line-break -webkit-line-clamp -webkit-mask-box-image-outset -webkit-mask-box-image-repeat -webkit-mask-box-image-slice -webkit-mask-box-image-source -webkit-mask-box-image-width -webkit-mask-position-x -webkit-mask-position-y -webkit-perspective-origin-x -webkit-perspective-origin-y -webkit-rtl-ordering -webkit-ruby-position -webkit-tap-highlight-color -webkit-text-combine -webkit-text-decorations-in-effect -webkit-text-fill-color -webkit-text-security -webkit-text-stroke-color -webkit-text-stroke-width -webkit-transform-origin-x -webkit-transform-origin-y -webkit-transform-origin-z -webkit-user-drag -webkit-user-modify white-space-collapse widows width will-change window-drag word-break word-spacing x y z-index mask-composite -alternative-line-clamp-shorthand -alternative-webkit-line-clamp-shorthand animation animation-range background background-position border border-block border-block-color border-block-end border-block-start border-block-style border-block-width border-bottom border-color border-image border-inline border-inline-color border-inline-end border-inline-start border-inline-style border-inline-width border-left border-radius border-right border-spacing border-style border-top border-width column-rule column-rule-inset column-rule-inset-cap column-rule-inset-end column-rule-inset-junction column-rule-inset-start columns contain-intrinsic-size container corner corner-block-end corner-block-end-shape corner-block-start corner-block-start-shape corner-bottom corner-bottom-left corner-bottom-right corner-bottom-shape corner-end-end corner-end-start corner-inline-end corner-inline-end-shape corner-inline-start corner-inline-start-shape corner-left corner-left-shape corner-right corner-right-shape corner-shape corner-start-end corner-start-start corner-top corner-top-left corner-top-right corner-top-shape flex flex-flow font font-synthesis font-variant gap grid grid-area grid-column grid-lanes grid-row grid-template inset inset-block inset-inline interest-delay list-style margin margin-block margin-inline marker mask mask-position offset outline overflow overscroll-behavior padding padding-block padding-inline page-break-after page-break-before page-break-inside place-content place-items place-self position-try row-rule row-rule-inset row-rule-inset-cap row-rule-inset-end row-rule-inset-junction row-rule-inset-start rule rule-break rule-color rule-inset rule-inset-cap rule-inset-end rule-inset-junction rule-inset-start rule-style rule-visibility-items rule-width scroll-margin scroll-margin-block scroll-margin-inline scroll-padding scroll-padding-block scroll-padding-inline scroll-timeline text-box text-decoration text-emphasis text-spacing text-wrap timeline-trigger timeline-trigger-activation-range timeline-trigger-active-range transition view-timeline -webkit-column-break-after -webkit-column-break-before -webkit-column-break-inside -webkit-mask-box-image -webkit-text-stroke white-space';
+  const propertyIds = create(null);
+  {
+    const list = intrinsic.split(BLINK_PROPERTIES, ' ');
+    for (let i = 0; i < list.length; i++) propertyIds[list[i]] = i + 2;
+  }
+  const INSERTION = Symbol('insertion');
+  const buckets = size => { const table = []; table.length = size; return table; };
+  function bucketInsert(table, name) {
+    const mask = table.length - 1;
+    let i = propertyIds[name] & mask;
+    for (let probe = 1; table[i] !== undefined; probe++) i = (i + probe) & mask;
+    table[i] = name;
+  }
+  // Property names (CSS) in Blink's bucket order for the given insertion order.
+  function blinkOrder(names) {
+    let table = buckets(8), count = 0;
+    const custom = [];
+    for (let n = 0; n < names.length; n++) {
+      const name = names[n];
+      if (propertyIds[name] === undefined) { if (!contains(custom, name)) push(custom, name); continue; }
+      if (contains(table, name)) continue;
+      bucketInsert(table, name);
+      if (++count * 2 >= table.length) {
+        const old = table;
+        table = buckets(old.length * 2);
+        for (let i = 0; i < old.length; i++) if (old[i] !== undefined) bucketInsert(table, old[i]);
+      }
+    }
+    const out = [];
+    for (let i = 0; i < table.length; i++) if (table[i] !== undefined) push(out, table[i]);
+    for (let i = 0; i < custom.length; i++) push(out, custom[i]);
+    return out;
+  }
+  // A keyframe's values in getKeyframes() order.
+  function keyframeOrder(frame) {
+    const inserted = [];
+    if (frame.insertion) { for (let i = 0; i < frame.insertion.length; i++) push(inserted, frame.insertion[i]); }
+    else for (let i = 0; i < frame.values.length; i++) push(inserted, frame.values[i].css);
+    const ordered = blinkOrder(inserted), out = [];
+    for (let i = 0; i < ordered.length; i++) for (let j = 0; j < frame.values.length; j++) if (frame.values[j].css === ordered[i]) { push(out, frame.values[j]); break; }
+    return out;
+  }
+
   // ---- CSS animations and transitions (turbo-dom#187) --------------------------------------
   // Declarative animations belong to their element. Every style resolution of an element
   // (getComputedStyle, and the style flush getAnimations() runs over the document) compares
@@ -1493,6 +1546,9 @@
   function cssCreate(constructor, element, keyframes, timing, css) {
     const effect = construct(function () {}, [], KeyframeEffect);
     createEffect(effect, element, keyframes, timing, '', null);
+    // @keyframes declarations insert in declaration order, not Element.animate's code-unit order.
+    const frames = effects.get(effect).keyframes;
+    for (let i = 0; i < frames.length && i < keyframes.length; i++) if (keyframes[i][INSERTION]) frames[i].insertion = keyframes[i][INSERTION];
     const animation = construct(TargetType, [], constructor);
     const record = newAnimation(animation, effect, documentTimeline(apply(ownerGetter, element, []) || realmDocument));
     record.css = css;
@@ -1536,16 +1592,56 @@
       }
     }
     sortBy(byOffset, frame => frame.offset);
-    const boundary = offset => { const values = create(null); for (let i = 0; i < properties.length; i++) values[properties[i]] = COLORS[properties[i]] ? cssColor(underlying(properties[i]), underlying) : underlying(properties[i]); return { offset, easing: easingText, composite: 'replace', values }; };
-    if (!byOffset.length || byOffset[0].offset !== 0) { for (let i = byOffset.length; i > 0; i--) byOffset[i] = byOffset[i - 1]; byOffset[0] = boundary(0); }
-    if (byOffset[byOffset.length - 1].offset !== 1) push(byOffset, boundary(1));
+    const all = modelProperties(byOffset);
+    cssBoundary(byOffset, 0, all, easingText, underlying);
+    cssBoundary(byOffset, 1, all, easingText, underlying);
     const out = [];
     for (let i = 0; i < byOffset.length; i++) {
-      const frame = byOffset[i], object = { offset: frame.offset, easing: frame.easing, composite: frame.composite };
-      for (const name in frame.values) object[idlName(name)] = frame.values[name];
+      const frame = byOffset[i], object = { offset: frame.offset, easing: frame.easing, composite: frame.composite }, order = [];
+      for (const name in frame.values) { object[idlName(name)] = frame.values[name]; push(order, name); }
+      object[INSERTION] = order;
       push(out, object);
     }
     return out;
+  }
+  // The model's property set, as Blink's CssKeyframeEffectModel builds it: the keyframe groups
+  // map is filled from each keyframe's properties in bucket order, then copied into a set.
+  function modelProperties(frames) {
+    const inserted = [];
+    for (let i = 0; i < frames.length; i++) {
+      const own = [];
+      for (const name in frames[i].values) push(own, name);
+      const ordered = blinkOrder(own);
+      for (let j = 0; j < ordered.length; j++) if (!contains(inserted, ordered[j])) push(inserted, ordered[j]);
+    }
+    return blinkOrder(blinkOrder(inserted));
+  }
+  // Properties missing from the 0% / 100% keyframes come from the underlying style
+  // (GetComputedKeyframes): added in the model's property order to the first boundary keyframe
+  // with the default easing, else to a new 'replace' keyframe after the existing ones.
+  function missingAt(frames, offset, all) {
+    const missing = [];
+    for (let i = 0; i < all.length; i++) {
+      let present = false;
+      for (let j = 0; j < frames.length && !present; j++) present = frames[j].offset === offset && all[i] in frames[j].values;
+      if (!present) push(missing, all[i]);
+    }
+    return missing;
+  }
+  function cssBoundary(frames, offset, all, easingText, underlying) {
+    const missing = missingAt(frames, offset, all);
+    if (!missing.length) return;
+    let target = null, at = frames.length;
+    for (let j = 0; j < frames.length && !target; j++) {
+      if (frames[j].offset === offset && frames[j].easing === easingText) target = frames[j];
+      else if (frames[j].offset > offset && at === frames.length) at = j;
+    }
+    if (!target) {
+      target = { offset, easing: easingText, composite: 'replace', values: create(null) };
+      for (let j = frames.length; j > at; j--) frames[j] = frames[j - 1];
+      frames[at] = target;
+    }
+    for (let i = 0; i < missing.length; i++) target.values[missing[i]] = COLORS[missing[i]] ? cssColor(underlying(missing[i]), underlying) : underlying(missing[i]);
   }
   function cssColor(text, underlying) {
     const color = parseColor(text, { currentColor: () => parseColor(underlying('color'), { currentColor: () => null }) });
@@ -1554,9 +1650,21 @@
   function cssAnimation(element, name, rule, lists, i, underlying) {
     const count = pickList(lists['iteration-count'], i, '1');
     const timing = { duration: milliseconds(pickList(lists.duration, i, '0s')), delay: milliseconds(pickList(lists.delay, i, '0s')), iterations: count === 'infinite' ? Infinity : +count, direction: pickList(lists.direction, i, 'normal'), fill: pickList(lists['fill-mode'], i, 'none'), easing: 'linear' };
-    const animation = cssCreate(CSSAnimation, element, cssKeyframeInput(rule, pickList(lists['timing-function'], i, 'ease'), underlying), timing, { kind: CSS_ANIMATION, owner: element, name, index: i });
+    // Boundary values the declared/initial tables lack come from the element's computed style.
+    let computed = null;
+    const boundaryValue = property => { const text = underlying(property); if (text !== '') return text; if (!computed) computed = baseStyle(element).read; return computed(property); };
+    const animation = cssCreate(CSSAnimation, element, cssKeyframeInput(rule, pickList(lists['timing-function'], i, 'ease'), boundaryValue), timing, { kind: CSS_ANIMATION, owner: element, name, index: i });
     if (pickList(lists['play-state'], i, 'running') === 'paused') pause(animation, animations.get(animation), '');
     return animation;
+  }
+  function keyframesRule(name) {
+    if (!cssKeyframes) cssKeyframes = ns.cssKeyframes ? ns.cssKeyframes() : create(null);
+    return cssKeyframes[name];
+  }
+  // The element's existing animation of `name` not yet matched this update (kept by name).
+  function ownedAnimation(state, name, kept) {
+    for (let j = 0; j < state.animations.length; j++) if (state.animations[j].name === name && !contains(kept, state.animations[j])) return state.animations[j];
+    return null;
   }
   function cssAnimations(element, read, underlying) {
     const state = cssState(element), names = splitList(read('animation-name'));
@@ -1564,14 +1672,14 @@
     const fields = ['duration', 'delay', 'iteration-count', 'direction', 'fill-mode', 'timing-function', 'play-state'];
     for (let i = 0; i < fields.length; i++) lists[fields[i]] = splitList(read('animation-' + fields[i]));
     const kept = [];
-    for (let i = 0; i < names.length; i++) {
+    // No CSS animation runs on an element that is not rendered (itself or an ancestor display:none).
+    const hidden = names.length && (read('display') === 'none' || !rendered(element));
+    for (let i = 0; i < names.length && !hidden; i++) {
       const name = names[i];
-      if (name === 'none' || read('display') === 'none') continue;
-      if (!cssKeyframes) cssKeyframes = ns.cssKeyframes ? ns.cssKeyframes() : create(null);
-      const rule = cssKeyframes[name];
+      if (name === 'none') continue;
+      const rule = keyframesRule(name);
       if (!rule) continue;
-      let entry = null;
-      for (let j = 0; j < state.animations.length && !entry; j++) if (state.animations[j].name === name && !contains(kept, state.animations[j])) entry = state.animations[j];
+      let entry = ownedAnimation(state, name, kept);
       if (!entry) entry = { name, animation: cssAnimation(element, name, rule, lists, i, underlying) };
       animations.get(entry.animation).css.index = i;
       push(kept, entry);
@@ -1579,14 +1687,34 @@
     for (let i = 0; i < state.animations.length; i++) if (!contains(kept, state.animations[i])) cssCancel(state.animations[i].animation);
     state.animations = kept;
   }
+  // The interpolable longhands `transition-property: all` covers (the value model's properties).
+  const SIDES = ['top', 'right', 'bottom', 'left'];
+  const ALL_PROPERTIES = (() => {
+    const out = [];
+    const add = name => { if (name !== 'display' && !contains(out, name)) push(out, name); };
+    const tables = [INITIAL, COLORS, UNIT_NUMBERS, INTEGERS, NUMBERS];
+    for (let t = 0; t < tables.length; t++) for (const name in tables[t]) add(name);
+    for (let i = 0; i < SIDES.length; i++) { add('margin-' + SIDES[i]); add('padding-' + SIDES[i]); add('border-' + SIDES[i] + '-width'); }
+    const more = ['font-size', 'min-width', 'min-height', 'max-width', 'max-height', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'outline-width', 'outline-offset', 'flex-basis', 'row-gap', 'column-gap'];
+    for (let i = 0; i < more.length; i++) add(more[i]);
+    return out;
+  })();
+  // Each transitioned longhand -> its index in the transition-* lists; a later entry wins.
+  function transitionedProperties(list) {
+    const out = create(null);
+    for (let i = 0; i < list.length; i++) {
+      if (list[i] === 'all') { for (let j = 0; j < ALL_PROPERTIES.length; j++) out[ALL_PROPERTIES[j]] = i; }
+      else if (Native('property', idlName(list[i])) === list[i]) out[list[i]] = i;
+    }
+    return out;
+  }
   function cssTransitions(element, read, underlying) {
-    const state = cssState(element), properties = splitList(read('transition-property'));
+    const state = cssState(element), properties = transitionedProperties(splitList(read('transition-property')));
     const durations = splitList(read('transition-duration')), delays = splitList(read('transition-delay')), easings = splitList(read('transition-timing-function'));
     // The transitions one style change starts share a generation (ordered by property name).
     const seen = create(null), generation = cssGeneration + 1;
-    for (let i = 0; i < properties.length; i++) {
-      const property = properties[i];
-      if (Native('property', idlName(property)) !== property || seen[property]) continue;
+    for (const property in properties) {
+      const i = properties[property];
       seen[property] = true;
       const value = underlying(property), before = state.values[property];
       state.values[property] = value;
