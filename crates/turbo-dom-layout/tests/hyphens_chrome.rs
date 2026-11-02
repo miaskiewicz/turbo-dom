@@ -8,7 +8,8 @@
 //! fonts through `@font-face` from 127.0.0.1). Laid out with the same fixture fonts.
 //! Chrome on macOS hyphenates with the system's dictionary, whose points differ from the
 //! en-US TeX patterns for some words (`international`, `extraordinary`); the control's
-//! words are ones where both agree.
+//! words are ones where both agree. Needs the default `hyphenation` feature.
+#![cfg(feature = "hyphenation")]
 
 use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
 use turbo_dom_layout::test_support::fixture_fonts;

@@ -669,6 +669,11 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
                 .get("overflow-wrap")
                 .or_else(|| style.get("word-wrap")),
             style.get("hyphens"),
+        )
+        .with_auto_hyphens(
+            style.get("hyphens"),
+            style.get("-webkit-locale"),
+            style.get("hyphenate-limit-chars"),
         ),
     })
 }

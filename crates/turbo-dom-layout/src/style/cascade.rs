@@ -208,6 +208,7 @@ const INHERITED: &[&str] = &[
     // language `text-transform` maps with (miaskiewicz/turbo-dom#208).
     "-webkit-locale",
     "hyphens",
+    "hyphenate-limit-chars",
     "word-break",
     "overflow-wrap",
     "word-wrap",
@@ -669,6 +670,7 @@ const INITIAL: &[(&str, &str)] = &[
     ("white-space", "normal"),
     ("text-transform", "none"),
     ("hyphens", "manual"),
+    ("hyphenate-limit-chars", "auto"),
     ("word-break", "normal"),
     ("overflow-wrap", "normal"),
     ("word-wrap", "normal"),
