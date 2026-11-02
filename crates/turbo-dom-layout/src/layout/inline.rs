@@ -1245,11 +1245,10 @@ fn hyphenated(mut items: Vec<SourceItem>) -> Vec<SourceItem> {
             c.utf16_offset + c.ch.len_utf16(),
         ));
         c.source_end = Some(end);
-        c.ch = if c.face.has_glyph('\u{2010}') {
-            '\u{2010}'
-        } else {
-            '-'
-        };
+        c.ch = ['\u{2010}', '-']
+            .into_iter()
+            .find(|h| c.face.has_glyph(*h))
+            .unwrap_or('-');
         c.invalid_unit = None;
     }
     items
@@ -1841,11 +1840,9 @@ fn apply_baselines(words: &mut [Word], baselines: &std::collections::HashMap<Nod
             edge.baseline_shift = baselines.get(&edge.node_id).copied().unwrap_or_default();
         }
         apply_run_baselines(word, baselines);
-        if let Some(parts) = &mut word.emergency {
-            apply_baselines(parts, baselines);
-        }
-        if let Some(hyphen) = &mut word.hyphen {
-            apply_baselines(std::slice::from_mut(hyphen.as_mut()), baselines);
+        let alternatives = word.emergency.iter_mut().flatten();
+        for alternative in alternatives.chain(word.hyphen.as_deref_mut()) {
+            apply_baselines(std::slice::from_mut(alternative), baselines);
         }
     }
 }

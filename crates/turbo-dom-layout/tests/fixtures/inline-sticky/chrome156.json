@@ -8,7 +8,7 @@
     ],
     "deviceScaleFactor": 2
   },
-  "probeSha256": "b9a3da24f4affa932f7e8f385e9e1d6c26813877867d5d9b0b7891ba84add92b",
+  "probeSha256": "76aee991d9696b61b0002fe1349216505969dad37ec34d2d8cd29aa201cc63b0",
   "collectorSha256": "a52d76715f3bcb04dae1c95c66a3709378c9db30b97bde5f0a7f3899ee8fce74",
   "fontFiles": {
     "liberation-serif/LiberationSerif-Regular.ttf": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4",
@@ -70,6 +70,24 @@
       7.1015625,
       201,
       8,
+      18
+    ],
+    "a": [
+      100,
+      221,
+      15.1015625,
+      38
+    ],
+    "ab": [
+      108,
+      250.5,
+      5,
+      5
+    ],
+    "e": [
+      100,
+      261,
+      0,
       18
     ]
   }

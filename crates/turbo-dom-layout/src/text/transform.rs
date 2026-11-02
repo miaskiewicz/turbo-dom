@@ -322,7 +322,7 @@ fn polytonic_rest(code: u32) -> Option<Polytonic> {
         0x1fd6 | 0x1fda | 0x1fdb => ('ι', true, false, false),
         0x1fe0 | 0x1fe1 | 0x1fe8 | 0x1fe9 => ('υ', false, false, false),
         0x1fe2 | 0x1fe3 | 0x1fe7 => ('υ', true, true, false),
-        0x1fe4 | 0x1fe5 | 0x1fec => ('ρ', true, false, false),
+        0x1fe4 | 0x1fe5 | 0x1fec => ('ρ', false, false, false),
         0x1fe6 | 0x1fea | 0x1feb => ('υ', true, false, false),
         0x1ff2 | 0x1ff4 | 0x1ff7 => ('ω', true, false, true),
         0x1ff3 | 0x1ffc => ('ω', false, false, true),

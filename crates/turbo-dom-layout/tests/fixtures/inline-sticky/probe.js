@@ -10,7 +10,9 @@
     "<div style='width:200px'>a<span data-cid=l2 style='position:sticky;left:300px'>x</span></div>" +
     "<div style='width:200px'>a<span data-cid=n style='position:sticky;left:100px'>x<b data-cid=nb>y</b></span></div>" +
     "<div style='width:200px;margin-left:50px'>a<span data-cid=r style='position:sticky;right:300px'>x</span></div>" +
-    "<div>a<span data-cid=s style='position:sticky'>x</span></div>";
+    "<div>a<span data-cid=s style='position:sticky'>x</span></div>" +
+    "<div style='width:200px'>a<span data-cid=a style='position:sticky;left:100px'>x<br>y<span data-cid=ab style='display:inline-block;width:5px;height:5px'></span></span></div>" +
+    "<div>a<span data-cid=e style='position:sticky;left:100px'></span>b</div>";
   const out = {};
   for (const el of document.querySelectorAll("[data-cid]")) {
     const r = el.getBoundingClientRect();

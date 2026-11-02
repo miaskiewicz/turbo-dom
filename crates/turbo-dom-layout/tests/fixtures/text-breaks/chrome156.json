@@ -8,8 +8,8 @@
     ],
     "deviceScaleFactor": 2
   },
-  "probeSha256": "f1f320e456e0e6e134622f8f6b0daa872c4db8cdbea08be579f49b41a905e321",
-  "collectorSha256": "ca8ba7ab81f26ca60624de9f10434f42dce7cfd366ee2f9b6639b0b686fdfc9b",
+  "probeSha256": "3733eec5b8bbbc7c6eae95421caf0717c7a0caab121272dd345a29df4ac970d3",
+  "collectorSha256": "a52d76715f3bcb04dae1c95c66a3709378c9db30b97bde5f0a7f3899ee8fce74",
   "fontFiles": {
     "liberation-serif/LiberationSerif-Regular.ttf": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4",
     "liberation-serif/LiberationSerif-Bold.ttf": "443a4dbd694b6e4689925947b456e0532e10b19c90fa32eb39ea6c2cd9db9ebd",
@@ -278,6 +278,14 @@
       {
         "source": "Ἑλλάς",
         "upper": "ΕΛΛΑΣ"
+      },
+      {
+        "source": "ᾰᾱᾲᾴᾷᾶᾺᾼ ῂῄῇῃῆῈῊῌ ῐῑῒῖῘ ῠῡῢῤῥῦῨῬ ῲῴῷῳῶῸῺῼ",
+        "upper": "ΑΑΑΙΑΙΑΙΑΑΑΙ ΗΙΗΙΗΙΗΙΗΕΗΗΙ ΙΙΪΙΪ ΥΥΫΡΡΥΫΡ ΩΙΩΙΩΙΩΙΩΟΩΩΙ"
+      },
+      {
+        "source": "ὐ ὑ ἐ ὀ ὰ ἄυ ὤι ῥι ᾿ ἖",
+        "upper": "Υ Υ Ε Ο Α ΑΫ ΩΪ ΡΙ ᾿ ἖"
       }
     ]
   }

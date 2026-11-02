@@ -48,7 +48,7 @@
     div.remove();
   }
   const greek = [];
-  for (const source of ["ἀρχή", "ὁδός", "ᾄδω", "Ἀθῆναι", "ῥήτωρ", "ᾳ ῳ ῃ", "ἄι", "ΐ ῒ", "Ἑλλάς"]) {
+  for (const source of ["ἀρχή", "ὁδός", "ᾄδω", "Ἀθῆναι", "ῥήτωρ", "ᾳ ῳ ῃ", "ἄι", "ΐ ῒ", "Ἑλλάς", "ᾰᾱᾲᾴᾷᾶᾺᾼ ῂῄῇῃῆῈῊῌ ῐῑῒῖῘ ῠῡῢῤῥῦῨῬ ῲῴῷῳῶῸῺῼ", "ὐ ὑ ἐ ὀ ὰ ἄυ ὤι ῥι ᾿ \u1f16"]) {
     const p = document.createElement("p");
     p.lang = "el";
     p.style.textTransform = "uppercase";

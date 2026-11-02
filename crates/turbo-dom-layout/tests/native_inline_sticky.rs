@@ -125,7 +125,7 @@ fn inline_sticky_boxes_stick_within_their_containing_block() {
     assert_eq!(control["errors"], serde_json::json!([]));
     let (snapshot, names) = capture();
     let expected = control["result"].as_object().unwrap();
-    assert_eq!(expected.len(), 8);
+    assert_eq!(expected.len(), 11);
     for (cid, want) in expected {
         let want: Vec<f32> = want
             .as_array()

@@ -313,7 +313,7 @@ fn greek_uppercase_drops_polytonic_marks_like_chrome_156() {
         serde_json::from_str(include_str!("fixtures/text-breaks/chrome156.json")).unwrap();
     assert_eq!(control["browser"], "Chrome/156.0.8078.47");
     let rows = control["result"]["greek"].as_array().unwrap();
-    assert_eq!(rows.len(), 9);
+    assert_eq!(rows.len(), 11);
     for row in rows {
         case(
             "uppercase",
