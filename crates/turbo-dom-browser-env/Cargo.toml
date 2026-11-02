@@ -1,6 +1,6 @@
 [package]
 name = "turbo-dom-browser-env"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 rust-version = "1.91"
 description = "Browser environment over turbo-dom: the native rtdom <-> V8 DOM binding (window, document, CSSOM, forms, events) used by turbo-test and turbo-surf."
@@ -15,11 +15,11 @@ categories = ["web-programming", "development-tools::testing"]
 # interceptor ShouldThrowOnError fix. `~150.4` admits fork patch releases only.
 v8 = { package = "turbo-dom-v8", version = "~150.4" }
 # The DOM itself. The alias keeps the `turbo_dom_parser::` paths the binding uses.
-turbo-dom-parser = { package = "turbo-dom", path = "../turbo-dom", version = "0.6.0" }
+turbo-dom-parser = { package = "turbo-dom", path = "../turbo-dom", version = "0.7.0" }
 # The shared text stack (font registry, Blink-exact canvas text measurement) behind
 # canvas measureText (turbo-dom#237). Bundled faces only: the host adds the page's
 # @font-face faces and the system fonts it wants with `set_canvas_fonts`.
-turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.6.0", default-features = false, features = ["bundled-fonts"] }
+turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.7.0", default-features = false, features = ["bundled-fonts"] }
 # CSS Syntax, selector and declaration validation for the CSSOM facade.
 lightningcss = { version = "1.0.0-alpha.71", default-features = false }
 cssparser = "0.37"
