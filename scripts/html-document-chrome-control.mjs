@@ -618,7 +618,7 @@ function onePixel(png) {
   return `#${hex(raw[1])}${hex(raw[2])}${hex(raw[3])}`;
 }
 
-const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 const result = [];

@@ -87,6 +87,28 @@ pub struct TokenizerOpts {
     /// FIXME: Can't use Tendril because we want TokenizerOpts
     /// to be Send.
     pub last_start_tag_name: Option<String>,
+
+    /// Tokenize `<?target data?>` as a processing instruction like Chrome 156
+    /// (miaskiewicz/turbo-dom#135) instead of the HTML standard's bogus comment, which
+    /// html5lib-tests (and so the conformance gates) still expect. A parsed instruction
+    /// is emitted as a comment token whose text starts with [`PROCESSING_INSTRUCTION`].
+    pub processing_instructions: bool,
+}
+
+/// The prefix of a comment token that carries a processing instruction: `target`, one
+/// space, then `data` follow it. The escape transport never produces `U+F0000` followed
+/// by `U+F0001` (an escape is followed by itself or by a lone-unit code point at or above
+/// `U+F0800`), so no parsed comment starts with it.
+pub const PROCESSING_INSTRUCTION: &str = "\u{f0000}\u{f0001}";
+
+/// Where a Chrome-mode processing instruction is (`Off` outside one).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Instruction {
+    Off,
+    Start,
+    Target,
+    AfterTarget,
+    Data,
 }
 
 /// The HTML tokenizer.
@@ -150,6 +172,12 @@ pub struct Tokenizer<Sink> {
 
     /// Track current line
     current_line: Cell<u64>,
+
+    /// [`TokenizerOpts::processing_instructions`].
+    processing_instructions: bool,
+
+    /// The processing instruction being tokenized (in the bogus-comment state).
+    instruction: Cell<Instruction>,
 }
 
 impl<Sink: TokenSink> Tokenizer<Sink> {
@@ -177,6 +205,8 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             last_start_tag_name: RefCell::new(start_tag_name),
             temp_buf: RefCell::new(StrTendril::new()),
             current_line: Cell::new(1),
+            processing_instructions: opts.processing_instructions,
+            instruction: Cell::new(Instruction::Off),
         }
     }
 
@@ -767,6 +797,10 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 match get_char!(self, input) {
                     '!' => go!(self: to MarkupDeclarationOpen),
                     '/' => go!(self: to EndTagOpen),
+                    '?' if self.processing_instructions => {
+                        self.instruction.set(Instruction::Start);
+                        go!(self: clear_comment; push_comment '?'; to BogusComment)
+                    }
                     '?' => {
                         self.bad_char_error();
                         go!(self: clear_comment; reconsume BogusComment)
@@ -1504,6 +1538,9 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
 
             //§ bogus-comment-state
             states::BogusComment => loop {
+                if self.instruction.get() != Instruction::Off {
+                    return self.step_instruction(input);
+                }
                 match get_char!(self, input) {
                     '>' => go!(self: emit_comment; to Data),
                     '\0' => {
@@ -1563,6 +1600,79 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
             //§ END
+        }
+    }
+
+    /// One character of a Chrome-mode processing instruction: the target is an ASCII
+    /// letter followed by ASCII alphanumerics, `-` or `_`, and is not `xml` (any case);
+    /// whitespace after it is skipped; the data runs to the first `>`, less one `?`
+    /// before it. A target that breaks these rules turns the whole `<?…` into the bogus
+    /// comment the standard makes of it.
+    fn step_instruction(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        let c = get_char!(self, input);
+        match (self.instruction.get(), c) {
+            (Instruction::Start, c) if c.is_ascii_alphabetic() => {
+                self.instruction.set(Instruction::Target);
+                {
+                    self.current_comment.borrow_mut().push_char(c);
+                    ProcessResult::Continue
+                }
+            }
+            (Instruction::Target, c) if c.is_ascii_alphanumeric() || c == '-' || c == '_' => {
+                self.current_comment.borrow_mut().push_char(c);
+                ProcessResult::Continue
+            }
+            (Instruction::Target, '\t' | '\n' | '\x0C' | ' ' | '?' | '>')
+                if !self.current_comment.borrow()[1..].eq_ignore_ascii_case("xml") =>
+            {
+                let target = mem::take(&mut *self.current_comment.borrow_mut());
+                let mut comment = StrTendril::from_slice(PROCESSING_INSTRUCTION);
+                comment.push_slice(&target[1..]);
+                comment.push_char(' ');
+                *self.current_comment.borrow_mut() = comment;
+                self.instruction.set(Instruction::AfterTarget);
+                self.instruction_data(c)
+            }
+            (Instruction::Start | Instruction::Target, _) => {
+                self.instruction.set(Instruction::Off);
+                self.bad_char_error();
+                go!(self: reconsume BogusComment)
+            }
+            (_, c) => self.instruction_data(c),
+        }
+    }
+
+    /// A character after a processing instruction's target: whitespace right after it is
+    /// skipped, `>` emits it, anything else is data.
+    fn instruction_data(&self, c: char) -> ProcessResult<Sink::Handle> {
+        match c {
+            '>' => {
+                self.instruction.set(Instruction::Off);
+                let mut comment = mem::take(&mut *self.current_comment.borrow_mut());
+                if comment.ends_with('?') {
+                    comment.pop_back(1);
+                }
+                self.process_token_and_continue(CommentToken(comment));
+                go!(self: to Data)
+            }
+            '\t' | '\n' | '\x0C' | ' ' if self.instruction.get() == Instruction::AfterTarget => {
+                ProcessResult::Continue
+            }
+            '\0' => {
+                self.bad_char_error();
+                self.instruction.set(Instruction::Data);
+                {
+                    self.current_comment.borrow_mut().push_char('\u{fffd}');
+                    ProcessResult::Continue
+                }
+            }
+            c => {
+                self.instruction.set(Instruction::Data);
+                {
+                    self.current_comment.borrow_mut().push_char(c);
+                    ProcessResult::Continue
+                }
+            }
         }
     }
 
@@ -1746,6 +1856,12 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
 
             states::BogusDoctype => go!(self: emit_doctype; to Data),
 
+            // Chrome drops a processing instruction the input cuts short.
+            states::BogusComment if self.instruction.get() != Instruction::Off => {
+                self.instruction.set(Instruction::Off);
+                self.bad_eof_error();
+                go!(self: clear_comment; to Data)
+            }
             states::BogusComment => go!(self: emit_comment; to Data),
 
             // At EOF `eat` never asks for more input, so markup-declaration-open always
@@ -1935,6 +2051,7 @@ mod test {
         let opts = TokenizerOpts {
             initial_state: None,
             last_start_tag_name: None,
+            processing_instructions: false,
         };
         let vector = vec![
             StrTendril::from("<a>\n"),
@@ -1957,6 +2074,7 @@ mod test {
         let opts = TokenizerOpts {
             initial_state: None,
             last_start_tag_name: None,
+            processing_instructions: false,
         };
         let vector = vec![
             StrTendril::from("<a>\r\n"),
