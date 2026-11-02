@@ -40,6 +40,7 @@ MSRV 1.89.
 | feature | default | what it does |
 |---|---|---|
 | `bundled-fonts` | on | embeds Inter / Roboto, Liberation Serif / PT Serif, Fira Code / IBM Plex Mono (OFL, see `assets/fonts/NOTICE.md`) so documents lay out with zero caller fonts |
+| `hyphenation` | on | `hyphens: auto` dictionary hyphenation for `lang=en` / `en-*` (not en-GB): embeds the en-US Knuth-Liang patterns (TeX `hyph-en-us`, ~90 KB, `hyphenation` crate). Off, `hyphens: auto` acts as `manual` |
 | `svg` | off | the PDF SVG pipeline: `image::probe` / `image::decode` route `image/svg+xml` through the shared rasterizer at 2x (implies `svg-rasterize`) |
 | `svg-rasterize` | off | the shared SVG rasterizer alone (`svg::rasterize`, resvg `=0.45.1`, pinned: 0.46+ changes raster output) without routing `probe`/`decode` through it — what turbo-dom-raster enables |
 | `perf` | off | hot-path counters (`perf` module, `hot!` macro) |

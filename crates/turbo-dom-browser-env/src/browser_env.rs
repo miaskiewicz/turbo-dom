@@ -639,11 +639,7 @@ impl Drop for DomScope {
 /// Install an independent native document in the current V8 context. The caller's
 /// document stays live, and callbacks route by their receiver's creation context.
 pub fn install_independent_html(scope: &mut v8::PinScope, html: &str) {
-    let units = html.encode_utf16().collect::<Vec<_>>();
-    install_independent_tree(
-        scope,
-        Tree::parse_utf16_with_processing_instructions(&units),
-    );
+    install_independent_tree(scope, Tree::parse_with_processing_instructions(html));
 }
 pub fn install_independent_html_units(scope: &mut v8::PinScope, units: &[u16]) {
     install_independent_tree(scope, Tree::parse_utf16_with_processing_instructions(units));
@@ -694,10 +690,9 @@ pub fn parse_html_document<'s>(
     html: &str,
     sanitize: bool,
 ) -> v8::Local<'s, v8::Object> {
-    let units = html.encode_utf16().collect::<Vec<_>>();
     parse_html_tree(
         scope,
-        Tree::parse_utf16_with_processing_instructions(&units),
+        Tree::parse_with_processing_instructions(html),
         sanitize,
     )
 }
@@ -7295,11 +7290,7 @@ pub fn install(scope: &mut v8::PinScope) {
 
 pub fn install_with_html(scope: &mut v8::PinScope, html: &str) {
     // A loaded page parses `<?target data?>` like Chrome (turbo-dom#135).
-    let units = html.encode_utf16().collect::<Vec<_>>();
-    install_with_tree(
-        scope,
-        Tree::parse_utf16_with_processing_instructions(&units),
-    );
+    install_with_tree(scope, Tree::parse_with_processing_instructions(html));
 }
 
 /// Setup was cut short because V8 execution was terminated while the document was being

@@ -5,20 +5,24 @@
 //! mixed font sizes, and applies `vertical-align`.
 //!
 //! Words break at white space, inside words per `word-break: break-all` /
-//! `overflow-wrap` and at soft hyphens ([`WordBreaking`], turbo-dom#212, #213).
-//! Deferred (per §2): justified spacing (`Align::Justify` lays out left), Knuth-
-//! Liang hyphenation (`hyphens: auto` acts as `manual`), bidi/RTL, and CJK
-//! (UAX #14) break opportunities.
+//! `overflow-wrap`, at soft hyphens and, under `hyphens: auto`, at English
+//! dictionary hyphenation points ([`WordBreaking`], [`AutoHyphens`],
+//! turbo-dom#212, #213). Deferred (per §2): justified spacing (`Align::Justify`
+//! lays out left), hyphenation dictionaries for languages other than English,
+//! bidi/RTL, and CJK (UAX #14) break opportunities.
 
 use crate::error::{Diagnostics, LintCode, Span};
 use crate::text::{Align, FontFace, FontRegistry};
 
 use super::fragment::{NodeId, PositionedGlyph};
 use super::value::{Rgba, VAlign};
+#[path = "hyphenate.rs"]
+mod hyphenate;
 #[path = "inline_advances.rs"]
 mod inline_advances;
 #[path = "native_text_advance.rs"]
 mod native_text_advance;
+pub use hyphenate::AutoHyphens;
 
 /// One styled run of text entering inline layout. `face` is the run's primary
 /// face (already selected); `families`/`weight`/`italic` drive per-glyph fallback.
@@ -62,7 +66,8 @@ pub struct InlineRun {
 /// `overflow-wrap: break-word | anywhere` (and the legacy `word-break: break-word`)
 /// adds them only when the word cannot fit a line on its own, and a soft hyphen
 /// (U+00AD) is an opportunity that draws a hyphen when taken unless
-/// `hyphens: none`. `hyphens: auto` (dictionary hyphenation) acts as `manual`.
+/// `hyphens: none`. Under `hyphens: auto` in a supported language ([`AutoHyphens`])
+/// the dictionary hyphenation points are opportunities that draw a hyphen too.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct WordBreaking {
     /// `word-break: break-all`.
@@ -71,6 +76,8 @@ pub struct WordBreaking {
     pub emergency: bool,
     /// `hyphens: none`: soft hyphens are no break opportunity.
     pub hyphens_none: bool,
+    /// `hyphens: auto` in a supported language: dictionary hyphenation.
+    pub auto: Option<AutoHyphens>,
 }
 
 impl WordBreaking {
@@ -91,6 +98,22 @@ impl WordBreaking {
                     Some("break-word" | "anywhere")
                 ),
             hyphens_none: hyphens.map(str::trim) == Some("none"),
+            auto: None,
+        }
+    }
+
+    /// With dictionary hyphenation from the computed `hyphens`, content language
+    /// (`-webkit-locale`) and `hyphenate-limit-chars` ([`AutoHyphens::from_computed`]).
+    #[must_use]
+    pub fn with_auto_hyphens(
+        self,
+        hyphens: Option<&str>,
+        locale: Option<&str>,
+        limit_chars: Option<&str>,
+    ) -> Self {
+        Self {
+            auto: AutoHyphens::from_computed(hyphens, locale, limit_chars),
+            ..self
         }
     }
 }
@@ -627,8 +650,16 @@ struct Word {
     /// whole word cannot fit a line (miaskiewicz/turbo-dom#212).
     emergency: Option<Vec<Word>>,
     /// The word as it is drawn when a line ends after it at its trailing soft
-    /// hyphen: the U+00AD replaced by a hyphen (miaskiewicz/turbo-dom#213).
+    /// hyphen: the U+00AD replaced by a hyphen (miaskiewicz/turbo-dom#213), or
+    /// with a hyphen after it at a dictionary hyphenation point.
     hyphen: Option<Box<Word>>,
+    /// The word ends at a dictionary hyphenation point: the next word goes on with
+    /// the same source word.
+    dictionary_break: bool,
+    /// On the first part of a paragraph's last source word that has dictionary
+    /// hyphenation points: the whole word's width. Like Chrome, that word is not
+    /// hyphenated on a line holding earlier content; it moves to the next line.
+    last_word_width: Option<f32>,
 }
 
 fn seg_key(c: &CharInfo) -> (usize, String, u16, bool) {
@@ -752,6 +783,8 @@ fn break_word() -> Word {
         break_after: true,
         emergency: None,
         hyphen: None,
+        dictionary_break: false,
+        last_word_width: None,
     }
 }
 
@@ -961,6 +994,8 @@ fn atom_word(atom: InlineAtom, shift: f32) -> Word {
         break_after: false,
         emergency: None,
         hyphen: None,
+        dictionary_break: false,
+        last_word_width: None,
     }
 }
 /// Flush a run of consecutive text pieces into words (itemize + word-break),
@@ -1194,22 +1229,26 @@ fn opportunity(previous: &CharInfo, next: &CharInfo, runs: &[InlineRun]) -> Opti
 }
 
 /// Split `items` (one word's characters and inline edges) at its `kind`
-/// opportunities. A split point sits before the next character, after the edges
-/// closing the previous one.
+/// opportunities, and for `Normal` also before each character `auto` flags (its
+/// dictionary hyphenation points, by character index). A split point sits before
+/// the next character, after the edges closing the previous one.
 fn split_items(
     items: Vec<SourceItem>,
     runs: &[InlineRun],
     kind: Opportunity,
+    auto: &[bool],
 ) -> Vec<Vec<SourceItem>> {
     let mut parts = vec![Vec::new()];
     let mut previous: Option<CharInfo> = None;
     let mut pending: Vec<SourceItem> = Vec::new();
+    let mut index = 0;
     for item in items {
         match item {
             SourceItem::Character(c) => {
-                let split = previous
-                    .as_ref()
-                    .is_some_and(|p| opportunity(p, &c, runs) == Some(kind));
+                let split = previous.as_ref().is_some_and(|p| {
+                    opportunity(p, &c, runs) == Some(kind)
+                        || (kind == Opportunity::Normal && auto.get(index) == Some(&true))
+                });
                 if split {
                     parts.push(Vec::new());
                 }
@@ -1217,6 +1256,7 @@ fn split_items(
                 part.append(&mut pending);
                 previous = Some(c.clone());
                 part.push(SourceItem::Character(c));
+                index += 1;
             }
             SourceItem::Edge(edge) if !edge.start => {
                 let part = parts.last_mut().expect("parts is never empty");
@@ -1233,33 +1273,97 @@ fn split_items(
     parts
 }
 
-/// The hyphen a taken soft hyphen draws: U+2010 when the face has it, else `-`.
+/// The dictionary hyphenation points of one source word, by character index (a
+/// flag per character: a break may precede it): each maximal run of letters of
+/// one inline run (text node) hyphenates on its own under that run's settings, so
+/// a break never falls at an inline edge. A word with a soft hyphen breaks only at
+/// its soft hyphens (as in Blink).
+fn auto_breaks(items: &[SourceItem], runs: &[InlineRun]) -> Vec<bool> {
+    let chars: Vec<&CharInfo> = items
+        .iter()
+        .filter_map(|item| match item {
+            SourceItem::Character(c) => Some(c),
+            SourceItem::Edge(_) => None,
+        })
+        .collect();
+    let mut out = vec![false; chars.len()];
+    if chars.iter().any(|c| c.ch == '\u{ad}') {
+        return out;
+    }
+    let mut start = 0;
+    while start < chars.len() {
+        let run = chars[start].run;
+        let letters: Vec<char> = chars[start..]
+            .iter()
+            .take_while(|c| c.ch.is_alphabetic() && c.run == run)
+            .map(|c| c.ch)
+            .collect();
+        if let Some(limits) = runs[run].word_breaking.auto {
+            for at in hyphenate::word_breaks(&letters, limits) {
+                out[start + at] = true;
+            }
+        }
+        start += letters.len().max(1);
+    }
+    out
+}
+
+/// The hyphen a taken break draws after `c`, in the run's own face when it has
+/// one (a face without U+00AD, Inter Bold, leaves a soft hyphen itself on a
+/// fallback face): U+2010 when the face has it, else `-`.
+fn hyphen_glyph(c: &CharInfo, runs: &[InlineRun]) -> (FontFace, char) {
+    let primary = &runs[c.run].face;
+    let face = [primary, &c.face]
+        .into_iter()
+        .find(|face| face.has_glyph('\u{2010}') || face.has_glyph('-'))
+        .unwrap_or(primary)
+        .clone();
+    let ch = ['\u{2010}', '-']
+        .into_iter()
+        .find(|h| face.has_glyph(*h))
+        .unwrap_or('-');
+    (face, ch)
+}
+
+fn source_end(c: &CharInfo) -> (usize, usize) {
+    c.source_end.unwrap_or((
+        c.byte_offset + c.ch.len_utf8(),
+        c.utf16_offset + c.ch.len_utf16(),
+    ))
+}
+
+/// The hyphen a taken soft hyphen draws, in place of the U+00AD.
 fn hyphenated(mut items: Vec<SourceItem>, runs: &[InlineRun]) -> Vec<SourceItem> {
     if let Some(SourceItem::Character(c)) = items
         .iter_mut()
         .rev()
         .find(|item| matches!(item, SourceItem::Character(_)))
     {
-        let end = c.source_end.unwrap_or((
-            c.byte_offset + c.ch.len_utf8(),
-            c.utf16_offset + c.ch.len_utf16(),
-        ));
-        c.source_end = Some(end);
-        // The hyphen is drawn in the run's own face when it has one: a face without
-        // U+00AD (Inter Bold) leaves the soft hyphen itself on a fallback face.
-        let primary = &runs[c.run].face;
-        let face = [primary, &c.face]
-            .into_iter()
-            .find(|face| face.has_glyph('\u{2010}') || face.has_glyph('-'))
-            .unwrap_or(primary)
-            .clone();
-        let ch = ['\u{2010}', '-']
-            .into_iter()
-            .find(|h| face.has_glyph(*h))
-            .unwrap_or('-');
-        c.face = face;
-        c.ch = ch;
+        c.source_end = Some(source_end(c));
+        (c.face, c.ch) = hyphen_glyph(c, runs);
         c.invalid_unit = None;
+    }
+    items
+}
+
+/// The hyphen a taken dictionary break draws: a glyph after the last character,
+/// mapped to the empty source range at its end.
+/// A dictionary break falls between two letters of one inline run, so the part
+/// before it ends with a character.
+fn with_drawn_hyphen(mut items: Vec<SourceItem>, runs: &[InlineRun]) -> Vec<SourceItem> {
+    if let Some(SourceItem::Character(last)) = items.last() {
+        let end = source_end(last);
+        let (face, ch) = hyphen_glyph(last, runs);
+        let hyphen = CharInfo {
+            byte_offset: end.0,
+            utf16_offset: end.1,
+            source_end: Some(end),
+            ch,
+            face,
+            invalid_unit: None,
+            ..last.clone()
+        };
+        items.push(SourceItem::Character(hyphen));
     }
     items
 }
@@ -1271,33 +1375,53 @@ fn ends_with_soft_hyphen(items: &[SourceItem], runs: &[InlineRun]) -> bool {
     )
 }
 
+fn char_count(items: &[SourceItem]) -> usize {
+    items
+        .iter()
+        .filter(|item| matches!(item, SourceItem::Character(_)))
+        .count()
+}
+
 /// One source word as placeable words: split at its normal opportunities
-/// (`break-all`, soft hyphens), each part carrying its `overflow-wrap` split and,
-/// before a soft hyphen break, its hyphenated form. The last part takes
-/// `space_after`.
+/// (`break-all`, soft hyphens, dictionary hyphenation points), each part carrying
+/// its `overflow-wrap` split and, before a hyphenating break, its hyphenated form.
+/// The last part takes `space_after`.
 fn breakable_words(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> Vec<Word> {
-    let parts = split_items(items, runs, Opportunity::Normal);
+    let auto = auto_breaks(&items, runs);
+    let parts = split_items(items, runs, Opportunity::Normal, &auto);
     let count = parts.len();
     let mut words = Vec::with_capacity(count);
+    let mut next_char = 0;
     for (index, part) in parts.into_iter().enumerate() {
         let last = index + 1 == count;
-        let hyphenates = !last && ends_with_soft_hyphen(&part, runs);
-        let hyphen =
-            hyphenates.then(|| Box::new(marked_word(hyphenated(part.clone(), runs), runs, 0.0)));
-        let emergency = split_items(part.clone(), runs, Opportunity::Emergency);
+        next_char += char_count(&part);
+        let soft = !last && ends_with_soft_hyphen(&part, runs);
+        let dictionary = !last && auto.get(next_char) == Some(&true);
+        let draw = |items: Vec<SourceItem>| {
+            let items = if soft {
+                hyphenated(items, runs)
+            } else {
+                with_drawn_hyphen(items, runs)
+            };
+            Box::new(marked_word(items, runs, 0.0))
+        };
+        let hyphenates = soft || dictionary;
+        let hyphen = hyphenates.then(|| draw(part.clone()));
+        let emergency = split_items(part.clone(), runs, Opportunity::Emergency, &[]);
         let mut word = marked_word(part, runs, if last { space_after } else { 0.0 });
         word.hyphen = hyphen;
+        word.dictionary_break = dictionary;
         if emergency.len() > 1 {
             // Broken at its `overflow-wrap` opportunities, only the last fragment
-            // ends at the soft hyphen, so only it may draw the hyphen (#229).
+            // ends at the hyphenating break, so only it may draw the hyphen (#229).
+            let fragments = emergency.len();
             word.emergency = Some(
                 emergency
                     .into_iter()
-                    .map(|items| {
+                    .enumerate()
+                    .map(|(at, items)| {
                         let hyphen =
-                            (hyphenates && ends_with_soft_hyphen(&items, runs)).then(|| {
-                                Box::new(marked_word(hyphenated(items.clone(), runs), runs, 0.0))
-                            });
+                            (hyphenates && at + 1 == fragments).then(|| draw(items.clone()));
                         let mut fragment = marked_word(items, runs, 0.0);
                         fragment.hyphen = hyphen;
                         fragment
@@ -1345,6 +1469,8 @@ fn marked_word(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> 
         break_after: false,
         emergency: None,
         hyphen: None,
+        dictionary_break: false,
+        last_word_width: None,
     }
 }
 
@@ -1527,6 +1653,12 @@ impl<'a> Placer<'a> {
         if self.attach_trailing_close(&word) {
             return;
         }
+        if word
+            .last_word_width
+            .is_some_and(|width| !self.cur.is_empty() && self.x + width > self.lw)
+        {
+            self.wrap_before(&mut word);
+        }
         if let Some(parts) = word.emergency.take() {
             return self.add_breakable(word, parts);
         }
@@ -1552,10 +1684,15 @@ impl<'a> Placer<'a> {
     /// A word with `overflow-wrap` opportunities: placed whole when it fits a line
     /// (after wrapping, if need be), else broken at them (miaskiewicz/turbo-dom#212).
     fn add_breakable(&mut self, mut word: Word, mut parts: Vec<Word>) {
-        if self.needs_wrap(&word) {
+        // A word ending at a hyphenating break fits only with the hyphen it may draw.
+        if self.needs_wrap(word.hyphen.as_deref().unwrap_or(&word)) {
             self.wrap_before(&mut word);
         }
-        if self.x + word.width <= self.lw || parts.len() < 2 {
+        let width = word
+            .hyphen
+            .as_deref()
+            .map_or(word.width, |hyphen| hyphen.width);
+        if self.x + width <= self.lw || parts.len() < 2 {
             return self.place(word);
         }
         let first = parts.first_mut().expect("at least two parts");
@@ -1666,15 +1803,32 @@ fn closing_only(word: &Word) -> bool {
         && word.spaces.is_empty()
         && word.edges.iter().all(|(_, edge)| !edge.start)
 }
+/// Mark the paragraph's last source word when it has dictionary hyphenation
+/// points: its first part carries the whole word's width
+/// ([`Word::last_word_width`]).
+fn mark_last_word(words: &mut [Word]) {
+    let Some(end) = words.iter().rposition(contains_inline_content) else {
+        return;
+    };
+    let start = words[..end]
+        .iter()
+        .rposition(|word| !word.dictionary_break)
+        .map_or(0, |at| at + 1);
+    if start < end {
+        words[start].last_word_width = Some(words[start..=end].iter().map(|w| w.width).sum());
+    }
+}
+
 /// Break `words` into placed lines via a [`Placer`].
 fn wrap_and_place(
-    words: Vec<Word>,
+    mut words: Vec<Word>,
     align: Align,
     region: LineRegion,
     strut: f32,
     policy: (bool, bool, Option<f32>),
 ) -> Vec<SourceLine> {
     let mut placer = Placer::new(align, region, strut, policy);
+    mark_last_word(&mut words);
     for word in words {
         placer.add(word);
     }
@@ -2577,6 +2731,7 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
     placer.strut_metrics = options.strut_metrics;
     placer.first_indent = options.first_indent;
     placer.clearance = Some(options.clearance);
+    mark_last_word(&mut words);
     for word in words {
         placer.add(word);
     }
