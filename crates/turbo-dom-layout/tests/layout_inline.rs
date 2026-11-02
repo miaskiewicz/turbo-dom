@@ -27,6 +27,7 @@ fn run(text: &str, face: &FontFace) -> InlineRun {
         preserve_spaces: false,
         forced_newlines: false,
         text_transform: turbo_dom_layout::text::TextTransform::default(),
+        word_breaking: Default::default(),
     }
 }
 

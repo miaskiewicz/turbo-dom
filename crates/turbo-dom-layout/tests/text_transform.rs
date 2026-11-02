@@ -240,6 +240,7 @@ fn transformed_run(text: &str, case: CaseTransform, locale: CaseLocale) -> Piece
         preserve_spaces: false,
         forced_newlines: false,
         text_transform: TextTransform { case, locale },
+        word_breaking: Default::default(),
     })
 }
 

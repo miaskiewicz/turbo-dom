@@ -89,7 +89,6 @@ fn check(ids: &[&str]) {
 }
 
 #[test]
-#[ignore = "turbo-dom#212: fails until the fix"]
 fn overflow_wrap_and_word_break_break_inside_words_like_chrome_156() {
     check(&[
         "break-word",
@@ -103,7 +102,6 @@ fn overflow_wrap_and_word_break_break_inside_words_like_chrome_156() {
 }
 
 #[test]
-#[ignore = "turbo-dom#213: fails until the fix"]
 fn soft_hyphens_are_break_opportunities_that_draw_a_hyphen_like_chrome_156() {
     check(&["shy", "shy-fits", "shy-two", "shy-none", "shy-words"]);
 }

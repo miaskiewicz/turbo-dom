@@ -660,6 +660,11 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
             style.get("text-transform"),
             style.get("-webkit-locale"),
         ),
+        word_breaking: super::inline::WordBreaking::from_computed(
+            style.get("word-break"),
+            style.get("overflow-wrap").or_else(|| style.get("word-wrap")),
+            style.get("hyphens"),
+        ),
     })
 }
 

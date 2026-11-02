@@ -50,6 +50,47 @@ pub struct InlineRun {
     /// §2.1, miaskiewicz/turbo-dom#208). Applied while itemizing, so glyph cluster
     /// text is the transformed text while source clusters keep `text` offsets.
     pub text_transform: crate::text::TextTransform,
+    /// The run's break opportunities inside words: `word-break`, `overflow-wrap`
+    /// and `hyphens` (miaskiewicz/turbo-dom#212, #213).
+    pub word_breaking: WordBreaking,
+}
+
+/// Where a run may break inside a word (CSS Text 3 §5): `word-break: break-all`
+/// makes every typographic letter unit boundary a break opportunity,
+/// `overflow-wrap: break-word | anywhere` (and the legacy `word-break: break-word`)
+/// adds them only when the word cannot fit a line on its own, and a soft hyphen
+/// (U+00AD) is an opportunity that draws a hyphen when taken unless
+/// `hyphens: none`. `hyphens: auto` (dictionary hyphenation) acts as `manual`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct WordBreaking {
+    /// `word-break: break-all`.
+    pub break_all: bool,
+    /// `overflow-wrap: break-word | anywhere`, or `word-break: break-word`.
+    pub emergency: bool,
+    /// `hyphens: none`: soft hyphens are no break opportunity.
+    pub hyphens_none: bool,
+}
+
+impl WordBreaking {
+    /// From the computed `word-break`, `overflow-wrap` (or its `word-wrap` alias)
+    /// and `hyphens` values.
+    #[must_use]
+    pub fn from_computed(
+        word_break: Option<&str>,
+        overflow_wrap: Option<&str>,
+        hyphens: Option<&str>,
+    ) -> Self {
+        let word_break = word_break.map(str::trim);
+        Self {
+            break_all: word_break == Some("break-all"),
+            emergency: word_break == Some("break-word")
+                || matches!(
+                    overflow_wrap.map(str::trim),
+                    Some("break-word" | "anywhere")
+                ),
+            hyphens_none: hyphens.map(str::trim) == Some("none"),
+        }
+    }
 }
 
 /// An atomic inline box (an `inline-block` or replaced `<img>`) that flows within
@@ -234,6 +275,7 @@ struct SourceLine {
 // itemization: chars -> per-glyph fallback faces
 // --------------------------------------------------------------------------
 
+#[derive(Clone)]
 struct CharInfo {
     byte_offset: usize,
     utf16_offset: usize,
@@ -579,6 +621,12 @@ struct Word {
     /// A forced line break (`<br>`): a zero-width, metric-less word (empty `segs`,
     /// no `atom`) that flushes the current line once placed on it.
     break_after: bool,
+    /// The word split at its `overflow-wrap` opportunities, used only when the
+    /// whole word cannot fit a line (miaskiewicz/turbo-dom#212).
+    emergency: Option<Vec<Word>>,
+    /// The word as it is drawn when a line ends after it at its trailing soft
+    /// hyphen: the U+00AD replaced by a hyphen (miaskiewicz/turbo-dom#213).
+    hyphen: Option<Box<Word>>,
 }
 
 fn seg_key(c: &CharInfo) -> (usize, String, u16, bool) {
@@ -686,33 +734,6 @@ fn segment_original_units(chars: &[CharInfo]) -> Option<Vec<u16>> {
     Some(units)
 }
 
-fn make_word(chars: &[CharInfo], runs: &[InlineRun], space_after: f32) -> Word {
-    let mut segs = Vec::new();
-    let mut idx = 0;
-    while idx < chars.len() {
-        let start = idx;
-        let key = seg_key(&chars[idx]);
-        while idx < chars.len() && seg_key(&chars[idx]) == key {
-            idx += 1;
-        }
-        segs.push(make_seg(&chars[start..idx], runs));
-    }
-    let width = segs.iter().map(|s| s.width).sum();
-    Word {
-        atom_shift: 0.0,
-        spaces: Vec::new(),
-        leading_spaces: Vec::new(),
-        advance_space: None,
-        native_space: None,
-        edges: Vec::new(),
-        segs,
-        width,
-        space_after,
-        atom: None,
-        break_after: false,
-    }
-}
-
 /// A zero-width forced-break word (`<br>`): no glyphs, flushes its line.
 fn break_word() -> Word {
     Word {
@@ -727,6 +748,8 @@ fn break_word() -> Word {
         space_after: 0.0,
         atom: None,
         break_after: true,
+        emergency: None,
+        hyphen: None,
     }
 }
 
@@ -806,9 +829,14 @@ fn build_words(
             .get(i)
             .filter(|c| breakable(c) && !forced_newline(c, runs))
             .map_or(0.0, |c| space_width(c, runs));
-        let mut word = make_word(&chars[start..i], runs, space_after);
-        word.spaces = native_word_spaces(&chars[i..], runs, native_advances);
-        words.push(word);
+        let items = chars[start..i]
+            .iter()
+            .cloned()
+            .map(SourceItem::Character)
+            .collect();
+        words.extend(breakable_words(items, runs, space_after));
+        let spaces = native_word_spaces(&chars[i..], runs, native_advances);
+        words.last_mut().expect("a word was pushed").spaces = spaces;
     }
     words
 }
@@ -929,6 +957,8 @@ fn atom_word(atom: InlineAtom, shift: f32) -> Word {
         space_after: 0.0,
         atom: Some(atom),
         break_after: false,
+        emergency: None,
+        hyphen: None,
     }
 }
 /// Flush a run of consecutive text pieces into words (itemize + word-break),
@@ -998,6 +1028,7 @@ fn preceding_inline_content(words: &[Word]) -> bool {
     false
 }
 
+#[derive(Clone)]
 enum SourceItem {
     Character(CharInfo),
     Edge(InlineEdge),
@@ -1035,7 +1066,7 @@ impl MarkedWords<'_> {
         match item {
             SourceItem::Character(c) if forced_newline(&c, self.runs) => {
                 if !self.current.is_empty() {
-                    self.words.push(marked_word(
+                    self.words.extend(breakable_words(
                         std::mem::take(&mut self.current),
                         self.runs,
                         0.0,
@@ -1056,7 +1087,7 @@ impl MarkedWords<'_> {
                 if let SourceItem::Character(c) = &item {
                     let wrap_space = wrapping_preserved_space(c, self.runs);
                     if self.after_wrap_space && !wrap_space {
-                        self.words.push(marked_word(
+                        self.words.extend(breakable_words(
                             std::mem::take(&mut self.current),
                             self.runs,
                             0.0,
@@ -1084,7 +1115,7 @@ impl MarkedWords<'_> {
             space_width(&c, self.runs)
         };
         if !self.current.is_empty() {
-            self.words.push(marked_word(
+            self.words.extend(breakable_words(
                 std::mem::take(&mut self.current),
                 self.runs,
                 width,
@@ -1099,7 +1130,7 @@ impl MarkedWords<'_> {
     }
     fn finish(mut self) -> Vec<Word> {
         if !self.current.is_empty() {
-            self.words.push(marked_word(self.current, self.runs, 0.0));
+            self.words.extend(breakable_words(self.current, self.runs, 0.0));
         }
         self.words
     }
@@ -1131,6 +1162,123 @@ fn push_character(c: CharInfo, chars: &mut Vec<CharInfo>, segs: &mut Vec<Seg>, r
     }
     chars.push(c);
 }
+/// A break opportunity inside a word, before character `next` (CSS Text 3 §5).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Opportunity {
+    /// `word-break: break-all`, or after a soft hyphen.
+    Normal,
+    /// `overflow-wrap: break-word | anywhere`: only when the word cannot fit.
+    Emergency,
+}
+
+fn opportunity(previous: &CharInfo, next: &CharInfo, runs: &[InlineRun]) -> Option<Opportunity> {
+    let joins = |c: char| crate::text::transform::is_mark(c) || matches!(c, '\u{200c}' | '\u{200d}');
+    if joins(next.ch) || joins(previous.ch) || next.ch == '\u{ad}' {
+        return None;
+    }
+    if previous.ch == '\u{ad}' && !runs[previous.run].word_breaking.hyphens_none {
+        return Some(Opportunity::Normal);
+    }
+    let breaking = runs[next.run].word_breaking;
+    if breaking.break_all {
+        Some(Opportunity::Normal)
+    } else if breaking.emergency {
+        Some(Opportunity::Emergency)
+    } else {
+        None
+    }
+}
+
+/// Split `items` (one word's characters and inline edges) at its `kind`
+/// opportunities. A split point sits before the next character, after the edges
+/// closing the previous one.
+fn split_items(items: Vec<SourceItem>, runs: &[InlineRun], kind: Opportunity) -> Vec<Vec<SourceItem>> {
+    let mut parts = vec![Vec::new()];
+    let mut previous: Option<CharInfo> = None;
+    let mut pending: Vec<SourceItem> = Vec::new();
+    for item in items {
+        match item {
+            SourceItem::Character(c) => {
+                let split = previous
+                    .as_ref()
+                    .is_some_and(|p| opportunity(p, &c, runs) == Some(kind));
+                if split {
+                    parts.push(Vec::new());
+                }
+                let part = parts.last_mut().expect("parts is never empty");
+                part.append(&mut pending);
+                previous = Some(c.clone());
+                part.push(SourceItem::Character(c));
+            }
+            SourceItem::Edge(edge) if !edge.start => {
+                let part = parts.last_mut().expect("parts is never empty");
+                part.append(&mut pending);
+                part.push(SourceItem::Edge(edge));
+            }
+            edge => pending.push(edge),
+        }
+    }
+    parts.last_mut().expect("parts is never empty").append(&mut pending);
+    parts
+}
+
+/// The hyphen a taken soft hyphen draws: U+2010 when the face has it, else `-`.
+fn hyphenated(mut items: Vec<SourceItem>) -> Vec<SourceItem> {
+    if let Some(SourceItem::Character(c)) = items
+        .iter_mut()
+        .rev()
+        .find(|item| matches!(item, SourceItem::Character(_)))
+    {
+        let end = c.source_end.unwrap_or((
+            c.byte_offset + c.ch.len_utf8(),
+            c.utf16_offset + c.ch.len_utf16(),
+        ));
+        c.source_end = Some(end);
+        c.ch = if c.face.has_glyph('\u{2010}') {
+            '\u{2010}'
+        } else {
+            '-'
+        };
+        c.invalid_unit = None;
+    }
+    items
+}
+
+fn ends_with_soft_hyphen(items: &[SourceItem], runs: &[InlineRun]) -> bool {
+    matches!(
+        items.iter().rev().find(|item| matches!(item, SourceItem::Character(_))),
+        Some(SourceItem::Character(c)) if c.ch == '\u{ad}' && !runs[c.run].word_breaking.hyphens_none
+    )
+}
+
+/// One source word as placeable words: split at its normal opportunities
+/// (`break-all`, soft hyphens), each part carrying its `overflow-wrap` split and,
+/// before a soft hyphen break, its hyphenated form. The last part takes
+/// `space_after`.
+fn breakable_words(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> Vec<Word> {
+    let parts = split_items(items, runs, Opportunity::Normal);
+    let count = parts.len();
+    let mut words = Vec::with_capacity(count);
+    for (index, part) in parts.into_iter().enumerate() {
+        let last = index + 1 == count;
+        let hyphen = (!last && ends_with_soft_hyphen(&part, runs))
+            .then(|| Box::new(marked_word(hyphenated(part.clone()), runs, 0.0)));
+        let emergency = split_items(part.clone(), runs, Opportunity::Emergency);
+        let mut word = marked_word(part, runs, if last { space_after } else { 0.0 });
+        word.hyphen = hyphen;
+        if emergency.len() > 1 {
+            word.emergency = Some(
+                emergency
+                    .into_iter()
+                    .map(|items| marked_word(items, runs, 0.0))
+                    .collect(),
+            );
+        }
+        words.push(word);
+    }
+    words
+}
+
 fn marked_word(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> Word {
     let mut segs = Vec::new();
     let mut edges = Vec::new();
@@ -1164,6 +1312,8 @@ fn marked_word(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> 
         space_after,
         atom: None,
         break_after: false,
+        emergency: None,
+        hyphen: None,
     }
 }
 
@@ -1346,10 +1496,53 @@ impl<'a> Placer<'a> {
         if self.attach_trailing_close(&word) {
             return;
         }
-        if self.needs_wrap(&word) {
-            word.leading_spaces = self.wrapped_leading_spaces(&word);
-            self.flush();
+        if let Some(parts) = word.emergency.take() {
+            return self.add_breakable(word, parts);
         }
+        // A word ending at a soft hyphen fits only with the hyphen it may draw.
+        if self.needs_wrap(word.hyphen.as_deref().unwrap_or(&word)) {
+            self.wrap_before(&mut word);
+        }
+        self.place(word);
+    }
+
+    /// End the current line before `word`: the last word draws its soft hyphen,
+    /// and the wrapped spaces move to `word`.
+    fn wrap_before(&mut self, word: &mut Word) {
+        if let Some(last) = self.cur.last_mut() {
+            if let Some(hyphen) = last.hyphen.take() {
+                *last = *hyphen;
+            }
+        }
+        word.leading_spaces = self.wrapped_leading_spaces(word);
+        self.flush();
+    }
+
+    /// A word with `overflow-wrap` opportunities: placed whole when it fits a line
+    /// (after wrapping, if need be), else broken at them (miaskiewicz/turbo-dom#212).
+    fn add_breakable(&mut self, mut word: Word, mut parts: Vec<Word>) {
+        if self.needs_wrap(&word) {
+            self.wrap_before(&mut word);
+        }
+        if self.x + word.width <= self.lw || parts.len() < 2 {
+            return self.place(word);
+        }
+        let first = parts.first_mut().expect("at least two parts");
+        first.leading_spaces = std::mem::take(&mut word.leading_spaces);
+        first.atom_shift = word.atom_shift;
+        let last = parts.last_mut().expect("at least two parts");
+        last.spaces = std::mem::take(&mut word.spaces);
+        last.advance_space = word.advance_space.take();
+        last.native_space = word.native_space.take();
+        last.space_after = word.space_after;
+        last.hyphen = word.hyphen.take();
+        last.break_after = word.break_after;
+        for part in parts {
+            self.add(part);
+        }
+    }
+
+    fn place(&mut self, word: Word) {
         let width = self.html_font_scale.map_or(word.width, |scale| {
             inline_advances::Cursor::new(scale, 0.0).candidate_width(&word)
         });
@@ -1637,6 +1830,12 @@ fn apply_baselines(words: &mut [Word], baselines: &std::collections::HashMap<Nod
             edge.baseline_shift = baselines.get(&edge.node_id).copied().unwrap_or_default();
         }
         apply_run_baselines(word, baselines);
+        if let Some(parts) = &mut word.emergency {
+            apply_baselines(parts, baselines);
+        }
+        if let Some(hyphen) = &mut word.hyphen {
+            apply_baselines(std::slice::from_mut(hyphen.as_mut()), baselines);
+        }
     }
 }
 fn apply_run_baselines(word: &mut Word, baselines: &std::collections::HashMap<NodeId, f32>) {
@@ -2491,6 +2690,7 @@ mod tests {
             preserve_spaces: false,
             forced_newlines: false,
             text_transform: crate::text::TextTransform::default(),
+            word_breaking: Default::default(),
         })
     }
 

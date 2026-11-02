@@ -144,7 +144,7 @@ pub(crate) fn transform_run(
     Some(out)
 }
 
-fn is_mark(ch: char) -> bool {
+pub(crate) fn is_mark(ch: char) -> bool {
     matches!(ch,
         '\u{300}'..='\u{36f}'
         | '\u{483}'..='\u{489}'
