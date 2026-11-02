@@ -21,7 +21,8 @@
 //   line-height/probe.js           -> line-height/chrome156.json           400x300
 //
 // Usage: node scripts/fixture-font-chrome-controls.mjs [--chrome PATH] [--only PROBE]
-//   --chrome defaults to the Playwright-cached Chrome for Testing 156.
+//   --chrome defaults to the frozen Chrome 156.0.8078.47 headless shell (launched with a
+//   mock keychain, so it never prompts for the macOS keychain).
 // Needs playwright-core: PLAYWRIGHT_CORE=/path/to/node_modules/playwright-core (default: a
 // sibling turbo-surf checkout's node_modules/playwright-core).
 import { createHash } from "node:crypto";
@@ -40,7 +41,7 @@ const chromePath =
   values.chrome ||
   join(
     homedir(),
-    "Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+    ".cache/turbo-consolidation/chrome156/chrome-headless-shell-mac-arm64/chrome-headless-shell",
   );
 const playwrightCore =
   process.env.PLAYWRIGHT_CORE || resolve(repo, "../turbo-surf/node_modules/playwright-core");
@@ -97,7 +98,7 @@ try {
     const browser = await chromium.launch({
       executablePath: chromePath,
       headless: true,
-      args: ["--force-device-scale-factor=2", `--window-size=${width},${height}`],
+      args: ["--use-mock-keychain", "--password-store=basic", "--force-device-scale-factor=2", `--window-size=${width},${height}`],
     });
     const context = await browser.newContext({ viewport: null });
     const page = await context.newPage();
