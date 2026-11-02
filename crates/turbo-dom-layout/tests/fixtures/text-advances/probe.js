@@ -81,5 +81,23 @@
         ctx.font = `${size}px ${family}`;
         canvas.push({ font: ctx.font, text, width: ctx.measureText(text).width });
       }
-  return { cases: out, canvas };
+  // A kerning pair between a word's last glyph and the following space (Liberation Serif
+  // `T`/`Y`/`V` + U+0020) when the line breaks at that space (turbo-dom#236): the word's
+  // Range rect, on one line (width 700px) and broken after the word (width 1px).
+  const breaks = [];
+  for (const word of ["T", "Y", "V", "LT", "AVATAR"])
+    for (const width of [700, 1]) {
+      const div = document.createElement("div");
+      div.setAttribute("style", `width:${width}px;line-height:24px;font-family:'Liberation Serif';font-size:48px`);
+      const span = document.createElement("span");
+      span.textContent = `${word} Wave`;
+      div.append(span);
+      document.body.append(div);
+      const r = document.createRange();
+      r.setStart(span.firstChild, 0);
+      r.setEnd(span.firstChild, word.length);
+      breaks.push({ word, width, rects: Array.from(r.getClientRects(), rect) });
+      div.remove();
+    }
+  return { cases: out, canvas, breaks };
 })();

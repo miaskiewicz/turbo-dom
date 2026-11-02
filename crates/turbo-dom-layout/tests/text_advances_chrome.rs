@@ -262,3 +262,33 @@ fn original_utf16_text_keeps_the_kerning_across_spaces() {
     }
     assert_eq!(compared, 72);
 }
+
+// turbo-dom#236 item 4: Chrome keeps a word-final kerning pair against the following space
+// (Liberation Serif `T`/`Y`/`V` + U+0020) on the word's last glyph when the line breaks at
+// that space: the word's Range rect is the same on one line and broken after the word.
+#[test]
+fn word_final_space_kerning_survives_a_line_break_at_that_space() {
+    let control = control();
+    let rows = control["result"]["breaks"].as_array().unwrap();
+    assert_eq!(rows.len(), 10);
+    for row in rows {
+        let word = row["word"].as_str().unwrap();
+        let width = row["width"].as_u64().unwrap();
+        let (snapshot, names) = capture(&format!(
+            "<div style=\"width:{width}px;line-height:24px;font-family:'Liberation Serif';\
+             font-size:48px\"><span id=s0>{word} Wave</span></div>"
+        ));
+        let text = SourceId(names["s0"].0 + 1);
+        let want: Vec<[f64; 2]> = row["rects"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(inline_axis)
+            .collect();
+        assert_eq!(
+            range_boxes(&snapshot, text, 0, word.len()),
+            want,
+            "{word} at width {width}"
+        );
+    }
+}

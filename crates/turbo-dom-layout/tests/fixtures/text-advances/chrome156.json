@@ -8,7 +8,7 @@
     ],
     "deviceScaleFactor": 2
   },
-  "probeSha256": "cef9d66ea9ec66529c93b3587838fdb8be9a85e1af60a3aff07cf12574ce7735",
+  "probeSha256": "e8695568f171af6415e67ddd96f29d527df5447bb4cd8557d79872e20c8a1b1b",
   "collectorSha256": "f5759afc0688c1d4ca89dac87317d0e9fe626ce88d885329d5d561108e464f75",
   "fontFiles": {
     "liberation-serif/LiberationSerif-Regular.ttf": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4",
@@ -19341,6 +19341,128 @@
         "font": "18.72px \"Fira Code\"",
         "text": "AVATAR Wave",
         "width": 126.65223693847656
+      }
+    ],
+    "breaks": [
+      {
+        "word": "T",
+        "width": 700,
+        "rects": [
+          [
+            8,
+            -7,
+            28.453125,
+            53.5
+          ]
+        ]
+      },
+      {
+        "word": "T",
+        "width": 1,
+        "rects": [
+          [
+            8,
+            -7,
+            28.453125,
+            53.5
+          ]
+        ]
+      },
+      {
+        "word": "Y",
+        "width": 700,
+        "rects": [
+          [
+            8,
+            -7,
+            32.8828125,
+            53.5
+          ]
+        ]
+      },
+      {
+        "word": "Y",
+        "width": 1,
+        "rects": [
+          [
+            8,
+            -7,
+            32.8828125,
+            53.5
+          ]
+        ]
+      },
+      {
+        "word": "V",
+        "width": 700,
+        "rects": [
+          [
+            8,
+            -7,
+            33.796875,
+            53.5
+          ]
+        ]
+      },
+      {
+        "word": "V",
+        "width": 1,
+        "rects": [
+          [
+            8,
+            -7,
+            33.796875,
+            53.5
+          ]
+        ]
+      },
+      {
+        "word": "LT",
+        "width": 700,
+        "rects": [
+          [
+            8,
+            -7,
+            53.3671875,
+            53.5
+          ]
+        ]
+      },
+      {
+        "word": "LT",
+        "width": 1,
+        "rects": [
+          [
+            8,
+            -7,
+            53.3671875,
+            53.5
+          ]
+        ]
+      },
+      {
+        "word": "AVATAR",
+        "width": 700,
+        "rects": [
+          [
+            8,
+            -7,
+            178.453125,
+            53.5
+          ]
+        ]
+      },
+      {
+        "word": "AVATAR",
+        "width": 1,
+        "rects": [
+          [
+            8,
+            -7,
+            178.453125,
+            53.5
+          ]
+        ]
       }
     ]
   }
