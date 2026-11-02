@@ -98,6 +98,10 @@ Manifests always name the registry version (`turbo-dom = "0.6"`,
 `.github/workflows/ci.yml` (toolchain 1.98.0). Pull requests and pushes to `main` run it on
 Linux runners plus Windows x64 (the napi build and the v8 matrix); the macOS arm64 builds
 and jobs are added only when `publish.yml` calls it with `darwin: true` for a release.
+Every job that builds a shipped Linux binary (the napi matrix, publish.yml's `crates` and
+`npm`) runs on `ubuntu-22.04` / `ubuntu-22.04-arm` (glibc 2.35), and the napi matrix and
+the npm job run `scripts/check-glibc-ceiling.sh` (`objdump -T`, fails above GLIBC_2.35);
+test-only jobs stay on `ubuntu-latest`.
 
 | job | what |
 |---|---|

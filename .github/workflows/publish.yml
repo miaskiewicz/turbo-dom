@@ -49,7 +49,7 @@ jobs:
   crates:
     name: crates.io (turbo-dom-v8 -> turbo-dom -> -layout -> -raster -> -browser-env)
     needs: [ci, preflight]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
     steps:
@@ -83,7 +83,9 @@ jobs:
   npm:
     name: npm (@miaskiewicz/turbo-dom)
     needs: [ci, preflight, crates]
-    runs-on: ubuntu-latest
+    # prepublishOnly rebuilds the linux-x64 addon here, so this runner must be ubuntu-22.04
+    # (glibc 2.35) like the ci napi matrix; the guard below checks the shipped .node files.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -120,8 +122,16 @@ jobs:
         run: |
           find artifacts -name '*.node' -exec cp {} . \;
           ls -1 *.node
+      # Run prepublishOnly explicitly (it rebuilds the host addon + both WASM targets) so the
+      # glibc guard sees exactly what ships, then publish without re-running it.
+      - name: Build (prepublishOnly)
+        if: steps.published.outputs.skip != 'true'
+        run: npm run prepublishOnly
+      - name: glibc ceiling guard (every linux-gnu addon in the package)
+        if: steps.published.outputs.skip != 'true'
+        run: bash scripts/check-glibc-ceiling.sh *linux-*-gnu.node
       - name: Publish @miaskiewicz/turbo-dom
         if: steps.published.outputs.skip != 'true'
-        run: npm publish --access public
+        run: npm publish --access public --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
