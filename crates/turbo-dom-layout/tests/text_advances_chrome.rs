@@ -9,6 +9,7 @@
 
 use serde_json::Value;
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::sync::OnceLock;
 use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, GeometryKind, LayoutSnapshot, NativeTextOptions,
@@ -56,10 +57,26 @@ fn control() -> Value {
 }
 
 fn capture(html: &str) -> (LayoutSnapshot, HashMap<String, SourceId>) {
+    capture_original(html, None)
+}
+
+/// With `original`: the UTF-16 source units of span `s0`'s text node (the embedder's
+/// original-text route).
+fn capture_original(
+    html: &str,
+    original: Option<&[u16]>,
+) -> (LayoutSnapshot, HashMap<String, SourceId>) {
     let nodes = parse_html(html).unwrap();
     let mut ids = Vec::new();
     let mut names = HashMap::new();
     identities(&nodes, &mut Vec::new(), &mut ids, &mut names);
+    let originals: Vec<_> = original
+        .map(|units| turbo_dom_layout::layout_snapshot::SourceTextUnits {
+            source_id: SourceId(names["s0"].0 + 1),
+            units,
+        })
+        .into_iter()
+        .collect();
     let images = ImageCtx {
         resolver: &NoImages,
         body_height: None,
@@ -70,7 +87,7 @@ fn capture(html: &str) -> (LayoutSnapshot, HashMap<String, SourceId>) {
         &ids,
         &cascade,
         &NativeTextOptions {
-            original_text: &[],
+            original_text: &originals,
             svg_viewports: &[],
             layout_scale: 2.0,
         },
@@ -118,19 +135,16 @@ fn range_boxes(
 }
 
 fn html(case: &Value) -> String {
-    let spans: String = case["html"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .enumerate()
-        .map(|(i, part)| {
-            format!(
-                "<span id=s{i} style=\"{}\">{}</span>",
-                part[1].as_str().unwrap(),
-                part[0].as_str().unwrap()
-            )
-        })
-        .collect();
+    let mut spans = String::new();
+    for (i, part) in case["html"].as_array().unwrap().iter().enumerate() {
+        write!(
+            spans,
+            "<span id=s{i} style=\"{}\">{}</span>",
+            part[1].as_str().unwrap(),
+            part[0].as_str().unwrap()
+        )
+        .unwrap();
+    }
     format!(
         "<div style=\"width:700px;line-height:24px;{}\">{spans}</div>",
         case["style"].as_str().unwrap()
@@ -225,4 +239,26 @@ fn mixed_font_ranges_span_their_runs_like_chrome_156() {
             case["html"]
         );
     }
+}
+
+#[test]
+fn original_utf16_text_keeps_the_kerning_across_spaces() {
+    let control = control();
+    let mut compared = 0;
+    for case in control["result"]["cases"].as_array().unwrap() {
+        let text = case["html"][0][0].as_str().unwrap();
+        if case["spans"].as_array().unwrap().len() != 1 || !text.contains(' ') {
+            continue;
+        }
+        let units: Vec<u16> = text.encode_utf16().collect();
+        let (snapshot, names) = capture_original(&html(case), Some(&units));
+        assert_eq!(
+            span_box(&snapshot, names["s0"]),
+            inline_axis(&case["spans"][0]["rect"]),
+            "{}",
+            case["style"]
+        );
+        compared += 1;
+    }
+    assert_eq!(compared, 54);
 }

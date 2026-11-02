@@ -94,6 +94,64 @@ fn prepare_word(word: &mut Word) {
 }
 pub(super) fn prepare(words: &mut [Word]) {
     words.iter_mut().for_each(prepare_word);
+    for index in 1..words.len() {
+        let (head, tail) = words.split_at_mut(index);
+        let word = &mut head[index - 1];
+        let Some([before, after]) = space_kerning(word, &tail[0]) else {
+            continue;
+        };
+        if let Some(last) = word.segs.last_mut() {
+            last.native_width += before;
+            last.trailing_kern = before;
+        }
+        if let Some((_, advance)) = word.native_space.as_mut() {
+            *advance += after;
+        }
+    }
+}
+
+// Chrome shapes a whole text item, so GPOS/`kern` pairs across a collapsible space
+// adjust advances that separately shaped words lack: the `,`+space pair lands on the
+// word's last glyph (a Range over the word includes it), the space+`W` pair on the
+// space. Applied only when the word's last segment, the space and the next word's
+// first segment are one run (same source and font): a run boundary is a shaping
+// boundary in Chrome too. Returns `[before, after]` in px.
+fn space_kerning(word: &Word, next: &Word) -> Option<[f64; 2]> {
+    let space = word.spaces.first().or(word.advance_space.as_ref())?;
+    word.native_space?;
+    let (last, first) = (word.segs.last()?, next.segs.first()?);
+    if !same_run(last, space) || !same_run(space, first) {
+        return None;
+    }
+    let (before, after) = (edge_char(last, true)?, edge_char(first, false)?);
+    let measure =
+        |text: &str| native_text_advance::measure(&space.face, space.font_size, 0.0, text, None);
+    let gap = measure(" ");
+    Some([
+        measure(&format!("{before} ")) - measure(&before.to_string()) - gap,
+        measure(&format!(" {after}")) - measure(&after.to_string()) - gap,
+    ])
+}
+
+fn same_run(a: &Seg, b: &Seg) -> bool {
+    a.node_id == b.node_id
+        && a.font_size == b.font_size
+        && a.face.data().as_ptr() == b.face.data().as_ptr()
+        && a.face.index() == b.face.index()
+}
+
+/// The segment's last (`end`) or first character as it is shaped: from its original
+/// UTF-16 units when it has them (an unpaired surrogate there yields `None`).
+fn edge_char(seg: &Seg, end: bool) -> Option<char> {
+    match &seg.original_units {
+        Some(units) => {
+            let mut chars = char::decode_utf16(units.iter().copied());
+            let edge = if end { chars.last() } else { chars.next() };
+            edge?.ok()
+        }
+        None if end => seg.text.chars().next_back(),
+        None => seg.text.chars().next(),
+    }
 }
 pub(super) fn line_width(words: &[Word], scale: f32) -> f32 {
     let mut cursor = Cursor::new(scale, 0.0);

@@ -438,6 +438,32 @@ impl FontFace {
         let advance: i64 = glyphs.iter().map(|g| i64::from(g.x_advance)).sum();
         advance as f32 * self.scale(font_size) + letter_spacing * cluster_count(&glyphs) as f32
     }
+
+    /// The advance of one glyph of `design_advance` font units at `font_size` as Blink
+    /// positions it: Skia's `SkScalar` advance cast to a signed 16.16 `HarfBuzz` position
+    /// (truncation toward zero; chromium 155 `skia_text_metrics.h`,
+    /// `SkiaScalarToHarfBuzzPosition`).
+    #[must_use]
+    pub fn blink_glyph_advance(&self, font_size: f32, design_advance: i32) -> f64 {
+        let scalar = self.scale(font_size) * design_advance as f32;
+        f64::from((scalar * 65536.0) as i32) / 65536.0
+    }
+
+    /// Canvas `measureText(text).width` as Chrome 156 computes it: Blink's canvas font
+    /// shapes word by word (`CachingWordShaper`: every U+0020 is a word of its own, so no
+    /// kerning pair crosses a space, unlike HTML text) and sums the 16.16 glyph advances
+    /// ([`blink_glyph_advance`](Self::blink_glyph_advance)).
+    #[must_use]
+    pub fn measure_canvas(&self, text: &str, font_size: f32) -> f64 {
+        text.split_inclusive(' ')
+            .flat_map(|word| match word.strip_suffix(' ') {
+                Some(head) => [head, " "],
+                None => [word, ""],
+            })
+            .flat_map(|word| self.shape(word))
+            .map(|glyph| self.blink_glyph_advance(font_size, glyph.x_advance))
+            .sum()
+    }
 }
 
 /// Whether each shaped glyph ends its cluster (the next glyph starts another
@@ -810,5 +836,46 @@ mod html_metric_policy_contracts {
         assert_eq!(cache.bytes, original_bytes);
         drop(cache);
         assert_eq!(face.shape("cache race"), glyphs);
+    }
+}
+
+#[cfg(test)]
+mod canvas_measure_chrome {
+    use super::FontFace;
+
+    fn face(path: &str, family: &str, weight: u16) -> FontFace {
+        let bytes = std::fs::read(format!(
+            "{}/assets/fonts/{path}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        FontFace::from_bytes(bytes, family, weight, false).unwrap()
+    }
+
+    // Chrome 156 canvas measureText at 16px (tests/fixtures/text-advances/chrome156.json,
+    // the `canvas` rows): no kerning across a space, 16.16 glyph advances.
+    #[test]
+    fn canvas_measure_shapes_word_by_word_with_blink_advances() {
+        let serif = face(
+            "liberation-serif/LiberationSerif-Regular.ttf",
+            "Liberation Serif",
+            400,
+        );
+        assert_eq!(serif.measure_canvas("AVATAR Wave", 16.0), 99.507_812_5);
+        assert_eq!(serif.measure_canvas("Hello, World!", 16.0), 88.468_75);
+        // HTML text kerns across the space (99.21875 in the HTML rows).
+        assert_eq!(serif.measure("AVATAR Wave", 16.0, 0.0), 99.218_75);
+        let bold = face("inter/Inter-Bold.otf", "Inter", 700);
+        assert_eq!(bold.measure_canvas("Hello, World!", 16.0), 101.312_5);
+        let fira = face("fira-code/FiraCode-Regular.ttf", "Fira Code", 400);
+        assert_eq!(
+            fira.measure_canvas("Typography", 16.0),
+            98.461_456_298_828_12
+        );
+        assert_eq!(fira.measure_canvas("", 16.0), 0.0);
+        assert_eq!(
+            fira.measure_canvas("  ", 16.0),
+            2.0 * fira.measure_canvas(" ", 16.0)
+        );
     }
 }

@@ -629,6 +629,10 @@ struct Seg {
     node_id: NodeId,
     width: f32,
     native_width: f64,
+    /// Native HTML only: the kerning pair adjustment Chrome's whole-item shaping puts on
+    /// this segment's logically last glyph against a following space
+    /// (`inline_advances::prepare`; included in `native_width`).
+    trailing_kern: f64,
 }
 
 struct Word {
@@ -697,6 +701,7 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
         node_id: run.node_id,
         width,
         native_width: f64::from(width),
+        trailing_kern: 0.0,
     }
 }
 
@@ -2168,16 +2173,26 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
         (Vec::new(), Vec::new())
     };
     let ends: Vec<bool> = crate::text::cluster_ends(&shaped).collect();
-    for (g, cluster_end) in shaped.into_iter().zip(ends) {
+    let last_logical = shaped
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, glyph)| glyph.cluster)
+        .map(|(index, _)| index);
+    for (index, (g, cluster_end)) in shaped.into_iter().zip(ends).enumerate() {
         let letter_spacing = if cluster_end { seg.letter_spacing } else { 0.0 };
         let ordinary_advance = scale * g.x_advance as f32 + letter_spacing;
         let native_advance = html_font_scale.map_or(f64::from(ordinary_advance), |_| {
+            let kern = if Some(index) == last_logical {
+                seg.trailing_kern
+            } else {
+                0.0
+            };
             native_text_advance::glyph_advance(
                 &seg.face,
                 seg.font_size,
                 g.x_advance,
                 letter_spacing,
-            )
+            ) + kern
         });
         let advance = html_font_scale.map_or(ordinary_advance, |_| native_advance as f32);
         let position = html_font_scale.map_or(x, |_| native_x as f32);
