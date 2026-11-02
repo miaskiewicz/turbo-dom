@@ -114,7 +114,6 @@ fn rect(snapshot: &LayoutSnapshot, id: SourceId) -> [f32; 4] {
 }
 
 #[test]
-#[ignore = "turbo-dom#218: fails until the fix"]
 fn inline_sticky_boxes_stick_within_their_containing_block() {
     // `top:10px` in a one-line block moves 1px (to its line's bottom), in a 100px
     // block `top:30px` reaches 30; `left:100px` reaches 100, `left:300px` stops at
