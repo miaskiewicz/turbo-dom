@@ -17,7 +17,11 @@ use turbo_dom_layout::test_support::literal::parse_html;
 use turbo_dom_layout::{build_cascade, Diagnostics, FontFace, FontRegistry, ImageCtx, NoImages};
 
 fn asset(path: &str) -> Vec<u8> {
-    std::fs::read(format!("{}/assets/fonts/{path}", env!("CARGO_MANIFEST_DIR"))).unwrap()
+    std::fs::read(format!(
+        "{}/assets/fonts/{path}",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap()
 }
 fn be16(b: &[u8], at: usize) -> usize {
     usize::from(u16::from_be_bytes([b[at], b[at + 1]]))
@@ -26,12 +30,12 @@ fn be32(b: &[u8], at: usize) -> usize {
     u32::from_be_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]) as usize
 }
 /// `(directory entry offset, table offset, table length)` of `tag`.
-fn table(b: &[u8], tag: &[u8; 4]) -> Option<(usize, usize, usize)> {
-    (0..be16(b, 4)).map(|i| 12 + 16 * i).find_map(|at| {
-        (&b[at..at + 4] == tag).then(|| (at, be32(b, at + 8), be32(b, at + 12)))
-    })
+fn table(b: &[u8], tag: [u8; 4]) -> Option<(usize, usize, usize)> {
+    (0..be16(b, 4))
+        .map(|i| 12 + 16 * i)
+        .find_map(|at| (b[at..at + 4] == tag).then(|| (at, be32(b, at + 8), be32(b, at + 12))))
 }
-fn hide(mut b: Vec<u8>, tag: &[u8; 4]) -> Vec<u8> {
+fn hide(mut b: Vec<u8>, tag: [u8; 4]) -> Vec<u8> {
     let (at, ..) = table(&b, tag).unwrap();
     b[at..at + 4].copy_from_slice(b"zzzz");
     b
@@ -43,7 +47,7 @@ fn pad(mut b: Vec<u8>) -> Vec<u8> {
 /// The control's `rewriteKern`: the same format-0 pair data under the other header version,
 /// appended as a new table the `kern` directory entry points at.
 fn rewrite_kern(b: &[u8], to_version: u16) -> Vec<u8> {
-    let (at, offset, length) = table(b, b"kern").unwrap();
+    let (at, offset, length) = table(b, *b"kern").unwrap();
     let kern = &b[offset..offset + length];
     let mut subs = Vec::new();
     if be16(kern, 0) == 0 {
@@ -57,7 +61,11 @@ fn rewrite_kern(b: &[u8], to_version: u16) -> Vec<u8> {
         let mut p = 8;
         for _ in 0..be32(kern, 4) {
             let (len, coverage) = (be32(kern, p), be16(kern, p + 4));
-            subs.push((coverage & 0xff, coverage & 0x8000 == 0, &kern[p + 8..p + len]));
+            subs.push((
+                coverage & 0xff,
+                coverage & 0x8000 == 0,
+                &kern[p + 8..p + len],
+            ));
             p += len;
         }
     }
@@ -91,7 +99,10 @@ fn rewrite_kern(b: &[u8], to_version: u16) -> Vec<u8> {
 }
 fn variant(name: &str) -> Vec<u8> {
     let warsaw = asset("WarsawGothic-BnBV.otf");
-    let liberation = hide(asset("liberation-serif/LiberationSerif-Regular.ttf"), b"GPOS");
+    let liberation = hide(
+        asset("liberation-serif/LiberationSerif-Regular.ttf"),
+        *b"GPOS",
+    );
     match name {
         "cff-v1" => warsaw,
         "cff-v0" => rewrite_kern(&warsaw, 0),
@@ -154,7 +165,10 @@ fn web_fonts_apply_only_truetype_version_0_kern_tables_like_chrome() {
     assert_eq!(rows.len(), 12);
     let mut failures = Vec::new();
     for row in rows {
-        let (name, text) = (row["variant"].as_str().unwrap(), row["text"].as_str().unwrap());
+        let (name, text) = (
+            row["variant"].as_str().unwrap(),
+            row["text"].as_str().unwrap(),
+        );
         let face = fonts.select(&[name], 400, false).unwrap();
         let canvas = face.measure_canvas(text, size as f32);
         let want = row["canvas_normal"].as_f64().unwrap();
