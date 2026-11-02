@@ -216,7 +216,7 @@ fn transform_functions_keep_chromes_camel_case() {
     ] {
         let text = match longhand_value("transform", written) {
             Spelled::Valid(text) | Spelled::Unchecked(text) => text,
-            other => panic!("{written}: {other:?}"),
+            other @ Spelled::Invalid => panic!("{written}: {other:?}"),
         };
         assert_eq!(text, spelled, "{written}");
     }
