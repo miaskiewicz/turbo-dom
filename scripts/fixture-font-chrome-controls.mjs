@@ -16,8 +16,10 @@
 //   block-inline-probe.js          -> block-inline-chrome156.json          1280x800
 //   native-iframe/probe.js         -> native-iframe/chrome156.json         1200x900
 //   inline-borders/probe.js        -> inline-borders/chrome156.json        200x200
+//   text-breaks/probe.js           -> text-breaks/chrome156.json           800x600
+//   inline-sticky/probe.js         -> inline-sticky/chrome156.json         400x300
 //
-// Usage: node scripts/fixture-font-chrome-controls.mjs [--chrome PATH]
+// Usage: node scripts/fixture-font-chrome-controls.mjs [--chrome PATH] [--only PROBE]
 //   --chrome defaults to the Playwright-cached Chrome for Testing 156.
 // Needs playwright-core: PLAYWRIGHT_CORE=/path/to/node_modules/playwright-core (default: a
 // sibling turbo-surf checkout's node_modules/playwright-core).
@@ -32,7 +34,7 @@ import { parseArgs } from "node:util";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "..");
-const { values } = parseArgs({ options: { chrome: { type: "string" } } });
+const { values } = parseArgs({ options: { chrome: { type: "string" }, only: { type: "string" } } });
 const chromePath =
   values.chrome ||
   join(
@@ -76,6 +78,8 @@ const CONTROLS = [
   ["block-inline-probe.js", "block-inline-chrome156.json", [1280, 800]],
   ["native-iframe/probe.js", "native-iframe/chrome156.json", [1200, 900]],
   ["inline-borders/probe.js", "inline-borders/chrome156.json", [200, 200]],
+  ["text-breaks/probe.js", "text-breaks/chrome156.json", [800, 600]],
+  ["inline-sticky/probe.js", "inline-sticky/chrome156.json", [400, 300]],
 ];
 
 const server = createServer((_, res) => {
@@ -86,6 +90,7 @@ await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
 const url = `http://127.0.0.1:${server.address().port}/`;
 try {
   for (const [probe, out, [width, height]] of CONTROLS) {
+    if (values.only && probe !== values.only) continue;
     const source = readFileSync(join(fixtures, probe));
     const browser = await chromium.launch({
       executablePath: chromePath,

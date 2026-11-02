@@ -295,10 +295,6 @@ fn unsupported_ordinary_inline_contexts_fail_only_their_own_reads() {
             "<span id=u style='writing-mode:vertical-rl'>vertical</span>",
             SnapshotError::UnsupportedInlineWriting,
         ),
-        (
-            "<span id=u style='position:sticky'>sticky</span>",
-            SnapshotError::UnsupportedInlinePosition,
-        ),
     ];
     for (markup, expected) in cases {
         let html = format!("<div id=box>{markup}</div><p id=ok>ok</p>");

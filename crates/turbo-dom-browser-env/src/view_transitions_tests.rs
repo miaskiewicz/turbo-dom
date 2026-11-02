@@ -193,30 +193,10 @@ fn view_transitions_match_chrome_156() {
         actual["documents"]["domParser"][0], "unavailable",
         "domParser"
     );
-    // KNOWN_GAP: the binding's selector-method SyntaxError (shared by matches, closest and
-    // querySelector*) omits Chrome's "Failed to execute 'matches' on 'Element': " prefix;
-    // the rejected selectors and the exception names agree.
-    let prefix = "Failed to execute 'matches' on 'Element': ";
-    let syntax = control["result"]["selectors"]["syntax"].as_array().unwrap();
-    for (index, expected) in syntax.iter().enumerate() {
-        let message = expected[1].as_str().unwrap();
-        assert_eq!(
-            actual["selectors"]["syntax"][index],
-            serde_json::json!([
-                expected[0],
-                message.strip_prefix(prefix).unwrap(),
-                expected[2]
-            ])
-        );
-    }
     let mut differences = compare(
         &actual,
         control["result"].as_object().unwrap(),
-        &[
-            ("unhandled", ""),
-            ("documents", "domParser"),
-            ("selectors", "syntax"),
-        ],
+        &[("unhandled", ""), ("documents", "domParser")],
     );
     let actual_hidden = run_probe(
         hidden,

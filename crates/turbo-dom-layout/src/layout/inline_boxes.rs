@@ -13,7 +13,7 @@ pub(crate) fn atomic_element(element: &crate::StyledElement) -> bool {
     matches!(&element.tag,crate::Tag::Html(name) if matches!(name.as_str(),"img"|"canvas"|"iframe"|"object"|"embed"|"input"|"select"|"textarea"|"button"|"video"|"audio"|"svg"))
 }
 /// The elements whose ordinary inline layout the native inline producer does not
-/// support (top/bottom/middle alignment, vertical/RTL writing, `sticky`, a displaced
+/// support (top/bottom/middle alignment, vertical/RTL writing, a displaced
 /// inline split around a block, a displaced block split out of an inline), each
 /// with its reason. The rest of the document lays out as usual: the snapshot fails
 /// these elements' geometry reads only (miaskiewicz/turbo-surf#31), not the whole
@@ -165,9 +165,6 @@ fn validate_inline_style(
     if unsupported_writing(style) {
         return Err(SnapshotError::UnsupportedInlineWriting);
     }
-    if style.get("position") == Some("sticky") {
-        return Err(SnapshotError::UnsupportedInlinePosition);
-    }
     Ok(())
 }
 fn unsupported_writing(style: &ComputedStyle) -> bool {
@@ -277,7 +274,12 @@ impl SourceOffsets {
                 parent_font,
                 ctx.html_font_scale.unwrap_or(1.0),
             );
-        let (dx, dy) = super::block::flow_relative_offset(&used, width, ctx);
+        // A sticky inline is shifted once placed (`block::inline_sticky`).
+        let (dx, dy) = if used.position == super::value::Position::Sticky {
+            (0.0, 0.0)
+        } else {
+            super::block::flow_relative_offset(&used, width, ctx)
+        };
         let (px, py) = self.current();
         self.stack.push(ActiveInline {
             offset: (px + dx, py + dy),

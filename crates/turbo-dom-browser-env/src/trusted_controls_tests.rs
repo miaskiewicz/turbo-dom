@@ -225,6 +225,28 @@ fn dialog_popover_edges_match_chrome156() {
     assert_matches_control(&run_probe(probe), &expected);
 }
 
+/// turbo-dom#188: focus events are composed, a shown picker leaves its control `:open`, and
+/// an Esc close request closes a modal dialog synchronously (before already-queued toggle
+/// tasks) and then moves focus out of it. Captured with the Chrome 156.0.8078.47 headless
+/// shell (`chrome-headless-shell`), which reports itself as `HeadlessChrome`. A `close()`
+/// call's close task and its toggle task race in Chrome (toggle first in 4 of 5 captures);
+/// the committed capture has the usual order.
+#[test]
+fn activation_focus_matches_chrome156() {
+    let probe = include_str!("activation_focus_probe.js");
+    let json = include_str!("activation_focus_chrome156.json");
+    let control: serde_json::Value = serde_json::from_str(json).unwrap();
+    assert_eq!(control["browser"], "HeadlessChrome/156.0.8078.47");
+    assert_eq!(
+        control["probeSha256"],
+        format!(
+            "{:x}",
+            <sha2::Sha256 as sha2::Digest>::digest(probe.as_bytes())
+        )
+    );
+    assert_matches_control(&run_probe(probe), &control["result"]);
+}
+
 /// Run `source` (an async function body's value) with the host entry points exposed as
 /// `__test*` globals, draining the driver's virtual-clock tasks.
 fn run_host_script(source: &str) -> serde_json::Value {

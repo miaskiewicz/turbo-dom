@@ -240,6 +240,7 @@ fn transformed_run(text: &str, case: CaseTransform, locale: CaseLocale) -> Piece
         preserve_spaces: false,
         forced_newlines: false,
         text_transform: TextTransform { case, locale },
+        word_breaking: turbo_dom_layout::layout::inline::WordBreaking::default(),
     })
 }
 
@@ -300,4 +301,25 @@ fn length_changing_mappings_keep_the_source_cluster_offsets() {
     assert_eq!(found[0].0, "i");
     assert_eq!(found[0].1 .0, 0);
     assert_eq!(found.last().unwrap(), &s("x", (3, 4), (2, 3)));
+}
+
+#[test]
+fn greek_uppercase_drops_polytonic_marks_like_chrome_156() {
+    // Oracle: the `greek` rows of tests/fixtures/text-breaks/chrome156.json (Chrome
+    // 156.0.8078.47 headless `innerText` of `<p lang=el style=text-transform:uppercase>`):
+    // breathings, accents and perispomeni drop, a ypogegrammeni becomes a capital iota,
+    // and ι after an accented vowel takes a dialytika (turbo-dom#214).
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/text-breaks/chrome156.json")).unwrap();
+    assert_eq!(control["browser"], "Chrome/156.0.8078.47");
+    let rows = control["result"]["greek"].as_array().unwrap();
+    assert_eq!(rows.len(), 11);
+    for row in rows {
+        case(
+            "uppercase",
+            Some("el"),
+            row["source"].as_str().unwrap(),
+            row["upper"].as_str().unwrap(),
+        );
+    }
 }

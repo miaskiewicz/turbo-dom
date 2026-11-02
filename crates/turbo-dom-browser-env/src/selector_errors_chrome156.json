@@ -1,0 +1,250 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "selector_errors_probe.js",
+  "probeSha256": "021a132cbf847dd9fc83f449b82ca048d7d61c4329466365938ec6e1ba3b85cb",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "\"!!\"": {
+      "matches": [
+        "SyntaxError",
+        "Failed to execute 'matches' on 'Element': '!!' is not a valid selector.",
+        true
+      ],
+      "closest": [
+        "SyntaxError",
+        "Failed to execute 'closest' on 'Element': '!!' is not a valid selector.",
+        true
+      ],
+      "webkitMatchesSelector": [
+        "SyntaxError",
+        "Failed to execute 'webkitMatchesSelector' on 'Element': '!!' is not a valid selector.",
+        true
+      ],
+      "elementQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'Element': '!!' is not a valid selector.",
+        true
+      ],
+      "elementQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'Element': '!!' is not a valid selector.",
+        true
+      ],
+      "documentQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'Document': '!!' is not a valid selector.",
+        true
+      ],
+      "documentQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'Document': '!!' is not a valid selector.",
+        true
+      ],
+      "fragmentQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'DocumentFragment': '!!' is not a valid selector.",
+        true
+      ],
+      "fragmentQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'DocumentFragment': '!!' is not a valid selector.",
+        true
+      ],
+      "shadowQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'DocumentFragment': '!!' is not a valid selector.",
+        true
+      ],
+      "shadowQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'DocumentFragment': '!!' is not a valid selector.",
+        true
+      ]
+    },
+    "\"\"": {
+      "matches": [
+        "SyntaxError",
+        "Failed to execute 'matches' on 'Element': The provided selector is empty.",
+        true
+      ],
+      "closest": [
+        "SyntaxError",
+        "Failed to execute 'closest' on 'Element': The provided selector is empty.",
+        true
+      ],
+      "webkitMatchesSelector": [
+        "SyntaxError",
+        "Failed to execute 'webkitMatchesSelector' on 'Element': The provided selector is empty.",
+        true
+      ],
+      "elementQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'Element': The provided selector is empty.",
+        true
+      ],
+      "elementQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'Element': The provided selector is empty.",
+        true
+      ],
+      "documentQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'Document': The provided selector is empty.",
+        true
+      ],
+      "documentQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'Document': The provided selector is empty.",
+        true
+      ],
+      "fragmentQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'DocumentFragment': The provided selector is empty.",
+        true
+      ],
+      "fragmentQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'DocumentFragment': The provided selector is empty.",
+        true
+      ],
+      "shadowQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'DocumentFragment': The provided selector is empty.",
+        true
+      ],
+      "shadowQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'DocumentFragment': The provided selector is empty.",
+        true
+      ]
+    },
+    "\"p,\"": {
+      "matches": [
+        "SyntaxError",
+        "Failed to execute 'matches' on 'Element': 'p,' is not a valid selector.",
+        true
+      ],
+      "closest": [
+        "SyntaxError",
+        "Failed to execute 'closest' on 'Element': 'p,' is not a valid selector.",
+        true
+      ],
+      "webkitMatchesSelector": [
+        "SyntaxError",
+        "Failed to execute 'webkitMatchesSelector' on 'Element': 'p,' is not a valid selector.",
+        true
+      ],
+      "elementQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'Element': 'p,' is not a valid selector.",
+        true
+      ],
+      "elementQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'Element': 'p,' is not a valid selector.",
+        true
+      ],
+      "documentQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'Document': 'p,' is not a valid selector.",
+        true
+      ],
+      "documentQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'Document': 'p,' is not a valid selector.",
+        true
+      ],
+      "fragmentQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'DocumentFragment': 'p,' is not a valid selector.",
+        true
+      ],
+      "fragmentQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'DocumentFragment': 'p,' is not a valid selector.",
+        true
+      ],
+      "shadowQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'DocumentFragment': 'p,' is not a valid selector.",
+        true
+      ],
+      "shadowQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'DocumentFragment': 'p,' is not a valid selector.",
+        true
+      ]
+    },
+    "\":modal()\"": {
+      "matches": [
+        "SyntaxError",
+        "Failed to execute 'matches' on 'Element': ':modal()' is not a valid selector.",
+        true
+      ],
+      "closest": [
+        "SyntaxError",
+        "Failed to execute 'closest' on 'Element': ':modal()' is not a valid selector.",
+        true
+      ],
+      "webkitMatchesSelector": [
+        "SyntaxError",
+        "Failed to execute 'webkitMatchesSelector' on 'Element': ':modal()' is not a valid selector.",
+        true
+      ],
+      "elementQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'Element': ':modal()' is not a valid selector.",
+        true
+      ],
+      "elementQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'Element': ':modal()' is not a valid selector.",
+        true
+      ],
+      "documentQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'Document': ':modal()' is not a valid selector.",
+        true
+      ],
+      "documentQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'Document': ':modal()' is not a valid selector.",
+        true
+      ],
+      "fragmentQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'DocumentFragment': ':modal()' is not a valid selector.",
+        true
+      ],
+      "fragmentQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'DocumentFragment': ':modal()' is not a valid selector.",
+        true
+      ],
+      "shadowQuery": [
+        "SyntaxError",
+        "Failed to execute 'querySelector' on 'DocumentFragment': ':modal()' is not a valid selector.",
+        true
+      ],
+      "shadowQueryAll": [
+        "SyntaxError",
+        "Failed to execute 'querySelectorAll' on 'DocumentFragment': ':modal()' is not a valid selector.",
+        true
+      ]
+    }
+  }
+}

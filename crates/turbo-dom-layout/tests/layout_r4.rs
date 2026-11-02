@@ -390,22 +390,6 @@ fn sticky_right_pulls_a_box_left_within_its_containing_block() {
 }
 
 #[test]
-#[ignore = "inline sticky stays relative-shifted (#218, deferred)"]
-fn inline_sticky_boxes_stick_within_their_containing_block() {
-    // Chrome 156: an inline sticky span shifts only past its threshold and stays inside
-    // its block container: `top:10px` in a one-line block stays at y=2, in a 100px block
-    // `top:30px` reaches 30; `left:100px` reaches 100, `left:300px` stops at 192 (#218).
-    let b = cid_boxes(
-        "<div>a<span data-cid=t style='position:sticky;top:10px'>x</span></div>\
-         <div style='height:100px'>a<span data-cid=t2 style='position:sticky;top:30px'>x</span></div>\
-         <div style='width:200px'>a<span data-cid=l style='position:sticky;left:100px'>x</span></div>\
-         <div style='width:200px'>a<span data-cid=l2 style='position:sticky;left:300px'>x</span></div>",
-    );
-    assert_eq!((b["t"].1, b["t2"].1), (2.0, 30.0));
-    assert_eq!((b["l"].0, b["l2"].0), (100.0, 192.0));
-}
-
-#[test]
 fn a_lone_auto_left_margin_right_aligns_a_block() {
     // Chrome 156: `margin-left:auto` with a definite width pushes the box to the right
     // edge (x=570), less a definite right margin (x=560).

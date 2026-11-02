@@ -106,9 +106,12 @@ pub(crate) struct Ctx<'a> {
 
 /// A sticky box's vertical constraints: its node, `top` / `bottom` insets and
 /// vertical margins (`auto` as 0).
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct StickyPending {
     node_id: NodeId,
+    /// An inline sticky box's fragments and its content's (text, nested inlines,
+    /// atoms), shifted with it; empty for a block box (its fragment moves whole).
+    members: HashSet<NodeId>,
     top: Option<f32>,
     bottom: Option<f32>,
     margin_top: f32,
@@ -660,6 +663,13 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
             style.get("text-transform"),
             style.get("-webkit-locale"),
         ),
+        word_breaking: super::inline::WordBreaking::from_computed(
+            style.get("word-break"),
+            style
+                .get("overflow-wrap")
+                .or_else(|| style.get("word-wrap")),
+            style.get("hyphens"),
+        ),
     })
 }
 
@@ -875,8 +885,127 @@ fn layout_nonempty_lines(
             frags.push(place_atom(line, placed, &atoms, ctx));
         }
     }
+    inline_sticky(items, &mut frags, (cx, cw, bs.font_size), ctx);
     frags.extend(directives);
     (frags, para.layout.height)
+}
+
+/// Shift each inline `position: sticky` box of the paragraph (CSS Position 3 §3.4,
+/// miaskiewicz/turbo-dom#218) horizontally now, as [`sticky_dx`] does for a block
+/// (its fragments' union is its border box; the block container's content box is
+/// its containing block), and queue its vertical shift for when that block's
+/// height is known ([`place_sticky_kids`]). Its content moves with it.
+fn inline_sticky(
+    items: &[InlineItem],
+    frags: &mut [Fragment],
+    (cx, cw, font_size): (f32, f32, f32),
+    ctx: &mut Ctx,
+) {
+    for (index, item) in items.iter().enumerate() {
+        let InlineItem::Boundary {
+            node_id,
+            style,
+            start: true,
+        } = item
+        else {
+            continue;
+        };
+        if style.get("position") != Some("sticky") {
+            continue;
+        }
+        let members = inline_members(&items[index..], *node_id);
+        // An inline always has a fragment (an empty one keeps its insertion box).
+        let rect = union_rect(frags.iter(), *node_id).unwrap_or_default();
+        let kbs = resolve_box_style(
+            style,
+            ResolveCtx {
+                parent_font_size: font_size,
+                cb_width: cw,
+            },
+        );
+        let room = (cx + cw - rect.2).max(0.0);
+        let back = (rect.0 - cx).max(0.0);
+        let dx = if let Some(left) = kbs.inset_left.resolve(cw) {
+            (left - rect.0).clamp(0.0, room)
+        } else {
+            kbs.inset_right
+                .resolve(cw)
+                .map_or(0.0, |right| (ctx.root_w - right - rect.2).clamp(-back, 0.0))
+        };
+        translate_members(frags, &members, dx, 0.0);
+        let px = |inset: LengthPct| match inset {
+            LengthPct::Px(v) => Some(v),
+            _ => None,
+        };
+        ctx.sticky_pending.push(StickyPending {
+            node_id: *node_id,
+            members,
+            top: px(kbs.inset_top),
+            bottom: px(kbs.inset_bottom),
+            margin_top: 0.0,
+            margin_bottom: 0.0,
+        });
+    }
+}
+
+/// The nodes from an inline's start boundary (`items[0]`) to its end boundary.
+fn inline_members(items: &[InlineItem], id: NodeId) -> HashSet<NodeId> {
+    let mut members = HashSet::new();
+    for item in items {
+        match item {
+            InlineItem::Boundary {
+                node_id,
+                start: false,
+                ..
+            } if *node_id == id => break,
+            InlineItem::Boundary { node_id, .. }
+            | InlineItem::Text { node_id, .. }
+            | InlineItem::SourceBreak { node_id, .. }
+            | InlineItem::Marker { node_id, .. } => {
+                members.insert(*node_id);
+            }
+            InlineItem::Atomic(child) => {
+                members.insert(child.node_id);
+            }
+            InlineItem::LineBreak => {}
+        }
+    }
+    members
+}
+
+/// The union `(x0, y0, x1, y1)` of the fragments of `id` among `frags` and their
+/// descendants.
+fn union_rect<'a>(
+    frags: impl Iterator<Item = &'a Fragment>,
+    id: NodeId,
+) -> Option<(f32, f32, f32, f32)> {
+    let mut out: Option<(f32, f32, f32, f32)> = None;
+    for frag in frags {
+        let own = (frag.node_id == id).then_some((
+            frag.x,
+            frag.y,
+            frag.x + frag.width,
+            frag.y + frag.height,
+        ));
+        let found = own.or_else(|| union_rect(frag.children.iter(), id));
+        out = match (out, found) {
+            (Some(o), Some(r)) => Some((o.0.min(r.0), o.1.min(r.1), o.2.max(r.2), o.3.max(r.3))),
+            (o, r) => o.or(r),
+        };
+    }
+    out
+}
+
+/// Translate every fragment of `members` among `frags` (searching descendants of
+/// the others).
+fn translate_members(frags: &mut [Fragment], members: &HashSet<NodeId>, dx: f32, dy: f32) {
+    for frag in frags {
+        if members.contains(&frag.node_id) {
+            frag.translate(dx, dy);
+        } else {
+            translate_members(&mut frag.children, members, dx, dy);
+        }
+    }
 }
 
 /// What placing a paragraph's atoms reads: its items, the pre-laid atoms, the inline
@@ -1806,6 +1935,7 @@ fn layout_in_flow_kid(
         };
         ctx.sticky_pending.push(StickyPending {
             node_id: frag.node_id,
+            members: HashSet::new(),
             top: px(kbs.inset_top),
             bottom: px(kbs.inset_bottom),
             margin_top: kbs.margin.top,
@@ -1855,17 +1985,31 @@ fn place_sticky_kids(
     ctx: &mut Ctx,
 ) {
     for sticky in ctx.sticky_pending.split_off(mark) {
-        let Some(frag) = children.iter_mut().find(|f| f.node_id == sticky.node_id) else {
+        let rect = if sticky.members.is_empty() {
+            children
+                .iter()
+                .find(|f| f.node_id == sticky.node_id)
+                .map(|f| (f.x, f.y, f.x + f.width, f.y + f.height))
+        } else {
+            union_rect(children.iter(), sticky.node_id)
+        };
+        let Some((_, y0, _, y1)) = rect else {
             continue;
         };
-        let down = (top + h - sticky.margin_bottom - (frag.y + frag.height)).max(0.0);
-        let up = (frag.y - sticky.margin_top - top).max(0.0);
+        let down = (top + h - sticky.margin_bottom - y1).max(0.0);
+        let up = (y0 - sticky.margin_top - top).max(0.0);
         let dy = match (sticky.top, sticky.bottom) {
-            (Some(t), _) => (t - frag.y).clamp(0.0, down),
-            (None, Some(b)) => (vh - b - (frag.y + frag.height)).clamp(-up, 0.0),
+            (Some(t), _) => (t - y0).clamp(0.0, down),
+            (None, Some(b)) => (vh - b - y1).clamp(-up, 0.0),
             _ => 0.0,
         };
-        frag.translate(0.0, dy);
+        if sticky.members.is_empty() {
+            if let Some(frag) = children.iter_mut().find(|f| f.node_id == sticky.node_id) {
+                frag.translate(0.0, dy);
+            }
+        } else {
+            translate_members(children, &sticky.members, 0.0, dy);
+        }
     }
 }
 

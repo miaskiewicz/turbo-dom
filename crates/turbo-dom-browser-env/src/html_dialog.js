@@ -10,7 +10,7 @@
   const apply = Reflect.apply, define = Object.defineProperty, create = Object.create;
   const check = ns.domAccessor('nodeType', false, 'HTML:dialog'), connectedGetter = ns.domAccessor('isConnected', false, 'Node');
   const getAttribute = g.Element.prototype.getAttributeNS, setAttribute = g.Element.prototype.setAttributeNS, removeAttribute = g.Element.prototype.removeAttributeNS;
-  const focus = ns.focusElement;
+  const focus = ns.focusElement, blur = ns.blurElement;
   const ToggleEvent = g.ToggleEvent, EventType = g.Event, Exception = __tsNs.DOMException, ErrorType = TypeError;
   const records = new WeakMap(), weakGet = WeakMap.prototype.get, weakSet = WeakMap.prototype.set;
   const lower = Function.prototype.call.bind(String.prototype.toLowerCase);
@@ -70,7 +70,10 @@
     focusingSteps(node);
   }
   // https://html.spec.whatwg.org/#close-the-dialog
-  function close(node, result, source) {
+  // `fromCloseWatcher`: a close request (Esc) or light dismiss, whose `close` event Chrome
+  // dispatches once the input event's processing ends, before already-queued toggle tasks
+  // (a microtask here); close() and the other callers queue it as a task.
+  function close(node, result, source, fromCloseWatcher) {
     const state = record(node);
     if (!open(node) || state.closing) return;
     state.closing = true;
@@ -89,7 +92,13 @@
         state.previous = null;
         if ((Native('focus-within', node) || wasModal) && connected(previous)) apply(focus, previous, []);
       }
-      Native('schedule', node, () => dispatch(node, new EventType('close', { __proto__: null })));
+      const fire = () => dispatch(node, new EventType('close', { __proto__: null }));
+      Native(fromCloseWatcher ? 'microtask' : 'schedule', node, fire);
+      // Focus fixup: focus left inside the closed (no longer rendered) dialog moves to the
+      // body once the update runs, after the queued toggle and close tasks.
+      Native('schedule', node, () => {
+        if (!open(node) && Native('focus-within', node)) apply(blur, Native('focused', node), []);
+      });
     } finally { state.closing = false; }
   }
   // https://html.spec.whatwg.org/#dialog-request-close: the close watcher exists while the
@@ -131,7 +140,7 @@
   // prevent closing; its close action closes with the pending request-close result.
   ns.dialogCloseWatcher = (node, action, cancelable) => {
     const state = record(node);
-    if (action === 'close') { close(node, state.requestValue, state.requestSource); return true; }
+    if (action === 'close') { close(node, state.requestValue, state.requestSource, true); return true; }
     state.canceling = true;
     try { return dispatch(node, new EventType('cancel', { __proto__: null, cancelable: !!cancelable })); } finally { state.canceling = false; }
   };

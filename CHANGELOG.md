@@ -42,6 +42,28 @@ turbo-dom, -layout and -raster; 1.91 for turbo-dom-v8 and -browser-env.
 `innerHTML` / `outerHTML` (the `./runtime` serializer and rtdom `serialize_*`, scalar and
 UTF-16) now write `<` and `>` in attribute values as `&lt;` / `&gt;`, as Chrome 156 does.
 
+### Fixed — open layout and browser-env bugs before 0.6.0 (miaskiewicz/turbo-dom#188/#189/#212/#213/#214/#218, Chrome 156 controls)
+- Layout: `word-break: break-all` breaks between any letters, and `overflow-wrap:
+  break-word | anywhere` (or `word-break: break-word`) breaks a word only when it cannot fit
+  a line by itself (#212). A soft hyphen (U+00AD) is a break opportunity unless
+  `hyphens: none`, and when the line breaks there it draws a hyphen (#213).
+  `hyphens: auto` still acts as `manual`, since there are no hyphenation dictionaries.
+  `InlineRun` gains the public `word_breaking: WordBreaking` field. Control:
+  `tests/fixtures/text-breaks` (`scripts/fixture-font-chrome-controls.mjs`).
+- Layout: `lang=el` uppercase removes the breathings and accents of the Greek Extended
+  block, turns a ypogegrammeni into a capital iota, and adds a dialytika to an iota or
+  upsilon that follows an accented polytonic vowel: `ἀρχή` → `ΑΡΧΗ`, `ᾄδω` → `ΑΙΔΩ` (#214).
+- Layout: an inline `position: sticky` box no longer shifts like `relative`. It moves only
+  past its threshold, stays inside its block container's content box, and takes its
+  content with it. The native snapshot now answers geometry reads for it (#218). Control:
+  `tests/fixtures/inline-sticky`.
+- Browser-env: strict-mode indexed writes and deletes on `FileList` and
+  `DataTransferItemList` throw Chrome's TypeErrors. Selector `SyntaxError`s carry Chrome's
+  `Failed to execute '<method>' on '<Interface>': ` prefix (#189).
+- Browser-env: focus events are `composed`. A control matches `:open` after `showPicker()`.
+  Esc and light dismiss fire a dialog's `close` before toggle tasks that are already
+  queued. Closing a dialog that holds focus moves focus to the body (#188).
+
 ### Fixed — MutationObserver childList records match Chrome (Chrome 156 controls)
 - `./runtime`: `innerHTML` (element and shadow root) queued no record, and `textContent` /
   `replaceChildren` dropped the removed children. They now queue one record with both

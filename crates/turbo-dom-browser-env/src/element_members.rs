@@ -82,7 +82,7 @@ fn webkit_matches<'s>(
         );
         return;
     }
-    el_matches(scope, args, rv);
+    el_matches_as(scope, args, rv, "webkitMatchesSelector");
 }
 
 pub(super) fn install(scope: &mut v8::PinScope) {
@@ -105,6 +105,45 @@ mod tests {
             .unwrap_or_else(|| panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)))
             .to_rust_string_lossy(scope);
         serde_json::from_str(&value).unwrap()
+    }
+
+    /// turbo-dom#189: every selector method's SyntaxError carries Chrome's
+    /// "Failed to execute '<operation>' on '<interface>': " prefix (control captured with the
+    /// Chrome 156.0.8078.47 headless shell).
+    #[test]
+    fn selector_syntax_errors_name_operation_and_interface_like_chrome156() {
+        let probe = include_str!("selector_errors_probe.js");
+        let control: serde_json::Value =
+            serde_json::from_str(include_str!("selector_errors_chrome156.json")).unwrap();
+        assert_eq!(control["browser"], "HeadlessChrome/156.0.8078.47");
+        assert_eq!(
+            control["probeSha256"],
+            format!(
+                "{:x}",
+                <sha2::Sha256 as sha2::Digest>::digest(probe.as_bytes())
+            )
+        );
+        super::super::tests::init_v8();
+        let isolate = &mut v8::Isolate::new(Default::default());
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<!doctype html><html><head></head><body></body></html>",
+        );
+        let actual = run_probe(
+            scope,
+            &format!("JSON.stringify({})", probe.trim().trim_end_matches(';')),
+        );
+        reset();
+        let expected = control["result"].as_object().unwrap();
+        for (selector, methods) in expected {
+            for (method, result) in methods.as_object().unwrap() {
+                assert_eq!(&actual[selector][method], result, "{selector} {method}");
+            }
+        }
+        assert_eq!(actual, control["result"]);
     }
 
     /// Selector-engine gaps shared with `Element.matches` (same native matcher), and
