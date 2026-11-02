@@ -177,7 +177,6 @@ fn assert_matches(actual: &serde_json::Value, expected: &serde_json::Value, know
 }
 
 #[test]
-#[ignore = "turbo-dom#189: fails until the fix"]
 fn file_inputs_match_chrome156_control() {
     let probe = include_str!("file_inputs_probe.js");
     let cases = include_bytes!("file_inputs_cases.json");

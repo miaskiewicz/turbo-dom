@@ -176,7 +176,6 @@ fn compare_reports_sections_cases_and_case_counts_except_known_gaps() {
 /// profile through scripts/view-transitions-chrome-control.mjs: the main probe in a
 /// foreground tab, the hidden probe in a background tab whose document is hidden.
 #[test]
-#[ignore = "turbo-dom#189: fails until the fix"]
 fn view_transitions_match_chrome_156() {
     let probe = include_str!("view_transitions_probe.js");
     let hidden = include_str!("view_transitions_hidden_probe.js");
