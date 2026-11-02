@@ -17,6 +17,7 @@
 //   native-iframe/probe.js         -> native-iframe/chrome156.json         1200x900
 //   inline-borders/probe.js        -> inline-borders/chrome156.json        200x200
 //   text-breaks/probe.js           -> text-breaks/chrome156.json           800x600
+//   inline-sticky/probe.js         -> inline-sticky/chrome156.json         400x300
 //
 // Usage: node scripts/fixture-font-chrome-controls.mjs [--chrome PATH] [--only PROBE]
 //   --chrome defaults to the Playwright-cached Chrome for Testing 156.
@@ -78,6 +79,7 @@ const CONTROLS = [
   ["native-iframe/probe.js", "native-iframe/chrome156.json", [1200, 900]],
   ["inline-borders/probe.js", "inline-borders/chrome156.json", [200, 200]],
   ["text-breaks/probe.js", "text-breaks/chrome156.json", [800, 600]],
+  ["inline-sticky/probe.js", "inline-sticky/chrome156.json", [400, 300]],
 ];
 
 const server = createServer((_, res) => {
