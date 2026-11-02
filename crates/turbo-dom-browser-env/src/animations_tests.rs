@@ -153,35 +153,8 @@ fn animations_model_matches_chrome156_control() {
     let (expected, case) = control(include_str!("animations_chrome156.json"), probe, cases);
     assert_eq!(case["frozenTimeline"], true);
     let mut actual = run_probe(case["html"].as_str().unwrap(), probe, true);
-    // KNOWN_GAP (turbo-dom#233): Chrome enumerates a keyframe's properties in Blink's property-set hash order;
-    // the binding uses code-point order. Pin both orders, then compare everything else.
-    assert_eq!(
-        expected["keyframeOrder"],
-        serde_json::json!([
-            "offset",
-            "easing",
-            "composite",
-            "marginLeft",
-            "color",
-            "margin",
-            "opacity",
-            "computedOffset"
-        ])
-    );
-    assert_eq!(
-        actual["keyframeOrder"],
-        serde_json::json!([
-            "offset",
-            "easing",
-            "composite",
-            "color",
-            "margin",
-            "marginLeft",
-            "opacity",
-            "computedOffset"
-        ])
-    );
-    actual["keyframeOrder"] = expected["keyframeOrder"].clone();
+    // Keyframe properties enumerate in Blink's hash-map bucket order over CSSPropertyID (turbo-dom#233).
+    assert_eq!(actual["keyframeOrder"], expected["keyframeOrder"]);
     // KNOWN_GAP: Animation.rangeStart/rangeEnd return TimelineRangeOffset objects holding a
     // Typed OM CSSUnitValue, which this binding does not implement; they are absent.
     let mut expected = expected;

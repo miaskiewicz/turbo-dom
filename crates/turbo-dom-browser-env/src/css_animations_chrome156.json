@@ -1,8 +1,8 @@
 {
   "browser": "HeadlessChrome/156.0.8078.47",
   "v8": "15.6.75.19",
-  "casesSha256": "d6a9be25f0ec1801d2317b6af63d08605eac898daedb0cae8fdaeb9406ede4ab",
-  "probeSha256": "af8196a12ceeca7e8a39cabe2d9e30d15b02bc40a09cdf6a5bbf84d4996df1fc",
+  "casesSha256": "019cee230f44ae9f4e13731bf148a92f4ee6dddd1f5bf1aada0b59e1fca7368f",
+  "probeSha256": "fa4348299e7ee027414a4f026f89c7489037afe1b84267a9f10ac752112d1050",
   "collectorSha256": "5d8c7e0c3a6f4cf612c01cf05f99bd46e708b4b538e6183ebca4d4c2bf9aac87",
   "flags": [
     "--headless=new",
@@ -60,16 +60,16 @@
                 "auto"
               ],
               [
+                "transform",
+                "none"
+              ],
+              [
                 "color",
                 "rgb(255, 0, 0)"
               ],
               [
                 "opacity",
                 "0"
-              ],
-              [
-                "transform",
-                "none"
               ],
               [
                 "computedOffset",
@@ -90,16 +90,16 @@
                 "auto"
               ],
               [
+                "transform",
+                "translateX(10px)"
+              ],
+              [
                 "color",
                 "rgb(0, 0, 255)"
               ],
               [
                 "opacity",
                 "1"
-              ],
-              [
-                "transform",
-                "translateX(10px)"
               ],
               [
                 "computedOffset",
@@ -168,16 +168,16 @@
                 "auto"
               ],
               [
+                "transform",
+                "none"
+              ],
+              [
                 "color",
                 "rgb(255, 0, 0)"
               ],
               [
                 "opacity",
                 "0"
-              ],
-              [
-                "transform",
-                "none"
               ],
               [
                 "computedOffset",
@@ -198,16 +198,16 @@
                 "auto"
               ],
               [
+                "transform",
+                "translateX(10px)"
+              ],
+              [
                 "color",
                 "rgb(0, 0, 255)"
               ],
               [
                 "opacity",
                 "1"
-              ],
-              [
-                "transform",
-                "translateX(10px)"
               ],
               [
                 "computedOffset",
@@ -576,6 +576,149 @@
           ]
         ],
         "hHidden": 0,
+        "order": {
+          "small": [
+            "offset",
+            "easing",
+            "composite",
+            "color",
+            "transform",
+            "opacity",
+            "computedOffset"
+          ],
+          "pair": [
+            "offset",
+            "easing",
+            "composite",
+            "outlineColor",
+            "fontSize",
+            "computedOffset"
+          ],
+          "collide": [
+            "offset",
+            "easing",
+            "composite",
+            "outlineColor",
+            "fontSize",
+            "right",
+            "bottom",
+            "computedOffset"
+          ],
+          "shorthand": [
+            "offset",
+            "easing",
+            "composite",
+            "marginLeft",
+            "color",
+            "margin",
+            "opacity",
+            "computedOffset"
+          ],
+          "big": [
+            "offset",
+            "easing",
+            "composite",
+            "right",
+            "rotate",
+            "color",
+            "margin",
+            "opacity",
+            "borderTopColor",
+            "outlineColor",
+            "fontSize",
+            "visibility",
+            "bottom",
+            "scale",
+            "left",
+            "letterSpacing",
+            "filter",
+            "lineHeight",
+            "backgroundColor",
+            "fontWeight",
+            "marginLeft",
+            "paddingTop",
+            "maskImage",
+            "top",
+            "transform",
+            "width",
+            "wordSpacing",
+            "height",
+            "zIndex",
+            "maskComposite",
+            "translate",
+            "computedOffset"
+          ],
+          "css": [
+            [
+              [
+                "offset",
+                "easing",
+                "composite",
+                "right",
+                "rotate",
+                "color",
+                "visibility",
+                "opacity",
+                "borderTopColor",
+                "outlineColor",
+                "fontSize",
+                "bottom",
+                "scale",
+                "left",
+                "letterSpacing",
+                "filter",
+                "lineHeight",
+                "backgroundColor",
+                "marginLeft",
+                "paddingTop",
+                "top",
+                "width",
+                "transform",
+                "height",
+                "zIndex",
+                "translate",
+                "computedOffset"
+              ],
+              [
+                "offset",
+                "easing",
+                "composite",
+                "right",
+                "bottom",
+                "computedOffset"
+              ],
+              [
+                "offset",
+                "easing",
+                "composite",
+                "right",
+                "rotate",
+                "color",
+                "visibility",
+                "opacity",
+                "borderTopColor",
+                "outlineColor",
+                "fontSize",
+                "bottom",
+                "scale",
+                "left",
+                "letterSpacing",
+                "filter",
+                "lineHeight",
+                "backgroundColor",
+                "marginLeft",
+                "paddingTop",
+                "top",
+                "width",
+                "transform",
+                "height",
+                "zIndex",
+                "translate",
+                "computedOffset"
+              ]
+            ]
+          ]
+        },
         "document": [
           [
             "CSSTransition",
@@ -616,6 +759,36 @@
             "CSSAnimation",
             "m",
             "k2"
+          ],
+          [
+            "CSSAnimation",
+            "x",
+            "many"
+          ],
+          [
+            "Animation",
+            "p",
+            null
+          ],
+          [
+            "Animation",
+            "p",
+            null
+          ],
+          [
+            "Animation",
+            "p",
+            null
+          ],
+          [
+            "Animation",
+            "p",
+            null
+          ],
+          [
+            "Animation",
+            "p",
+            null
           ]
         ],
         "documentWithScript": [
@@ -627,6 +800,12 @@
           "CSSAnimation",
           "CSSAnimation",
           "CSSAnimation",
+          "CSSAnimation",
+          "Animation",
+          "Animation",
+          "Animation",
+          "Animation",
+          "Animation",
           "Animation"
         ],
         "shape": [

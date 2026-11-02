@@ -21,15 +21,8 @@
     animation.effect.target === null ? null : animation.effect.target.id,
     timing(animation.effect),
   ];
-  // Blink lists a keyframe's properties in its PropertyHandleSet's hash order, which depends on
-  // the set's insertion history (turbo-dom#233): the dictionary members lead, computedOffset
-  // trails, and the property members are compared as a sorted set.
-  const keyframes = (animation) =>
-    animation.effect.getKeyframes().map((frame) => {
-      const keys = Object.keys(frame);
-      const properties = keys.slice(3, -1).sort();
-      return [...keys.slice(0, 3), ...properties, keys.at(-1)].map((key) => [key, num(frame[key])]);
-    });
+  // Blink lists a keyframe's properties in its property hash map's bucket order (turbo-dom#233).
+  const keyframes = (animation) => animation.effect.getKeyframes().map((frame) => Object.keys(frame).map((key) => [key, num(frame[key])]));
   for (const id of ["a", "m", "n", "p"]) getComputedStyle($(id)).opacity;
   out.a = $("a").getAnimations().map(row);
   out.aKeyframes = $("a").getAnimations().map(keyframes);
@@ -58,6 +51,18 @@
   out.hShown = $("h").getAnimations().map(row);
   $("hp").style.display = "none";
   out.hHidden = $("h").getAnimations().length;
+  // Keyframe property order (turbo-dom#233): WTF hash map bucket order over CSSPropertyID, for
+  // script keyframes (inserted in code-unit order) and @keyframes (inserted in declaration order).
+  const vals = { color: "red", opacity: "0", transform: "none", marginLeft: "1px", width: "1px", backgroundColor: "red", left: "1px", top: "1px", zIndex: "1", height: "2px", fontSize: "3px", paddingTop: "1px", borderTopColor: "red", filter: "none", lineHeight: "2", translate: "1px", rotate: "1deg", scale: "2", visibility: "hidden", outlineColor: "red", letterSpacing: "1px", margin: "2px", right: "1px", bottom: "1px", maskImage: "none", maskComposite: "add", wordSpacing: "1px", fontWeight: "700" };
+  const scriptOrder = (names) => { const frame = {}; for (const name of names) frame[name] = vals[name]; return Object.keys($("p").animate([frame, frame], 1000).effect.getKeyframes()[0]); };
+  out.order = {
+    small: scriptOrder(["opacity", "color", "transform"]),
+    pair: scriptOrder(["outlineColor", "fontSize"]),
+    collide: scriptOrder(["right", "bottom", "outlineColor", "fontSize"]),
+    shorthand: scriptOrder(["marginLeft", "margin", "color", "opacity"]),
+    big: scriptOrder(Object.keys(vals)),
+    css: $("x").getAnimations().map((animation) => animation.effect.getKeyframes().map((frame) => Object.keys(frame))),
+  };
   out.document = document.getAnimations().map((animation) => [animation.constructor.name, animation.effect.target.id, animation.animationName ?? animation.transitionProperty]);
   // Script animations sort after CSS ones in document.getAnimations().
   $("p").animate({ opacity: [0, 1] }, 1000);
