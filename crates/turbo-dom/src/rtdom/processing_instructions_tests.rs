@@ -27,6 +27,7 @@ fn describe(tree: &Tree, parent: Handle) -> Vec<String> {
                 "T({})",
                 String::from_utf16_lossy(&tree.node_value_utf16(node).unwrap())
             ),
+            NodeType::Doctype => "DOCTYPE".to_owned(),
             _ => format!(
                 "E({}:{})",
                 tree.local_name(node).unwrap(),
@@ -178,4 +179,19 @@ fn documents_parse_processing_instructions_like_chrome() {
     // The standard (html5lib-tests) document parse.
     let standard = Tree::parse_utf16(&units("<?a x?>"));
     assert_eq!(describe(&standard, standard.root())[0], "C(?a x?)");
+}
+
+#[test]
+fn positioned_documents_parse_processing_instructions_like_chrome() {
+    let source = units("<?pi x?><!doctype html><p><?q y?>");
+    let tree = Tree::parse_utf16_with_source_positions_and_processing_instructions(&source);
+    assert!(tree.processing_instructions());
+    assert_eq!(describe(&tree, tree.root())[0], "PI(pi|x)");
+    let p = tree.query_selector("p").unwrap();
+    assert_eq!(describe(&tree, p), ["PI(q|y)"]);
+    assert!(tree.source_position(p).is_some());
+    // The default positioned parse (the html5lib-tests conformance path).
+    let standard = Tree::parse_utf16_with_source_positions(&source);
+    assert!(!standard.processing_instructions());
+    assert_eq!(describe(&standard, standard.root())[0], "C(?pi x?)");
 }

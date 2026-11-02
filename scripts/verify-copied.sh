@@ -279,7 +279,7 @@ dom_ownership.rs: turbo-test#204 ownership grouping skips wrappers of a discarde
 animations.js: 0.7.0 turbo-dom#187 CSSAnimation / CSSTransition for declarative animations and transitions, created on style resolution; composite order transitions, CSS animations, script
 browser_env.js: 0.7.0 turbo-dom#187 private ns.cssKeyframes export of @keyframes rule records for CSS animations
 animations_tests.rs: 0.7.0 turbo-dom#187 css_animations Chrome 156 control test; control() accepts the frozen headless shell's HeadlessChrome product name; the keyframe-order KNOWN_GAP cites turbo-dom#233
-browser_env.rs: 0.7.0 turbo-dom#135 installed and parsed documents parse HTML processing instructions like Chrome 156 (Tree::set_processing_instructions / parse_utf16_with_processing_instructions)
+browser_env.rs: 0.7.0 turbo-dom#135 installed (page loads and source-position installs included) and parsed documents parse HTML processing instructions like Chrome 156 (Tree::set_processing_instructions / parse_utf16_with_processing_instructions)
 sanitizer.rs: 0.7.0 turbo-dom#135 parseHTML documents parse processing instructions like Chrome; Document-level processing instructions are kept, like comments
 sanitizer.js: 0.7.0 turbo-dom#135 a safe setHTML dictionary without processing-instruction lists allows none (Chrome 156)
 edge_probes_tests.rs: 0.7.0 turbo-dom#135 html_processing_instructions and page_processing_instructions Chrome 156 control tests; the sanitizer probe's processing-instruction KNOWN_GAP rows are gone
