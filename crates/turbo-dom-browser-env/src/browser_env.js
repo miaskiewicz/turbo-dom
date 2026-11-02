@@ -97,6 +97,8 @@
   var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
+  var canvasMeasureTextNative=g.__canvasMeasureTextNative;delete g.__canvasMeasureTextNative;
+  var canvasLengthUnitNative=g.__canvasLengthUnitNative;delete g.__canvasLengthUnitNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
@@ -2165,6 +2167,63 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           } });
       });
     };
+    // TextMetrics (turbo-dom#237, canvas_text_metrics_interface_chrome156.json): a global,
+    // non-constructible interface whose fields are enumerable prototype getters over the
+    // instance's measured values; they throw "Illegal invocation" on any other receiver.
+    var __tmFields = ['width','actualBoundingBoxLeft','actualBoundingBoxRight','fontBoundingBoxAscent',
+      'fontBoundingBoxDescent','actualBoundingBoxAscent','actualBoundingBoxDescent','hangingBaseline',
+      'alphabeticBaseline','ideographicBaseline'];
+    var __tmValues = new WeakMap();
+    var TextMetrics = function TextMetrics(){
+      throw new TypeError(new.target ? "Failed to construct 'TextMetrics': Illegal constructor" : 'Illegal constructor');
+    };
+    var __tmProto = TextMetrics.prototype;
+    __tmFields.forEach(function(name, index){
+      var holder = {};
+      Object.defineProperty(holder, name, { get: function(){
+        var values = __tmValues.get(this);
+        if (!values) throw new TypeError('Illegal invocation');
+        return values[index];
+      } });
+      var get = Object.getOwnPropertyDescriptor(holder, name).get;
+      Object.defineProperty(get, 'name', { value: 'get ' + name });
+      Object.defineProperty(__tmProto, name, { get: get, enumerable: true, configurable: true });
+    });
+    Object.defineProperty(__tmProto, 'constructor', { value: TextMetrics, writable: true, configurable: true });
+    Object.defineProperty(__tmProto, Symbol.toStringTag, { value: 'TextMetrics', configurable: true });
+    Object.defineProperty(TextMetrics, 'prototype', { writable: false, enumerable: false, configurable: false });
+    Object.defineProperty(g, 'TextMetrics', { value: TextMetrics, writable: true, enumerable: false, configurable: true });
+    var __textMetrics = function(values){
+      var metrics = Object.create(__tmProto);
+      __tmValues.set(metrics, values);
+      return metrics;
+    };
+    // Text attributes (turbo-dom#237, canvas_text_attributes_chrome156.json): letterSpacing /
+    // wordSpacing take a CSS length (any <length> unit Chrome parses; no percentage, unitless
+    // number, calc() or padding) and
+    // read back lowercased with the number reserialized; the enum attributes accept only
+    // their exact values. An invalid assignment is ignored. measureText passes them on.
+    var __cvLength = /^([+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?)([a-z]+)$/i;
+    var __cvEnums = {
+      fontKerning: ['auto', 'normal', 'none'],
+      fontStretch: ['ultra-condensed', 'extra-condensed', 'condensed', 'semi-condensed', 'normal',
+        'semi-expanded', 'expanded', 'extra-expanded', 'ultra-expanded'],
+      textRendering: ['auto', 'optimizeSpeed', 'optimizeLegibility', 'geometricPrecision']
+    };
+    var __cvText = function(ctx){
+      var state = { letterSpacing: '0px', wordSpacing: '0px', fontKerning: 'auto', fontStretch: 'normal', textRendering: 'auto' };
+      Object.keys(state).forEach(function(name){
+        var allowed = __cvEnums[name];
+        Object.defineProperty(ctx, name, { configurable: true, enumerable: true,
+          get: function(){ return state[name]; },
+          set: function(value){
+            var text = String(value);
+            if (allowed) { if (allowed.indexOf(text) >= 0) state[name] = text; return; }
+            var length = __cvLength.exec(text);
+            if (length && canvasLengthUnitNative(length[2])) state[name] = String(Number(length[1])) + length[2].toLowerCase();
+          } });
+      });
+    };
     var mkCanvasCtx = function(canvas){
       var noop = function(){};
       var paint = function(){ var p = { addColorStop: noop }; __cvPaints.add(p); return p; };
@@ -2194,7 +2253,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           return { data: data, width: w, height: h, colorSpace: 'srgb' };
         },
         createImageData: function(w,h){ if (w && w.width != null) { h = w.height; w = w.width; } return { data: new Uint8ClampedArray(Math.max(0,(w||0)*(h||0)*4)), width: w||0, height: h||0, colorSpace: 'srgb' }; },
-        measureText: function(s){ this._ops.push(['measureText', String(s||''), this.font]); var wdt = (String(s||'').length)*6; return { width: wdt, actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2, actualBoundingBoxLeft: 0, actualBoundingBoxRight: wdt, fontBoundingBoxAscent: 8, fontBoundingBoxDescent: 2 }; },
+        // measureText (turbo-dom#237, canvas_measure_text_chrome156.json): turbo-dom-layout
+        // measures the run in the host's fonts like Chrome 156; Chrome 156 leaves the
+        // emHeight* fields undefined.
+        measureText: function(s){
+          var text = String(s);
+          this._ops.push(['measureText', text, this.font]);
+          var m = canvasMeasureTextNative(text, String(this.font), String(this.textAlign), String(this.textBaseline), String(this.direction),
+            this.letterSpacing, this.wordSpacing, this.fontKerning, this.textRendering);
+          // Native order -> the TextMetrics field order.
+          return __textMetrics([m[0], m[1], m[2], m[5], m[6], m[3], m[4], m[7], m[8], m[9]]);
+        },
         isPointInPath: function(){ return false; }, isPointInStroke: function(){ return false; },
         lineWidth: 1, lineCap: 'butt', lineJoin: 'miter',
         miterLimit: 10, lineDashOffset: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0,
@@ -2202,6 +2271,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         globalAlpha: 1, globalCompositeOperation: 'source-over', imageSmoothingEnabled: true, imageSmoothingQuality: 'low'
       };
       __cvStyles(ctx, canvas);
+      __cvText(ctx);
       // Record-only paint/path methods: log the call (args + relevant paint state) so the
       // readback hash reflects what was drawn, but perform no rasterization.
       var recorded = ['fillRect','clearRect','strokeRect','beginPath','closePath','moveTo','lineTo',
@@ -2219,7 +2289,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       // still log their call first, so the raster replay keeps its own matching stack.
       var drawingState = ['fillStyle','strokeStyle','shadowColor','globalAlpha','globalCompositeOperation',
         'lineWidth','lineCap','lineJoin','miterLimit','lineDashOffset','shadowBlur','shadowOffsetX',
-        'shadowOffsetY','font','textAlign','textBaseline','direction','imageSmoothingEnabled','imageSmoothingQuality'];
+        'shadowOffsetY','font','textAlign','textBaseline','direction','imageSmoothingEnabled','imageSmoothingQuality',
+        'letterSpacing','wordSpacing','fontKerning','fontStretch','textRendering'];
       var recordSave = ctx.save, recordRestore = ctx.restore;
       ctx.save = function(){
         recordSave.apply(this, arguments);

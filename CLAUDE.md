@@ -178,7 +178,7 @@ package or publish workflow.
   (the UA maps `dir`; `direction` inherits), an RTL scroller overflows to the left with
   offsets `ScrollMetrics::min_x..=0` (`scroll::inline_alignment` swaps start/end for
   scrollIntoView), and a quirks-mode live document follows the line height quirk (the
-  style pass marks it with `style::QUIRKS_LINE_HEIGHT`). Since turbo-dom#234 `vertical-rl` /
+  style pass marks it with `style::QUIRKS_LINE_HEIGHT`); inherited-RTL inlines lay out unreordered (bidi: turbo-dom#238). Since turbo-dom#234 `vertical-rl` /
   `vertical-lr` lay out through a logical-coordinate layer (`layout::writing`): a box whose
   writing mode differs from its parent's (`LayoutBox::writing_root`, an independent formatting
   context) is laid out in its own inline/block space from a relabelled copy of its subtree
@@ -301,8 +301,13 @@ package or publish workflow.
   and iframe-sizing controls, at a real `--force-device-scale-factor=2`, since emulated DSF rounds
   font metrics in CSS pixels). Only tests of the host-font policy itself read installed fonts and
   stay `cfg(target_os = "macos")`: `native_serif_policy` (serif resolves to the physical Times
-  face) and `original_text_units`' script-fallback comparison (CoreText picks the fallback face);
-  what they test is the host lookup, so fixture fonts would test nothing.
+  face), `original_text_units`' script-fallback comparison (CoreText picks the fallback face)
+  and `host_font_advances_chrome` (system Times: AAT `morx` + legacy `kern` table, whose pairs
+  HarfBuzz splits across both glyphs; `scripts/host-font-chrome-control.mjs`, turbo-dom#236);
+  what they test is the host lookup, so fixture fonts would test nothing. Native advances follow
+  Blink's font cache (`text::blink_font_size`: a font is built at `unsigned(size*100)/100`, HTML
+  text at the device size) and `FontFace::blink_advances` (16.16 Skia advance + separately
+  scaled shaper adjustments).
 - **Rust selector engine = Chrome 156.** `rtdom/query.rs` (string API) and `query_utf16.rs` (UTF-16
   API; also parses any string selector containing `\`) are checked against
   `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json` (regenerate with

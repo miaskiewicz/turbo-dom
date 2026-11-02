@@ -211,6 +211,23 @@ fn block_static_position(cx: f32, flow: &FlowRun) -> (f32, f32) {
     (cx, flow.cursor + flow.pending)
 }
 
+/// The right content edge an out-of-flow box's static position starts from in an RTL
+/// flow (`None` in an LTR one): its inline start (CSS Position 3 §4.1; Chrome 156,
+/// miaskiewicz/turbo-dom#238).
+fn rtl_static_right(cx: f32, cw: f32, flow: &FlowRun) -> Option<f32> {
+    flow.rtl.then_some(cx + cw)
+}
+
+/// Move an out-of-flow box with both horizontal insets `auto` to its RTL static
+/// position: its right margin edge on the flow's right content edge `right`.
+fn place_rtl_static(frag: &mut Fragment, kbs: &BoxStyle, right: Option<f32>) {
+    if let Some(right) = right {
+        if kbs.inset_left == LengthPct::Auto && kbs.inset_right == LengthPct::Auto {
+            frag.translate(right - kbs.margin.right - frag.width - frag.x, 0.0);
+        }
+    }
+}
+
 /// The `(dx, dy)` a `position:relative` box is visually shifted by (it still
 /// occupies its normal-flow space). `left`/`top` win over `right`/`bottom`. Horizontal
 /// `%` insets resolve against the containing block's width, vertical ones against its
@@ -1798,7 +1815,7 @@ fn layout_block_flow(
         align: block_align(bs),
         rtl: bs.rtl && !(bs.legacy_align && bs.text_align == Align::Left),
     };
-    let mut deferred: Vec<(&LayoutBox, (f32, f32))> = Vec::new();
+    let mut deferred: Vec<(&LayoutBox, (f32, f32), Option<f32>)> = Vec::new();
     // Whether the margins of the next in-flow child were hoisted out this box's top by
     // its caller: the first in-flow child's, and past it each following child's while
     // the earlier ones are empty (self-collapsing; miaskiewicz/turbo-dom#76).
@@ -1816,7 +1833,11 @@ fn layout_block_flow(
         // resolve it against the measured content height, so a `bottom:0; height:33%`
         // overlay lands inside its card instead of collapsing and dropping below it.
         if defer_this_kid(bs, &kbs, ctx) {
-            deferred.push((kid, block_static_position(cx, &flow)));
+            deferred.push((
+                kid,
+                block_static_position(cx, &flow),
+                rtl_static_right(cx, cw, &flow),
+            ));
             continue;
         }
         // `absolute`/`fixed`/`float`: taken out of normal flow, placed on the side
@@ -1893,7 +1914,7 @@ fn defer_this_kid(parent: &BoxStyle, kbs: &BoxStyle, ctx: &Ctx) -> bool {
 /// inset — is known. Exposes `content_h` as the CB height for the duration; the
 /// enclosing box's frame restores `abs_cb_h` afterwards.
 fn place_deferred_abs(
-    deferred: &[(&LayoutBox, (f32, f32))],
+    deferred: &[(&LayoutBox, (f32, f32), Option<f32>)],
     cw: f32,
     fs: f32,
     content_h: f32,
@@ -1905,10 +1926,11 @@ fn place_deferred_abs(
     }
     ctx.abs_cb_h = content_h;
     ctx.abs_cb_h_known = true;
-    for (kid, static_pos) in deferred {
+    for (kid, static_pos, rtl_right) in deferred {
         let kbs = positioned_style(kid, cw, fs, ctx);
         let (bx, by) = out_of_flow_origin(kid, &kbs, cw, ctx, *static_pos);
         let mut frag = layout_positioned(kid, (bx, by), cw, fs, ctx);
+        place_rtl_static(&mut frag, &kbs, *rtl_right);
         anchor_bottom(&mut frag, &kbs, content_h, ctx);
         frags.push(frag);
     }
@@ -1953,6 +1975,7 @@ fn place_special_kid(
         let kbs = &positioned_style(kid, cw, fs, ctx);
         let (bx, by) = out_of_flow_origin(kid, kbs, cw, ctx, static_pos);
         let mut frag = layout_positioned(kid, (bx, by), cw, fs, ctx);
+        place_rtl_static(&mut frag, kbs, rtl_static_right(cx, cw, flow));
         // A `bottom`-anchored (auto `top`) box left at its static y by
         // `out_of_flow_origin` — because its height wasn't known there — is pulled
         // to the CB bottom now, when the CB height is DEFINITE. (An indefinite-height

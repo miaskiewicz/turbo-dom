@@ -633,6 +633,10 @@ struct Seg {
     /// this segment's logically last glyph against a following space
     /// (`inline_advances::prepare`; included in `native_width`).
     trailing_kern: f64,
+    /// Native HTML only: the second half of a split `kern`-table pair across the space
+    /// before this segment, on its logically first glyph (`inline_advances::prepare`;
+    /// included in `native_width`).
+    leading_kern: f64,
 }
 
 struct Word {
@@ -702,6 +706,7 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
         width,
         native_width: f64::from(width),
         trailing_kern: 0.0,
+        leading_kern: 0.0,
     }
 }
 
@@ -2135,6 +2140,34 @@ fn source_shaper_is_rtl(text: &str, enabled: bool) -> bool {
     buffer.direction() == rustybuzz::Direction::RightToLeft
 }
 
+/// A native HTML segment's glyph advances (`native_text_advance::advances`), with the
+/// kerning Chrome's whole-item shaping puts across the spaces around it on its logically
+/// last and first glyphs (`inline_advances::prepare`).
+fn native_seg_advances(seg: &Seg, shaped: &[crate::text::ShapedGlyph], device: f32) -> Vec<f64> {
+    let mut advances = native_text_advance::advances(
+        &seg.face,
+        (seg.font_size, device),
+        shaped,
+        seg.letter_spacing,
+    );
+    let logical = |pick: fn(u32, u32) -> bool| {
+        (0..shaped.len()).reduce(|best, i| {
+            if pick(shaped[i].cluster, shaped[best].cluster) {
+                i
+            } else {
+                best
+            }
+        })
+    };
+    if let Some(last) = logical(|a, b| a >= b) {
+        advances[last] += seg.trailing_kern;
+    }
+    if let Some(first) = logical(|a, b| a < b) {
+        advances[first] += seg.leading_kern;
+    }
+    advances
+}
+
 fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f32>)) -> SourceRun {
     let (capture_sources, html_font_metrics, html_font_scale) = policy;
     let scale = seg.face.scale(seg.font_size);
@@ -2173,27 +2206,13 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
         (Vec::new(), Vec::new())
     };
     let ends: Vec<bool> = crate::text::cluster_ends(&shaped).collect();
-    let last_logical = shaped
-        .iter()
-        .enumerate()
-        .max_by_key(|(_, glyph)| glyph.cluster)
-        .map(|(index, _)| index);
+    let native = html_font_scale.map(|device| native_seg_advances(seg, &shaped, device));
     for (index, (g, cluster_end)) in shaped.into_iter().zip(ends).enumerate() {
         let letter_spacing = if cluster_end { seg.letter_spacing } else { 0.0 };
         let ordinary_advance = scale * g.x_advance as f32 + letter_spacing;
-        let native_advance = html_font_scale.map_or(f64::from(ordinary_advance), |_| {
-            let kern = if Some(index) == last_logical {
-                seg.trailing_kern
-            } else {
-                0.0
-            };
-            native_text_advance::glyph_advance(
-                &seg.face,
-                seg.font_size,
-                g.x_advance,
-                letter_spacing,
-            ) + kern
-        });
+        let native_advance = native
+            .as_ref()
+            .map_or(f64::from(ordinary_advance), |advances| advances[index]);
         let advance = html_font_scale.map_or(ordinary_advance, |_| native_advance as f32);
         let position = html_font_scale.map_or(x, |_| native_x as f32);
         if capture_sources {
@@ -2764,8 +2783,8 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
         options.original_units,
     );
     apply_baselines(&mut words, options.baselines);
-    if options.scale.is_some() {
-        inline_advances::prepare(&mut words);
+    if let Some(scale) = options.scale {
+        inline_advances::prepare(&mut words, scale);
     }
     let mut placer = Placer::new(align, region, strut, (true, true, options.scale));
     placer.strut_metrics = options.strut_metrics;

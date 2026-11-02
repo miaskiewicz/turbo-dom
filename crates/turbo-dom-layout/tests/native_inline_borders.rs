@@ -326,6 +326,18 @@ fn unsupported_ordinary_inline_contexts_fail_only_their_own_reads() {
             );
         }
     }
+    // miaskiewicz/turbo-dom#190: an inline that only inherits its RTL container's
+    // direction lays out (approximately, #238); one that changes direction opens a bidi
+    // embedding and fails its own reads.
+    let (snapshot, names) = capture(
+        "<div id=box dir=rtl><span id=i style='padding-left:2px'>a</span> <span id=u dir=ltr>b</span></div>",
+    );
+    assert_eq!(snapshot.unsupported_inline_geometry(names["i"]), None);
+    assert!(element_geometry(&snapshot, names["i"]).is_ok());
+    assert_eq!(
+        snapshot.unsupported_inline_geometry(names["u"]),
+        Some(&SnapshotError::UnsupportedInlineWriting)
+    );
     // position:absolute blockifies (CSS 2.1 §9.7): a supported out-of-flow block box.
     let (snapshot, names) = capture("<span id=a style='position:absolute'>absolute</span>");
     assert_eq!(snapshot.unsupported_inline_geometry(names["a"]), None);

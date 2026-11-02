@@ -9,6 +9,7 @@
 //! directly are the embedder's: this module only reads them.
 mod block;
 mod components;
+pub use components::LENGTH_UNITS;
 mod grammar;
 mod longhand;
 mod serialize;

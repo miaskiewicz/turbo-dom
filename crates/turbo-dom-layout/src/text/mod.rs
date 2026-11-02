@@ -2,6 +2,7 @@
 //! registry with weight/style selection and per-character fallback, and greedy
 //! line layout with metrics and alignment.
 
+mod blink_advance;
 #[cfg(feature = "bundled-fonts")]
 mod bundled;
 mod font;
@@ -11,7 +12,10 @@ mod registry;
 pub(crate) mod transform;
 
 pub(crate) use font::cluster_ends;
-pub use font::{FontFace, HtmlFontMetrics, ShapedGlyph};
+pub use font::{
+    blink_font_size, CanvasShaping, CanvasTextMetrics, CanvasTextOptions, FontFace,
+    HtmlFontMetrics, ShapedGlyph,
+};
 pub use inline::{layout_text, Align, LineBox, TextStyle, WhiteSpace};
 pub use registry::{FontRegistry, SystemFontPolicy};
 pub use transform::{CaseLocale, CaseTransform, TextTransform};
