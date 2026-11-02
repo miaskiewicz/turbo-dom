@@ -349,10 +349,11 @@ fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
                         _ => None,
                     };
                     let text = text.unwrap_or_else(|| {
+                        let spelled = camel_function(&name);
                         if SUM_FUNCTIONS.contains(&name.as_str()) {
-                            format!("{name}({})", sum_arguments(&inner))
+                            format!("{spelled}({})", sum_arguments(&inner))
                         } else {
-                            format!("{name}({})", join(&inner))
+                            format!("{spelled}({})", join(&inner))
                         }
                     });
                     Comp {
@@ -1441,4 +1442,27 @@ pub(super) fn substitution_text(value: &str) -> String {
         out.push(character);
     }
     out
+}
+
+/// Chrome's spelling of a (lowercased) function name: the transform functions with a capital
+/// letter keep it (`translateX`, `scaleY`, `rotateZ`, `skewX`, …); every other name is lowercase
+/// (turbo-dom#225).
+fn camel_function(name: &str) -> std::borrow::Cow<'_, str> {
+    const CAMEL: &[&str] = &[
+        "translateX",
+        "translateY",
+        "translateZ",
+        "scaleX",
+        "scaleY",
+        "scaleZ",
+        "rotateX",
+        "rotateY",
+        "rotateZ",
+        "skewX",
+        "skewY",
+    ];
+    match CAMEL.iter().find(|c| c.eq_ignore_ascii_case(name)) {
+        Some(c) => std::borrow::Cow::Borrowed(c),
+        None => std::borrow::Cow::Borrowed(name),
+    }
 }
