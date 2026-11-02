@@ -127,7 +127,10 @@ fn the_new_tree_is_untouched_by_stale_wrappers() {
         ",
     );
     reset();
-    assert_eq!(result, "TypeError,TypeError,TypeError,next,false,true,false");
+    assert_eq!(
+        result,
+        "TypeError,TypeError,TypeError,next,false,true,false"
+    );
 }
 
 #[test]
@@ -139,7 +142,10 @@ fn a_handle_past_the_end_of_its_tree_throws_instead_of_aborting() {
     let scope = &mut v8::ContextScope::new(scope, context);
     install(scope);
     assert_eq!(
-        run(scope, "globalThis.__node = document.createElement('div'); 'ok'"),
+        run(
+            scope,
+            "globalThis.__node = document.createElement('div'); 'ok'"
+        ),
         "ok"
     );
     let global = context.global(scope);

@@ -272,6 +272,9 @@ user_activation_gates.js: benv-js r2 member paths call captured intrinsics, not 
 focus_group_tests.rs: benv-js r2 member paths call captured intrinsics, not page-replaceable builtins (turbo-dom#194)
 browser_env.js: D15 captureNodeIntrinsics re-captures members defined after bootstrap (Document#documentElement) and fails install on any non-function entry (turbo-dom#199 regression)
 browser_env.rs: D15 namespace_lookup_on_non_element_nodes_matches_chrome156 control test
+browser_env.rs: turbo-test#204 wrappers carry a tree generation next to their DOM id (owner_tag/tagged_owner); handle_of refuses a wrapper of a discarded tree or a handle its tree never minted; holder_handle throws Illegal invocation instead of panicking
+document_basics.rs: turbo-test#204 adoption tags moved wrappers with the target tree's generation
+dom_ownership.rs: turbo-test#204 ownership grouping skips wrappers of a discarded tree
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"

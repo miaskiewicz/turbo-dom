@@ -247,11 +247,7 @@ pub(super) fn pin_callback_owners<'s>(
         if deferrable {
             pin_until_reconciled(scope, object);
         }
-        let Some(owner) = object
-            .get_internal_field(scope, 1)
-            .and_then(|value| v8::Local::<v8::BigInt>::try_from(value).ok())
-            .map(|id| id.u64_value().0)
-        else {
+        let Some(Some(owner)) = super::tagged_owner(scope, object) else {
             continue;
         };
         if seen[..distinct].contains(&owner) {
