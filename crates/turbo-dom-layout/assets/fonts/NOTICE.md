@@ -27,6 +27,11 @@ Notes:
 - Inter is the static OTF (CFF) build from the upstream `rsms/inter` v4.1
   release; all other families are TrueType (`glyf`) outlines.
 
+- `ic-fixture/IcFixture.ttf` is a test fixture only (never bundled): a box-glyph
+  face written by `scripts/make-ic-fixture-font.py` in this repository (no third-party
+  outlines; it is covered by the repository's MIT licence). It maps U+6C34 to a 0.9em
+  advance so the CSS `ic` unit has a glyph to measure (turbo-dom#237).
+
 ## Sources
 
 - Inter            — https://github.com/rsms/inter (release v4.1, `extras/otf/`)

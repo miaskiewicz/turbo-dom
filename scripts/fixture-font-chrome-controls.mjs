@@ -67,6 +67,8 @@ const FACES = [
   ["Inter", "inter/Inter-BoldItalic.otf", 700, "italic"],
   ["Fira Code", "fira-code/FiraCode-Regular.ttf", 400, "normal"],
   ["Fira Code", "fira-code/FiraCode-Bold.ttf", 700, "normal"],
+  // test_support::ic_fixture_face(): U+6C34 at 0.9em, for the CSS `ic` unit (turbo-dom#237).
+  ["Ic Fixture", "ic-fixture/IcFixture.ttf", 400, "normal"],
 ];
 const fontFiles = {};
 const css = FACES.map(([family, file, weight, style]) => {
@@ -108,6 +110,11 @@ const CONTROLS = [
   [
     "crates/turbo-dom-browser-env/src/canvas_spacing_units_probe.js",
     "crates/turbo-dom-browser-env/src/canvas_spacing_units_chrome156.json",
+    [800, 600],
+  ],
+  [
+    "crates/turbo-dom-browser-env/src/canvas_ic_unit_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_ic_unit_chrome156.json",
     [800, 600],
   ],
 ];
