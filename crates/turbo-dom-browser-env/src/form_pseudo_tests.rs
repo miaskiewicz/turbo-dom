@@ -101,3 +101,90 @@ fn form_pseudo_classifier_ignores_guest_prototypes() {
     );
     reset();
 }
+
+const SUBJECT_LOCAL_PAGE: &str = "<!doctype html><body><form id=f><fieldset id=fs disabled><div id=d>\
+<input id=a required><span id=s1></span><input id=b type=checkbox checked><span id=s2></span></div></fieldset>\
+<input id=r1 type=radio name=g><input id=r2 type=radio name=g><input id=c><textarea id=t readonly></textarea>\
+<select id=sel><option id=o1>x</option><option id=o2 selected disabled>y</option></select></form>\
+<div id=far><input id=e disabled><p id=p><span id=deep></span></p></div></body>";
+
+/// The live answer of matches()/closest() for each selector and element, compared with the
+/// answer querySelectorAll gives (every element of the document classified).
+const SUBJECT_LOCAL_PROBE: &str = r#"(() => {
+  const selectors = [':disabled', ':enabled', ':checked', ':required', ':optional', ':read-only',
+    ':read-write', ':default', ':disabled + span', ':disabled ~ span', ':checked ~ span',
+    ':disabled span', ':disabled > *', 'fieldset:disabled input', ':not(:disabled)',
+    ':is(:required, :checked)', ':indeterminate', 'form:invalid input', 'form:valid input',
+    ':invalid', ':has(:checked)', 'div:has(> :disabled) span', 'p:not(:read-write) span',
+    ':placeholder-shown', 'option:disabled', 'option:checked'];
+  const mismatches = [];
+  const elements = Array.from(document.querySelectorAll('*'));
+  for (const selector of selectors) {
+    const all = Array.from(document.querySelectorAll(selector));
+    for (const element of elements) {
+      const matched = element.matches(selector);
+      if (matched !== all.includes(element)) mismatches.push(`${selector} matches #${element.id}: ${matched}`);
+      let expected = null;
+      for (let node = element; node && node.nodeType === 1; node = node.parentNode) if (all.includes(node)) { expected = node; break; }
+      if (element.closest(selector) !== expected) mismatches.push(`${selector} closest #${element.id}`);
+    }
+  }
+  return JSON.stringify(mismatches);
+})()"#;
+
+fn run_page_script(scope: &mut v8::PinScope, source: &str) -> String {
+    v8::tc_scope!(let scope, scope);
+    let source = v8::String::new(scope, source).unwrap();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
+    result.to_rust_string_lossy(scope)
+}
+
+#[test]
+fn subject_local_matches_and_closest_agree_with_query_selector_all() {
+    super::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_independent_html(scope, SUBJECT_LOCAL_PAGE);
+    assert_eq!(run_page_script(scope, SUBJECT_LOCAL_PROBE), "[]");
+    reset();
+}
+
+// matches()/closest() classify only the elements a match can depend on (the subject's inclusive
+// ancestors), not the whole document: user-event asks `element.matches(':disabled')` on every
+// pointer step, and classifying a large form's every control each time was quadratic.
+#[test]
+fn matches_classifies_only_the_subjects_ancestors() {
+    super::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let inputs = "<input>".repeat(300);
+    install_independent_html(
+        scope,
+        &format!("<!doctype html><body><form>{inputs}<div><button id=x>go</button></div></form></body>"),
+    );
+    let classified = |scope: &mut v8::PinScope, source: &str| {
+        CLASSIFIED.with(|count| count.set(0));
+        run_page_script(scope, source);
+        CLASSIFIED.with(|count| count.get())
+    };
+    let x = "document.getElementById('x')";
+    // html, body, form, div, button
+    assert_eq!(classified(scope, &format!("{x}.matches(':disabled')")), 5);
+    assert_eq!(classified(scope, &format!("{x}.closest(':enabled')")), 5);
+    // A sibling combinator adds the preceding siblings of the subject and its ancestors.
+    // (html, head, body, form, 300 inputs, div, button: the inputs and head precede ancestors)
+    assert_eq!(classified(scope, &format!("{x}.matches(':enabled ~ div > button')")), 306);
+    // :has(), the form-wide :invalid and the radio groups of :indeterminate classify the tree.
+    let all = 306;
+    assert_eq!(classified(scope, &format!("{x}.matches(':has(:disabled)')")), all);
+    assert_eq!(classified(scope, &format!("{x}.matches('form:invalid button')")), all);
+    assert_eq!(classified(scope, &format!("{x}.matches(':indeterminate')")), all);
+    assert_eq!(classified(scope, "document.querySelectorAll(':disabled').length"), all);
+    reset();
+}
