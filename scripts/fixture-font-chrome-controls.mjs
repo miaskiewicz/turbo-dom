@@ -20,6 +20,8 @@
 //   inline-sticky/probe.js         -> inline-sticky/chrome156.json         400x300
 //   line-height/probe.js           -> line-height/chrome156.json           400x300
 //   hyphens/probe.js               -> hyphens/chrome156.json               800x600
+//   crates/turbo-dom-browser-env/src/canvas_measure_text_probe.js
+//                                  -> canvas_measure_text_chrome156.json   800x600
 //   text-advances/probe.js         -> text-advances/chrome156.json         800x600
 //
 // Usage: node scripts/fixture-font-chrome-controls.mjs [--chrome PATH] [--only PROBE]
@@ -87,7 +89,14 @@ const CONTROLS = [
   ["line-height/probe.js", "line-height/chrome156.json", [400, 300]],
   ["hyphens/probe.js", "hyphens/chrome156.json", [800, 600]],
   ["text-advances/probe.js", "text-advances/chrome156.json", [800, 600]],
+  // A repo-relative path names a control outside the layout fixtures (turbo-dom#237).
+  [
+    "crates/turbo-dom-browser-env/src/canvas_measure_text_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_measure_text_chrome156.json",
+    [800, 600],
+  ],
 ];
+const located = (path) => (path.startsWith("crates/") ? join(repo, path) : join(fixtures, path));
 
 const server = createServer((_, res) => {
   res.writeHead(200, { "content-type": "text/html" });
@@ -98,7 +107,7 @@ const url = `http://127.0.0.1:${server.address().port}/`;
 try {
   for (const [probe, out, [width, height]] of CONTROLS) {
     if (values.only && probe !== values.only) continue;
-    const source = readFileSync(join(fixtures, probe));
+    const source = readFileSync(located(probe));
     const browser = await chromium.launch({
       executablePath: chromePath,
       headless: true,
@@ -132,7 +141,7 @@ try {
     const [w, h] = environment.viewport;
     if (w !== width || h !== height || environment.deviceScaleFactor !== 2)
       throw new Error(`${out}: environment ${JSON.stringify(environment)}`);
-    writeFileSync(join(fixtures, out), `${JSON.stringify(control, null, 2)}\n`);
+    writeFileSync(located(out), `${JSON.stringify(control, null, 2)}\n`);
     console.log(`${out}: ${control.browser}, ${errors.length} errors`);
     await browser.close();
   }
