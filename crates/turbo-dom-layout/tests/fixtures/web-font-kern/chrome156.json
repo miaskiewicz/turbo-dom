@@ -1,0 +1,122 @@
+{
+ "browser": "Chrome/156.0.8078.47",
+ "collectorSha256": "42e3fd593cec200017c09bf22cc2b409af5ef4948d643409c42c7e1fabd5b902",
+ "variantSha256": {
+  "cff-v1": "c0095ede662d1759a2fbf84eac5449294ad204560b850953695c127bd1c489d8",
+  "cff-v0": "a592e3deb9aa942601e32b87baf238c1ff7079e619a24074e16f0ed3c643211c",
+  "tt-v0": "9a2cbf1d3117e2485c785b482e095b805a87a80a7b6f3d7f342f5f1a0fd55ed5",
+  "tt-v1": "dabc08bf46a0b708f3e5cb1a81c21420827c5305b9f8d396f521c2d5fcf94f9f"
+ },
+ "size": 48,
+ "errors": [],
+ "result": [
+  {
+   "variant": "cff-v1",
+   "loaded": 1,
+   "text": "AVATAR Wave",
+   "canvas_normal": 179.90394592285156,
+   "html_normal": 179.90625,
+   "canvas_none": 179.90394592285156,
+   "html_none": 179.90625
+  },
+  {
+   "variant": "cff-v1",
+   "loaded": 1,
+   "text": "To Yo, LT",
+   "canvas_normal": 113.75994873046875,
+   "html_normal": 113.765625,
+   "canvas_none": 113.75994873046875,
+   "html_none": 113.765625
+  },
+  {
+   "variant": "cff-v1",
+   "loaded": 1,
+   "text": "WAVE",
+   "canvas_normal": 73.77597045898438,
+   "html_normal": 73.78125,
+   "canvas_none": 73.77597045898438,
+   "html_none": 73.78125
+  },
+  {
+   "variant": "cff-v0",
+   "loaded": 1,
+   "text": "AVATAR Wave",
+   "canvas_normal": 179.90394592285156,
+   "html_normal": 179.90625,
+   "canvas_none": 179.90394592285156,
+   "html_none": 179.90625
+  },
+  {
+   "variant": "cff-v0",
+   "loaded": 1,
+   "text": "To Yo, LT",
+   "canvas_normal": 113.75994873046875,
+   "html_normal": 113.765625,
+   "canvas_none": 113.75994873046875,
+   "html_none": 113.765625
+  },
+  {
+   "variant": "cff-v0",
+   "loaded": 1,
+   "text": "WAVE",
+   "canvas_normal": 73.77597045898438,
+   "html_normal": 73.78125,
+   "canvas_none": 73.77597045898438,
+   "html_none": 73.78125
+  },
+  {
+   "variant": "tt-v0",
+   "loaded": 1,
+   "text": "AVATAR Wave",
+   "canvas_normal": 298.5234375,
+   "html_normal": 297.65625,
+   "canvas_none": 323.90625,
+   "html_none": 323.90625
+  },
+  {
+   "variant": "tt-v0",
+   "loaded": 1,
+   "text": "To Yo, LT",
+   "canvas_normal": 194.0625,
+   "html_normal": 192.28125,
+   "canvas_none": 206.625,
+   "html_none": 206.625
+  },
+  {
+   "variant": "tt-v0",
+   "loaded": 1,
+   "text": "WAVE",
+   "canvas_normal": 132.4453125,
+   "html_normal": 132.4453125,
+   "canvas_none": 143.953125,
+   "html_none": 143.953125
+  },
+  {
+   "variant": "tt-v1",
+   "loaded": 1,
+   "text": "AVATAR Wave",
+   "canvas_normal": 323.90625,
+   "html_normal": 323.90625,
+   "canvas_none": 323.90625,
+   "html_none": 323.90625
+  },
+  {
+   "variant": "tt-v1",
+   "loaded": 1,
+   "text": "To Yo, LT",
+   "canvas_normal": 206.625,
+   "html_normal": 206.625,
+   "canvas_none": 206.625,
+   "html_none": 206.625
+  },
+  {
+   "variant": "tt-v1",
+   "loaded": 1,
+   "text": "WAVE",
+   "canvas_normal": 143.953125,
+   "html_normal": 143.953125,
+   "canvas_none": 143.953125,
+   "html_none": 143.953125
+  }
+ ]
+}
