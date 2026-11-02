@@ -2166,6 +2166,37 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           } });
       });
     };
+    // TextMetrics (turbo-dom#237, canvas_text_metrics_interface_chrome156.json): a global,
+    // non-constructible interface whose fields are enumerable prototype getters over the
+    // instance's measured values; they throw "Illegal invocation" on any other receiver.
+    var __tmFields = ['width','actualBoundingBoxLeft','actualBoundingBoxRight','fontBoundingBoxAscent',
+      'fontBoundingBoxDescent','actualBoundingBoxAscent','actualBoundingBoxDescent','hangingBaseline',
+      'alphabeticBaseline','ideographicBaseline'];
+    var __tmValues = new WeakMap();
+    var TextMetrics = function TextMetrics(){
+      throw new TypeError(new.target ? "Failed to construct 'TextMetrics': Illegal constructor" : 'Illegal constructor');
+    };
+    var __tmProto = TextMetrics.prototype;
+    __tmFields.forEach(function(name, index){
+      var holder = {};
+      Object.defineProperty(holder, name, { get: function(){
+        var values = __tmValues.get(this);
+        if (!values) throw new TypeError('Illegal invocation');
+        return values[index];
+      } });
+      var get = Object.getOwnPropertyDescriptor(holder, name).get;
+      Object.defineProperty(get, 'name', { value: 'get ' + name });
+      Object.defineProperty(__tmProto, name, { get: get, enumerable: true, configurable: true });
+    });
+    Object.defineProperty(__tmProto, 'constructor', { value: TextMetrics, writable: true, configurable: true });
+    Object.defineProperty(__tmProto, Symbol.toStringTag, { value: 'TextMetrics', configurable: true });
+    Object.defineProperty(TextMetrics, 'prototype', { writable: false, enumerable: false, configurable: false });
+    Object.defineProperty(g, 'TextMetrics', { value: TextMetrics, writable: true, enumerable: false, configurable: true });
+    var __textMetrics = function(values){
+      var metrics = Object.create(__tmProto);
+      __tmValues.set(metrics, values);
+      return metrics;
+    };
     var mkCanvasCtx = function(canvas){
       var noop = function(){};
       var paint = function(){ var p = { addColorStop: noop }; __cvPaints.add(p); return p; };
@@ -2202,9 +2233,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           var text = String(s);
           this._ops.push(['measureText', text, this.font]);
           var m = canvasMeasureTextNative(text, String(this.font), String(this.textAlign), String(this.textBaseline), String(this.direction));
-          return { width: m[0], actualBoundingBoxLeft: m[1], actualBoundingBoxRight: m[2],
-            actualBoundingBoxAscent: m[3], actualBoundingBoxDescent: m[4], fontBoundingBoxAscent: m[5],
-            fontBoundingBoxDescent: m[6], hangingBaseline: m[7], alphabeticBaseline: m[8], ideographicBaseline: m[9] };
+          // Native order -> the TextMetrics field order.
+          return __textMetrics([m[0], m[1], m[2], m[5], m[6], m[3], m[4], m[7], m[8], m[9]]);
         },
         isPointInPath: function(){ return false; }, isPointInStroke: function(){ return false; },
         lineWidth: 1, lineCap: 'butt', lineJoin: 'miter',
