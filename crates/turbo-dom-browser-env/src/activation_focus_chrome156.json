@@ -1,0 +1,407 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "activation_focus_probe.js",
+  "probeSha256": "ed26145522ac70a4e1e12cdfd9c8917e13b00134bd3ede8372b088e7fb768d3b",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "picker-date": {
+      "result": {
+        "shown": "undefined",
+        "open": true,
+        "openLater": true,
+        "active": "b"
+      },
+      "log": [
+        [
+          "focus",
+          "b",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "b",
+          true,
+          true
+        ]
+      ]
+    },
+    "picker-color": {
+      "result": {
+        "shown": "undefined",
+        "open": true,
+        "openLater": true,
+        "active": "b"
+      },
+      "log": [
+        [
+          "focus",
+          "b",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "b",
+          true,
+          true
+        ]
+      ]
+    },
+    "picker-time": {
+      "result": {
+        "shown": "undefined",
+        "open": true,
+        "openLater": true,
+        "active": "b"
+      },
+      "log": [
+        [
+          "focus",
+          "b",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "b",
+          true,
+          true
+        ]
+      ]
+    },
+    "picker-select": {
+      "result": {
+        "shown": "undefined",
+        "open": true,
+        "openLater": true,
+        "active": "b"
+      },
+      "log": [
+        [
+          "focus",
+          "b",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "b",
+          true,
+          true
+        ]
+      ]
+    },
+    "picker-text": {
+      "result": {
+        "shown": "undefined",
+        "open": false,
+        "openLater": false,
+        "active": "b"
+      },
+      "log": [
+        [
+          "focus",
+          "b",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "b",
+          true,
+          true
+        ]
+      ]
+    },
+    "focus-move": {
+      "result": "BODY",
+      "log": [
+        [
+          "focus",
+          "x",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "x",
+          true,
+          true
+        ],
+        [
+          "blur",
+          "x",
+          true,
+          false
+        ],
+        [
+          "focusout",
+          "x",
+          true,
+          true
+        ],
+        [
+          "focus",
+          "y",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "y",
+          true,
+          true
+        ],
+        [
+          "blur",
+          "y",
+          true,
+          false
+        ],
+        [
+          "focusout",
+          "y",
+          true,
+          true
+        ]
+      ]
+    },
+    "escape-modal": {
+      "result": {
+        "before": "inner",
+        "open": false,
+        "active": "BODY"
+      },
+      "log": [
+        [
+          "beforetoggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "focus",
+          "inner",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "inner",
+          true,
+          true
+        ],
+        [
+          "toggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "cancel",
+          "d",
+          false,
+          false
+        ],
+        [
+          "beforetoggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "close",
+          "d",
+          false,
+          false
+        ],
+        [
+          "toggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "blur",
+          "inner",
+          true,
+          false
+        ],
+        [
+          "focusout",
+          "inner",
+          true,
+          true
+        ]
+      ]
+    },
+    "escape-dialog-and-popover": {
+      "result": {
+        "first": {
+          "dialog": false,
+          "popover": false
+        },
+        "dialog": false,
+        "popover": false
+      },
+      "log": [
+        [
+          "beforetoggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "focus",
+          "d",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "d",
+          true,
+          true
+        ],
+        [
+          "beforetoggle",
+          "p",
+          false,
+          false
+        ],
+        [
+          "toggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "toggle",
+          "p",
+          false,
+          false
+        ],
+        [
+          "beforetoggle",
+          "p",
+          false,
+          false
+        ],
+        [
+          "cancel",
+          "d",
+          false,
+          false
+        ],
+        [
+          "beforetoggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "close",
+          "d",
+          false,
+          false
+        ],
+        [
+          "toggle",
+          "p",
+          false,
+          false
+        ],
+        [
+          "toggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "blur",
+          "d",
+          true,
+          false
+        ],
+        [
+          "focusout",
+          "d",
+          true,
+          true
+        ]
+      ]
+    },
+    "close-modal-method": {
+      "result": {
+        "before": "inner",
+        "sync": "inner",
+        "active": "BODY"
+      },
+      "log": [
+        [
+          "beforetoggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "focus",
+          "inner",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "inner",
+          true,
+          true
+        ],
+        [
+          "beforetoggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "toggle",
+          "d",
+          false,
+          false
+        ],
+        [
+          "close",
+          "d",
+          false,
+          false
+        ],
+        [
+          "blur",
+          "inner",
+          true,
+          false
+        ],
+        [
+          "focusout",
+          "inner",
+          true,
+          true
+        ]
+      ]
+    }
+  }
+}

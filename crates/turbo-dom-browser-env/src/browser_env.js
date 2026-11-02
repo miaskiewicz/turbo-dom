@@ -2962,7 +2962,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // in SVG, when it is an <a> with an href / xlink:href).
     var nativeFocus=htmlProto.focus,nativeBlur=htmlProto.blur,nativeClick=htmlProto.click;
     // Internal focusing steps (dialogs, focusgroup navigation) focus any element kind.
-    __ns.focusElement=nativeFocus;
+    __ns.focusElement=nativeFocus;__ns.blurElement=nativeBlur;
     var parsesTabIndex=function(element){var value=element.getAttribute('tabindex');return value!==null&&/^[\t\n\f\r ]*[+-]?[0-9]/.test(value);};
     // Rendering, as Chrome 156 measures it: an SVG element other than <svg> needs a non-HTML
     // parent, a non-SVG element under SVG needs a <foreignObject> parent, and no inclusive

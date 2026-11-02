@@ -90,6 +90,10 @@ pub(super) struct State {
     open_dialogs: Vec<Handle>,
     dialog_pointerdown: Option<Handle>,
     popover_pointerdown: Option<Handle>,
+    /// The control whose picker a successful showPicker() opened. No picker UI exists to
+    /// dismiss it, so it stays open (`:open`) until another picker opens or the control
+    /// leaves the document, as Chrome 156's headless pickers do (turbo-dom#188).
+    open_picker: Option<Handle>,
 }
 impl State {
     pub(super) fn sweep_storage(&mut self, tree: &Tree) {
@@ -97,6 +101,7 @@ impl State {
         self.details.retain(|node, _| tree.is_live(*node));
         self.details_tasks.retain(|node, _| tree.is_live(*node));
         self.open_dialogs.retain(|node| tree.is_live(*node));
+        self.open_picker = self.open_picker.filter(|node| tree.is_live(*node));
         for group in &mut self.watchers.groups {
             group.retain(|watcher| tree.is_live(watcher.node()));
         }
@@ -462,6 +467,11 @@ pub(super) fn dialog_closed(node: Handle) {
     state(|state| state.open_dialogs.retain(|entry| *entry != node));
 }
 
+/// The control with an open picker (the caller checks it is still connected).
+pub(super) fn open_picker() -> Option<Handle> {
+    state(|state| state.open_picker).flatten()
+}
+
 pub(super) fn popover_shown(node: Handle) {
     establish(Watcher::Popover(node));
 }
@@ -763,6 +773,9 @@ fn dispatch(
             }
         }
         "disabled" => rv.set_bool(html_invokers::disabled_control(node)),
+        "picker-opened" => {
+            state(|state| state.open_picker = Some(node));
+        }
         "rendered" => {
             let rendered = rendered(scope, node);
             rv.set_bool(rendered);

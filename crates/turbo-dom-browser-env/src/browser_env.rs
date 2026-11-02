@@ -3242,22 +3242,41 @@ fn el_remove_attribute<'s>(
     }
 }
 
+/// The selector argument of `operation` (`matches`, `closest`, `querySelector`, ...) on
+/// `node`. A SyntaxError names the operation and the interface it runs on, as Chrome's
+/// bindings do: `Element`, `Document`, or `DocumentFragment` (also for a ShadowRoot, which
+/// inherits the ParentNode members from DocumentFragment).
 fn selector_argument<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: &v8::FunctionCallbackArguments<'s>,
     node: Handle,
+    operation: &str,
 ) -> Option<(String, Vec<u16>, bool)> {
     if !require_arguments(scope, args, 1) {
         return None;
     }
     let units = dom_units(scope, args.get(0))?;
     let scalar = String::from_utf16_lossy(&units);
+    let interface = match with_tree(|tree| tree.node_type_id(node)) {
+        Some(9) => "Document",
+        Some(11) => "DocumentFragment",
+        _ => "Element",
+    };
+    let prefix = format!("Failed to execute '{operation}' on '{interface}': ");
+    if scalar.is_empty() {
+        throw_dom_error(
+            scope,
+            "SyntaxError",
+            &format!("{prefix}The provided selector is empty."),
+        );
+        return None;
+    }
     // The matcher is lenient; admission uses the same grammar as stylesheets.
     if css_selector_syntax::selector_list(&scalar).is_none() {
         throw_dom_error(
             scope,
             "SyntaxError",
-            &format!("'{scalar}' is not a valid selector."),
+            &format!("{prefix}'{scalar}' is not a valid selector."),
         );
         return None;
     }
@@ -3284,7 +3303,7 @@ fn el_query_selector<'s>(
     let Some(h) = receiver_handle(scope, &args, &[1, 11]) else {
         return;
     };
-    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h) else {
+    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h, "querySelector") else {
         return;
     };
     let found = with_tree(|t| {
@@ -3999,7 +4018,7 @@ fn el_closest<'s>(
     let Some(h) = receiver_handle(scope, &args, &[1]) else {
         return;
     };
-    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h) else {
+    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h, "closest") else {
         return;
     };
     let found = with_tree(|t| {
@@ -4027,13 +4046,22 @@ fn el_closest<'s>(
 fn el_matches<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: v8::FunctionCallbackArguments<'s>,
+    rv: v8::ReturnValue,
+) {
+    el_matches_as(scope, args, rv, "matches");
+}
+/// `matches` under `operation`'s name (`webkitMatchesSelector` shares the matcher).
+pub(super) fn el_matches_as<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue,
+    operation: &str,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
     let Some(h) = receiver_handle(scope, &args, &[1]) else {
         return;
     };
-    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h) else {
+    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h, operation) else {
         return;
     };
     let m = with_tree(|t| {
@@ -4120,7 +4148,8 @@ fn el_query_selector_all<'s>(
     let Some(h) = receiver_handle(scope, &args, &[1, 11]) else {
         return;
     };
-    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h) else {
+    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h, "querySelectorAll")
+    else {
         return;
     };
     let handles = with_tree(|t| {
@@ -5529,7 +5558,11 @@ fn dispatch_synthetic_with_trust(
     for (k, val) in [
         ("bubbles", bubbles),
         ("cancelable", cancelable),
-        ("composed", ty == "click"),
+        // Chrome's UA focus events are composed, like its trusted clicks.
+        (
+            "composed",
+            matches!(ty, "click" | "focus" | "blur" | "focusin" | "focusout"),
+        ),
     ] {
         if let Some(key) = v8::String::new(scope, k) {
             let b = v8::Boolean::new(scope, val);
@@ -5867,7 +5900,7 @@ fn doc_query_selector<'s>(
     let Some(h) = receiver_handle(scope, &args, &[9]) else {
         return;
     };
-    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h) else {
+    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h, "querySelector") else {
         return;
     };
     let found = with_tree(|t| {
@@ -5891,7 +5924,8 @@ fn doc_query_selector_all<'s>(
     let Some(h) = receiver_handle(scope, &args, &[9]) else {
         return;
     };
-    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h) else {
+    let Some((sel, units, unit_path)) = selector_argument(scope, &args, h, "querySelectorAll")
+    else {
         return;
     };
     let handles: Vec<Handle> = with_tree(|t| {
@@ -6669,6 +6703,27 @@ fn named_dispatch<'s>(
         &[operation.into(), name, value],
     )
 }
+/// [`named_dispatch`] for a setter or deleter, which also receives V8's should-throw mode:
+/// an exotic object without an indexed setter / deleter throws Blink's TypeError only
+/// where the write must throw (strict mode) and refuses quietly otherwise.
+fn named_mutation_dispatch<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: &v8::PropertyCallbackArguments<'s>,
+    operation: &str,
+    name: v8::Local<'s, v8::Name>,
+    value: Option<v8::Local<'s, v8::Value>>,
+) -> Option<v8::Local<'s, v8::Value>> {
+    let callback = v8::Local::<v8::Function>::try_from(args.data()).ok()?;
+    let operation = v8::String::new(scope, operation)?;
+    let value = value.unwrap_or_else(|| v8::undefined(scope).into());
+    let throws = interceptor_mode::should_throw(scope, args);
+    let throws = v8::Boolean::new(scope, throws);
+    callback.call(
+        scope,
+        args.holder().into(),
+        &[operation.into(), name.into(), value, throws.into()],
+    )
+}
 fn named_getter<'s, 'i>(
     scope: &mut v8::PinScope<'s, 'i>,
     name: v8::Local<'s, v8::Name>,
@@ -6760,7 +6815,7 @@ fn named_setter<'s, 'i, T: 'static>(
 where
     for<'cb> v8::ReturnValue<'cb, T>: NamedMutationResult,
 {
-    if let Some(result) = named_dispatch(scope, &args, "set", Some(name), Some(value)) {
+    if let Some(result) = named_mutation_dispatch(scope, &args, "set", name, Some(value)) {
         if result.is_undefined() {
             return v8::Intercepted::kNo;
         }
@@ -6775,7 +6830,7 @@ fn named_deleter<'s, 'i>(
     args: v8::PropertyCallbackArguments<'s>,
     mut rv: v8::ReturnValue<v8::Boolean>,
 ) -> v8::Intercepted {
-    if let Some(result) = named_dispatch(scope, &args, "delete", Some(name), None) {
+    if let Some(result) = named_mutation_dispatch(scope, &args, "delete", name, None) {
         if result.is_undefined() {
             return v8::Intercepted::kNo;
         }

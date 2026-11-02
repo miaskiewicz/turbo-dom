@@ -3,8 +3,8 @@
 // watcher manager uses to run dialog cancel/close actions.
 //
 // The embedder's native activation answers every gate (see user_activation_gates.rs). A
-// successful showPicker() consumes activation exactly as Chrome does; no picker UI is
-// modeled, so a control never reports an open picker (`:open`).
+// successful showPicker() consumes activation exactly as Chrome does and leaves a
+// date/time/color input or a select matching `:open` (no picker UI ever dismisses it).
 (function () {
   'use strict';
   const Native = globalThis.__activationNative; delete globalThis.__activationNative;
@@ -32,6 +32,8 @@
   // frame (except file and color), then mutability, then transient activation.
   const readOnlyTypes = { text: 1, search: 1, url: 1, tel: 1, email: 1, password: 1, date: 1, month: 1, week: 1, time: 1, 'datetime-local': 1, number: 1 };
   const knownTypes = { hidden: 1, text: 1, search: 1, tel: 1, url: 1, email: 1, password: 1, date: 1, month: 1, week: 1, time: 1, 'datetime-local': 1, number: 1, range: 1, color: 1, checkbox: 1, radio: 1, file: 1, submit: 1, image: 1, reset: 1, button: 1 };
+  // The input types whose picker Chrome reports as `:open`.
+  const pickerTypes = { date: 1, month: 1, week: 1, time: 1, 'datetime-local': 1, color: 1 };
   const inputType = node => { const value = lower(apply(getAttribute, node, ['type']) || ''); return knownTypes[value] === 1 ? value : 'text'; };
   const pickerError = (owner, message, name) => new Exception("Failed to execute 'showPicker' on '" + owner + "': " + message, name);
   method(g.HTMLInputElement.prototype, 'showPicker', function () {
@@ -41,6 +43,7 @@
     if (Native('disabled', this) || readOnlyTypes[type] === 1 && apply(hasAttribute, this, ['readonly'])) throw pickerError('HTMLInputElement', 'HTMLInputElement::showPicker() cannot be used on immutable controls.', 'InvalidStateError');
     if (!query(this, TRANSIENT)) throw pickerError('HTMLInputElement', 'HTMLInputElement::showPicker() requires user activation.', 'NotAllowedError');
     query(this, CONSUME);
+    if (pickerTypes[type] === 1) Native('picker-opened', this);
   }, 0);
   method(g.HTMLSelectElement.prototype, 'showPicker', function () {
     apply(checkSelect, this, []);
@@ -49,6 +52,7 @@
     if (!query(this, TRANSIENT)) throw pickerError('HTMLSelectElement', 'showPicker() requires user activation.', 'NotAllowedError');
     if (!Native('rendered', this)) throw pickerError('HTMLSelectElement', 'showPicker() requires the select is rendered.', 'NotSupportedError');
     query(this, CONSUME);
+    Native('picker-opened', this);
   }, 0);
 
   // ---- Fullscreen: https://fullscreen.spec.whatwg.org/ as Chrome reports it ----
