@@ -153,13 +153,31 @@ fn style_document(
         view: view.strip_non_visual(true),
         roots: Roots::Document,
     };
-    style_input(
+    let mut styled = style_input(
         &input,
         &cascade,
         &StyleOptions {
             accept_cmyk: options.accept_cmyk,
         },
-    )
+    );
+    // A BackCompat document takes the quirks-mode line height quirk, as the live style
+    // pass marks it (miaskiewicz/turbo-dom#238 item 2, #190).
+    if tree.compat_mode() == "BackCompat" {
+        mark_quirks(&mut styled);
+    }
+    styled
+}
+
+/// Mark every element of `nodes` (deep) with [`crate::style::QUIRKS_LINE_HEIGHT`].
+fn mark_quirks(nodes: &mut [StyledNode]) {
+    for node in nodes {
+        if let StyledNode::Element(element) = node {
+            element
+                .style
+                .set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
+            mark_quirks(&mut element.children);
+        }
+    }
 }
 
 /// Propagate the canvas background (CSS Backgrounds 3 §2.11.2): the root element's

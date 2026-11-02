@@ -101,7 +101,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 41] = [
+    let groups: [fn(&str) -> bool; 42] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -143,6 +143,7 @@ fn held_out(id: &str) -> bool {
         nowrap_space_case,
         supports_general_enclosed_case,
         preserved_newline_case,
+        quirks_strut_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -633,4 +634,101 @@ fn preserved_newlines_break_lines_like_chrome_156() {
         assert_eq!(width(html, cid), pre, "{cid}");
         assert!(width(html, cid) > width(html, "n") + 6.0, "{cid}");
     }
+}
+
+/// miaskiewicz/turbo-dom#238 item 2: the quirks-mode line height quirk on the static HTML
+/// path (a `BackCompat` document's lines take the block strut only for text / `<br>`; #190
+/// covers the live path), plus its standards-mode control.
+fn quirks_strut_case(id: &str) -> bool {
+    id.starts_with("quirks-strut-")
+}
+
+/// Each `data-cid` element of a styled forest as a snapshot identity (its styled path).
+fn cid_identities(
+    nodes: &[turbo_dom_layout::StyledNode],
+    path: &mut Vec<usize>,
+    out: &mut Vec<(String, turbo_dom_layout::layout_snapshot::SourceIdentity)>,
+) {
+    for (index, node) in nodes.iter().enumerate() {
+        let Some(element) = node.as_element() else {
+            continue;
+        };
+        path.push(index);
+        if let Some(cid) = element.attrs.iter().find(|a| a.name == "data-cid") {
+            out.push((
+                cid.value.clone(),
+                turbo_dom_layout::layout_snapshot::SourceIdentity {
+                    id: turbo_dom_layout::layout_snapshot::SourceId(out.len() as u64 + 1),
+                    path: path.clone(),
+                },
+            ));
+        }
+        cid_identities(&element.children, path, out);
+        path.pop();
+    }
+}
+
+/// The static path styles a `BackCompat` document with the quirks-mode line strut marker
+/// (`style_html_tree`), so its Chrome-metric HTML text layout (the snapshot every native
+/// HTML read and screenshot uses) lays the lines out like Chrome. `layout_boxes` stays on
+/// the PDF metric policy, whose line boxes have no baseline alignment (unrounded
+/// line-height stacks: even the standards control's 39px atom line is 36.92 there), so
+/// the quirk is compared through the HTML-metric snapshot instead.
+#[test]
+fn quirks_mode_lines_take_the_strut_only_for_text_like_chrome_156() {
+    use turbo_dom_layout::layout_snapshot::{snapshot_html_styled_tree_with_text, SnapshotInputs};
+    let fixture = fixture();
+    let fonts = turbo_dom_layout::test_support::fixture_fonts();
+    let images = turbo_dom_layout::ImageCtx {
+        resolver: &turbo_dom_layout::NoImages,
+        body_height: None,
+    };
+    let mut failures = Vec::new();
+    let mut compared = 0;
+    for case in fixture["cases"].as_array().unwrap() {
+        let id = case["id"].as_str().unwrap();
+        if !quirks_strut_case(id) {
+            continue;
+        }
+        let tree = turbo_dom_layout::parse_html_tree(case["html"].as_str().unwrap());
+        let styled = turbo_dom_layout::style_html_tree(
+            &tree,
+            "",
+            1280.0,
+            &turbo_dom_layout::HtmlOptions::default(),
+        );
+        let mut ids = Vec::new();
+        cid_identities(&styled, &mut Vec::new(), &mut ids);
+        let identities: Vec<_> = ids.iter().map(|(_, identity)| identity.clone()).collect();
+        let inputs = SnapshotInputs {
+            width: 1280.0,
+            height: 800.0,
+            fonts: &fonts,
+            images: &images,
+        };
+        let mut diags = Diagnostics::default();
+        let snapshot =
+            snapshot_html_styled_tree_with_text(&styled, &identities, &inputs, &mut diags)
+                .unwrap();
+        for want in case["boxes"].as_array().unwrap() {
+            compared += 1;
+            let cid = want["cid"].as_str().unwrap();
+            let (_, identity) = ids.iter().find(|(c, _)| c == cid).unwrap();
+            let source = snapshot.source(identity.id).unwrap();
+            let rect = snapshot.fragments()[source.fragment_indices[0]].rect;
+            for (field, value) in [
+                ("x", rect.x),
+                ("y", rect.y),
+                ("width", rect.width),
+                ("height", rect.height),
+            ] {
+                let chrome = want[field].as_f64().unwrap() as f32;
+                if (value - chrome).abs() > 0.01 {
+                    failures.push(format!("{id}: {cid}.{field} = {value}, Chrome {chrome}"));
+                }
+            }
+        }
+    }
+    assert!(compared > 0);
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
