@@ -167,6 +167,36 @@ mod tests {
         );
     }
 
+    // The canvas font's weight and style pick the CoreText face (turbo-dom#236), as Chrome's
+    // font matching picks Arial Bold for `bold 20px Arial`: not the family's regular face.
+    #[test]
+    fn coretext_font_honours_weight_and_style() {
+        let state = |weight, italic| {
+            let mut st = State::default();
+            st.font_px = 20.0;
+            st.font_families = vec!["Arial".to_string()];
+            st.font_weight = weight;
+            st.font_italic = italic;
+            st
+        };
+        let face = |weight, italic| ct_font(&state(weight, italic)).unwrap().postscript_name();
+        assert_eq!(face(400, false), "ArialMT");
+        assert_eq!(face(700, false), "Arial-BoldMT");
+        assert_eq!(face(400, true), "Arial-ItalicMT");
+        assert_eq!(face(700, true), "Arial-BoldItalicMT");
+        // CSS bold threshold: 600 and up select the bold face, 500 stays regular.
+        assert_eq!(face(600, false), "Arial-BoldMT");
+        assert_eq!(face(500, false), "ArialMT");
+        // The bold face draws more ink than the regular one.
+        let ink = |weight| {
+            let mut pm = Pixmap::new(240, 40).unwrap();
+            let st = state(weight, false);
+            assert!(render_text(&mut pm, &st, "Hello", 2.0, 28.0, Rgba::new(0, 0, 0, 255)));
+            pm.data().chunks(4).map(|p| u32::from(p[3])).sum::<u32>()
+        };
+        assert!(ink(700) > ink(400));
+    }
+
     // A scaled/rotated CTM is not handled here → returns false so the caller uses the vector trace.
     #[test]
     fn coretext_declines_non_translate_ctm() {
