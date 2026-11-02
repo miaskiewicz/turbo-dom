@@ -476,10 +476,10 @@ fn metric(
         "clientHeight" => f64::from(geometry()?.client.height),
         "scrollWidth" => f64::from(scroll()?.width),
         "scrollHeight" => f64::from(scroll()?.height),
-        // The offset Chrome clamps the set `scrollLeft` into (`min_x ..= min_x + max_x`).
+        // The offset Chrome clamps the set `scrollLeft` into (`min_x ..= max_x`).
         _ => {
             let s = scroll()?;
-            scrolled(case, cid).clamp(s.min_x, s.min_x + s.max_x)
+            scrolled(case, cid).clamp(s.min_x, s.max_x)
         }
     })
 }
