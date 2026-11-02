@@ -943,9 +943,11 @@ mod tests {
                 i64::from(got.width),
                 i64::from(got.height),
                 snap(got.max_x) as i64,
-                snap(got.max_y) as i64
+                snap(got.max_y) as i64,
+                snap(got.min_x) as i64,
             ],
-            ["scrollWidth", "scrollHeight", "maxX", "maxY"].map(|k| want[k].as_i64().unwrap()),
+            ["scrollWidth", "scrollHeight", "maxX", "maxY", "minX"]
+                .map(|k| want[k].as_i64().unwrap_or(0)),
             "{id}"
         );
         assert!(got.scroll_x && got.scroll_y);
@@ -1054,10 +1056,12 @@ mod tests {
             .offsets()
             .into_iter()
             .map(|(source, [x, y])| {
-                if source == VIEWPORT {
-                    return (source, [x, y]);
+                let m = if source == VIEWPORT {
+                    viewport_metrics(&case.snapshot, &case.styles, case.root(), [1280.0, 800.0])
+                } else {
+                    scroll_metrics(&case.snapshot, &case.styles, source)
                 }
-                let m = scroll_metrics(&case.snapshot, &case.styles, source).unwrap();
+                .unwrap();
                 (
                     source,
                     [
@@ -1098,6 +1102,24 @@ mod tests {
         assert_extents("rtl-scroll-origin");
         assert_translated("rtl-scroll-origin");
         assert_extents("rtl-into-view");
+    }
+
+    /// miaskiewicz/turbo-dom#238 item 3: an RTL root (the body's direction, CSS Writing
+    /// Modes 3 §8) lays the initial containing block's content from the right; the
+    /// viewport's offsets run `0..=-(scrollWidth - innerWidth)` and move the boxes right.
+    #[test]
+    fn rtl_root_viewport_scrolls_from_the_right_like_chrome_156() {
+        for id in [
+            "rtl-viewport-root",
+            "rtl-viewport-root-scrolled",
+            "rtl-viewport-root-clamped",
+            "rtl-viewport-root-style",
+            "rtl-viewport-body-only",
+            "rtl-viewport-body-ltr",
+        ] {
+            assert_viewport(id);
+            assert_translated(id);
+        }
     }
 
     #[test]
