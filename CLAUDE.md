@@ -253,6 +253,14 @@ package or publish workflow.
   `importNode` clones into the importing document (`__clone(doc, deep)`; turbo-dom#29 item 3).
 - **Foreign content:** elements carry `namespace` ("svg"/"math", else ""); foreign attrs carry
   `prefix` ("xlink" etc). The serializer renders `<svg svg>` and `xlink href="…"`.
+- **`<?…>` has two modes (turbo-dom#135).** html5lib-tests (every conformance gate, html5ever,
+  the default rtdom parse) make it a bogus comment; Chrome 156 parses `<?target data?>` as a
+  ProcessingInstruction. The Chrome mode lives only in the UTF-16 unit tokenizer
+  (`TokenizerOpts::processing_instructions`, a marker-prefixed comment token turned into a PI on
+  import), switched on per tree (`Tree::set_processing_instructions` /
+  `parse_utf16_with_processing_instructions`) — browser-env does so for all its documents. Inputs
+  with `<?` then skip the scalar fast path. Chrome control: browser-env
+  `processing_instructions_chrome156.json`.
 - **Fragment context:** `parseFragment(html, context)` where context is `"td"` or namespaced
   `"svg path"` / `"math ms"`. Empty → body.
 - **Hot paths are allocation-free — keep them that way.** `querySelectorAll`/`querySelector`/

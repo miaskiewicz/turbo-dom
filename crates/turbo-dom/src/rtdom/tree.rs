@@ -532,6 +532,9 @@ impl NodeArena {
 mod parser_positions;
 #[path = "parser_units.rs"]
 mod parser_units;
+#[cfg(test)]
+#[path = "processing_instructions_tests.rs"]
+mod processing_instructions_tests;
 pub use parser_positions::SourcePosition;
 #[allow(clippy::pedantic)]
 #[path = "unit_tokenizer/mod.rs"]
@@ -574,6 +577,8 @@ pub struct Tree {
     source_positions: FxHashMap<Handle, SourcePosition>,
     source_attribute_positions: FxHashMap<Handle, FxHashMap<Box<[u16]>, SourcePosition>>,
     compat_mode: &'static str,
+    /// Chrome-mode processing instructions in fragment parsing (`parser_units.rs`).
+    processing_instructions: bool,
     buf_len: u32,
     new_nodes: NodeArena,
     next_handle: u32,
@@ -655,6 +660,7 @@ impl Tree {
             source_positions: FxHashMap::default(),
             source_attribute_positions: FxHashMap::default(),
             compat_mode,
+            processing_instructions: false,
             buf_len,
             new_nodes: NodeArena::Dense(Vec::new()),
             next_handle: buf_len,
