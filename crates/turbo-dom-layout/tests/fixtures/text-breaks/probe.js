@@ -16,17 +16,29 @@
     ["shy-two", "width:40px", "ab­cd­ef­gh"],
     ["shy-none", "width:40px;hyphens:none", "ab­cdefgh"],
     ["shy-words", "width:60px", "xy ab­cdef"],
+    // turbo-dom#229: the same break opportunities inside and across inline spans
+    // (markup cases: `text` is the markup, laid out through innerHTML).
+    ["span-wrap-shy", "width:50px;overflow-wrap:break-word", "<span>wwwwww­wwwwww</span>"],
+    ["span-wrap-shy-mid", "width:60px;overflow-wrap:break-word", "x <span>wwww­wwwwwwww</span> y"],
+    ["span-nested", "width:40px", "ab<span>cd<b>ef­gh</b>ij</span>"],
+    ["span-shy-edge-before", "width:40px", "abcd­<span>efgh</span>"],
+    ["span-shy-edge-after", "width:40px", "abcd<span>­efgh</span>"],
+    ["span-break-all-edge", "width:50px;word-break:break-all", "aaaa<span>aaaa</span>aaaa"],
+    ["span-hyphens-none", "width:40px", "ab<span style=\"hyphens:none\">cd­ef</span>gh"],
   ];
   const out = [];
   for (const [id, style, text] of cases) {
     const div = document.createElement("div");
     div.setAttribute("style", `font-family:Inter;font-size:16px;line-height:20px;${style}`);
     div.lang = "en";
-    div.textContent = text;
+    div.innerHTML = text;
     document.body.append(div);
-    const node = div.firstChild;
+    const chars = [];
+    const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode())
+      for (let i = 0; i < n.data.length; i++) chars.push([n, i]);
     const lines = [];
-    for (let i = 0; i < text.length; i++) {
+    for (const [node, i] of chars) {
       const r = document.createRange();
       r.setStart(node, i);
       r.setEnd(node, i + 1);
@@ -35,7 +47,7 @@
       if (!rect) continue;
       let line = lines.find((l) => l.top === rect.top);
       if (!line) lines.push((line = { top: rect.top, text: "", left: rect.left, right: rect.right }));
-      line.text += text[i];
+      line.text += node.data[i];
       line.right = Math.max(line.right, rect.right);
     }
     out.push({
