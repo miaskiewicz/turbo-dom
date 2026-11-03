@@ -662,6 +662,10 @@ struct Seg {
     /// The segment's bidi embedding level (every character's) and its paragraph's.
     level: u8,
     paragraph: u8,
+    /// Native HTML only: the second half of a split `kern`-table pair across the space
+    /// before this segment, on its logically first glyph (`inline_advances::prepare`;
+    /// included in `native_width`).
+    leading_kern: f64,
 }
 
 struct Word {
@@ -739,6 +743,7 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
         trailing_kern: 0.0,
         level: chars[0].level,
         paragraph: chars[0].paragraph,
+        leading_kern: 0.0,
     }
 }
 
@@ -1620,6 +1625,8 @@ struct Placer<'a> {
     html_font_scale: Option<f32>,
     advances: Option<inline_advances::Cursor>,
     strut_metrics: Option<(f32, f32)>,
+    /// Lines align on the central baseline (see [`NativeLineOptions::central`]).
+    central: bool,
     /// Quirks mode (see [`NativeLineOptions::quirk_roots`]).
     quirk_roots: Option<&'a std::collections::HashSet<NodeId>>,
     /// The paragraph's lines reorder (UAX #9).
@@ -1653,6 +1660,7 @@ impl<'a> Placer<'a> {
             html_font_scale,
             advances: html_font_scale.map(|scale| inline_advances::Cursor::new(scale, 0.0)),
             strut_metrics: None,
+            central: false,
             quirk_roots: None,
             bidi: false,
             first_indent: 0.0,
@@ -1712,7 +1720,7 @@ impl<'a> Placer<'a> {
             self.align,
             self.strut,
             &self.open_edges,
-            (strut_metrics, self.bidi),
+            (strut_metrics.map(|metrics| (metrics, self.central)), self.bidi),
             (
                 self.capture_sources,
                 self.html_font_metrics,
@@ -2018,11 +2026,33 @@ pub(super) fn native_font_height(
     let above = (units / 2).div_euclid(64) as f32 / scale;
     (ascent + above + shift, descent + extra - above - shift)
 }
+/// A native line's strut metrics and whether it aligns on the central baseline.
+type NativeStrut = ((f32, f32), bool);
+
+/// A font's `(ascent, descent)` about the ideographic central baseline: the height
+/// splits in half in layout units (Blink's `FontMetrics::FixedAscent/FixedDescent`
+/// for `kIdeographicBaseline`: descent `height / 2`, ascent the rest).
+pub(super) fn central_metrics(ascent: f32, descent: f32, scale: f32) -> (f32, f32) {
+    let units = scale * 64.0;
+    let height = ((ascent + descent) * units).round();
+    let below = (height / 2.0).floor();
+    ((height - below) / units, below / units)
+}
+
+/// `(ascent, descent)` about the line's baseline: central when `central`.
+fn baseline_metrics(ascent: f32, descent: f32, central: bool, scale: f32) -> (f32, f32) {
+    if central {
+        central_metrics(ascent, descent, scale)
+    } else {
+        (ascent, descent)
+    }
+}
+
 fn native_line_metrics(
     words: &[Word],
     open: &[InlineEdge],
     strut: (f32, f32),
-    scale: Option<f32>,
+    scale: (Option<f32>, bool),
 ) -> Metrics {
     let mut metrics = Metrics {
         ascent: strut.0,
@@ -2038,20 +2068,22 @@ fn native_line_metrics(
     metrics.height = metrics.height.max(metrics.ascent + metrics.descent);
     metrics
 }
-fn fold_native_word(word: &Word, metrics: &mut Metrics, scale: Option<f32>) {
+fn fold_native_word(word: &Word, metrics: &mut Metrics, (scale, central): (Option<f32>, bool)) {
     for (_, edge) in &word.edges {
-        fold_native_edge(edge, metrics, scale);
+        fold_native_edge(edge, metrics, (scale, central));
     }
     for seg in &word.segs {
         let font = source_font_metrics(seg, scale);
         let lh = seg
             .line_height
             .unwrap_or(font.ascent + font.descent + font.line_gap);
+        let (ascent, descent) =
+            baseline_metrics(font.ascent, font.descent, central, scale.unwrap_or(1.0));
         unite_native(
             metrics,
             native_font_height(
-                font.ascent,
-                font.descent,
+                ascent,
+                descent,
                 lh,
                 seg.baseline_shift.unwrap_or_default(),
                 scale.unwrap_or(1.0),
@@ -2072,7 +2104,11 @@ fn fold_native_atom(atom: &InlineAtom, shift: f32, metrics: &mut Metrics) {
         .descent
         .max(atom.outer_height() - atom.ascent() - shift);
 }
-fn fold_native_edge(edge: &InlineEdge, metrics: &mut Metrics, scale: Option<f32>) {
+fn fold_native_edge(
+    edge: &InlineEdge,
+    metrics: &mut Metrics,
+    (scale, central): (Option<f32>, bool),
+) {
     if !edge.contributes_metrics {
         return;
     }
@@ -2081,15 +2117,11 @@ fn fold_native_edge(edge: &InlineEdge, metrics: &mut Metrics, scale: Option<f32>
     let lh = edge
         .line_height
         .unwrap_or((font.ascent + font.descent + font.line_gap) / scale);
+    let (ascent, descent) =
+        baseline_metrics(font.ascent / scale, font.descent / scale, central, scale);
     unite_native(
         metrics,
-        native_font_height(
-            font.ascent / scale,
-            font.descent / scale,
-            lh,
-            edge.baseline_shift,
-            scale,
-        ),
+        native_font_height(ascent, descent, lh, edge.baseline_shift, scale),
     );
 }
 fn unite_native(metrics: &mut Metrics, height: (f32, f32)) {
@@ -2194,6 +2226,34 @@ fn source_shaper_is_rtl(seg: &Seg, enabled: bool) -> bool {
     crate::text::guessed_rtl(&seg.text)
 }
 
+/// A native HTML segment's glyph advances (`native_text_advance::advances`), with the
+/// kerning Chrome's whole-item shaping puts across the spaces around it on its logically
+/// last and first glyphs (`inline_advances::prepare`).
+fn native_seg_advances(seg: &Seg, shaped: &[crate::text::ShapedGlyph], device: f32) -> Vec<f64> {
+    let mut advances = native_text_advance::advances(
+        &seg.face,
+        (seg.font_size, device),
+        shaped,
+        seg.letter_spacing,
+    );
+    let logical = |pick: fn(u32, u32) -> bool| {
+        (0..shaped.len()).reduce(|best, i| {
+            if pick(shaped[i].cluster, shaped[best].cluster) {
+                i
+            } else {
+                best
+            }
+        })
+    };
+    if let Some(last) = logical(|a, b| a >= b) {
+        advances[last] += seg.trailing_kern;
+    }
+    if let Some(first) = logical(|a, b| a < b) {
+        advances[first] += seg.leading_kern;
+    }
+    advances
+}
+
 fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f32>)) -> SourceRun {
     let (capture_sources, html_font_metrics, html_font_scale) = policy;
     let scale = seg.face.scale(seg.font_size);
@@ -2232,27 +2292,13 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
         (Vec::new(), Vec::new())
     };
     let ends: Vec<bool> = crate::text::cluster_ends(&shaped).collect();
-    let last_logical = shaped
-        .iter()
-        .enumerate()
-        .max_by_key(|(_, glyph)| glyph.cluster)
-        .map(|(index, _)| index);
+    let native = html_font_scale.map(|device| native_seg_advances(seg, &shaped, device));
     for (index, (g, cluster_end)) in shaped.into_iter().zip(ends).enumerate() {
         let letter_spacing = if cluster_end { seg.letter_spacing } else { 0.0 };
         let ordinary_advance = scale * g.x_advance as f32 + letter_spacing;
-        let native_advance = html_font_scale.map_or(f64::from(ordinary_advance), |_| {
-            let kern = if Some(index) == last_logical {
-                seg.trailing_kern
-            } else {
-                0.0
-            };
-            native_text_advance::glyph_advance(
-                &seg.face,
-                seg.font_size,
-                g.x_advance,
-                letter_spacing,
-            ) + kern
-        });
+        let native_advance = native
+            .as_ref()
+            .map_or(f64::from(ordinary_advance), |advances| advances[index]);
         let advance = html_font_scale.map_or(ordinary_advance, |_| native_advance as f32);
         let position = html_font_scale.map_or(x, |_| native_x as f32);
         if capture_sources {
@@ -2433,6 +2479,8 @@ struct LinePlacement {
     baseline: f32,
     height: f32,
     policy: (bool, bool, Option<f32>),
+    /// The line aligns on the central baseline (see [`NativeLineOptions::central`]).
+    central: bool,
     runs: Vec<SourceRun>,
     atoms: Vec<PlacedAtom>,
     inline_edges: Vec<PlacedInlineEdge>,
@@ -2499,16 +2547,23 @@ impl Recorder {
 }
 
 impl LinePlacement {
+    /// The alphabetic baseline `seg`'s glyphs sit on. On a central line the font's box
+    /// centres on the line's baseline, so its alphabetic baseline lies its ascent below
+    /// the box's top (Blink's sideways glyphs in vertical text).
+    fn seg_baseline(&self, seg: &Seg) -> f32 {
+        if !self.central {
+            return self.baseline;
+        }
+        let font = source_font_metrics(seg, self.policy.2);
+        let (ascent, _) = central_metrics(font.ascent, font.descent, self.policy.2.unwrap_or(1.0));
+        self.baseline - ascent + font.ascent
+    }
     fn word(&mut self, word: &Word, has_next: bool) {
         let leading = self.runs.len();
         for space in &word.leading_spaces {
-            self.runs.push(shape_space(
-                space,
-                self.pen,
-                self.baseline,
-                self.policy,
-                0.0,
-            ));
+            let baseline = self.seg_baseline(space);
+            self.runs
+                .push(shape_space(space, self.pen, baseline, self.policy, 0.0));
         }
         if let Some(record) = self.record.as_mut().filter(|_| leading < self.runs.len()) {
             let level = word.segs.first().map_or(word.atom_level, |seg| seg.level);
@@ -2596,8 +2651,9 @@ impl LinePlacement {
             advances.begin((seg.node_id, seg.level));
             self.pen = advances.position();
         }
+        let baseline = self.seg_baseline(seg);
         self.runs
-            .push(shape_seg(seg, self.pen, self.baseline, self.policy));
+            .push(shape_seg(seg, self.pen, baseline, self.policy));
         if let Some(advances) = &mut self.advances {
             advances.text((seg.node_id, seg.level), seg.native_width);
             self.pen = advances.position();
@@ -2631,8 +2687,9 @@ impl LinePlacement {
                 continue;
             }
             let advance = visible_space_advance(word, index, has_next);
+            let baseline = self.seg_baseline(space);
             self.runs
-                .push(shape_space(space, pen, self.baseline, self.policy, advance));
+                .push(shape_space(space, pen, baseline, self.policy, advance));
             if self.policy.2.is_some() {
                 pen += advance;
             }
@@ -2685,7 +2742,7 @@ fn phantom_word(word: &Word) -> bool {
 fn line_box_metrics(
     words: &[Word],
     open_edges: &[InlineEdge],
-    (strut, strut_metrics): (f32, Option<(f32, f32)>),
+    (strut, strut_metrics): (f32, Option<NativeStrut>),
     policy: (bool, bool, Option<f32>),
 ) -> Metrics {
     if words.iter().all(phantom_word) {
@@ -2696,7 +2753,9 @@ fn line_box_metrics(
         };
     }
     match strut_metrics {
-        Some(strut) => native_line_metrics(words, open_edges, strut, policy.2),
+        Some((strut, central)) => {
+            native_line_metrics(words, open_edges, strut, (policy.2, central))
+        }
         None => line_metrics(words, strut, policy.1, policy.2, open_edges),
     }
 }
@@ -2708,7 +2767,7 @@ fn place_line(
     align: Align,
     strut: f32,
     open_edges: &[InlineEdge],
-    (strut_metrics, bidi): (Option<(f32, f32)>, bool),
+    (strut_metrics, bidi): (Option<NativeStrut>, bool),
     policy: (bool, bool, Option<f32>),
 ) -> SourceLine {
     let m = line_box_metrics(&words, open_edges, (strut, strut_metrics), policy);
@@ -2719,7 +2778,7 @@ fn place_line(
     // The approximate (non-native) policy measures fractional font metrics; Blink's
     // are whole pixels there, so its line baselines are too (#219). The native
     // policies keep their own sub-pixel baselines.
-    let baseline = match (strut_metrics, policy.2) {
+    let baseline = match (strut_metrics.map(|(metrics, _)| metrics), policy.2) {
         (Some(_), _) => m.ascent,
         (None, Some(_)) => m.ascent + leading,
         (None, None) => (m.ascent + leading).round(),
@@ -2737,6 +2796,7 @@ fn place_line(
         baseline,
         height: m.height,
         policy,
+        central: strut_metrics.is_some_and(|(_, central)| central),
         advances: policy
             .2
             .map(|scale| inline_advances::Cursor::new(scale, pen)),
@@ -2944,11 +3004,12 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
         options.original_units,
     );
     apply_baselines(&mut words, options.baselines);
-    if options.scale.is_some() {
-        inline_advances::prepare(&mut words);
+    if let Some(scale) = options.scale {
+        inline_advances::prepare(&mut words, scale);
     }
     let mut placer = Placer::new(align, region, strut, (true, true, options.scale));
     placer.strut_metrics = options.strut_metrics;
+    placer.central = options.central;
     placer.quirk_roots = options.quirk_roots;
     placer.bidi = bidi;
     placer.first_indent = options.first_indent;
@@ -2966,6 +3027,12 @@ pub(crate) struct NativeLineOptions<'a> {
     /// Quirks mode: the text and `<br>` sources directly in the block (not in an
     /// inline box), whose lines alone take the block's strut. `None` in no-quirks mode.
     pub quirk_roots: Option<&'a std::collections::HashSet<NodeId>>,
+    /// The lines align on the ideographic central baseline (a vertical writing mode
+    /// but `text-orientation: sideways`; Blink's `kIdeographicBaseline`,
+    /// miaskiewicz/turbo-dom#239): each font's box splits its height evenly about the
+    /// baseline, and an atom without a baseline of its own centres on it. The block's
+    /// `strut_metrics` are already central.
+    pub central: bool,
     pub scale: Option<f32>,
     pub first_indent: f32,
     pub clearance: &'a dyn Fn(f32, f32) -> f32,

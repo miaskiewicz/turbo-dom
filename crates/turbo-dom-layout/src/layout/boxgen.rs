@@ -75,6 +75,10 @@ pub struct LayoutBox {
     /// outside marker, placed beside its first line box at layout; on the inline-block
     /// symbol box an inside marker inserts into the first line.
     pub(crate) list_marker: Option<Box<super::list_marker::ListMarker>>,
+    /// Whether this box's writing mode differs from its parent's: it lays out in its own
+    /// logical space and establishes an independent formatting context
+    /// ([`super::writing`]).
+    pub(crate) writing_root: bool,
 }
 
 fn same_original_inputs(
@@ -428,6 +432,95 @@ impl LayoutBox {
         }
     }
 
+    /// A copy of this subtree with every style relabelled into another writing mode's
+    /// logical space ([`super::writing`]), its memoized measurements dropped.
+    pub(crate) fn relabelled(&self, relabel: super::writing::Relabel) -> LayoutBox {
+        let kind = match &self.kind {
+            BoxKind::Block(kids) => BoxKind::Block(relabel_all(kids, relabel)),
+            BoxKind::Flex(kids) => BoxKind::Flex(relabel_all(kids, relabel)),
+            BoxKind::Grid(kids) => BoxKind::Grid(relabel_all(kids, relabel)),
+            BoxKind::Table(kids) => BoxKind::Table(relabel_all(kids, relabel)),
+            BoxKind::Lines(items) => {
+                BoxKind::Lines(items.iter().map(|item| item.relabelled(relabel)).collect())
+            }
+            BoxKind::Marker(kind) => BoxKind::Marker(*kind),
+        };
+        let list_marker = self.list_marker.as_ref().map(|marker| {
+            Box::new(super::list_marker::ListMarker {
+                node_id: marker.node_id,
+                style: relabel.style(&marker.style),
+                content: match &marker.content {
+                    super::list_marker::MarkerContent::Text(text) => {
+                        super::list_marker::MarkerContent::Text(Box::new(text.relabelled(relabel)))
+                    }
+                    super::list_marker::MarkerContent::Symbol(symbol) => {
+                        super::list_marker::MarkerContent::Symbol(*symbol)
+                    }
+                },
+            })
+        });
+        let copy = LayoutBox {
+            style: relabel.style(&self.style),
+            kind,
+            list_marker,
+            style_cache: RefCell::new(StyleCache::Unknown),
+            natural_cache: std::cell::Cell::new(None),
+            min_content_cache: std::cell::Cell::new(None),
+            margin_memo: MarginMemoSlot::default(),
+            ..self.clone_shallow()
+        };
+        copy.clear_measured_values();
+        copy
+    }
+
+    /// Flag the boxes whose writing mode differs from their parent's (`parent`).
+    fn mark_writing_roots(&mut self, parent: super::writing::WritingMode) {
+        let mode = super::writing::WritingMode::of(&self.style);
+        self.writing_root = mode != parent;
+        match &mut self.kind {
+            BoxKind::Block(kids)
+            | BoxKind::Flex(kids)
+            | BoxKind::Grid(kids)
+            | BoxKind::Table(kids) => {
+                for kid in kids {
+                    kid.mark_writing_roots(mode);
+                }
+            }
+            BoxKind::Lines(items) => {
+                for item in items {
+                    if let InlineItem::Atomic(kid) = item {
+                        kid.mark_writing_roots(mode);
+                    }
+                }
+            }
+            BoxKind::Marker(_) => {}
+        }
+    }
+
+    /// This box without its children (the caller supplies them).
+    fn clone_shallow(&self) -> LayoutBox {
+        LayoutBox {
+            node_id: self.node_id,
+            source_role: self.source_role,
+            style: ComputedStyle::default(),
+            attrs: self.attrs.clone(),
+            display: self.display,
+            kind: BoxKind::Block(Vec::new()),
+            image: self.image.clone(),
+            svg_viewport: self.svg_viewport.clone(),
+            mask: self.mask.clone(),
+            style_cache: RefCell::new(StyleCache::Unknown),
+            html_layout_policy: self.html_layout_policy.clone(),
+            natural_cache: std::cell::Cell::new(None),
+            min_content_cache: std::cell::Cell::new(None),
+            intrinsic_w: self.intrinsic_w.clone(),
+            measure_cache: RefCell::new(self.measure_cache.borrow().clone()),
+            margin_memo: MarginMemoSlot::default(),
+            writing_root: self.writing_root,
+            list_marker: None,
+        }
+    }
+
     pub(crate) fn resolved_base(&self, ctx: ResolveCtx) -> BoxStyle {
         match &*self.style_cache.borrow() {
             StyleCache::Cached(bs) => return bs.as_ref().clone(),
@@ -478,6 +571,41 @@ pub enum BoxKind {
     Table(Vec<LayoutBox>),
     /// An opaque block-level marker element (see [`MarkerKind`]).
     Marker(MarkerKind),
+}
+
+fn relabel_all(kids: &[LayoutBox], relabel: super::writing::Relabel) -> Vec<LayoutBox> {
+    kids.iter().map(|kid| kid.relabelled(relabel)).collect()
+}
+
+impl InlineItem {
+    fn relabelled(&self, relabel: super::writing::Relabel) -> InlineItem {
+        match self {
+            InlineItem::SourceBreak { node_id, style } => InlineItem::SourceBreak {
+                node_id: *node_id,
+                style: relabel.style(style),
+            },
+            InlineItem::Boundary {
+                node_id,
+                style,
+                start,
+            } => InlineItem::Boundary {
+                node_id: *node_id,
+                style: relabel.style(style),
+                start: *start,
+            },
+            InlineItem::Text {
+                node_id,
+                style,
+                text,
+            } => InlineItem::Text {
+                node_id: *node_id,
+                style: relabel.style(style),
+                text: text.clone(),
+            },
+            InlineItem::Atomic(kid) => InlineItem::Atomic(kid.relabelled(relabel)),
+            other => other.clone(),
+        }
+    }
 }
 
 /// One inline-level item inside a [`BoxKind::Lines`] context.
@@ -1043,6 +1171,7 @@ fn table_kind(el: &StyledElement, ids: &mut Ids) -> BoxKind {
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        writing_root: false,
         list_marker: None,
     });
     BoxKind::Table(captions)
@@ -1133,6 +1262,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             intrinsic_w: std::cell::Cell::new(None),
             measure_cache: RefCell::new(None),
             margin_memo: MarginMemoSlot::default(),
+            writing_root: false,
             list_marker: None,
         };
     }
@@ -1178,6 +1308,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        writing_root: false,
         list_marker,
     }
 }
@@ -1437,6 +1568,7 @@ fn anon_lines_box(
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        writing_root: false,
         list_marker: None,
     }
 }
@@ -1580,7 +1712,9 @@ fn build_root(styled: &[StyledNode], ids: &mut Ids) -> LayoutBox {
     if ids.top_layer {
         hoist_top_layer(&mut kind, ids);
     }
-    anonymous_box(node_id, style, kind)
+    let mut root = anonymous_box(node_id, style, kind);
+    root.mark_writing_roots(super::writing::WritingMode::HorizontalTb);
+    root
 }
 
 /// The internal property the fullscreen UA rule sets on the fullscreen element
@@ -1703,6 +1837,7 @@ pub(crate) fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        writing_root: false,
         list_marker: None,
     }
 }

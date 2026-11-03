@@ -94,44 +94,54 @@ fn parse_font(value: &str) -> Option<CanvasFont> {
 }
 
 /// The context's text attributes besides `font`, as the binding reflects them
-/// (`letterSpacing` / `wordSpacing` are already-validated CSS lengths), plus the viewport
-/// the `v*` units resolve against.
+/// (`letterSpacing` / `wordSpacing` are already-validated CSS lengths).
 #[derive(Debug, Default)]
 struct TextAttributes {
     letter_spacing: String,
     word_spacing: String,
     kerning: String,
     rendering: String,
-    viewport: (f32, f32),
 }
 
-/// The length units the binding's `letterSpacing` / `wordSpacing` accept (the JS setter's
-/// list; longer units first so `rem` / `vmin` never parse as `em` / `in`).
-const SPACING_UNITS: &[&str] = &[
-    "vmin", "vmax", "rem", "px", "em", "ex", "ch", "vw", "vh", "pt", "pc", "in", "cm", "mm", "q",
-];
+/// Split a spacing length into its number and lowercase unit when the unit is a CSS
+/// `<length>` unit Chrome 156 parses (turbo-dom's `css_shorthand::LENGTH_UNITS`).
+fn length_parts(value: &str) -> Option<(f32, String)> {
+    let split = value.rfind(|c: char| !c.is_ascii_alphabetic())? + 1;
+    let (number, unit) = value.split_at(split);
+    let unit = unit.to_ascii_lowercase();
+    css_shorthand::LENGTH_UNITS
+        .contains(&unit.as_str())
+        .then_some(())?;
+    Some((number.parse().ok()?, unit))
+}
 
-/// A validated canvas spacing length in px under `face` at `size` (`rem` is the 16px
-/// initial root size; `ch` is the advance of "0").
-fn spacing_px(value: &str, face: &FontFace, size: f32, viewport: (f32, f32)) -> f32 {
-    let Some((number, unit)) = SPACING_UNITS
-        .iter()
-        .find_map(|unit| Some((value.strip_suffix(unit)?.parse::<f32>().ok()?, *unit)))
-    else {
+/// A validated canvas spacing length in px under `face` at `size`, as Chrome 156 resolves
+/// it for a canvas: the root-relative units against the canvas font itself (`rem` = `em`,
+/// `rex` = `ex`, ...), `ch` the advance of "0", `ic` the advance of U+6C34 (else 1em),
+/// `cap` the cap height, and the line-height, viewport and container units 0.
+fn spacing_px(value: &str, face: &FontFace, size: f32) -> f32 {
+    let Some((number, unit)) = length_parts(value) else {
         return 0.0;
     };
-    let (w, h) = viewport;
-    let unit_px = match unit {
+    let unit_px = match unit.trim_start_matches('r') {
         "em" => size,
         "ex" => face.x_height_px(size),
         "ch" => face.measure_canvas("0", size) as f32,
-        "vw" => w / 100.0,
-        "vh" => h / 100.0,
-        "vmin" => w.min(h) / 100.0,
-        "vmax" => w.max(h) / 100.0,
-        other => font_size(&format!("1{other}")).unwrap_or(0.0),
+        "ic" => face.ideographic_advance_px(size).unwrap_or(size),
+        "cap" => face.cap_height_px(size),
+        _ => font_size(&format!("1{unit}")).unwrap_or(0.0),
     };
     number * unit_px
+}
+
+/// `__canvasLengthUnitNative(unit)`: whether a spacing length may carry `unit`.
+pub(super) fn length_unit_native(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    let unit = arg_str(scope, &args, 0);
+    rv.set_bool(length_parts(&format!("1{unit}")).is_some());
 }
 
 /// `fontKerning` / `textRendering` to Blink's shaping mode.
@@ -163,10 +173,9 @@ fn measure(
     let face = registry
         .select(&families, font.weight, font.italic)
         .expect("turbo-dom-layout's bundled faces are always registered");
-    let viewport = attributes.viewport;
     let options = CanvasTextOptions {
-        letter_spacing: spacing_px(&attributes.letter_spacing, face, font.size, viewport),
-        word_spacing: spacing_px(&attributes.word_spacing, face, font.size, viewport),
+        letter_spacing: spacing_px(&attributes.letter_spacing, face, font.size),
+        word_spacing: spacing_px(&attributes.word_spacing, face, font.size),
         shaping: shaping(&attributes.kerning, &attributes.rendering),
     };
     face.canvas_text_metrics_with(text, font.size, options)
@@ -224,7 +233,7 @@ fn fields(m: &CanvasTextMetrics, align: &str, baseline: &str, direction: &str) -
 }
 
 /// `__canvasMeasureTextNative(text, font, textAlign, textBaseline, direction,
-/// letterSpacing, wordSpacing, fontKerning, textRendering, innerWidth, innerHeight)`: the
+/// letterSpacing, wordSpacing, fontKerning, textRendering)`: the
 /// `TextMetrics` fields ([`fields`]) as an array.
 pub(super) fn measure_text_native(
     scope: &mut v8::PinScope,
@@ -243,7 +252,6 @@ pub(super) fn measure_text_native(
         word_spacing: arg_str(scope, &args, 6),
         kerning: arg_str(scope, &args, 7),
         rendering: arg_str(scope, &args, 8),
-        viewport: (number(scope, 9), number(scope, 10)),
     };
     let fonts = scope.get_current_context().get_slot::<CanvasFonts>();
     let metrics = measure(
@@ -310,22 +318,22 @@ mod tests {
     }
 
     #[test]
-    fn spacing_units_resolve_against_the_face_and_viewport() {
+    fn spacing_units_resolve_against_the_canvas_font() {
         let fonts = FontRegistry::new();
         let face = fonts.select(&["sans-serif"], 400, false).unwrap();
-        let viewport = (800.0, 600.0);
-        let px = |value| spacing_px(value, face, 20.0, viewport);
+        let px = |value| spacing_px(value, face, 20.0);
         assert_eq!(px("2px"), 2.0);
         assert_eq!(px("-1.5em"), -30.0);
         assert_eq!(px("1e1px"), 10.0);
-        assert_eq!(px("2rem"), 20.0);
-        assert_eq!(px("1ex"), face.x_height_px(20.0));
-        assert_eq!(px("1ch"), face.measure_canvas("0", 20.0) as f32);
+        assert_eq!((px("2rem"), px("1rex")), (40.0, face.x_height_px(20.0)));
+        assert_eq!(px("1rch"), face.measure_canvas("0", 20.0) as f32);
+        assert_eq!(px("1cap"), face.cap_height_px(20.0));
+        assert_eq!(px("1ic"), face.ideographic_advance_px(20.0).unwrap_or(20.0));
+        assert_eq!((px("1vw"), px("1cqmin"), px("1rlh")), (0.0, 0.0, 0.0));
         assert_eq!(
-            (px("1vw"), px("1vh"), px("1vmin"), px("1vmax")),
-            (8.0, 6.0, 6.0, 8.0)
+            (px("3pt"), px("3PT"), px("2deg"), px("px")),
+            (4.0, 4.0, 0.0, 0.0)
         );
-        assert_eq!(px("3pt"), 4.0);
     }
 
     #[test]

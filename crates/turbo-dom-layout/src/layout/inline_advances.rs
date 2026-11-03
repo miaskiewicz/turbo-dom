@@ -69,24 +69,28 @@ impl Cursor {
     }
 }
 
-fn prepare_segment(seg: &mut Seg) {
+fn prepare_segment(seg: &mut Seg, scale: f32) {
     seg.native_width = native_text_advance::measure(
         &seg.face,
-        (seg.font_size, seg.letter_spacing),
+        (seg.font_size, scale),
+        seg.letter_spacing,
         &seg.text,
         seg.level % 2 == 1,
         seg.original_units.as_deref(),
     );
 }
-fn prepare_word(word: &mut Word) {
-    word.segs.iter_mut().for_each(prepare_segment);
+fn prepare_word(word: &mut Word, scale: f32) {
+    for seg in &mut word.segs {
+        prepare_segment(seg, scale);
+    }
     let source = word.spaces.first().or(word.advance_space.as_ref());
     if let Some(source) = source.filter(|_| word.space_after != 0.0) {
         word.native_space = Some((
             source.node_id,
             native_text_advance::measure(
                 &source.face,
-                (source.font_size, source.letter_spacing),
+                (source.font_size, scale),
+                source.letter_spacing,
                 " ",
                 false,
                 None,
@@ -94,12 +98,14 @@ fn prepare_word(word: &mut Word) {
         ));
     }
 }
-pub(super) fn prepare(words: &mut [Word]) {
-    words.iter_mut().for_each(prepare_word);
+pub(super) fn prepare(words: &mut [Word], scale: f32) {
+    for word in words.iter_mut() {
+        prepare_word(word, scale);
+    }
     for index in 1..words.len() {
         let (head, tail) = words.split_at_mut(index);
         let word = &mut head[index - 1];
-        let Some([before, after]) = space_kerning(word, &tail[0]) else {
+        let Some([before, middle, after]) = space_kerning(word, &tail[0], scale) else {
             continue;
         };
         if let Some(last) = word.segs.last_mut() {
@@ -107,18 +113,25 @@ pub(super) fn prepare(words: &mut [Word]) {
             last.trailing_kern = before;
         }
         if let Some((_, advance)) = word.native_space.as_mut() {
-            *advance += after;
+            *advance += middle;
+        }
+        if let Some(first) = tail[0].segs.first_mut() {
+            first.native_width += after;
+            first.leading_kern = after;
         }
     }
 }
 
-// Chrome shapes a whole text item, so GPOS/`kern` pairs across a collapsible space
-// adjust advances that separately shaped words lack: the `,`+space pair lands on the
-// word's last glyph (a Range over the word includes it), the space+`W` pair on the
-// space. Applied only when the word's last segment, the space and the next word's
-// first segment are one run (same source and font): a run boundary is a shaping
-// boundary in Chrome too. Returns `[before, after]` in px.
-fn space_kerning(word: &Word, next: &Word) -> Option<[f64; 2]> {
+// Chrome shapes a whole text item, so kerning pairs across a collapsible space adjust
+// advances that separately shaped words lack. GPOS puts a pair's whole value on its
+// first glyph: the `,`+space pair lands on the word's last glyph (a Range over the word
+// includes it), the space+`W` pair on the space. A `kern`-table pair is split between its
+// two glyphs (`FontFace::blink_advances`), so the space+`W` pair also moves the next
+// word's first glyph. Applied only when the word's last segment, the space and the next
+// word's first segment are one run (same source and font): a run boundary is a shaping
+// boundary in Chrome too. Returns the `[last glyph, space, next first glyph]` deltas in
+// px, from shaping `"{last} {first}"` against each character alone (each one glyph).
+fn space_kerning(word: &Word, next: &Word, scale: f32) -> Option<[f64; 3]> {
     let space = word.spaces.first().or(word.advance_space.as_ref())?;
     word.native_space?;
     let (last, first) = (word.segs.last()?, next.segs.first()?);
@@ -126,15 +139,16 @@ fn space_kerning(word: &Word, next: &Word) -> Option<[f64; 2]> {
         return None;
     }
     let (before, after) = (edge_char(last, true)?, edge_char(first, false)?);
-    let measure =
-        |text: &str| {
-            native_text_advance::measure(&space.face, (space.font_size, 0.0), text, false, None)
-        };
-    let gap = measure(" ");
-    Some([
-        measure(&format!("{before} ")) - measure(&before.to_string()) - gap,
-        measure(&format!(" {after}")) - measure(&after.to_string()) - gap,
-    ])
+    let advances = |text: &str| {
+        let glyphs = space.face.shape(text);
+        native_text_advance::advances(&space.face, (space.font_size, scale), &glyphs, 0.0)
+    };
+    let joined = advances(&format!("{before} {after}"));
+    let alone = [before, ' ', after].map(|c| advances(&c.to_string()));
+    if joined.len() != 3 || alone.iter().any(|a| a.len() != 1) {
+        return None;
+    }
+    Some([0, 1, 2].map(|i| joined[i] - alone[i][0]))
 }
 
 fn same_run(a: &Seg, b: &Seg) -> bool {

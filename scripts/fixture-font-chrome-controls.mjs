@@ -71,6 +71,8 @@ const FACES = [
   // Hebrew / Arabic glyphs for the bidi control (miaskiewicz/turbo-dom#238).
   ["Noto Sans Hebrew", "noto-sans-hebrew/NotoSansHebrew-Regular.ttf", 400, "normal"],
   ["Noto Sans Arabic", "noto-sans-arabic/NotoSansArabic-Regular.ttf", 400, "normal"],
+  // test_support::ic_fixture_face(): U+6C34 at 0.9em, for the CSS `ic` unit (turbo-dom#237).
+  ["Ic Fixture", "ic-fixture/IcFixture.ttf", 400, "normal"],
 ];
 const fontFiles = {};
 const css = FACES.map(([family, file, weight, style]) => {
@@ -108,6 +110,16 @@ const CONTROLS = [
   [
     "crates/turbo-dom-browser-env/src/canvas_text_attributes_probe.js",
     "crates/turbo-dom-browser-env/src/canvas_text_attributes_chrome156.json",
+    [800, 600],
+  ],
+  [
+    "crates/turbo-dom-browser-env/src/canvas_spacing_units_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_spacing_units_chrome156.json",
+    [800, 600],
+  ],
+  [
+    "crates/turbo-dom-browser-env/src/canvas_ic_unit_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_ic_unit_chrome156.json",
     [800, 600],
   ],
 ];

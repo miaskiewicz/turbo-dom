@@ -5,6 +5,7 @@ use super::boxgen::InlineItem;
 use super::fragment::{Fragment, FragmentContent, NodeId};
 use super::inline::{InlineEdge, ParagraphLayout};
 use super::value::{resolve_box_style, BorderEdges, BoxStyle, Display, Edges, ResolveCtx};
+use super::writing::WritingMode;
 use crate::layout_snapshot::UsedBoxMetrics;
 use crate::ComputedStyle;
 use std::collections::HashMap;
@@ -22,27 +23,29 @@ pub(crate) fn unsupported(
     nodes: &[crate::StyledNode],
 ) -> Vec<(&crate::StyledElement, crate::layout_snapshot::SnapshotError)> {
     let mut out = Vec::new();
-    collect_unsupported(nodes, (false, false), &mut out);
+    collect_unsupported(nodes, (false, false, WritingMode::HorizontalTb), &mut out);
     out
 }
 type Unsupported<'a> = Vec<(
     &'a crate::StyledElement,
     crate::layout_snapshot::SnapshotError,
 )>;
+/// `(inside an ordinary inline, the parent is RTL, the parent's writing mode)`.
+type Context = (bool, bool, WritingMode);
 fn collect_unsupported<'a>(
     nodes: &'a [crate::StyledNode],
-    (inside, parent_rtl): (bool, bool),
+    context: Context,
     out: &mut Unsupported<'a>,
 ) {
     for node in nodes {
         if let crate::StyledNode::Element(element) = node {
-            element_unsupported(element, (inside, parent_rtl), out);
+            element_unsupported(element, context, out);
         }
     }
 }
 fn element_unsupported<'a>(
     element: &'a crate::StyledElement,
-    (inside, parent_rtl): (bool, bool),
+    (inside, parent_rtl, parent): Context,
     out: &mut Unsupported<'a>,
 ) {
     let rtl = is_rtl(&element.style);
@@ -51,17 +54,77 @@ fn element_unsupported<'a>(
         return;
     }
     if element.style.get("display") == Some("contents") {
-        return collect_unsupported(&element.children, (inside, parent_rtl), out);
+        return collect_unsupported(&element.children, (inside, parent_rtl, parent), out);
     }
     let ordinary = ordinary_inline(element, display);
-    match validate_rendered_element(element, display, inside, ordinary) {
+    let mode = WritingMode::of(&element.style);
+    match validate_rendered_element(element, display, inside, ordinary)
+        .and_then(|()| validate_writing(element, display, (ordinary, mode != parent)))
+    {
         Err(error) => out.push((element, error)),
         Ok(()) => collect_unsupported(
             &element.children,
-            (inline_context(display, inside, ordinary), rtl),
+            (inline_context(display, inside, ordinary), rtl, mode),
             out,
         ),
     }
+}
+/// What the vertical writing-mode layer does not lay out (miaskiewicz/turbo-dom#234,
+/// #239): an ordinary inline whose writing mode differs from its parent's, upright text
+/// (CJK under `text-orientation: mixed`, or `upright`), and a replaced element whose
+/// size falls back to a physical default (see [`physical_default_size`]). Block, flex,
+/// grid and table boxes, inline-level atoms and `<img>` lay out in the logical space.
+fn validate_writing(
+    element: &crate::StyledElement,
+    display: Display,
+    (ordinary, own_mode): (bool, bool),
+) -> Result<(), crate::layout_snapshot::SnapshotError> {
+    use crate::layout_snapshot::SnapshotError;
+    if ordinary && own_mode {
+        return Err(SnapshotError::UnsupportedInlineWriting);
+    }
+    if !WritingMode::of(&element.style).vertical() {
+        return Ok(());
+    }
+    if upright_text(element) || physical_default_size(element, display) {
+        return Err(SnapshotError::UnsupportedVerticalWriting);
+    }
+    Ok(())
+}
+/// A replaced element sized by a physical default the logical layer does not turn: an
+/// `<svg>` without both a width and a height (300x150), an `<iframe>`, `<canvas>`,
+/// `<video>`, `<object>` / `<embed>`, `<audio>` or form control (Chrome lays the form
+/// controls out vertically in a vertical mode). An `<img>` turns its intrinsic size.
+fn physical_default_size(element: &crate::StyledElement, display: Display) -> bool {
+    let crate::Tag::Html(name) = &element.tag else {
+        return false;
+    };
+    if display == Display::None || name == "img" || !atomic_element(element) {
+        return false;
+    }
+    let sized = |axis: &str| {
+        element.attrs.iter().any(|attr| attr.name == axis)
+            || element.style.get(axis).is_some_and(|v| v.trim() != "auto")
+    };
+    name != "svg" || !(sized("width") && sized("height"))
+}
+/// Whether the element's own text sets upright in a vertical line.
+fn upright_text(element: &crate::StyledElement) -> bool {
+    let upright = element.style.get("text-orientation").map(str::trim) == Some("upright");
+    element.children.iter().any(|node| match node {
+        crate::StyledNode::Text(text) => {
+            !text.text.trim().is_empty() && (upright || text.text.chars().any(sets_upright))
+        }
+        crate::StyledNode::Element(_) => false,
+    })
+}
+/// A character `text-orientation: mixed` sets upright (Unicode
+/// `Vertical_Orientation` U / Tu, the CJK and related blocks).
+fn sets_upright(c: char) -> bool {
+    matches!(u32::from(c),
+        0x1100..=0x11FF | 0x2E80..=0xA4CF | 0xA960..=0xA97F | 0xAC00..=0xD7FF
+        | 0xF900..=0xFAFF | 0xFE10..=0xFE1F | 0xFE30..=0xFE4F | 0xFF00..=0xFFEF
+        | 0x1F000..=0x1FAFF | 0x20000..=0x3FFFD)
 }
 fn validate_rendered_element(
     element: &crate::StyledElement,
@@ -163,18 +226,10 @@ fn validate_inline_style(
     ) {
         return Err(SnapshotError::UnsupportedInlineAlignment);
     }
-    if unsupported_writing(style) {
-        return Err(SnapshotError::UnsupportedInlineWriting);
-    }
     Ok(())
 }
 fn is_rtl(style: &ComputedStyle) -> bool {
     style.get("direction").map(str::trim) == Some("rtl")
-}
-fn unsupported_writing(style: &ComputedStyle) -> bool {
-    style
-        .get("writing-mode")
-        .is_some_and(|value| value != "horizontal-tb")
 }
 
 fn style(style: &ComputedStyle, font: f32, width: f32, scale: Option<f32>) -> BoxStyle {
@@ -344,7 +399,8 @@ pub(super) fn positions(items: &[InlineItem], font: f32, width: f32, ctx: &Ctx) 
     }
     source.placement
 }
-pub(super) fn strut(bs: &BoxStyle, ctx: &Ctx) -> Option<(f32, f32)> {
+/// The block's strut `(ascent, descent)`, about the central baseline when `central`.
+pub(super) fn strut(bs: &BoxStyle, ctx: &Ctx, central: bool) -> Option<(f32, f32)> {
     let families = bs
         .font_families
         .iter()
@@ -353,9 +409,14 @@ pub(super) fn strut(bs: &BoxStyle, ctx: &Ctx) -> Option<(f32, f32)> {
     let face = ctx.fonts.select(&families, bs.font_weight, bs.italic)?;
     let scale = ctx.html_font_scale.unwrap_or(1.0);
     let font = face.html_metrics(bs.font_size * scale);
+    let (ascent, descent) = if central {
+        super::inline::central_metrics(font.ascent / scale, font.descent / scale, scale)
+    } else {
+        (font.ascent / scale, font.descent / scale)
+    };
     Some(super::inline::native_font_height(
-        font.ascent / scale,
-        font.descent / scale,
+        ascent,
+        descent,
         bs.line_height
             .unwrap_or((font.ascent + font.descent + font.line_gap) / scale),
         0.0,
@@ -803,6 +864,7 @@ mod defensive_contract_tests {
             table_rows: None,
             dropped_end_margins: std::collections::HashSet::new(),
             sticky_pending: Vec::new(),
+            writing: crate::layout::writing::WritingMode::default(),
         };
         let edge = super::super::inline::PlacedInlineEdge {
             edge: InlineEdge {

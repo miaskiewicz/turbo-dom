@@ -708,8 +708,7 @@ fn quirks_mode_lines_take_the_strut_only_for_text_like_chrome_156() {
         };
         let mut diags = Diagnostics::default();
         let snapshot =
-            snapshot_html_styled_tree_with_text(&styled, &identities, &inputs, &mut diags)
-                .unwrap();
+            snapshot_html_styled_tree_with_text(&styled, &identities, &inputs, &mut diags).unwrap();
         for want in case["boxes"].as_array().unwrap() {
             compared += 1;
             let cid = want["cid"].as_str().unwrap();

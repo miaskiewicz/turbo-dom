@@ -163,6 +163,31 @@ fn html_legacy_ascent(ascent: f32, descent: f32, enabled: bool) -> f32 {
     }
 }
 
+/// Rename a single-face sfnt's `kern` directory entry to an unknown tag when Chrome would
+/// not apply it to a web font: CFF outlines, or a table version other than 0. Anything that
+/// is not a readable table directory is left alone (the parser then decides).
+fn hide_ignored_web_kern(data: &mut [u8]) {
+    let be16 = |b: &[u8], at: usize| b.get(at..at + 2).map(|s| u16::from_be_bytes([s[0], s[1]]));
+    let Some(count) = be16(data, 4) else {
+        return;
+    };
+    let entry = |tag: &[u8]| {
+        (0..usize::from(count))
+            .map(|i| 12 + 16 * i)
+            .find(|&at| data.get(at..at + 4) == Some(tag))
+    };
+    let Some(kern) = entry(b"kern") else {
+        return;
+    };
+    let cff = entry(b"CFF ").is_some() || entry(b"CFF2").is_some();
+    let offset = data.get(kern + 8..kern + 12).map_or(usize::MAX, |s| {
+        u32::from_be_bytes([s[0], s[1], s[2], s[3]]) as usize
+    });
+    if cff || be16(data, offset) != Some(0) {
+        data[kern..kern + 4].copy_from_slice(b"zzzz");
+    }
+}
+
 impl FontFace {
     /// Load a face from font bytes, tagging it with a family/weight/style so the
     /// registry can select it. Returns `None` if the bytes are not a valid font.
@@ -173,6 +198,22 @@ impl FontFace {
         italic: bool,
     ) -> Option<FontFace> {
         FontFace::from_bytes_index(data, 0, family, weight, italic)
+    }
+
+    /// [`FontFace::from_bytes`] for an `@font-face` web font, which Chrome 156 shapes
+    /// without a legacy `kern` table unless the font has TrueType outlines and the table is
+    /// the OpenType version 0 (a CFF font's `kern` table and an Apple version 1.0 table are
+    /// ignored; `tests/fixtures/web-font-kern/chrome156.json`, turbo-dom#240). An ignored
+    /// table is hidden from the shaper; installed fonts (`from_bytes`) keep theirs, as the
+    /// macOS system Times' version 1.0 table is applied.
+    pub fn from_web_font_bytes(
+        mut data: Vec<u8>,
+        family: impl Into<String>,
+        weight: u16,
+        italic: bool,
+    ) -> Option<FontFace> {
+        hide_ignored_web_kern(&mut data);
+        FontFace::from_bytes(data, family, weight, italic)
     }
 
     /// Like [`FontFace::from_bytes`] but selects face `index` of a `.ttc`
@@ -350,7 +391,7 @@ impl FontFace {
         self.italic
     }
 
-    fn ttf(&self) -> &TtfFace<'_> {
+    pub(super) fn ttf(&self) -> &TtfFace<'_> {
         &self.faces.borrow_dependent().ttf
     }
 
@@ -480,11 +521,28 @@ impl FontFace {
     /// The advance of one glyph of `design_advance` font units at `font_size` as Blink
     /// positions it: Skia's `SkScalar` advance cast to a signed 16.16 `HarfBuzz` position
     /// (truncation toward zero; chromium 155 `skia_text_metrics.h`,
-    /// `SkiaScalarToHarfBuzzPosition`).
+    /// `SkiaScalarToHarfBuzzPosition`), at the size Blink's font cache creates the font at
+    /// ([`blink_font_size`]). A canvas font is created at its CSS size, so this is
+    /// [`blink_device_glyph_advance`](Self::blink_device_glyph_advance) at scale 1.
     #[must_use]
     pub fn blink_glyph_advance(&self, font_size: f32, design_advance: i32) -> f64 {
-        let scalar = self.scale(font_size) * design_advance as f32;
-        f64::from((scalar * 65536.0) as i32) / 65536.0
+        self.blink_device_glyph_advance(font_size, 1.0, design_advance)
+    }
+
+    /// [`blink_glyph_advance`](Self::blink_glyph_advance) for HTML text at a device scale
+    /// factor, in CSS px: Blink lays HTML text out in device pixels, so the font is created
+    /// at the device size `font_size * device_scale` (truncated by the font cache there:
+    /// 18.72px at DSF 2 is a 37.43px font, 18.715 CSS px) and the 16.16 truncation is in
+    /// device units.
+    #[must_use]
+    pub fn blink_device_glyph_advance(
+        &self,
+        font_size: f32,
+        device_scale: f32,
+        design_advance: i32,
+    ) -> f64 {
+        let scalar = self.scale(blink_font_size(font_size * device_scale)) * design_advance as f32;
+        f64::from((scalar * 65536.0) as i32) / 65536.0 / f64::from(device_scale)
     }
 
     /// Canvas `measureText(text).width` as Chrome 156 computes it: Blink's canvas font
@@ -494,8 +552,11 @@ impl FontFace {
     #[must_use]
     pub fn measure_canvas(&self, text: &str, font_size: f32) -> f64 {
         canvas_words(text)
-            .flat_map(|word| self.shape(word))
-            .map(|glyph| self.blink_glyph_advance(font_size, glyph.x_advance))
+            .map(|word| {
+                self.blink_advances(&self.shape(word), font_size, 1.0)
+                    .iter()
+                    .sum::<f64>()
+            })
             .sum()
     }
 }
@@ -507,6 +568,18 @@ pub fn guessed_rtl(text: &str) -> bool {
     buffer.push_str(text);
     buffer.guess_segment_properties();
     buffer.direction() == rustybuzz::Direction::RightToLeft
+}
+
+/// The size Blink creates a font at for a computed `font_size` (CSS px): the font cache
+/// keys platform fonts by `unsigned(size * 100)` (float math, truncated) and builds each one
+/// at that key's size, so 18.72px text is shaped with an 18.71px font and 17.3px with
+/// 17.29px (chromium `FontPlatformDataCache` / `FontCacheKey::PrecisionMultiplier`; Chrome
+/// 156 controls `tests/fixtures/host-font-advances/chrome156.json` and the fixture-font
+/// `text-advances` rows, turbo-dom#236). Sizes with at most two decimals that are exact in
+/// binary (16, 21.5, 18.75) are unchanged.
+#[must_use]
+pub fn blink_font_size(font_size: f32) -> f32 {
+    ((font_size * 100.0) as u32) as f32 / 100.0
 }
 
 /// Whether each shaped glyph ends its cluster (the next glyph starts another
@@ -892,6 +965,34 @@ mod html_metric_policy_contracts {
         assert_eq!(cache.bytes, original_bytes);
         drop(cache);
         assert_eq!(face.shape("cache race"), glyphs);
+    }
+}
+
+#[cfg(test)]
+mod web_font_kern {
+    use super::hide_ignored_web_kern;
+
+    #[test]
+    fn only_an_ignored_kern_entry_is_renamed() {
+        // Too short for a directory, or a directory without `kern`: untouched.
+        let mut short = vec![0, 1, 0];
+        hide_ignored_web_kern(&mut short);
+        assert_eq!(short, [0, 1, 0]);
+        let go = include_bytes!("../../assets/fonts/Go-Regular.ttf").to_vec();
+        let mut copy = go.clone();
+        hide_ignored_web_kern(&mut copy);
+        assert_eq!(copy, go);
+        // A TrueType version-0 table stays; a CFF font's table is hidden.
+        let serif =
+            include_bytes!("../../assets/fonts/liberation-serif/LiberationSerif-Regular.ttf");
+        let mut copy = serif.to_vec();
+        hide_ignored_web_kern(&mut copy);
+        assert_eq!(copy, serif);
+        let warsaw = include_bytes!("../../assets/fonts/WarsawGothic-BnBV.otf");
+        let mut copy = warsaw.to_vec();
+        hide_ignored_web_kern(&mut copy);
+        assert_ne!(copy, warsaw);
+        assert!(!copy.windows(4).take(400).any(|w| w == b"kern"));
     }
 }
 

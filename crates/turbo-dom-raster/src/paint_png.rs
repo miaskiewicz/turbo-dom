@@ -116,12 +116,18 @@ fn ink_bounds(f: &Fragment, xf: Transform) -> Option<Rect> {
             b = b.max(b + dy + reach);
         }
         FragmentContent::TextLine {
-            glyphs, font_size, ..
+            glyphs,
+            font_size,
+            vertical,
+            ..
         } => {
             // Glyph outlines sit around their pens, within a couple of ems.
             let m = 2.0 * font_size;
+            let frame = glyph_frame(f, *vertical);
             for g in glyphs {
-                let (px, py) = (f.x + g.x, f.y + g.y);
+                let mut pen = [tiny_skia::Point::from_xy(f.x + g.x, f.y + g.y)];
+                frame.map_points(&mut pen);
+                let (px, py) = (pen[0].x, pen[0].y);
                 l = l.min(px - m);
                 t = t.min(py - m);
                 r = r.max(px + m);
@@ -247,8 +253,16 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
             face,
             font_size,
             color,
+            vertical,
             ..
-        } => paint_text(pm, f, glyphs, face, *font_size, *color, xf),
+        } => paint_text(
+            pm,
+            f,
+            glyphs,
+            face,
+            (*font_size, *color),
+            xf.pre_concat(glyph_frame(f, *vertical)),
+        ),
         FragmentContent::Image(placement) => paint_image(pm, f, placement, images, xf),
         FragmentContent::Marker(_) => {}
     }
@@ -847,13 +861,23 @@ impl Tracer for PathSink {
 
 /// Fill a line's glyph outlines in `color` (a transparent colour paints nothing). The
 /// face's `units_per_em` is non-zero: `ttf-parser` rejects a `head` outside 16..=16384.
+/// Where a line's glyph pens land: as positioned, or for a line laid out in a vertical
+/// writing mode turned a quarter clockwise about the fragment, a pen at `(f.x + x,
+/// f.y + y)` landing at `(f.x + f.width - y, f.y + x)` (miaskiewicz/turbo-dom#234).
+pub(crate) fn glyph_frame(f: &Fragment, vertical: bool) -> Transform {
+    if vertical {
+        Transform::from_row(0.0, 1.0, -1.0, 0.0, f.x + f.width + f.y, f.y - f.x)
+    } else {
+        Transform::identity()
+    }
+}
+
 fn paint_text(
     pm: &mut Pixmap,
     f: &Fragment,
     glyphs: &[PositionedGlyph],
     face: &FontFace,
-    font_size: f32,
-    color: Rgba,
+    (font_size, color): (f32, Rgba),
     xf: Transform,
 ) {
     if color.a == 0 {
@@ -1113,6 +1137,7 @@ mod tests {
                 face,
                 font_size: 30.0,
                 color: RED,
+                vertical: false,
             },
         );
         let shadowed = with_box(plain(30.0, 30.0, 20.0, 20.0, Some(RED)), |_, s, _, _| {
@@ -1146,8 +1171,16 @@ mod tests {
                 placeholder: false,
             },
         );
+        // A vertical writing-mode line paints its glyphs turned a quarter clockwise
+        // about the line box (miaskiewicz/turbo-dom#234): its ink is where they land.
+        let mut vertical_line = line.clone();
+        vertical_line.x = 60.0;
+        if let FragmentContent::TextLine { vertical, .. } = &mut vertical_line.content {
+            *vertical = true;
+        }
         // Each group alone, so one feature's margin cannot hide another's.
-        for (i, mut group) in [shadowed, line, rotated, pic].into_iter().enumerate() {
+        let groups = [shadowed, line, rotated, pic, vertical_line];
+        for (i, mut group) in groups.into_iter().enumerate() {
             group.opacity = 0.5;
             let got = render(&group, 120, 120, &images);
             let want = full_layer_reference(&group, 120, 120, &images);
@@ -2110,6 +2143,7 @@ mod exact_tests {
                     face: face.clone(),
                     font_size: size,
                     color: BLUE,
+                    vertical: false,
                 },
             );
             let got = drawn(&line, 90, 45);

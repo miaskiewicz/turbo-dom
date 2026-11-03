@@ -16,14 +16,17 @@ fn canvas_measure_text_matches_chrome_156_per_weight_and_style() {
     .unwrap();
     assert_eq!(control["browser"], "Chrome/156.0.8078.47");
     let rows = control["result"]["canvas"].as_array().unwrap();
-    assert_eq!(rows.len(), 36);
+    assert_eq!(rows.len(), 48);
     let mut failures = Vec::new();
     for row in rows {
         let font = row["font"].as_str().unwrap();
         let text = row["text"].as_str().unwrap();
         let want = row["width"].as_f64().unwrap();
         let got = measure_canvas_text(text, font);
-        if got != want {
+        // Blink sums the run widths in a different floating-point order (1e-14 apart on
+        // the fractional-size rows); every advance is a multiple of 1/65536, so 1e-12 still
+        // catches any one-unit 16.16 error.
+        if (got - want).abs() > 1e-12 {
             failures.push(format!("{font} {text:?}: got {got}, Chrome {want}"));
         }
     }

@@ -142,8 +142,9 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             face,
             font_size,
             color,
+            vertical,
             ..
-        } => paint_text(svg, f, glyphs, face, *font_size, *color),
+        } => paint_text(svg, (f, *vertical), glyphs, face, *font_size, *color),
         FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
         FragmentContent::Marker(_) => {}
     }
@@ -449,7 +450,7 @@ impl Tracer for PathSink {
 /// `ttf-parser` rejects a `head` outside 16..=16384.
 fn paint_text(
     svg: &mut String,
-    f: &Fragment,
+    (f, vertical): (&Fragment, bool),
     glyphs: &[PositionedGlyph],
     face: &FontFace,
     font_size: f32,
@@ -470,9 +471,20 @@ fn paint_text(
         glyph::trace_glyph(&face, g.glyph_id, pen, &mut sink);
     }
     if !sink.0.is_empty() {
+        // A vertical line's run turns a quarter clockwise about the fragment
+        // (`crate::paint_png::glyph_frame`).
+        let frame = if vertical {
+            format!(
+                " transform=\"matrix(0 1 -1 0 {:.2} {:.2})\"",
+                f.x + f.width + f.y,
+                f.y - f.x
+            )
+        } else {
+            String::new()
+        };
         let _ = writeln!(
             svg,
-            "<path d=\"{}\" {}/>",
+            "<path d=\"{}\" {}{frame}/>",
             sink.0.trim_end(),
             fill_attrs(color)
         );
@@ -1022,6 +1034,7 @@ mod tests {
                     face: face.clone(),
                     font_size: 24.0,
                     color: RED,
+                    vertical: false,
                 },
             );
             let mut d = Data(String::new(), 0.0, 0.0, scale);
@@ -1132,6 +1145,7 @@ mod tests {
                     face: face.clone(),
                     font_size: 20.0,
                     color,
+                    vertical: false,
                 },
             )
         };

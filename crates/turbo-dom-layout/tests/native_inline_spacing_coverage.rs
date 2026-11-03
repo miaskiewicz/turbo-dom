@@ -214,7 +214,7 @@ fn compare_source_metadata(
             .iter()
             .find(|glyph| glyph.source.utf16_start == 0)
             .map(|glyph| glyph.source.advance);
-        let expected = if rendered { 9.599_991_f32 } else { 0.0 };
+        let expected = if rendered { IBM_SPACE_DSF2 } else { 0.0 };
         compare(
             space,
             Some(expected),
@@ -570,7 +570,7 @@ fn compare_ordinary_source(
         let visible = case["width"] == 1000 && glyph.source.utf16_start == 3;
         compare(
             glyph.source.advance,
-            if visible { 9.599_991_f32 } else { 0.0 },
+            if visible { IBM_SPACE_DSF2 } else { 0.0 },
             "ordinary visible/collapsed source advance",
             errors,
         );
@@ -808,3 +808,8 @@ fn generic_pdf_whitespace_ranges_keep_raw_placed_gaps_without_native_source_cell
         assert_generic_whitespace_ranges(width);
     }
 }
+
+// IBM Plex Mono U+0020 (600 units of 1000) at 16px, DSF 2: Blink creates the font at the
+// device size (32px) and truncates the 16.16 advance there, 19.2 -> 1258291/65536 device px
+// (turbo-dom#236: the host-font Times control pins device-size font creation).
+const IBM_SPACE_DSF2: f32 = (1_258_291.0 / 65536.0 / 2.0) as f32;

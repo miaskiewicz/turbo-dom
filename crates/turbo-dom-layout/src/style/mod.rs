@@ -7,6 +7,15 @@
 mod cascade;
 mod parser;
 mod quad_shorthand;
+
+/// The four side longhands a `margin` / `padding` / `inset` / `border-{width,style,color}`
+/// value sets, in top-right-bottom-left order (`None` when it is not a valid one).
+pub(crate) fn expand_quad<'a>(
+    property: &str,
+    value: &'a str,
+) -> Option<[(&'static str, &'a str); 4]> {
+    quad_shorthand::expand(property, value)
+}
 mod token;
 
 pub(crate) use cascade::presentational_declarations_of;

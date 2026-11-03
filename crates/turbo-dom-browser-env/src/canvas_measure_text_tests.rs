@@ -186,3 +186,56 @@ fn text_attributes_match_chrome156() {
         out.join("\n")
     );
 }
+
+/// Every CSS length unit Chrome 156 accepts for letterSpacing / wordSpacing (and nothing
+/// else), and what one unit adds per character: Chrome resolves the root-relative units
+/// against the canvas font itself (rem = em, rex = ex, ...), `ic` without a CJK glyph is
+/// 1em, and the line-height, viewport and container units resolve to 0 for a canvas,
+/// attached to the document or not.
+#[test]
+fn spacing_units_match_chrome156() {
+    const PROBE: &str = include_str!("canvas_spacing_units_probe.js");
+    let mut expected = checked_control(include_str!("canvas_spacing_units_chrome156.json"), PROBE);
+    let mut actual = run(Some(turbo_dom_layout::test_support::fixture_fonts()), PROBE);
+    assert_eq!(actual["accepted"], expected["accepted"]);
+    let mut out = Vec::new();
+    for placement in ["attached", "detached"] {
+        let rows = |value: &mut Value| value["perUnit"][placement].take();
+        let (a, e) = (rows(&mut actual), rows(&mut expected));
+        for (unit, want) in e.as_object().unwrap() {
+            let got = a[unit].as_f64();
+            if got.is_none_or(|got| (got - want.as_f64().unwrap()).abs() > INK_TOLERANCE) {
+                out.push(format!(
+                    "{placement} 1{unit}: got {:?}, Chrome {want}",
+                    a[unit]
+                ));
+            }
+        }
+    }
+    assert!(out.is_empty(), "{}", out.join("\n"));
+}
+
+/// `ic` with a face that has U+6C34 (`test_support::ic_fixture_face`, 0.9em) is that
+/// glyph's advance, as in Chrome 156 (`canvas_ic_unit_chrome156.json`); `ric` resolves
+/// against the canvas font too.
+#[test]
+fn ic_unit_measures_the_water_glyph_like_chrome156() {
+    const PROBE: &str = include_str!("canvas_ic_unit_probe.js");
+    let expected = checked_control(include_str!("canvas_ic_unit_chrome156.json"), PROBE);
+    let mut fonts = turbo_dom_layout::test_support::fixture_fonts();
+    fonts.add(turbo_dom_layout::test_support::ic_fixture_face());
+    let actual = run(Some(fonts), PROBE);
+    let mut out = Vec::new();
+    for (size, row) in expected.as_object().unwrap() {
+        for (key, want) in row.as_object().unwrap() {
+            let got = actual[size][key].as_f64();
+            if got.is_none_or(|got| (got - want.as_f64().unwrap()).abs() > INK_TOLERANCE) {
+                out.push(format!(
+                    "{size}px {key}: got {:?}, Chrome {want}",
+                    actual[size][key]
+                ));
+            }
+        }
+    }
+    assert!(out.is_empty(), "{}", out.join("\n"));
+}

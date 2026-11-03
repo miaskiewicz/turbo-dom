@@ -167,7 +167,7 @@ upstream rusty_v8's features (for example `simdutf`).
   - CSS animations in `getAnimations` (#187)
   - focus / dialog details (#188)
   - FileList and selector error text (#189)
-  - RTL scroll and vertical writing (#190)
+  - RTL scroll (#190) and vertical writing residuals: upright CJK, default-sized replaced elements, vertical Range rects (#239)
   - shaping and font metrics (#191)
   - block and table layout residuals (#53–#102, #128, #178)
 - **The npm runtime has no layout:** `getBoundingClientRect()` returns zeros, and

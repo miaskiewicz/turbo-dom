@@ -78,6 +78,108 @@ const QUIRKS_CASES = [
   ["br", `<div data-cid="d">a<br><br>b</div><div data-cid="s"><span style="font-size:10px">a<br><br>b</span></div>`],
 ];
 
+// An 8x6 PNG (the live test harness resolves every PNG `data:` URI to it).
+const PNG8X6 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=";
+// miaskiewicz/turbo-dom#234 vertical writing-mode cases: [id suffix, body, extra fields].
+const VERTICAL_CSS = 'body{margin:0;font:16px/20px "Fira Code"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}';
+const VERTICAL_CASES = [
+  ["issue-monospace", `<div data-cid="v" style="writing-mode:vertical-rl;height:100px;font:16px/20px monospace">ab</div>`],
+  ["rl-one-line", `<div data-cid="v" class="rl" style="height:100px">ab</div><div data-cid="after" style="height:10px"></div>`],
+  ["rl-lines", `<div data-cid="v" class="rl" style="height:50px">aaaa bbbb cccc</div>`],
+  ["lr-lines", `<div data-cid="v" class="lr" style="height:50px">aaaa bbbb cccc</div>`],
+  ["rl-auto-height", `<div data-cid="v" class="rl">ab cd</div><div data-cid="after" style="height:10px"></div>`],
+  [
+    "rl-frame",
+    `<div data-cid="v" class="rl" style="height:80px;padding:1px 2px 3px 4px;border:solid #000;border-width:5px 6px 7px 8px;margin:9px 10px 11px 12px">` +
+      `<div data-cid="a" style="width:30px;margin-left:4px"></div><div data-cid="b">ab</div><div data-cid="c" style="width:7px;height:20px;margin:3px 5px 2px 6px;padding:1px"></div></div>`,
+  ],
+  [
+    "lr-nested",
+    `<div data-cid="v" class="lr" style="height:60px;margin-left:5px"><div data-cid="a" style="margin-right:8px;margin-left:3px"><div data-cid="aa" style="width:10px;margin-left:6px"></div></div><div data-cid="b" style="margin-left:4px;padding:2px">ab cd</div></div>`,
+  ],
+  [
+    "rl-nested-rl",
+    `<div data-cid="v" class="rl" style="height:60px"><div data-cid="a" style="width:10px"></div><div data-cid="b" class="rl" style="padding-right:3px">ab</div><div data-cid="c" style="width:5px;height:20px"></div></div>`,
+  ],
+  [
+    "orthogonal-horizontal-in-rl",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="h" style="writing-mode:horizontal-tb">abc def</div><div data-cid="k" style="width:10px"></div></div>`,
+  ],
+  [
+    "orthogonal-horizontal-in-lr-width",
+    `<div data-cid="v" class="lr" style="height:100px"><div data-cid="h" style="writing-mode:horizontal-tb;width:40px">abc def</div></div>`,
+  ],
+  [
+    "orthogonal-rl-in-horizontal-width",
+    `<div style="width:300px"><div data-cid="v" class="rl" style="width:50px">abc def</div><div data-cid="w" class="rl" style="height:30px;margin:0 auto">ab</div></div>`,
+  ],
+  [
+    "rl-scroller",
+    `<div data-cid="v" class="rl" style="width:50px;height:40px;overflow:auto"><div data-cid="a" style="width:120px;height:20px"></div></div>`,
+    { scroll: { v: -30 } },
+  ],
+  [
+    "lr-scroller",
+    `<div data-cid="v" class="lr" style="width:50px;height:40px;overflow:auto"><div data-cid="a" style="width:120px;height:20px"></div></div>`,
+    { scroll: { v: 30 } },
+  ],
+  // miaskiewicz/turbo-dom#239: the residuals. Flex / grid / table boxes and their items in a
+  // vertical root (their inline axis is vertical), inline-level atoms, replaced elements,
+  // direction:rtl (inline axis bottom-to-top), floats and absolute boxes.
+  [
+    "rl-flex-row",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="f" style="display:flex"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="flex:1;width:20px"></div></div></div>`,
+  ],
+  [
+    "lr-flex-column",
+    `<div data-cid="v" class="lr" style="height:100px"><div data-cid="f" style="display:flex;flex-direction:column;padding-left:2px"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="height:5px;width:20px"></div></div></div>`,
+  ],
+  [
+    "rl-grid",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="g" style="display:grid;grid-template-columns:30px 1fr;gap:4px"><div data-cid="a" style="width:10px"></div><div data-cid="b" style="width:15px"></div><div data-cid="c" style="width:6px"></div></div></div>`,
+  ],
+  [
+    "rl-table",
+    `<div data-cid="v" class="rl" style="height:200px"><table data-cid="t" style="border-spacing:2px"><tr data-cid="r"><td data-cid="a" style="padding:1px">${BOX(10, 30)}</td><td data-cid="b" style="padding:0">${BOX(12, 20)}</td></tr><tr><td data-cid="c">${BOX(5, 5)}</td><td></td></tr></table></div>`,
+  ],
+  [
+    "rl-inline-block",
+    `<div data-cid="v" class="rl" style="height:100px">ab<span data-cid="i" style="display:inline-block;width:12px;height:30px;margin-top:3px"></span>cd</div>`,
+  ],
+  [
+    "lr-inline-block-text",
+    `<div data-cid="v" class="lr" style="height:100px">a<span data-cid="i" style="display:inline-block;padding:2px">bc</span></div>`,
+    // The inline size is the text's max-content, 1/64 px short in horizontal flow too
+    // (shrink-to-fit sums shaper advances, not the native ones; a separate issue).
+    { measure: { i: "xyw" } },
+  ],
+  [
+    "rl-svg",
+    `<div data-cid="v" class="rl" style="height:100px"><svg data-cid="i" width="20" height="30" style="display:block"></svg><svg data-cid="j" style="width:8px;height:9px"></svg>a<svg data-cid="k" width="6" height="7" style="margin-left:2px"></svg></div>`,
+  ],
+  [
+    "rl-img",
+    `<div data-cid="v" class="rl" style="height:100px"><img data-cid="i" src="${PNG8X6}" style="display:block"><img data-cid="j" src="${PNG8X6}" style="display:inline;height:12px">a<img data-cid="k" src="${PNG8X6}" style="display:inline;width:4px"></div>`,
+  ],
+  [
+    "rl-rtl",
+    `<div data-cid="v" class="rl" dir="rtl" style="height:100px"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="width:10px">ab</div></div>`,
+  ],
+  [
+    "lr-rtl",
+    `<div data-cid="v" class="lr" style="direction:rtl;height:100px"><div data-cid="a" style="height:30px;width:10px;margin-bottom:5px"></div></div>`,
+  ],
+  [
+    "rl-float",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="f" style="float:left;width:10px;height:20px"></div><div data-cid="g" style="float:right;width:12px;height:20px"></div><div data-cid="a" style="width:5px"></div></div>`,
+  ],
+  [
+    "rl-absolute",
+    `<div data-cid="v" class="rl" style="height:100px;width:200px;position:relative"><div data-cid="a" style="position:absolute;top:5px;right:7px;width:10px;height:20px"></div><div data-cid="b" style="position:absolute;width:10px;height:20px"></div><div data-cid="s" style="width:6px"></div></div>`,
+  ],
+];
+
 const CASES = [
   // turbo-surf#31 C: position:absolute/fixed blockify an inline (display computes to
   // block; CSS 2.1 §9.7) and it lays out as an out-of-flow box.
@@ -373,6 +475,18 @@ const CASES = [
         `</div>`,
     ),
   },
+  // miaskiewicz/turbo-dom#234: vertical writing modes. Block flow runs right to left
+  // (vertical-rl) or left to right (vertical-lr), lines stack along the block axis and the
+  // inline axis is vertical (`height` is the inline size); padding / border / margins map
+  // physically; an orthogonal child sizes against the available space. `metrics`: the
+  // case also records offset* / client* / scroll* (`scrollLeft` set to `scroll` first).
+  ...VERTICAL_CASES.map(([id, body, extra]) => ({
+    id: `vertical-${id}`,
+    html: DOC(VERTICAL_CSS, body),
+    fonts: true,
+    metrics: true,
+    ...(extra || {}),
+  })),
 ];
 const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
@@ -392,18 +506,22 @@ for (const testCase of CASES) {
     await page.click(target, { position: { x: 1, y: 1 } });
     await page.waitForFunction((sel) => document.fullscreenElement === document.querySelector(sel), target);
   }
-  const { boxes, hits } = await page.evaluate((points) => {
+  const { boxes, hits } = await page.evaluate(([points, metrics, scroll]) => {
+    for (const [cid, left] of Object.entries(scroll)) document.querySelector(`[data-cid="${cid}"]`).scrollLeft = left;
     const boxes = [...document.querySelectorAll("[data-cid]")].map((el) => {
       const b = el.getBoundingClientRect();
       const s = getComputedStyle(el);
-      return { cid: el.dataset.cid, x: b.x, y: b.y, width: b.width, height: b.height, display: s.display, position: s.position };
+      const box = { cid: el.dataset.cid, x: b.x, y: b.y, width: b.width, height: b.height, display: s.display, position: s.position };
+      if (!metrics) return box;
+      const keys = ["offsetLeft", "offsetTop", "offsetWidth", "offsetHeight", "clientLeft", "clientTop", "clientWidth", "clientHeight", "scrollWidth", "scrollHeight", "scrollLeft"];
+      return { ...box, metrics: Object.fromEntries(keys.map((k) => [k, el[k]])) };
     });
     const hits = points.map(([x, y]) => {
       const el = document.elementFromPoint(x, y);
       return { x, y, hit: el ? el.dataset.cid || el.localName : null };
     });
     return { boxes, hits };
-  }, testCase.hits || []);
+  }, [testCase.hits || [], !!testCase.metrics, testCase.scroll || {}]);
   const { hits: _points, ...rest } = testCase;
   result.push({ ...rest, measure: testCase.measure || {}, boxes, ...(hits.length ? { hits } : {}) });
 }

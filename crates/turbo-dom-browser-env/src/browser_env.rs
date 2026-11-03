@@ -3305,7 +3305,8 @@ fn selector_argument<'s>(
     let transformed = html_popover::selector(scope, node, &scalar)?;
     let transformed = html_dialog::selector(scope, node, &transformed)?;
     let transformed = interest_invokers::selector(scope, node, &transformed)?;
-    let transformed = form_pseudo::selector(scope, node, &transformed)?;
+    let subject_local = matches!(operation, "matches" | "webkitMatchesSelector" | "closest");
+    let transformed = form_pseudo::selector(scope, node, &transformed, subject_local)?;
     let transformed = view_transitions::selector(scope, node, &transformed)?;
     let original = if transformed == scalar {
         units
@@ -7222,6 +7223,12 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         global,
         "__canvasMeasureTextNative",
         canvas_text::measure_text_native,
+    );
+    bind_method(
+        scope,
+        global,
+        "__canvasLengthUnitNative",
+        canvas_text::length_unit_native,
     );
     bind_method(
         scope,

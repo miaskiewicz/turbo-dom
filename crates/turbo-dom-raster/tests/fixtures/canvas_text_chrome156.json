@@ -1,0 +1,127 @@
+{
+ "browser": "Chrome/156.0.8078.47",
+ "collectorSha256": "2f26562790a65347c6b4ecce6b4df9ff8e9e6926fe2da77c5c63e3d0ffec27b1",
+ "fontFiles": {
+  "liberation-serif/LiberationSerif-Regular.ttf": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4",
+  "inter/Inter-Bold.otf": "9fc6261e817d0b1b2bf1953d8799bb1c837d11aeebbf83ae352e7b4d6de6425d"
+ },
+ "canvas": [
+  1700,
+  240
+ ],
+ "baseline": [
+  10,
+  190
+ ],
+ "cases": [
+  {
+   "font": "160px \"Liberation Serif\"",
+   "text": "AVATAR Wave",
+   "width": 995.078125,
+   "runs": [
+    [
+     11,
+     497
+    ],
+    [
+     503,
+     605
+    ],
+    [
+     645,
+     852
+    ],
+    [
+     854,
+     934
+    ],
+    [
+     940,
+     1000
+    ]
+   ]
+  },
+  {
+   "font": "160px \"Liberation Serif\"",
+   "text": "Hello, World!",
+   "width": 884.6875,
+   "runs": [
+    [
+     14,
+     121
+    ],
+    [
+     131,
+     191
+    ],
+    [
+     199,
+     238
+    ],
+    [
+     244,
+     283
+    ],
+    [
+     291,
+     360
+    ],
+    [
+     371,
+     396
+    ],
+    [
+     445,
+     658
+    ],
+    [
+     667,
+     716
+    ],
+    [
+     720,
+     759
+    ],
+    [
+     767,
+     840
+    ],
+    [
+     858,
+     878
+    ]
+   ]
+  },
+  {
+   "font": "bold 120px Inter",
+   "text": "To Wave, AV",
+   "width": 737.40234375,
+   "runs": [
+    [
+     14,
+     150
+    ],
+    [
+     186,
+     363
+    ],
+    [
+     370,
+     438
+    ],
+    [
+     442,
+     505
+    ],
+    [
+     516,
+     539
+    ],
+    [
+     580,
+     745
+    ]
+   ]
+  }
+ ]
+}

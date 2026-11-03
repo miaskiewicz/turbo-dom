@@ -179,8 +179,21 @@ package or publish workflow.
   offsets `ScrollMetrics::min_x..=0` (`scroll::inline_alignment` swaps start/end for
   scrollIntoView), and a quirks-mode live document follows the line height quirk (the
   style pass marks it with `style::QUIRKS_LINE_HEIGHT`; since turbo-dom#238 the static
-  `style_html_tree` marks a BackCompat document too); vertical writing modes are still
-  an error (turbo-dom#234). Since turbo-dom#238 inline layout is UAX #9 bidi
+  `style_html_tree` marks a BackCompat document too). Since turbo-dom#234 `vertical-rl` /
+  `vertical-lr` lay out through a logical-coordinate layer (`layout::writing`): a box whose
+  writing mode differs from its parent's (`LayoutBox::writing_root`, an independent formatting
+  context) is laid out in its own inline/block space from a relabelled copy of its subtree
+  (`height` = inline size, physical sides renamed; orthogonal `auto` inline sizes fit the
+  available size, CSS Writing Modes 4 §7.3) and its fragments / used metrics map back, so lines
+  break at the vertical inline size like Chrome; `TextLine::vertical` runs paint turned a
+  quarter clockwise (raster PNG + SVG) and a vertical-rl scroller scrolls from the right. Chrome
+  controls: `live_geometry_chrome156.json` `vertical-*`, `scripts/vertical-text-chrome-control.mjs`
+  -> turbo-dom-raster `tests/vertical_text_chrome.rs`. Since turbo-dom#239 flex / grid /
+  table boxes, inline-level atoms, `<img>` (intrinsic size turned), `direction: rtl`, floats and
+  absolute boxes lay out in the logical space too, and a vertical line aligns on the central
+  baseline (`writing::central_baseline`: fonts split evenly, baseline-less atoms centre; Blink's
+  `kIdeographicBaseline`); upright text (CJK / `text-orientation: upright`) and replaced elements
+  with a physical default size still fail per element (`SnapshotError::UnsupportedVerticalWriting`). Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
   `unicode-bidi`/`direction` as formatting characters (the static path, which flattens
   inline boxes, emits them as zero-width text items), segments shaped in their level's
@@ -304,8 +317,13 @@ package or publish workflow.
   and iframe-sizing controls, at a real `--force-device-scale-factor=2`, since emulated DSF rounds
   font metrics in CSS pixels). Only tests of the host-font policy itself read installed fonts and
   stay `cfg(target_os = "macos")`: `native_serif_policy` (serif resolves to the physical Times
-  face) and `original_text_units`' script-fallback comparison (CoreText picks the fallback face);
-  what they test is the host lookup, so fixture fonts would test nothing.
+  face), `original_text_units`' script-fallback comparison (CoreText picks the fallback face)
+  and `host_font_advances_chrome` (system Times: AAT `morx` + legacy `kern` table, whose pairs
+  HarfBuzz splits across both glyphs; `scripts/host-font-chrome-control.mjs`, turbo-dom#236);
+  what they test is the host lookup, so fixture fonts would test nothing. Native advances follow
+  Blink's font cache (`text::blink_font_size`: a font is built at `unsigned(size*100)/100`, HTML
+  text at the device size) and `FontFace::blink_advances` (16.16 Skia advance + separately
+  scaled shaper adjustments).
 - **Rust selector engine = Chrome 156.** `rtdom/query.rs` (string API) and `query_utf16.rs` (UTF-16
   API; also parses any string selector containing `\`) are checked against
   `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json` (regenerate with

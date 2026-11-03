@@ -279,7 +279,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 13] = [
+    let groups: [fn(&str) -> bool; 14] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -293,6 +293,7 @@ fn held_out(id: &str) -> bool {
         pre_line_newline_case,
         quirks_strut_case,
         rtl_block_case,
+        vertical_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -434,4 +435,125 @@ fn rtl_block_case(id: &str) -> bool {
 #[test]
 fn rtl_containers_place_blocks_from_the_right_like_chrome_156() {
     assert_matches_chrome(compare_cases(rtl_block_case));
+}
+
+/// miaskiewicz/turbo-dom#234: vertical writing modes (block flow, lines, frames, nested
+/// and orthogonal flows, scrollers).
+fn vertical_case(id: &str) -> bool {
+    id.starts_with("vertical-")
+}
+
+/// The `scrollLeft` a case sets on `cid` before the reads (0 when none).
+fn scrolled(case: &Value, cid: &str) -> f64 {
+    case["scroll"][cid].as_f64().unwrap_or(0.0)
+}
+
+type Laid<'a> = (
+    &'a turbo_dom::Tree,
+    &'a crate::layout_snapshot::LayoutSnapshot,
+    &'a crate::cssom_view::scroll::SourceStyles,
+);
+
+/// One CSSOM-View metric of `id` as surf answers it.
+fn metric(
+    case: &Value,
+    cid: &str,
+    key: &str,
+    (_, snapshot, styles): Laid,
+    id: crate::layout_snapshot::SourceId,
+) -> Result<f64, String> {
+    let geometry = || metrics::element_geometry(snapshot, id);
+    let position = || metrics::offset_position(snapshot, styles, id);
+    let scroll = || crate::cssom_view::scroll::scroll_metrics(snapshot, styles, id);
+    Ok(match key {
+        "offsetLeft" => f64::from(position()?.left),
+        "offsetTop" => f64::from(position()?.top),
+        "offsetWidth" => f64::from(geometry()?.offset.width),
+        "offsetHeight" => f64::from(geometry()?.offset.height),
+        "clientLeft" => f64::from(geometry()?.client.left),
+        "clientTop" => f64::from(geometry()?.client.top),
+        "clientWidth" => f64::from(geometry()?.client.width),
+        "clientHeight" => f64::from(geometry()?.client.height),
+        "scrollWidth" => f64::from(scroll()?.width),
+        "scrollHeight" => f64::from(scroll()?.height),
+        // The offset Chrome clamps the set `scrollLeft` into (`min_x ..= max_x`).
+        _ => {
+            let s = scroll()?;
+            scrolled(case, cid).clamp(s.min_x, s.max_x)
+        }
+    })
+}
+
+/// offset* / client* / scroll* of one element against Chrome's.
+fn check_metrics(case: &Value, want: &Value, laid: Laid, failures: &mut Vec<String>) -> usize {
+    let cid = want["cid"].as_str().unwrap();
+    let handle = laid
+        .0
+        .query_selector(&format!("[data-cid=\"{cid}\"]"))
+        .unwrap();
+    let id = source_id(DOCUMENT, handle);
+    let mut compared = 0;
+    for (key, chrome) in want["metrics"].as_object().unwrap() {
+        let chrome = chrome.as_f64().unwrap();
+        match metric(case, cid, key, laid, id) {
+            Ok(value) if (value - chrome).abs() < 0.01 => {}
+            other => failures.push(format!(
+                "{}.{key} = {other:?}, Chrome {chrome}",
+                label(case, want)
+            )),
+        }
+        compared += 1;
+    }
+    compared
+}
+
+/// Every vertical case: border boxes (Chrome read them after setting `scrollLeft`; they
+/// are unscrolled here) and offset / client / scroll metrics.
+fn compare_vertical_cases() -> (usize, Vec<String>) {
+    let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
+    let fonts = crate::test_support::fixture_fonts();
+    let mut failures = Vec::new();
+    let mut compared = 0;
+    for case in fixture["cases"].as_array().unwrap() {
+        if !vertical_case(case["id"].as_str().unwrap()) {
+            continue;
+        }
+        let html = case["html"].as_str().unwrap();
+        let (tree, snapshot, styles) = layout_with_fonts(
+            html,
+            css_of(html),
+            (1280.0, 800.0),
+            Some(1.0),
+            |_| {},
+            &fonts,
+        );
+        let shift: f64 = case["scroll"]
+            .as_object()
+            .map_or(0.0, |s| s.values().filter_map(Value::as_f64).sum());
+        for want in case["boxes"].as_array().unwrap() {
+            let cid = want["cid"].as_str().unwrap();
+            let handle = tree
+                .query_selector(&format!("[data-cid=\"{cid}\"]"))
+                .unwrap();
+            let source = source_id(DOCUMENT, handle);
+            let mut want = want.clone();
+            if case["scroll"][cid].is_null() {
+                want["x"] = Value::from(want["x"].as_f64().unwrap() + shift);
+            }
+            check_box(
+                case,
+                &want,
+                bounds(&snapshot, &styles, source),
+                None,
+                &mut failures,
+            );
+            compared += 1 + check_metrics(case, &want, (&tree, &snapshot, &styles), &mut failures);
+        }
+    }
+    (compared, failures)
+}
+
+#[test]
+fn vertical_writing_modes_lay_out_like_chrome_156() {
+    assert_matches_chrome(compare_vertical_cases());
 }

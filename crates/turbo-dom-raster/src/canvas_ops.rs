@@ -623,18 +623,34 @@ pub(crate) fn glyph_subpaths(st: &State, text: &str, x: f32, y: f32) -> Vec<SubP
         subs: Vec::new(),
         cur: Vec::new(),
     };
-    let mut pen_x = x;
-    for g in face.shape(text) {
-        let pen = crate::glyph::Pen {
-            origin_x: pen_x + g.x_offset as f32 * scale,
-            baseline_y: y - g.y_offset as f32 * scale,
-            scale,
-        };
-        crate::glyph::trace_glyph(&ttf, g.glyph_id, pen, &mut sink);
-        sink.flush();
-        pen_x += g.x_advance as f32 * scale;
+    // Blink's canvas pen: word by word (a space is a word of its own, so no kerning pair
+    // crosses it) with 16.16 glyph advances, exactly the `measureText` width.
+    let mut pen_x = f64::from(x);
+    for word in canvas_words(text) {
+        let glyphs = face.shape(word);
+        let advances = face.blink_advances(&glyphs, st.font_px, 1.0);
+        for (g, advance) in glyphs.iter().zip(advances) {
+            let pen = crate::glyph::Pen {
+                origin_x: pen_x as f32 + g.x_offset as f32 * scale,
+                baseline_y: y - g.y_offset as f32 * scale,
+                scale,
+            };
+            crate::glyph::trace_glyph(&ttf, g.glyph_id, pen, &mut sink);
+            sink.flush();
+            pen_x += advance;
+        }
     }
     sink.subs
+}
+
+/// The words Blink's canvas shapes separately: each run between spaces, and each U+0020.
+fn canvas_words(text: &str) -> impl Iterator<Item = &str> {
+    text.split_inclusive(' ')
+        .flat_map(|word| match word.strip_suffix(' ') {
+            Some(head) => [head, " "],
+            None => [word, ""],
+        })
+        .filter(|word| !word.is_empty())
 }
 
 /// A [`crate::glyph::Tracer`] that flattens each glyph contour to a polyline and
