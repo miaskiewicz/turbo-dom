@@ -27,6 +27,14 @@ Notes:
 - Inter is the static OTF (CFF) build from the upstream `rsms/inter` v4.1
   release; all other families are TrueType (`glyf`) outlines.
 
+Test fixtures only (not bundled; `test_support::fixture_fonts()` and the Chrome
+controls load them for the bidi comparisons, miaskiewicz/turbo-dom#238):
+
+| Family           | Faces   | License | License file                |
+|------------------|---------|---------|-----------------------------|
+| Noto Sans Hebrew | Regular | OFL 1.1 | `noto-sans-hebrew/OFL.txt`  |
+| Noto Sans Arabic | Regular | OFL 1.1 | `noto-sans-arabic/OFL.txt`  |
+
 ## Sources
 
 - Inter            — https://github.com/rsms/inter (release v4.1, `extras/otf/`)
@@ -35,6 +43,8 @@ Notes:
 - PT Serif         — https://fonts.google.com/specimen/PT+Serif
 - Fira Code        — https://github.com/tonsky/FiraCode (release 6.2)
 - IBM Plex Mono    — https://fonts.google.com/specimen/IBM+Plex+Mono
+- Noto Sans Hebrew — https://github.com/notofonts/hebrew (notofonts.github.io `hinted/ttf`)
+- Noto Sans Arabic — https://github.com/notofonts/arabic (notofonts.github.io `hinted/ttf`)
 
 The SIL Open Font License 1.1 permits embedding the font (including subsetted) in
 documents and bundling with software, provided the copyright + license notices

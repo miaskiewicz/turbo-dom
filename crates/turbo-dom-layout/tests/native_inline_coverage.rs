@@ -28,6 +28,8 @@ fn source_pieces(fonts: &FontRegistry, contributes: bool, line_height: Option<f3
         baseline_shift: 0.0,
         contributes_metrics: contributes,
         valign: VAlign::Super,
+        rtl: false,
+        bidi: turbo_dom_layout::layout::inline::UnicodeBidi::Normal,
     };
     let mut end = edge.clone();
     end.start = false;

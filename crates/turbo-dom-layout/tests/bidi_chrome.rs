@@ -18,7 +18,7 @@ use turbo_dom_layout::test_support::literal::{self, parse_html, Node};
 use turbo_dom_layout::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages};
 
 const BOX: &str = "font-family:'Fira Code','Noto Sans Hebrew','Noto Sans Arabic';font-size:16px;line-height:24px";
-/// Chrome's geometry is in LayoutUnits (1/64 px); text advances differ in the last bits.
+/// Chrome positions in `LayoutUnit`s; text advances differ in the last bits.
 const TOLERANCE: f64 = 0.02;
 
 fn fixture() -> &'static Value {
@@ -62,7 +62,6 @@ fn collect(nodes: &[Node], path: &mut Vec<usize>, ids: &mut Ids) {
                 // Paths from `#box` (the forest's first node).
                 ids.texts.insert(path[1..].to_vec(), id);
             }
-            _ => {}
         }
         path.pop();
     }
@@ -234,3 +233,4 @@ fn lines_break_in_logical_order_then_reorder_like_chrome_156() {
 fn plaintext_paragraphs_take_their_first_strong_direction_like_chrome_156() {
     compare_cases(|id| id.starts_with("block-plaintext-"));
 }
+

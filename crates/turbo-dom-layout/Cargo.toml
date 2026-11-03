@@ -63,6 +63,8 @@ thiserror = "2"
 rustybuzz = "0.20.1"
 self_cell = "1"
 unicode-linebreak = "0.1.5"
+# UAX #9 embedding levels for inline layout (layout::inline::bidi, turbo-dom#238).
+unicode-bidi = "0.3.18"
 taffy = "0.8"
 png = "0.18.1"
 jpeg-decoder = { version = "0.3.2", default-features = false }

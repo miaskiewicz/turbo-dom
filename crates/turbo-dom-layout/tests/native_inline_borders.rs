@@ -288,10 +288,6 @@ fn unsupported_ordinary_inline_contexts_fail_only_their_own_reads() {
             SnapshotError::UnsupportedInlineAlignment,
         ),
         (
-            "<span id=u style='direction:rtl'>rtl</span>",
-            SnapshotError::UnsupportedInlineWriting,
-        ),
-        (
             "<span id=u style='writing-mode:vertical-rl'>vertical</span>",
             SnapshotError::UnsupportedInlineWriting,
         ),
@@ -326,18 +322,16 @@ fn unsupported_ordinary_inline_contexts_fail_only_their_own_reads() {
             );
         }
     }
-    // miaskiewicz/turbo-dom#190: an inline that only inherits its RTL container's
-    // direction lays out (approximately, #238); one that changes direction opens a bidi
-    // embedding and fails its own reads.
+    // miaskiewicz/turbo-dom#238: an inline that inherits its RTL container's direction
+    // and one that changes it (a bidi embedding / isolate) both lay out (UAX #9;
+    // tests/bidi_chrome.rs checks the geometry against Chrome 156).
     let (snapshot, names) = capture(
-        "<div id=box dir=rtl><span id=i style='padding-left:2px'>a</span> <span id=u dir=ltr>b</span></div>",
+        "<div id=box dir=rtl><span id=i style='padding-left:2px'>a</span> <span id=u dir=ltr>b</span> <span id=s style='direction:rtl'>c</span></div>",
     );
-    assert_eq!(snapshot.unsupported_inline_geometry(names["i"]), None);
-    assert!(element_geometry(&snapshot, names["i"]).is_ok());
-    assert_eq!(
-        snapshot.unsupported_inline_geometry(names["u"]),
-        Some(&SnapshotError::UnsupportedInlineWriting)
-    );
+    for name in ["i", "u", "s"] {
+        assert_eq!(snapshot.unsupported_inline_geometry(names[name]), None, "{name}");
+        assert!(element_geometry(&snapshot, names[name]).is_ok(), "{name}");
+    }
     // position:absolute blockifies (CSS 2.1 §9.7): a supported out-of-flow block box.
     let (snapshot, names) = capture("<span id=a style='position:absolute'>absolute</span>");
     assert_eq!(snapshot.unsupported_inline_geometry(names["a"]), None);

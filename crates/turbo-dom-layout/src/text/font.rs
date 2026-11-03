@@ -413,6 +413,44 @@ impl FontFace {
         collect_glyphs(&shaped)
     }
 
+    /// [`shape`](Self::shape) in the direction of a bidi embedding level (`rtl`), which
+    /// an override or a number's level can set against the script's own (UAX #9;
+    /// miaskiewicz/turbo-dom#238).
+    #[must_use]
+    pub fn shape_in(&self, text: &str, rtl: bool) -> Vec<ShapedGlyph> {
+        if guessed_rtl(text) == rtl {
+            return self.shape(text);
+        }
+        // A key no plain text has: a direction mark ahead of the text.
+        let key = format!("{}{text}", if rtl { '\u{200f}' } else { '\u{200e}' });
+        if let Some(hit) = self.cached_shape(&key) {
+            return hit;
+        }
+        let mut buffer = UnicodeBuffer::new();
+        buffer.push_str(text);
+        buffer.guess_segment_properties();
+        buffer.set_direction(if rtl {
+            rustybuzz::Direction::RightToLeft
+        } else {
+            rustybuzz::Direction::LeftToRight
+        });
+        let glyphs = collect_glyphs(&rustybuzz::shape(
+            &self.faces.borrow_dependent().rb,
+            &[],
+            buffer,
+        ));
+        self.store_shape(&key, &glyphs);
+        glyphs
+    }
+
+    /// [`measure`](Self::measure) shaped in direction `rtl` ([`shape_in`](Self::shape_in)).
+    #[must_use]
+    pub fn measure_in(&self, text: &str, font_size: f32, letter_spacing: f32, rtl: bool) -> f32 {
+        let glyphs = self.shape_in(text, rtl);
+        let advance: i64 = glyphs.iter().map(|g| i64::from(g.x_advance)).sum();
+        advance as f32 * self.scale(font_size) + letter_spacing * cluster_count(&glyphs) as f32
+    }
+
     fn cached_shape(&self, text: &str) -> Option<Vec<ShapedGlyph>> {
         self.shape_cache
             .lock()
@@ -460,6 +498,15 @@ impl FontFace {
             .map(|glyph| self.blink_glyph_advance(font_size, glyph.x_advance))
             .sum()
     }
+}
+
+/// The direction the shaper picks for `text` on its own (its script's).
+#[must_use]
+pub fn guessed_rtl(text: &str) -> bool {
+    let mut buffer = UnicodeBuffer::new();
+    buffer.push_str(text);
+    buffer.guess_segment_properties();
+    buffer.direction() == rustybuzz::Direction::RightToLeft
 }
 
 /// Whether each shaped glyph ends its cluster (the next glyph starts another

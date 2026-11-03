@@ -5,6 +5,7 @@
 #[cfg(feature = "bundled-fonts")]
 mod bundled;
 mod font;
+pub(crate) use font::guessed_rtl;
 mod inline;
 mod platform_fallback;
 mod registry;

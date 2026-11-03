@@ -955,7 +955,8 @@ fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Level {
     // Without a block the split is a single run (the same as `Level::Inline` to every
     // consumer, `append_level`).
     let mut out = Vec::new();
-    let mut run = Vec::new();
+    let (open, close) = bidi_controls(el, ids);
+    let mut run: Vec<InlineItem> = open.into_iter().collect();
     for level in levels {
         match level {
             FlowLevel::Block(block) if !block.line_placeholder() => {
@@ -965,8 +966,27 @@ fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Level {
             other => run.extend(inline_items_of(vec![other])),
         }
     }
+    run.extend(close);
     out.push(FlowLevel::Inline(run));
     Level::Split(out)
+}
+
+/// A flattened inline element's `unicode-bidi` as zero-width text items holding the
+/// formatting characters that open and close its content: the static path has no
+/// inline-box edges to carry it (miaskiewicz/turbo-dom#238).
+fn bidi_controls(el: &StyledElement, ids: &mut Ids) -> (Option<InlineItem>, Option<InlineItem>) {
+    let bidi = super::inline::UnicodeBidi::parse(el.style.get("unicode-bidi"));
+    let rtl = el.style.get("direction").map(str::trim) == Some("rtl");
+    let (open, close) = bidi.controls(rtl);
+    if open.is_empty() {
+        return (None, None);
+    }
+    let mut item = |text: &str| InlineItem::Text {
+        node_id: ids.alloc(),
+        style: el.style.clone(),
+        text: text.to_string(),
+    };
+    (Some(item(open)), Some(item(close)))
 }
 
 // --------------------------------------------------------------------------

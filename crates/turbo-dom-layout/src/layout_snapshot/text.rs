@@ -141,6 +141,8 @@ mod tests {
         GlyphSourceCluster {
             collapsed_whitespace: false,
             right_to_left: false,
+            bidi_level: 0,
+            paragraph_level: 0,
             byte_start: 0,
             byte_end: 1,
             utf16_start: 0,

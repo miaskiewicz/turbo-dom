@@ -9,8 +9,9 @@
 //! This is a provenance seam, not a complete CSSOM View implementation. In
 //! particular a text-line fragment's rectangle is its line container, not a
 //! Range rectangle. The optional text-enabled API preserves actual shaper
-//! clusters and original UTF-16 offsets; complete caret boxes, whitespace/bidi
-//! mapping, scrollbars, clipping and fragmented inline borders remain separate.
+//! clusters and original UTF-16 offsets (in bidi-reordered visual order, with each
+//! cluster's embedding level); complete caret boxes, whitespace mapping, scrollbars,
+//! clipping and fragmented inline borders remain separate.
 
 mod fixed_containing;
 mod geometry;
@@ -101,7 +102,9 @@ pub enum SnapshotError {
     UnsupportedInlineBlockSplit,
     #[error("native ordinary inline top/bottom/middle alignment is unsupported")]
     UnsupportedInlineAlignment,
-    #[error("native ordinary inline vertical/RTL writing is unsupported")]
+    /// A vertical `writing-mode` on an ordinary inline. (A direction change, a bidi
+    /// embedding, lays out since miaskiewicz/turbo-dom#238.)
+    #[error("native ordinary inline vertical writing is unsupported")]
     UnsupportedInlineWriting,
     /// No longer produced: absolute/fixed inlines blockify and inline sticky boxes
     /// are laid out (turbo-dom#218). Kept for API stability.
@@ -217,7 +220,7 @@ impl LayoutSnapshot {
 
     /// Why the native HTML inline producer cannot supply this source's geometry: it is
     /// (inside) an ordinary inline construct it does not support (top/bottom/middle
-    /// alignment, vertical/RTL writing, `sticky`, a displaced block-in-inline split).
+    /// alignment, vertical writing, `sticky`, a displaced block-in-inline split).
     /// The failure is per element: every other source of the snapshot answers
     /// (miaskiewicz/turbo-surf#31). `None` for a supported source.
     #[must_use]

@@ -380,6 +380,7 @@ fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
         align_decl(element),
         lang_decl(element),
         list_type_decl(element),
+        dir_auto_decl(element),
     ]
     .into_iter()
     .flatten()
@@ -472,6 +473,15 @@ fn list_type_decl(element: Subject) -> Option<Declaration> {
 
 /// `lang="..."` → `-webkit-locale` (Blink maps the attribute the same way), which
 /// inherits so a descendant's `text-transform` maps with the content language.
+/// `dir=auto` → the `direction` of the element's first strong character (HTML's auto
+/// directionality, miaskiewicz/turbo-dom#238); only a tree-backed element has content.
+fn dir_auto_decl(element: Subject) -> Option<Declaration> {
+    let Attrs::Tree(tree, h) = element.attrs else {
+        return None;
+    };
+    matched::dir_auto_declaration(tree, h)
+}
+
 fn lang_decl(element: Subject) -> Option<Declaration> {
     let lang = element.attrs.get("lang")?.trim();
     Some(pres_decl("-webkit-locale", lang.to_string()))
