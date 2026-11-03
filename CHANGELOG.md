@@ -260,7 +260,7 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
   `<pattern>` in SVG; no tile cap) (#248, 0.7.0 round-2 review): both painters repeat one
   whole-pixel cell of the snapped tiles, so fractional tiles paint alike in PNG and SVG and
   millions of them fill the box, and a scaled or rotated box's tiles are drawn at device
-  resolution, filtered and anti-aliased (0.7.0 round-3 review); inline-box decorations per line fragment
+  resolution, filtered and anti-aliased (0.7.0 round-3 review); fractional `repeat`/`round` tiles are one tile image repeated every tile size, blending the pixels their edges cross like Chrome (#270); an image under a scale is resampled at the device resolution (#269); inline-box decorations per line fragment
   (#244); vertical and upright text (#234, #239); bidi-reordered runs (#238); list
   markers (#128); the `coretext` canvas painter selects the bold / italic face (#236).
 

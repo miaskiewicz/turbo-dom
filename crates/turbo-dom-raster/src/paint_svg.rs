@@ -173,6 +173,13 @@ fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &D
     let Some(first) = pattern.tiles(area).next() else {
         return;
     };
+    if pattern.period().is_none()
+        && crate::paint_png::repeats_tiles(pattern)
+        && pattern.tiles(area).nth(1).is_some()
+        && paint_tile_texture(svg, f, pattern, (images, first)).is_some()
+    {
+        return;
+    }
     if pattern.period().is_none() && pattern.tiles(area).nth(MAX_LISTED_TILES).is_none() {
         for (x, y, w, h) in pattern.tiles(area) {
             let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
@@ -212,6 +219,47 @@ fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &D
         svg,
         "</g></pattern><rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>"
     );
+}
+
+/// The most pixels of one fractional tile's image [`paint_tile_texture`] embeds.
+const MAX_TEXTURE_PIXELS: u64 = 1 << 22;
+
+/// Fractional tiles repeated every tile size (miaskiewicz/turbo-dom#270): one whole-pixel
+/// cell of them as Chrome and the PNG painter draw it
+/// ([`crate::paint_png::texture_cell`]: the pixels a tile edge crosses blend), embedded as
+/// one `<image>` in a `<pattern>` of the cell (a viewer rasterizes a fractional
+/// `<pattern>` cell with gaps, and tiles drawn side by side with seams). `None` (written
+/// another way) when the tile has no pixels to embed: a missing image, or a tile over
+/// [`MAX_TEXTURE_PIXELS`].
+fn paint_tile_texture(
+    svg: &mut String,
+    f: &Fragment,
+    pattern: &TilePattern,
+    (images, first): (&DecodedAssets, rrect::Rect),
+) -> Option<()> {
+    let (cell, (x, y)) =
+        crate::paint_png::texture_cell(pattern, images, first, MAX_TEXTURE_PIXELS)?;
+    let png = cell.encode_png().ok()?;
+    let (w, h) = (cell.width(), cell.height());
+    let along = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
+        if repeats {
+            (from, len)
+        } else {
+            (at, size)
+        }
+    };
+    let (fx, fw) = along(pattern.step_x > 0.0, (f.x, f.width), (first.0, first.2));
+    let (fy, fh) = along(pattern.step_y > 0.0, (f.y, f.height), (first.1, first.3));
+    let id = svg.len();
+    let _ = writeln!(
+        svg,
+        "<pattern id=\"tiles{id}\" patternUnits=\"userSpaceOnUse\" x=\"{x}\" y=\"{y}\" \
+         width=\"{w}\" height=\"{h}\"><image width=\"{w}\" height=\"{h}\" \
+         preserveAspectRatio=\"none\" href=\"data:image/png;base64,{}\"/></pattern>\
+         <rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>",
+        image_paint::base64(&png)
+    );
+    Some(())
 }
 
 /// Paint `f`'s children in stacking order inside a `<g clip-path>` of its `overflow`
@@ -803,28 +851,57 @@ mod tests {
             row.contains("<rect x=\"0\" y=\"4\" width=\"10\" height=\"3\""),
             "{row}"
         );
-        // Without a period: a few tiles are written one by one at their snapped boxes,
-        // many as a pattern of one cell of snapped tiles (0.7.0 round-3 review, finding 7:
-        // the PNG painter's cell, not the exact unsnapped tile).
-        let few = body(&tiles((0.0, 0.0), (1.5, 10.0), (1.5, 0.0)), &HashMap::new());
+        // Without a period, spaced (a step that is not the tile's size): a few tiles are
+        // written one by one at their snapped boxes, many as a pattern of one cell of
+        // snapped tiles (0.7.0 round-3 review, finding 7: the PNG painter's cell, not the
+        // exact unsnapped tile).
+        let few = body(&tiles((0.0, 0.0), (1.0, 10.0), (1.5, 0.0)), &HashMap::new());
         assert_eq!(few.matches("<rect").count(), 7, "{few}");
         assert!(!few.contains("<pattern"), "{few}");
         let mut many = tiles((0.0, 0.0), (0.0, 0.0), (0.0, 0.0));
         many.width = 1000.0;
         many.height = 1000.0;
         if let FragmentContent::Tiles(p) = &mut many.content {
-            (p.tile_width, p.tile_height, p.step_x, p.step_y) = (1.5, 1.5, 1.5, 1.5);
+            (p.tile_width, p.tile_height, p.step_x, p.step_y) = (1.0, 1.0, 1.5, 1.5);
         }
         let many = body(&many, &HashMap::new());
         assert!(
             many.contains("x=\"0\" y=\"0\" width=\"3\" height=\"3\">"),
             "{many}"
         );
-        // Two snapped tiles per axis (2px and 1px): four in the cell, then the fill.
+        // Two snapped 1px tiles per axis (at 0 and 2): four in the cell, then the fill.
         assert_eq!(many.matches("<rect").count(), 5, "{many}");
         assert!(
             many.contains("<rect x=\"2.00\" y=\"2.00\" width=\"1.00\" height=\"1.00\""),
             "{many}"
+        );
+        // Fractional tiles repeated every tile size (miaskiewicz/turbo-dom#270): one
+        // whole-pixel cell of them (3px for 1.5px tiles, 22 of them: at least 64px, from
+        // the whole px at or before the 0.25 origin) as one `<image>` in a pattern,
+        // however few tiles there are.
+        let blended = body(&tiles((0.25, 0.0), (1.5, 1.5), (1.5, 1.5)), &HashMap::new());
+        let id = &blended["<pattern id=\"".len()..blended.find("\" patternUnits").unwrap()];
+        assert!(
+            blended.starts_with(&format!(
+                "<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" \
+                 width=\"66\" height=\"66\"><image width=\"66\" height=\"66\" \
+                 preserveAspectRatio=\"none\" href=\"data:image/png;base64,iVBORw0KGgo"
+            )),
+            "{blended}"
+        );
+        assert_eq!(blended.matches("<image").count(), 1, "{blended}");
+        assert!(
+            blended.contains(&format!(
+                "</pattern><rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" fill=\"url(#{id})\"/>"
+            )),
+            "{blended}"
+        );
+        // Along a lone axis: the tile's own (snapped) row, a cell of its height.
+        let row = body(&tiles((0.0, 2.25), (1.5, 3.0), (1.5, 0.0)), &HashMap::new());
+        assert!(row.contains("width=\"66\" height=\"3\"><image"), "{row}");
+        assert!(
+            row.contains("<rect x=\"0\" y=\"2\" width=\"10\" height=\"3\""),
+            "{row}"
         );
         // No tile meets the box: nothing.
         assert_eq!(

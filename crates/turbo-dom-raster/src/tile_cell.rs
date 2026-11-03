@@ -33,7 +33,7 @@ pub(crate) struct TileCell {
 /// steps (up to [`MAX_CELL_STEPS`]) that land on a whole pixel. A step no such count
 /// lands on (an irrational-looking `space` gap) takes the fewest steps that drift least
 /// per step, rounded: its tiles shift by under half a pixel per cell.
-fn cell_length(step: f32) -> f32 {
+pub(crate) fn cell_length(step: f32) -> f32 {
     let off = |k: u16| {
         let span = step * f32::from(k);
         (span - span.round()).abs()

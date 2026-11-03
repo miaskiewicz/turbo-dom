@@ -427,15 +427,168 @@ fn paint_tiles(
     };
     let canvas = u64::from(pm.width()) * u64::from(pm.height());
     if tiles.next().is_some() {
-        let cell = TileCell::new(pattern, first);
-        if let Some(tile) = cell_pixmap(pattern, &cell, images, (xf, canvas)) {
-            fill_pattern(pm, &tile, (region, first, &cell), xf);
-            return;
+        if repeats_tiles(pattern) {
+            if let Some(texture) = tile_texture(pattern, images, cell_scale(xf), canvas) {
+                fill_texture(pm, &texture, pattern, (region, first), xf);
+                return;
+            }
+        } else {
+            let cell = TileCell::new(pattern, first);
+            if let Some(tile) = cell_pixmap(pattern, &cell, images, (xf, canvas)) {
+                fill_pattern(pm, &tile, (region, first, &cell), xf);
+                return;
+            }
         }
     }
     for (x, y, w, h) in pattern.tiles(region) {
         let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
         paint_subtree(pm, &tile, images, xf);
+    }
+}
+
+/// Whether every repeated axis of `pattern` steps by exactly its tile (`repeat`,
+/// `round`, not `space`): Chrome then draws one tile image repeated every tile size,
+/// fractional or not, bilinear-filtered, so the pixels a tile edge crosses blend
+/// (miaskiewicz/turbo-dom#270).
+pub(crate) fn repeats_tiles(pattern: &TilePattern) -> bool {
+    let axis = |step: f32, tile: f32| step == 0.0 || step == tile;
+    axis(pattern.step_x, pattern.tile_width) && axis(pattern.step_y, pattern.tile_height)
+}
+
+/// One tile's pixels, as Chrome rasterizes a background tile: `scale` px per CSS px
+/// rounded up to whole pixels (a 2.5px gradient tile at 1x: 3px), an image at most at
+/// its own (oriented) resolution, stencilled when it is a mask. `None` when the image
+/// is missing or did not decode (painted tile by tile: the placeholder), or the tile
+/// would be larger than `canvas` pixels.
+pub(crate) fn tile_texture(
+    pattern: &TilePattern,
+    images: &DecodedAssets,
+    scale: f32,
+    canvas: u64,
+) -> Option<Pixmap> {
+    let (tw, th) = (pattern.tile_width, pattern.tile_height);
+    let size = ((tw * scale).ceil() as u32, (th * scale).ceil() as u32);
+    if let FragmentContent::Image(placement) = &*pattern.tile {
+        let image = images.get(&placement.name)?;
+        let (iw, ih) = {
+            let oriented = image.oriented(placement.orientation);
+            (oriented.width, oriented.height)
+        };
+        let size = (size.0.min(iw), size.1.min(ih));
+        if u64::from(size.0) * u64::from(size.1) > canvas {
+            return None;
+        }
+        let pixels = scaled(image, placement.orientation, size, (0, 0, size.0, size.1))?;
+        return Some(match placement.tint {
+            Some(tint) => tint_pixmap(&pixels, tint),
+            None => (*pixels).clone(),
+        });
+    }
+    if u64::from(size.0) * u64::from(size.1) > canvas {
+        return None;
+    }
+    let mut texture = Pixmap::new(size.0, size.1)?;
+    let content = Fragment::new(
+        turbo_dom_layout::NodeId(0),
+        0.0,
+        0.0,
+        tw,
+        th,
+        (*pattern.tile).clone(),
+    );
+    let at = Transform::from_scale(size.0 as f32 / tw, size.1 as f32 / th);
+    paint_subtree(&mut texture, &content, images, at);
+    Some(texture)
+}
+
+/// The least length along a repeated axis of a cell [`texture_cell`] draws.
+const MIN_EMBEDDED_CELL: f32 = 64.0;
+
+/// One whole-pixel cell of fractional tiles repeated every tile size, at 1x, as the PNG
+/// painter fills it ([`tile_texture`] repeated and bilinear-filtered: the pixels a tile
+/// edge crosses blend), with its corner: whole px at or before the pattern's origin
+/// along a repeated axis (whole [`crate::tile_cell::cell_length`]s, at least
+/// [`MIN_EMBEDDED_CELL`] long), the `first` tile's
+/// snapped extent along one that does not repeat. `None` as for [`tile_texture`].
+pub(crate) fn texture_cell(
+    pattern: &TilePattern,
+    images: &DecodedAssets,
+    first: rrect::Rect,
+    cap: u64,
+) -> Option<(Pixmap, (f32, f32))> {
+    let texture = tile_texture(pattern, images, 1.0, cap)?;
+    let along = |step: f32, origin: f32, (at, size): (f32, f32)| {
+        if step > 0.0 {
+            // Whole cells up to at least MIN_EMBEDDED_CELL px: a viewer drawing the
+            // pattern much smaller than 1x clips each cell on whole device pixels.
+            let cell = crate::tile_cell::cell_length(step);
+            (
+                origin.floor(),
+                cell * (MIN_EMBEDDED_CELL / cell).ceil().max(1.0),
+            )
+        } else {
+            (at, size)
+        }
+    };
+    let (x, w) = along(pattern.step_x, pattern.x, (first.0, first.2));
+    let (y, h) = along(pattern.step_y, pattern.y, (first.1, first.3));
+    let mut cell = Pixmap::new(w as u32, h as u32)?;
+    let region = (x, y, w, h);
+    fill_texture(
+        &mut cell,
+        &texture,
+        pattern,
+        (region, region),
+        Transform::from_translate(-x, -y),
+    );
+    Some((cell, (x, y)))
+}
+
+/// Fill `region` with `texture` repeated every tile from the pattern's (unsnapped)
+/// origin, bilinear-filtered (only the `first` tile's row or column on an axis that
+/// does not repeat); the region's edges are anti-aliased under a scale, rotation or
+/// skew.
+fn fill_texture(
+    pm: &mut Pixmap,
+    texture: &Pixmap,
+    pattern: &TilePattern,
+    (region, first): (rrect::Rect, rrect::Rect),
+    xf: Transform,
+) {
+    let span = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
+        if repeats {
+            (from, len)
+        } else {
+            (at, size)
+        }
+    };
+    let (x, w) = span(
+        pattern.step_x > 0.0,
+        (region.0, region.2),
+        (first.0, first.2),
+    );
+    let (y, h) = span(
+        pattern.step_y > 0.0,
+        (region.1, region.3),
+        (first.1, first.3),
+    );
+    let to_layer = Transform::from_translate(pattern.x, pattern.y).pre_scale(
+        pattern.tile_width / texture.width() as f32,
+        pattern.tile_height / texture.height() as f32,
+    );
+    let paint = Paint {
+        shader: tiny_skia::Pattern::new(
+            texture.as_ref(),
+            SpreadMode::Repeat,
+            tiny_skia::FilterQuality::Bilinear,
+            1.0,
+            to_layer,
+        ),
+        anti_alias: !only_translates(xf),
+        ..Paint::default()
+    };
+    if let Some(rect) = Rect::from_xywh(x, y, w, h) {
+        pm.fill_rect(rect, &paint, xf, None);
     }
 }
 
@@ -566,17 +719,28 @@ fn paint_image(
         }
         return;
     };
-    let Some(window) = visible_window(place, (w, h), (pm.width(), pm.height())) else {
+    // Under a scale the source is resampled at (at least) the device resolution, a whole
+    // number of pixels per box px, and drawn back down through `1/scale`: Chrome samples
+    // a scaled image's source, not a 1x copy (miaskiewicz/turbo-dom#269).
+    let scale = cell_scale(xf);
+    let place = place.pre_scale(scale.recip(), scale.recip());
+    let size = ((w as f32 * scale) as u32, (h as f32 * scale) as u32);
+    let Some(window) = visible_window(place, size, (pm.width(), pm.height())) else {
         return;
     };
     match (
-        scaled(decoded, placement.orientation, (w, h), window),
+        scaled(decoded, placement.orientation, size, window),
         placement.tint,
     ) {
         (Some(src), tint) => {
             let stencilled = tint.map(|tint| tint_pixmap(&src, tint));
+            let quality = if only_translates(xf) {
+                tiny_skia::FilterQuality::Nearest
+            } else {
+                tiny_skia::FilterQuality::Bilinear
+            };
             let paint = PixmapPaint {
-                quality: tiny_skia::FilterQuality::Nearest,
+                quality,
                 ..PixmapPaint::default()
             };
             let src = stencilled.as_ref().unwrap_or(&src);
@@ -1517,6 +1681,69 @@ mod tests {
         assert_eq!((again.width(), again.height()), (4, 3));
         let other = scaled(&img, Orientation::IDENTITY, (2, 3), (0, 0, 2, 3)).unwrap();
         assert!(!std::rc::Rc::ptr_eq(&first, &other));
+    }
+
+    #[test]
+    fn a_tile_texture_is_the_tiles_pixels_within_a_budget() {
+        // miaskiewicz/turbo-dom#270: one tile's pixels at the scale rounded up to whole
+        // pixels; an image at most at its own resolution, stencilled when it is a mask.
+        let red = crate::image_paint::DecodedImage {
+            width: 2,
+            height: 2,
+            rgba: [255, 0, 0, 255].repeat(4),
+            intrinsic: turbo_dom_layout::image::Intrinsic::new(2, 2, false),
+            placeholder: false,
+        };
+        let images: DecodedAssets = [("a.png".to_string(), red)].into_iter().collect();
+        let pattern = |content: FragmentContent, size: f32| TilePattern {
+            tile: Box::new(content),
+            x: 0.0,
+            y: 0.0,
+            tile_width: size,
+            tile_height: size,
+            step_x: size,
+            step_y: size,
+        };
+        let mask = pattern(image("a.png", Some(Rgba::new(0, 0, 255, 255))).content, 1.5);
+        let texture = tile_texture(&mask, &images, 4.0, 100).unwrap();
+        assert_eq!(
+            (texture.width(), texture.height()),
+            (2, 2),
+            "the image's own 2px"
+        );
+        assert_eq!(rgb(&texture, 1, 1), [0, 0, 255], "the mask's tint");
+        let plain_image = pattern(image("a.png", None).content, 1.5);
+        let texture = tile_texture(&plain_image, &images, 1.0, 100).unwrap();
+        assert_eq!(rgb(&texture, 0, 0), [255, 0, 0]);
+        // Over the budget: none (painted tile by tile).
+        assert!(tile_texture(&plain_image, &images, 1.0, 3).is_none());
+        let gradient = pattern(plain(0.0, 0.0, 1.0, 1.0, Some(RED)).content, 2.5);
+        let texture = tile_texture(&gradient, &images, 2.0, 25).unwrap();
+        assert_eq!((texture.width(), texture.height()), (5, 5));
+        assert!(tile_texture(&gradient, &images, 2.0, 24).is_none());
+    }
+
+    #[test]
+    fn fractional_tiles_too_big_for_a_texture_paint_tile_by_tile() {
+        // 250.5px tiles under scale(0.5) on a 200px canvas: two tiles show, a 251px
+        // texture would outgrow the canvas, so the tiles are walked.
+        let grid = tiles(
+            (0.0, 0.0, 600.0, 600.0),
+            RED,
+            (0.0, 0.0),
+            (250.5, 250.5),
+            (250.5, 250.5),
+        );
+        let mut pm = Pixmap::new(200, 200).unwrap();
+        pm.fill(tiny_skia::Color::WHITE);
+        paint_subtree(
+            &mut pm,
+            &grid,
+            &HashMap::new(),
+            Transform::from_scale(0.5, 0.5),
+        );
+        assert_eq!(rgb(&pm, 10, 10), [255, 0, 0]);
+        assert_eq!(rgb(&pm, 199, 199), [255, 0, 0], "the second tile");
     }
 
     #[test]
