@@ -394,6 +394,33 @@ const CASES = [
     assets: [],
     probes: [[22, 30], [58, 30], [62, 30], [98, 30], [22, 65], [58, 65]],
   },
+  // miaskiewicz/turbo-dom#264: gradient colour stops at lengths (px, em), hard stops
+  // (two stops at one position), double-position stops, and repeating gradients.
+  {
+    id: "gradient-length-stops",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:40px;font-size:10px;background:linear-gradient(90deg,#ff0000 20px,#0000ff 20px,#0000ff 5em,#00ff00 5em)"></div>`),
+    assets: [],
+    probes: [[21, 30], [38, 30], [41, 30], [68, 30], [71, 30], [218, 30]],
+  },
+  {
+    id: "gradient-hard-stops",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:100px;background:linear-gradient(#ff0000 30%,#00ff00 30% 60%,#0000ff 60%)"></div>`),
+    assets: [],
+    probes: [[50, 21], [50, 48], [50, 51], [50, 78], [50, 81], [50, 118]],
+  },
+  {
+    id: "gradient-repeating",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:40px;background:repeating-linear-gradient(90deg,#ff0000 0 10px,#0000ff 10px 20px)"></div>`),
+    assets: [],
+    probes: [[21, 30], [28, 30], [31, 30], [38, 30], [121, 30], [131, 30], [218, 30]],
+  },
+  {
+    // The review's grid: a 1px #ccc line every 4px, both axes (two layers).
+    id: "gradient-grid-tiles",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#00ff00 linear-gradient(#cccccc 1px,transparent 1px) 0 0/4px 4px"></div>`),
+    assets: [],
+    probes: [[30, 20], [30, 21], [30, 23], [30, 24], [218, 116], [218, 117], [218, 119]],
+  },
   {
     // `space`: 5 whole 40px tiles over 220px, 5px apart, the first at the edge.
     id: "bg-space",
@@ -429,6 +456,14 @@ const CASES = [
     html: DOC(`<div style="${at(20, 20)};width:600px;height:300px;background:#00ff00 url(${SPRITE});background-size:8px 4px"></div>`),
     assets: [SPRITE],
     probes: [[21, 21], [25, 21], [613, 317], [617, 317], [21, 317], [617, 21]],
+  },
+  {
+    // 0.7.0 round-2 review, finding 1: 640 x 400 = 256000 two-pixel gradient tiles (red
+    // top row) fill the whole viewport-sized box, down to its bottom-right tile.
+    id: "bg-tiles-fill-a-big-box",
+    html: DOC(`<div style="${at(0, 0)};width:1280px;height:800px;background:#00ff00 linear-gradient(#cccccc 1px,transparent 1px) 0 0/2px 2px"></div>`),
+    assets: [],
+    probes: [[1, 0], [1, 1], [640, 400], [640, 401], [5, 600], [5, 601], [1279, 796], [1279, 798], [1279, 799]],
   },
   {
     // An inline `content-box` origin: the first fragment's content starts after its
@@ -494,11 +529,12 @@ const CASES = [
   },
   // Round-1 review of 0.7.0, finding 7: `overflow: hidden` clips glyph ink past the line
   // box (a 40px "gy" in a 10px-high line); unclipped, the same ink reaches below the box.
-  // The probes avoid the glyphs' anti-aliased edges.
+  // (23,42) and (24,44) are solid ink of the descender's left part in both engines; its
+  // edge pixels (22,44) and (28,44) stay, toleranced in paint_chrome.rs.
   ...["hidden", "visible"].map((overflow) => ({
     id: `overflow-glyph-ink-${overflow}`,
     html: DOC(`<div data-cid="m" style="${at(20, 20)};width:100px;height:10px;line-height:10px;font-size:40px;overflow:${overflow};font-family:'Liberation Serif';color:#0000ff">gy</div>`),
-    probes: [[22, 12], [28, 12], [34, 12], [40, 12], [46, 12], [52, 12], [28, 25], [34, 25], [40, 25], [46, 25], [52, 25], [22, 36], [28, 36], [34, 36], [40, 36], [46, 36], [52, 36], [34, 44], [40, 44], [46, 44], [52, 44]],
+    probes: [[22, 12], [28, 12], [34, 12], [40, 12], [46, 12], [52, 12], [22, 25], [28, 25], [34, 25], [40, 25], [46, 25], [52, 25], [22, 36], [28, 36], [34, 36], [40, 36], [46, 36], [52, 36], [23, 42], [22, 44], [24, 44], [28, 44], [34, 44], [40, 44], [46, 44], [52, 44]],
   })),
   // miaskiewicz/turbo-dom#253: Chrome 156's full border-radius model. Per-corner and
   // elliptical radii, percentages against the border box's own axes, the overlap scale-down,

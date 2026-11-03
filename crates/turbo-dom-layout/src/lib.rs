@@ -43,7 +43,7 @@ pub use image::{ImageResolver, NoImages};
 pub use layout::fragment::{
     BorderRadii, BoxShadow, BreakMeta, ClipRect, CornerRadii, Fragment, FragmentContent,
     GradientStop, ImagePlacement, LinearGradient, NodeId, OverflowClip, PositionedGlyph,
-    RepeatKind, Transform2D,
+    RepeatKind, TilePattern, Transform2D,
 };
 pub use layout::value::{BreakRule, Rgba};
 pub use layout::{

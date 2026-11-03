@@ -911,13 +911,14 @@ fn expanded_background(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec
     ) else {
         return longhands;
     };
-    // A layer whose axes agree (`initial`, a CSS-wide keyword, `center`) keeps one
-    // value, so a lone `initial` still reads as absent.
+    // A layer whose axes agree on a keyword (`initial`, a CSS-wide keyword, `center`)
+    // keeps one value, so a lone `initial` still reads as absent; equal lengths keep
+    // both (a lone `0px` would centre the y axis).
     let value = x
         .split(", ")
         .zip(y.split(", "))
         .map(|(x, y)| {
-            if x == y {
+            if x == y && x.bytes().all(|b| b.is_ascii_alphabetic() || b == b'-') {
                 x.to_string()
             } else {
                 format!("{x} {y}")
@@ -1169,6 +1170,16 @@ mod order_tests {
 #[cfg(test)]
 mod background_shorthand_tests {
     use crate::test_support::cascaded;
+
+    /// A layer whose two position axes are the same length keeps both (`0 0` is the top
+    /// left corner; a lone `0px` would centre the y axis).
+    #[test]
+    fn equal_position_lengths_keep_both_axes() {
+        let style = cascaded("background: red 0 0/2px 2px");
+        assert_eq!(style.get("background-position"), Some("0px 0px"));
+        let style = cascaded("background: url(a.png) 5% 5%, url(b.png) center");
+        assert_eq!(style.get("background-position"), Some("5% 5%, center"));
+    }
 
     /// miaskiewicz/turbo-dom#256: the shorthand sets every longhand (omitted ones to
     /// their initial value, which reads as absent) and is not stored itself.

@@ -103,6 +103,26 @@ Rust API changes, per crate. The npm package's JS API is unchanged.
     Struct literals must add it (`BorderRadii::default()` for square corners).
 - `NodeSources` (from `layout_recorded`) gains `list_markers` (#128); struct literals must
   add it.
+- `FragmentContent` has a new variant `Tiles(TilePattern)` (0.7.0 round-2 review,
+  finding 1): a background layer is one repeating-pattern fragment over its painting area
+  (under the clipped layer container) instead of one `Image` / gradient `Box` fragment per
+  tile, so a fine grid over a tall page is no longer cut off (the round-1 65536-tile cap
+  painted only the top ~870px of a 4px grid on a 1200x5000 page). `TilePattern` carries
+  the tile's content, one tile's origin (its phase), its size and its step per axis (`0`:
+  not repeated); `TilePattern::tiles(region)` yields the snapped tile rectangles meeting a
+  region and `period()` the whole-pixel period when there is one. An exhaustive `match`
+  needs an arm; a painter tiles it (turbo-dom-raster: a pattern shader in PNG, `<pattern>`
+  in SVG) or walks `tiles` over what it paints. Tile edges snap with `floor(v + 0.5)`
+  (was `round`, which differs on negative halves).
+- `BoxStyle::background_gradient` is a `layout::value::GradientSpec` (#264) instead of a
+  `LinearGradient`: the stops keep their specified positions (`StopSpec { color, pos:
+  Option<LengthPct> }`) and `repeating`, and `GradientSpec::resolve(width, height)` gives
+  the painted `LinearGradient` for a box or a background tile (CSS colour stop fixup,
+  repeating gradients unrolled, stops cut to `0..=1`). `LinearGradient` is unchanged.
+- `LayoutOptions` and `HtmlOptions` gain `uncapped_images: bool` (0.7.0 round-2 review,
+  finding 2): `true` sizes `<img>` boxes by CSS alone, like Chrome (turbo-dom-raster sets
+  it); the `false` default keeps html2pdf's paged-media caps (100% of the containing
+  block's width, 60% of the body height). Struct literals must add the field.
 
 **turbo-dom-browser-env**
 
@@ -231,8 +251,8 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
 
 - Inset `box-shadow` (#192); per-corner elliptical radii for backgrounds, gradients,
   borders, shadows and `overflow` clipping (#253); background layers with tiling and
-  clipping, reusing one scaled image (PNG) or one `<image>` via `<use>` (SVG) per run of
-  tiles, without the old 4096-tile cap (#248); inline-box decorations per line fragment
+  clipping, painted from one tile pattern per layer (a pattern shader in PNG, a
+  `<pattern>` in SVG; no tile cap) (#248, 0.7.0 round-2 review); inline-box decorations per line fragment
   (#244); vertical and upright text (#234, #239); bidi-reordered runs (#238); list
   markers (#128); the `coretext` canvas painter selects the bold / italic face (#236).
 
@@ -339,6 +359,19 @@ Detail per fix (each backed by a Chrome 156 control):
 - An empty inline box in a bidi-reordered line goes with the item after it (1e34d4c).
 - The orthogonal table width (#250) already matched Chrome once #241 landed; its test mask
   is gone.
+- Gradient colour stops at lengths (`#ccc 1px`, `5em`, `calc()`) and double-position
+  stops place like Chrome on the gradient line of the box or tile they paint, and
+  `repeating-linear-gradient(...)` repeats (it painted once) (#264; Chrome cases
+  `gradient-*`). Only `%` positions were read; a length stop spread evenly instead.
+- From the 0.7.0 round-2 review: a background layer paints every tile however many there
+  are (one pattern fragment, painted by a pattern shader / `<pattern>`; Chrome case
+  `bg-tiles-fill-a-big-box`); a raster screenshot's `<img>` is no longer squeezed to its
+  column (a `display:block; width:40000px` image is 40000px wide, as in Chrome); every
+  image is resampled with one kernel (the triangle filter, over the part of the box the
+  canvas shows) instead of a box-size-dependent nearest / bilinear choice; the
+  `background` shorthand keeps `0 0` as two position values (it collapsed equal lengths to
+  one, centring the y axis); the `overflow-glyph-ink-*` edge probes the round-1 fix
+  dropped are back, compared within measured anti-aliasing tolerances.
 - turbo-dom-raster, from the 0.7.0 round-1 review: an image or background tile far larger
   than the canvas (a 40000px `background-size`) is drawn from its own pixels through a
   scale transform instead of being resized to its layout size (it allocated ~6.4 GB); an

@@ -11,7 +11,7 @@ use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
     BorderRadii, BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient,
-    OverflowClip, PositionedGlyph, Rgba, Transform2D as BoxTransform,
+    OverflowClip, PositionedGlyph, Rgba, TilePattern, Transform2D as BoxTransform,
 };
 
 use std::rc::Rc;
@@ -46,10 +46,15 @@ pub fn paint(
     pm.encode_png().map_err(|e| format!("png encode: {e}"))
 }
 
-/// The image scaled to `size` px, memoized for the render's next tile of the same image
-/// (a background layer draws one image many times; miaskiewicz/turbo-dom#248). Shared, so
-/// a hit costs no copy.
-type ScaledKey = (usize, turbo_dom_layout::image::Orientation, (u32, u32));
+/// The `window` (x, y, width, height) of the image scaled to `size` px, memoized for
+/// the render's next tile of the same image (a background layer draws one image many
+/// times; miaskiewicz/turbo-dom#248). Shared, so a hit costs no copy.
+type ScaledKey = (
+    usize,
+    turbo_dom_layout::image::Orientation,
+    (u32, u32),
+    (u32, u32, u32, u32),
+);
 thread_local! {
     static SCALED: std::cell::RefCell<Option<(ScaledKey, Option<Rc<Pixmap>>)>> =
         const { std::cell::RefCell::new(None) };
@@ -59,8 +64,14 @@ fn scaled(
     image: &crate::image_paint::DecodedImage,
     orientation: turbo_dom_layout::image::Orientation,
     size: (u32, u32),
+    window: (u32, u32, u32, u32),
 ) -> Option<Rc<Pixmap>> {
-    let key = (std::ptr::from_ref(image) as usize, orientation, size);
+    let key = (
+        std::ptr::from_ref(image) as usize,
+        orientation,
+        size,
+        window,
+    );
     SCALED.with(|memo| {
         let mut memo = memo.borrow_mut();
         if let Some((_, pixmap)) = memo.as_ref().filter(|(seen, _)| *seen == key) {
@@ -68,34 +79,32 @@ fn scaled(
         }
         let pixmap = image
             .oriented(orientation)
-            .scaled_pixmap(size.0, size.1)
+            .scaled_window(size, window)
             .map(Rc::new);
         *memo = Some((key, pixmap.clone()));
         pixmap
     })
 }
 
-/// The pixmap an image box of `size` device px draws, and the scale it is drawn at. An
-/// image whose box is no larger than the canvas is resized to it (drawn 1:1); a larger
-/// one is drawn from its own pixels scaled by the transform with a bilinear filter, so
-/// the scratch never exceeds the source or the canvas, however large the layout box (a
-/// 40000px `background-size`; round-1 review of 0.7.0, finding 4).
-fn image_source(
-    image: &crate::image_paint::DecodedImage,
-    orientation: turbo_dom_layout::image::Orientation,
+/// The part `(x, y, width, height)` of a `size` image box drawn through `place` (box
+/// px to device px) that can reach a `canvas`-sized pixmap, in whole box px: the
+/// painter resamples only that window, so the scratch never exceeds the canvas's
+/// reach however large the layout box (a 40000px `<img>` or `background-size`;
+/// round-1 review of 0.7.0, finding 4). `None` when none of it can show.
+fn visible_window(
+    place: Transform,
     size: (u32, u32),
     canvas: (u32, u32),
-) -> Option<(Rc<Pixmap>, Transform)> {
-    if u64::from(size.0) * u64::from(size.1) <= u64::from(canvas.0) * u64::from(canvas.1) {
-        return scaled(image, orientation, size).map(|p| (p, Transform::identity()));
-    }
-    let shown = image.oriented(orientation);
-    let src = scaled(image, orientation, (shown.width, shown.height))?;
-    let scale = Transform::from_scale(
-        size.0 as f32 / src.width() as f32,
-        size.1 as f32 / src.height() as f32,
-    );
-    Some((src, scale))
+) -> Option<(u32, u32, u32, u32)> {
+    let device = Rect::from_xywh(0.0, 0.0, canvas.0 as f32, canvas.1 as f32)?;
+    let local = PathBuilder::from_rect(device)
+        .transform(place.invert()?)?
+        .bounds();
+    let x0 = local.left().floor().max(0.0);
+    let y0 = local.top().floor().max(0.0);
+    let x1 = local.right().ceil().min(size.0 as f32);
+    let y1 = local.bottom().ceil().min(size.1 as f32);
+    (x1 > x0 && y1 > y0).then_some((x0 as u32, y0 as u32, (x1 - x0) as u32, (y1 - y0) as u32))
 }
 
 /// Compose a box's CSS `transform` about its absolute origin onto the inherited
@@ -391,12 +400,129 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
             xf.pre_concat(glyph_frame(f, *vertical)),
         ),
         FragmentContent::Image(placement) => paint_image(pm, f, placement, images, xf),
+        FragmentContent::Tiles(pattern) => paint_tiles(pm, f, pattern, images, xf),
         FragmentContent::Marker(_) => {}
     }
     paint_children(pm, f, images, xf);
 }
 
-/// Draw an image into its layout box: scale the decoded pixels and blit them. An image
+/// The most tiles [`paint_tiles`] walks one by one: a pattern with a whole-pixel period
+/// paints through a shader whatever its size, so only a pattern of alternating snapped
+/// sizes drawn shrunk below one tile per device pixel (a degenerate transform) can
+/// reach it; its tiles past this many are not drawn.
+const MAX_WALKED_TILES: usize = 1 << 22;
+
+/// Paint a background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1)
+/// over the part of its box the canvas shows: one tile drawn into a period-sized pixmap
+/// and repeated by a pattern shader when the tiles have a whole-pixel period, else
+/// tile by tile.
+fn paint_tiles(
+    pm: &mut Pixmap,
+    f: &Fragment,
+    pattern: &TilePattern,
+    images: &DecodedAssets,
+    xf: Transform,
+) {
+    let Some(region) = visible_region(f, xf, (pm.width(), pm.height())) else {
+        return;
+    };
+    let mut tiles = pattern.tiles(region);
+    let Some(first) = tiles.next() else {
+        return;
+    };
+    let canvas = u64::from(pm.width()) * u64::from(pm.height());
+    if let Some(period) = pattern.period().filter(|_| tiles.next().is_some()) {
+        if let Some(tile) = tile_pixmap(pattern, first, period, images, canvas) {
+            fill_pattern(pm, &tile, (region, first, period), xf);
+            return;
+        }
+    }
+    for (x, y, w, h) in pattern.tiles(region).take(MAX_WALKED_TILES) {
+        let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
+        paint_subtree(pm, &tile, images, xf);
+    }
+}
+
+/// The part of `f`'s box a `canvas`-sized pixmap can show through `xf`, in `f`'s space
+/// (whole px around it), or `None` when none of it can.
+fn visible_region(f: &Fragment, xf: Transform, canvas: (u32, u32)) -> Option<rrect::Rect> {
+    let device = Rect::from_xywh(0.0, 0.0, canvas.0 as f32, canvas.1 as f32)?;
+    let local = PathBuilder::from_rect(device)
+        .transform(xf.invert()?)?
+        .bounds();
+    let x0 = local.left().floor().max(f.x);
+    let y0 = local.top().floor().max(f.y);
+    let x1 = local.right().ceil().min(f.x + f.width);
+    let y1 = local.bottom().ceil().min(f.y + f.height);
+    (x1 > x0 && y1 > y0).then_some((x0, y0, x1 - x0, y1 - y0))
+}
+
+/// One period of the pattern: the `first` tile's content drawn at its snapped size in
+/// the corner of a `period`-sized pixmap (the tile's size on an axis that does not
+/// repeat). `None` when a period would be larger than the canvas (a big tile: walked).
+fn tile_pixmap(
+    pattern: &TilePattern,
+    (_, _, w, h): rrect::Rect,
+    (step_x, step_y): (f32, f32),
+    images: &DecodedAssets,
+    canvas: u64,
+) -> Option<Pixmap> {
+    let (pw, ph) = (
+        if step_x > 0.0 { step_x } else { w },
+        if step_y > 0.0 { step_y } else { h },
+    );
+    if (pw as u64).saturating_mul(ph as u64) > canvas {
+        return None;
+    }
+    let mut tile = Pixmap::new(pw as u32, ph as u32)?;
+    let content = Fragment::new(
+        turbo_dom_layout::NodeId(0),
+        0.0,
+        0.0,
+        w,
+        h,
+        (*pattern.tile).clone(),
+    );
+    paint_subtree(&mut tile, &content, images, Transform::identity());
+    Some(tile)
+}
+
+/// Fill `region` with `tile` repeated every period from the `first` tile's corner (only
+/// the tile's own row or column on an axis that does not repeat).
+fn fill_pattern(
+    pm: &mut Pixmap,
+    tile: &Pixmap,
+    (region, first, (step_x, step_y)): (rrect::Rect, rrect::Rect, (f32, f32)),
+    xf: Transform,
+) {
+    let span = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
+        if repeats {
+            (from, len)
+        } else {
+            (at, size)
+        }
+    };
+    let (x, w) = span(step_x > 0.0, (region.0, region.2), (first.0, first.2));
+    let (y, h) = span(step_y > 0.0, (region.1, region.3), (first.1, first.3));
+    let paint = Paint {
+        shader: tiny_skia::Pattern::new(
+            tile.as_ref(),
+            SpreadMode::Repeat,
+            tiny_skia::FilterQuality::Nearest,
+            1.0,
+            Transform::from_translate(first.0, first.1),
+        ),
+        anti_alias: false,
+        ..Paint::default()
+    };
+    if let Some(rect) = Rect::from_xywh(x, y, w, h) {
+        pm.fill_rect(rect, &paint, xf, None);
+    }
+}
+
+/// Draw an image into its layout box: resample the decoded pixels to the box (one
+/// kernel, [`DecodedImage::scaled_window`](crate::image_paint::DecodedImage::scaled_window),
+/// over the part of the box the canvas can show) and blit them. An image
 /// laid out at its size whose pixels did not decode paints nothing, as in Chrome
 /// (miaskiewicz/turbo-dom#107); the neutral placeholder stands for an image the caller did
 /// not supply or this build cannot decode (`DecodedImage::placeholder`).
@@ -410,31 +536,37 @@ fn paint_image(
     xf: Transform,
 ) {
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
-    let decoded = images.get(&placement.name);
-    let img = decoded
-        .and_then(|d| image_source(d, placement.orientation, (w, h), (pm.width(), pm.height())));
     // Fold the box's top-left into the transform so a transformed image (a rotated
-    // thumbnail, a translated slide) maps correctly; draw the pixmap at (0,0).
+    // thumbnail, a translated slide) maps correctly.
     let place = xf.pre_concat(Transform::from_translate(f.x.round(), f.y.round()));
-    match (img, placement.tint) {
-        (Some((src, scale)), tint) => {
+    let Some(decoded) = images.get(&placement.name) else {
+        if placement.tint.is_none() {
+            fill_rect(pm, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER, xf);
+        }
+        return;
+    };
+    let Some(window) = visible_window(place, (w, h), (pm.width(), pm.height())) else {
+        return;
+    };
+    match (
+        scaled(decoded, placement.orientation, (w, h), window),
+        placement.tint,
+    ) {
+        (Some(src), tint) => {
             let stencilled = tint.map(|tint| tint_pixmap(&src, tint));
             let paint = PixmapPaint {
-                quality: if scale.is_identity() {
-                    tiny_skia::FilterQuality::Nearest
-                } else {
-                    tiny_skia::FilterQuality::Bilinear
-                },
+                quality: tiny_skia::FilterQuality::Nearest,
                 ..PixmapPaint::default()
             };
             let src = stencilled.as_ref().unwrap_or(&src);
-            pm.draw_pixmap(0, 0, src.as_ref(), &paint, place.pre_concat(scale), None);
+            let at = Transform::from_translate(window.0 as f32, window.1 as f32);
+            pm.draw_pixmap(0, 0, src.as_ref(), &paint, place.pre_concat(at), None);
         }
         // A missing mask paints nothing (no placeholder box for a glyph), nor does an
         // image whose pixels did not decode; a missing real image shows the neutral
         // placeholder.
         (None, Some(_)) => {}
-        (None, None) if decoded.is_some_and(|d| !d.placeholder) => {}
+        (None, None) if !decoded.placeholder => {}
         (None, None) => fill_rect(pm, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER, xf),
     }
 }
@@ -1358,11 +1490,11 @@ mod tests {
             placeholder: false,
         };
         SCALED.with(|memo| memo.borrow_mut().take());
-        let first = scaled(&img, Orientation::IDENTITY, (4, 3)).unwrap();
-        let again = scaled(&img, Orientation::IDENTITY, (4, 3)).unwrap();
+        let first = scaled(&img, Orientation::IDENTITY, (4, 3), (0, 0, 4, 3)).unwrap();
+        let again = scaled(&img, Orientation::IDENTITY, (4, 3), (0, 0, 4, 3)).unwrap();
         assert!(std::rc::Rc::ptr_eq(&first, &again));
         assert_eq!((again.width(), again.height()), (4, 3));
-        let other = scaled(&img, Orientation::IDENTITY, (2, 3)).unwrap();
+        let other = scaled(&img, Orientation::IDENTITY, (2, 3), (0, 0, 2, 3)).unwrap();
         assert!(!std::rc::Rc::ptr_eq(&first, &other));
     }
 
@@ -1397,6 +1529,185 @@ mod tests {
         assert_eq!(rgb(&pm, 7, 5), [255, 0, 0], "its child");
     }
 
+    /// A tile pattern fragment over `(x, y, w, h)`: solid `colour` tiles of
+    /// `tile` px every `step` px from `at`.
+    fn tiles(
+        (x, y, w, h): rrect::Rect,
+        colour: Rgba,
+        at: (f32, f32),
+        tile: (f32, f32),
+        step: (f32, f32),
+    ) -> Fragment {
+        let content = plain(0.0, 0.0, 1.0, 1.0, Some(colour)).content;
+        Fragment::new(
+            NodeId(0),
+            x,
+            y,
+            w,
+            h,
+            FragmentContent::Tiles(TilePattern {
+                tile: Box::new(content),
+                x: at.0,
+                y: at.1,
+                tile_width: tile.0,
+                tile_height: tile.1,
+                step_x: step.0,
+                step_y: step.1,
+            }),
+        )
+    }
+
+    /// Which pixels of a `w x h` canvas are red.
+    fn red_mask(pm: &Pixmap) -> Vec<bool> {
+        pm.pixels()
+            .iter()
+            .map(|p| p.red() == 255 && p.green() == 0)
+            .collect()
+    }
+
+    #[test]
+    fn tile_patterns_paint_every_tile_by_shader_or_one_by_one() {
+        // 0.7.0 round-2 review, finding 1. A 1px grid every 2px over the whole canvas:
+        // the shader path; the last tile too.
+        let grid = tiles(
+            (0.0, 0.0, 40.0, 30.0),
+            RED,
+            (0.0, 0.0),
+            (1.0, 1.0),
+            (2.0, 2.0),
+        );
+        let pm = render(&grid, 40, 30, &HashMap::new());
+        assert_eq!(rgb(&pm, 38, 28), [255, 0, 0]);
+        assert_eq!(rgb(&pm, 39, 28), [255, 255, 255]);
+        assert_eq!(rgb(&pm, 38, 29), [255, 255, 255]);
+        // The same tiles walked one by one paint the same pixels: a phase off the grid
+        // and a 1.5px step (no period) against a 3px step drawn at half scale.
+        let walked = tiles(
+            (0.0, 0.0, 40.0, 30.0),
+            RED,
+            (0.25, 0.0),
+            (1.0, 1.0),
+            (1.5, 2.0),
+        );
+        let pm = render(&walked, 40, 30, &HashMap::new());
+        let xs: Vec<u32> = (0..10).filter(|&x| rgb(&pm, x, 0) == [255, 0, 0]).collect();
+        assert_eq!(xs, [0, 2, 3, 5, 6, 8, 9]);
+        // A repeat on one axis only: the tile's own row.
+        let row = tiles(
+            (0.0, 0.0, 40.0, 30.0),
+            RED,
+            (0.0, 4.0),
+            (2.0, 3.0),
+            (4.0, 0.0),
+        );
+        let pm = render(&row, 40, 30, &HashMap::new());
+        assert_eq!(rgb(&pm, 37, 5), [255, 0, 0]);
+        assert_eq!(rgb(&pm, 37, 8), [255, 255, 255]);
+        assert_eq!(rgb(&pm, 1, 2), [255, 255, 255]);
+        // A period larger than the canvas, and a lone tile, walk their few tiles.
+        let big = tiles(
+            (0.0, 0.0, 40.0, 30.0),
+            RED,
+            (-30.0, 0.0),
+            (35.0, 10.0),
+            (60.0, 60.0),
+        );
+        let pm = render(&big, 40, 30, &HashMap::new());
+        assert_eq!(
+            (rgb(&pm, 4, 5), rgb(&pm, 6, 5)),
+            ([255, 0, 0], [255, 255, 255])
+        );
+        let lone = tiles(
+            (0.0, 0.0, 40.0, 30.0),
+            RED,
+            (10.0, 10.0),
+            (3.0, 3.0),
+            (0.0, 0.0),
+        );
+        let pm = render(&lone, 40, 30, &HashMap::new());
+        assert_eq!(red_mask(&pm).iter().filter(|&&r| r).count(), 9);
+        // Off the canvas, through a transform with no inverse, or with no tile meeting
+        // the visible part: nothing.
+        let off = tiles(
+            (50.0, 0.0, 40.0, 30.0),
+            RED,
+            (50.0, 0.0),
+            (1.0, 1.0),
+            (2.0, 2.0),
+        );
+        assert!(all_white(&render(&off, 40, 30, &HashMap::new())));
+        let mut flat = plain(0.0, 0.0, 40.0, 30.0, None);
+        if let FragmentContent::Box { transform, .. } = &mut flat.content {
+            *transform = Some(Transform2D {
+                matrix: [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                origin_x: 0.0,
+                origin_y: 0.0,
+            });
+        }
+        flat.children.push(grid.clone());
+        assert!(all_white(&render(&flat, 40, 30, &HashMap::new())));
+        let missed = tiles(
+            (0.0, 0.0, 40.0, 30.0),
+            RED,
+            (100.0, 0.0),
+            (1.0, 1.0),
+            (0.0, 2.0),
+        );
+        assert!(all_white(&render(&missed, 40, 30, &HashMap::new())));
+        // Under a transform the shader follows the box: a 2x scale doubles the grid.
+        let mut scaled = plain(0.0, 0.0, 20.0, 15.0, None);
+        if let FragmentContent::Box { transform, .. } = &mut scaled.content {
+            *transform = Some(Transform2D {
+                matrix: [2.0, 0.0, 0.0, 2.0, 0.0, 0.0],
+                origin_x: 0.0,
+                origin_y: 0.0,
+            });
+        }
+        scaled.children.push(tiles(
+            (0.0, 0.0, 20.0, 15.0),
+            RED,
+            (0.0, 0.0),
+            (1.0, 1.0),
+            (2.0, 2.0),
+        ));
+        let pm = render(&scaled, 40, 30, &HashMap::new());
+        assert_eq!(
+            (rgb(&pm, 1, 1), rgb(&pm, 2, 1), rgb(&pm, 37, 25)),
+            ([255, 0, 0], [255, 255, 255], [255, 0, 0])
+        );
+    }
+
+    #[test]
+    fn only_the_part_of_an_image_the_canvas_shows_is_resampled() {
+        let red = crate::image_paint::DecodedImage {
+            width: 1,
+            height: 1,
+            rgba: vec![255, 0, 0, 255],
+            intrinsic: turbo_dom_layout::image::Intrinsic::new(1, 1, false),
+            placeholder: false,
+        };
+        let place = Transform::from_translate(-5.0, 3.0);
+        // A 20px box at (-5, 3) on a 10px canvas: its columns 5..15 and rows 0..7.
+        assert_eq!(
+            visible_window(place, (20, 20), (10, 10)),
+            Some((5, 0, 10, 7))
+        );
+        // Wholly off the canvas, or through a transform with no inverse: nothing.
+        let off = Transform::from_translate(30.0, 0.0);
+        assert_eq!(visible_window(off, (20, 20), (10, 10)), None);
+        let flat = Transform::from_scale(0.0, 1.0);
+        assert_eq!(visible_window(flat, (20, 20), (10, 10)), None);
+        let mut images = HashMap::new();
+        images.insert("pic".to_string(), red);
+        let mut pic = image("pic", None);
+        pic.x = 40.0;
+        assert!(all_white(&render(&pic, 10, 10, &images)), "off the canvas");
+        let mut pic = image("pic", None);
+        pic.x = 2.0;
+        let pm = render(&pic, 10, 10, &images);
+        assert_eq!(rgb(&pm, 5, 5), [255, 0, 0]);
+    }
+
     #[test]
     fn a_missing_mask_paints_nothing_and_a_missing_image_the_placeholder() {
         let images = HashMap::new();
@@ -1426,6 +1737,8 @@ mod tests {
         }
         let none = render(&image("undecodable", None), 10, 10, &images);
         assert!(all_white(&none), "nothing painted");
+        let mask = render(&image("undecodable", Some(RED)), 10, 10, &images);
+        assert!(all_white(&mask), "an undecodable mask paints nothing");
         let grey = render(&image("no-decoder", None), 10, 10, &images);
         assert_eq!(rgb(&grey, 5, 5), [220, 220, 220], "placeholder");
     }

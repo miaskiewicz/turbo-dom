@@ -61,6 +61,8 @@ pub struct HtmlOptions<'a> {
     /// of its `<link rel="stylesheet">` sheets, fetched by the caller (the engine does
     /// no I/O). The `extra_css` argument of the drive entries comes after them.
     pub linked_css: &'a str,
+    /// See [`LayoutOptions::uncapped_images`].
+    pub uncapped_images: bool,
 }
 
 impl HtmlOptions<'_> {
@@ -81,6 +83,7 @@ impl HtmlOptions<'_> {
             flatten_inline_elements: self.flatten_inline_elements,
             accept_cmyk: self.accept_cmyk,
             first_node_id: 0,
+            uncapped_images: self.uncapped_images,
         }
     }
 }

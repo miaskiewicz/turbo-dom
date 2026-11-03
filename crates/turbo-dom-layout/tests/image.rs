@@ -961,3 +961,49 @@ fn flex_row_item_wrapping_img_natural_width_uses_intrinsic() {
         "row-flex wrapped img should keep intrinsic width, got {w}"
     );
 }
+
+#[test]
+fn uncapped_images_keep_their_css_size_like_chrome() {
+    // 0.7.0 round-2 review, finding 2: the raster screenshot (`uncapped_images`) sizes
+    // a 400px-wide image (and a 40000px CSS width) by CSS alone, as Chrome 156 does;
+    // the default keeps html2pdf's 100%-width cap.
+    use turbo_dom_layout::{
+        layout_html_tree_in_viewport, parse_html_tree, FontRegistry, HtmlOptions,
+    };
+    let resolver = MapResolver::new(vec![("w.png", png_wide()), ("t.png", png_tall())]);
+    let images = ImageCtx {
+        resolver: &resolver,
+        body_height: Some(1000.0),
+    };
+    let html = "<body style=margin:0><img src=w.png style=display:block>\
+                <img src=t.png style=display:block;width:40000px;height:40000px>";
+    let sizes = |uncapped_images| {
+        let options = HtmlOptions {
+            uncapped_images,
+            ..HtmlOptions::default()
+        };
+        let g = layout_html_tree_in_viewport(
+            &parse_html_tree(html),
+            "",
+            (200.0, 1000.0),
+            &FontRegistry::new(),
+            &images,
+            &options,
+            &mut Diagnostics::default(),
+        );
+        let mut out = Vec::new();
+        collect_image_sizes(&g, &mut out);
+        out
+    };
+    assert_eq!(sizes(true), [(400.0, 100.0), (40000.0, 40000.0)]);
+    assert_eq!(sizes(false), [(200.0, 50.0), (200.0, 200.0)]);
+}
+
+fn collect_image_sizes(f: &turbo_dom_layout::Fragment, out: &mut Vec<(f32, f32)>) {
+    if matches!(f.content, FragmentContent::Image(_)) {
+        out.push((f.width, f.height));
+    }
+    for c in &f.children {
+        collect_image_sizes(c, out);
+    }
+}

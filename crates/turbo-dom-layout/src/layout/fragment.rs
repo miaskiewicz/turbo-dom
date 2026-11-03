@@ -102,6 +102,95 @@ pub enum FragmentContent {
     /// intrinsic pixel size (diagnostic / round-trip), and whether it carries an
     /// alpha channel (so an `SMask` is emitted).
     Image(ImagePlacement),
+    /// A background layer's tiles, all of them (0.7.0 round-2 review, finding 1: one
+    /// fragment per tile truncated a fine grid on a tall page). The fragment's box is
+    /// the area the tiles are laid out over; painters tile [`TilePattern::tile`] across
+    /// it (a pattern shader, an SVG `<pattern>`) or walk [`TilePattern::tiles`] over
+    /// the part they paint.
+    Tiles(TilePattern),
+}
+
+/// A repeating background tile: [`TilePattern::tile`] painted `tile_width x
+/// tile_height` with one tile at `(x, y)` and the others every `step_x` / `step_y` px
+/// along each axis (`0` = not repeated on that axis). Each tile snaps to whole pixels
+/// (`floor(v + 0.5)` of its edges), so neighbours meet without a seam; tiles are at
+/// least 1px.
+#[derive(Debug, Clone)]
+pub struct TilePattern {
+    /// What one tile paints: a background image ([`FragmentContent::Image`]) or a
+    /// gradient box ([`FragmentContent::Box`]).
+    pub tile: Box<FragmentContent>,
+    /// One tile's unsnapped origin (absolute px).
+    pub x: f32,
+    pub y: f32,
+    pub tile_width: f32,
+    pub tile_height: f32,
+    pub step_x: f32,
+    pub step_y: f32,
+}
+
+/// `v` snapped to the pixel grid: the same at every whole-pixel offset (unlike
+/// `f32::round` on negative halves).
+fn snap(v: f32) -> f32 {
+    (v + 0.5).floor()
+}
+
+/// The starts along one axis of tiles every `step` px from `start` (0: one tile only)
+/// that can meet `(from, len)`: from the last one at or before `from`.
+pub(crate) fn axis_starts(
+    start: f32,
+    step: f32,
+    (from, len): (f32, f32),
+) -> impl Iterator<Item = f32> {
+    let (first, count) = if step > 0.0 {
+        // The offset reduced modulo the step, so a huge position keeps its phase.
+        let first = from - (from - start).rem_euclid(step);
+        (first, ((from + len - first) / step).ceil().max(0.0) as u64)
+    } else {
+        (start, 1)
+    };
+    (0..count).map(move |i| first + i as f32 * step)
+}
+
+impl TilePattern {
+    /// The snapped rectangles `(x, y, width, height)` of the tiles that meet `region`
+    /// (absolute px), row by row. There are about `region` area / tile area of them.
+    pub fn tiles(
+        &self,
+        region: (f32, f32, f32, f32),
+    ) -> impl Iterator<Item = (f32, f32, f32, f32)> + '_ {
+        let (rx, ry, rw, rh) = region;
+        let meets = move |start: f32, size: f32, from: f32, len: f32| {
+            start < from + len && start + size > from
+        };
+        axis_starts(self.y, self.step_y, (ry, rh))
+            .filter(move |&ty| meets(ty, self.tile_height, ry, rh))
+            .flat_map(move |ty| {
+                axis_starts(self.x, self.step_x, (rx, rw))
+                    .filter(move |&tx| meets(tx, self.tile_width, rx, rw))
+                    .map(move |tx| {
+                        let (x0, y0) = (snap(tx), snap(ty));
+                        let w = snap(tx + self.tile_width) - x0;
+                        let h = snap(ty + self.tile_height) - y0;
+                        (x0, y0, w, h)
+                    })
+            })
+    }
+
+    /// The pattern's period in whole pixels when every tile snaps to the same size the
+    /// same distance apart (whole-pixel steps, and whole-pixel tiles on each repeated
+    /// axis): `(step_x, step_y)`, `0` on an axis that does not repeat. `None` otherwise
+    /// (the snapped tiles alternate sizes, so a painter walks [`TilePattern::tiles`]).
+    #[must_use]
+    pub fn period(&self) -> Option<(f32, f32)> {
+        let whole = |v: f32| v.fract() == 0.0;
+        let axis =
+            |step: f32, tile: f32| (step == 0.0 || (whole(step) && whole(tile))).then_some(step);
+        Some((
+            axis(self.step_x, self.tile_width)?,
+            axis(self.step_y, self.tile_height)?,
+        ))
+    }
 }
 
 /// A resolved `box-shadow` layer (§CSS backgrounds §7). Geometry is px in the

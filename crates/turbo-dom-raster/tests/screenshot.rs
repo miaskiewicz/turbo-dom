@@ -673,3 +673,61 @@ fn serif_text_paints_in_png_and_svg() {
     let d = svg.split("<path d=\"").nth(1).expect("a glyph path");
     assert!(d.contains(" Q"), "quadratic segments: {d}");
 }
+
+/// A `w x h` PNG of alternating 1px red and blue columns.
+fn striped_png(w: u32, h: u32) -> Vec<u8> {
+    let mut pm = tiny_skia::Pixmap::new(w, h).unwrap();
+    for x in 0..w {
+        let mut paint = tiny_skia::Paint::default();
+        if x % 2 == 0 {
+            paint.set_color_rgba8(255, 0, 0, 255);
+        } else {
+            paint.set_color_rgba8(0, 0, 255, 255);
+        }
+        let column = tiny_skia::Rect::from_xywh(x as f32, 0.0, 1.0, h as f32).unwrap();
+        pm.fill_rect(column, &paint, tiny_skia::Transform::identity(), None);
+    }
+    pm.encode_png().unwrap()
+}
+
+#[test]
+fn an_images_filter_does_not_depend_on_its_box_against_the_canvas() {
+    // 0.7.0 round-2 review, finding 21: one resampling kernel, whatever the box's size
+    // relative to the canvas. The same box of a striped image is smaller than one canvas
+    // and larger than the other; the pixels both canvases show are the same, scaled up
+    // (a 2px image in a 150px box) or down (a 64px image in a 48px box).
+    for (image, side, canvases) in [
+        (striped_png(2, 2), 150, (100, 200)),
+        (striped_png(64, 64), 48, (40, 60)),
+    ] {
+        let mut assets: ImageAssets = HashMap::new();
+        assets.insert("a.png".into(), image);
+        let html = format!(
+            r#"<body style="margin:0"><img src="a.png" style="display:block;width:{side}px;height:{side}px">"#
+        );
+        let shot = |canvas: u32| {
+            let png = turbo_dom_raster::screenshot_png_with_opts(
+                &html,
+                "",
+                Viewport {
+                    width: canvas,
+                    height: canvas,
+                },
+                &assets,
+                false,
+                false,
+            )
+            .unwrap();
+            tiny_skia::Pixmap::decode_png(&png).unwrap()
+        };
+        let (small, large) = (shot(canvases.0), shot(canvases.1));
+        for x in 0..canvases.0 {
+            let (a, b) = (small.pixel(x, 10).unwrap(), large.pixel(x, 10).unwrap());
+            assert_eq!(
+                (a.red(), a.green(), a.blue()),
+                (b.red(), b.green(), b.blue()),
+                "{side}px box, x = {x}"
+            );
+        }
+    }
+}

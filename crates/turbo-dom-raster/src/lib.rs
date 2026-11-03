@@ -412,14 +412,15 @@ fn lay_out(
     turbo_dom_layout::set_media_viewport_height(height as f32);
     let mut diags = Diagnostics::default();
     let resolver = image_paint::AssetResolver(images);
-    // No page-height basis in a viewport render — only the 100%-width cap applies
-    // (images shrink to fit their column, keeping aspect ratio).
+    // No page-height basis in a viewport render (and no caps: `uncapped_images`).
     let image_ctx = ImageCtx {
         resolver: &resolver,
         body_height: None,
     };
+    // Images size by CSS alone, like Chrome (no paged-media caps).
     let options = HtmlOptions {
         linked_css: external_css,
+        uncapped_images: true,
         ..HtmlOptions::default()
     };
     // The initial containing block is the viewport: `position: fixed` boxes and

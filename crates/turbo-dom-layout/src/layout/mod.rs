@@ -61,6 +61,11 @@ pub struct LayoutOptions {
     /// fragments (html2pdf's link annotations and PDF/UA tags, #210), and does not
     /// match Chrome for inline boxes.
     pub flatten_inline_elements: bool,
+    /// Size `<img>` boxes by CSS alone, as Chrome 156 does (the raster screenshots;
+    /// 0.7.0 round-2 review, finding 2). Off by default: html2pdf's paged-media
+    /// overflow caps apply (an image shrinks to 100% of its containing block's width
+    /// and, with a page body height, 60% of it).
+    pub uncapped_images: bool,
 }
 
 /// Where each box of a [`layout_recorded`] galley came from.
@@ -177,6 +182,7 @@ pub fn layout_in_viewport(
     diags: &mut Diagnostics,
 ) -> Fragment {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
+    let _caps = imgsize::uncapped_scope(options.uncapped_images);
     let (tree, _, _) = boxgen::build_box_tree_with(styled, build_options(options, false));
     let mut galley =
         block::layout_tree_in_viewport(&tree, (cb_width, viewport_height), fonts, images, diags);
@@ -197,6 +203,7 @@ pub(crate) fn layout_geometry(
     diags: &mut Diagnostics,
 ) -> Fragment {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
+    let _caps = imgsize::uncapped_scope(options.uncapped_images);
     let build = geometry_build_options(options);
     let (tree, _, _) = boxgen::build_box_tree_with(styled, build);
     let mut galley = block::layout_tree_in_viewport(&tree, viewport, fonts, images, diags);
@@ -243,6 +250,7 @@ pub fn layout_recorded_in_viewport(
     diags: &mut Diagnostics,
 ) -> LaidOut {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
+    let _caps = imgsize::uncapped_scope(options.uncapped_images);
     let (tree, recorded, count) = boxgen::build_box_tree_with(styled, build_options(options, true));
     let (mut galley, rows) =
         block::layout_tree_recorded(&tree, (cb_width, viewport_height), fonts, images, diags);
