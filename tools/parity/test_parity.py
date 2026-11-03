@@ -23,8 +23,12 @@ REPO = HERE.parent.parent
 CONTROL_PATH = re.compile(
     r"(?<![\w/.-])((?:crates|scripts|tools|src|test|tests|harness|docs)/[\w./{},*-]*[\w}*])"
 )
-# A control that lives in a sibling repo names it first ("turbo-html2pdf crates/...").
+# A control that lives in a sibling repo names it first, then a path in it
+# ("turbo-html2pdf crates/.../pagination_chrome156.json", "turbo-surf rust/crates/...").
 EXTERNAL_CONTROL = re.compile(r"^(turbo-html2pdf|turbo-surf|turbo-test) ")
+# A file path in a sibling repo: at least one directory and a file name with an extension.
+EXTERNAL_PATH = re.compile(r"(?<![\w/.-])(?:[\w.-]+/)+[\w{},*-]*[\w}]\.[A-Za-z]\w*\b")
+CRATE_NAME = re.compile(r"^crates/([\w-]+)/")
 
 
 def _expand_braces(path):
@@ -35,12 +39,46 @@ def _expand_braces(path):
     return [x for alt in match.group(1).split(",") for x in _expand_braces(head + alt + tail)]
 
 
-def _control_path_exists(path):
-    """True if PATH (a glob, maybe crate-relative) names a file of this repo."""
-    roots = [REPO, *sorted((REPO / "crates").glob("*/"))]
+def _wildcard_only(path):
+    """True if some segment of some alternative of PATH is nothing but wildcards."""
+    return any(
+        not segment.replace("*", "")
+        for alt in _expand_braces(path)
+        for segment in alt.split("/")
+    )
+
+
+def _control_path_exists(path, crates=()):
+    """True if PATH (a glob) names a file of this repo, or of one of CRATES for a
+    crate-relative path (a control names the crate first: "crates/X/... (scripts/...)")."""
+    roots = [REPO, *(REPO / "crates" / name for name in crates)]
     return all(
         any(any(root.glob(alt)) for root in roots) for alt in _expand_braces(path)
     )
+
+
+def _control_errors(control):
+    """Why CONTROL is not checkable evidence ([] if it is)."""
+    if not re.search(r"\S", control):
+        return ["no control"]
+    if control.startswith("none ("):
+        return []
+    if EXTERNAL_CONTROL.match(control):
+        rest = control[EXTERNAL_CONTROL.match(control).end() :]
+        if not any(not _wildcard_only(p) for p in EXTERNAL_PATH.findall(rest)):
+            return [f"sibling-repo control names no file path: {control!r}"]
+        return []
+    paths = CONTROL_PATH.findall(control)
+    if not paths:
+        return [f"control names no committed path: {control!r}"]
+    crates = sorted({m.group(1) for p in paths if (m := CRATE_NAME.match(p))})
+    errors = []
+    for ref in paths:
+        if _wildcard_only(ref):
+            errors.append(f"control path {ref} is wildcard-only")
+        elif not _control_path_exists(ref, crates):
+            errors.append(f"control path {ref} missing")
+    return errors
 
 
 class Workspace:
