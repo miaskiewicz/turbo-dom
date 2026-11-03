@@ -183,5 +183,5 @@ fn the_control_covers_every_marker() {
         .iter()
         .map(|c| c["markers"].as_array().unwrap().len())
         .sum();
-    assert_eq!((cases.len(), markers), (40, 78));
+    assert_eq!((cases.len(), markers), (42, 84));
 }

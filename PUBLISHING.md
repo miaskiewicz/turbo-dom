@@ -75,7 +75,9 @@ Pushing a `v*` tag is the publish trigger and requires explicit release authoriz
    `ubuntu-latest`: `scripts/check-glibc-ceiling.sh` fails any linux-gnu `.node` that needs
    a `GLIBC_` version above 2.35 (0.6.0 was built on 26.04 / glibc 2.43 and broke 24.04
    consumers). The guard names the expected addons and fails on a missing file, an
-   `objdump` failure or a binary with no `GLIBC_` symbols, so it never passes vacuously.
+   `readelf` failure or a binary with no `GLIBC_` symbols, so it never passes vacuously.
+   It uses `readelf -W --dyn-syms -V`, which reads the arm64 addon on the x64 npm runner
+   (`objdump -T` fails there with "file format not recognized").
 2. **preflight** — `check-versions.py --tag vX.Y.Z` (the tag equals every manifest
    version) and `check-no-selector-dual.sh`.
 3. **crates** (sequential, `CARGO_REGISTRY_TOKEN`):

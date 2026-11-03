@@ -84,5 +84,79 @@
   const [mFirst] = $("m").getAnimations();
   $("m").style.animation = "none";
   out.removed = [mFirst.playState, $("m").getAnimations().length];
+  // Round 2 (#11): a kept CSS animation follows its own animation-* properties unless script
+  // overrode them (Blink's ignored-properties model); @keyframes edits reach its keyframes.
+  const extra = document.createElement("style");
+  extra.textContent = "@keyframes kk { from { opacity: 0 } to { opacity: 1 } } .anim { animation: k 10s } .kk { animation: kk 10s } .tr { opacity: 1; color: red; margin-left: 0; transition: opacity 2s, color 2s, margin-left 2s }";
+  document.head.append(extra);
+  const make = (id, cls, parent = document.body) => { const el = document.createElement("div"); el.id = id; el.className = cls; parent.append(el); getComputedStyle(el).opacity; return el; };
+  const one = (el) => el.getAnimations().map(row);
+  const ps = make("ps", "anim"), [psA] = ps.getAnimations();
+  ps.style.animationPlayState = "paused";
+  out.playPaused = [one(ps), ps.getAnimations()[0] === psA];
+  ps.style.animationPlayState = "running";
+  out.playRunning = [one(ps), ps.getAnimations()[0] === psA];
+  const dd = make("dd", "anim"), [ddA] = dd.getAnimations();
+  dd.style.animationDuration = "3s";
+  out.duration = [one(dd), dd.getAnimations()[0] === ddA];
+  dd.style.animationDelay = "-1s";
+  dd.style.animationIterationCount = "2.5";
+  dd.style.animationDirection = "alternate-reverse";
+  dd.style.animationFillMode = "forwards";
+  dd.style.animationTimingFunction = "steps(2)";
+  out.timing = [one(dd), dd.getAnimations()[0] === ddA, ddA.effect.getKeyframes().map((frame) => frame.easing)];
+  // Script-set play state and timing win over later CSS changes.
+  const so = make("so", "anim"), [soA] = so.getAnimations();
+  soA.pause();
+  so.style.animationPlayState = "running";
+  out.scriptPaused = one(so);
+  soA.play();
+  so.style.animationPlayState = "paused";
+  out.scriptPlayed = one(so);
+  soA.effect.updateTiming({ duration: 5000, direction: "reverse" });
+  so.style.animationDuration = "7s";
+  so.style.animationDirection = "alternate";
+  so.style.animationDelay = "2s";
+  out.scriptTiming = [one(so), so.getAnimations()[0] === soA];
+  // @keyframes content changes reach the kept animation, unless script set its keyframes.
+  const kf = make("kf", "kk"), [kfA] = kf.getAnimations();
+  const kfs = make("kfs", "kk"), [kfsA] = kfs.getAnimations();
+  kfsA.effect.setKeyframes([{ opacity: 0.25 }, { opacity: 0.75 }]);
+  extra.textContent = extra.textContent.replace("@keyframes kk { from { opacity: 0 } to { opacity: 1 } }", "@keyframes kk { from { opacity: 0.2 } to { opacity: 0.8; margin-left: 3px } }");
+  out.keyframesChanged = [kf.getAnimations().map(keyframes), kf.getAnimations()[0] === kfA, kfs.getAnimations().map(keyframes), kfs.getAnimations()[0] === kfsA];
+  // #12: a change while display:none starts no transition; becoming display:none (itself or an
+  // ancestor) cancels running transitions.
+  const td = make("td", "tr");
+  td.style.display = "none";
+  td.style.opacity = "0";
+  out.hiddenChange = td.getAnimations().length;
+  td.style.display = "block";
+  out.shownAfterHiddenChange = td.getAnimations().length;
+  td.style.opacity = "0.5";
+  const [tdT] = td.getAnimations();
+  out.shownChange = [one(td), td.getAnimations().map(keyframes)];
+  td.style.display = "none";
+  out.hiddenCancels = [td.getAnimations().length, tdT.playState];
+  td.style.display = "";
+  out.reshown = td.getAnimations().length;
+  const tpar = make("tpar", ""), tc = make("tc", "tr", tpar);
+  tc.style.opacity = "0";
+  const [tcT] = tc.getAnimations();
+  tpar.style.display = "none";
+  out.ancestorHiddenCancels = [tc.getAnimations().length, tcT.playState];
+  tpar.style.display = "";
+  tc.style.opacity = "0.4";
+  out.ancestorReshownChange = [one(tc), tc.getAnimations().map(keyframes)];
+  // #13: transitions compare computed values, not the authored text.
+  const tn = make("tn", "tr");
+  tn.style.color = "#f00";
+  tn.style.marginLeft = "0px";
+  tn.style.opacity = "1.0";
+  out.equalComputed = tn.getAnimations().length;
+  tn.style.color = "rgb(255, 0, 0)";
+  tn.style.marginLeft = "0em";
+  out.equalComputedAgain = tn.getAnimations().length;
+  tn.style.color = "blue";
+  out.colorChange = [one(tn), tn.getAnimations().map(keyframes)];
   return out;
 })()

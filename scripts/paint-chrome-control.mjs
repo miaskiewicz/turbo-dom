@@ -649,6 +649,12 @@ const CASES = [
     ["range-max-below-min", `<input data-cid="m" type="range" min="10" max="5" value="500" style="${at(20, 20)};margin:0;width:60px">`, [[3, 8], [7, 1], [7, 8], [7, 14], [20, 8], [30, 1], [45, 8], [58, 8]]],
     ["range-nan", `<input data-cid="m" type="range" min="NaN" max="Infinity" value="NaN" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [30, 8], [30, 1], [30, 15], [45, 8], [58, 8]]],
     ["range-huge", `<input data-cid="m" type="range" min="-1e308" max="1e308" value="1e400" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [30, 8], [30, 1], [30, 15], [45, 8], [58, 8]]],
+    // The value snaps to min + n * step (default 1, the nearest; `step=any` does not snap),
+    // and the max is lowered to the last step value (round 2 review #9).
+    ["range-step-default", `<input data-cid="m" type="range" min="0" max="10" value="4.6" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [26, 8], [30, 8], [30, 1], [30, 15], [34, 8], [45, 8], [58, 8]]],
+    ["range-step", `<input data-cid="m" type="range" min="0" max="10" step="5" value="7" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [30, 8], [30, 1], [30, 15], [38, 1], [45, 8], [58, 8]]],
+    ["range-step-any", `<input data-cid="m" type="range" min="0" max="10" step="any" value="4.6" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [24, 1], [28, 8], [28, 1], [28, 15], [34, 1], [45, 8], [58, 8]]],
+    ["range-step-max", `<input data-cid="m" type="range" min="0" max="10" step="3" value="8" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [30, 8], [45, 8], [46, 1], [52, 8], [52, 1], [58, 8], [53, 14]]],
     ["color", `<input data-cid="m" type="color" style="${at(20, 20)};margin:0">`, [[0, 0], [25, 0], [25, 1], [2, 13], [4, 13], [25, 13], [10, 10], [40, 18], [25, 4], [25, 23], [25, 26], [49, 13], [48, 13]]],
     ["color-value", `<input data-cid="m" type="color" value="#ff0000" style="${at(20, 20)};margin:0">`, [[25, 13], [10, 10], [40, 18], [4, 13], [25, 4]]],
     ["text-appearance-none", `<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px;appearance:none">`, [[0, 0], [15, 0], [15, 1], [15, 2], [0, 11], [1, 11], [2, 11]]],
@@ -709,6 +715,46 @@ const CASES = [
     html: DOC(`<video data-cid="m" poster="${SPRITE}" style="${at(20, 20)};width:100px;height:40px"></video>`),
     assets: [SPRITE],
     probes: [[25, 40], [65, 40], [75, 40], [115, 40], [125, 40]],
+  },
+  // miaskiewicz/turbo-dom#257 (`border-inset-*` / `border-outset-*`): an `inset` border
+  // darkens its top and left sides and lightens its bottom and right (`outset` the other
+  // way round); a colour too dark to darken is lightened once for the dark sides and
+  // twice for the light ones. Each case is a 40x20 box with a 4px border at (20, 20);
+  // probes are box-relative: top, left, bottom, right.
+  ...["inset", "outset"].flatMap((style) =>
+    [
+      ["grey", "#767676"],
+      ["black", "#000000"],
+      ["white", "#ffffff"],
+      ["red", "#ff0000"],
+      ["dark", "#102030"],
+      ["mid", "#808080"],
+    ].map(([kind, colour]) => ({
+      id: `border-${style}-${kind}`,
+      html: DOC(`<div data-cid="m" style="${at(20, 20)};width:40px;height:20px;border:4px ${style} ${colour}"></div>`),
+      probes: [[20, 1], [1, 14], [20, 26], [46, 14]].map(([dx, dy]) => [20 + dx, 20 + dy]),
+    })),
+  ),
+  // The shading names physical sides in vertical writing modes too.
+  ...[
+    ["inset", "vertical-rl"],
+    ["outset", "vertical-lr"],
+  ].map(([style, mode]) => ({
+    id: `border-${style}-${mode}`,
+    html: DOC(`<div data-cid="m" style="${at(20, 20)};writing-mode:${mode};width:20px;height:40px;border:4px ${style} #767676"></div>`),
+    probes: [[14, 1], [1, 24], [14, 46], [26, 24]].map(([dx, dy]) => [20 + dx, 20 + dy]),
+  })),
+  // The `appearance: none` text field's UA `2px inset` border, bottom and right; a button
+  // with an author background keeps the UA `2px outset` border in black.
+  {
+    id: "border-inset-field",
+    html: DOC(`<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px;appearance:none">`),
+    probes: [[15, 21], [37, 11], [15, 20], [36, 11]].map(([dx, dy]) => [20 + dx, 20 + dy]),
+  },
+  {
+    id: "border-outset-button",
+    html: DOC(`<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px;background-color:#ffff00"></button>`),
+    probes: [[20, 0], [0, 11], [20, 21], [41, 11], [20, 11]].map(([dx, dy]) => [20 + dx, 20 + dy]),
   },
 ];
 

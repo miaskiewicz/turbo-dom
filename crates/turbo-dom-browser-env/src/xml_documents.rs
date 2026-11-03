@@ -43,7 +43,7 @@ struct Builder<'a, 't> {
     pending: Option<(Handle, String)>,
 }
 
-impl Builder<'_, '_> {
+impl<'a> Builder<'a, '_> {
     fn parent(&self) -> Handle {
         // invariant: the document stays at the bottom of the open-element stack (xml-rs
         // never ends more elements than it started)
@@ -79,7 +79,9 @@ impl Builder<'_, '_> {
         name: &OwnedName,
         attributes: Vec<xml::attribute::OwnedAttribute>,
         namespace: &XmlNamespace,
-    ) {
+    ) -> Result<(), String> {
+        let mut declared = self.tags.next_declarations(&qualified(name));
+        let defaults = self.defaults(&qualified(name), &attributes, namespace)?;
         let element = if name.namespace.as_deref() == Some(UNBOUND_NAMESPACE) {
             self.tree.create_element_ns_units(
                 &units(&qualified(name)),
@@ -92,7 +94,6 @@ impl Builder<'_, '_> {
             )
         };
         let xmlns = units(XMLNS_NAMESPACE);
-        let mut declared = self.tags.next_declarations(&qualified(name));
         declared.sort_unstable();
         for prefix in declared {
             let qualified = if prefix.is_empty() {
@@ -122,17 +123,68 @@ impl Builder<'_, '_> {
                 &units(&attribute.value),
             );
         }
+        for (namespace, qualified, value) in defaults {
+            self.tree.set_attribute_ns_units(
+                element,
+                namespace.map(units).as_deref(),
+                &units(qualified),
+                &units(&value),
+            );
+        }
         self.append(element);
         self.open.push(element);
+        Ok(())
     }
-    fn event<R: std::io::Read>(&mut self, event: XmlEvent, reader: &xml::EventReader<R>) {
+    /// The internal subset's ATTLIST defaults `name` takes (turbo-dom#261): each declared
+    /// default the element does not specify, in declaration order, with its namespace
+    /// and its value's references expanded. An unbound prefix is Chrome's error.
+    fn defaults<'n>(
+        &self,
+        name: &str,
+        attributes: &[xml::attribute::OwnedAttribute],
+        namespace: &'n XmlNamespace,
+    ) -> Result<Vec<(Option<&'n str>, &'a str, String)>, String> {
+        let mut defaults = Vec::new();
+        for &(attribute, value) in self.tags.defaults.get(name).into_iter().flatten() {
+            let specified = attributes
+                .iter()
+                .any(|specified| qualified(&specified.name) == attribute);
+            if specified || attribute == "xmlns" || attribute.starts_with("xmlns:") {
+                continue;
+            }
+            let namespace = match attribute.split_once(':') {
+                Some(("xml", _)) => Some(XML_NAMESPACE),
+                Some((prefix, _)) => Some(
+                    namespace
+                        .get(prefix)
+                        .ok_or_else(|| format!("Attribute {attribute} prefix is unbound"))?,
+                ),
+                None => None,
+            };
+            defaults.push((namespace, attribute, self.tags.expand(value)));
+        }
+        Ok(defaults)
+    }
+    fn event<R: std::io::Read>(
+        &mut self,
+        event: XmlEvent,
+        reader: &xml::EventReader<R>,
+    ) -> Result<(), xml::reader::Error> {
         match event {
             XmlEvent::Doctype { .. } => self.doctype(reader.doctype_ids()),
             XmlEvent::StartElement {
                 name,
                 attributes,
                 namespace,
-            } => self.start(&name, attributes, &namespace),
+            } => {
+                return self
+                    .start(&name, attributes, &namespace)
+                    .map_err(|message| {
+                        // Chrome reports a default's error at the tag's closing `/` or `>`
+                        let position = self.tags.tag_end().unwrap_or_else(|| reader.position());
+                        xml::reader::Error::from((&position, message))
+                    });
+            }
             XmlEvent::EndElement { .. } => {
                 self.open.pop();
             }
@@ -157,6 +209,7 @@ impl Builder<'_, '_> {
             // the source); EndDocument stops the loop before it gets here.
             XmlEvent::StartDocument { .. } | XmlEvent::EndDocument => {}
         }
+        Ok(())
     }
 }
 
@@ -169,45 +222,248 @@ fn qualified(name: &OwnedName) -> String {
 
 /// The source's start tags in order, for the namespace declarations xml-rs folds into
 /// its scope map (Chrome keeps each element's own `xmlns` attributes). The source up to
-/// a start-element event is well-formed, so a light scan finds the tags.
+/// a start-element event is well-formed, so a light scan finds the tags. An internal
+/// entity's reference is followed into its replacement text, which xml-rs reparses, so
+/// the elements an entity spells take their own tags (and declarations) in order.
 struct StartTags<'a> {
+    source: &'a str,
     rest: &'a str,
+    /// The text after each entity reference being expanded, innermost last.
+    outer: Vec<&'a str>,
+    /// The internal DTD subset's general entities with a literal replacement text.
+    entities: std::collections::HashMap<&'a str, &'a str>,
+    /// The internal subset's ATTLIST defaults per element name, in declaration order.
+    defaults: std::collections::HashMap<&'a str, Vec<(&'a str, &'a str)>>,
 }
 
+/// Entity references followed at once: xml-rs stops a reparse deeper than 10 (as Chrome
+/// 156 does, "Entity too big"), so the scan never needs more.
+const ENTITY_SCAN_DEPTH: usize = 64;
+
 impl<'a> StartTags<'a> {
-    /// Skip past `end`, or to the end of the source.
+    fn new(source: &'a str) -> Self {
+        StartTags {
+            source,
+            rest: source,
+            outer: Vec::new(),
+            entities: std::collections::HashMap::new(),
+            defaults: std::collections::HashMap::new(),
+        }
+    }
+    /// Skip past `end`, or to the end of the current text.
     fn skip(&mut self, end: &str) {
         self.rest = self
             .rest
             .find(end)
             .map_or("", |index| &self.rest[index + end.len()..]);
     }
+    /// Skip past the first of `stops` outside a quoted literal and return it (None at
+    /// the end of the current text).
+    fn skip_quoted(&mut self, stops: &[char]) -> Option<char> {
+        let mut quote = None;
+        for (index, c) in self.rest.char_indices() {
+            match quote {
+                Some(open) if c == open => quote = None,
+                Some(_) => {}
+                None if c == '"' || c == '\'' => quote = Some(c),
+                None if stops.contains(&c) => {
+                    self.rest = &self.rest[index + 1..];
+                    return Some(c);
+                }
+                None => {}
+            }
+        }
+        self.rest = "";
+        None
+    }
     /// The next start tag's name and the prefixes it declares (`""` for `xmlns`).
     fn next_tag(&mut self) -> Option<(&'a str, Vec<&'a str>)> {
         loop {
-            self.skip("<");
+            let Some(index) = self.rest.find(['<', '&']) else {
+                self.rest = self.outer.pop()?;
+                continue;
+            };
+            let reference = self.rest.as_bytes()[index] == b'&';
+            self.rest = &self.rest[index + 1..];
             let markup = self.rest;
-            if markup.is_empty() {
-                return None;
-            }
-            if markup.starts_with("!--") {
+            if reference {
+                self.reference();
+            } else if markup.starts_with("!--") {
                 self.skip("-->");
             } else if markup.starts_with("![CDATA[") {
                 self.skip("]]>");
             } else if markup.starts_with('?') {
                 self.skip("?>");
             } else if markup.starts_with("!DOCTYPE") {
-                // an internal subset ends with "]" before the closing ">"
-                if markup[..markup.find('>').unwrap_or(markup.len())].contains('[') {
-                    self.skip("]");
-                }
-                self.skip(">");
+                self.doctype();
             } else if markup.starts_with('/') {
                 self.skip(">");
             } else {
                 return Some(self.attributes());
             }
         }
+    }
+    /// After `&`: continue in a declared entity's replacement text and then after the
+    /// reference (character and predefined references spell no markup).
+    fn reference(&mut self) {
+        let Some(end) = self.rest.find(';') else {
+            return;
+        };
+        let after = &self.rest[end + 1..];
+        match self.entities.get(&self.rest[..end]) {
+            Some(&text) if self.outer.len() < ENTITY_SCAN_DEPTH => {
+                self.outer.push(after);
+                self.rest = text;
+            }
+            _ => self.rest = after,
+        }
+    }
+    /// After `<`: skip `!DOCTYPE …>`, recording the internal subset's entities. A `]` or
+    /// `>` in a quoted literal, a comment or a processing instruction does not end it.
+    fn doctype(&mut self) {
+        if self.skip_quoted(&['[', '>']) != Some('[') {
+            return;
+        }
+        loop {
+            self.rest = self.rest.trim_start();
+            let markup = self.rest;
+            if markup.is_empty() {
+                return;
+            }
+            if markup.starts_with(']') {
+                self.skip(">");
+                return;
+            }
+            if markup.starts_with("<!--") {
+                self.skip("-->");
+            } else if markup.starts_with("<?") {
+                self.skip("?>");
+            } else if let Some(declaration) = markup.strip_prefix("<!ENTITY") {
+                self.rest = declaration;
+                self.entity();
+            } else if let Some(declaration) = markup.strip_prefix("<!ATTLIST") {
+                self.rest = declaration;
+                self.attlist();
+            } else if markup.starts_with('%') {
+                self.skip(";");
+            } else {
+                self.skip_quoted(&['>']);
+            }
+        }
+    }
+    /// After `<!ENTITY`: record a general entity's literal replacement text (the first
+    /// declaration of a name binds it), then skip the rest of the declaration.
+    fn entity(&mut self) {
+        let declaration = self.rest.trim_start();
+        let (name, value) =
+            declaration.split_at(declaration.find(char::is_whitespace).unwrap_or(0));
+        let value = value.trim_start();
+        let quote = value.chars().next().filter(|c| matches!(c, '"' | '\''));
+        if let (Some(quote), false) = (quote, name == "%") {
+            if let Some(close) = value[1..].find(quote) {
+                self.entities.entry(name).or_insert(&value[1..=close]);
+            }
+        }
+        self.rest = declaration;
+        self.skip_quoted(&['>']);
+    }
+    /// Where the last scanned start tag closes (its `/` or `>`), when it is in the
+    /// source rather than an entity's replacement text.
+    fn tag_end(&self) -> Option<xml::common::TextPosition> {
+        if !self.outer.is_empty() {
+            return None;
+        }
+        let before = &self.source[..self.source.len() - self.rest.len()];
+        let line = before
+            .rfind('\n')
+            .map_or(before, |index| &before[index + 1..]);
+        Some(xml::common::TextPosition {
+            row: before.matches('\n').count() as u64,
+            column: line.chars().count() as u64,
+        })
+    }
+    /// The next ATTLIST token: a quoted literal (its content, `true`), a parenthesized
+    /// enumeration or a name. None at the declaration's `>`.
+    fn token(&mut self) -> Option<(&'a str, bool)> {
+        self.rest = self.rest.trim_start();
+        let rest = self.rest;
+        let first = rest.chars().next().filter(|&c| c != '>')?;
+        let (token, end, quoted) = if first == '"' || first == '\'' {
+            let close = rest[1..].find(first).map_or(rest.len(), |index| index + 1);
+            (&rest[1..close], close + 1, true)
+        } else if first == '(' {
+            let close = rest.find(')').map_or(rest.len(), |index| index + 1);
+            (&rest[..close], close, false)
+        } else {
+            let close = rest
+                .find(|c: char| c.is_whitespace() || c == '>')
+                .unwrap_or(rest.len());
+            (&rest[..close], close, false)
+        };
+        self.rest = &rest[end.min(rest.len())..];
+        Some((token, quoted))
+    }
+    /// After `<!ATTLIST`: record each attribute definition's default value (none for
+    /// `#REQUIRED` / `#IMPLIED`); the first definition of an attribute binds it.
+    fn attlist(&mut self) {
+        let element = self.token().map_or("", |(name, _)| name);
+        while let Some((attribute, _)) = self.token() {
+            let kind = self.token();
+            if kind.is_some_and(|(kind, _)| kind == "NOTATION") {
+                self.token();
+            }
+            let mut default = self.token();
+            if default.is_some_and(|(token, quoted)| !quoted && token == "#FIXED") {
+                default = self.token();
+            }
+            let Some((value, true)) = default else {
+                continue;
+            };
+            let defaults = self.defaults.entry(element).or_default();
+            if defaults.iter().all(|&(name, _)| name != attribute) {
+                defaults.push((attribute, value));
+            }
+        }
+        self.skip(">");
+    }
+    /// An attribute default's normalized value: references expanded (declared entities
+    /// through their replacement text), literal tab / line feed / carriage return as spaces.
+    fn expand(&self, value: &str) -> String {
+        let mut out = String::new();
+        self.expand_into(&mut out, value, 0);
+        out
+    }
+    fn expand_into(&self, out: &mut String, value: &str, depth: usize) {
+        let mut rest = value;
+        while let Some(index) = rest.find('&') {
+            out.extend(rest[..index].chars().map(|c| {
+                if matches!(c, '\t' | '\n' | '\r') {
+                    ' '
+                } else {
+                    c
+                }
+            }));
+            let after = &rest[index + 1..];
+            let end = after.find(';').unwrap_or(after.len());
+            let name = &after[..end];
+            if let Some(text) = self
+                .entities
+                .get(name)
+                .filter(|_| depth < ENTITY_SCAN_DEPTH)
+            {
+                self.expand_into(out, text, depth + 1);
+            } else {
+                out.extend(character_reference(name));
+            }
+            rest = &after[(end + 1).min(after.len())..];
+        }
+        out.extend(rest.chars().map(|c| {
+            if matches!(c, '\t' | '\n' | '\r') {
+                ' '
+            } else {
+                c
+            }
+        }));
     }
     fn attributes(&mut self) -> (&'a str, Vec<&'a str>) {
         let end = self
@@ -244,6 +500,26 @@ impl<'a> StartTags<'a> {
             .filter(|(name, _)| *name == qualified)
             .map(|(_, prefixes)| prefixes)
             .unwrap_or_default()
+    }
+}
+
+/// A predefined (`lt`, `gt`, `amp`, `apos`, `quot`) or character (`#N`, `#xN`)
+/// reference's character; None for any other name.
+fn character_reference(name: &str) -> Option<char> {
+    match name {
+        "lt" => Some('<'),
+        "gt" => Some('>'),
+        "amp" => Some('&'),
+        "apos" => Some('\''),
+        "quot" => Some('"'),
+        _ => {
+            let number = name.strip_prefix('#')?;
+            let code = match number.strip_prefix('x') {
+                Some(hex) => u32::from_str_radix(hex, 16).ok()?,
+                None => number.parse().ok()?,
+            };
+            char::from_u32(code)
+        }
     }
 }
 
@@ -366,7 +642,7 @@ fn build(
     let mut reader = reader_config().create_reader(source.as_bytes());
     let mut builder = Builder {
         tree,
-        tags: StartTags { rest: source },
+        tags: StartTags::new(source),
         open: vec![parent],
         pending: None,
     };
@@ -378,7 +654,7 @@ fn build(
             XmlEvent::StartDocument { standalone, .. } => {
                 *parsed_declaration = declaration(source, standalone);
             }
-            event => builder.event(event, &reader),
+            event => builder.event(event, &reader)?,
         }
     }
 }

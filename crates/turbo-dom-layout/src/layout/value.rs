@@ -223,9 +223,19 @@ fn unit_factor(unit: &str) -> Option<f32> {
 }
 
 fn split_unit(s: &str) -> (&str, &str) {
+    let bytes = s.as_bytes();
+    // An exponent (`3.40282e+38px`, how a huge length serializes) is part of the number:
+    // `e`, an optional sign, then a digit.
+    let exponent = |i: usize| {
+        let digits = match bytes.get(i + 1) {
+            Some(b'+' | b'-') => i + 2,
+            _ => i + 1,
+        };
+        i > 0 && bytes.get(digits).is_some_and(u8::is_ascii_digit)
+    };
     let end = s
         .char_indices()
-        .find(|(_, c)| c.is_ascii_alphabetic() || *c == '%')
+        .find(|&(i, c)| (c.is_ascii_alphabetic() && !(c == 'e' && exponent(i))) || c == '%')
         .map_or(s.len(), |(i, _)| i);
     (&s[..end], &s[end..])
 }
@@ -1174,12 +1184,20 @@ impl CornerRadius {
     /// rule); a negative or unresolvable radius is zero.
     #[must_use]
     pub fn resolve(&self, width: f32, height: f32) -> super::fragment::CornerRadii {
+        // A huge length (`1e39px`, an infinite `1e400px`) is clamped to Chrome's
+        // LayoutUnit max (its computed `3.35544e+07px`), so the overlap rule scales it to
+        // the box (a pill) instead of `inf * 0 = NaN`.
+        let finite = |r: Option<f32>| r.unwrap_or(0.0).clamp(0.0, LAYOUT_UNIT_MAX);
         super::fragment::CornerRadii {
-            h: self.h.resolve(width).unwrap_or(0.0).max(0.0),
-            v: self.v.resolve(height).unwrap_or(0.0).max(0.0),
+            h: finite(self.h.resolve(width)),
+            v: finite(self.v.resolve(height)),
         }
     }
 }
+
+/// Blink's largest `LayoutUnit` in px (`(2^31 - 1) / 64`): a computed `border-radius`
+/// never exceeds it (Chrome 156 reads `1e39px` back as `3.35544e+07px`).
+const LAYOUT_UNIT_MAX: f32 = 33_554_431.0;
 
 /// The used radii of a `width` x `height` border box with specified corners `spec`
 /// (CSS order): percentages resolved per axis, then the overlap rule.
@@ -1355,11 +1373,92 @@ fn apply_border_longhands(b: &mut BorderSide, s: &ComputedStyle, name: &str, fs:
 }
 
 fn resolve_borders(s: &ComputedStyle, fs: f32) -> BorderEdges {
+    let mode = super::writing::WritingMode::of(s);
+    let side = |i: usize, name| {
+        shade_side(
+            resolve_border_side(s, name, fs),
+            s,
+            name,
+            mode.top_or_left(i),
+        )
+    };
     BorderEdges {
-        top: resolve_border_side(s, "top", fs),
-        right: resolve_border_side(s, "right", fs),
-        bottom: resolve_border_side(s, "bottom", fs),
-        left: resolve_border_side(s, "left", fs),
+        top: side(0, "top"),
+        right: side(1, "right"),
+        bottom: side(2, "bottom"),
+        left: side(3, "left"),
+    }
+}
+
+/// The `border-style` keyword of side `name`: the `border-<name>-style` longhand's, else
+/// `border-<name>`'s, else the `border` shorthand's.
+fn border_side_style<'a>(s: &'a ComputedStyle, name: &str) -> Option<&'a str> {
+    let keyword = |v: &'a str| v.split_whitespace().find(|t| BORDER_STYLES.contains(t));
+    s.get(&format!("border-{name}-style"))
+        .map(str::trim)
+        .or_else(|| s.get(&format!("border-{name}")).and_then(keyword))
+        .or_else(|| s.get("border").and_then(keyword))
+}
+
+const BORDER_STYLES: [&str; 10] = [
+    "none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset",
+];
+
+/// An `inset` / `outset` side's colour as Chrome 156 paints it (miaskiewicz/turbo-dom#257):
+/// an inset border's physical top and left (an outset one's bottom and right) are its dark
+/// sides. `name` is a side of the box's own writing-mode space, `top_or_left` whether it
+/// is a physical top or left side.
+fn shade_side(mut b: BorderSide, s: &ComputedStyle, name: &str, top_or_left: bool) -> BorderSide {
+    let inset = match border_side_style(s, name) {
+        Some("inset") => true,
+        Some("outset") => false,
+        _ => return b,
+    };
+    b.color = b
+        .color
+        .map(|c| border_style_colour(c, top_or_left == inset));
+    b
+}
+
+/// The dark (`dark`) or light side's colour of an inset / outset border of colour `c`
+/// (Blink's `CalculateBorderStyleColor`): the colour darkened and lightened; a colour too
+/// dark to darken (it darkens to black) is lightened once for the dark sides and twice
+/// for the light ones.
+pub(crate) fn border_style_colour(c: Rgba, dark: bool) -> Rgba {
+    let darkened = scale_colour(c, |v| (v - 0.33).max(0.0) / v);
+    let too_dark = (darkened.r, darkened.g, darkened.b) == (0, 0, 0);
+    match (too_dark, dark) {
+        (false, true) => darkened,
+        (false, false) | (true, true) => lighten(c),
+        (true, false) => lighten(lighten(c)),
+    }
+}
+
+/// Blink's `Color::Light()`: the brightest channel gains a third, the others in
+/// proportion; black becomes `#545454`.
+fn lighten(c: Rgba) -> Rgba {
+    if (c.r, c.g, c.b) == (0, 0, 0) {
+        return Rgba {
+            r: 0x54,
+            g: 0x54,
+            b: 0x54,
+            a: c.a,
+        };
+    }
+    scale_colour(c, |v| (v + 0.33).min(1.0) / v)
+}
+
+/// `c` with every channel times `multiplier(v)` (`v` its brightest channel in 0..=1),
+/// truncated like Blink's `nextafterf(256, 0)` scale; black stays black.
+fn scale_colour(c: Rgba, multiplier: impl Fn(f32) -> f32) -> Rgba {
+    let v = f32::from(c.r.max(c.g).max(c.b)) / 255.0;
+    let m = if v == 0.0 { 0.0 } else { multiplier(v) };
+    let channel = |x: u8| (f32::from(x) / 255.0 * m * 255.999_98) as u8;
+    Rgba {
+        r: channel(c.r),
+        g: channel(c.g),
+        b: channel(c.b),
+        a: c.a,
     }
 }
 
@@ -2130,6 +2229,32 @@ mod calc_aspect_tests {
     use super::*;
 
     #[test]
+    fn exponent_lengths_keep_their_exponent() {
+        // How a huge length serializes (`3.40282e+38px`); `e` without digits is a unit.
+        assert_eq!(parse_raw("1e+3px"), Some(RawLength::Abs(1000.0)));
+        assert_eq!(parse_raw("2e-1px"), Some(RawLength::Abs(0.2)));
+        assert_eq!(parse_raw("1e2px"), Some(RawLength::Abs(100.0)));
+        assert_eq!(parse_raw("2em"), Some(RawLength::Em(2.0)));
+        assert_eq!(parse_raw("2e+px"), None);
+        assert_eq!(parse_raw("em"), None);
+    }
+
+    #[test]
+    fn an_infinite_radius_fits_the_box_as_a_pill() {
+        // R2 #5: `inf * 0` used to make NaN radii; Chrome clamps it to a LayoutUnit.
+        let inf = CornerRadius {
+            h: LengthPct::Px(f32::INFINITY),
+            v: LengthPct::Px(f32::INFINITY),
+        };
+        let radii = resolve_radii(&[inf; 4], 200.0, 50.0);
+        assert_eq!(
+            radii.top_left,
+            super::super::fragment::CornerRadii { h: 25.0, v: 25.0 }
+        );
+        assert_eq!(radii.as_uniform(), Some(25.0));
+    }
+
+    #[test]
     fn calc_mixing_percent_and_px_becomes_calc_and_resolves() {
         let lp = parse_length_pct("calc(100% - 616px)", 16.0).expect("calc");
         assert_eq!(
@@ -2337,6 +2462,80 @@ mod border_longhand_tests {
         ]);
         let side = resolve_border_side(&s, "top", 16.0);
         assert_eq!(side.width, 4);
+    }
+
+    fn grey(v: u8) -> Rgba {
+        Rgba::new(v, v, v, 255)
+    }
+
+    /// Chrome 156's inset / outset side colours (`border-inset-*` / `border-outset-*`
+    /// in the paint control; miaskiewicz/turbo-dom#257): (colour, dark side, light side).
+    #[test]
+    fn inset_and_outset_sides_shade_like_chrome() {
+        let cases = [
+            (grey(0x76), grey(33), grey(202)),
+            (grey(0x80), grey(44), grey(212)),
+            (grey(0xff), grey(171), grey(255)),
+            (
+                Rgba::new(255, 0, 0, 255),
+                Rgba::new(171, 0, 0, 255),
+                Rgba::new(255, 0, 0, 255),
+            ),
+            // Too dark to darken: lightened once / twice.
+            (grey(0), grey(84), grey(168)),
+            (
+                Rgba::new(0x10, 0x20, 0x30, 255),
+                Rgba::new(44, 88, 132, 255),
+                Rgba::new(72, 144, 216, 255),
+            ),
+            // Alpha is kept.
+            (
+                Rgba::new(0, 0, 0, 128),
+                Rgba::new(84, 84, 84, 128),
+                Rgba::new(168, 168, 168, 128),
+            ),
+        ];
+        for (colour, dark, light) in cases {
+            assert_eq!(border_style_colour(colour, true), dark, "{colour:?}");
+            assert_eq!(border_style_colour(colour, false), light, "{colour:?}");
+        }
+    }
+
+    #[test]
+    fn inset_and_outset_pick_their_dark_sides_from_every_style_source() {
+        let edges = |pairs: &[(&str, &str)]| {
+            let s = ComputedStyle::from_pairs(
+                pairs
+                    .iter()
+                    .map(|(k, v)| ((*k).to_string(), (*v).to_string())),
+            );
+            let b = resolve_borders(&s, 16.0);
+            [b.top, b.right, b.bottom, b.left].map(|side| side.color.map(|c| c.r))
+        };
+        let (d, l, w) = (Some(33), Some(202), Some(0x76));
+        assert_eq!(edges(&[("border", "2px inset #767676")]), [d, l, l, d]);
+        assert_eq!(edges(&[("border", "2px outset #767676")]), [l, d, d, l]);
+        // A vertical box's sides name its logical space's: `vertical-rl`'s top side is
+        // the physical right, its left side the physical top.
+        assert_eq!(
+            edges(&[
+                ("border", "2px inset #767676"),
+                ("writing-mode", "vertical-rl")
+            ]),
+            [l, l, d, d]
+        );
+        // `border-<side>` and the `border-<side>-style` longhand override the shorthand.
+        assert_eq!(
+            edges(&[
+                ("border", "2px inset #767676"),
+                ("border-top", "2px solid #767676"),
+                ("border-left-style", "outset"),
+            ]),
+            [w, l, l, l]
+        );
+        // No style, or a colourless border, is left as is.
+        assert_eq!(edges(&[("border", "2px #767676")]), [w, w, w, w]);
+        assert_eq!(edges(&[("border", "2px inset")]), [None; 4]);
     }
 }
 

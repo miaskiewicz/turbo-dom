@@ -144,8 +144,19 @@ python3 scripts/check-baseline-red.py scripts/baseline-red/turbo-dom-layout-no-d
   `serif` / `sans-serif` / `monospace`), never with host fonts. Their expected values come
   from Chrome 156 with the same files loaded through `@font-face`
   (`scripts/fixture-font-chrome-controls.mjs`). Only the tests of the host-font policy
-  itself (`native_serif_policy`, `original_text_units`) read installed fonts, and they are
-  macOS-only.
+  itself (`native_serif_policy`, `native_generic_families`, `original_text_units`) read
+  installed fonts, and they are macOS-only.
+- **Generic families: bundled vs host.** `FontRegistry::new()` alone resolves the generics
+  to the bundled faces (`sans-serif` = Inter: at 16px a 20px `line-height: normal` line
+  (ascent 16 + descent 4) and "Hello world" 85.41px wide), not to Chrome's host faces, so
+  text laid out without system fonts is taller and wider than Chrome's and can wrap
+  earlier (a 120px block). Chrome 156 on macOS uses Helvetica (an 18px line, 79.14px); on
+  Linux fontconfig's sans face (Liberation Sans / DejaVu Sans). For Chrome parity load the
+  host fonts: under both `SystemFontPolicy::Default` (`load_system_fonts`, PDF / raster)
+  and `Html` the macOS `sans-serif` is Helvetica, `serif` Times New Roman (PDF) / Times
+  (HTML) and `monospace` Courier New (PDF) / Courier (HTML, #260), checked against Chrome 156 by
+  `tests/native_generic_families.rs` (`scripts/native-generic-families-chrome-control.mjs`,
+  miaskiewicz/turbo-dom#259).
 - **Chrome 156 controls.** Fixtures in `tests/fixtures/*_chrome15x.json` are recorded by the
   repository's `scripts/*-chrome-control.mjs`:
   - `html-document` (document styling and table / block layout);

@@ -68,6 +68,10 @@ const CASES = [
   // `start` / `value` are signed 32-bit integers: an out-of-range one is absent.
   { id: "ol-start-out-of-range", html: DOC(OL(' start="3000000000"', LI("a") + LI("b")) + OL(' start="-2147483649"', LI("c")) + OL(' start="2147483647"', LI("d"))) },
   { id: "li-value-out-of-range", html: DOC(OL("", LI("a") + LI("b", "item", ' value="2147483648"') + LI("c", "item", ' value="-2147483648"') + LI("d", "item", ' value="-99999999999"'))) },
+  // Counters are 32-bit and clamp (Chrome's ClampAdd): past i32::MAX / i32::MIN the
+  // ordinal stays put. lower-alpha makes the last letter, and so the marker width, differ.
+  { id: "ol-start-i32-max-clamps", html: DOC(`<ol style="margin:0;list-style-type:lower-alpha" start="2147483646">${LI("a")}${LI("b")}${LI("c")}</ol>`) },
+  { id: "ol-reversed-i32-min-clamps", html: DOC(OL(' reversed start="-2147483647"', LI("a") + LI("b") + LI("c"))) },
   { id: "li-outside-list", html: DOC(`<div>${LI("a")}${LI("b")}</div>`) },
   { id: "nested-ol", html: DOC(OL("", `<li data-cid="a">x<ol>${LI("b")}${LI("c")}</ol></li>${LI("d")}`)) },
   { id: "ol-type-attribute", html: DOC(`<ol style="margin:0" type="a">${LI("a")}</ol><ol style="margin:0" type="I">${LI("b")}</ol>`) },

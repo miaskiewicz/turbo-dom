@@ -53,6 +53,7 @@ fn html_generic_candidates<'a>(
     generic: &str,
     candidates: &'a [&'a str],
     prefer_native_mac_serif: bool,
+    courier_monospace: bool,
 ) -> &'a [&'a str] {
     // Chrome's macOS serif default is the physical Times face. PDF callers
     // keep the prior Times New Roman preference and explicit families keep theirs.
@@ -63,6 +64,27 @@ fn html_generic_candidates<'a>(
             "Georgia",
             "Liberation Serif",
             "DejaVu Serif",
+        ]
+    } else if prefer_native_mac_serif && generic == "monospace" {
+        // Chrome 156's macOS monospace is the physical Courier face
+        // (miaskiewicz/turbo-dom#260), not Menlo.
+        &[
+            "Courier",
+            "Courier New",
+            "Menlo",
+            "Monaco",
+            "DejaVu Sans Mono",
+        ]
+    } else if courier_monospace && generic == "monospace" {
+        // The default policy's monospace stays Courier New, Chrome 156's macOS
+        // generic (miaskiewicz/turbo-dom#259), now that Menlo (named only in
+        // platform records) is a candidate it can reach.
+        &[
+            "Courier New",
+            "Courier",
+            "Menlo",
+            "Monaco",
+            "DejaVu Sans Mono",
         ]
     } else {
         candidates
@@ -203,7 +225,7 @@ impl FontRegistry {
     /// default rendering, e.g. PDF generation, uses only the shipped/bundled
     /// faces). Walks the OS font directories, registering each face under its own
     /// family, and aliases the CSS generics to the conventional system families
-    /// (`sans-serif`→Helvetica/Arial, `serif`→Times, `monospace`→Menlo/Courier) so
+    /// (`sans-serif`→Helvetica/Arial, `serif`→Times, `monospace`→Courier New, or Courier under the macOS HTML policy) so
     /// a page that names an installed font — or a generic — renders in it, matching
     /// a browser on the same machine. Best-effort: unreadable dirs/files skipped.
     pub fn load_system_fonts(&mut self) {
@@ -212,7 +234,7 @@ impl FontRegistry {
 
     /// Load installed fonts for continuous native HTML layout, including faces
     /// whose family exists only in platform name records. Choose generic aliases
-    /// after admitting those real primary faces (for example Menlo on macOS).
+    /// after admitting those real primary faces (for example Courier and Helvetica on macOS).
     /// Ordinary PDF callers retain the policy of [`Self::load_system_fonts`].
     pub fn load_system_fonts_for_html(&mut self) {
         self.load_system_fonts_with_primary_policy(true);
@@ -281,10 +303,14 @@ impl FontRegistry {
     /// Alias each CSS generic to the first installed candidate family (all its
     /// weights/styles), so `font-family: sans-serif` resolves to a system font.
     fn alias_generics(&mut self) {
-        self.alias_generics_with_primary_policy(false);
+        self.alias_generics_with(false, true);
     }
 
     fn alias_generics_with_primary_policy(&mut self, prefer_native_mac_serif: bool) {
+        self.alias_generics_with(prefer_native_mac_serif, false);
+    }
+
+    fn alias_generics_with(&mut self, prefer_native_mac_serif: bool, courier_monospace: bool) {
         const GENERIC_CANDIDATES: &[(&str, &[&str])] = &[
             (
                 "sans-serif",
@@ -318,13 +344,27 @@ impl FontRegistry {
             ),
         ];
         for (generic, candidates) in GENERIC_CANDIDATES {
-            let candidates = html_generic_candidates(generic, candidates, prefer_native_mac_serif);
+            let candidates = html_generic_candidates(
+                generic,
+                candidates,
+                prefer_native_mac_serif,
+                courier_monospace,
+            );
+            // A candidate may be named only in platform records (macOS's Helvetica,
+            // Chrome 156's `sans-serif`, miaskiewicz/turbo-dom#259): the generic aliases
+            // it even when the policy does not register such faces under their own
+            // family (with the HTML policy they are among `faces` already).
+            let has = |pool: &[FontFace], c: &str| pool.iter().any(|f| family_matches(f, c));
             if let Some(cand) = candidates
                 .iter()
-                .find(|c| self.faces.iter().any(|f| family_matches(f, c)))
+                .find(|c| has(&self.faces, c) || has(&self.platform_faces, c))
             {
-                let aliased: Vec<FontFace> = self
-                    .faces
+                let pool = if has(&self.faces, cand) {
+                    &self.faces
+                } else {
+                    &self.platform_faces
+                };
+                let aliased: Vec<FontFace> = pool
                     .iter()
                     .filter(|f| family_matches(f, cand))
                     .map(|f| f.with_family(*generic))
@@ -633,14 +673,23 @@ mod tests {
         let mut registry = FontRegistry::new();
         registry.load_system_fonts_for_html();
         let explicit = registry.select(&["Menlo"], 400, false).unwrap();
-        let generic = registry.select(&["monospace"], 400, false).unwrap();
         assert_eq!(explicit.data(), bytes);
-        assert_eq!(generic.data(), explicit.data());
-        assert_eq!(generic.index(), explicit.index());
-        assert!(generic
+        assert!(explicit
             .native_postscript_name()
             .unwrap()
             .starts_with("Menlo"));
+        // The generic is the platform-only Courier, Chrome 156's macOS monospace
+        // (miaskiewicz/turbo-dom#260; tests/native_generic_families.rs).
+        let courier = std::fs::read("/System/Library/Fonts/Courier.ttc").unwrap();
+        let generic = registry.select(&["monospace"], 400, false).unwrap();
+        let physical = registry.select(&["Courier"], 400, false).unwrap();
+        assert_eq!(generic.data(), courier);
+        assert_eq!(generic.data(), physical.data());
+        assert_eq!(generic.index(), physical.index());
+        assert!(generic
+            .native_postscript_name()
+            .unwrap()
+            .starts_with("Courier"));
     }
     #[test]
     fn loaded_collection_shares_program_without_changing_registration_order() {
@@ -775,6 +824,35 @@ mod tests {
             "sans-serif now resolves to the aliased Helvetica face"
         );
     }
+    #[test]
+    fn default_policy_aliases_platform_only_candidates_but_keeps_courier_monospace() {
+        // miaskiewicz/turbo-dom#259: macOS names Helvetica (and Menlo) only in platform
+        // records, which the default policy never registers under their own family.
+        // `sans-serif` still aliases Helvetica ahead of an installed Helvetica Neue;
+        // `monospace` keeps the installed Courier New ahead of a platform-only Menlo.
+        let face = |bytes: &[u8], family: &str| {
+            FontFace::from_bytes(bytes.to_vec(), family, 400, false).unwrap()
+        };
+        let go = include_bytes!("../../assets/fonts/Go-Regular.ttf");
+        let mut registry = FontRegistry::default();
+        registry.add(face(go, "Helvetica Neue"));
+        registry.add(face(go, "Courier New"));
+        registry.platform_faces.push(face(ROBOTO, "Helvetica"));
+        registry.platform_faces.push(face(ROBOTO, "Menlo"));
+        registry.alias_generics();
+        let pick = |family: &str| registry.select(&[family], 400, false).unwrap().data();
+        assert_eq!(pick("sans-serif").len(), ROBOTO.len());
+        assert_eq!(pick("monospace").len(), go.len());
+        assert!(registry.best_in_family("Helvetica", 400, false).is_none());
+        // The HTML policy (platform faces registered) keeps Menlo first.
+        let mut html = FontRegistry::default();
+        html.add(face(go, "Courier New"));
+        html.add(face(ROBOTO, "Menlo"));
+        html.alias_generics_with_primary_policy(false);
+        let mono = html.select(&["monospace"], 400, false).unwrap();
+        assert_eq!(mono.data().len(), ROBOTO.len());
+    }
+
     #[test]
     fn native_mac_serif_policy_selects_real_faces_without_changing_pdf_or_explicit_families() {
         let times = FontFace::from_bytes(ROBOTO.to_vec(), "Times", 400, false).unwrap();

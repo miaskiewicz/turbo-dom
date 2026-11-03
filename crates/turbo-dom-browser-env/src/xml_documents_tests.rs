@@ -95,3 +95,27 @@ fn inner_and_outer_html_of_xml_documents_match_the_chrome156_control() {
     }
     assert_eq!(&actual, &control["result"]);
 }
+
+/// Exponential entity amplification stays bounded: a billion-laughs document (3 * 10^9
+/// characters when expanded) ends in a `<parsererror>` after a bounded amount of work,
+/// while a document within the limits still expands its entities.
+#[test]
+fn entity_amplification_is_bounded() {
+    let mut source = String::from("<!DOCTYPE r [<!ENTITY l0 \"lol\">");
+    for level in 1..=9 {
+        let reference = format!("&l{};", level - 1);
+        source.push_str(&format!("<!ENTITY l{level} \"{}\">", reference.repeat(10)));
+    }
+    source.push_str("]><r>&l9;</r>");
+    let started = std::time::Instant::now();
+    let parsed = xml_documents::parse(&source);
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+    let text = xml_documents::serialize(&parsed.tree, parsed.tree.root(), None);
+    assert!(text.contains("Entity too big"), "{text}");
+    assert!(text.len() < 4096, "{}", text.len());
+    let parsed = xml_documents::parse(
+        "<!DOCTYPE r [<!ENTITY a \"lol\"><!ENTITY b \"&a;&a;\">]><r>&b;&b;</r>",
+    );
+    let text = xml_documents::serialize(&parsed.tree, parsed.tree.root(), None);
+    assert_eq!(text, "<!DOCTYPE r><r>lollollollol</r>");
+}

@@ -105,7 +105,10 @@ impl ListCounters {
         let value = attr(element, "value")
             .and_then(parse_integer)
             .unwrap_or(counter.next);
-        counter.next = value.saturating_add(counter.step);
+        // Chrome counts in a 32-bit int with ClampAdd: the ordinal stops at i32::MAX / MIN.
+        counter.next = value
+            .saturating_add(counter.step)
+            .clamp(i64::from(i32::MIN), i64::from(i32::MAX));
         value
     }
 }

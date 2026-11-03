@@ -442,9 +442,11 @@ Every item is gated by a deterministic counter test, not wall-clock.
   (glibc 2.35) instead of `ubuntu-latest` (26.04, glibc 2.43), and
   `scripts/check-glibc-ceiling.sh` fails any `linux-gnu` `.node` that needs a `GLIBC_`
   symbol above 2.35 (d548cae). The guard never passes vacuously: a missing file or an
-  unmatched glob, an `objdump` failure and a binary with no `GLIBC_` symbols all fail
+  unmatched glob, a `readelf` failure and a binary with no `GLIBC_` symbols all fail
   (self-test `scripts/test_check_glibc_ceiling.py`), and CI and publish name the expected
-  x64 and arm64 addons.
+  x64 and arm64 addons. It reads symbols with `readelf -W --dyn-syms -V`, which handles any
+  ELF machine, so the x64 publish runner can check the arm64 addon (`objdump -T` there
+  fails with "file format not recognized").
 - The npm publish job ships the `.node` files the CI napi matrix built and guarded. It
   builds only the WASM targets, and no longer runs `prepublishOnly`, which rebuilt the
   linux-x64 addon on the publish runner.

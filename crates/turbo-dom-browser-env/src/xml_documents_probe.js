@@ -61,6 +61,35 @@
     ["nsInTagWithGt", '<r a=">" xmlns:q="u&amp;q" b="/>"><q:x/></r>'],
     ["doctypeSingleQuotes", "<!DOCTYPE a PUBLIC 'p' 's'><a/>"],
     ["unicodeColumn", "<a>\u00e9\ud83d\ude00</b>"],
+    // entity replacement text holding elements, and internal subsets with "]" inside
+    // quoted values / comments (the namespace declarations must stay on their elements)
+    ["entityElements", '<!DOCTYPE r [<!ENTITY e "<b/>">]><r>&e;<b xmlns:p="urn:p"/></r>'],
+    ["entityElementsNs", "<!DOCTYPE r [<!ENTITY e '<b xmlns:q=\"urn:q\"><q:c/></b>'><!ENTITY f \"&e;<i/>\">]><r xmlns:p=\"urn:p\">&f;&e;<c xmlns:p=\"urn:p\" xmlns:z=\"urn:z\"/></r>"],
+    ["entityInAttribute", '<!DOCTYPE r [<!ENTITY e "v">]><r a="&e;&lt;&e;"><s xmlns:p="urn:p"/></r>'],
+    ["subsetBracket", '<!DOCTYPE r [<!ENTITY a "]"><!ENTITY b "x">]><r xmlns:p="u">&a;&b;</r>'],
+    ["subsetComment", "<!DOCTYPE r [<!-- ] > --><?pi ] > ?><!ENTITY b '>]'><!ENTITY d \"<!-- ] -->\">]><r xmlns:p=\"u\"><p:s xmlns:q=\"v\"/>&b;</r>"],
+    // internal-subset ATTLIST defaults (turbo-dom#261): applied after the specified
+    // attributes in declaration order, the first declaration of a name binding it
+    ["attlistCdata", '<!DOCTYPE r [<!ATTLIST r c CDATA "  a  b ">]><r/>'],
+    ["attlistFixed", '<!DOCTYPE r [<!ATTLIST r f CDATA #FIXED "x" g CDATA #IMPLIED h CDATA #REQUIRED>]><r/>'],
+    ["attlistEnumerated", '<!DOCTYPE r [<!ATTLIST r e (a|b) "b" t NMTOKEN "  q  " n NOTATION (x) "x" i ID #IMPLIED>]><r><r e="a"/></r>'],
+    ["attlistOrder", '<!DOCTYPE r [<!ATTLIST r z CDATA "1"><!ATTLIST r a CDATA \'2\' z CDATA "3">]><r m="0"/>'],
+    ["attlistNamespaced", '<!DOCTYPE r [<!ATTLIST s p:x CDATA "v" xml:lang CDATA "en">]><r xmlns:p="urn:p"><s/><s p:x="w"/></r>'],
+    ["attlistUnbound", '<!DOCTYPE r [<!ATTLIST r p:x CDATA "v">]><r/>'],
+    ["attlistReferences", '<!DOCTYPE r [<!ENTITY e "E"><!ATTLIST r c CDATA "&e;&amp;&#65;" d CDATA "a\tb">]><r/>'],
+    ["attlistPrefixedElement", '<!DOCTYPE r [<!ATTLIST p:r c CDATA "1">]><p:r xmlns:p="u"/>'],
+    ["attlistEntityElement", '<!DOCTYPE r [<!ENTITY e "<s/>"><!ATTLIST s c CDATA "d">]><r>&e;<s/></r>'],
+    ["attlistCharacterReferences", '<!DOCTYPE r [<!ATTLIST r c CDATA "&#x42;&#66;&lt;&gt;&apos;&quot;" d CDATA \'&#9;x\'>]><r\n  a="1"\n/>'],
+    ["attlistUnboundInEntity", '<!DOCTYPE r [<!ENTITY e "<s/>"><!ATTLIST s p:x CDATA "v">]><r>&e;</r>'],
+    ["subsetCommentAttlist", "<!DOCTYPE r [<!-- ] > --><?pi ] > ?><!ENTITY b '>]'><!ATTLIST r c CDATA \"]\">]><r xmlns:p=\"u\"><p:s xmlns:q=\"v\"/>&b;</r>"],
+    // many / nested entity references: Chrome 156's XML parser counts each reparse that
+    // starts before the previous replacement text is consumed (depth 10)
+    ["manyEntities", '<!DOCTYPE r [<!ENTITY e "x"><!ENTITY f "<i/>">]><r>' + "&e;&f; ".repeat(60) + "</r>"],
+    ["nestedEntities9", '<!DOCTYPE r [<!ENTITY e0 "x"><!ENTITY e1 "&e0;"><!ENTITY e2 "&e1;"><!ENTITY e3 "&e2;"><!ENTITY e4 "&e3;"><!ENTITY e5 "&e4;"><!ENTITY e6 "&e5;"><!ENTITY e7 "&e6;"><!ENTITY e8 "&e7;"><!ENTITY e9 "&e8;">]><r>&e9;</r>'],
+    ["nestedEntities10", '<!DOCTYPE r [<!ENTITY e0 "x"><!ENTITY e1 "&e0;"><!ENTITY e2 "&e1;"><!ENTITY e3 "&e2;"><!ENTITY e4 "&e3;"><!ENTITY e5 "&e4;"><!ENTITY e6 "&e5;"><!ENTITY e7 "&e6;"><!ENTITY e8 "&e7;"><!ENTITY e9 "&e8;"><!ENTITY e10 "&e9;">]><r>&e10;</r>'],
+    ["nestedEntities30", '<!DOCTYPE r [<!ENTITY e0 "x"><!ENTITY e1 "&e0;"><!ENTITY e2 "&e1;"><!ENTITY e3 "&e2;"><!ENTITY e4 "&e3;"><!ENTITY e5 "&e4;"><!ENTITY e6 "&e5;"><!ENTITY e7 "&e6;"><!ENTITY e8 "&e7;"><!ENTITY e9 "&e8;"><!ENTITY e10 "&e9;"><!ENTITY e11 "&e10;"><!ENTITY e12 "&e11;"><!ENTITY e13 "&e12;"><!ENTITY e14 "&e13;"><!ENTITY e15 "&e14;"><!ENTITY e16 "&e15;"><!ENTITY e17 "&e16;"><!ENTITY e18 "&e17;"><!ENTITY e19 "&e18;"><!ENTITY e20 "&e19;"><!ENTITY e21 "&e20;"><!ENTITY e22 "&e21;"><!ENTITY e23 "&e22;"><!ENTITY e24 "&e23;"><!ENTITY e25 "&e24;"><!ENTITY e26 "&e25;"><!ENTITY e27 "&e26;"><!ENTITY e28 "&e27;"><!ENTITY e29 "&e28;"><!ENTITY e30 "&e29;">]><r>&e30;</r>'],
+    ["fanOutEntities", '<!DOCTYPE r [<!ENTITY a "x"><!ENTITY b1 "&a;&a;"><!ENTITY b2 "&b1;&b1;"><!ENTITY b3 "&b2;&b2;">]><r>&b2;|&b3;</r>'],
+    ["billionLaughs", '<!DOCTYPE r [<!ENTITY l0 "lol"><!ENTITY l1 "&l0;&l0;&l0;&l0;&l0;&l0;&l0;&l0;&l0;&l0;"><!ENTITY l2 "&l1;&l1;&l1;&l1;&l1;&l1;&l1;&l1;&l1;&l1;"><!ENTITY l3 "&l2;&l2;&l2;&l2;&l2;&l2;&l2;&l2;&l2;&l2;"><!ENTITY l4 "&l3;&l3;&l3;&l3;&l3;&l3;&l3;&l3;&l3;&l3;"><!ENTITY l5 "&l4;&l4;&l4;&l4;&l4;&l4;&l4;&l4;&l4;&l4;"><!ENTITY l6 "&l5;&l5;&l5;&l5;&l5;&l5;&l5;&l5;&l5;&l5;"><!ENTITY l7 "&l6;&l6;&l6;&l6;&l6;&l6;&l6;&l6;&l6;&l6;"><!ENTITY l8 "&l7;&l7;&l7;&l7;&l7;&l7;&l7;&l7;&l7;&l7;"><!ENTITY l9 "&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;">]><r>&l9;</r>'],
     // well-formedness errors
     ["mismatch", "<a><b></a>"],
     ["empty", ""],

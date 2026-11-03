@@ -1,0 +1,64 @@
+{
+ "generator": "scripts/native-generic-families-chrome-control.mjs",
+ "chrome": "156.0.8078.47",
+ "platform": "darwin",
+ "size": 16,
+ "text": "Hello world",
+ "cases": [
+  {
+   "family": "sans-serif",
+   "lineHeight": 18,
+   "width": 79.140625
+  },
+  {
+   "family": "serif",
+   "lineHeight": 18,
+   "width": 76.875
+  },
+  {
+   "family": "monospace",
+   "lineHeight": 18,
+   "width": 105.625
+  },
+  {
+   "family": "Helvetica",
+   "lineHeight": 18,
+   "width": 79.140625
+  },
+  {
+   "family": "Helvetica Neue",
+   "lineHeight": 18,
+   "width": 80.5625
+  },
+  {
+   "family": "Arial",
+   "lineHeight": 18,
+   "width": 79.140625
+  },
+  {
+   "family": "Times",
+   "lineHeight": 18,
+   "width": 76.875
+  },
+  {
+   "family": "Times New Roman",
+   "lineHeight": 18,
+   "width": 76.875
+  },
+  {
+   "family": "Courier New",
+   "lineHeight": 18,
+   "width": 105.625
+  },
+  {
+   "family": "Courier",
+   "lineHeight": 18,
+   "width": 105.625
+  },
+  {
+   "family": "Menlo",
+   "lineHeight": 19,
+   "width": 105.96875
+  }
+ ]
+}

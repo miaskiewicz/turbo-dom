@@ -86,6 +86,106 @@ pub struct LayoutBox {
     /// A writing-mode root whose block axis is its parent's inline axis (an orthogonal
     /// flow, miaskiewicz/turbo-dom#239).
     pub(crate) orthogonal_root: bool,
+    /// Orthogonal extents shared with this box's relabelled copies ([`RelabelMemo`]).
+    pub(crate) relabel_memo: RelabelMemo,
+}
+
+/// A memoized measurement of a relabelled copy: the relabel from the generated box to the
+/// copy (the composition of every relabel on the way; `None` for the generated box),
+/// which measurement ([`MemoKind`]) and everything else it depends on.
+type MemoKey = (Option<u16>, MemoKind, Vec<u64>);
+
+/// The memoized measurements a [`RelabelMemo`] shares.
+type MemoEntries = Vec<(MemoKey, (f32, f32))>;
+
+/// The measurements [`RelabelMemo`] shares.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MemoKind {
+    /// [`super::writing::orthogonal_extent`].
+    OrthogonalExtent,
+    /// A flex item's measured content size ([`LayoutBox::measure_cached`]).
+    FlexMeasure,
+}
+
+/// The measurements of a box and of every relabelled copy of it, shared between them
+/// (R2 review #4). A writing-mode root lays out a relabelled copy of its subtree, whose
+/// measurement caches start empty; so a nested orthogonal root was measured and laid
+/// out again on each copy, and alternating writing modes cost a constant factor more
+/// per level (about 25 levels hung). A copy reached by the same relabels from the same
+/// generated box has the same styles, as does one reached by relabels composing to the
+/// same relabel (its side and axis properties name the same sides); so a measurement
+/// is looked up by that composed relabel and its inputs. A plain `clone` starts a new memo (the clone may be changed); only
+/// [`LayoutBox::relabelled`] shares it.
+#[derive(Debug, Default)]
+pub(crate) struct RelabelMemo {
+    /// The composed relabel ([`super::writing::Relabel::code`]).
+    path: Option<u16>,
+    entries: std::sync::Arc<std::sync::Mutex<MemoEntries>>,
+}
+
+impl Clone for RelabelMemo {
+    fn clone(&self) -> Self {
+        RelabelMemo::default()
+    }
+}
+
+impl RelabelMemo {
+    /// The memo of a copy relabelled by `relabel`: the same entries, one relabel further.
+    fn relabelled(&self, relabel: super::writing::Relabel) -> RelabelMemo {
+        RelabelMemo {
+            path: Some(
+                self.path
+                    .map_or(relabel, |path| {
+                        super::writing::Relabel::decode(path).then(relabel)
+                    })
+                    .code(),
+            ),
+            entries: std::sync::Arc::clone(&self.entries),
+        }
+    }
+
+    /// Whether this box is a relabelled copy (its own caches started empty).
+    pub(crate) fn is_copy(&self) -> bool {
+        self.path.is_some()
+    }
+
+    /// The `kind` measurement under `inputs`, computing it once per path and inputs.
+    pub(crate) fn get_or(
+        &self,
+        kind: MemoKind,
+        inputs: Vec<u64>,
+        compute: impl FnOnce() -> (f32, f32),
+    ) -> (f32, f32) {
+        let key = (self.path, kind, inputs);
+        let found = self.lock().iter().find(|(k, _)| *k == key).map(|e| e.1);
+        if let Some(value) = found {
+            return value;
+        }
+        let value = compute();
+        self.lock().push((key, value));
+        value
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, MemoEntries> {
+        self.entries
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
+
+/// The layout inputs a measurement reads besides its box: the viewport and root font
+/// size (thread-local), the font registry and the box's HTML layout policy.
+pub(crate) fn measure_inputs(lb: &LayoutBox, fonts: &crate::FontRegistry) -> Vec<u64> {
+    let (width, height) = crate::style::viewport_px();
+    let (metrics, scale) = lb.html_layout_policy_pair();
+    vec![
+        u64::from(width.to_bits()),
+        u64::from(height.to_bits()),
+        u64::from(crate::style::root_font_px().to_bits()),
+        std::ptr::from_ref(fonts) as usize as u64,
+        u64::from(metrics),
+        u64::from(scale.unwrap_or(0.0).to_bits()),
+    ]
 }
 
 fn same_original_inputs(
@@ -268,7 +368,7 @@ impl LayoutBox {
         use super::value::LengthPct::Auto;
         self.unloaded_image()
             .is_some_and(|source| match source.fallback {
-                None => true,
+                None => source.media != Media::ImageInput,
                 Some(size) => {
                     source.media == Media::None
                         && size == BROKEN_ICON
@@ -559,6 +659,7 @@ impl LayoutBox {
             natural_cache: std::cell::Cell::new(None),
             min_content_cache: std::cell::Cell::new(None),
             margin_memo: MarginMemoSlot::default(),
+            relabel_memo: self.relabel_memo.relabelled(relabel),
             svg_viewport: self
                 .svg_viewport
                 .as_ref()
@@ -622,6 +723,7 @@ impl LayoutBox {
             intrinsic: self.intrinsic.clone(),
             measure_cache: RefCell::new(self.measure_cache.borrow().clone()),
             margin_memo: MarginMemoSlot::default(),
+            relabel_memo: RelabelMemo::default(),
             writing_root: self.writing_root,
             orthogonal_root: self.orthogonal_root,
             list_marker: None,
@@ -680,6 +782,9 @@ pub(crate) enum Media {
     None,
     Canvas,
     Viewport,
+    /// An `<input type=image>` (miaskiewicz/turbo-dom#258): an `<img>` whose alt text
+    /// box takes its `width` / `height` (Chrome 156).
+    ImageInput,
 }
 
 /// What a box contains, by formatting context.
@@ -739,6 +844,9 @@ impl InlineItem {
 }
 
 /// One inline-level item inside a [`BoxKind::Lines`] context.
+// `Atomic` holds a whole `LayoutBox` (264 bytes with its relabel memo, R2 review #4);
+// boxing it would change this public variant's type, a breaking API change.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum InlineItem {
     SourceBreak {
@@ -1004,7 +1112,15 @@ fn tiny_clipped(style: &ComputedStyle) -> bool {
 /// Whether the element is a `<br>` — an inline forced line break, handled by the
 /// inline layout, not a box (it has no `display`/`height` of its own).
 fn is_img(el: &StyledElement) -> bool {
-    matches!(&el.tag, Tag::Html(name) if name == "img")
+    matches!(&el.tag, Tag::Html(name) if name == "img") || is_image_input(el)
+}
+
+/// Whether `el` is an `<input type=image>`: a replaced image control that lays out and
+/// paints like an `<img>` (its `src`, its alt text), without a control frame
+/// (miaskiewicz/turbo-dom#258).
+fn is_image_input(el: &StyledElement) -> bool {
+    matches!(&el.tag, Tag::Html(name) if name == "input")
+        && attr_value(&el.attrs, "type").is_some_and(|t| t.eq_ignore_ascii_case("image"))
 }
 
 fn is_br(el: &StyledElement) -> bool {
@@ -1381,6 +1497,7 @@ fn table_kind(el: &StyledElement, ids: &mut Ids) -> BoxKind {
         intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        relabel_memo: RelabelMemo::default(),
         writing_root: false,
         orthogonal_root: false,
         list_marker: None,
@@ -1572,6 +1689,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             intrinsic: std::cell::Cell::new([f32::NAN; 2]),
             measure_cache: RefCell::new(None),
             margin_memo: MarginMemoSlot::default(),
+            relabel_memo: RelabelMemo::default(),
             writing_root: false,
             orthogonal_root: false,
             list_marker: None,
@@ -1619,6 +1737,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        relabel_memo: RelabelMemo::default(),
         writing_root: false,
         orthogonal_root: false,
         list_marker,
@@ -1677,23 +1796,29 @@ fn image_of(el: &StyledElement) -> Option<ImageSource> {
     if let Some(source) = media_source(el) {
         return Some(source);
     }
+    let media = if is_image_input(el) {
+        Media::ImageInput
+    } else {
+        Media::None
+    };
     if let Some(src) = img_src(el) {
         return Some(ImageSource {
             name: src.to_string(),
             replaced: true,
             fallback: broken_image_size(el),
             unloaded: std::cell::Cell::new(false),
-            media: Media::None,
+            media,
         });
     }
-    if img_alt_text(el).is_some() {
-        // No source to load: the alt text shows.
+    if img_alt_text(el).is_some() || is_image_input(el) {
+        // No source to load: the alt text shows (an image input without any is an
+        // empty replaced box, [`broken_image_size`]).
         return Some(ImageSource {
             name: String::new(),
             replaced: true,
-            fallback: None,
+            fallback: broken_image_size(el),
             unloaded: std::cell::Cell::new(false),
-            media: Media::None,
+            media,
         });
     }
     background_image(&el.style).map(|name| ImageSource {
@@ -1772,6 +1897,10 @@ const BROKEN_ICON: (u32, u32) = (16, 16);
 /// [`ImageSource::fallback`] of an `<img>` with a source: the broken-image icon's
 /// 16x16 without `alt`, 0x0 with `alt=""`, `None` with alt text.
 fn broken_image_size(el: &StyledElement) -> Option<(u32, u32)> {
+    if is_image_input(el) {
+        // No box at all when it shows no alt text (see [`image_input_alt`]).
+        return image_input_alt(el).is_none().then_some((0, 0));
+    }
     match attr_value(&el.attrs, "alt") {
         None => Some(BROKEN_ICON),
         Some("") => Some((0, 0)),
@@ -1782,10 +1911,28 @@ fn broken_image_size(el: &StyledElement) -> Option<(u32, u32)> {
 /// The alt text an `<img>` shows when its image does not load (or it has no source):
 /// a non-empty `alt` attribute.
 fn img_alt_text(el: &StyledElement) -> Option<&str> {
+    if is_image_input(el) {
+        return image_input_alt(el);
+    }
     is_img(el)
         .then(|| attr_value(&el.attrs, "alt"))
         .flatten()
         .filter(|alt| !alt.is_empty())
+}
+
+/// The alt text an `<input type=image>` shows when its image does not load (Chrome
+/// 156, miaskiewicz/turbo-dom#258): its `alt`, else its `value`, else "Submit"; none
+/// when that is empty, nor without an `alt` attribute when both its `width` and
+/// `height` are set (a sized replaced box then, aligned on its bottom edge).
+fn image_input_alt(el: &StyledElement) -> Option<&str> {
+    let alt = attr_value(&el.attrs, "alt");
+    let sized = ["width", "height"]
+        .iter()
+        .all(|p| el.style.get(p).is_some_and(|v| v.trim() != "auto"));
+    let text = alt
+        .or_else(|| attr_value(&el.attrs, "value"))
+        .unwrap_or("Submit");
+    (!text.is_empty() && (alt.is_some() || !sized)).then_some(text)
 }
 
 /// Chrome 156's alt-text content of an `<img>` (`HTMLImageFallbackHelper`): the
@@ -1818,6 +1965,7 @@ fn alt_fallback(el: &StyledElement, alt: &str) -> Vec<StyledNode> {
 fn img_src(el: &StyledElement) -> Option<&str> {
     match &el.tag {
         Tag::Html(name) if name == "img" => img_url_attr(&el.attrs),
+        _ if is_image_input(el) => attr_value(&el.attrs, "src").filter(|v| !v.trim().is_empty()),
         _ => None,
     }
 }
@@ -2004,6 +2152,7 @@ fn anon_lines_box(
         intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        relabel_memo: RelabelMemo::default(),
         writing_root: false,
         orthogonal_root: false,
         list_marker: None,
@@ -2273,6 +2422,7 @@ pub(crate) fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind
         intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        relabel_memo: RelabelMemo::default(),
         writing_root: false,
         orthogonal_root: false,
         list_marker: None,

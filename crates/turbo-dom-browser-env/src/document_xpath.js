@@ -83,7 +83,9 @@
     rows.forEach((row,index)=>{if(row[6]!=null)children[row[6]].push(index);});
     const docIndex=rows.findIndex(row=>row[0]===9);
     const parent=index=>rows[index][0]===2?rows[index][8]:rows[index][6];
-    // The provider's id() searches ownerDocument: a shadow tree's own root scopes it like Chrome's TreeScope.
+    // The provider's id() searches ownerDocument: a shadow tree's own root scopes it like Chrome's TreeScope,
+    // anything else its owner document (a fragment's or detached subtree's too). The snapshot always
+    // carries that document (document_xpath.rs walks tree.root() first), so docIndex is never -1.
     const scope=index=>{let top=index;for(let current=parent(top);current!=null;current=parent(current)){spend();top=current;}return rows[top][9]?top:docIndex;};
     const ancestor=(a,b)=>{let current=parent(b);while(current!=null){spend();if(current===a)return true;current=parent(current);}return false;};
     const descendants=index=>{const values=[],stack=children[index].slice().reverse();while(stack.length){spend();const current=stack.pop();values.push(current);for(let i=children[current].length-1;i>=0;i--)stack.push(children[current][i]);}return values;};

@@ -1143,6 +1143,9 @@
   const AnimationEffectDelegate = illegalConstructor('AnimationEffect');
   const AnimationEffect = make(AnimationEffectDelegate, 'AnimationEffect', 0, true, true, false);
   finishInterface(AnimationEffect, AnimationEffectDelegate, 'AnimationEffect', null, null);
+  // Script play state / timing / keyframes override the CSS animation's own properties
+  // (Blink's CSSAnimation ignored-properties bits): later animation-* changes leave them alone.
+  const scriptPlayState = record => { if (record.css) record.css.scriptPlayState = true; };
   const ownerTouched = effect => { if (effect.animation) { const record = animations.get(effect.animation); updateFinished(effect.animation, record, false, false); track(effect.animation); } };
   method(AnimationEffectDelegate.prototype, 'getTiming', function () {
     const timing = effectRecord(this).timing;
@@ -1160,7 +1163,7 @@
     const input = dictionary(timing, prefix, 'OptionalEffectTiming');
     const update = readTiming(input, prefix, 'OptionalEffectTiming', true);
     validateTiming(update, prefix);
-    for (const key in update) effect.timing[key] = update[key];
+    for (const key in update) { effect.timing[key] = update[key]; if (effect.css) effect.css.timing[key] = true; }
     ownerTouched(effect);
   }, 0);
   function readEffectOptions(options, prefix) {
@@ -1245,6 +1248,7 @@
     if (keyframes !== null && keyframes !== undefined && !objectLike(keyframes)) throw new ErrorType(`${prefix}parameter 1 is not of type 'object'.`);
     const frames = processKeyframes(keyframes, prefix);
     effect.keyframes = frames; effect.frames = propertyFrames(frames);
+    if (effect.css) effect.css.frames = true;
     ownerTouched(effect);
   }, 1);
 
@@ -1386,12 +1390,13 @@
       updateFinished(this, record, true, true);
     });
   }, 0);
-  method(AP, 'pause', function () { const record = animationRecord(this); mutate(this, record, () => pause(this, record, executing('pause', 'Animation'))); }, 0);
+  method(AP, 'pause', function () { const record = animationRecord(this); scriptPlayState(record); mutate(this, record, () => pause(this, record, executing('pause', 'Animation'))); }, 0);
   method(AP, 'persist', function () { animationRecord(this).replace = 'persisted'; }, 0);
-  method(AP, 'play', function () { const record = animationRecord(this); mutate(this, record, () => play(this, record, true, executing('play', 'Animation'))); }, 0);
+  method(AP, 'play', function () { const record = animationRecord(this); scriptPlayState(record); mutate(this, record, () => play(this, record, true, executing('play', 'Animation'))); }, 0);
   method(AP, 'reverse', function () {
     const record = animationRecord(this), prefix = executing('reverse', 'Animation');
     if (!timelineActive(record.timeline)) throw invalidState(prefix, 'Cannot reverse an animation with no active timeline');
+    scriptPlayState(record);
     mutate(this, record, () => {
       const original = record.pendingRate;
       record.pendingRate = -effectiveRate(record);
@@ -1546,15 +1551,30 @@
   function cssCreate(constructor, element, keyframes, timing, css) {
     const effect = construct(function () {}, [], KeyframeEffect);
     createEffect(effect, element, keyframes, timing, '', null);
-    // @keyframes declarations insert in declaration order, not Element.animate's code-unit order.
-    const frames = effects.get(effect).keyframes;
-    for (let i = 0; i < frames.length && i < keyframes.length; i++) if (keyframes[i][INSERTION]) frames[i].insertion = keyframes[i][INSERTION];
+    const effectData = effects.get(effect);
+    insertionOrder(effectData.keyframes, keyframes);
+    // What script overrode (updateTiming keys, setKeyframes); see scriptPlayState.
+    effectData.css = { timing: create(null), frames: false, signature: frameSignature(keyframes) };
     const animation = construct(TargetType, [], constructor);
     const record = newAnimation(animation, effect, documentTimeline(apply(ownerGetter, element, []) || realmDocument));
     record.css = css;
     play(animation, record, true, '');
     track(animation);
     return animation;
+  }
+  // @keyframes declarations insert in declaration order, not Element.animate's code-unit order.
+  function insertionOrder(frames, keyframes) {
+    for (let i = 0; i < frames.length && i < keyframes.length; i++) if (keyframes[i][INSERTION]) frames[i].insertion = keyframes[i][INSERTION];
+  }
+  // A CSS keyframe input's identity: offsets, easings, composites, properties and values.
+  function frameSignature(keyframes) {
+    let out = '';
+    for (let i = 0; i < keyframes.length; i++) {
+      const frame = keyframes[i];
+      out += '|' + frame.offset + ';' + frame.easing + ';' + frame.composite;
+      for (const key in frame) if (key !== 'offset' && key !== 'easing' && key !== 'composite') out += ';' + key + ':' + frame[key];
+    }
+    return out;
   }
   const cssCancel = animation => { const record = animations.get(animation); mutate(animation, record, () => cancel(animation, record)); };
   // Keyframe offsets of a keyframe selector list (from / to / percentages).
@@ -1647,15 +1667,51 @@
     const color = parseColor(text, { currentColor: () => parseColor(underlying('color'), { currentColor: () => null }) });
     return color ? serializeColor(color) : text;
   }
-  function cssAnimation(element, name, rule, lists, i, underlying) {
+  function cssTiming(lists, i) {
     const count = pickList(lists['iteration-count'], i, '1');
-    const timing = { duration: milliseconds(pickList(lists.duration, i, '0s')), delay: milliseconds(pickList(lists.delay, i, '0s')), iterations: count === 'infinite' ? Infinity : +count, direction: pickList(lists.direction, i, 'normal'), fill: pickList(lists['fill-mode'], i, 'none'), easing: 'linear' };
+    return { duration: milliseconds(pickList(lists.duration, i, '0s')), delay: milliseconds(pickList(lists.delay, i, '0s')), iterations: count === 'infinite' ? Infinity : +count, direction: pickList(lists.direction, i, 'normal'), fill: pickList(lists['fill-mode'], i, 'none'), easing: 'linear' };
+  }
+  function cssFrames(element, rule, lists, i, underlying) {
     // Boundary values the declared/initial tables lack come from the element's computed style.
     let computed = null;
     const boundaryValue = property => { const text = underlying(property); if (text !== '') return text; if (!computed) computed = baseStyle(element).read; return computed(property); };
-    const animation = cssCreate(CSSAnimation, element, cssKeyframeInput(rule, pickList(lists['timing-function'], i, 'ease'), boundaryValue), timing, { kind: CSS_ANIMATION, owner: element, name, index: i });
+    return cssKeyframeInput(rule, pickList(lists['timing-function'], i, 'ease'), boundaryValue);
+  }
+  function cssAnimation(element, name, rule, lists, i, underlying) {
+    const animation = cssCreate(CSSAnimation, element, cssFrames(element, rule, lists, i, underlying), cssTiming(lists, i), { kind: CSS_ANIMATION, owner: element, name, index: i });
     if (pickList(lists['play-state'], i, 'running') === 'paused') pause(animation, animations.get(animation), '');
     return animation;
+  }
+  // A kept CSS animation follows its animation-* properties and its @keyframes rule, except
+  // what script overrode (Blink's CSSAnimation::Update with its ignored-properties bits).
+  function cssRefresh(element, animation, rule, lists, i, underlying) {
+    const record = animations.get(animation), effect = record.effect && effects.get(record.effect);
+    if (!effect || !effect.css) return;
+    const timed = cssRefreshTiming(effect, cssTiming(lists, i));
+    const framed = !effect.css.frames && cssRefreshFrames(effect, cssFrames(element, rule, lists, i, underlying));
+    if (timed || framed) ownerTouched(effect);
+    if (!record.css.scriptPlayState) cssRefreshPlayState(animation, record, pickList(lists['play-state'], i, 'running') === 'paused');
+  }
+  // Timing keys script did not set follow the CSS values; whether any changed.
+  function cssRefreshTiming(effect, timing) {
+    let touched = false;
+    for (const key in timing) if (!effect.css.timing[key] && effect.timing[key] !== timing[key]) { effect.timing[key] = timing[key]; touched = true; }
+    return touched;
+  }
+  // The @keyframes input replaces the keyframes when it changed; whether it did.
+  function cssRefreshFrames(effect, input) {
+    const signature = frameSignature(input);
+    if (signature === effect.css.signature) return false;
+    effect.css.signature = signature;
+    effect.keyframes = processKeyframes(input, '');
+    insertionOrder(effect.keyframes, input);
+    effect.frames = propertyFrames(effect.keyframes);
+    return true;
+  }
+  function cssRefreshPlayState(animation, record, paused) {
+    const state = playState(record);
+    if (paused && state !== 'paused' && state !== 'idle') pause(animation, record, '');
+    else if (!paused && state === 'paused') play(animation, record, false, '');
   }
   function keyframesRule(name) {
     if (!cssKeyframes) cssKeyframes = ns.cssKeyframes ? ns.cssKeyframes() : create(null);
@@ -1666,21 +1722,21 @@
     for (let j = 0; j < state.animations.length; j++) if (state.animations[j].name === name && !contains(kept, state.animations[j])) return state.animations[j];
     return null;
   }
-  function cssAnimations(element, read, underlying) {
+  function cssAnimations(element, read, underlying, hidden) {
     const state = cssState(element), names = splitList(read('animation-name'));
     const lists = {};
     const fields = ['duration', 'delay', 'iteration-count', 'direction', 'fill-mode', 'timing-function', 'play-state'];
     for (let i = 0; i < fields.length; i++) lists[fields[i]] = splitList(read('animation-' + fields[i]));
     const kept = [];
     // No CSS animation runs on an element that is not rendered (itself or an ancestor display:none).
-    const hidden = names.length && (read('display') === 'none' || !rendered(element));
     for (let i = 0; i < names.length && !hidden; i++) {
       const name = names[i];
       if (name === 'none') continue;
       const rule = keyframesRule(name);
       if (!rule) continue;
       let entry = ownedAnimation(state, name, kept);
-      if (!entry) entry = { name, animation: cssAnimation(element, name, rule, lists, i, underlying) };
+      if (entry) cssRefresh(element, entry.animation, rule, lists, i, underlying);
+      else entry = { name, animation: cssAnimation(element, name, rule, lists, i, underlying) };
       animations.get(entry.animation).css.index = i;
       push(kept, entry);
     }
@@ -1719,15 +1775,31 @@
     }
     return out;
   }
-  function cssTransitions(element, read, underlying) {
-    const state = cssState(element), properties = transitionedFor(read('transition-property'));
+  // A transitioned property's computed value, so equal values written differently (red / #f00,
+  // 0 / 0px, 1 / 1.0) compare equal and start no transition.
+  function cssComputed(property, text, context) {
+    const value = parseValue(property, text, context);
+    return value && value.kind !== 'discrete' ? serializeValue(property, value) : text;
+  }
+  function cssTransitions(element, read, underlying, hidden) {
+    const state = cssState(element);
+    // An element that is not rendered (itself or an ancestor display:none) runs no transitions
+    // and has no before-change style: hiding cancels them, showing again starts none.
+    if (hidden) {
+      for (const property in state.transitions) { const animation = state.transitions[property], status = playState(animations.get(animation)); if (status !== 'idle' && status !== 'finished') cssCancel(animation); }
+      state.transitions = create(null);
+      state.values = create(null);
+      return;
+    }
+    const properties = transitionedFor(read('transition-property'));
+    const context = { fontSize: fontSize(read), currentColor: () => parseColor(underlying('color'), { currentColor: () => null }) };
     const durations = splitList(read('transition-duration')), delays = splitList(read('transition-delay')), easings = splitList(read('transition-timing-function'));
     // The transitions one style change starts share a generation (ordered by property name).
     const seen = create(null), generation = cssGeneration + 1;
     for (const property in properties) {
       const i = properties[property];
       seen[property] = true;
-      const value = underlying(property), before = state.values[property];
+      const value = cssComputed(property, underlying(property), context), before = state.values[property];
       state.values[property] = value;
       const duration = milliseconds(pickList(durations, i, '0s')), delay = milliseconds(pickList(delays, i, '0s'));
       if (before === undefined || before === value || max(duration, 0) + delay <= 0) continue;
@@ -1773,8 +1845,9 @@
       const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(read, underlying), last = cssUpdates.get(element);
       if (stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs)) return;
       if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
-      cssAnimations(element, read, underlying);
-      cssTransitions(element, read, underlying);
+      const hidden = read('display') === 'none' || !rendered(element);
+      cssAnimations(element, read, underlying, hidden);
+      cssTransitions(element, read, underlying, hidden);
       // Stamped after the update: the invalidation its own animations cause is not a new input.
       cssUpdates.set(element, { stamp: stamp && ns.computedStyleStamp(element), inputs });
     } finally { cssBusy = false; }

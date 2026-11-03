@@ -4,8 +4,10 @@
 #
 # Every argument must be an existing dynamically linked linux-gnu binary. The guard never
 # passes vacuously: a missing file (or a glob that matched nothing and reached us
-# literally), an objdump failure, or a binary with no GLIBC_ symbol versions at all is an
-# error. Self-test: scripts/test_check_glibc_ceiling.py.
+# literally), a readelf failure, or a binary with no GLIBC_ symbol versions at all is an
+# error. readelf (not objdump) reads any ELF machine, so the x64 publish runner can check
+# the arm64 addon (host objdump -T says "file format not recognized" there).
+# Self-test: scripts/test_check_glibc_ceiling.py.
 set -euo pipefail
 ceiling="${GLIBC_CEILING:-2.35}"
 [ "$#" -gt 0 ] || { echo "usage: $0 <binary>..." >&2; exit 2; }
@@ -16,8 +18,8 @@ for bin in "$@"; do
     status=1
     continue
   fi
-  if ! symbols=$(objdump -T "$bin"); then
-    echo "::error::$bin: objdump -T failed"
+  if ! symbols=$(readelf -W --dyn-syms -V "$bin"); then
+    echo "::error::$bin: readelf failed"
     status=1
     continue
   fi
