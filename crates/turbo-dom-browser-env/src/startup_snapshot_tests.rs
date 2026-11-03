@@ -160,8 +160,19 @@ fn saved_blob_bytes_install_with_the_recorded_reference_table() {
     let blob = snapshot_blob_with(prelude).expect("every callback is registered");
     let saved: &'static [u8] = Box::leak(blob.data.to_vec().into_boxed_slice());
     let (references, fingerprint) = snapshot_references();
-    let (_, again) = snapshot_references();
-    assert_eq!(fingerprint, again, "stable within the process");
+    // The table is process-wide and append-only: tests running beside this one may record
+    // callbacks in between, so a later table extends this one, and the same table has the
+    // same fingerprint (an embedder records it before any install, so its table is fixed).
+    let (later, again) = snapshot_references();
+    assert!(later.len() >= references.len());
+    for (first, second) in references.iter().zip(later) {
+        assert_eq!(unsafe { first.pointer }, unsafe { second.pointer });
+    }
+    if later.len() == references.len() {
+        assert_eq!(fingerprint, again, "the same table, the same fingerprint");
+    } else {
+        assert_ne!(fingerprint, again, "a longer table, another fingerprint");
+    }
     assert!(references.len() >= blob.references.len());
     for (recorded, built) in references.iter().zip(blob.references) {
         assert_eq!(unsafe { recorded.pointer }, unsafe { built.pointer });
