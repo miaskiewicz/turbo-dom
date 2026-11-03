@@ -240,15 +240,22 @@ fn node_ids_are_preorder() {
     }
 }
 
+/// A block styled by the real cascade from one author declaration block.
+fn cascaded_div(declarations: &str) -> StyledNode {
+    StyledNode::Element(StyledElement {
+        tag: Tag::Html("div".into()),
+        attrs: vec![],
+        style: turbo_dom_layout::test_support::cascaded(declarations),
+        children: vec![],
+        source: None,
+    })
+}
+
 #[test]
 fn background_shorthand_url_becomes_image_source() {
-    // No `background-image` longhand: the url is scanned out of the `background`
-    // shorthand's tokens (a non-replaced image source painted behind the box).
-    let root = build_box_tree(&[el(
-        "div",
-        &[("background", "url(bg.png) no-repeat")],
-        vec![],
-    )]);
+    // The cascade expands the `background` shorthand into `background-image`
+    // (miaskiewicz/turbo-dom#256): a non-replaced image source painted behind the box.
+    let root = build_box_tree(&[cascaded_div("background: url(bg.png) no-repeat")]);
     let div = &as_block(&root.kind)[0];
     let img = div.image.as_ref().expect("background image source");
     assert_eq!(img.name, "bg.png");
@@ -355,32 +362,19 @@ fn input_button_value_renders_as_text() {
 }
 
 #[test]
-fn background_image_longhand_wins_over_the_shorthand() {
+fn background_image_and_shorthand_cascade_in_order() {
+    // miaskiewicz/turbo-dom#256: the later of the shorthand and the longhand wins, and
+    // the image source is the first layer's url.
     let root = build_box_tree(&[
-        el(
-            "div",
-            &[
-                ("background-image", "url( 'long.png' )"),
-                ("background", "url(short.png) no-repeat"),
-            ],
-            vec![],
-        ),
-        el(
-            "div",
-            &[
-                ("background-image", "none"),
-                ("background", "url(short.png) no-repeat"),
-            ],
-            vec![],
-        ),
+        cascaded_div("background-image: url( 'long.png' ); background: url(short.png) no-repeat"),
+        cascaded_div("background: url(short.png) no-repeat; background-image: url( 'long.png' )"),
+        cascaded_div("background: url(short.png); background-image: none"),
+        cascaded_div("background: url(a.png), url(b.png) red"),
     ]);
     let divs = as_block(&root.kind);
-    let img = divs[0].image.as_ref().expect("longhand image source");
-    assert_eq!(img.name, "long.png");
-    assert!(!img.replaced);
-    assert_eq!(
-        divs[1].image.as_ref().unwrap().name,
-        "short.png",
-        "a non-url longhand falls through"
-    );
+    let name = |i: usize| divs[i].image.as_ref().map(|img| img.name.clone());
+    assert_eq!(name(0).as_deref(), Some("short.png"));
+    assert_eq!(name(1).as_deref(), Some("long.png"));
+    assert_eq!(name(2), None);
+    assert_eq!(name(3).as_deref(), Some("a.png"));
 }

@@ -864,7 +864,7 @@ fn expand_quad_candidates(cands: Vec<Cand>, parent: &ComputedStyle) -> Vec<Cand>
         super::quad_shorthand::is_quad(&cand.property)
             || matches!(
                 cand.property.as_str(),
-                "font" | "list-style" | "border-radius"
+                "font" | "list-style" | "border-radius" | "background"
             )
     }) {
         return cands;
@@ -873,10 +873,82 @@ fn expand_quad_candidates(cands: Vec<Cand>, parent: &ComputedStyle) -> Vec<Cand>
     let mut expanded = Vec::new();
     for cand in cands {
         expanded.extend(expanded_quad(&cand, &variables).into_iter().flatten());
+        if cand.property == "background" {
+            expanded.extend(expanded_background(&cand, &variables));
+            continue;
+        }
         expanded.extend(expanded_font(&cand, &variables));
         expanded.push(cand);
     }
     expanded
+}
+
+/// The `background` shorthand (miaskiewicz/turbo-dom#256) as the longhands it sets at its
+/// own cascade position — omitted ones to `initial` — so it and the longhands cascade by
+/// origin, importance, specificity and order like Chrome; the shorthand itself is never
+/// stored. `background-position-x` / `-y` are rejoined, per layer, into the
+/// `background-position` the painter reads.
+fn expanded_background(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec<Cand> {
+    let value = substitute_vars(&cand.value, variables, 0, &[]);
+    // html2pdf's print colour: a `cmyk(...)` the grammar does not know parses as a
+    // stand-in colour and is put back as the `background-color`.
+    let print = print_colour(&value);
+    let parsed = print.map_or_else(
+        || value.clone(),
+        |cmyk| value.replacen(cmyk, "transparent", 1),
+    );
+    let mut longhands = shorthand_longhands(cand, "unset", &parsed);
+    if let Some(cmyk) = print {
+        for longhand in &mut longhands {
+            if longhand.property == "background-color" {
+                longhand.value = cmyk.to_string();
+            }
+        }
+    }
+    let (Some(x), Some(y)) = (
+        take_longhand(&mut longhands, "background-position-x"),
+        take_longhand(&mut longhands, "background-position-y"),
+    ) else {
+        return longhands;
+    };
+    // A layer whose axes agree (`initial`, a CSS-wide keyword, `center`) keeps one
+    // value, so a lone `initial` still reads as absent.
+    let value = x
+        .split(", ")
+        .zip(y.split(", "))
+        .map(|(x, y)| {
+            if x == y {
+                x.to_string()
+            } else {
+                format!("{x} {y}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    longhands.push(Cand {
+        key: cand.key,
+        property: "background-position".into(),
+        value,
+    });
+    longhands
+}
+
+/// The `cmyk(...)` token of a `background` value, when the entry accepts print colour.
+fn print_colour(value: &str) -> Option<&str> {
+    crate::layout::value::css_value_tokens(value)
+        .into_iter()
+        .find(|token| {
+            token
+                .get(..5)
+                .is_some_and(|head| head.eq_ignore_ascii_case("cmyk("))
+                && crate::layout::value::parse_color(token).is_some()
+        })
+}
+
+/// Remove the `name` longhand from `longhands`, returning its value.
+fn take_longhand(longhands: &mut Vec<Cand>, name: &str) -> Option<String> {
+    let i = longhands.iter().position(|l| l.property == name)?;
+    Some(longhands.remove(i).value)
 }
 
 /// The `font` (miaskiewicz/turbo-dom#176), `list-style` (#128) and `border-radius` (#253)
@@ -889,14 +961,27 @@ fn expanded_font(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec<Cand>
     if !matches!(name, "font" | "list-style" | "border-radius") {
         return Vec::new();
     }
+    let wide = if matches!(name, "font" | "list-style") {
+        "inherit"
+    } else {
+        "unset"
+    };
     let value = substitute_vars(&cand.value, variables, 0, &[]);
-    turbo_dom::rtdom::css_shorthand::expand(name, &value)
+    shorthand_longhands(cand, wide, &value)
+}
+
+/// `cand`'s shorthand set to `value` (its `var()`s substituted): the longhands, else —
+/// for a failed `var()` — every longhand set to `wide`.
+fn shorthand_longhands(cand: &Cand, wide: &str, value: &str) -> Vec<Cand> {
+    let name = cand.property.as_str();
+    turbo_dom::rtdom::css_shorthand::expand(name, value)
         .or_else(|| {
-            // Invalid at computed-value time: a failed `var()` unsets every longhand,
-            // and every `font` longhand is inherited, so `unset` is `inherit`.
+            // Invalid at computed-value time: a failed `var()` unsets every longhand
+            // (every `font` / `list-style` longhand is inherited, so `unset` is `inherit`;
+            // the others, `background` / `border-radius`, reset to `initial`).
             cand.value
                 .contains("var(")
-                .then(|| turbo_dom::rtdom::css_shorthand::expand(name, "inherit"))
+                .then(|| turbo_dom::rtdom::css_shorthand::expand(name, wide))
                 .flatten()
         })
         .unwrap_or_default()
@@ -1078,5 +1163,62 @@ mod order_tests {
             winner(&[(&ua, UA_LEVEL, (1, 0, 0), 0), (&author, 1, (0, 0, 0), 5)]),
             "author"
         );
+    }
+}
+
+#[cfg(test)]
+mod background_shorthand_tests {
+    use crate::test_support::cascaded;
+
+    /// miaskiewicz/turbo-dom#256: the shorthand sets every longhand (omitted ones to
+    /// their initial value, which reads as absent) and is not stored itself.
+    #[test]
+    fn the_shorthand_sets_its_longhands_and_is_not_stored() {
+        let style = cascaded(
+            "background-size: 1px 2px; background-clip: content-box; \
+             background: url(a.png) right 10px bottom 4px / 3px red",
+        );
+        assert_eq!(style.get("background"), None);
+        assert_eq!(style.get("background-image"), Some("url(\"a.png\")"));
+        assert_eq!(
+            style.get("background-position"),
+            Some("right 10px bottom 4px")
+        );
+        assert_eq!(style.get("background-size"), Some("3px auto"));
+        assert_eq!(style.get("background-clip"), None);
+        assert_eq!(style.get("background-position-x"), None);
+        assert!(style.get("background-color").is_some());
+    }
+
+    #[test]
+    fn layered_positions_rejoin_per_layer() {
+        let style = cascaded("background: url(a.png) 1px 2px, url(b.png) center");
+        assert_eq!(style.get("background-position"), Some("1px 2px, center"));
+        let style = cascaded("background: url(a.png), url(b.png)");
+        assert_eq!(style.get("background-position"), Some("initial, initial"));
+    }
+
+    #[test]
+    fn an_invalid_shorthand_is_dropped_and_a_failed_var_unsets() {
+        let style = cascaded("background-color: red; background: red bogus");
+        assert_eq!(style.get("background-color"), Some("red"));
+        let style = cascaded("background-color: red; background: var(--missing)");
+        assert_eq!(style.get("background-color"), None);
+        let style = cascaded("--c: #00ff00; background: var(--c)");
+        assert_eq!(style.get("background-color"), Some("rgb(0, 255, 0)"));
+    }
+
+    /// html2pdf's print colour: a `cmyk(...)` background colour survives the expansion
+    /// when the entry accepts it, and invalidates the shorthand otherwise.
+    #[test]
+    fn a_print_colour_is_the_background_color_only_when_accepted() {
+        let css = "background-color: red; background: url(a.png) cmyk(1, 0, 1, 0)";
+        assert_eq!(cascaded(css).get("background-color"), Some("red"));
+        let _scope = crate::layout::value::cmyk_scope(true);
+        let style = cascaded(css);
+        assert_eq!(style.get("background-color"), Some("cmyk(1, 0, 1, 0)"));
+        assert_eq!(style.get("background-image"), Some("url(\"a.png\")"));
+        let style = cascaded("background: cmyk(bogus)");
+        assert_eq!(style.get("background-color"), None);
     }
 }
