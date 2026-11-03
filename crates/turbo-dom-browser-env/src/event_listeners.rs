@@ -1,7 +1,7 @@
 //! Private phased Window dispatch and listener option capabilities.
 use super::*;
 
-struct WindowPhases(v8::Weak<v8::Function>);
+pub(crate) struct WindowPhases(v8::Weak<v8::Function>);
 struct ListenerParser(v8::Weak<v8::Function>);
 struct SignalReader(v8::Weak<v8::Function>);
 struct WindowInterfaces(v8::Weak<v8::Function>);
