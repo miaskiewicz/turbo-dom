@@ -911,13 +911,14 @@ fn expanded_background(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec
     ) else {
         return longhands;
     };
-    // A layer whose axes agree (`initial`, a CSS-wide keyword, `center`) keeps one
-    // value, so a lone `initial` still reads as absent.
+    // A layer whose axes agree on a keyword (`initial`, a CSS-wide keyword, `center`)
+    // keeps one value, so a lone `initial` still reads as absent; equal lengths keep
+    // both (a lone `0px` would centre the y axis).
     let value = x
         .split(", ")
         .zip(y.split(", "))
         .map(|(x, y)| {
-            if x == y {
+            if x == y && x.bytes().all(|b| b.is_ascii_alphabetic() || b == b'-') {
                 x.to_string()
             } else {
                 format!("{x} {y}")
