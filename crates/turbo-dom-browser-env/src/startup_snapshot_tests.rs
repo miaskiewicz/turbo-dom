@@ -38,3 +38,25 @@ fn a_callback_outside_the_table_yields_no_blob() {
     assert!(startup_snapshot::build().is_none());
     assert!(!startup_snapshot::building());
 }
+
+/// The bootstrap stores engine helpers in context slots, whose annex is a heap pointer in
+/// the context's embedder data. The blob must not carry that pointer: a context made from
+/// it has no slots (reading one must not dereference the build isolate's freed annex).
+#[test]
+fn a_context_from_the_blob_carries_no_slot_annex() {
+    crate::browser_env::tests::init_v8();
+    let blob = startup_snapshot::build().expect("every callback is registered");
+    let params = v8::CreateParams::default()
+        .snapshot_blob(blob.data)
+        .external_references(Cow::Borrowed(blob.references));
+    let isolate = &mut v8::Isolate::new(params);
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let _scope = &mut v8::ContextScope::new(scope, context);
+    assert!(context
+        .get_slot::<event_listeners::WindowPhases>()
+        .is_none());
+    assert!(context.get_slot::<u8>().is_none());
+    context.set_slot(std::rc::Rc::new(7u8));
+    assert_eq!(context.get_slot::<u8>().as_deref(), Some(&7));
+}
