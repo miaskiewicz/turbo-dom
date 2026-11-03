@@ -3045,6 +3045,38 @@ fn center_menu_list_label(
     }
 }
 
+/// A background layer of a box laid out in the space of `space` (its border box
+/// `border_box` there): built over the box's physical shape, since background sizes and
+/// positions are physical (miaskiewicz/turbo-dom#277), then moved back into the space.
+fn space_layer(
+    space: super::writing::WritingMode,
+    border_box: super::background::Rect,
+    (id, props, source): (
+        NodeId,
+        &super::background::Props,
+        &super::background::Source,
+    ),
+    (origin, paint, radius): (
+        super::background::Rect,
+        super::background::Rect,
+        BorderRadii,
+    ),
+) -> Vec<Fragment> {
+    use super::writing::{layers_to_logical, physical_in};
+    if !space.vertical() {
+        return super::background::layer(id, props, source, (origin, paint, radius));
+    }
+    let physical = |r| physical_in(space, border_box, r);
+    let mut layers = super::background::layer(
+        id,
+        props,
+        source,
+        (physical(origin), physical(paint), radius),
+    );
+    layers_to_logical(space, border_box, &mut layers);
+    layers
+}
+
 /// Insert the box's background layers *behind* its children (miaskiewicz/turbo-dom#248):
 /// its resolvable `background-image` tiled per `background-size` / `-position` /
 /// `-repeat` / `-origin` / `-clip`, and its gradient too unless those are all initial
@@ -3059,7 +3091,7 @@ fn prepend_background_layers(
     children: &mut Vec<Fragment>,
 ) {
     use super::background::{
-        area_radius, area_rect, border_overlay, color_layer, layer, props, Area, Source,
+        area_radius, area_rect, border_overlay, color_layer, props, Area, Source,
     };
     if let FragmentContent::Box {
         background,
@@ -3091,7 +3123,12 @@ fn prepend_background_layers(
             .into_iter()
             .chain(image.map(Source::Image));
         for source in sources {
-            layers.extend(layer(lb.node_id, &props, &source, (origin, paint, radius)));
+            layers.extend(space_layer(
+                ctx.writing,
+                border_box,
+                (lb.node_id, &props, &source),
+                (origin, paint, radius),
+            ));
         }
         if layers.is_empty() {
             return;

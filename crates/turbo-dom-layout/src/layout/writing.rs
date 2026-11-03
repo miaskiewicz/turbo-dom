@@ -317,20 +317,49 @@ fn from_physical(mode: WritingMode, (x, y, w, h): Rect, width: f32) -> Rect {
     }
 }
 
+/// `r` (a rectangle of `mode`'s space inside the border box `outer`) in physical
+/// orientation, with the physical box's top-left at `outer`'s: backgrounds are physical
+/// (miaskiewicz/turbo-dom#277), so a box laid out in a vertical space builds its layers
+/// there and [`layers_to_logical`] moves them back.
+pub(crate) fn physical_in(mode: WritingMode, outer: Rect, (x, y, w, h): Rect) -> Rect {
+    let (lx, ly) = (x - outer.0, y - outer.1);
+    let (px, py) = match mode {
+        WritingMode::VerticalRl => (outer.3 - ly - h, lx),
+        _ => (ly, lx),
+    };
+    (outer.0 + px, outer.1 + py, h, w)
+}
+
+/// The inverse of [`physical_in`].
+fn logical_in(mode: WritingMode, outer: Rect, (x, y, w, h): Rect) -> Rect {
+    let (px, py) = (x - outer.0, y - outer.1);
+    let (lx, ly) = match mode {
+        WritingMode::VerticalRl => (py, outer.3 - px - w),
+        _ => (py, px),
+    };
+    (outer.0 + lx, outer.1 + ly, h, w)
+}
+
+/// Move background layers built by [`physical_in`] rectangles back into `mode`'s space,
+/// each tile pattern keeping its offset from its fragment's top-left (which the
+/// fragment tree's map to physical space preserves).
+pub(crate) fn layers_to_logical(mode: WritingMode, outer: Rect, frags: &mut [Fragment]) {
+    for f in frags {
+        move_fragment(f, |r| logical_in(mode, outer, r), WritingMode::HorizontalTb);
+        layers_to_logical(mode, outer, &mut f.children);
+    }
+}
+
 /// Map a root's fragment tree (laid out at the origin of the space of `mode`) into
 /// the space of `parent`, local to the root's top-left there.
 fn map_tree(frag: &mut Fragment, mode: WritingMode, parent: WritingMode) {
     let block = frag.height;
     walk(frag, &mut |f| {
-        let clip = overflow_rect(f);
-        set_rect(f, to_physical(mode, rect(f), block), mode);
-        set_overflow_rect(f, clip.map(|c| to_physical(mode, c, block)));
+        move_fragment(f, |r| to_physical(mode, r, block), mode);
     });
     let width = frag.width;
     walk(frag, &mut |f| {
-        let clip = overflow_rect(f);
-        set_rect(f, from_physical(parent, rect(f), width), parent);
-        set_overflow_rect(f, clip.map(|c| from_physical(parent, c, width)));
+        move_fragment(f, |r| from_physical(parent, r, width), parent);
     });
     let relabel = Relabel::between(mode, parent);
     walk(frag, &mut |f| {
@@ -346,19 +375,28 @@ fn map_tree(frag: &mut Fragment, mode: WritingMode, parent: WritingMode) {
         if let Some(clip) = &mut f.overflow_clip {
             clip.radii = relabel.radii(clip.radii);
         }
+        if let Some(clip) = &mut f.clip {
+            clip.radii = relabel.radii(clip.radii);
+        }
     });
 }
 
-/// `f`'s overflow clip region as an absolute rectangle.
-fn overflow_rect(f: &Fragment) -> Option<Rect> {
-    f.overflow_clip
-        .map(|c| (f.x + c.x, f.y + c.y, c.width, c.height))
-}
-
-/// Set `f`'s overflow clip region from an absolute rectangle (`f` already moved).
-fn set_overflow_rect(f: &mut Fragment, r: Option<Rect>) {
-    if let (Some(clip), Some((x, y, w, h))) = (&mut f.overflow_clip, r) {
-        (clip.x, clip.y, clip.width, clip.height) = (x - f.x, y - f.y, w, h);
+/// Move `f` (not its children) to `map` of its rectangle, its clip regions with it: they
+/// are offsets from its top-left, so they map as absolute rectangles
+/// (miaskiewicz/turbo-dom#274: a background layer's `clip` was left unmapped).
+fn move_fragment(f: &mut Fragment, map: impl Fn(Rect) -> Rect, mode: WritingMode) {
+    let overflow = f
+        .overflow_clip
+        .map(|c| map((f.x + c.x, f.y + c.y, c.width, c.height)));
+    let clip = f
+        .clip
+        .map(|c| map((f.x + c.x, f.y + c.y, c.width, c.height)));
+    set_rect(f, map(rect(f)), mode);
+    if let (Some(c), Some((x, y, w, h))) = (&mut f.overflow_clip, overflow) {
+        (c.x, c.y, c.width, c.height) = (x - f.x, y - f.y, w, h);
+    }
+    if let (Some(c), Some((x, y, w, h))) = (&mut f.clip, clip) {
+        (c.x, c.y, c.width, c.height) = (x - f.x, y - f.y, w, h);
     }
 }
 
