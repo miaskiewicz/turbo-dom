@@ -9,6 +9,42 @@ use std::borrow::Cow;
 thread_local! {
     /// Test hook: how many of them were still reachable when the last build serialized.
     pub(crate) static RETAINED_FOR_TEST: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+    /// Test hook: make the next build on this thread fail at one step before `create_blob`.
+    pub(crate) static FAIL_BUILD_FOR_TEST: std::cell::Cell<Option<BuildFailure>> = const { std::cell::Cell::new(None) };
+}
+
+/// A build failure [`FAIL_BUILD_FOR_TEST`] can force.
+#[cfg(test)]
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum BuildFailure {
+    /// Isolate data added before the record key, so `persist_dom_state` finds the key at
+    /// another index.
+    IsolateData,
+    /// A panic in the bootstrap.
+    Panic,
+    /// Page state keeps a shell node wrapper (`document.body`) reachable.
+    RetainWrapper,
+}
+
+#[cfg(test)]
+fn forced_failure(scope: &mut v8::PinScope, at: BuildFailure) {
+    let Some(failure) = FAIL_BUILD_FOR_TEST.with(std::cell::Cell::get) else {
+        return;
+    };
+    match (failure, at) {
+        (BuildFailure::IsolateData, BuildFailure::IsolateData) => {
+            let filler = v8::Private::new(scope, None);
+            scope.add_isolate_data(filler);
+        }
+        (BuildFailure::Panic, BuildFailure::Panic) => panic!("forced snapshot build panic"),
+        (BuildFailure::RetainWrapper, BuildFailure::RetainWrapper) => {
+            let source = v8::String::new(scope, "globalThis.__kept = document.body").unwrap();
+            v8::Script::compile(scope, source, None)
+                .and_then(|script| script.run(scope))
+                .unwrap();
+        }
+        _ => {}
+    }
 }
 
 thread_local! {
@@ -54,7 +90,13 @@ pub(crate) fn build() -> Option<Blob> {
         v8::scope!(let scope, &mut isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
+        #[cfg(test)]
+        forced_failure(scope, BuildFailure::IsolateData);
         bootstrap_engine(scope);
+        #[cfg(test)]
+        forced_failure(scope, BuildFailure::Panic);
+        #[cfg(test)]
+        forced_failure(scope, BuildFailure::RetainWrapper);
         persist_dom_state(scope);
         range_live::persist(scope);
         let stripped = strip_wrappers(scope);
