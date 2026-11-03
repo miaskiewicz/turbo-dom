@@ -331,6 +331,12 @@ const CASES = [
     html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
     probes: [[22, 50], [27, 50], [100, 50], [113, 50], [118, 50], [122, 50], [22, 80], [27, 80], [113, 80], [118, 80], [122, 80], [60, 65]],
   },
+  {
+    // A forced break inside a cloned box: both lines' fragments repeat both edges.
+    id: "inline-clone-br",
+    html: DOC(`<div style="${at(20, 20)};width:200px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}<br>${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 50], [113, 50], [118, 50], [122, 50], [22, 80], [27, 80], [73, 80], [78, 80], [82, 80]],
+  },
   // An inline box's background image / gradient (stretched over its padding box here):
   // sliced, the fragments show consecutive pieces of one image laid over their strip;
   // cloned, each fragment shows the whole image.
