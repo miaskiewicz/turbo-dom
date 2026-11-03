@@ -277,6 +277,285 @@
     60,
     90
    ]
+  },
+  {
+   "id": "inline-rl-pct-y",
+   "axis": "y",
+   "html": "<!DOCTYPE html><style>body{margin:0;background:#fff}</style><body><div style=\"writing-mode:vertical-rl;width:300px;height:100px\"><span style=\"font-size:0\"><span data-cid=\"t\" style=\"padding:5px;background:linear-gradient(to bottom,red 0 2px,transparent 2px) 100% 100%/4px 15px\"><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span></span></span></div></body>",
+   "fragments": [
+    {
+     "box": [
+      285,
+      0,
+      10,
+      95
+     ],
+     "stripes": [
+      10,
+      25,
+      40,
+      55,
+      70,
+      85
+     ]
+    },
+    {
+     "box": [
+      265,
+      0,
+      10,
+      65
+     ],
+     "stripes": [
+      5,
+      20,
+      35,
+      50
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-rl-pct-x",
+   "axis": "x",
+   "html": "<!DOCTYPE html><style>body{margin:0;background:#fff}</style><body><div style=\"writing-mode:vertical-rl;width:300px;height:100px\"><span style=\"font-size:0\"><span data-cid=\"t\" style=\"padding:5px;background:linear-gradient(to right,red 0 2px,transparent 2px) 100% 100%/7px 4px\"><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span></span></span></div></body>",
+   "fragments": [
+    {
+     "box": [
+      285,
+      0,
+      10,
+      95
+     ],
+     "stripes": [
+      288
+     ]
+    },
+    {
+     "box": [
+      265,
+      0,
+      10,
+      65
+     ],
+     "stripes": [
+      268
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-rl-keyword-y",
+   "axis": "y",
+   "html": "<!DOCTYPE html><style>body{margin:0;background:#fff}</style><body><div style=\"writing-mode:vertical-rl;width:300px;height:100px\"><span style=\"font-size:0\"><span data-cid=\"t\" style=\"padding:5px;background:linear-gradient(to bottom,red 0 2px,transparent 2px) right 3px bottom 4px/4px 15px\"><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span></span></span></div></body>",
+   "fragments": [
+    {
+     "box": [
+      285,
+      0,
+      10,
+      95
+     ],
+     "stripes": [
+      6,
+      21,
+      36,
+      51,
+      66,
+      81
+     ]
+    },
+    {
+     "box": [
+      265,
+      0,
+      10,
+      65
+     ],
+     "stripes": [
+      1,
+      16,
+      31,
+      46,
+      61
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-rl-size-pct-y",
+   "axis": "y",
+   "html": "<!DOCTYPE html><style>body{margin:0;background:#fff}</style><body><div style=\"writing-mode:vertical-rl;width:300px;height:100px\"><span style=\"font-size:0\"><span data-cid=\"t\" style=\"padding:5px;background:linear-gradient(to bottom,red 0 2px,transparent 2px) 0 0/4px 10%\"><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span></span></span></div></body>",
+   "fragments": [
+    {
+     "box": [
+      285,
+      0,
+      10,
+      95
+     ],
+     "stripes": [
+      0,
+      16,
+      32,
+      48,
+      64,
+      80
+     ]
+    },
+    {
+     "box": [
+      265,
+      0,
+      10,
+      65
+     ],
+     "stripes": [
+      1,
+      17,
+      33,
+      49
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-rl-clone-pct-y",
+   "axis": "y",
+   "html": "<!DOCTYPE html><style>body{margin:0;background:#fff}</style><body><div style=\"writing-mode:vertical-rl;width:300px;height:100px\"><span style=\"font-size:0\"><span data-cid=\"t\" style=\"padding:5px;background:linear-gradient(to bottom,red 0 2px,transparent 2px) 100% 100%/4px 15px;box-decoration-break:clone\"><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span></span></span></div></body>",
+   "fragments": [
+    {
+     "box": [
+      285,
+      0,
+      10,
+      100
+     ],
+     "stripes": [
+      10,
+      25,
+      40,
+      55,
+      70,
+      85
+     ]
+    },
+    {
+     "box": [
+      265,
+      0,
+      10,
+      70
+     ],
+     "stripes": [
+      10,
+      25,
+      40,
+      55
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-rl-clone-size-pct-x",
+   "axis": "x",
+   "html": "<!DOCTYPE html><style>body{margin:0;background:#fff}</style><body><div style=\"writing-mode:vertical-rl;width:300px;height:100px\"><span style=\"font-size:0\"><span data-cid=\"t\" style=\"padding:5px;background:linear-gradient(to right,red 0 2px,transparent 2px) 0 0/30% 4px;box-decoration-break:clone\"><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span></span></span></div></body>",
+   "fragments": [
+    {
+     "box": [
+      285,
+      0,
+      10,
+      100
+     ],
+     "stripes": [
+      285,
+      288,
+      291
+     ]
+    },
+    {
+     "box": [
+      265,
+      0,
+      10,
+      70
+     ],
+     "stripes": [
+      265,
+      268,
+      271
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-lr-pct-y",
+   "axis": "y",
+   "html": "<!DOCTYPE html><style>body{margin:0;background:#fff}</style><body><div style=\"writing-mode:vertical-lr;width:300px;height:100px\"><span style=\"font-size:0\"><span data-cid=\"t\" style=\"padding:5px;background:linear-gradient(to bottom,red 0 2px,transparent 2px) 0 100%/4px 15px\"><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span></span></span></div></body>",
+   "fragments": [
+    {
+     "box": [
+      5,
+      0,
+      10,
+      95
+     ],
+     "stripes": [
+      10,
+      25,
+      40,
+      55,
+      70,
+      85
+     ]
+    },
+    {
+     "box": [
+      25,
+      0,
+      10,
+      65
+     ],
+     "stripes": [
+      5,
+      20,
+      35,
+      50
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-lr-clone-keyword-x",
+   "axis": "x",
+   "html": "<!DOCTYPE html><style>body{margin:0;background:#fff}</style><body><div style=\"writing-mode:vertical-lr;width:300px;height:100px\"><span style=\"font-size:0\"><span data-cid=\"t\" style=\"padding:5px;background:linear-gradient(to right,red 0 2px,transparent 2px) right 2px top/7px 4px;box-decoration-break:clone\"><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span><span style=\"display:inline-block;width:20px;height:30px\"></span></span></span></div></body>",
+   "fragments": [
+    {
+     "box": [
+      5,
+      0,
+      10,
+      100
+     ],
+     "stripes": [
+      6,
+      13
+     ]
+    },
+    {
+     "box": [
+      25,
+      0,
+      10,
+      70
+     ],
+     "stripes": [
+      26,
+      33
+     ]
+    }
+   ]
   }
  ]
 }

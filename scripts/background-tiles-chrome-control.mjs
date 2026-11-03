@@ -48,6 +48,10 @@ const box = (axis, size, layer, extra = "") =>
   `<div data-cid="t" style="${size};background:${STRIPE[axis]} ${layer}${extra ? `;${extra}` : ""}"></div>`;
 const H = "width:100px;height:50px";
 const RL = (w, h, inner) => `<div style="writing-mode:vertical-rl;width:${w}px;height:${h}px">${inner}</div>`;
+const ATOM = '<span style="display:inline-block;width:20px;height:30px"></span>';
+/** An inline box of five atoms with a 5px padding and the stripe background `layer`. */
+const INLINE = (axis, layer, extra = "") =>
+  `<span style="font-size:0"><span data-cid="t" style="padding:5px;background:${STRIPE[axis]} ${layer}${extra ? `;${extra}` : ""}">${ATOM.repeat(5)}</span></span>`;
 const LR = (w, h, inner) => `<div style="writing-mode:vertical-lr;width:${w}px;height:${h}px">${inner}</div>`;
 
 // [id, axis, body]
@@ -68,6 +72,17 @@ const CASES = [
   ["ortho-self-pct-x", "x", box("x", H, "100% 0/30px 4px", "writing-mode:vertical-rl")],
   ["ortho-self-pct-y", "y", box("y", H, "0 100%/4px 15px", "writing-mode:vertical-rl")],
   ["ortho-self-lr-size-x", "x", box("x", H, "0 0/30% 20%", "writing-mode:vertical-lr")],
+  // miaskiewicz/turbo-dom#278: an inline box in vertical text (font-size 0, so its
+  // fragments are its padding around inline-block atoms: whole px), sliced across lines
+  // or cloned per line.
+  ["inline-rl-pct-y", "y", RL(300, 100, INLINE("y", "100% 100%/4px 15px"))],
+  ["inline-rl-pct-x", "x", RL(300, 100, INLINE("x", "100% 100%/7px 4px"))],
+  ["inline-rl-keyword-y", "y", RL(300, 100, INLINE("y", "right 3px bottom 4px/4px 15px"))],
+  ["inline-rl-size-pct-y", "y", RL(300, 100, INLINE("y", "0 0/4px 10%"))],
+  ["inline-rl-clone-pct-y", "y", RL(300, 100, INLINE("y", "100% 100%/4px 15px", "box-decoration-break:clone"))],
+  ["inline-rl-clone-size-pct-x", "x", RL(300, 100, INLINE("x", "0 0/30% 4px", "box-decoration-break:clone"))],
+  ["inline-lr-pct-y", "y", LR(300, 100, INLINE("y", "0 100%/4px 15px"))],
+  ["inline-lr-clone-keyword-x", "x", LR(300, 100, INLINE("x", "right 2px top/7px 4px", "box-decoration-break:clone"))],
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
@@ -125,15 +140,8 @@ const browser = await chromium.launch({
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 800, height: 600 }, deviceScaleFactor: 1 });
 const cases = [];
-for (const [id, axis, body] of CASES) {
-  const html = `<!DOCTYPE html><style>body{margin:0;background:#fff}</style><body>${body}</body>`;
-  await page.setContent(html, { waitUntil: "load" });
-  const r = await page.evaluate(() => {
-    const b = document.querySelector("[data-cid=t]").getBoundingClientRect();
-    return [b.x, b.y, b.width, b.height];
-  });
-  const px = decodePng(await page.screenshot({ type: "png" }));
-  const [bx, by, bw, bh] = r;
+/** The starts of the 2px red runs along `axis` through the middle of rect `r`. */
+function stripesIn(px, axis, [bx, by, bw, bh]) {
   const [from, len] = axis === "x" ? [bx, bw] : [by, bh];
   const at = (i) => (axis === "x" ? px(i, Math.floor(by + bh / 2)) : px(Math.floor(bx + bw / 2), i));
   const stripes = [];
@@ -147,7 +155,27 @@ for (const [id, axis, body] of CASES) {
     if (end - i === 2) stripes.push(i);
     i = end;
   }
-  cases.push({ id, axis, html, box: r, stripes });
+  return stripes;
+}
+
+for (const [id, axis, body] of CASES) {
+  const html = `<!DOCTYPE html><style>body{margin:0;background:#fff}</style><body>${body}</body>`;
+  await page.setContent(html, { waitUntil: "load" });
+  const rects = await page.evaluate(() => {
+    const t = document.querySelector("[data-cid=t]");
+    const b = t.getBoundingClientRect();
+    return {
+      box: [b.x, b.y, b.width, b.height],
+      fragments: [...t.getClientRects()].map((f) => [f.x, f.y, f.width, f.height]),
+    };
+  });
+  const px = decodePng(await page.screenshot({ type: "png" }));
+  if (id.startsWith("inline-")) {
+    const fragments = rects.fragments.map((box) => ({ box, stripes: stripesIn(px, axis, box) }));
+    cases.push({ id, axis, html, fragments });
+  } else {
+    cases.push({ id, axis, html, box: rects.box, stripes: stripesIn(px, axis, rects.box) });
+  }
 }
 await browser.close();
 
@@ -159,4 +187,4 @@ const fixture = {
 };
 writeFileSync(out, `${JSON.stringify(fixture, null, 1)}\n`);
 console.log(`Chrome ${version}: ${cases.length} cases -> ${out}`);
-for (const c of cases) console.log(c.id.padEnd(22), JSON.stringify(c.box), JSON.stringify(c.stripes));
+for (const c of cases) console.log(c.id.padEnd(22), JSON.stringify(c.fragments || [{ box: c.box, stripes: c.stripes }]));
