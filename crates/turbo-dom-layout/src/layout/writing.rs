@@ -625,6 +625,17 @@ mod tests {
     /// A consumer marker element (html2pdf's directives) relabels as an opaque box.
     #[test]
     fn consumer_markers_relabel() {
+        fn markers(b: &super::super::boxgen::LayoutBox) -> usize {
+            use super::super::boxgen::BoxKind;
+            match &b.kind {
+                BoxKind::Marker(kind) => usize::from(kind.id == 7),
+                BoxKind::Block(kids)
+                | BoxKind::Flex(kids)
+                | BoxKind::Grid(kids)
+                | BoxKind::Table(kids) => kids.iter().map(markers).sum(),
+                BoxKind::Lines(_) => 0,
+            }
+        }
         use crate::{StyledElement, StyledNode, Tag};
         let element = |tag, children| StyledElement {
             tag,
@@ -648,17 +659,6 @@ mod tests {
             WritingMode::HorizontalTb,
             WritingMode::VerticalRl,
         ));
-        fn markers(b: &super::super::boxgen::LayoutBox) -> usize {
-            use super::super::boxgen::BoxKind;
-            match &b.kind {
-                BoxKind::Marker(kind) => usize::from(kind.id == 7),
-                BoxKind::Block(kids)
-                | BoxKind::Flex(kids)
-                | BoxKind::Grid(kids)
-                | BoxKind::Table(kids) => kids.iter().map(markers).sum(),
-                BoxKind::Lines(_) => 0,
-            }
-        }
         assert_eq!(markers(&turned), 1);
     }
 
