@@ -176,6 +176,10 @@ const VERTICAL_CASES = [
     `<div data-cid="v" class="lr" style="height:40px;font-family:'Ic Fixture'"><span data-cid="c">\u6c34\u6c34\u6c34 \u6c34\u6c34\u6c34</span></div><div data-cid="w" class="rl" style="height:40px;font-family:'Ic Fixture';text-orientation:upright">aaa bb</div>`,
   ],
   [
+    "rl-replaced-defaults",
+    `<div data-cid="v" class="rl" style="height:400px"><svg data-cid="s" style="display:block"></svg><svg data-cid="w" width="40" style="display:block"></svg><iframe data-cid="f" style="display:block"></iframe><svg data-cid="h" height="30" style="display:block"></svg></div>`,
+  ],
+  [
     "rl-rtl",
     `<div data-cid="v" class="rl" dir="rtl" style="height:100px"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="width:10px">ab</div></div>`,
   ],
