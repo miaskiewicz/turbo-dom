@@ -482,4 +482,29 @@ mod tests {
         assert_eq!(first_strong_rtl("(a\u{5d0}"), Some(false));
         assert_eq!(first_strong_rtl("123 !"), None);
     }
+
+    #[test]
+    fn run_paragraphs_walk_the_paragraphs_once() {
+        // 100k one-byte paragraphs (`<br>` / `pre` lines), alternating LTR and RTL, two
+        // runs in each: every paragraph is read once, however many runs there are.
+        let n = 100_000;
+        let reads = Cell::new(0usize);
+        let paragraphs = (0..n).map(|i| {
+            reads.set(reads.get() + 1);
+            (2 * i..2 * i + 2, u8::from(i % 2 == 1))
+        });
+        let starts = (0..2 * n).map(|byte| byte);
+        let levels = run_paragraphs(paragraphs, starts);
+        assert_eq!(levels.len(), 2 * n);
+        assert!(levels
+            .iter()
+            .enumerate()
+            .all(|(run, &level)| level == u8::from(run / 2 % 2 == 1)));
+        assert!(reads.get() <= n, "{} paragraph reads", reads.get());
+        // A run past the last paragraph (or between paragraphs) is level 0.
+        assert_eq!(
+            run_paragraphs([(2..4, 1)], [0, 2, 3, 9].into_iter()),
+            [0, 1, 1, 0]
+        );
+    }
 }
