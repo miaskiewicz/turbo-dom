@@ -1612,3 +1612,25 @@ fn style_attribute_selectors_in_adopted_sheets_still_follow_inline_writes() {
         serde_json::json!(["rgb(0, 0, 0)", "rgb(0, 128, 128)", "rgb(0, 0, 0)"])
     );
 }
+
+/// The inline-style reuse cases (inheritance below a written element, `[style*=] + p`,
+/// `:has(> [style*=])`, attribute removal, an unrelated element's writes deep in the tree, an
+/// adopted sheet's and a shadow tree's `::slotted` `style` selectors), reads interleaved with
+/// the writes, against the Chrome 156 control (`scripts/css-probe-chrome-control.mjs`).
+#[test]
+fn inline_style_reuse_matches_the_chrome_control() {
+    use sha2::{Digest, Sha256};
+    let source = include_str!("inline_style_reuse_probe.js");
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("inline_style_reuse_chrome156.json")).unwrap();
+    assert_eq!(
+        fixture["probeSha256"],
+        format!("{:x}", Sha256::digest(source.as_bytes()))
+    );
+    assert_eq!(fixture["browser"], "Chrome/156.0.8078.47");
+    let actual = run(
+        "<!doctype html><html><head></head><body></body></html>",
+        source,
+    );
+    assert_eq!(actual, fixture["result"]);
+}
