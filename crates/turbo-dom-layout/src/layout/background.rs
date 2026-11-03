@@ -3,7 +3,8 @@
 //! `-clip` turn one background image or gradient into tiles, each an `Image` / gradient
 //! `Box` fragment clipped to the painting area, which the painters draw like any other
 //! fragment. Longhands win over the `background` shorthand's parts. `space` / `round`
-//! tile like `repeat`, and the painting area ignores `border-radius`.
+//! tile like `repeat`. On a rounded box the block layout wraps the layers in one unpainted
+//! box whose overflow clip is the painting area with its radii (miaskiewicz/turbo-dom#253).
 use super::fragment::{
     ClipRect, Fragment, FragmentContent, ImagePlacement, LinearGradient, NodeId,
 };
@@ -446,7 +447,7 @@ fn gradient_box(background: Option<Rgba>, gradient: Option<LinearGradient>) -> F
     FragmentContent::Box {
         background,
         border: BorderEdges::default(),
-        border_radius: 0.0,
+        border_radius: super::fragment::BorderRadii::ZERO,
         shadow: None,
         gradient,
         transform: None,

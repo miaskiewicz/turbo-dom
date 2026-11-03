@@ -220,7 +220,11 @@ package or publish workflow.
   one SVG rasterizer (`svg::rasterize(bytes, scale, Oversize)`: PDF 2x clamp, raster 1x
   reject); since P5b it also reads EXIF orientation —
   `Intrinsic::orientation`, laid out displayed unless `image-orientation: none`, painted via
-  `ImagePlacement::orientation`; turbo-html2pdf#30); both probes follow Blink's size points for
+  `ImagePlacement::orientation`; turbo-html2pdf#30); `border-radius` is Chrome's per-corner elliptical model:
+  `BorderRadii` on `FragmentContent::Box` (overlap-scaled; inner radii via `inset`), logical
+  corners mapped in `value::corner_radius_values` and relabelled with the sides in
+  `writing.rs`; `Fragment::overflow_clip` is the padding box an `overflow` clips descendants
+  to (turbo-dom#253, `paint_chrome` `radius-*` controls; raster geometry in `rrect.rs`); both probes follow Blink's size points for
   cut-short bodies and SVG images need an SVG-namespace root (turbo-dom#59,
   `scripts/image-truncation-chrome-control.mjs`). `layout::list_marker` generates `::marker`s
   (counters, counter styles, symbol shapes, outside/inside placement; turbo-dom#128,

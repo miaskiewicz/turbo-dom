@@ -9,12 +9,13 @@ use std::fmt::Write;
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
-    BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient, PositionedGlyph,
-    Rgba,
+    BorderRadii, BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient,
+    PositionedGlyph, Rgba,
 };
 
 use crate::glyph::{self, Pen, Tracer};
 use crate::image_paint::{self, DecodedAssets};
+use crate::rrect::{self, Seg};
 
 const IMAGE_PLACEHOLDER: Rgba = Rgba {
     r: 220,
@@ -122,17 +123,17 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             ..
         } => {
             if let Some(sh) = shadow.filter(|s| !s.inset && s.color.a > 0) {
-                paint_box_shadow(svg, f, *border_radius, &sh);
+                paint_box_shadow(svg, f, border_radius, &sh);
             }
             if let Some(bg) = background {
-                rect_r(svg, f.x, f.y, f.width, f.height, *bg, *border_radius);
+                rect_r(svg, (f.x, f.y, f.width, f.height), *bg, border_radius);
             }
             if let Some(g) = gradient {
-                paint_gradient(svg, f, *border_radius, g);
+                paint_gradient(svg, f, border_radius, g);
             }
-            paint_inset_shadow(svg, f, border, *border_radius, shadow.as_ref());
-            if *border_radius > 0.5 {
-                paint_round_border(svg, f, border, *border_radius);
+            paint_inset_shadow(svg, f, border, border_radius, shadow.as_ref());
+            if border_radius.is_rounded() {
+                paint_round_border(svg, f, border, border_radius);
             } else {
                 paint_border(svg, f, border);
             }
@@ -155,11 +156,76 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
         FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
         FragmentContent::Marker(_) => {}
     }
+    paint_children(svg, f, images);
+}
+
+/// Paint `f`'s children in stacking order inside a `<g clip-path>` of its `overflow`
+/// region (miaskiewicz/turbo-dom#253) when it has one and they may paint past it (an empty
+/// region paints none of them).
+fn paint_children(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
+    let clip = f.overflow_clip.filter(|c| {
+        !f.children.is_empty()
+            && (c.radii.is_rounded()
+                || !f
+                    .children
+                    .iter()
+                    .all(|k| crate::paint_png::within(k, crate::paint_png::overflow_region(f, c))))
+    });
+    if let Some(c) = clip {
+        if c.width <= 0.0 || c.height <= 0.0 {
+            return;
+        }
+        let id = svg.len();
+        let _ = write!(svg, "<clipPath id=\"overflow{id}\">");
+        shape(svg, crate::paint_png::overflow_region(f, &c), &c.radii, "");
+        let _ = write!(svg, "</clipPath><g clip-path=\"url(#overflow{id})\">");
+    }
     // Paint children back-to-front in CSS stacking order (§9.9), not raw DOM
     // order, so `position`/`z-index` boxes (menus, modals) layer correctly.
     for &i in &f.paint_order() {
         paint_fragment(svg, &f.children[i], images);
     }
+    if clip.is_some() {
+        svg.push_str("</g>");
+    }
+}
+
+/// SVG path data for outline steps.
+fn path_data(segs: &[Seg]) -> String {
+    let mut d = String::new();
+    for seg in segs {
+        let _ = match *seg {
+            Seg::Move(x, y) => write!(d, "M{x:.2} {y:.2} "),
+            Seg::Line(x, y) => write!(d, "L{x:.2} {y:.2} "),
+            Seg::Cubic(a, b, c, e, x, y) => {
+                write!(d, "C{a:.2} {b:.2} {c:.2} {e:.2} {x:.2} {y:.2} ")
+            }
+            Seg::Close => write!(d, "Z "),
+        };
+    }
+    d.truncate(d.trim_end().len());
+    d
+}
+
+/// Emit `rect` with corner radii `radii` and the extra attributes `attrs`: a `<rect>`
+/// (with `rx`/`ry` for one circular radius over half a pixel) or, for different or
+/// elliptical corners, a `<path>` of its outline (miaskiewicz/turbo-dom#253).
+fn shape(svg: &mut String, (x, y, w, h): rrect::Rect, radii: &BorderRadii, attrs: &str) {
+    let sep = if attrs.is_empty() { "" } else { " " };
+    let Some(r) = radii.as_uniform() else {
+        let d = path_data(&rrect::outline((x, y, w, h), radii));
+        let _ = write!(svg, "<path d=\"{d}\"{sep}{attrs}/>");
+        return;
+    };
+    let rr = if r > 0.5 {
+        format!(" rx=\"{r:.2}\" ry=\"{r:.2}\"")
+    } else {
+        String::new()
+    };
+    let _ = write!(
+        svg,
+        "<rect x=\"{x:.2}\" y=\"{y:.2}\" width=\"{w:.2}\" height=\"{h:.2}\"{rr}{sep}{attrs}/>"
+    );
 }
 
 /// Embed an image as a base64 `data:` URI `<image>` filling its layout box. An image
@@ -207,14 +273,14 @@ fn fill_attrs(c: Rgba) -> String {
 }
 
 fn rect(svg: &mut String, x: f32, y: f32, w: f32, h: f32, c: Rgba) {
-    rect_r(svg, x, y, w, h, c, 0.0);
+    rect_r(svg, (x, y, w, h), c, &BorderRadii::ZERO);
 }
 
 /// Paint an outer `box-shadow` as a blurred rounded rect behind the box, using an
 /// inline SVG `feGaussianBlur` filter (native, so any viewer renders the soft
 /// edge). `blur` 0 emits an unfiltered offset rect. The filter id is derived from
 /// the box geometry to stay unique within the document.
-fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: f32, sh: &BoxShadow) {
+fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, sh: &BoxShadow) {
     let spread = sh.spread as f32;
     let x = f.x + sh.offset_x as f32 - spread;
     let y = f.y + sh.offset_y as f32 - spread;
@@ -223,9 +289,9 @@ fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: f32, sh: &Box
     if w < 0.5 || h < 0.5 {
         return;
     }
-    let radius = crate::paint_png::shadow_radius(border_radius, spread);
+    let radii = rrect::shadow_radii(border_radius, spread);
     if sh.blur < 1 {
-        rect_r(svg, x, y, w, h, sh.color, radius);
+        rect_r(svg, (x, y, w, h), sh.color, &radii);
         return;
     }
     // Pad the filter region by the blur so the feathered edge isn't clipped.
@@ -241,16 +307,9 @@ fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: f32, sh: &Box
         "<filter id=\"{id}\" x=\"-50%\" y=\"-50%\" width=\"200%\" height=\"200%\">\
          <feGaussianBlur stdDeviation=\"{std:.2}\"/></filter>",
     );
-    let rr = if radius > 0.5 {
-        format!(" rx=\"{radius:.2}\" ry=\"{radius:.2}\"")
-    } else {
-        String::new()
-    };
-    let _ = writeln!(
-        svg,
-        "<rect x=\"{x:.2}\" y=\"{y:.2}\" width=\"{w:.2}\" height=\"{h:.2}\"{rr} {} filter=\"url(#{id})\"/>",
-        fill_attrs(sh.color)
-    );
+    let attrs = format!("{} filter=\"url(#{id})\"", fill_attrs(sh.color));
+    shape(svg, (x, y, w, h), &radii, &attrs);
+    svg.push('\n');
 }
 
 /// Paint an inset `box-shadow` (miaskiewicz/turbo-dom#192) as the padding box in the
@@ -261,13 +320,13 @@ fn paint_inset_shadow(
     svg: &mut String,
     f: &Fragment,
     border: &BorderEdges,
-    border_radius: f32,
+    border_radius: &BorderRadii,
     shadow: Option<&BoxShadow>,
 ) {
     let Some(sh) = shadow.filter(|s| s.inset && s.color.a > 0) else {
         return;
     };
-    let (px, py, pw, ph, pr) = crate::paint_png::padding_box(f, border, border_radius);
+    let ((px, py, pw, ph), pr) = rrect::padding_box(f, border, border_radius);
     if pw <= 0.0 || ph <= 0.0 {
         return;
     }
@@ -300,14 +359,16 @@ fn paint_inset_shadow(
             );
             format!(" filter=\"url(#insetblur{id})\"")
         };
-        let r = (pr - spread).max(0.0).min(hw / 2.0).min(hh / 2.0);
-        let _ = write!(
+        let hole = pr.inset(spread, spread, spread, spread).fit(hw, hh);
+        shape(
             svg,
-            "<rect x=\"{hx:.2}\" y=\"{hy:.2}\" width=\"{hw:.2}\" height=\"{hh:.2}\" rx=\"{r:.2}\" ry=\"{r:.2}\" fill=\"#000000\"{filter}/>"
+            (hx, hy, hw, hh),
+            &hole,
+            &format!("fill=\"#000000\"{filter}"),
         );
     }
     let _ = write!(svg, "</mask><g mask=\"url(#inset{id})\">");
-    rect_r(svg, px, py, pw, ph, sh.color, pr);
+    rect_r(svg, (px, py, pw, ph), sh.color, &pr);
     svg.push_str("</g>\n");
 }
 
@@ -315,7 +376,7 @@ fn paint_inset_shadow(
 /// (userSpaceOnUse, start/end points across the box per the CSS angle) filling the
 /// box rect (rounded by `border_radius`). The gradient id is derived from the box
 /// geometry to stay unique within the document.
-fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: f32, g: &CssGradient) {
+fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, g: &CssGradient) {
     if f.width < 0.5 || f.height < 0.5 || g.stops.len() < 2 {
         return;
     }
@@ -343,34 +404,33 @@ fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: f32, g: &CssGra
             f32::from(s.color.a) / 255.0
         );
     }
-    let rr = if border_radius > 0.5 {
-        format!(" rx=\"{border_radius:.2}\" ry=\"{border_radius:.2}\"")
+    svg.push_str("</linearGradient>\n");
+    let radii = if border_radius.is_rounded() {
+        *border_radius
     } else {
-        String::new()
+        BorderRadii::ZERO
     };
-    let _ = writeln!(
+    shape(
         svg,
-        "</linearGradient>\n<rect x=\"{:.2}\" y=\"{:.2}\" width=\"{w:.2}\" height=\"{h:.2}\"{rr} \
-         fill=\"url(#{id})\"/>",
-        f.x, f.y
+        (f.x, f.y, w, h),
+        &radii,
+        &format!("fill=\"url(#{id})\""),
     );
+    svg.push('\n');
 }
 
-/// A filled `<rect>`, rounded by `r` px (`rx`/`ry`) when `r > 0`.
-fn rect_r(svg: &mut String, x: f32, y: f32, w: f32, h: f32, c: Rgba, r: f32) {
-    if w <= 0.0 || h <= 0.0 || c.a == 0 {
+/// A filled box `rect` with corner radii `radii` (square unless rounded).
+fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
+    if rect.2 <= 0.0 || rect.3 <= 0.0 || c.a == 0 {
         return;
     }
-    let radius = if r > 0.5 {
-        format!(" rx=\"{r:.2}\" ry=\"{r:.2}\"")
+    let radii = if radii.is_rounded() {
+        *radii
     } else {
-        String::new()
+        BorderRadii::ZERO
     };
-    let _ = writeln!(
-        svg,
-        "<rect x=\"{x:.2}\" y=\"{y:.2}\" width=\"{w:.2}\" height=\"{h:.2}\"{radius} {}/>",
-        fill_attrs(c)
-    );
+    shape(svg, rect, &radii, &fill_attrs(c));
+    svg.push('\n');
 }
 
 fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
@@ -393,38 +453,47 @@ fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
     }
 }
 
-/// Stroke a rounded box's border as one rounded outline, as the raster painter does: the
-/// widest side's width and colour, inset by half the stroke so the outline stays inside the
-/// border box, its radius the box's less that half (miaskiewicz/turbo-dom#95).
-fn paint_round_border(svg: &mut String, f: &Fragment, b: &BorderEdges, r: f32) {
-    let widest = [&b.top, &b.right, &b.bottom, &b.left]
-        .into_iter()
-        .filter(|s| s.width > 0)
-        .max_by_key(|s| s.width);
-    let Some((w, c)) = widest.and_then(|s| s.color.map(|c| (f32::from(s.width), c))) else {
-        return;
-    };
-    if c.a == 0 {
+/// Paint a rounded box's border as the raster painter does (miaskiewicz/turbo-dom#253):
+/// the even-odd ring between the border-box and padding-box outlines, in one `<path>`
+/// when every painted side has one colour, else each side's part of it through a
+/// `<clipPath>` of its region ([`rrect::side_region`]). Clip ids are document offsets.
+fn paint_round_border(svg: &mut String, f: &Fragment, b: &BorderEdges, radii: &BorderRadii) {
+    let rect = (f.x, f.y, f.width, f.height);
+    let (inner, inner_radii) = rrect::padding_box(f, b, radii);
+    let mut d = path_data(&rrect::outline(rect, radii));
+    if inner.2 > 0.0 && inner.3 > 0.0 {
+        d.push(' ');
+        d.push_str(&path_data(&rrect::outline(inner, &inner_radii)));
+    }
+    let sides = [&b.top, &b.right, &b.bottom, &b.left];
+    let painted: Vec<(usize, Rgba)> = sides
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| s.width > 0)
+        .filter_map(|(i, s)| s.color.filter(|c| c.a > 0).map(|c| (i, c)))
+        .collect();
+    let widths = rrect::widths(b);
+    let all = widths.iter().filter(|w| **w > 0.0).count();
+    if painted.len() == all && painted.windows(2).all(|p| p[0].1 == p[1].1) {
+        if let Some(&(_, c)) = painted.first() {
+            let _ = writeln!(
+                svg,
+                "<path d=\"{d}\" fill-rule=\"evenodd\" {}/>",
+                fill_attrs(c)
+            );
+        }
         return;
     }
-    let hw = w / 2.0;
-    let (iw, ih) = ((f.width - w).max(0.0), (f.height - w).max(0.0));
-    let ir = (r - hw).min(iw / 2.0).min(ih / 2.0).max(0.0);
-    let opacity = if c.a == 255 {
-        String::new()
-    } else {
-        format!(" stroke-opacity=\"{:.3}\"", f32::from(c.a) / 255.0)
-    };
-    let _ = writeln!(
-        svg,
-        "<rect x=\"{:.2}\" y=\"{:.2}\" width=\"{iw:.2}\" height=\"{ih:.2}\" rx=\"{ir:.2}\" ry=\"{ir:.2}\" \
-         fill=\"none\" stroke=\"#{:02x}{:02x}{:02x}\"{opacity} stroke-width=\"{w:.2}\"/>",
-        f.x + hw,
-        f.y + hw,
-        c.r,
-        c.g,
-        c.b,
-    );
+    for (side, c) in painted {
+        let region = path_data(&rrect::polygon(&rrect::side_region(rect, widths, side)));
+        let id = svg.len();
+        let _ = writeln!(
+            svg,
+            "<clipPath id=\"side{id}\"><path d=\"{region}\"/></clipPath>\
+             <path d=\"{d}\" fill-rule=\"evenodd\" clip-path=\"url(#side{id})\" {}/>",
+            fill_attrs(c)
+        );
+    }
 }
 
 /// An SVG path-data sink for [`glyph::trace_glyph`].
@@ -578,7 +647,7 @@ mod tests {
             FragmentContent::Box {
                 background,
                 border: BorderEdges::default(),
-                border_radius: 0.0,
+                border_radius: BorderRadii::ZERO,
                 shadow: None,
                 gradient: None,
                 transform: None,
@@ -749,52 +818,60 @@ mod tests {
                 bottom,
                 left,
             };
-            *border_radius = radius;
+            *border_radius = radius.into();
         }
         f
     }
 
     #[test]
-    fn rounded_borders_stroke_one_inset_outline_of_the_widest_side() {
+    fn rounded_borders_fill_the_ring_between_the_outer_and_inner_outlines() {
         let side = |width: u16, color: Option<Rgba>| BorderSide { width, color };
         let blue = Some(Rgba::new(0, 0, 255, 255));
         let thin = side(1, Some(RED));
-        // The widest side (4px blue) strokes the whole outline, inset by 2px; the radius
-        // shrinks by the same half width.
-        assert_eq!(
-            body(
-                &bordered([thin, side(4, blue), thin, side(0, blue)], 6.0),
-                &HashMap::new()
-            ),
-            "<rect x=\"3.00\" y=\"4.00\" width=\"16.00\" height=\"6.00\" rx=\"3.00\" ry=\"3.00\" \
-             fill=\"none\" stroke=\"#0000ff\" stroke-width=\"4.00\"/>\n"
-        );
-        // A radius larger than the inset box is clamped to half its shorter side; a
-        // translucent colour carries a stroke opacity.
+        // One colour on every side: one even-odd ring, the outer outline (radius 40 fitted
+        // to the 20x10 box: 5) and the inner one (the padding box, radius 5 less 2: 3); a
+        // translucent colour carries a fill opacity (miaskiewicz/turbo-dom#253).
         let half = Some(Rgba::new(255, 0, 0, 128));
         assert_eq!(
             body(&bordered([side(2, half); 4], 40.0), &HashMap::new()),
-            "<rect x=\"2.00\" y=\"3.00\" width=\"18.00\" height=\"8.00\" rx=\"4.00\" ry=\"4.00\" \
-             fill=\"none\" stroke=\"#ff0000\" stroke-opacity=\"0.502\" stroke-width=\"2.00\"/>\n"
+            "<path d=\"M6.00 2.00 L16.00 2.00 C18.76 2.00 21.00 4.24 21.00 7.00 L21.00 7.00 \
+             C21.00 9.76 18.76 12.00 16.00 12.00 L6.00 12.00 C3.24 12.00 1.00 9.76 1.00 7.00 \
+             L1.00 7.00 C1.00 4.24 3.24 2.00 6.00 2.00 Z M6.00 4.00 L16.00 4.00 C17.66 4.00 \
+             19.00 5.34 19.00 7.00 L19.00 7.00 C19.00 8.66 17.66 10.00 16.00 10.00 L6.00 10.00 \
+             C4.34 10.00 3.00 8.66 3.00 7.00 L3.00 7.00 C3.00 5.34 4.34 4.00 6.00 4.00 Z\" \
+             fill-rule=\"evenodd\" fill=\"#ff0000\" fill-opacity=\"0.502\"/>\n"
         );
-        // A border wider than the box strokes a zero-size inset rect.
+        // Different sides: the ring once per painted side, clipped to the side's region
+        // (cut at the corner diagonals), in its own colour.
+        let mixed = body(
+            &bordered([thin, side(4, blue), thin, side(0, blue)], 6.0),
+            &HashMap::new(),
+        );
+        assert_eq!(mixed.matches("<clipPath").count(), 3, "{mixed}");
+        let top = mixed.find("M1.00 2.00 L21.00 2.00 L1.00 7.00 Z").unwrap();
+        let right = mixed.find("M21.00 2.00 L21.00 12.00 L1.00 7.00 Z").unwrap();
+        let bottom = mixed.find("M21.00 12.00 L1.00 12.00 L1.00 7.00 Z").unwrap();
+        assert!(top < right && right < bottom, "{mixed}");
+        assert_eq!(mixed.matches("fill=\"#ff0000\"").count(), 2);
+        assert_eq!(mixed.matches("fill=\"#0000ff\"").count(), 1);
+        // A border wider than the box leaves no inner outline: the whole outline fills.
+        let wide = body(&bordered([side(30, blue); 4], 6.0), &HashMap::new());
         assert!(
-            body(&bordered([side(30, blue); 4], 6.0), &HashMap::new()).starts_with(
-                "<rect x=\"16.00\" y=\"17.00\" width=\"0.00\" height=\"0.00\" rx=\"0.00\""
-            ),
+            wide.starts_with("<path d=\"M6.00 2.00 L16.00 2.00"),
+            "{wide}"
         );
-        // No visible side, a colourless widest side, or a transparent one: nothing.
+        assert_eq!(wide.matches(" M").count(), 0, "{wide}");
+        // No visible side or only transparent ones: nothing; a colourless side is left
+        // out while the others paint.
         let none = side(0, blue);
         assert_eq!(body(&bordered([none; 4], 6.0), &HashMap::new()), "");
-        assert_eq!(
-            body(
-                &bordered([side(3, None), thin, thin, thin], 6.0),
-                &HashMap::new()
-            ),
-            ""
-        );
         let clear = side(3, Some(Rgba::new(0, 0, 255, 0)));
         assert_eq!(body(&bordered([clear; 4], 6.0), &HashMap::new()), "");
+        let colourless = body(
+            &bordered([side(3, None), thin, thin, thin], 6.0),
+            &HashMap::new(),
+        );
+        assert_eq!(colourless.matches("<clipPath").count(), 3, "{colourless}");
         // At a radius of 0.5 or less the four square edge bands paint instead.
         assert_eq!(
             body(
@@ -822,7 +899,7 @@ mod tests {
             ..
         } = &mut f.content
         {
-            *border_radius = radius;
+            *border_radius = radius.into();
             edit(shadow, gradient, transform);
         }
         f
@@ -890,7 +967,7 @@ mod tests {
         // a half-pixel one still does.
         assert_eq!(svg(0.0, Some(shadow(0, 5, 0, 0, blue, true))), "<mask id=\"inset130\" maskUnits=\"userSpaceOnUse\" x=\"10.00\" y=\"10.00\" width=\"20.00\" height=\"10.00\">\
              <rect x=\"10.00\" y=\"10.00\" width=\"20.00\" height=\"10.00\" fill=\"#ffffff\"/>\
-             <rect x=\"10.00\" y=\"15.00\" width=\"20.00\" height=\"10.00\" rx=\"0.00\" ry=\"0.00\" fill=\"#000000\"/></mask>\
+             <rect x=\"10.00\" y=\"15.00\" width=\"20.00\" height=\"10.00\" fill=\"#000000\"/></mask>\
              <g mask=\"url(#inset130)\"><rect x=\"10.00\" y=\"10.00\" width=\"20.00\" height=\"10.00\" fill=\"#0000ff\"/>\n</g>\n"
         );
         // A blurred inset hole is blurred inside the mask; its radius is the padding-box
@@ -1146,7 +1223,7 @@ mod tests {
         let bg = |w: f32, h: f32, c: Rgba, radius: f32| {
             let mut f = plain(1.0, 2.0, w, h, Some(c));
             if let FragmentContent::Box { border_radius, .. } = &mut f.content {
-                *border_radius = radius;
+                *border_radius = radius.into();
             }
             body(&f, &HashMap::new())
         };
@@ -1237,5 +1314,44 @@ mod tests {
         gone.opacity = 0.0;
         assert_eq!(body(&gone, &HashMap::new()), "");
         assert!(!body(&plain(0.0, 0.0, 8.0, 8.0, Some(red)), &HashMap::new()).contains("opacity"));
+    }
+
+    #[test]
+    fn overflow_clips_children_with_a_clip_path_of_the_padding_box() {
+        let clipped = |w: f32, r: f32, child: Fragment| {
+            let mut f = plain(1.0, 1.0, 8.0, 8.0, None);
+            f.overflow_clip = Some(turbo_dom_layout::OverflowClip {
+                x: 1.0,
+                y: 1.0,
+                width: w,
+                height: 6.0,
+                radii: r.into(),
+            });
+            f.children = vec![child];
+            body(&f, &HashMap::new())
+        };
+        let big = plain(0.0, 0.0, 20.0, 20.0, Some(RED));
+        // miaskiewicz/turbo-dom#253: square and rounded regions, an empty one (no child),
+        // and children inside a square region (no clip path).
+        assert_eq!(
+            clipped(6.0, 0.0, big.clone()),
+            format!(
+                "<clipPath id=\"overflow130\"><rect x=\"2.00\" y=\"2.00\" width=\"6.00\" height=\"6.00\"/></clipPath><g clip-path=\"url(#overflow130)\">{}</g>",
+                body(&big, &HashMap::new())
+            )
+        );
+        assert!(clipped(6.0, 2.0, big.clone()).contains("rx=\"2.00\" ry=\"2.00\"/></clipPath>"));
+        assert_eq!(clipped(0.0, 0.0, big), "");
+        let small = plain(3.0, 3.0, 2.0, 2.0, Some(RED));
+        assert_eq!(
+            clipped(6.0, 0.0, small.clone()),
+            body(&small, &HashMap::new())
+        );
+        // Elliptical corners clip with a path.
+        let mut f = plain(1.0, 1.0, 8.0, 8.0, Some(RED));
+        if let FragmentContent::Box { border_radius, .. } = &mut f.content {
+            border_radius.top_left = turbo_dom_layout::CornerRadii { h: 4.0, v: 2.0 };
+        }
+        assert!(body(&f, &HashMap::new()).starts_with("<path d=\"M5.00 1.00 L9.00 1.00"));
     }
 }

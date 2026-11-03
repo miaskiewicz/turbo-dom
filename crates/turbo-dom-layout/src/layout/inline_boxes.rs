@@ -553,7 +553,7 @@ fn empty_fragment(
         FragmentContent::Box {
             background: None,
             border: BorderEdges::default(),
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: None,
             gradient: None,
             transform: None,
@@ -844,7 +844,7 @@ fn append_part(
         inherited.content = FragmentContent::Box {
             background: None,
             border: BorderEdges::default(),
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: None,
             gradient: None,
             transform: None,
@@ -925,7 +925,7 @@ fn fragment(
         FragmentContent::Box {
             background: used.background,
             border,
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: used.box_shadow,
             gradient: used.background_gradient.clone(),
             transform: None,

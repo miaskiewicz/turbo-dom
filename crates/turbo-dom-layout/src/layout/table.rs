@@ -1185,7 +1185,7 @@ fn make_row_frag(row: &RowRef, r: usize, geom: &Geom, cx: f32, cy: f32) -> Fragm
     let content = FragmentContent::Box {
         background: None,
         border: BorderEdges::default(),
-        border_radius: 0.0,
+        border_radius: super::fragment::BorderRadii::ZERO,
         shadow: None,
         gradient: None,
         transform: None,
@@ -1327,7 +1327,7 @@ fn group_fragment(node_id: NodeId, rows: Vec<Fragment>) -> Fragment {
     let content = FragmentContent::Box {
         background: None,
         border: BorderEdges::default(),
-        border_radius: 0.0,
+        border_radius: super::fragment::BorderRadii::ZERO,
         shadow: None,
         gradient: None,
         transform: None,
@@ -1461,7 +1461,7 @@ fn wrapper_style(bs: &BoxStyle) -> BoxStyle {
         min_height: LengthPct::Px(0.0),
         max_height: LengthPct::Auto,
         aspect_ratio: None,
-        border_radius: LengthPct::Px(0.0),
+        border_radius: [super::value::CornerRadius::ZERO; 4],
         background: None,
         box_shadow: None,
         background_gradient: None,
