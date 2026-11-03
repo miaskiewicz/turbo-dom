@@ -1,7 +1,7 @@
 {
  "generator": "scripts/paint-chrome-control.mjs",
  "chrome": "156.0.8078.47",
- "playwright_core": "1.60.0",
+ "playwright_core": "1.61.0",
  "viewport": [
   1280,
   800
@@ -2359,6 +2359,434 @@
     {
      "x": 140,
      "y": 130,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-background-text",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent\">aaa <span style=\"background:#ff0000\">MMMM</span> bbb</div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 87,
+     "y": 35,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 53,
+     "y": 35,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 121,
+     "y": 35,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 49,
+     "y": 35,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 125,
+     "y": 35,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 87,
+     "y": 25,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 87,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 87,
+     "y": 45,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 87,
+     "y": 48,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-edges-text",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent\">aa<span style=\"background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px\">MM</span><span style=\"display:inline-block;width:40px;height:40px;background:#00ff00\"></span></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 49,
+     "y": 50,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 52,
+     "y": 50,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 104,
+     "y": 50,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 87,
+     "y": 36,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 87,
+     "y": 40,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 87,
+     "y": 69,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 87,
+     "y": 73,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 45,
+     "y": 50,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 110,
+     "y": 50,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 135,
+     "y": 40,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-slice-atoms",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;font-size:0\"><span data-cid=\"s\" style=\"background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff\"><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span></span></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 20,
+     "y": 45,
+     "width": 90,
+     "height": 40
+    }
+   ],
+   "probes": [
+    {
+     "x": 22,
+     "y": 50,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 27,
+     "y": 50,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 108,
+     "y": 50,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 112,
+     "y": 50,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 40,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 22,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 104,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 108,
+     "y": 80,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 112,
+     "y": 80,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 65,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-bidi-split-atoms",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;font-size:0\"><span data-cid=\"s\" style=\"background:#ff0000;padding:5px 0;border-left:4px solid #0000ff;border-right:4px solid #0000ff\"><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"direction:rtl;unicode-bidi:bidi-override\"><span style=\"display:inline-block;width:40px;height:30px\"></span></span></span><span style=\"direction:rtl;unicode-bidi:bidi-override\"><span style=\"display:inline-block;width:40px;height:30px;background:#00ff00\"></span></span></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 20,
+     "y": 45,
+     "width": 128,
+     "height": 10
+    }
+   ],
+   "probes": [
+    {
+     "x": 22,
+     "y": 50,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 50,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 62,
+     "y": 50,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 84,
+     "y": 52,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 84,
+     "y": 40,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 106,
+     "y": 52,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 142,
+     "y": 52,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 146,
+     "y": 52,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 150,
+     "y": 52,
      "class": "T",
      "rgb": [
       0,

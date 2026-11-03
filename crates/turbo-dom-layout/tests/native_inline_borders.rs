@@ -329,7 +329,11 @@ fn unsupported_ordinary_inline_contexts_fail_only_their_own_reads() {
         "<div id=box dir=rtl><span id=i style='padding-left:2px'>a</span> <span id=u dir=ltr>b</span> <span id=s style='direction:rtl'>c</span></div>",
     );
     for name in ["i", "u", "s"] {
-        assert_eq!(snapshot.unsupported_inline_geometry(names[name]), None, "{name}");
+        assert_eq!(
+            snapshot.unsupported_inline_geometry(names[name]),
+            None,
+            "{name}"
+        );
         assert!(element_geometry(&snapshot, names[name]).is_ok(), "{name}");
     }
     // position:absolute blockifies (CSS 2.1 §9.7): a supported out-of-flow block box.

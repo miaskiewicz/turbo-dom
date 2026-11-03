@@ -17,14 +17,18 @@ use turbo_dom_layout::layout_snapshot::{
 use turbo_dom_layout::test_support::literal::{self, parse_html, Node};
 use turbo_dom_layout::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages};
 
-const BOX: &str = "font-family:'Fira Code','Noto Sans Hebrew','Noto Sans Arabic';font-size:16px;line-height:24px";
+const BOX: &str =
+    "font-family:'Fira Code','Noto Sans Hebrew','Noto Sans Arabic';font-size:16px;line-height:24px";
 /// Chrome positions in `LayoutUnit`s; text advances differ in the last bits.
 const TOLERANCE: f64 = 0.02;
 
 fn fixture() -> &'static Value {
     static FIXTURE: OnceLock<Value> = OnceLock::new();
     FIXTURE.get_or_init(|| {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/bidi/chrome156.json");
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/bidi/chrome156.json"
+        );
         serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
     })
 }
@@ -136,7 +140,12 @@ fn compare(case: &Value) -> Vec<String> {
     let mut failures = Vec::new();
     for element in case["elements"].as_array().unwrap() {
         let name = element["id"].as_str().unwrap();
-        let want: Vec<_> = element["rects"].as_array().unwrap().iter().map(rect).collect();
+        let want: Vec<_> = element["rects"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(rect)
+            .collect();
         let got = border_boxes(&snapshot, ids.named[name]);
         if got.len() != want.len() || !got.iter().zip(&want).all(|(g, w)| close(*g, *w)) {
             failures.push(format!("{id}: #{name} rects {got:?}, Chrome {want:?}"));
@@ -162,7 +171,9 @@ fn compare(case: &Value) -> Vec<String> {
                 })
                 .unwrap_or_default();
             if got.len() != want.len() || !got.iter().zip(&want).all(|(g, w)| close(*g, *w)) {
-                failures.push(format!("{id}: text {path:?}[{unit}] {got:?}, Chrome {want:?}"));
+                failures.push(format!(
+                    "{id}: text {path:?}[{unit}] {got:?}, Chrome {want:?}"
+                ));
             }
         }
     }
@@ -233,4 +244,3 @@ fn lines_break_in_logical_order_then_reorder_like_chrome_156() {
 fn plaintext_paragraphs_take_their_first_strong_direction_like_chrome_156() {
     compare_cases(|id| id.starts_with("block-plaintext-"));
 }
-

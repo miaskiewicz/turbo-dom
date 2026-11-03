@@ -488,6 +488,35 @@ fn atomics_natural(items: &[InlineItem], fonts: &FontRegistry) -> f32 {
         .sum()
 }
 
+/// The inline boxes' own horizontal margins, borders and padding in a run laid on one
+/// line (miaskiewicz/turbo-dom#244): each start boundary carries the edges its fragment
+/// keeps ([`crate::ComputedStyle::inline_fragment_style`] zeroes a split side).
+fn inline_edges_natural(items: &[InlineItem], fs: f32) -> f32 {
+    items
+        .iter()
+        .filter_map(|it| match it {
+            InlineItem::Boundary {
+                style, start: true, ..
+            } => {
+                let used = super::value::resolve_box_style(
+                    style,
+                    ResolveCtx {
+                        parent_font_size: fs,
+                        cb_width: 0.0,
+                    },
+                );
+                Some(
+                    used.margin.left
+                        + used.margin.right
+                        + used.padding.horizontal()
+                        + used.border.widths().horizontal(),
+                )
+            }
+            _ => None,
+        })
+        .sum()
+}
+
 fn lines_natural(
     items: &[InlineItem],
     fs: f32,
@@ -512,7 +541,7 @@ fn lines_natural(
     )
     .width;
     let text = if html_metrics { text } else { text.ceil() };
-    text + atomics_natural(items, fonts)
+    text + atomics_natural(items, fonts) + inline_edges_natural(items, fs)
 }
 
 /// The widest in-flow child's max-content contribution: its margin box
