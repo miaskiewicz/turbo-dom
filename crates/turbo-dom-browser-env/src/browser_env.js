@@ -705,6 +705,7 @@
     var entry=computedSnapshotGet(computedStyleCache,el);
     if(!entry||entry.epoch!==key.epoch||entry.version!==key.version||entry.inline!==key.inline||entry.owner!==key.owner)return null;
     if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
+    if(!computedMediaUnchanged(entry.media))return null;
     if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
     for(var index=0;index<entry.deps.length;index+=2)if(computeStyleSnapshot(entry.deps[index],snapshots)!==entry.deps[index+1])return null;
     return entry.snapshot;
@@ -715,12 +716,12 @@
     if(noteStyleLookup)noteStyleLookup();
     var key=computedCacheKey(el);
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
-    var deps=[],outer=computedVolatile,outerState=computedStateRead,snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;
-    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;}
+    var deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,media={__proto__:null},snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;computedMediaReads=media;
+    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
     if(key){
       var after=computedCacheKey(el);
       if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.inline!==key.inline||after.owner!==key.owner||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
-      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,probe:computedCacheProbe(el),deps:deps});
+      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps});
     }
     return snapshot;
   }
@@ -1690,7 +1691,15 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // A condition is fixed for the engine, so it is evaluated once per text.
   function cssSupportsMatches(text,el){var cached=cssSupportsCache[text];if(cached===undefined)cached=cssSupportsCache[text]=cssSupportsCondition(text,el);return cached;}
   // 0: unconditional; 1: under @media that matches now; 2: under @media that does not.
-  function cssMediaState(record,state){var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;return g.matchMedia(text).matches?1:2;}
+  // The media conditions the current computation evaluated, with their answers (null: not
+  // tracking): a reused computed style is reused only while each still answers the same.
+  var computedMediaReads=null;
+  function cssMediaState(record,state){var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;var matches=!!g.matchMedia(text).matches;if(computedMediaReads&&computedMediaReads[text]===undefined)computedMediaReads[text]=matches;return matches?1:2;}
+  function computedMediaUnchanged(reads){
+    if(!reads)return true;
+    try{for(var text in reads)if(!!g.matchMedia(text).matches!==reads[text])return false;}catch(e){return false;}
+    return true;
+  }
   function appliedImport(record,el,context,out){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||g.matchMedia(record.media.mediaText).matches))appliedSheetEntries(record.styleSheet,el,context.layers,out,context.seen);}
   // The context of a grouping rule's children, or null when they never apply.
   function groupContext(record,kind,el,context){
@@ -1774,7 +1783,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
     else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
     else{try{matched=cssApply(computedStyleNativeMatches,el,[selector]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,item);});}
-    if(matched&&entry.media)computedVolatile=true;
+    if(matched&&entry.media&&!computedMediaReads)computedVolatile=true;
     return matched&&entry.media!==2?{__proto__:null,entry:entry,specificity:specificity,proximity:proximity,order:order}:null;
   }
   // Is `a` weaker than `b` once their layers tie: lower specificity, then farther from its
