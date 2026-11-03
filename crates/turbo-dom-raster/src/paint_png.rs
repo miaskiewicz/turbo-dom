@@ -1737,6 +1737,8 @@ mod tests {
         }
         let none = render(&image("undecodable", None), 10, 10, &images);
         assert!(all_white(&none), "nothing painted");
+        let mask = render(&image("undecodable", Some(RED)), 10, 10, &images);
+        assert!(all_white(&mask), "an undecodable mask paints nothing");
         let grey = render(&image("no-decoder", None), 10, 10, &images);
         assert_eq!(rgb(&grey, 5, 5), [220, 220, 220], "placeholder");
     }
