@@ -339,6 +339,16 @@ Detail per fix (each backed by a Chrome 156 control):
 - An empty inline box in a bidi-reordered line goes with the item after it (1e34d4c).
 - The orthogonal table width (#250) already matched Chrome once #241 landed; its test mask
   is gone.
+- turbo-dom-raster, from the 0.7.0 round-1 review: an image or background tile far larger
+  than the canvas (a 40000px `background-size`) is drawn from its own pixels through a
+  scale transform instead of being resized to its layout size (it allocated ~6.4 GB); an
+  inset box shadow's scratch layers cover its padding box, not the whole canvas; the tile
+  memo shares its pixmap instead of copying it per tile; `overflow` clips glyph ink that
+  reaches past its line box (a 40px "gy" in a 10px line); SVG gradient and shadow ids are
+  unique for boxes at one origin. turbo-dom-layout gives inline boxes their
+  `border-radius` (on the fragment's own edges: every fragment's with
+  `box-decoration-break: clone`); Chrome 156 controls `inline-clone-*` and
+  `overflow-glyph-ink-*`. The paint control's `?` probes now compare Chrome's RGB.
 
 ### Performance
 

@@ -14,6 +14,8 @@ use turbo_dom_layout::{
     OverflowClip, PositionedGlyph, Rgba, Transform2D as BoxTransform,
 };
 
+use std::rc::Rc;
+
 use crate::glyph::{self, Pen, Tracer};
 use crate::image_paint::DecodedAssets;
 use crate::rrect::{self, Seg};
@@ -45,10 +47,11 @@ pub fn paint(
 }
 
 /// The image scaled to `size` px, memoized for the render's next tile of the same image
-/// (a background layer draws one image many times; miaskiewicz/turbo-dom#248).
+/// (a background layer draws one image many times; miaskiewicz/turbo-dom#248). Shared, so
+/// a hit costs no copy.
 type ScaledKey = (usize, turbo_dom_layout::image::Orientation, (u32, u32));
 thread_local! {
-    static SCALED: std::cell::RefCell<Option<(ScaledKey, Option<Pixmap>)>> =
+    static SCALED: std::cell::RefCell<Option<(ScaledKey, Option<Rc<Pixmap>>)>> =
         const { std::cell::RefCell::new(None) };
 }
 
@@ -56,17 +59,43 @@ fn scaled(
     image: &crate::image_paint::DecodedImage,
     orientation: turbo_dom_layout::image::Orientation,
     size: (u32, u32),
-) -> Option<Pixmap> {
+) -> Option<Rc<Pixmap>> {
     let key = (std::ptr::from_ref(image) as usize, orientation, size);
     SCALED.with(|memo| {
         let mut memo = memo.borrow_mut();
         if let Some((_, pixmap)) = memo.as_ref().filter(|(seen, _)| *seen == key) {
             return pixmap.clone();
         }
-        let pixmap = image.oriented(orientation).scaled_pixmap(size.0, size.1);
+        let pixmap = image
+            .oriented(orientation)
+            .scaled_pixmap(size.0, size.1)
+            .map(Rc::new);
         *memo = Some((key, pixmap.clone()));
         pixmap
     })
+}
+
+/// The pixmap an image box of `size` device px draws, and the scale it is drawn at. An
+/// image whose box is no larger than the canvas is resized to it (drawn 1:1); a larger
+/// one is drawn from its own pixels scaled by the transform with a bilinear filter, so
+/// the scratch never exceeds the source or the canvas, however large the layout box (a
+/// 40000px `background-size`; round-1 review of 0.7.0, finding 4).
+fn image_source(
+    image: &crate::image_paint::DecodedImage,
+    orientation: turbo_dom_layout::image::Orientation,
+    size: (u32, u32),
+    canvas: (u32, u32),
+) -> Option<(Rc<Pixmap>, Transform)> {
+    if u64::from(size.0) * u64::from(size.1) <= u64::from(canvas.0) * u64::from(canvas.1) {
+        return scaled(image, orientation, size).map(|p| (p, Transform::identity()));
+    }
+    let shown = image.oriented(orientation);
+    let src = scaled(image, orientation, (shown.width, shown.height))?;
+    let scale = Transform::from_scale(
+        size.0 as f32 / src.width() as f32,
+        size.1 as f32 / src.height() as f32,
+    );
+    Some((src, scale))
 }
 
 /// Compose a box's CSS `transform` about its absolute origin onto the inherited
@@ -113,11 +142,7 @@ fn group_layer(f: &Fragment, xf: Transform, w: u32, h: u32) -> Option<(i32, i32,
     let Some(ink) = ink_bounds(f, xf) else {
         return Some((0, 0, w, h));
     };
-    let x0 = ink.left().floor().max(0.0) as i32;
-    let y0 = ink.top().floor().max(0.0) as i32;
-    let x1 = (ink.right().ceil() as i32).min(w as i32);
-    let y1 = (ink.bottom().ceil() as i32).min(h as i32);
-    (x1 > x0 && y1 > y0).then(|| (x0, y0, (x1 - x0) as u32, (y1 - y0) as u32))
+    device_span(ink, w, h)
 }
 
 /// A device-space rectangle holding every pixel `f` and its subtree can paint under
@@ -229,19 +254,13 @@ fn paint_masked(
     xf: Transform,
     paint: impl FnOnce(&mut Pixmap, Transform),
 ) {
-    let Some(bounds) = path.clone().transform(xf).map(|p| p.bounds()) else {
+    let span = path
+        .clone()
+        .transform(xf)
+        .and_then(|p| device_span(p.bounds(), pm.width(), pm.height()));
+    let Some((x0, y0, w, h)) = span else {
         return;
     };
-    let x0 = bounds.left().floor().max(0.0) as i32;
-    let y0 = bounds.top().floor().max(0.0) as i32;
-    let x1 = (bounds.right().ceil() as i32).min(pm.width() as i32);
-    let y1 = (bounds.bottom().ceil() as i32).min(pm.height() as i32);
-    if x1 <= x0 || y1 <= y0 {
-        return;
-    }
-    // The layer is a non-empty sub-rectangle of `pm` (`x0 < x1 <= pm.width()`, same for
-    // y), and tiny-skia allocates any size an existing pixmap already has.
-    let (w, h) = ((x1 - x0) as u32, (y1 - y0) as u32);
     let mut layer = Pixmap::new(w, h).expect("clip layer within the canvas");
     let mut mask = Mask::new(w, h).expect("clip mask within the canvas");
     let local = Transform::from_translate(-x0 as f32, -y0 as f32).pre_concat(xf);
@@ -256,6 +275,17 @@ fn paint_masked(
         Transform::identity(),
         None,
     );
+}
+
+/// The device pixels `(x, y, width, height)` of a `w x h` canvas that `bounds` touches:
+/// a non-empty sub-rectangle of the canvas (which tiny-skia allocates at any size an
+/// existing pixmap already has), or `None` when `bounds` misses the canvas.
+fn device_span(bounds: Rect, w: u32, h: u32) -> Option<(i32, i32, u32, u32)> {
+    let x0 = bounds.left().floor().max(0.0) as i32;
+    let y0 = bounds.top().floor().max(0.0) as i32;
+    let x1 = (bounds.right().ceil() as i32).min(w as i32);
+    let y1 = (bounds.bottom().ceil() as i32).min(h as i32);
+    (x1 > x0 && y1 > y0).then(|| (x0, y0, (x1 - x0) as u32, (y1 - y0) as u32))
 }
 
 /// Paint `f`'s children in stacking order, clipped to its `overflow` region
@@ -289,12 +319,15 @@ pub(crate) fn overflow_region(f: &Fragment, clip: &OverflowClip) -> rrect::Rect 
 }
 
 /// Whether `f` and its whole subtree paint inside `(x, y, w, h)` (untransformed and
-/// unshadowed: anything that could paint past its own box answers `false`).
+/// unshadowed: anything that could paint past its own box answers `false`, a text line
+/// too, since its glyphs' ink is not bounded by the line box: descenders, a small
+/// `line-height`, italics; round-1 review of 0.7.0, finding 7).
 pub(crate) fn within(f: &Fragment, (x, y, w, h): rrect::Rect) -> bool {
     let plain = match &f.content {
         FragmentContent::Box {
             shadow, transform, ..
         } => shadow.is_none() && transform.is_none(),
+        FragmentContent::TextLine { .. } => false,
         _ => true,
     };
     plain
@@ -378,24 +411,24 @@ fn paint_image(
 ) {
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
     let decoded = images.get(&placement.name);
-    let img = decoded.and_then(|d| scaled(d, placement.orientation, (w, h)));
+    let img = decoded
+        .and_then(|d| image_source(d, placement.orientation, (w, h), (pm.width(), pm.height())));
     // Fold the box's top-left into the transform so a transformed image (a rotated
     // thumbnail, a translated slide) maps correctly; draw the pixmap at (0,0).
     let place = xf.pre_concat(Transform::from_translate(f.x.round(), f.y.round()));
     match (img, placement.tint) {
-        (Some(src), Some(tint)) => {
-            let stencilled = tint_pixmap(&src, tint);
-            pm.draw_pixmap(
-                0,
-                0,
-                stencilled.as_ref(),
-                &PixmapPaint::default(),
-                place,
-                None,
-            );
-        }
-        (Some(src), None) => {
-            pm.draw_pixmap(0, 0, src.as_ref(), &PixmapPaint::default(), place, None);
+        (Some((src, scale)), tint) => {
+            let stencilled = tint.map(|tint| tint_pixmap(&src, tint));
+            let paint = PixmapPaint {
+                quality: if scale.is_identity() {
+                    tiny_skia::FilterQuality::Nearest
+                } else {
+                    tiny_skia::FilterQuality::Bilinear
+                },
+                ..PixmapPaint::default()
+            };
+            let src = stencilled.as_ref().unwrap_or(&src);
+            pm.draw_pixmap(0, 0, src.as_ref(), &paint, place.pre_concat(scale), None);
         }
         // A missing mask paints nothing (no placeholder box for a glyph), nor does an
         // image whose pixels did not decode; a missing real image shows the neutral
@@ -574,8 +607,17 @@ fn paint_inset_shadow(
         return;
     };
     let ((px, py, pw, ph), pr) = rrect::padding_box(f, border, border_radius);
-    // The scratch layers have the canvas's size, which tiny-skia already allocated.
-    let mut layer = Pixmap::new(pm.width(), pm.height()).expect("a canvas-sized layer");
+    // The shadow never paints outside the padding box, so its scratch layers cover only
+    // the padding box's device bounds on the canvas (round-1 review of 0.7.0, finding 5:
+    // they were canvas-sized, two per shadow).
+    let Some((x0, y0, w, h)) = rrect_path((px, py, pw, ph), &pr)
+        .and_then(|p| p.transform(xf))
+        .and_then(|p| device_span(p.bounds(), pm.width(), pm.height()))
+    else {
+        return;
+    };
+    let xf = Transform::from_translate(-x0 as f32, -y0 as f32).pre_concat(xf);
+    let mut layer = Pixmap::new(w, h).expect("a layer within the canvas");
     fill_rrect(&mut layer, (px, py, pw, ph), &pr, sh.color, xf);
     let spread = sh.spread as f32;
     let hole = Silhouette {
@@ -587,7 +629,7 @@ fn paint_inset_shadow(
         color: Rgba { a: 255, ..sh.color },
     };
     if hole.width >= 0.5 && hole.height >= 0.5 {
-        let mut cut = Pixmap::new(pm.width(), pm.height()).expect("a canvas-sized layer");
+        let mut cut = Pixmap::new(w, h).expect("a layer within the canvas");
         let blur = shadow_blur(sh);
         if blur < 0.5 {
             fill_rrect(
@@ -607,8 +649,8 @@ fn paint_inset_shadow(
         layer.draw_pixmap(0, 0, cut.as_ref(), &out, Transform::identity(), None);
     }
     pm.draw_pixmap(
-        0,
-        0,
+        x0,
+        y0,
         layer.as_ref(),
         &PixmapPaint::default(),
         Transform::identity(),
@@ -1305,6 +1347,26 @@ mod tests {
     }
 
     #[test]
+    fn a_repeated_tile_shares_one_scaled_pixmap() {
+        // A background layer draws one image many times: every hit of the memo is the
+        // same pixmap, not a copy of it (round-1 review of 0.7.0, finding 6).
+        let img = crate::image_paint::DecodedImage {
+            width: 1,
+            height: 1,
+            rgba: vec![255, 0, 0, 255],
+            intrinsic: turbo_dom_layout::image::Intrinsic::new(1, 1, false),
+            placeholder: false,
+        };
+        SCALED.with(|memo| memo.borrow_mut().take());
+        let first = scaled(&img, Orientation::IDENTITY, (4, 3)).unwrap();
+        let again = scaled(&img, Orientation::IDENTITY, (4, 3)).unwrap();
+        assert!(std::rc::Rc::ptr_eq(&first, &again));
+        assert_eq!((again.width(), again.height()), (4, 3));
+        let other = scaled(&img, Orientation::IDENTITY, (2, 3)).unwrap();
+        assert!(!std::rc::Rc::ptr_eq(&first, &other));
+    }
+
+    #[test]
     fn a_zero_or_oversized_canvas_is_an_error() {
         let root = plain(0.0, 0.0, 1.0, 1.0, None);
         let images = HashMap::new();
@@ -1686,6 +1748,22 @@ mod tests {
                 "inset {inset}, alpha {a}"
             );
             assert_eq!(rgb(&pm, 20, 15), inside, "the box");
+        }
+        // Its layers cover the padding box's part of the canvas: a box partly off the
+        // canvas paints its visible part, one wholly off it (or with no padding box)
+        // paints nothing.
+        let mut partly = with_shadow(true, 255);
+        partly.x = -15.0;
+        let pm = render(&partly, 40, 40, &images);
+        assert_eq!(rgb(&pm, 2, 15), [0, 0, 255]);
+        assert_eq!(rgb(&pm, 6, 15), [255, 255, 255]);
+        for (x, w) in [(50.0, 20.0), (10.0, 0.0)] {
+            let mut off = with_shadow(true, 255);
+            (off.x, off.width) = (x, w);
+            assert!(
+                all_white(&render(&off, 40, 40, &images)),
+                "x {x}, width {w}"
+            );
         }
     }
 
@@ -2314,6 +2392,16 @@ mod exact_tests {
             50,
         );
         assert_eq!(got.data(), white(50, 50).data());
+        // A rounded region off the canvas paints nothing.
+        let got = drawn(
+            &clipping(
+                region(0.0, 0.0, 20.0, 20.0, 5.0),
+                vec![boxed(0.0, 0.0, 50.0, 50.0, 0.0, None)],
+            ),
+            8,
+            8,
+        );
+        assert_eq!(got.data(), white(8, 8).data());
         // Children inside a square region paint directly, whatever their content (a
         // marker child too), exactly as unclipped.
         let inside = vec![
@@ -2349,5 +2437,66 @@ mod exact_tests {
             "shadow clipped away"
         );
         assert_eq!(got.pixel(44, 14).unwrap().red(), 255, "shadow clipped away");
+    }
+
+    #[test]
+    fn glyph_ink_past_its_line_box_is_clipped_by_overflow() {
+        // `overflow:hidden; height:10px; line-height:10px; font-size:40px` around "gy": the
+        // line box fits the region, its glyphs' ink does not.
+        let face = FontRegistry::new()
+            .select(&["Inter"], 400, false)
+            .unwrap()
+            .clone();
+        let scale = 40.0 / f32::from(face.units_per_em());
+        let mut x = 0.0;
+        let glyphs: Vec<PositionedGlyph> = face
+            .shape("gy")
+            .iter()
+            .map(|g| {
+                let pg = PositionedGlyph {
+                    glyph_id: g.glyph_id,
+                    x,
+                    y: 20.0,
+                    text_start: 0,
+                    text_end: 0,
+                };
+                x += g.x_advance as f32 * scale;
+                pg
+            })
+            .collect();
+        let line = Fragment::new(
+            NodeId(1),
+            10.0,
+            10.0,
+            x.min(20.0),
+            10.0,
+            FragmentContent::TextLine {
+                glyphs,
+                text: String::new(),
+                face,
+                font_size: 40.0,
+                color: BLUE,
+                vertical: false,
+                upright: false,
+            },
+        );
+        let got = drawn(
+            &clipping(region(0.0, 0.0, 20.0, 10.0, 0.0), vec![line]),
+            60,
+            60,
+        );
+        for y in 0..60 {
+            for x in 0..60 {
+                let inside = (10..30).contains(&x) && (10..20).contains(&y);
+                let p = got.pixel(x, y).unwrap();
+                if !inside {
+                    assert_eq!((p.red(), p.green()), (255, 255), "ink at ({x}, {y})");
+                }
+            }
+        }
+        assert!(
+            (10..30).any(|x| (10..20).any(|y| got.pixel(x, y).unwrap().red() < 128)),
+            "the glyphs paint inside the region"
+        );
     }
 }

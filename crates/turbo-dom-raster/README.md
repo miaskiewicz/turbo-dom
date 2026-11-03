@@ -73,7 +73,8 @@ Painting follows Chrome 156 for: per-corner elliptical `border-radius` on backgr
 gradients, borders (each side in its own width and colour), outer and inset box shadows,
 and `overflow` clipping (turbo-dom#253, #192); background layers with size / position /
 repeat (incl. `space` / `round`) / origin / clip, tiled from one decoded image (#248);
-inline-box decorations per line fragment with `box-decoration-break` (#244); vertical and
+inline-box decorations per line fragment with `box-decoration-break` (#244; a cloned
+box's radius, background image and inset shadow repeat on every fragment); vertical and
 upright text (#234, #239); bidi-reordered runs (#238); list markers (#128). Broken or
 unloaded `<img>`s paint their box without pixels (#243).
 

@@ -4,7 +4,9 @@ use super::block::Ctx;
 use super::boxgen::InlineItem;
 use super::fragment::{Fragment, FragmentContent, NodeId};
 use super::inline::{InlineEdge, ParagraphLayout};
-use super::value::{resolve_box_style, BorderEdges, BoxStyle, Display, Edges, ResolveCtx};
+use super::value::{
+    resolve_box_style, BorderEdges, BoxStyle, CornerRadius, Display, Edges, ResolveCtx,
+};
 use super::writing::WritingMode;
 use crate::layout_snapshot::UsedBoxMetrics;
 use crate::ComputedStyle;
@@ -710,7 +712,9 @@ fn background_layers(
     (id, source, used): (NodeId, &ComputedStyle, &BoxStyle),
     ctx: &Ctx,
 ) {
-    use super::background::{area_rect, border_overlay, color_layer, layer, props, Area, Source};
+    use super::background::{
+        area_radius, area_rect, border_overlay, color_layer, layer, props, Area, Source,
+    };
     let image = super::boxgen::background_image(source).and_then(|name| {
         let intrinsic = super::imgsize::box_intrinsic(ctx.images.resolver, &name, source)?;
         Some(super::imgsize::placement_of(name, intrinsic))
@@ -748,12 +752,13 @@ fn background_layers(
                 index,
                 area_rect(rect, border, &pad, props.origin),
                 area_rect(rect, border, &pad, props.clip),
+                pad,
             ));
         }
     }
-    let total: f32 = areas.iter().map(|(_, origin, _)| origin.2).sum();
+    let total: f32 = areas.iter().map(|(_, origin, _, _)| origin.2).sum();
     let mut offset = 0.0;
-    for (index, origin, paint) in areas {
+    for (index, origin, paint, pad) in areas {
         let strip = if cloned {
             origin
         } else {
@@ -765,17 +770,14 @@ fn background_layers(
             background,
             gradient,
             border,
+            border_radius,
             ..
         } = &mut frag.content
         {
+            let radius = area_radius(*border_radius, border, &pad, props.clip);
             let mut layers = Vec::new();
             if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
-                layers.push(color_layer(
-                    id,
-                    color,
-                    paint,
-                    super::fragment::BorderRadii::ZERO,
-                ));
+                layers.push(color_layer(id, color, paint, radius));
             }
             let sources = gradient
                 .take()
@@ -783,12 +785,7 @@ fn background_layers(
                 .into_iter()
                 .chain(image.clone().map(Source::Image));
             for source in sources {
-                layers.extend(layer(
-                    id,
-                    &props,
-                    &source,
-                    (strip, paint, super::fragment::BorderRadii::ZERO),
-                ));
+                layers.extend(layer(id, &props, &source, (strip, paint, radius)));
             }
             if !layers.is_empty() {
                 // The border paints over the background layers.
@@ -797,7 +794,7 @@ fn background_layers(
                     id,
                     rect,
                     std::mem::take(border),
-                    super::fragment::BorderRadii::ZERO,
+                    *border_radius,
                 ));
             }
             frag.children.extend(layers);
@@ -877,12 +874,16 @@ fn fragment(
     };
     let mut border = used.border;
     let mut padding = used.padding;
+    // `[top-left, top-right, bottom-right, bottom-left]`: a fragment without an edge has
+    // square corners on that side (with `clone` every fragment has both edges).
+    let mut corners = used.border_radius;
     let x = open.x
         + if open.first {
             used.margin.left
         } else {
             border.left.width = 0;
             padding.left = 0.0;
+            (corners[0], corners[3]) = (CornerRadius::ZERO, CornerRadius::ZERO);
             0.0
         };
     let end = end
@@ -891,6 +892,7 @@ fn fragment(
         } else {
             border.right.width = 0;
             padding.right = 0.0;
+            (corners[1], corners[2]) = (CornerRadius::ZERO, CornerRadius::ZERO);
             0.0
         };
     let border_width = border.widths();
@@ -919,7 +921,7 @@ fn fragment(
         FragmentContent::Box {
             background: used.background,
             border,
-            border_radius: super::fragment::BorderRadii::ZERO,
+            border_radius: super::value::resolve_radii(&corners, width, height),
             shadow: used.box_shadow,
             gradient: used.background_gradient.clone(),
             transform: None,
