@@ -79,6 +79,8 @@
     ["attlistReferences", '<!DOCTYPE r [<!ENTITY e "E"><!ATTLIST r c CDATA "&e;&amp;&#65;" d CDATA "a\tb">]><r/>'],
     ["attlistPrefixedElement", '<!DOCTYPE r [<!ATTLIST p:r c CDATA "1">]><p:r xmlns:p="u"/>'],
     ["attlistEntityElement", '<!DOCTYPE r [<!ENTITY e "<s/>"><!ATTLIST s c CDATA "d">]><r>&e;<s/></r>'],
+    ["attlistCharacterReferences", '<!DOCTYPE r [<!ATTLIST r c CDATA "&#x42;&#66;&lt;&gt;&apos;&quot;" d CDATA \'&#9;x\'>]><r\n  a="1"\n/>'],
+    ["attlistUnboundInEntity", '<!DOCTYPE r [<!ENTITY e "<s/>"><!ATTLIST s p:x CDATA "v">]><r>&e;</r>'],
     ["subsetCommentAttlist", "<!DOCTYPE r [<!-- ] > --><?pi ] > ?><!ENTITY b '>]'><!ATTLIST r c CDATA \"]\">]><r xmlns:p=\"u\"><p:s xmlns:q=\"v\"/>&b;</r>"],
     // many / nested entity references: Chrome 156's XML parser counts each reparse that
     // starts before the previous replacement text is consumed (depth 10)
