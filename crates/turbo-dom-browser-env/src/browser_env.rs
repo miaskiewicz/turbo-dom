@@ -3343,6 +3343,12 @@ thread_local! {
     pub(super) static SELECTOR_WORK: SelectorWork = SelectorWork::default();
 }
 
+/// Test hook: whether the selector memo holds `units`.
+#[cfg(test)]
+pub(super) fn selector_memo_contains(units: &[u16]) -> bool {
+    SELECTOR_MEMO.with(|memo| memo.borrow().contains_key(units))
+}
+
 fn selector_facts(units: &[u16]) -> std::rc::Rc<SelectorFacts> {
     if let Some(facts) = SELECTOR_MEMO.with(|memo| memo.borrow().get(units).cloned()) {
         return facts;
