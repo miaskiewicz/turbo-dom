@@ -775,6 +775,7 @@ fn dispatch(
         "disabled" => rv.set_bool(html_invokers::disabled_control(node)),
         "picker-opened" => {
             state(|state| state.open_picker = Some(node));
+            bump_style_state();
         }
         "rendered" => {
             let rendered = rendered(scope, node);

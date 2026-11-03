@@ -106,6 +106,9 @@
   // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
   if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
+  // The native live-state epoch (form / popover / dialog state the tree version misses); the
+  // engine's JS state stores report their changes through __tsNs.bumpStyleState.
+  var styleStateEpoch=g.__styleStateEpoch,bumpStyleState=g.__bumpStyleState;delete g.__styleStateEpoch;delete g.__bumpStyleState;__tsNs.bumpStyleState=bumpStyleState;
   var cssFontNumber=Number,cssFontString=String,cssFontFinite=Number.isFinite,cssFontPrecision=Number.prototype.toPrecision,cssFontLower=String.prototype.toLowerCase;
   var prepareInlineHandler=g.__prepareInlineHandler,noteInlineHandler=g.__noteInlineHandler;delete g.__prepareInlineHandler;delete g.__noteInlineHandler;
   var collectionGet=g.__getCollectionRecord,collectionSet=g.__setCollectionRecord;
@@ -613,12 +616,23 @@
   // bumps it; native and shared by every realm, since a realm reads other realms' elements and
   // an edit runs in the realm owning the sheet — turbo-dom#113), the element's owner document,
   // its top-layer state (popover / modal / fullscreen), its font context (host defaults, composed parent) and, recursively, every ancestor snapshot
-  // it read. A computation that read something outside the key is volatile and never reused:
-  // a rule whose selector depends on live form / popover / dialog state and could match, an
-  // animated element, the fullscreen element (viewport-sized), an @import's media query.
-  var computedStyleCache=new computedSnapshotMap(),computedVolatile=false;
+  // it read. A computation whose rules read live form / popover / dialog state (a selector with
+  // :invalid, :checked, :popover-open, :modal, ... that matches or could match) is also keyed on
+  // the native live-state epoch, which every such state change bumps. A computation that read
+  // something outside the key is volatile and never reused: a rule over view-transition or
+  // interest state that could match, an animated element, the fullscreen element
+  // (viewport-sized), an @import's media query.
+  var computedStyleCache=new computedSnapshotMap(),computedVolatile=false,computedStateRead=false;
   function invalidateComputedStyles(){bumpCssomEpoch();}
   __ns.invalidateComputedStyles=invalidateComputedStyles;
+  // What a CSS animation / transition update reads beyond the element's own values
+  // (animations.js cssUpdate): null when the element has no stamp (it is then never skipped).
+  // An animation starting or ending on a target also drops reuse (the targets' values change)
+  // without changing any cascaded value; the stamp discounts this realm's such bumps (another
+  // realm's only cause an extra update, never a missed one).
+  var animatedStyleBumps=0;
+  __ns.invalidateAnimatedStyles=function(){animatedStyleBumps++;bumpCssomEpoch();};
+  __ns.computedStyleStamp=function(el){var key=computedCacheKey(el);return key?[key.version,key.epoch-animatedStyleBumps,styleStateEpoch(),key.owner]:null;};
   function computedCacheKey(el){
     var version;try{version=computedStyleVersion(el);}catch(e){return null;}
     if(typeof version!=='number')return null;
@@ -636,6 +650,7 @@
   function computedCacheHit(el,key,snapshots){
     var entry=computedSnapshotGet(computedStyleCache,el);
     if(!entry||entry.epoch!==key.epoch||entry.version!==key.version||entry.owner!==key.owner)return null;
+    if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
     if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
     for(var index=0;index<entry.deps.length;index+=2)if(computeStyleSnapshot(entry.deps[index],snapshots)!==entry.deps[index+1])return null;
     return entry.snapshot;
@@ -645,19 +660,20 @@
     var local=computedSnapshotGet(snapshots,el);if(local)return local;
     var key=computedCacheKey(el);
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
-    var deps=[],outer=computedVolatile,snapshot,volatile;computedVolatile=false;
-    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;}finally{computedVolatile=outer;}
+    var deps=[],outer=computedVolatile,outerState=computedStateRead,snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;
+    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;}
     if(key){
       var after=computedCacheKey(el);
-      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.owner!==key.owner)computedSnapshotSet(computedStyleCache,el,null);
-      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,owner:key.owner,probe:computedCacheProbe(el),deps:deps});
+      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.owner!==key.owner||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
+      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,owner:key.owner,state:stateRead?state:null,probe:computedCacheProbe(el),deps:deps});
     }
     return snapshot;
   }
-  // Selector-dependent volatility: the pseudo-classes whose truth is live binding state (form
+  // Selector-dependent state: the pseudo-classes whose truth is live binding state (form
   // control state, open popovers, modal dialogs, active view transitions, interest invokers)
-  // rather than the tree. A rule using one makes
-  // the computation volatile when it matches, or when it could match in another state: its
+  // rather than the tree. A rule using one makes the computation state-dependent (keyed on the
+  // live-state epoch; volatile for view-transition and interest state, which bump no epoch)
+  // when it matches, or when it could match in another state: its
   // selector with every such pseudo-class (and every non-matching-list function containing one)
   // relaxed to `:is(*)` matches. Relaxing only widens a selector, so a rule that cannot match
   // even relaxed cannot match in any state.
@@ -684,13 +700,19 @@
     }
     return out;
   }
+  var computedUnkeyedState=/:(?:active-view-transition|active-view-transition-type|interest-source|interest-target)(?![\w-])/i;
   function computedStateVolatile(el,selector,matched){
     if(computedVolatile||!cssApply(cssZoomExec,computedStatePattern,[selector]))return;
-    if(matched){computedVolatile=true;return;}
-    var relaxed=computedRelaxed[selector];
-    if(relaxed===undefined){if(computedRelaxedCount>=4096){computedRelaxed={__proto__:null};computedRelaxedCount=0;}relaxed=computedRelaxed[selector]=computedRelaxSelector(selector);computedRelaxedCount++;}
-    var could=true;try{could=!!cssApply(computedStyleNativeMatches,el,[relaxed]);}catch(e){}
-    if(could)computedVolatile=true;
+    var unkeyed=!!cssApply(cssZoomExec,computedUnkeyedState,[selector]);
+    if(!unkeyed&&computedStateRead)return;
+    var could=matched;
+    if(!could){
+      var relaxed=computedRelaxed[selector];
+      if(relaxed===undefined){if(computedRelaxedCount>=4096){computedRelaxed={__proto__:null};computedRelaxedCount=0;}relaxed=computedRelaxed[selector]=computedRelaxSelector(selector);computedRelaxedCount++;}
+      could=true;try{could=!!cssApply(computedStyleNativeMatches,el,[relaxed]);}catch(e){}
+    }
+    if(!could)return;
+    if(unkeyed)computedVolatile=true;else computedStateRead=true;
   }
   function computeStyleFresh(el,snapshots,sink,pseudo,deps){
     var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
@@ -1719,7 +1741,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var fileControls = null;
     __ns.registerFileControls = function(hooks){ fileControls = hooks; delete __ns.registerFileControls; };
     var fileValueDelete = WeakMap.prototype.delete, fileValueApply = Reflect.apply;
-    __ns.resetControlValue = function(element){ fileValueApply(fileValueDelete, controlValues, [element]); };
+    __ns.resetControlValue = function(element){ bumpStyleState(); fileValueApply(fileValueDelete, controlValues, [element]); };
     // Captured natives: the value paths never reach a page-replaced builtin (turbo-dom#199).
     // The binding's own native accessors, captured at install.
     var valueLocalName, valueNamespace, valueTextContent, valueTextContentSet;
@@ -1744,7 +1766,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         var oldValue=selectionApply(valDesc.get,this,[]);
         v = v == null ? '' : String(v);
         if (reflectedValue(this)) $setAttr(this, 'value', v);
-        else $c.set(controlValues,this, validForType(this, v));
+        else { bumpStyleState(); $c.set(controlValues,this, validForType(this, v)); }
         selectionValueChanged(this,oldValue,selectionApply(valDesc.get,this,[]));
       }
     };
@@ -1960,7 +1982,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.defineProperty(op, 'selected', { configurable: true, get: function(){
         var sel = ownerSelect(this); return sel ? $c.indexOf(selectionOf(sel), this) >= 0 : isSelected(this);
       }, set: function(v){
-        v = !!v; $c.set(optionStates,this, v);
+        bumpStyleState(); v = !!v; $c.set(optionStates,this, v);
         var sel = ownerSelect(this);
         if (sel && v) {
           $c.delete(emptySelects,sel);
@@ -1983,14 +2005,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.defineProperty(sp, 'selectedOptions', { configurable: true, get: function(){ var list = selection.selectionOf(this); list.item = function(i){ return this[i] || null; }; return list; } });
       Object.defineProperty(sp, 'selectedIndex', { configurable: true,
         get: function(){ var chosen = selection.selectionOf(this); return chosen.length ? opts(this).indexOf(chosen[0]) : -1; },
-        set: function(idx){ var o = opts(this), index = Number(idx) >> 0;
+        set: function(idx){ var o = opts(this), index = Number(idx) >> 0; bumpStyleState();
           $c.add(selection.emptySelects,this);
           for (var i=0;i<o.length;i++) { $c.set(selection.optionStates,o[i], i === index); }
           if (index >= 0 && index < o.length) $c.delete(selection.emptySelects,this);
         } });
       Object.defineProperty(sp, 'value', { configurable: true,
         get: function(){ var chosen = selection.selectionOf(this); return chosen.length ? chosen[0].value : ''; },
-        set: function(v){ var o = opts(this), s = String(v), hit = false;
+        set: function(v){ var o = opts(this), s = String(v), hit = false; bumpStyleState();
           $c.add(selection.emptySelects,this);
           for (var i=0;i<o.length;i++){ var m = !hit && o[i].value === s; $c.set(selection.optionStates,o[i], m); if (m) hit = true; }
           if (hit) $c.delete(selection.emptySelects,this);
@@ -2008,6 +2030,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var resetControlDelete=WeakMap.prototype.delete,resetSelectDelete=WeakSet.prototype.delete;
     __ns.formSelectedOptions=function(element){return selection.selectionOf(element);};
     __ns.formResetControl=function(element){
+      bumpStyleState();
       formValueApply(resetControlDelete,controlValues,[element]);
       if(fileControls)fileControls.reset(element);
       if(formValueApply(sheetTagName,element,[])==='INPUT')checkedNative(2,element);

@@ -7241,6 +7241,8 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     #[cfg(test)]
     bind_method(scope, global, "__noteCssUpdatePass", note_css_update_pass);
     bind_method(scope, global, "__cssomEpoch", cssom_epoch);
+    bind_method(scope, global, "__styleStateEpoch", style_state_epoch);
+    bind_method(scope, global, "__bumpStyleState", bump_style_state_native);
     bind_method(scope, global, "__bumpCssomEpoch", bump_cssom_epoch);
 }
 
@@ -7250,6 +7252,42 @@ thread_local! {
     /// another realm's element (a parent reading an iframe's), and a CSSOM edit runs in the realm
     /// that owns the sheet, so a per-realm epoch left the reader's reuse stale.
     static CSSOM_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+thread_local! {
+    /// The live-state epoch getComputedStyle keys a reused computed style on when its cascade
+    /// read a selector over live form / popover / dialog state (`:invalid`, `:checked`,
+    /// `:placeholder-shown`, `:popover-open`, `:modal`, `:open`, ...): every change of that state
+    /// that the tree version does not see bumps it (control values, option selectedness, custom
+    /// validity, user validity, the indeterminate flag, ElementInternals validity / disabled /
+    /// owner, file selections, the popover stack, modal dialogs, an opened picker). Shared by
+    /// every realm on the thread, like `CSSOM_EPOCH`.
+    static STYLE_STATE_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// Advance the live-state epoch (see `STYLE_STATE_EPOCH`).
+pub(super) fn bump_style_state() {
+    STYLE_STATE_EPOCH.with(|epoch| epoch.set(epoch.get() + 1));
+}
+
+/// The current live-state epoch (see `STYLE_STATE_EPOCH`).
+fn style_state_epoch(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    let epoch = STYLE_STATE_EPOCH.with(std::cell::Cell::get);
+    result.set(v8::Number::new(scope, epoch as f64).into());
+}
+
+/// `__bumpStyleState()`: the JS-side state stores (control values, option selectedness, custom
+/// and user validity, ElementInternals, file selections) report a change.
+fn bump_style_state_native(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    bump_style_state();
 }
 
 #[cfg(test)]

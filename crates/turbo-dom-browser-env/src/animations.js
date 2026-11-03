@@ -971,7 +971,7 @@
     if (from) { const entries = targets.get(from); if (entries) { const at = find(entries); if (at >= 0) { for (let i = at; i + 1 < entries.length; i++) entries[i] = entries[i + 1]; entries.length--; } } }
     if (to) { let entries = targets.get(to); if (!entries) targets.set(to, entries = []); if (find(entries) < 0) push(entries, animation); }
     // The targets' computed styles change with their animations (turbo-test#125: drop reuse).
-    if (ns.invalidateComputedStyles) ns.invalidateComputedStyles();
+    if (ns.invalidateAnimatedStyles) ns.invalidateAnimatedStyles();
   }
   // https://drafts.csswg.org/web-animations-1/#removing-replaced-animations
   function replaceable(record) {
@@ -1700,6 +1700,17 @@
     return out;
   })();
   // Each transitioned longhand -> its index in the transition-* lists; a later entry wins.
+  // Memoized per transition-property text (pure: the result depends only on the text).
+  let transitionedMemo = create(null), transitionedCount = 0;
+  function transitionedFor(text) {
+    let properties = transitionedMemo[text];
+    if (properties === undefined) {
+      if (transitionedCount >= 1024) { transitionedMemo = create(null); transitionedCount = 0; }
+      properties = transitionedMemo[text] = transitionedProperties(splitList(text));
+      transitionedCount++;
+    }
+    return properties;
+  }
   function transitionedProperties(list) {
     const out = create(null);
     for (let i = 0; i < list.length; i++) {
@@ -1709,7 +1720,7 @@
     return out;
   }
   function cssTransitions(element, read, underlying) {
-    const state = cssState(element), properties = transitionedProperties(splitList(read('transition-property')));
+    const state = cssState(element), properties = transitionedFor(read('transition-property'));
     const durations = splitList(read('transition-duration')), delays = splitList(read('transition-delay')), easings = splitList(read('transition-timing-function'));
     // The transitions one style change starts share a generation (ordered by property name).
     const seen = create(null), generation = cssGeneration + 1;
@@ -1729,16 +1740,43 @@
     }
     for (const property in state.values) if (!seen[property]) delete state.values[property];
   }
+  // Everything one update reads: the animation-* / transition-* lists, display, each animation
+  // name's @keyframes rule and each transitioned property's underlying value (inherited values
+  // included, so an ancestor's change reaches it). With these unchanged and the element's style
+  // stamp (tree version, CSSOM epoch, live-state epoch, owner document: what `rendered` reads)
+  // unchanged, an update would keep every animation and start no transition, so it is skipped:
+  // the update runs once per style change, not once per computed-style read (a running
+  // animation recomputes the style on every read).
+  const CSS_INPUTS = ['animation-name', 'animation-duration', 'animation-delay', 'animation-iteration-count', 'animation-direction', 'animation-fill-mode', 'animation-timing-function', 'animation-play-state', 'transition-property', 'transition-duration', 'transition-delay', 'transition-timing-function', 'display'];
+  const cssUpdates = store();
+  function cssInputs(read, underlying) {
+    const out = [];
+    for (let i = 0; i < CSS_INPUTS.length; i++) push(out, read(CSS_INPUTS[i]));
+    const names = splitList(out[0]);
+    for (let i = 0; i < names.length; i++) push(out, names[i] !== "none" && !!keyframesRule(names[i]));
+    const properties = transitionedFor(out[8]);
+    for (const property in properties) { push(out, property); push(out, underlying(property)); }
+    return out;
+  }
+  function sameList(a, b) {
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
   function cssUpdate(element, read, inherited) {
     if (cssBusy) return;
     const declared = read('animation-name') || read('transition-property');
     if (!declared && !cssStates.has(element)) return;
     cssBusy = true;
-    if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
     try {
       const underlying = property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
+      const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(read, underlying), last = cssUpdates.get(element);
+      if (stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs)) return;
+      if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
       cssAnimations(element, read, underlying);
       cssTransitions(element, read, underlying);
+      // Stamped after the update: the invalidation its own animations cause is not a new input.
+      cssUpdates.set(element, { stamp: stamp && ns.computedStyleStamp(element), inputs });
     } finally { cssBusy = false; }
   }
   // getAnimations() flushes style: every element of the tree resolves its style once.
