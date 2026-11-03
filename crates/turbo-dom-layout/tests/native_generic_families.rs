@@ -72,3 +72,17 @@ fn serif_and_pdf_monospace_keep_chromes_metrics() {
     assert!(mono.data() == courier.data() && mono.index() == courier.index());
     assert_eq!(ours(&pdf, "monospace").0, chrome("monospace").0);
 }
+
+#[test]
+fn html_monospace_is_courier_like_chrome() {
+    // miaskiewicz/turbo-dom#260: Chrome 156's macOS generic monospace is Courier (its
+    // 14 / 4 ascent / descent with the legacy ascent adjustment), not Menlo.
+    let html = FontRegistry::load_system(SystemFontPolicy::Html);
+    let mono = html.select(&["monospace"], 400, false).unwrap();
+    let courier = html.select(&["Courier"], 400, false).unwrap();
+    assert!(mono.data() == courier.data() && mono.index() == courier.index());
+    assert_eq!(chrome("monospace"), chrome("Courier"));
+    // Line height only: `FontFace::measure` rounds this face's "Hello world" to
+    // 105.617 (Chrome 105.625), as for Courier New above.
+    assert_eq!(ours(&html, "monospace").0, chrome("monospace").0);
+}
