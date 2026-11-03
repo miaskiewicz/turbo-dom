@@ -98,10 +98,13 @@ pub fn caret(
         // A line wholly above the point ranks after every line at or below it: Chrome
         // takes the first block whose end is past the point (a point in the gap below
         // a block lands on the next block's first line, miaskiewicz/turbo-dom#127).
+        // A vertical line's block axis is horizontal: lines rank by their horizontal
+        // distance first (miaskiewicz/turbo-dom#239).
+        let gap = distance(point, rect);
         let candidate = Candidate {
             source,
-            above: f64::from(rect.y + rect.height) < point[1],
-            gap: distance(point, rect),
+            above: !run.vertical && f64::from(rect.y + rect.height) < point[1],
+            gap: if run.vertical { [gap[1], gap[0]] } else { gap },
             translation,
             matrix: run_matrix,
         };
@@ -229,11 +232,16 @@ pub fn run_rect(
     }
     let fragment = &snapshot.fragments()[run.fragment_index];
     let font = run.font_box;
-    Some(Rect {
+    let rect = Rect {
         x: fragment.rect.x + left,
         y: fragment.rect.y + font.baseline - font.ascent,
         width: right - left,
         height: font.ascent + font.descent,
+    };
+    Some(if run.vertical {
+        crate::layout_snapshot::text_geometry::turn(rect, fragment.rect)
+    } else {
+        rect
     })
 }
 

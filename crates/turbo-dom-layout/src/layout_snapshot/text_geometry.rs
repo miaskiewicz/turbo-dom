@@ -15,9 +15,42 @@ pub struct SourceClusterBox {
     pub collapsed_whitespace: bool,
     pub utf16_start: usize,
     pub utf16_end: usize,
+    /// The advance/font box in the line's own frame: physical, unless `vertical`.
     pub rect: Rect,
+    /// The run lies in a vertical line: `rect` is in its frame, which [`turn`]s into
+    /// the fragment; `quad` and `transformed_bounds` are physical.
+    pub vertical: bool,
     pub quad: [Point; 4],
     pub transformed_bounds: Rect,
+}
+
+/// A rect in a vertical line's own frame (anchored at its fragment's top-left `frame`,
+/// `x` along the line, `y` down from its line-over edge) in physical coordinates: the
+/// frame turns a quarter clockwise into the fragment, like its glyphs paint
+/// (miaskiewicz/turbo-dom#239).
+pub(crate) fn turn(rect: Rect, frame: Rect) -> Rect {
+    Rect {
+        x: frame.x + frame.width - (rect.y - frame.y) - rect.height,
+        y: frame.y + (rect.x - frame.x),
+        width: rect.height,
+        height: rect.width,
+    }
+}
+
+/// The inverse of [`turn`] for a point.
+pub(crate) fn unturn(point: Point, frame: Rect) -> Point {
+    Point {
+        x: frame.x + (point.y - frame.y),
+        y: frame.y + frame.width - (point.x - frame.x),
+    }
+}
+
+/// Whether fragment `index` holds a vertical text run.
+pub(crate) fn vertical_fragment(snapshot: &LayoutSnapshot, index: usize) -> bool {
+    snapshot
+        .text_runs()
+        .iter()
+        .any(|run| run.vertical && run.fragment_index == index)
 }
 
 pub(crate) fn cluster_boxes(snapshot: &LayoutSnapshot) -> Vec<SourceClusterBox> {
@@ -70,7 +103,12 @@ fn collect_boxes<'a>(
                 width: right - left,
                 height: font.ascent + font.descent,
             };
-            let quad = geometry::rect_quad(rect).map(|point| {
+            let physical = if run.vertical {
+                turn(rect, fragment.rect)
+            } else {
+                rect
+            };
+            let quad = geometry::rect_quad(physical).map(|point| {
                 geometry::transform(point, snapshot.native_transforms[fragment.index])
             });
             boxes.push(SourceClusterBox {
@@ -82,6 +120,7 @@ fn collect_boxes<'a>(
                 utf16_start: start,
                 utf16_end: end,
                 rect,
+                vertical: run.vertical,
                 quad,
                 transformed_bounds: geometry::bounds(quad),
             });

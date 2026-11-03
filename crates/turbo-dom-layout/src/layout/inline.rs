@@ -2395,7 +2395,16 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
     }
     let (ascent, descent) = if html_font_metrics {
         let metrics = source_font_metrics(seg, html_font_scale);
-        (metrics.ascent, metrics.descent)
+        if seg.upright {
+            // An upright run's box centres on the central baseline it sits on.
+            central_metrics(
+                metrics.ascent,
+                metrics.descent,
+                html_font_scale.unwrap_or(1.0),
+            )
+        } else {
+            (metrics.ascent, metrics.descent)
+        }
     } else {
         (
             seg.face.ascent_px(seg.font_size),

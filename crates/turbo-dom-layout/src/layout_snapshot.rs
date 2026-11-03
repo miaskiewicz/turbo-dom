@@ -23,7 +23,7 @@ pub(crate) mod text;
 mod text_caret_edges;
 mod text_carets;
 mod text_finite;
-mod text_geometry;
+pub(crate) mod text_geometry;
 mod text_ranges;
 pub(crate) mod text_units;
 
