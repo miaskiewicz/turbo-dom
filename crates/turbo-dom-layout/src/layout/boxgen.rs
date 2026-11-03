@@ -661,6 +661,8 @@ pub(crate) struct BuildOptions {
     /// Lay an inline `<a>` with an internal (`#name`) or absolute-URL href out as an
     /// atomic inline box (its own fragment); block-level links keep their block box.
     pub(crate) atomic_internal_links: bool,
+    /// See [`super::LayoutOptions::flatten_inline_elements`].
+    pub(crate) flatten_inline_elements: bool,
     /// Record each box's source [`turbo_dom::Handle`] (see [`super::NodeSources`]).
     pub(crate) record_sources: bool,
     /// Keep an absolutely positioned box whose `clip: rect()` keeps nothing (the
@@ -692,6 +694,7 @@ struct Ids {
     /// [`StyledElement::source`]/text sources per allocated id.
     recorded: Option<Recorded>,
     atomic_internal_links: bool,
+    flatten_inline_elements: bool,
     keep_zero_area_clips: bool,
     /// Whether a box in the top layer (the fullscreen element, miaskiewicz/turbo-dom#82)
     /// was built: [`build_root`] then hoists it.
@@ -701,6 +704,18 @@ struct Ids {
 }
 
 impl Ids {
+    /// Inline elements are inline boxes (their edges, inline fragments and `<br>`
+    /// sources): Chrome's inline model, on the layout path and the native HTML
+    /// snapshot. A non-native snapshot and a layout with
+    /// [`super::LayoutOptions::flatten_inline_elements`] flatten them into their text
+    /// runs (miaskiewicz/turbo-dom#245).
+    fn inline_boxes(&self) -> bool {
+        self.sources
+            .as_ref()
+            .map_or(!self.flatten_inline_elements, |sources| {
+                sources.inline_borders
+            })
+    }
     fn new(sources: Option<BuildSources>, options: BuildOptions) -> Ids {
         Ids {
             next: 0,
@@ -708,6 +723,7 @@ impl Ids {
             document_roots: std::collections::HashSet::default(),
             recorded: options.record_sources.then(Recorded::default),
             atomic_internal_links: options.atomic_internal_links,
+            flatten_inline_elements: options.flatten_inline_elements,
             keep_zero_area_clips: options.keep_zero_area_clips,
             top_layer: false,
             lists: super::list_marker::ListCounters::default(),
@@ -857,11 +873,7 @@ fn is_br(el: &StyledElement) -> bool {
 }
 
 fn line_break(el: &StyledElement, ids: &mut Ids) -> InlineItem {
-    if ids
-        .sources
-        .as_ref()
-        .is_some_and(|sources| sources.inline_borders)
-    {
+    if ids.inline_boxes() {
         InlineItem::SourceBreak {
             node_id: ids.element(el),
             style: el.style.clone(),
@@ -945,10 +957,7 @@ fn native_out_of_flow(element: &StyledElement, ids: &Ids) -> bool {
 }
 
 fn native_inline_items(el: &StyledElement, ids: &mut Ids) -> Level {
-    let native = ids
-        .sources
-        .as_ref()
-        .is_some_and(|sources| sources.inline_borders);
+    let native = ids.inline_boxes();
     if native && super::inline_boxes::atomic_element(el) {
         Level::Inline(vec![InlineItem::Atomic(build_block_box(el, ids))])
     } else if native {
@@ -2169,24 +2178,40 @@ mod tests {
     #[test]
     fn br_becomes_an_inline_line_break() {
         // `<div>a<br>b</div>`: the <br> is an inline forced break within the div's
-        // inline formatting context (a `LineBreak` item), not a block box.
-        let tree = build_box_tree(&[html_el(
+        // inline formatting context, not a block box: a `SourceBreak` carrying its
+        // style (its font's metrics count in the line, miaskiewicz/turbo-dom#245), or a
+        // bare `LineBreak` when inline elements are flattened.
+        let div = [html_el(
             "div",
             vec![
                 StyledNode::Text("a".into()),
                 html_el("br", vec![]),
                 StyledNode::Text("b".into()),
             ],
-        )]);
-        let BoxKind::Block(kids) = &tree.kind else {
-            panic!("root is a block");
-        };
-        let BoxKind::Lines(items) = &kids[0].kind else {
-            panic!("div establishes an inline (lines) context");
+        )];
+        let items = |options| {
+            let (tree, _, _) = build_box_tree_with(&div, options);
+            let BoxKind::Block(kids) = &tree.kind else {
+                panic!("root is a block");
+            };
+            let BoxKind::Lines(items) = &kids[0].kind else {
+                panic!("div establishes an inline (lines) context");
+            };
+            items.clone()
         };
         assert!(
-            items.iter().any(|i| matches!(i, InlineItem::LineBreak)),
-            "the <br> produced a LineBreak item"
+            items(BuildOptions::default())
+                .iter()
+                .any(|i| matches!(i, InlineItem::SourceBreak { .. })),
+            "the <br> produced a SourceBreak item"
+        );
+        let flat = items(BuildOptions {
+            flatten_inline_elements: true,
+            ..BuildOptions::default()
+        });
+        assert!(
+            flat.iter().any(|i| matches!(i, InlineItem::LineBreak)),
+            "the flattened <br> produced a LineBreak item"
         );
     }
 }

@@ -53,6 +53,8 @@ pub struct HtmlOptions<'a> {
     pub markers: Option<MarkerClassifier<'a>>,
     /// See [`LayoutOptions::atomic_internal_links`].
     pub atomic_internal_links: bool,
+    /// See [`LayoutOptions::flatten_inline_elements`].
+    pub flatten_inline_elements: bool,
     /// Accept `cmyk(...)` colours (style and layout).
     pub accept_cmyk: bool,
     /// Author CSS that precedes the document's own `<style>` sheets — e.g. the bodies
@@ -76,6 +78,7 @@ impl HtmlOptions<'_> {
     fn layout(&self) -> LayoutOptions {
         LayoutOptions {
             atomic_internal_links: self.atomic_internal_links,
+            flatten_inline_elements: self.flatten_inline_elements,
             accept_cmyk: self.accept_cmyk,
             first_node_id: 0,
         }

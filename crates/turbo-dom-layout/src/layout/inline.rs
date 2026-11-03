@@ -3021,6 +3021,43 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
     finalize(placer.finish())
 }
 
+/// Chrome's line box model for the PDF metric policy (miaskiewicz/turbo-dom#245): the
+/// lines of [`layout_paragraph_in`] (or, with `capture`, of
+/// [`layout_paragraph_in_with_sources`]) aligned on a shared baseline — the block's
+/// strut and every font box and atom united about it, `vertical-align` shifts from
+/// `baselines`, and the quirks-mode strut — instead of stacked line heights.
+pub(crate) fn layout_paragraph_in_chrome_lines(
+    pieces: &[Piece],
+    reg: &FontRegistry,
+    (align, capture): (Align, bool),
+    diags: &mut Diagnostics,
+    region: LineRegion,
+    strut: f32,
+    lines: &NativeLineOptions<'_>,
+) -> ParagraphSourceLayout {
+    let ParagraphWords { mut words, bidi } = build_pieces(
+        pieces,
+        reg,
+        diags,
+        SourcePolicy {
+            capture,
+            advances: false,
+        },
+        None,
+    );
+    apply_baselines(&mut words, lines.baselines);
+    let mut placer = Placer::new(align, region, strut, (capture, false, None));
+    placer.strut_metrics = lines.strut_metrics;
+    placer.central = lines.central;
+    placer.quirk_roots = lines.quirk_roots;
+    placer.bidi = bidi;
+    mark_last_word(&mut words);
+    for word in words {
+        placer.add(word);
+    }
+    finalize(placer.finish())
+}
+
 pub(crate) struct NativeLineOptions<'a> {
     pub baselines: &'a std::collections::HashMap<NodeId, f32>,
     pub strut_metrics: Option<(f32, f32)>,
