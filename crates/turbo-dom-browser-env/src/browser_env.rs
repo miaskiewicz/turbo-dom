@@ -7395,6 +7395,12 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         "__computedStyleVersion",
         computed_style_version,
     );
+    bind_method(
+        scope,
+        global,
+        "__computedStyleSelectorVersion",
+        computed_style_selector_version,
+    );
     #[cfg(test)]
     bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
     #[cfg(test)]
@@ -7557,6 +7563,33 @@ fn computed_style_version(
         return;
     }
     if let Some(version) = with_tree(|tree| tree.version) {
+        result.set(v8::Number::new(scope, version as f64).into());
+    }
+}
+
+/// The selector version of the tree that owns `node` (`Tree::selector_version`: inline style
+/// writes do not move it), or its plain version when the tree has a shadow root (a shadow
+/// tree's own sheets can select by `style`, and the computed-style key does not scan them).
+/// `undefined` for anything but a node.
+fn computed_style_selector_version(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let _owner = DomScope::for_object(scope, node);
+    if handle_of(scope, node).is_none() {
+        return;
+    }
+    if let Some(version) = with_tree(|tree| {
+        if tree.has_shadow_roots() {
+            tree.version
+        } else {
+            tree.selector_version
+        }
+    }) {
         result.set(v8::Number::new(scope, version as f64).into());
     }
 }

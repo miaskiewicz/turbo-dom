@@ -101,6 +101,7 @@
   var canvasLengthUnitNative=g.__canvasLengthUnitNative;delete g.__canvasLengthUnitNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
+  var computedStyleSelectorVersion=g.__computedStyleSelectorVersion;delete g.__computedStyleSelectorVersion;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
   var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
@@ -584,12 +585,44 @@
   // element of one cascade (the read element and each ancestor) shares it.
   var computedSheetLists=new computedSnapshotMap();
   function computedOwnerSheets(owner,host){
-    var version=null;try{version=computedStyleVersion(owner);}catch(e){}
+    var version=null;try{version=computedStyleSelectorVersion(owner);}catch(e){}
     var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&typeof version==='number'&&entry.version===version&&entry.epoch===epoch&&entry.host===host)return entry.sheets;
     var sheets=host.readSheets();
     if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets});
     return sheets;
+  }
+  // Whether a cascade of `el` can read another element's inline style: a rule of its sheets
+  // with an attribute selector naming `style` (directly, through a combinator, inside :has()),
+  // an @container query, or sheets the scan does not see (adopted ones). Scanned once per
+  // sheet list; any match, even in a string, only keeps the plain tree version.
+  var computedStyleAttributeSelector=/\[\s*(?:[\w*-]*\|)?style(?![\w-])|@container/i;
+  // Selector and prelude text only (no declaration is serialized), nested rules included; an
+  // @import's sheet is not walked, so an @import counts as a match.
+  function computedRulesReadStyle(rules){
+    var items=cssItems(rules);
+    for(var i=0;i<items.length;i++){
+      var record=cssRuleRecord(items[i]);
+      if(record.type===3||record.kind==='container')return true;
+      var text=record.type===1?record.selectorText:record.prelude;
+      if(text&&cssApply(cssZoomExec,computedStyleAttributeSelector,[String(text)]))return true;
+      if(record.cssRules&&computedRulesReadStyle(record.cssRules))return true;
+    }
+    return false;
+  }
+  function computedInlineSensitive(el){
+    var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return true;}
+    if(!owner)return true;
+    var adopted=adoptionStates&&$c.get(adoptionStates,owner);
+    if(adopted&&adopted.target&&adopted.target.length)return true;
+    var ownerRecord=collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
+    if(!host)return false;
+    var sheets=computedOwnerSheets(owner,host),entry=computedSnapshotGet(computedSheetLists,owner);
+    if(entry&&entry.sheets===sheets&&entry.styleSelectors!==undefined)return entry.styleSelectors;
+    var found=false;
+    try{for(var si=0;si<sheets.length&&!found;si++)found=computedRulesReadStyle(sheetRecord(sheets[si]).rules);}catch(e){found=true;}
+    if(entry&&entry.sheets===sheets)entry.styleSelectors=found;
+    return found;
   }
   function computedSheets(el){
     var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
@@ -644,12 +677,21 @@
   // reuse) once per walk instead of once per level, and no declaration object is made.
   __ns.computedDisplay=function(el,snapshots){return computedSnapshotValue(computeStyleSnapshot(el,snapshots),'display');};
   __ns.computedSnapshots=function(){return new computedSnapshotMap();};
-  __ns.computedStyleStamp=function(el){var key=computedCacheKey(el);return key?[key.version,key.epoch-animatedStyleBumps,styleStateEpoch(),key.owner]:null;};
+  __ns.computedStyleStamp=function(el){var key=computedCacheKey(el);return key?[key.full,key.epoch-animatedStyleBumps,styleStateEpoch(),key.owner]:null;};
+  // The key's `version` is the tree's selector version (Tree::selector_version: inline style
+  // writes do not move it) plus the element's own inline style text, unless a cascade of the
+  // element can read other elements' inline styles (computedInlineSensitive) or the tree has
+  // a shadow root (whose own sheets are not scanned): then the plain tree version. Ancestors'
+  // inline styles reach it through the parent snapshots it depends on. `full` (the plain
+  // version) is what `rendered` and the animation stamp read.
   function computedCacheKey(el){
-    var version;try{version=computedStyleVersion(el);}catch(e){return null;}
-    if(typeof version!=='number')return null;
+    var version,full;try{full=computedStyleVersion(el);version=computedStyleSelectorVersion(el);}catch(e){return null;}
+    if(typeof full!=='number'||typeof version!=='number')return null;
     var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
-    return {__proto__:null,epoch:cssomEpoch(),version:version,owner:owner};
+    var inline=null;
+    if(computedInlineSensitive(el))version=full;
+    else{try{inline=$c.call(appliedInlineRead,el);}catch(e){version=full;inline=null;}}
+    return {__proto__:null,epoch:cssomEpoch(),version:version,full:full,inline:inline,owner:owner};
   }
   // What the key cannot see: the element's top layer and font context.
   function computedCacheProbe(el){
@@ -661,7 +703,7 @@
   function computedProbeEqual(a,b){if(a.length!==b.length)return false;for(var index=0;index<a.length;index++)if(a[index]!==b[index])return false;return true;}
   function computedCacheHit(el,key,snapshots){
     var entry=computedSnapshotGet(computedStyleCache,el);
-    if(!entry||entry.epoch!==key.epoch||entry.version!==key.version||entry.owner!==key.owner)return null;
+    if(!entry||entry.epoch!==key.epoch||entry.version!==key.version||entry.inline!==key.inline||entry.owner!==key.owner)return null;
     if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
     if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
     for(var index=0;index<entry.deps.length;index+=2)if(computeStyleSnapshot(entry.deps[index],snapshots)!==entry.deps[index+1])return null;
@@ -677,8 +719,8 @@
     try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;}
     if(key){
       var after=computedCacheKey(el);
-      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.owner!==key.owner||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
-      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,owner:key.owner,state:stateRead?state:null,probe:computedCacheProbe(el),deps:deps});
+      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.inline!==key.inline||after.owner!==key.owner||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
+      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,probe:computedCacheProbe(el),deps:deps});
     }
     return snapshot;
   }
@@ -1482,7 +1524,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
   function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries)$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
   function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}'));$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1)return;var name=$c.trim($c.slice(part,0,index));if(!record.fontFace&&!$c.startsWith(name,'--')&&!knownProperty(name))return;var value=$c.trim($c.slice(part,index+1)),important=$c.test(/\s*!important\s*$/i,value);if(important)value=$c.trim($c.replace(value,/\s*!important\s*$/i,''));if(!record.fontFace&&!$c.startsWith(name,'--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=$c.get(record.values,name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
-  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');invalidateComputedStyles();}
+  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');if(!record.owner)invalidateComputedStyles();}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);$c.call(appliedInlineWrite,record.owner,record.source);}}
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
   function removeDeclaration(record,name){if(!record.fontFace){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands){var removed=false;$c.forEach(longhands,function(longhand){if($c.delete(record.values,longhand)){$c.splice(record.names,$c.indexOf(record.names,longhand),1);removed=true;}});if(removed)commitDeclaration(record);return '';}}var previous=$c.get(record.values,name);if(!previous)return '';$c.delete(record.values,name);$c.splice(record.names,$c.indexOf(record.names,name),1);commitDeclaration(record);return previous.text;}

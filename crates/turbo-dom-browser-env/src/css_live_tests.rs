@@ -1581,3 +1581,28 @@ fn an_inline_style_write_in_a_shadow_page_still_updates_slotted_rules() {
     );
     assert_eq!(value, serde_json::json!(["rgb(0, 0, 0)", "rgb(9, 9, 9)"]));
 }
+
+/// An adopted sheet's attribute selector naming `style` still follows inline writes: the
+/// sheet scan does not read adopted sheets, so their presence keeps the plain version. Same
+/// values as a fresh cascade.
+#[test]
+fn style_attribute_selectors_in_adopted_sheets_still_follow_inline_writes() {
+    let value = run(
+        "<body><em id=e></em><q id=q>q</q></body>",
+        r#"(()=>{
+      const e=document.getElementById('e'),q=document.getElementById('q');
+      const sheet=new CSSStyleSheet();sheet.replaceSync('[style*="teal"] + q { color: rgb(0, 128, 128) }');
+      document.adoptedStyleSheets=[sheet];
+      const out=[getComputedStyle(q).color];
+      e.style.borderColor='teal';
+      out.push(getComputedStyle(q).color);
+      e.removeAttribute('style');
+      out.push(getComputedStyle(q).color);
+      return JSON.stringify(out);
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!(["rgb(0, 0, 0)", "rgb(0, 128, 128)", "rgb(0, 0, 0)"])
+    );
+}
