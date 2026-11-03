@@ -3091,6 +3091,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         }
       });
     });
+    // The probe served only the reads above: closures of this scope outlive the install, and a
+    // startup snapshot must hold no shell node wrapper (round-1 review #15).
+    probe=null;
     // HTMLOrSVGElement (turbo-dom#87): focus() / blur() brand-check their interface. An SVG or
     // MathML element takes script focus when connected, rendered and given a valid tabindex (or,
     // in SVG, when it is an <a> with an href / xlink:href).

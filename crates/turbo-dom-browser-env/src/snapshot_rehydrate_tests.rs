@@ -247,8 +247,8 @@ fn stale_wrapper(scope: &mut v8::PinScope, value: v8::Local<v8::Value>) -> bool 
 /// Only the document wrapper outlives the snapshot build (round-1 review #15): every other
 /// shell node wrapper is released before serialization, so no engine closure can hand a
 /// stripped wrapper to page script. The rehydrated window keeps node identity for the
-/// document, its head, body, root element and template contents, and every captured engine
-/// helper, called through, returns no stripped wrapper.
+/// document, its head, body, root element and template contents, none of which is a stripped
+/// wrapper, and every captured engine helper is rehydrated and works through its page API.
 #[test]
 fn no_shell_node_wrapper_survives_into_the_snapshot() {
     crate::browser_env::tests::init_v8();
@@ -269,38 +269,48 @@ fn no_shell_node_wrapper_survives_into_the_snapshot() {
     assert_eq!(
         eval(
             scope,
-            "const t = document.getElementById('t'); JSON.stringify([\
+            "{ const t = document.getElementById('t'); JSON.stringify([\
              document === window.document, document.body === document.body, document.head === document.head, \
              document.documentElement === document.documentElement, t.content === t.content, \
              document.body.parentNode === document.documentElement, document.head.parentNode === document.documentElement, \
              document.documentElement.parentNode === document, document.body.ownerDocument === document, \
              document.doctype === document.firstChild, document.body.firstChild === document.getElementById('a'), \
-             t.content.firstChild === t.content.firstChild, document.body.localName, document.head.childNodes.length])"
+             t.content.firstChild === t.content.firstChild, document.body.localName, document.head.childNodes.length]) }"
         ),
         "[true,true,true,true,true,true,true,true,true,true,true,true,\"body\",2]"
     );
-    assert_eq!(smoke(scope), expected());
-    // Every captured helper, called through (most reject the missing arguments): none
-    // answers with a stripped wrapper.
-    let mut called = 0;
+    for node in [
+        "document",
+        "document.doctype",
+        "document.documentElement",
+        "document.head",
+        "document.body",
+        "document.getElementById('t').content",
+    ] {
+        let value = eval_value(scope, node);
+        assert!(!stale_wrapper(scope, value), "{node} is a stripped wrapper");
+    }
+    // The captured engine helpers are internal (their natives assume engine-shaped
+    // arguments), so they are called through the page APIs that use them: the smoke covers
+    // events, custom elements, form validity, computed style, templates, shadow slots,
+    // selection and ranges, and the whole suite runs on this path under
+    // TURBO_DOM_SNAPSHOT_PATH=1. Every one of them is back after rehydration.
     for entry in context_rehydrate::entries() {
-        for function in (entry.get)(scope, context) {
-            v8::tc_scope!(let tc, scope);
-            let receiver = context.global(tc).into();
-            let document = eval_value(tc, "document");
-            for args in [&[][..], &[document][..]] {
-                called += 1;
-                if let Some(value) = function.call(tc, receiver, args) {
-                    assert!(
-                        !stale_wrapper(tc, value),
-                        "{} returned a stripped wrapper",
-                        entry.name
-                    );
-                }
-            }
+        let stored = context_rehydrate::store_object(scope, context)
+            .and_then(|store| {
+                let key = v8::String::new(scope, entry.name)?;
+                store.get(scope, key.into())
+            })
+            .is_some_and(|value| !value.is_undefined());
+        if stored {
+            assert!(
+                !(entry.get)(scope, context).is_empty(),
+                "{} not rehydrated",
+                entry.name
+            );
         }
     }
-    assert!(called > 0);
+    assert_eq!(smoke(scope), expected());
     reset();
 }
 

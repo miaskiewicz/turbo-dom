@@ -263,6 +263,23 @@ impl DocumentGraph {
             self.forget(scope, id)?;
         }
         self.components.clear();
+        // The document's own ownership component lists every wrapper of its composed tree:
+        // leave only the document in it, so the old tree's wrappers are not kept alive (nor
+        // carried into a startup snapshot; round-1 review #15).
+        if let Some(document) = self.document.to_local(scope) {
+            let owner_key = key(scope, "turbo-dom.ownership.component-owner")?;
+            let refs_key = key(scope, "turbo-dom.ownership.component-nodes")?;
+            let refs = document
+                .get_private(scope, owner_key)
+                .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+                .and_then(|component| component.get_private(scope, refs_key))
+                .and_then(|value| v8::Local::<v8::Map>::try_from(value).ok());
+            if let Some(refs) = refs {
+                refs.clear();
+                let id = v8::Integer::new_from_unsigned(scope, root);
+                refs.set(scope, id.into(), document.into())?;
+            }
+        }
         Some(())
     }
     pub fn lookup<'s>(

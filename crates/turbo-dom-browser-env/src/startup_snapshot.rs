@@ -7,8 +7,6 @@ use std::borrow::Cow;
 
 #[cfg(test)]
 thread_local! {
-    /// Test hook: the non-document node wrappers `strip_wrappers` cleared in the last build.
-    static DIAG: std::cell::RefCell<Vec<v8::Weak<v8::Object>>> = const { std::cell::RefCell::new(Vec::new()) };
     /// Test hook: how many of them were still reachable when the last build serialized.
     pub(crate) static RETAINED_FOR_TEST: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
 }
@@ -52,33 +50,39 @@ pub(crate) fn build() -> Option<Blob> {
     let mut isolate = v8::Isolate::snapshot_creator(Some(Cow::Borrowed(references)), None);
     BUILDING.with(|building| building.set(true));
     external_refs::begin_build_log();
-    {
+    let stripped = {
         v8::scope!(let scope, &mut isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
         bootstrap_engine(scope);
         persist_dom_state(scope);
         range_live::persist(scope);
-        strip_wrappers(scope);
+        let stripped = strip_wrappers(scope);
         // The slot annex is a heap pointer (and a Weak) in the context's embedder data:
         // serialized, a context made from the blob would read the freed annex.
         context.clear_all_slots();
         scope.set_default_context(context);
-    }
+        stripped
+    };
     reset();
+    let retained = still_reachable(&mut isolate, stripped);
     #[cfg(test)]
-    {
-        let stripped = DIAG.with(std::cell::RefCell::take);
-        v8::scope!(let scope, &mut isolate);
-        scope.low_memory_notification();
-        let retained = stripped.iter().filter(|weak| !weak.is_empty()).count();
-        RETAINED_FOR_TEST.with(|count| count.set(Some(retained)));
-    }
+    RETAINED_FOR_TEST.with(|count| count.set(Some(retained)));
     BUILDING.with(|building| building.set(false));
-    if !external_refs::end_build_log(references) {
+    let registered = external_refs::end_build_log(references);
+    if retained > 0 || !registered {
         // A creator isolate can only be disposed through create_blob, which would abort on
-        // the unregistered callback: leak it (a bootstrap that took a code path the
-        // recording pass did not; never expected).
+        // an unregistered callback: leak it (a bootstrap that took a code path the recording
+        // pass did not, or an engine closure that kept a stripped node wrapper, whose
+        // rehydrated copy would name no node; never expected).
+        eprintln!(
+            "[rust-dom] startup snapshot not built ({}): installs run the engine scripts",
+            if registered {
+                "a shell node wrapper is still reachable"
+            } else {
+                "an unregistered callback"
+            }
+        );
         std::mem::forget(isolate);
         return None;
     }
@@ -200,12 +204,19 @@ fn persist_dom_state(scope: &mut v8::PinScope) {
 /// Clear the node wrappers' internal fields (handle id, owner tag) before serialization.
 /// They are Smis, which V8's snapshot serializer cannot tell from embedder pointers; and
 /// the ids name nodes of a tree that does not outlive the build.
-fn strip_wrappers(scope: &mut v8::PinScope) {
+///
+/// Only the window document's wrapper is relinked by [`rehydrate`], so every other node
+/// wrapper must stay out of the blob: the document's ownership edges to its connected nodes
+/// are released here (as `attach_document` does), and the returned wrappers (every one but
+/// the document's) are checked unreachable once the build's native state is gone.
+fn strip_wrappers(scope: &mut v8::PinScope) -> Vec<v8::Weak<v8::Object>> {
     let mut wrappers = Vec::new();
-    DOM.with(|dom| {
-        if let Some(state) = dom.borrow().as_ref() {
-            wrappers.extend(state.cache.values().cloned());
-        }
+    let (root, graph) = DOM.with(|dom| {
+        let dom = dom.borrow();
+        // invariant: bootstrap_engine installed a DOM
+        let state = dom.as_ref().expect("the bootstrap installed a DOM");
+        wrappers.extend(state.cache.values().cloned());
+        (state.tree.root(), state.ownership.clone())
     });
     OTHER_DOMS.with(|doms| {
         for saved in doms.borrow().values() {
@@ -214,32 +225,31 @@ fn strip_wrappers(scope: &mut v8::PinScope) {
             }
         }
     });
-    let document = DOM.with(|dom| {
-        let dom = dom.borrow();
-        let state = dom.as_ref()?;
-        state.cache.get(&state.tree.root()).cloned()
-    });
-    if let Some(document) = document.and_then(|weak| weak.to_local(scope)) {
+    let document = DOM.with(|dom| dom.borrow().as_ref()?.cache.get(&root).cloned());
+    let document = document.and_then(|weak| weak.to_local(scope));
+    if let Some(document) = document {
         template_contents::forget_associated(scope, document);
     }
-    #[cfg(test)]
-    DOM.with(|dom| {
-        if let Some(state) = dom.borrow().as_ref() {
-            let root = state.tree.root();
-            DIAG.with(|stripped| {
-                stripped.borrow_mut().extend(
-                    (state.cache.iter())
-                        .filter(|(handle, _)| **handle != root)
-                        .map(|(_, weak)| weak.clone()),
-                );
-            });
-        }
-    });
+    if let Some(graph) = graph {
+        graph.borrow_mut().retire_nodes(scope, root.raw());
+    }
     let undefined = v8::undefined(scope);
-    for wrapper in wrappers {
-        if let Some(wrapper) = wrapper.to_local(scope) {
+    let mut stripped = Vec::new();
+    for weak in wrappers {
+        if let Some(wrapper) = weak.to_local(scope) {
             wrapper.set_internal_field(0, undefined.into());
             wrapper.set_internal_field(1, undefined.into());
+            if document != Some(wrapper) {
+                stripped.push(weak);
+            }
         }
     }
+    stripped
+}
+
+/// How many of the `stripped` wrappers survive a full GC (none may reach the blob).
+fn still_reachable(isolate: &mut v8::OwnedIsolate, stripped: Vec<v8::Weak<v8::Object>>) -> usize {
+    v8::scope!(let scope, isolate);
+    scope.low_memory_notification();
+    stripped.iter().filter(|weak| !weak.is_empty()).count()
 }
