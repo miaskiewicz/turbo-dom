@@ -10150,3 +10150,7 @@ pub use crate_surface::*;
 #[cfg(test)]
 #[path = "stack_edge_tests.rs"]
 mod stack_edge_tests;
+
+#[cfg(test)]
+#[path = "perf_gates_tests.rs"]
+mod perf_gates_tests;
