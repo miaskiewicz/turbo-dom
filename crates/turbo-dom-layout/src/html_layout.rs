@@ -499,6 +499,8 @@ fn collect_inline_boxes(
                 },
             )),
         }
+        // Its children are its background layers, which extend over its whole strip.
+        return;
     }
     for c in &frag.children {
         collect_inline_boxes(c, inline, out);

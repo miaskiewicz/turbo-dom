@@ -267,7 +267,11 @@ pub(super) fn edge(
     let right = used.padding.right + border.right + used.margin.right;
     // An RTL box starts at its right side (miaskiewicz/turbo-dom#238).
     let rtl = is_rtl(source);
-    let advance = if start == rtl { right } else { left };
+    let (advance, other) = if start == rtl {
+        (right, left)
+    } else {
+        (left, right)
+    };
     Some(InlineEdge {
         node_id,
         start,
@@ -280,7 +284,16 @@ pub(super) fn edge(
         baseline_shift: 0.0,
         rtl,
         bidi: super::inline::UnicodeBidi::parse(source.get("unicode-bidi")),
+        clone_advance: cloned(source).then_some(other),
     })
+}
+
+/// Whether the box's fragments each repeat its decoration
+/// (`box-decoration-break: clone`, or the `-webkit-` alias).
+pub(super) fn cloned(source: &ComputedStyle) -> bool {
+    ["box-decoration-break", "-webkit-box-decoration-break"]
+        .iter()
+        .any(|property| source.get(property).map(str::trim) == Some("clone"))
 }
 
 pub(super) struct SourcePlacement {
@@ -697,7 +710,117 @@ pub(super) fn fragments(
     for line in &layout.lines {
         builder.line(line, origin.0, origin.1);
     }
-    builder.out
+    let mut out = builder.out;
+    let sources = items
+        .iter()
+        .filter_map(|item| match item {
+            InlineItem::Boundary {
+                node_id,
+                style: source,
+                start: true,
+            } => Some((*node_id, source)),
+            _ => None,
+        })
+        .collect::<HashMap<_, _>>();
+    for (id, source) in sources {
+        background_layers(&mut out, id, source, ctx);
+    }
+    out
+}
+
+/// Move an inline box's background image and gradient off its line fragments onto
+/// one layer per fragment (miaskiewicz/turbo-dom#244): the layer covers the box's
+/// background strip — every fragment's padding box laid end to end in line order
+/// (`box-decoration-break: slice`), or the fragment's own padding box (`clone`) — and
+/// is clipped to the fragment's padding box, so each fragment shows its piece of one
+/// image stretched over the strip.
+fn background_layers(out: &mut [Fragment], id: NodeId, source: &ComputedStyle, ctx: &Ctx) {
+    let image = super::boxgen::background_image(source).and_then(|name| {
+        let intrinsic = super::imgsize::box_intrinsic(ctx.images.resolver, &name, source)?;
+        Some(super::imgsize::placement_of(name, intrinsic))
+    });
+    if image.is_none()
+        && !out
+            .iter()
+            .any(|frag| frag.node_id == id && has_gradient(frag))
+    {
+        return;
+    }
+    let parts = out
+        .iter()
+        .enumerate()
+        .filter(|(_, frag)| frag.node_id == id && padding_box(frag).is_some())
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+    let cloned = cloned(source);
+    let total: f32 = parts
+        .iter()
+        .filter_map(|&index| padding_box(&out[index]))
+        .map(|rect| rect.2)
+        .sum();
+    let mut offset = 0.0;
+    for index in parts {
+        let Some((x, y, width, height)) = padding_box(&out[index]) else {
+            continue;
+        };
+        let (strip_x, strip_w) = if cloned {
+            (x, width)
+        } else {
+            (x - offset, total)
+        };
+        offset += width;
+        let clip = super::fragment::ClipRect {
+            x: x - strip_x,
+            y: 0.0,
+            width,
+            height,
+        };
+        let frag = &mut out[index];
+        let gradient = match &mut frag.content {
+            FragmentContent::Box { gradient, .. } => gradient.take(),
+            _ => None,
+        };
+        let layers = gradient
+            .map(|gradient| FragmentContent::Box {
+                background: None,
+                border: BorderEdges::default(),
+                border_radius: 0.0,
+                shadow: None,
+                gradient: Some(gradient),
+                transform: None,
+            })
+            .into_iter()
+            .chain(image.clone().map(FragmentContent::Image));
+        for content in layers {
+            let mut layer = Fragment::new(id, strip_x, y, strip_w, height, content);
+            layer.clip = Some(clip);
+            frag.children.push(layer);
+        }
+    }
+}
+
+fn has_gradient(frag: &Fragment) -> bool {
+    matches!(
+        &frag.content,
+        FragmentContent::Box {
+            gradient: Some(_),
+            ..
+        }
+    )
+}
+
+/// A box fragment's padding box `(x, y, width, height)`.
+fn padding_box(frag: &Fragment) -> Option<(f32, f32, f32, f32)> {
+    let FragmentContent::Box { border, .. } = &frag.content else {
+        return None;
+    };
+    let edges = border.widths();
+    Some((
+        frag.x + edges.left,
+        frag.y + edges.top,
+        (frag.width - edges.horizontal()).max(0.0),
+        (frag.height - edges.vertical()).max(0.0),
+    ))
 }
 
 fn skip_empty_part(part: &Fragment, value: &Open, last: bool, used: &BoxStyle) -> bool {
@@ -873,6 +996,7 @@ mod defensive_contract_tests {
                 valign: super::super::value::VAlign::Baseline,
                 rtl: false,
                 bidi: super::super::inline::UnicodeBidi::Normal,
+                clone_advance: None,
             },
             x: 20.0,
             decorated: true,

@@ -269,17 +269,36 @@ fn chrome_visual_order(case: &Value) -> Vec<(f64, char)> {
 }
 
 /// The static HTML drive's (`layout_html`) characters on the first line: every glyph's
-/// cluster text at its absolute x, sorted left to right, whitespace left out.
+/// cluster text at its absolute pen x, sorted left to right, whitespace left out.
 fn static_visual_order(case: &Value) -> Vec<(f64, char)> {
     use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
     fn walk(f: &Fragment, x: f32, y: f32, top: &mut Option<f32>, out: &mut Vec<(f64, char)>) {
         let (x, y) = (x + f.x, y + f.y);
-        if let FragmentContent::TextLine { glyphs, text, .. } = &f.content {
+        if let FragmentContent::TextLine {
+            glyphs,
+            text,
+            face,
+            font_size,
+            ..
+        } = &f.content
+        {
             if *top.get_or_insert(y) == y {
-                for glyph in glyphs {
+                // A glyph paints at its pen position plus its GPOS x offset (Noto Sans
+                // Hebrew's right-to-left pair kerning moves the glyph's origin); Chrome's
+                // Range rect is the pen position, so take the offset back out. The run's
+                // shaping is the one direction whose glyphs are the drawn ones.
+                let ids: Vec<u16> = glyphs.iter().map(|g| g.glyph_id).collect();
+                let shaped = [false, true]
+                    .into_iter()
+                    .map(|rtl| face.shape_in(text, rtl))
+                    .find(|shaped| shaped.iter().map(|g| g.glyph_id).eq(ids.iter().copied()))
+                    .expect("the drawn glyphs are the run shaped in one direction");
+                let scale = face.scale(*font_size);
+                for (glyph, shaped) in glyphs.iter().zip(&shaped) {
                     let cluster = &text[glyph.text_start as usize..glyph.text_end as usize];
+                    let pen = x + glyph.x - scale * shaped.x_offset as f32;
                     for ch in cluster.chars().filter(|c| !c.is_whitespace()) {
-                        out.push((f64::from(x + glyph.x), ch));
+                        out.push((f64::from(pen), ch));
                     }
                 }
             }
@@ -312,13 +331,7 @@ fn static_drive_reorders_inline_unicode_bidi_like_chrome_156() {
     let mut compared = 0;
     for case in fixture()["result"].as_array().unwrap() {
         let id = case["id"].as_str().unwrap();
-        // span-embed-ltr-in-rtl: the static drive places the LTR embed's first Hebrew
-        // glyph (visually its last) 0.3px left of Chrome; the native path matches. A known
-        // static-drive gap, held out here until it is fixed.
-        if !id.starts_with("span-")
-            || id.starts_with("span-edges-")
-            || id == "span-embed-ltr-in-rtl"
-        {
+        if !id.starts_with("span-") || id.starts_with("span-edges-") {
             continue;
         }
         compared += 1;
