@@ -42,14 +42,19 @@ const FACE = `@font-face{font-family:"Liberation Serif";src:url(data:font/ttf;ba
 
 // The values: in range, i32::MAX + 1, beyond, u32::MAX, past u32, zero.
 const VALUES = ["7", "2147483648", "3000000000", "4294967295", "4294967296", "0"];
+// The selects go last: a huge list box saturates Chrome's layout (y at LayoutUnit max),
+// which would corrupt every box after it. The controls use the fixture face (#263: the
+// UA monospace was a host font, so the boxes were not comparable).
 const rows = [];
 for (const [i, v] of VALUES.entries()) {
   rows.push(`<div><textarea data-cid="rows-${i}" rows="${v}"></textarea></div>`);
   rows.push(`<div><textarea data-cid="cols-${i}" cols="${v}"></textarea></div>`);
   rows.push(`<div><input data-cid="size-${i}" size="${v}"></div>`);
+}
+for (const [i, v] of VALUES.entries()) {
   rows.push(`<div><select data-cid="select-${i}" size="${v}"><option>a</option><option>b</option></select></div>`);
 }
-const HTML = `<!doctype html><style>body{margin:8px;font-family:"Liberation Serif";font-size:16px}${FACE}</style>${rows.join("")}`;
+const HTML = `<!doctype html><style>body{margin:8px;font-family:"Liberation Serif";font-size:16px}textarea,input,select{font-family:"Liberation Serif"}${FACE}</style>${rows.join("")}`;
 
 const browser = await chromium.launch({
   executablePath: chromePath,

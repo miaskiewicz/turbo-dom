@@ -33,8 +33,7 @@ fn size_attributes_past_i32_are_the_default_like_chrome_156() {
         &mut diags,
     );
     // Each box is compared with its own control at the default (`"0"`, the last value), in
-    // our layout and in Chrome's: "is the default" must agree. (The absolute default
-    // textarea box is a separate matter, not this attribute's parse.)
+    // our layout and in Chrome's: "is the default" must agree.
     let ours = |cid: &str| {
         let b = got
             .iter()
@@ -76,6 +75,22 @@ fn size_attributes_past_i32_are_the_default_like_chrome_156() {
         }
     }
     assert_eq!(compared, 15);
+    // And every textarea / text input box is Chrome's (#263). The 187x38 vs 182x36 default
+    // textarea was the control's: Chrome sized it in the host's UA monospace (the fixture
+    // face now set on the controls), and boxes after the saturating list box were garbage.
+    let mut absolute = 0;
+    for kind in ["rows", "cols", "size"] {
+        for i in 0..=last {
+            let cid = format!("{kind}-{i}");
+            let axis = |(w, h): (f32, f32)| if kind == "size" { (w, 0.0) } else { (w, h) };
+            let (o, c) = (axis(ours(&cid)), axis(chrome(&cid)));
+            absolute += 1;
+            if (o.0 - c.0).abs() > 0.01 || (o.1 - c.1).abs() > 0.01 {
+                failures.push(format!("{cid}: box {o:?}, Chrome {c:?}"));
+            }
+        }
+    }
+    assert_eq!(absolute, 18);
     let mut menu_lists = 0;
     for i in 0..=last {
         let cid = format!("select-{i}");
