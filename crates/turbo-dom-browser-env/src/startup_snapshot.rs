@@ -76,9 +76,15 @@ fn record_references() {
     reset();
 }
 
-/// Build a startup blob whose default context is a bootstrapped shell window. `None` when
-/// the bootstrap in the snapshot isolate handed V8 a callback the recording pass did not
-/// (the blob would abort V8 on serialization).
+/// Build a startup blob whose default context is a bootstrapped shell window. `None` (and a
+/// log line; installs then run the engine scripts) when the build fails before `create_blob`:
+/// the bootstrap in the snapshot isolate handed V8 a callback the recording pass did not (the
+/// blob would abort V8 on serialization), a shell node wrapper stayed reachable, the window's
+/// native state could not be persisted, or the build panicked.
+///
+/// A snapshot creator can only be disposed through `create_blob`: rusty_v8 aborts the
+/// process when one is dropped, including during a panic's unwind. So no failure may unwind
+/// past it: each one leaks the creator instead (a panic is caught for that).
 pub(crate) fn build() -> Option<Blob> {
     record_references();
     let references: &'static [v8::ExternalReference] =
@@ -86,50 +92,56 @@ pub(crate) fn build() -> Option<Blob> {
     let mut isolate = v8::Isolate::snapshot_creator(Some(Cow::Borrowed(references)), None);
     BUILDING.with(|building| building.set(true));
     external_refs::begin_build_log();
-    let stripped = {
-        v8::scope!(let scope, &mut isolate);
-        let context = v8::Context::new(scope, Default::default());
-        let scope = &mut v8::ContextScope::new(scope, context);
-        #[cfg(test)]
-        forced_failure(scope, BuildFailure::IsolateData);
-        bootstrap_engine(scope);
-        #[cfg(test)]
-        forced_failure(scope, BuildFailure::Panic);
-        #[cfg(test)]
-        forced_failure(scope, BuildFailure::RetainWrapper);
-        persist_dom_state(scope);
-        range_live::persist(scope);
-        let stripped = strip_wrappers(scope);
-        // The slot annex is a heap pointer (and a Weak) in the context's embedder data:
-        // serialized, a context made from the blob would read the freed annex.
-        context.clear_all_slots();
-        scope.set_default_context(context);
-        stripped
-    };
+    let prepared = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| prepare(&mut isolate)));
     reset();
-    let retained = still_reachable(&mut isolate, stripped);
-    #[cfg(test)]
-    RETAINED_FOR_TEST.with(|count| count.set(Some(retained)));
+    let failure = match prepared {
+        Ok(Ok(stripped)) => {
+            let retained = still_reachable(&mut isolate, stripped);
+            #[cfg(test)]
+            RETAINED_FOR_TEST.with(|count| count.set(Some(retained)));
+            (retained > 0).then_some("a shell node wrapper is still reachable")
+        }
+        Ok(Err(reason)) => Some(reason),
+        Err(_) => Some("the build panicked"),
+    };
     BUILDING.with(|building| building.set(false));
     let registered = external_refs::end_build_log(references);
-    if retained > 0 || !registered {
-        // A creator isolate can only be disposed through create_blob, which would abort on
-        // an unregistered callback: leak it (a bootstrap that took a code path the recording
-        // pass did not, or an engine closure that kept a stripped node wrapper, whose
-        // rehydrated copy would name no node; never expected).
+    let failure = failure.or((!registered).then_some("an unregistered callback"));
+    if let Some(reason) = failure {
+        // Never expected: a bootstrap that took a code path the recording pass did not, or an
+        // engine closure that kept a stripped node wrapper (its rehydrated copy would name no
+        // node), or a broken build invariant.
         eprintln!(
-            "[rust-dom] startup snapshot not built ({}): installs run the engine scripts",
-            if registered {
-                "a shell node wrapper is still reachable"
-            } else {
-                "an unregistered callback"
-            }
+            "[rust-dom] startup snapshot not built ({reason}): installs run the engine scripts"
         );
         std::mem::forget(isolate);
         return None;
     }
     let data = isolate.create_blob(v8::FunctionCodeHandling::Keep)?;
     Some(Blob { data, references })
+}
+
+/// The snapshot isolate's default context: the bootstrapped shell window, its native state
+/// persisted into the heap and its node wrappers stripped (returned, see [`strip_wrappers`]).
+fn prepare(isolate: &mut v8::OwnedIsolate) -> Result<Vec<v8::Weak<v8::Object>>, &'static str> {
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    #[cfg(test)]
+    forced_failure(scope, BuildFailure::IsolateData);
+    bootstrap_engine(scope);
+    #[cfg(test)]
+    forced_failure(scope, BuildFailure::Panic);
+    #[cfg(test)]
+    forced_failure(scope, BuildFailure::RetainWrapper);
+    persist_dom_state(scope)?;
+    range_live::persist(scope);
+    let stripped = strip_wrappers(scope);
+    // The slot annex is a heap pointer (and a Weak) in the context's embedder data:
+    // serialized, a context made from the blob would read the freed annex.
+    context.clear_all_slots();
+    scope.set_default_context(context);
+    Ok(stripped)
 }
 
 /// Rehydrate the current context, deserialized from a [`build`] blob (turbo-dom#249).
@@ -228,19 +240,19 @@ where
 /// Keep the window document's heap-held native state where [`rehydrate`] finds it: its
 /// `basics_state` object in the captured-function store, the collection-record key as
 /// isolate data.
-fn persist_dom_state(scope: &mut v8::PinScope) {
+/// `Err` when the record key is not the isolate's only data ([`rehydrate`] reads it at
+/// `collection_records::SNAPSHOT_DATA`).
+fn persist_dom_state(scope: &mut v8::PinScope) -> Result<(), &'static str> {
     let basics = DOM.with(|d| d.borrow().as_ref()?.basics_state.clone());
     if let Some(basics) = basics.and_then(|weak| weak.to_local(scope)) {
         context_rehydrate::store(scope, BASICS_STATE, basics.into());
     }
     if let Some(key) = collection_records::key(scope) {
-        let index = scope.add_isolate_data(key);
-        assert_eq!(
-            index,
-            collection_records::SNAPSHOT_DATA,
-            "the record key is the only isolate data"
-        );
+        if scope.add_isolate_data(key) != collection_records::SNAPSHOT_DATA {
+            return Err("the record key is not the only isolate data");
+        }
     }
+    Ok(())
 }
 
 /// Clear the node wrappers' internal fields (handle id, owner tag) before serialization.
