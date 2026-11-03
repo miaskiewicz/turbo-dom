@@ -108,8 +108,11 @@ fn a_huge_img_paints_with_bounded_scratch() {
     let peak = largest_allocation(|| {
         png = screenshot_png_with_opts(html, "", VIEWPORT, &assets, false, false).unwrap();
     });
-    // The box is far taller than the canvas (and wider, unless capped to its column).
+    // Chrome 156 lays the box out 40000px wide (no cap to its column): the red left
+    // half covers the whole 200px canvas (0.7.0 round-2 review, finding 2).
     assert_eq!(pixel(&png, 10, 10), [255, 0, 0]);
+    assert_eq!(pixel(&png, 190, 190), [255, 0, 0]);
+    assert_eq!(pixel(&png, 150, 10), [255, 0, 0]);
     assert!(peak < 16 << 20, "largest allocation {peak} bytes");
 }
 
