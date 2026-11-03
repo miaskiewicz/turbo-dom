@@ -229,9 +229,10 @@ the host-font policy itself read system fonts.
 Windows x64: the napi build, and the V8 / browser-env matrix with the default and
 simdutf archives. macOS arm64 builds and jobs run only in the release workflow.
 `publish.yml` calls `ci.yml` with `darwin: true`. Linux binaries build on ubuntu-22.04 and a
-guard (`scripts/check-glibc-ceiling.sh`) rejects any addon needing glibc above 2.35. A newer
-push to a pull request cancels its superseded CI run; `main`, tag and publish runs are never
-cancelled.
+guard (`scripts/check-glibc-ceiling.sh`) rejects any addon that needs glibc above 2.35. The
+guard also fails when an expected addon is missing or unreadable. A newer push to a pull
+request cancels its superseded CI run. `main`, tag and publish runs each get their own
+concurrency group, so they are never cancelled or dropped while pending.
 
 ## Releasing
 
