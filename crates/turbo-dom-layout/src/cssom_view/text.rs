@@ -297,6 +297,7 @@ mod tests {
                     if (source, offset) == expected
                         && close(r.x, chrome[0])
                         && close(r.y, chrome[1])
+                        && close(r.width, chrome[2])
                         && close(r.height, chrome[3]) => {}
                 got => failures.push(format!("{point:?}: {got:?}, Chrome {want}")),
             }
@@ -309,6 +310,13 @@ mod tests {
     fn caret_positions_from_points_match_chrome_156() {
         let mut failures = caret_failures("caret-from-point", |point| !GAPS.contains(&point));
         failures.extend(caret_failures("caret-wrap-and-markers", |_| true));
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    /// miaskiewicz/turbo-dom#239: carets in vertical text are horizontal, across the line.
+    #[test]
+    fn carets_in_vertical_text_match_chrome_156() {
+        let failures = caret_failures("vertical-range-and-carets", |_| true);
         assert!(failures.is_empty(), "{}", failures.join("\n"));
     }
 
