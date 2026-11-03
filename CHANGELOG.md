@@ -285,7 +285,9 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
   `createCDATASection`, XML `innerHTML` / `outerHTML`. Internal DTD subsets apply their
   ATTLIST defaults (attributes and namespace declarations, also on elements an entity
   spells; #261) and the `xmlns` attributes of entity-expanded elements stay on their own
-  elements.
+  elements. A default inserts each entity's replacement text once, verbatim (as Chrome
+  does), within an expansion budget of 10x the source plus 1 MB ("Entity too big" past
+  it), so defaults cannot amplify.
 - HTML processing instructions in every installed or parsed document (#135).
 - `CSSAnimation` / `CSSTransition` in `getAnimations()` (#187), `transition-property:
   all`, no CSS animations under `display: none` ancestors; `getKeyframes()` property order

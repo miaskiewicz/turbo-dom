@@ -124,6 +124,93 @@ fn entity_amplification_is_bounded() {
     assert_eq!(text, "<!DOCTYPE r><r>lollollollol</r>");
 }
 
+/// ATTLIST defaults cannot amplify: a default inserts each declared entity's replacement
+/// text once, verbatim (Chrome 156; the control's `attlistDefault*` rows), so ten levels
+/// of ten references, a self-referencing entity and a defaulted namespace declaration
+/// (the pre-parse rewrite) each finish at once. What a default can still multiply — one
+/// large entity referenced many times, per element — stops at the expansion budget (10x
+/// the source plus 1 MB) with a `<parsererror>` (Chrome builds such a document; this
+/// native parser stops instead).
+#[test]
+fn attlist_default_amplification_is_bounded() {
+    let mut laughs = String::from("<!DOCTYPE r [<!ENTITY l0 \"lol\">");
+    for level in 1..=9 {
+        let reference = format!("&l{};", level - 1);
+        laughs.push_str(&format!("<!ENTITY l{level} \"{}\">", reference.repeat(10)));
+    }
+    let l8 = "&amp;l8;".repeat(10);
+    let self_reference = "<!DOCTYPE r [<!ENTITY e \"&e;&e;\">";
+    let cases = [
+        (
+            format!("{laughs}<!ATTLIST r a CDATA \"&l9;\">]><r/>"),
+            format!("<!DOCTYPE r><r a=\"{l8}\"/>"),
+        ),
+        (
+            format!("{laughs}<!ATTLIST r xmlns:p CDATA \"&l9;\">]><r/>"),
+            format!("<!DOCTYPE r><r xmlns:p=\"{l8}\"/>"),
+        ),
+        (
+            format!("{self_reference}<!ATTLIST r a CDATA \"&e;\">]><r/>"),
+            "<!DOCTYPE r><r a=\"&amp;e;&amp;e;\"/>".to_owned(),
+        ),
+        (
+            format!("{self_reference}<!ATTLIST r xmlns:p CDATA \"&e;\">]><r><p:c/></r>"),
+            "<!DOCTYPE r><r xmlns:p=\"&amp;e;&amp;e;\"><p:c/></r>".to_owned(),
+        ),
+    ];
+    for (source, expected) in cases {
+        let started = std::time::Instant::now();
+        let parsed = xml_documents::parse(&source);
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(5),
+            "{source}"
+        );
+        assert!(parsed.well_formed, "{source}");
+        let text = xml_documents::serialize(&parsed.tree, parsed.tree.root(), None);
+        assert_eq!(text, expected);
+    }
+    let big = "x".repeat(100_000);
+    // within the budget: 50 x 10 KB = 500 KB of defaults from a ~10 KB source
+    let source = format!(
+        "<!DOCTYPE r [<!ENTITY e \"{}\"><!ATTLIST r a CDATA \"{}\">]><r/>",
+        &big[..10_000],
+        "&e;".repeat(50)
+    );
+    let parsed = xml_documents::parse(&source);
+    assert!(parsed.well_formed);
+    let text = xml_documents::serialize(&parsed.tree, parsed.tree.root(), None);
+    assert_eq!(text.len(), "<!DOCTYPE r><r a=\"\"/>".len() + 500_000);
+    // over it: 1000 x 100 KB (one default, a namespace default, per element)
+    let over = [
+        format!(
+            "<!DOCTYPE r [<!ENTITY e \"{big}\"><!ATTLIST r a CDATA \"{}\">]><r/>",
+            "&e;".repeat(1000)
+        ),
+        format!(
+            "<!DOCTYPE r [<!ENTITY e \"{big}\"><!ATTLIST r xmlns:p CDATA \"{}\">]><r/>",
+            "&e;".repeat(1000)
+        ),
+        format!(
+            "<!DOCTYPE r [<!ENTITY e \"{big}\"><!ATTLIST s a CDATA \"&e;\">]><r>{}</r>",
+            "<s/>".repeat(1000)
+        ),
+    ];
+    for source in over {
+        let started = std::time::Instant::now();
+        let parsed = xml_documents::parse(&source);
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
+        assert!(!parsed.well_formed);
+        let text = xml_documents::serialize(&parsed.tree, parsed.tree.root(), None);
+        assert!(
+            text.contains("Entity too big"),
+            "{}",
+            &text[..text.len().min(2000)]
+        );
+        // what was built before the error stays within the budget
+        assert!(text.len() < 12 * source.len() + 1_000_000, "{}", text.len());
+    }
+}
+
 /// `parse_xml_document_units` reports whether the source was well-formed, so an embedder
 /// (turbo-surf's `responseXML`) need not look for a `<parsererror>` in the tree: a valid
 /// document that itself holds a `parsererror` element is still well-formed.

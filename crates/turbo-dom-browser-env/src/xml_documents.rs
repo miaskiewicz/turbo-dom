@@ -174,7 +174,7 @@ impl<'a> Builder<'a, '_> {
                 ),
                 None => None,
             };
-            defaults.push((namespace, attribute, self.tags.expand(value)));
+            defaults.push((namespace, attribute, self.tags.expand(value)?));
         }
         Ok(defaults)
     }
@@ -251,11 +251,20 @@ struct StartTags<'a> {
     namespace_defaults: std::collections::HashMap<&'a str, Vec<(&'a str, &'a str)>>,
     /// How deep the scan follows entity references (0: not at all).
     entity_depth: usize,
+    /// Bytes ATTLIST defaults may still expand to ([`EXPANSION_ALLOWANCE`]).
+    budget: std::cell::Cell<usize>,
 }
 
 /// Entity references followed at once: xml-rs stops a reparse deeper than 10 (as Chrome
 /// 156 does, "Entity too big"), so the scan never needs more.
-const ENTITY_SCAN_DEPTH: usize = 64;
+const ENTITY_SCAN_DEPTH: usize = 10;
+
+/// What all of a document's expanded ATTLIST defaults may add up to: 10x the source plus
+/// xml-rs's `max_entity_expansion_length` (1 MB). A default inserts each entity's
+/// replacement text once, so it cannot grow exponentially, but one large entity
+/// referenced many times (per element) still multiplies; past the budget the parse stops
+/// with "Entity too big" (Chrome 156 builds such documents).
+const EXPANSION_ALLOWANCE: usize = 1_000_000;
 
 impl<'a> StartTags<'a> {
     fn new(source: &'a str) -> Self {
@@ -267,6 +276,12 @@ impl<'a> StartTags<'a> {
             defaults: std::collections::HashMap::new(),
             namespace_defaults: std::collections::HashMap::new(),
             entity_depth: ENTITY_SCAN_DEPTH,
+            budget: std::cell::Cell::new(
+                source
+                    .len()
+                    .saturating_mul(10)
+                    .saturating_add(EXPANSION_ALLOWANCE),
+            ),
         }
     }
     /// Skip past `end`, or to the end of the current text.
@@ -445,44 +460,28 @@ impl<'a> StartTags<'a> {
         }
         self.skip(">");
     }
-    /// An attribute default's normalized value: references expanded (declared entities
-    /// through their replacement text), literal tab / line feed / carriage return as spaces.
-    fn expand(&self, value: &str) -> String {
+    /// An attribute default's normalized value (Chrome 156): its own references expanded
+    /// and literal tab / line feed / carriage return as spaces; a declared entity's
+    /// replacement text goes in once, verbatim (character references decoded, other
+    /// references and whitespace kept as written). "Entity too big" past the budget.
+    fn expand(&self, value: &str) -> Result<String, String> {
         let mut out = String::new();
-        self.expand_into(&mut out, value, 0);
-        out
-    }
-    fn expand_into(&self, out: &mut String, value: &str, depth: usize) {
         let mut rest = value;
         while let Some(index) = rest.find('&') {
-            out.extend(rest[..index].chars().map(|c| {
-                if matches!(c, '\t' | '\n' | '\r') {
-                    ' '
-                } else {
-                    c
-                }
-            }));
+            push_normalized(&mut out, &rest[..index]);
             let after = &rest[index + 1..];
             let end = after.find(';').unwrap_or(after.len());
             let name = &after[..end];
-            if let Some(text) = self
-                .entities
-                .get(name)
-                .filter(|_| depth < ENTITY_SCAN_DEPTH)
-            {
-                self.expand_into(out, text, depth + 1);
-            } else {
-                out.extend(character_reference(name));
+            match self.entities.get(name) {
+                Some(text) => replacement_text(&mut out, text),
+                None => out.extend(character_reference(name)),
             }
             rest = &after[(end + 1).min(after.len())..];
         }
-        out.extend(rest.chars().map(|c| {
-            if matches!(c, '\t' | '\n' | '\r') {
-                ' '
-            } else {
-                c
-            }
-        }));
+        push_normalized(&mut out, rest);
+        let left = self.budget.get().checked_sub(out.len());
+        self.budget.set(left.unwrap_or(0));
+        left.map(|_| out).ok_or_else(|| "Entity too big".to_owned())
     }
     fn attributes(&mut self) -> (&'a str, Vec<&'a str>) {
         let end = self
@@ -520,6 +519,41 @@ impl<'a> StartTags<'a> {
             .map(|(_, prefixes)| prefixes)
             .unwrap_or_default()
     }
+}
+
+/// `text` with literal tab / line feed / carriage return as spaces.
+fn push_normalized(out: &mut String, text: &str) {
+    out.extend(text.chars().map(|c| {
+        if matches!(c, '\t' | '\n' | '\r') {
+            ' '
+        } else {
+            c
+        }
+    }));
+}
+
+/// An entity's replacement text: its character references decoded (as declaring the
+/// entity does), every other reference kept as written.
+fn replacement_text(out: &mut String, text: &str) {
+    let mut rest = text;
+    while let Some(index) = rest.find("&#") {
+        out.push_str(&rest[..index]);
+        let after = &rest[index + 1..];
+        let decoded = after
+            .find(';')
+            .and_then(|end| Some((character_reference(&after[..end])?, end)));
+        match decoded {
+            Some((c, end)) => {
+                out.push(c);
+                rest = &after[end + 1..];
+            }
+            None => {
+                out.push('&');
+                rest = after;
+            }
+        }
+    }
+    out.push_str(rest);
 }
 
 /// A predefined (`lt`, `gt`, `amp`, `apos`, `quot`) or character (`#N`, `#xN`)
@@ -693,21 +727,29 @@ fn text_position(before: &str) -> xml::common::TextPosition {
 /// and length in characters.
 type Insertion = (u64, u64, u64);
 
+/// [`with_namespace_defaults`]' rewritten source and its insertions.
+type Rewrite = Option<(String, Vec<Insertion>)>;
+
 /// The source with the ATTLIST-defaulted namespace declarations each start tag does not
 /// spell written into the tag, so xml-rs binds them while it reads the tag (Chrome binds
 /// defaulted declarations like specified ones), and the insertions made. None when the
-/// internal subset defaults no namespace declaration.
-fn with_namespace_defaults(source: &str) -> Option<(String, Vec<Insertion>)> {
-    // Whole-text scans never follow entity references (billion laughs): each start tag
-    // is written into where it is spelled, the source or an entity's literal value.
+/// internal subset defaults no namespace declaration; "Entity too big" (at the tag that
+/// spent it) when the defaults exceed the expansion budget.
+fn with_namespace_defaults(source: &str) -> Result<Rewrite, xml::reader::Error> {
+    // The scans follow no entity reference: each start tag is written into where it is
+    // spelled, the source or an entity's literal value. A default's value expands each
+    // entity once (`StartTags::expand`) within the budget, so nothing here amplifies.
     let mut scan = StartTags::new(source);
     scan.entity_depth = 0;
     while scan.next_tag().is_some() {}
     if scan.namespace_defaults.is_empty() {
-        return None;
+        return Ok(None);
     }
     let mut inserted = Vec::new();
-    declarations_in(source, 0, '"', &scan, &mut inserted);
+    let too_big = |(offset, message): (usize, String)| {
+        xml::reader::Error::from((&text_position(&source[..offset]), message))
+    };
+    declarations_in(source, 0, '"', &scan, &mut inserted).map_err(too_big)?;
     for &value in scan.entities.values() {
         let offset = value.as_ptr() as usize - source.as_ptr() as usize;
         // the literal's own delimiter cannot appear in what is written into it
@@ -716,7 +758,7 @@ fn with_namespace_defaults(source: &str) -> Option<(String, Vec<Insertion>)> {
         } else {
             '"'
         };
-        declarations_in(value, offset, quote, &scan, &mut inserted);
+        declarations_in(value, offset, quote, &scan, &mut inserted).map_err(too_big)?;
     }
     inserted.sort_by_key(|&(offset, _)| offset);
     let mut out = String::new();
@@ -730,36 +772,40 @@ fn with_namespace_defaults(source: &str) -> Option<(String, Vec<Insertion>)> {
         insertions.push((position.row, position.column, text.chars().count() as u64));
     }
     out.push_str(&source[copied..]);
-    Some((out, insertions))
+    Ok(Some((out, insertions)))
 }
 
 /// The defaulted namespace declarations (from `scan`'s internal subset) each start tag
 /// spelled in `text` lacks, as (offset in the source, text to insert) pairs; `text`
-/// starts at `base` in the source and the values are delimited by `quote`.
+/// starts at `base` in the source and the values are delimited by `quote`. A value past
+/// the expansion budget is its error at the tag's end offset.
 fn declarations_in(
     text: &str,
     base: usize,
     quote: char,
     scan: &StartTags<'_>,
     out: &mut Vec<(usize, String)>,
-) {
+) -> Result<(), (usize, String)> {
     let mut tags = StartTags::new(text);
     tags.entity_depth = 0;
     while let Some((name, declared)) = tags.next_tag() {
         let Some(defaults) = scan.namespace_defaults.get(name) else {
             continue;
         };
+        let offset = base + text.len() - tags.rest.len();
         let mut inserted = String::new();
         for &(attribute, value) in defaults {
             if !declared.contains(&attribute.strip_prefix("xmlns:").unwrap_or("")) {
+                let value = scan.expand(value).map_err(|message| (offset, message))?;
                 let mut escaped = String::new();
-                escape(&mut escaped, &scan.expand(value), true);
+                escape(&mut escaped, &value, true);
                 let escaped = escaped.replace('\'', "&apos;");
                 inserted.push_str(&format!(" {attribute}={quote}{escaped}{quote}"));
             }
         }
-        out.push((base + text.len() - tags.rest.len(), inserted));
+        out.push((offset, inserted));
     }
+    Ok(())
 }
 
 /// `error` at its position in the source before [`with_namespace_defaults`] (a position
@@ -789,13 +835,14 @@ pub(crate) fn parse(source: &str) -> ParsedXml {
     }
     let mut declaration = None;
     let mut well_formed = true;
-    let rewritten = with_namespace_defaults(source);
-    let text = rewritten.as_ref().map_or(source, |(text, _)| text.as_str());
-    if let Err(error) = build(&mut tree, root, text, &mut declaration) {
-        let error = match &rewritten {
-            Some((_, insertions)) => unshift(&error, insertions),
-            None => error,
-        };
+    let built = match with_namespace_defaults(source) {
+        // a default past the expansion budget stops the parse before any node
+        Err(error) => Err(error),
+        Ok(None) => build(&mut tree, root, source, &mut declaration),
+        Ok(Some((text, insertions))) => build(&mut tree, root, &text, &mut declaration)
+            .map_err(|error| unshift(&error, &insertions)),
+    };
+    if let Err(error) = built {
         report(&mut tree, &error);
         well_formed = false;
     }
