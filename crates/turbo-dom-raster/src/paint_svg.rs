@@ -13,7 +13,6 @@ use turbo_dom_layout::{
     PositionedGlyph, Rgba, TilePattern,
 };
 
-use crate::glyph::{self, Pen, Tracer};
 use crate::image_paint::{self, DecodedAssets};
 use crate::rrect::{self, Seg};
 
@@ -144,11 +143,13 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             upright,
             ..
         } => {
-            if *vertical && *upright {
-                paint_upright_text(svg, f, glyphs, face, (*font_size, *color));
-            } else {
-                paint_text(svg, (f, *vertical), glyphs, face, *font_size, *color);
-            }
+            paint_text(
+                svg,
+                (f, *vertical, *upright),
+                glyphs,
+                face,
+                (*font_size, *color),
+            );
         }
         FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
         FragmentContent::Tiles(pattern) => paint_tiles(svg, f, pattern, images),
@@ -598,39 +599,14 @@ fn paint_round_border(svg: &mut String, f: &Fragment, b: &BorderEdges, radii: &B
     }
 }
 
-/// An SVG path-data sink for [`glyph::trace_glyph`].
-#[derive(Default)]
-struct PathSink(String);
-
-impl Tracer for PathSink {
-    fn move_to(&mut self, x: f32, y: f32) {
-        let _ = write!(self.0, "M{x:.2} {y:.2} ");
-    }
-    fn line_to(&mut self, x: f32, y: f32) {
-        let _ = write!(self.0, "L{x:.2} {y:.2} ");
-    }
-    fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
-        let _ = write!(self.0, "Q{cx:.2} {cy:.2} {x:.2} {y:.2} ");
-    }
-    fn cubic_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
-        let _ = write!(
-            self.0,
-            "C{c1x:.2} {c1y:.2} {c2x:.2} {c2y:.2} {x:.2} {y:.2} "
-        );
-    }
-    fn close(&mut self) {
-        self.0.push_str("Z ");
-    }
-}
-
-/// Emit a line's glyph outlines as one filled `<path>` (a transparent colour, or a run
-/// with no outlined glyph, emits nothing). The face's `units_per_em` is non-zero:
-/// `ttf-parser` rejects a `head` outside 16..=16384.
-/// A turned (vertical) run of upright glyphs: each glyph its own path, turned back a
-/// quarter about its pen inside the run's turn (`paint_png::upright_turn`).
-fn paint_upright_text(
+/// Emit a line's glyph run as one filled `<path>` of the outline the raster painter
+/// fills ([`crate::glyph_raster::run_outline`]: snapped, lifted and emboldened like
+/// Chrome's glyphs, in page coordinates; a transparent colour or a run with no outlined
+/// glyph emits nothing). Chrome's luminance pre-blend has no SVG equivalent, so the
+/// vector screenshot's glyph edges keep a plain source-over blend.
+fn paint_text(
     svg: &mut String,
-    f: &Fragment,
+    (f, vertical, upright): (&Fragment, bool, bool),
     glyphs: &[PositionedGlyph],
     face: &FontFace,
     (font_size, color): (f32, Rgba),
@@ -638,79 +614,12 @@ fn paint_upright_text(
     if color.a == 0 {
         return;
     }
-    let scale = font_size / f32::from(face.units_per_em());
-    let outline = glyph::outline_face(face);
-    let frame = crate::paint_png::glyph_frame(f, true);
-    for g in glyphs {
-        let pen = Pen {
-            origin_x: f.x + g.x,
-            baseline_y: f.y + g.y,
-            scale,
-        };
-        let mut sink = PathSink::default();
-        glyph::trace_glyph(&outline, g.glyph_id, pen, &mut sink);
-        if sink.0.is_empty() {
-            continue;
-        }
-        let t = frame.pre_concat(crate::paint_png::upright_turn(
-            true,
-            (pen.origin_x, pen.baseline_y),
-        ));
-        let _ = writeln!(
-            svg,
-            "<path d=\"{}\" {} transform=\"matrix({:.4} {:.4} {:.4} {:.4} {:.2} {:.2})\"/>",
-            sink.0.trim_end(),
-            fill_attrs(color),
-            t.sx,
-            t.ky,
-            t.kx,
-            t.sy,
-            t.tx,
-            t.ty
-        );
-    }
-}
-
-fn paint_text(
-    svg: &mut String,
-    (f, vertical): (&Fragment, bool),
-    glyphs: &[PositionedGlyph],
-    face: &FontFace,
-    font_size: f32,
-    color: Rgba,
-) {
-    if color.a == 0 {
-        return;
-    }
-    let scale = font_size / f32::from(face.units_per_em());
-    let face = glyph::outline_face(face);
-    let mut sink = PathSink::default();
-    for g in glyphs {
-        let pen = Pen {
-            origin_x: f.x + g.x,
-            baseline_y: f.y + g.y,
-            scale,
-        };
-        glyph::trace_glyph(&face, g.glyph_id, pen, &mut sink);
-    }
-    if !sink.0.is_empty() {
-        // A vertical line's run turns a quarter clockwise about the fragment
-        // (`crate::paint_png::glyph_frame`).
-        let frame = if vertical {
-            format!(
-                " transform=\"matrix(0 1 -1 0 {:.2} {:.2})\"",
-                f.x + f.width + f.y,
-                f.y - f.x
-            )
-        } else {
-            String::new()
-        };
-        let _ = writeln!(
-            svg,
-            "<path d=\"{}\" {}{frame}/>",
-            sink.0.trim_end(),
-            fill_attrs(color)
-        );
+    let frame = crate::paint_png::glyph_frame(f, vertical);
+    let run =
+        crate::glyph_raster::run_outline((f, vertical && upright), glyphs, face, font_size, frame);
+    let d = run.svg_path();
+    if !d.is_empty() {
+        let _ = writeln!(svg, "<path d=\"{d}\" {}/>", fill_attrs(color));
     }
 }
 
@@ -1310,7 +1219,7 @@ mod tests {
         let reg = FontRegistry::new();
         for family in ["Inter", "Liberation Serif"] {
             let face = reg.select(&[family], 400, false).unwrap().clone();
-            let ttf = glyph::outline_face(&face);
+            let ttf = crate::glyph::outline_face(&face);
             let scale = 24.0 / f32::from(face.units_per_em());
             let mut x = 0.0;
             let glyphs: Vec<PositionedGlyph> = face
@@ -1349,11 +1258,28 @@ mod tests {
                 (d.1, d.2) = (7.0 + g.x, 4.0 + g.y);
                 ttf.outline_glyph(ttf_parser::GlyphId(g.glyph_id), &mut d);
             }
-            assert_eq!(
-                body(&line, &HashMap::new()),
-                format!("<path d=\"{}\" fill=\"#ff0000\"/>\n", d.0.trim_end()),
-                "{family}"
+            // The same commands, each point within a pixel of the bare outline's: the
+            // path is the outline Chrome fills, grown and snapped a fraction of a pixel
+            // (#266).
+            let got = body(&line, &HashMap::new());
+            let path = got
+                .strip_prefix("<path d=\"")
+                .and_then(|p| p.strip_suffix("\" fill=\"#ff0000\"/>\n"))
+                .expect("one red path");
+            let (got, want): (Vec<&str>, Vec<&str>) = (
+                path.split_whitespace().collect(),
+                d.0.split_whitespace().collect(),
             );
+            assert_eq!(got.len(), want.len(), "{family}");
+            for (g, w) in got.iter().zip(&want) {
+                let num = |t: &str| t.trim_start_matches(char::is_alphabetic).parse::<f32>();
+                let command = |t: &str| t.chars().take_while(|c| c.is_alphabetic()).count();
+                assert_eq!(&g[..command(g)], &w[..command(w)], "{family}");
+                let (Ok(g), Ok(w)) = (num(g), num(w)) else {
+                    continue;
+                };
+                assert!((g - w).abs() < 1.0, "{family}: {g} vs {w}");
+            }
         }
     }
 

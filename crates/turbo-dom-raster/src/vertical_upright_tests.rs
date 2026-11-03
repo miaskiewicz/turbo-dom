@@ -116,8 +116,8 @@ fn upright_text_paints_like_chrome_156_svg() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// An upright run paints one path per inked glyph (a space has no outline) and nothing
-/// when transparent.
+/// An upright run paints one path of its glyphs (each turned back about its pen; a space
+/// has no outline) and nothing when transparent.
 #[test]
 fn upright_svg_paths_skip_blank_glyphs_and_transparent_runs() {
     let fonts = fonts();
@@ -131,6 +131,6 @@ fn upright_svg_paths_skip_blank_glyphs_and_transparent_runs() {
         let assets = crate::image_paint::decode_all(&HashMap::new());
         crate::paint_svg::paint(&galley, 800, 600, WHITE, &assets)
     };
-    assert_eq!(svg("red").matches("transform=\"matrix(").count(), 2);
-    assert_eq!(svg("transparent").matches("transform=\"matrix(").count(), 0);
+    assert_eq!(svg("red").matches("<path d=").count(), 1);
+    assert_eq!(svg("transparent").matches("<path d=").count(), 0);
 }

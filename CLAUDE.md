@@ -250,7 +250,12 @@ package or publish workflow.
   and test-only tree literals for this crate's and turbo-html2pdf-core's tests (the crate's
   own integration tests enable it through a self dev-dependency).
 - `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
-  (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Relocated verbatim from
+  (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Page text is painted like
+  Chrome 156 on macOS (`glyph_raster.rs`, turbo-dom#266): exact-area coverage of the
+  outline grown and lifted `0.005 * size` px (CoreText smoothing), Skia subpixel pens
+  and its luminance pre-blend (gamma 1.8, contrast 1); the SVG painter emits the same
+  grown outline. The residual vs Chrome is pinned per case by
+  `tests/glyph_coverage_chrome.rs` (`scripts/glyph-coverage-chrome-control.mjs`). Relocated verbatim from
   turbo-surf-raster 0.5.5 (S1). Decodes images through turbo-dom-layout's image layer (PNG,
   SVG at 1x) and the `image` crate (JPEG/GIF/WebP/BMP/ICO/CUR, resize, PNG re-encode for
   SVG `data:` URIs), AVIF via `rav1d` under the off-by-default `avif` feature (P5b
