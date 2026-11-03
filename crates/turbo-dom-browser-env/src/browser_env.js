@@ -103,6 +103,7 @@
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
+  var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
   // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
   if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
@@ -653,6 +654,7 @@
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     if(pseudo||sink||!el||typeof el!=='object')return computeStyleFresh(el,snapshots,sink,pseudo,null);
     var local=computedSnapshotGet(snapshots,el);if(local)return local;
+    if(noteStyleLookup)noteStyleLookup();
     var key=computedCacheKey(el);
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
     var deps=[],outer=computedVolatile,outerState=computedStateRead,snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;

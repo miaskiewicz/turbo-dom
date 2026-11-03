@@ -78,6 +78,19 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
         let key = v8::String::new(scope, "__cssTestCssUpdates").unwrap();
         global.set(scope, key.into(), getter.into());
     }
+    if code.contains("__cssTestStyleLookups") {
+        // The computed-style cache lookups behind the test-only `__noteStyleLookup` hook.
+        fn style_lookups(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::style_lookups() as f64).into());
+        }
+        let getter = v8::Function::new(scope, style_lookups).unwrap();
+        let key = v8::String::new(scope, "__cssTestStyleLookups").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
     if code.contains("__fontInertDoc") {
         let document = parse_html_document(scope, "<!doctype html><body><b>inert</b>", false);
         let key = v8::String::new(scope, "__fontInertDoc").unwrap();
@@ -1431,4 +1444,35 @@ fn adopted_style_sheets_reject_non_objects_like_chrome156() {
     let d = "d:TypeError:Failed to set the 'adoptedStyleSheets' property on 'Document': The provided value cannot be converted to a sequence.";
     let s = "s:TypeError:Failed to set the 'adoptedStyleSheets' property on 'ShadowRoot': The provided value cannot be converted to a sequence.";
     assert_eq!(value, serde_json::json!([d, d, d, d, s, s, s, s]));
+}
+
+/// A transitioned element's style read after a DOM change checks whether the element is
+/// rendered (no display:none ancestor). That check resolves each ancestor once per read, not
+/// once per ancestor per level: a read stays linear in the tree depth (MUI's
+/// TextareaAutosize reads its textarea's style between mutations inside a deep dialog).
+#[test]
+fn rendered_check_of_a_transition_read_is_linear_in_depth() {
+    let value = run(
+        "<style>.t{transition:opacity 1s}</style><body></body>",
+        r#"(()=>{
+      const depth=40;let parent=document.body;
+      for(let i=0;i<depth;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const el=document.createElement('div');el.className='t';parent.appendChild(el);
+      const other=document.createElement('span');document.body.appendChild(other);
+      getComputedStyle(el).opacity;
+      const counts=[];
+      for(let i=0;i<3;i++){
+        other.style.width=i+'px';
+        const before=__cssTestStyleLookups();
+        const opacity=getComputedStyle(el).opacity;
+        counts.push(__cssTestStyleLookups()-before);
+        if(opacity!=='1')throw Error('opacity '+opacity);
+      }
+      return JSON.stringify({depth,max:Math.max(...counts)});
+    })()"#,
+    );
+    let depth = value["depth"].as_u64().unwrap();
+    let max = value["max"].as_u64().unwrap();
+    assert!(max > 0, "the hook counts lookups");
+    assert!(max <= 8 * (depth + 2), "{max} style lookups for one read at depth {depth}");
 }
