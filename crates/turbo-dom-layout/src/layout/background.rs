@@ -82,43 +82,34 @@ impl Props {
     }
 }
 
-/// The box's background properties, longhands over the shorthand's parts.
+/// The box's background properties, from the longhands (the cascade expands the
+/// `background` shorthand into them, miaskiewicz/turbo-dom#256).
 pub(crate) fn props(style: &ComputedStyle, font_size: f32) -> Props {
-    let shorthand = Shorthand::parse(style.get("background").unwrap_or(""));
+    let tokens = |name: &str| -> Vec<String> {
+        style
+            .get(name)
+            .map(|v| {
+                css_value_tokens(v)
+                    .into_iter()
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
     let size = style
         .get("background-size")
-        .or(shorthand.size.as_deref())
         .and_then(|v| parse_size(v, font_size))
         .unwrap_or(Size::Lengths(LengthPct::Auto, LengthPct::Auto));
-    let position = style
-        .get("background-position")
-        .map(|v| {
-            css_value_tokens(v)
-                .into_iter()
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or(shorthand.position);
-    let position = parse_position(&position, font_size).unwrap_or((START, START));
-    let repeat = style
-        .get("background-repeat")
-        .map(|v| {
-            css_value_tokens(v)
-                .into_iter()
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or(shorthand.repeat);
-    let boxes = &shorthand.boxes;
+    let position =
+        parse_position(&tokens("background-position"), font_size).unwrap_or((START, START));
+    let repeat = tokens("background-repeat");
     let origin = style
         .get("background-origin")
         .and_then(area)
-        .or_else(|| boxes.first().copied())
         .unwrap_or(Area::Padding);
     let clip = style
         .get("background-clip")
         .and_then(area)
-        .or_else(|| boxes.get(1).or(boxes.first()).copied())
         .unwrap_or(Area::Border);
     Props {
         size,
@@ -127,74 +118,6 @@ pub(crate) fn props(style: &ComputedStyle, font_size: f32) -> Props {
         origin,
         clip,
     }
-}
-
-/// The parts of a `background` shorthand this module reads.
-#[derive(Default)]
-struct Shorthand {
-    size: Option<String>,
-    position: Vec<String>,
-    repeat: Vec<String>,
-    boxes: Vec<Area>,
-}
-
-impl Shorthand {
-    fn parse(value: &str) -> Shorthand {
-        let mut out = Shorthand::default();
-        let mut after_slash = 0;
-        let mut size = Vec::new();
-        for token in css_value_tokens(value) {
-            // A `url(...)` / function keeps its slashes.
-            let parts: Vec<&str> = if token.contains('(') {
-                vec![token]
-            } else {
-                token.split('/').collect()
-            };
-            for (index, part) in parts.into_iter().enumerate() {
-                if index > 0 {
-                    after_slash = 2;
-                }
-                if !part.is_empty() {
-                    out.token(part, &mut after_slash, &mut size);
-                }
-            }
-        }
-        out.size = (!size.is_empty()).then(|| size.join(" "));
-        out
-    }
-
-    fn token(&mut self, part: &str, after_slash: &mut usize, size: &mut Vec<String>) {
-        let lower = part.to_ascii_lowercase();
-        if *after_slash > 0 && sizeish(&lower) {
-            *after_slash -= 1;
-            size.push(lower);
-            return;
-        }
-        *after_slash = 0;
-        if let Some(area) = area(&lower) {
-            self.boxes.push(area);
-        } else if matches!(
-            lower.as_str(),
-            "repeat" | "no-repeat" | "repeat-x" | "repeat-y" | "space" | "round"
-        ) {
-            self.repeat.push(lower);
-        } else if positionish(&lower) {
-            self.position.push(lower);
-        }
-    }
-}
-
-fn sizeish(token: &str) -> bool {
-    matches!(token, "auto" | "cover" | "contain") || lengthish(token)
-}
-
-fn positionish(token: &str) -> bool {
-    matches!(token, "left" | "right" | "top" | "bottom" | "center") || lengthish(token)
-}
-
-fn lengthish(token: &str) -> bool {
-    token.starts_with(|c: char| c.is_ascii_digit() || matches!(c, '.' | '-' | '+'))
-        || token.starts_with("calc(")
 }
 
 fn area(value: &str) -> Option<Area> {
@@ -593,10 +516,9 @@ mod tests {
     #[test]
     fn the_shorthand_parts_and_longhands_resolve() {
         let props = props(
-            &style(&[(
-                "background",
-                "red url(a.png) repeat-x right 10px bottom/40px auto content-box padding-box",
-            )]),
+            &crate::test_support::cascaded(
+                "background: red url(a.png) repeat-x right 10px bottom/40px auto content-box padding-box",
+            ),
             16.0,
         );
         assert_eq!(
@@ -638,7 +560,24 @@ mod tests {
             (props.origin, props.clip, props.size),
             (Area::Border, Area::Content, Size::Cover)
         );
-        assert_eq!(props_of(&[("background", "border-box")]).clip, Area::Border);
+        assert_eq!(
+            super::props(
+                &crate::test_support::cascaded("background: border-box"),
+                16.0
+            )
+            .clip,
+            Area::Border
+        );
+        // A shorthand's layered (`border-box, content-box`) or unknown box keeps the
+        // initial areas.
+        let layered = props_of(&[
+            ("background-origin", "border-box, content-box"),
+            ("background-clip", "bogus"),
+        ]);
+        assert_eq!(
+            (layered.origin, layered.clip),
+            (Area::Padding, Area::Border)
+        );
         assert_eq!(
             props_of(&[("background-size", "1px 2px 3px")]).size,
             Size::Lengths(LengthPct::Auto, LengthPct::Auto)

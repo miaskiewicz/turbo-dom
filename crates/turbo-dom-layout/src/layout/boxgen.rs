@@ -1860,17 +1860,14 @@ fn attr_value<'a>(attrs: &'a [Attr], name: &str) -> Option<&'a str> {
         .map(|a| a.value.as_str())
 }
 
-/// The url of a `background-image: url(...)` longhand, or of a `url(...)` in the
-/// `background` shorthand (real stylesheets set images via the shorthand). A
-/// `none`/gradient/unparsable value yields `None`.
+/// The url of the first `url(...)` in `background-image` (the `background` shorthand
+/// sets it through the cascade, miaskiewicz/turbo-dom#256). A `none`/gradient/unparsable
+/// value yields `None`.
 pub(super) fn background_image(style: &ComputedStyle) -> Option<String> {
-    if let Some(url) = style.get("background-image").and_then(url_token) {
-        return Some(url);
-    }
-    let bg = style.get("background")?;
-    super::value::css_value_tokens(bg)
+    let image = style.get("background-image")?;
+    super::value::css_value_tokens(image)
         .into_iter()
-        .find_map(url_token)
+        .find_map(|token| url_token(token.trim_end_matches(',')))
 }
 
 /// The url of a `mask-image`/`-webkit-mask-image: url(...)` (or a `url(...)` in the

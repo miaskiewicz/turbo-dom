@@ -169,6 +169,17 @@ fn background_layers_are_sized_positioned_and_tiled_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// miaskiewicz/turbo-dom#256: the `background` shorthand and its longhands cascade by
+/// origin, `!important`, specificity and order: an author shorthand beats the UA button's
+/// `background-color`, the later declaration wins, and a shorthand resets every longhand
+/// (image, position, size, repeat, origin, clip) an earlier rule set.
+#[test]
+fn background_shorthand_and_longhands_cascade_like_chrome_156() {
+    let mut failures = differences(|id| id.starts_with("cascade-bg-"));
+    failures.extend(svg_differences(|id| id.starts_with("cascade-bg-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// miaskiewicz/turbo-dom#81: the screenshot's initial containing block is its viewport.
 #[test]
 fn fixed_and_icb_boxes_anchor_to_the_viewport_like_chrome_156() {

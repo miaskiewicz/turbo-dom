@@ -1777,12 +1777,9 @@ fn linear_gradient_of(s: &ComputedStyle) -> Option<super::fragment::LinearGradie
 }
 
 /// The balanced text inside the first `linear-gradient(...)` of a box's
-/// `background-image` (else `background` shorthand), or `None` if there is none.
+/// `background-image`, or `None` if there is none.
 fn linear_gradient_inner(s: &ComputedStyle) -> Option<&str> {
-    let raw = s
-        .get("background-image")
-        .or_else(|| s.get("background"))
-        .map(str::trim)?;
+    let raw = s.get("background-image").map(str::trim)?;
     let inner = raw
         .find("linear-gradient(")
         .map(|i| &raw[i + "linear-gradient(".len()..])?;
@@ -2001,54 +1998,26 @@ fn top_level_comma_split(value: &str) -> impl Iterator<Item = &str> {
     parts.into_iter().filter(|p| !p.is_empty())
 }
 
-/// The used background colour: the `background-color` longhand, else a colour
-/// found in the `background` shorthand. Real stylesheets set backgrounds via the
-/// shorthand (`background: #fff url(...) no-repeat`) far more than the longhand,
-/// so ignoring it leaves most real pages painting no backgrounds at all.
+/// The used background colour: the `background-color` longhand (the cascade expands
+/// the `background` shorthand into its longhands, miaskiewicz/turbo-dom#256).
 fn background_of(s: &ComputedStyle) -> Option<Rgba> {
-    if let Some(c) = s.get("background-color").and_then(parse_color) {
-        return Some(c);
-    }
-    s.get("background").and_then(background_shorthand_color)
+    s.get("background-color").and_then(parse_color)
 }
 
-/// Whether a box paints any background: a visible colour, a `background-image`, or a
-/// `url(...)`/gradient in the `background` shorthand — the test for which element's
+/// Whether a box paints any background: a visible colour or a `url(...)`/gradient
+/// `background-image` — the test for which element's
 /// background propagates to the canvas (CSS Backgrounds 3 §2.11.2).
 pub(crate) fn has_background(s: &ComputedStyle) -> bool {
     let image = |v: &str| v.contains("url(") || v.contains("gradient(");
-    background_of(s).is_some_and(|c| c.a > 0)
-        || s.get("background-image").is_some_and(image)
-        || s.get("background").is_some_and(image)
+    background_of(s).is_some_and(|c| c.a > 0) || s.get("background-image").is_some_and(image)
 }
 
 /// Move a box's background colour to the canvas: return it (`None` when transparent
-/// or absent) and drop it from the style — the `background-color` longhand and any
-/// colour token of the `background` shorthand (its images stay on the box).
+/// or absent) and drop the `background-color` longhand (its images stay on the box).
 pub(crate) fn take_background_color(s: &mut ComputedStyle) -> Option<Rgba> {
     let color = background_of(s).filter(|c| c.a > 0);
     s.remove("background-color");
-    if let Some(shorthand) = s.remove("background") {
-        let rest: Vec<&str> = css_value_tokens(&shorthand)
-            .into_iter()
-            .filter(|t| {
-                t.starts_with("url(") || t.contains("gradient(") || parse_color(t).is_none()
-            })
-            .collect();
-        if !rest.is_empty() {
-            s.set("background", rest.join(" "));
-        }
-    }
     color
-}
-
-/// The colour token of a `background` shorthand (`url(...)` / gradients skipped),
-/// or `None` if it names no colour.
-fn background_shorthand_color(value: &str) -> Option<Rgba> {
-    css_value_tokens(value)
-        .into_iter()
-        .filter(|t| !t.starts_with("url(") && !t.contains("gradient("))
-        .find_map(parse_color)
 }
 
 /// Split a CSS value into top-level tokens, keeping parenthesized groups

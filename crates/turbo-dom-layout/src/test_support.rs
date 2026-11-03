@@ -176,6 +176,28 @@ pub fn style(pairs: &[(&str, &str)]) -> ComputedStyle {
     ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))
 }
 
+/// The computed style of an element whose author declarations are `declarations` (one
+/// block, in source order), cascaded like a real rule: shorthands set their longhands
+/// (miaskiewicz/turbo-dom#256), later and `!important` declarations win.
+#[must_use]
+pub fn cascaded(declarations: &str) -> ComputedStyle {
+    use crate::style::MatchedDeclaration;
+    use crate::style::{parse_declarations, resolve_matched_style, CascadeOrigin};
+    let matched: Vec<_> = parse_declarations(declarations)
+        .into_iter()
+        .enumerate()
+        .map(|(order, declaration)| MatchedDeclaration {
+            declaration,
+            origin: CascadeOrigin::Author,
+            scope_depth: 0,
+            inline: false,
+            specificity: (0, 1, 0),
+            order,
+        })
+        .collect();
+    resolve_matched_style(&ComputedStyle::default(), &matched)
+}
+
 /// Tree literals: nested element/text values that build a turbo-dom [`Tree`].
 ///
 /// [`Tree`]: turbo_dom::Tree
