@@ -315,6 +315,12 @@ range_contents.rs: 0.7.0 turbo-dom#249 function-holding context slots register w
 select_element.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
 selection.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
 user_activation_gates.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+browser_env.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+collection_records.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+document_legacy.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+html_popover.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+realm_ownership.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+template_contents.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
 browser_env.js: turbo-dom#254 CSSGroupingRule / CSSConditionRule and the @container / @media / @supports / @layer / @scope / @starting-style rule interfaces (attributes, insertRule / deleteRule, normalized container query)
 css_admission_tests.rs: turbo-dom#254 grouping / condition rules vs their Chrome 156 control
 "
@@ -325,7 +331,7 @@ OWNED="$OWNED canvas_style_probe.js canvas_style_chrome156.json canvas_style_tes
 OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_mathml_element_probe.js svg_mathml_element_cases.json svg_mathml_element_chrome156.json svg_mathml_element_tests.rs"
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
 OWNED="$OWNED dom_ownership_alloc_tests.rs dom_ownership_scale_tests.rs perf_gates_tests.rs"
-OWNED="$OWNED install_split_tests.rs external_refs.rs startup_snapshot.rs startup_snapshot_tests.rs context_rehydrate.rs context_rehydrate_tests.rs"
+OWNED="$OWNED install_split_tests.rs external_refs.rs startup_snapshot.rs startup_snapshot_tests.rs context_rehydrate.rs context_rehydrate_tests.rs snapshot_rehydrate_tests.rs template_data.rs"
 OWNED="$OWNED engine_namespace_tests.rs engine_namespace_probe.js window_interface_probe.js window_interface_chrome156.json window_interface.js"
 OWNED="$OWNED native_guards_probe.js native_guards_chrome156.json native_guards_tests.rs close_watchers_probe.js close_watchers_chrome156.json close_watchers_tests.rs host_api_tests.rs stale_nodes_tests.rs"
 OWNED="$OWNED edge_probes_tests.rs harness_tests.rs termination_tests.rs shadow_slots_edges_probe.js shadow_slots_edges_chrome156.json dom_mutation_validity_probe.js dom_mutation_validity_chrome156.json selector_edges_probe.js selector_edges_chrome156.json sanitizer_edges_probe.js sanitizer_edges_chrome156.json document_edges_probe.js document_edges_chrome156.json receivers_edges_probe.js receivers_edges_chrome156.json event_receivers_edges_probe.js event_receivers_edges_chrome156.json"
