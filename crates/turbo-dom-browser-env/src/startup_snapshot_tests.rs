@@ -87,3 +87,44 @@ fn a_context_from_the_blob_carries_no_slot_annex() {
     context.set_slot(std::rc::Rc::new(7u8));
     assert_eq!(context.get_slot::<u8>().as_deref(), Some(&7));
 }
+
+/// An embedder that bakes its own startup context (turbo-test's framework layer) gets the
+/// window into the same blob: its prelude runs in the snapshot context before the engine
+/// bootstrap (the order of a prelude, then an install), and with snapshot installs on, every
+/// context the isolate makes from the blob (an embedder reusing its isolate makes several)
+/// installs its document without running an engine script.
+#[test]
+fn an_embedder_prelude_shares_the_blob_and_contexts_install_from_it() {
+    fn prelude(scope: &mut v8::PinScope) {
+        let code = v8::String::new(scope, "globalThis.__prelude = typeof document;").unwrap();
+        v8::Script::compile(scope, code, None).unwrap().run(scope).unwrap();
+    }
+    crate::browser_env::tests::init_v8();
+    let blob = snapshot_blob_with(prelude).expect("every callback is registered");
+    let isolate = &mut v8::Isolate::new(blob.create_params());
+    set_snapshot_install(true);
+    for page in ["<p id=x>one</p>", "<p id=x>two</p>"] {
+        {
+            v8::scope!(let scope, isolate);
+            let context = v8::Context::new(scope, Default::default());
+            let scope = &mut v8::ContextScope::new(scope, context);
+            let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);
+            install_with_html(scope, page);
+            assert_eq!(ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get), before, "{page}");
+            let code = v8::String::new(
+                scope,
+                "[__prelude, document.getElementById('x').textContent, document.body.firstChild instanceof HTMLParagraphElement].join()",
+            )
+            .unwrap();
+            let result = v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap()
+                .to_rust_string_lossy(scope);
+            let text = if page.contains("one") { "one" } else { "two" };
+            assert_eq!(result, format!("undefined,{text},true"));
+        }
+        reset();
+    }
+    set_snapshot_install(false);
+}
