@@ -634,7 +634,7 @@
     var sheets = host ? computedOwnerSheets(owner,host) : [];
     // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
     var adopted=adoptionStates&&$c.get(adoptionStates,owner);
-    if(adopted&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
+    if(adopted&&adopted.target&&adopted.target.length&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
     return sheets;
   }
   // The selector text of every enabled style rule that can select `el`.
@@ -834,11 +834,10 @@
       // Element-backed pseudo-elements the element does not have see no author rules.
       // Match the private selector list before touching declarations. Native parsing
       // preserves quoted delimiters that serialized text splitting loses.
-      var sheets = info && !info.authored ? [] : computedSheets(el),layers=cssLayerTree(),matched=[];
-      if(noteEntryBuild&&sheets.length)noteEntryBuild();
+      var sheets = info && !info.authored ? [] : computedSheets(el),build=computedSheetEntries(sheets,el),layers=build.layers,matched=[];
       for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
-        var entries = appliedSheetEntries(sheets[si],el,layers);
+        var entries = build.lists[si];
         for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
       }
       cascadeEntries(matched,layers,function(entry,only){applyDeclarations(declarationRecord(entry.rule.style),info&&info.accepts,only);});
@@ -1697,6 +1696,26 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // tracking): a reused computed style is reused only while each still answers the same.
   var computedMediaReads=null;
   function cssMediaState(record,state){var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;var matches=!!g.matchMedia(text).matches;if(computedMediaReads&&computedMediaReads[text]===undefined)computedMediaReads[text]=matches;return matches?1:2;}
+  // The rule entries of a sheet list (its style rules under their grouping rules, the layer
+  // tree they rank in, the @media answers they were built with): built once per list, CSSOM
+  // epoch and media answers, and shared by every element computed meanwhile. The build reads
+  // no element (an @supports answer is cached by text). A build that went volatile (an
+  // @import under a media query) is not kept.
+  var computedEntryBuilds=new computedSnapshotMap();
+  function computedSheetEntries(sheets,el){
+    var epoch=cssomEpoch(),build=computedSnapshotGet(computedEntryBuilds,sheets);
+    if(build&&build.epoch===epoch&&computedMediaUnchanged(build.media)){computedMergeMedia(build.media);return build;}
+    if(noteEntryBuild&&sheets.length)noteEntryBuild();
+    var outerMedia=computedMediaReads,outerVolatile=computedVolatile,media={__proto__:null},layers=cssLayerTree(),lists=[];
+    computedMediaReads=media;computedVolatile=false;
+    var volatile=false;
+    try{for(var si=0;si<sheets.length;si++)$c.push(lists,appliedSheetEntries(sheets[si],el,layers));volatile=computedVolatile;}
+    finally{computedMediaReads=outerMedia;computedVolatile=outerVolatile||volatile;computedMergeMedia(media);}
+    build={__proto__:null,epoch:epoch,media:media,layers:layers,lists:lists};
+    if(!volatile&&sheets.length)computedSnapshotSet(computedEntryBuilds,sheets,build);
+    return build;
+  }
+  function computedMergeMedia(reads){if(computedMediaReads&&reads)for(var text in reads)if(computedMediaReads[text]===undefined)computedMediaReads[text]=reads[text];}
   function computedMediaUnchanged(reads){
     if(!reads)return true;
     try{for(var text in reads)if(!!g.matchMedia(text).matches!==reads[text])return false;}catch(e){return false;}
