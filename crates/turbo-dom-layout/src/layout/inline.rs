@@ -1916,6 +1916,7 @@ impl<'a> Placer<'a> {
     fn cloned_open(&self, next: Option<&Word>) -> Vec<InlineEdge> {
         let mut open = self.open_edges.clone();
         for word in self.cur.iter().chain(next) {
+            crate::hot!("inline.clone_scan");
             for (_, edge) in &word.edges {
                 if edge.start {
                     open.push(edge.clone());

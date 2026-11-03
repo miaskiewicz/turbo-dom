@@ -85,3 +85,45 @@ fn nested_block_style_resolves_grow_linearly() {
         "resolves {small} at d=200 vs {large} at d=400"
     );
 }
+
+/// How many words the `box-decoration-break: clone` bookkeeping scans laying out one
+/// `words`-word line (the box 1e6px wide), inside a cloned `<span>` or not.
+fn clone_scans(words: usize, cloned: bool) -> u64 {
+    let text = "ab ".repeat(words);
+    let body = if cloned {
+        format!("<span style='box-decoration-break:clone;padding:0 3px'>{text}</span>")
+    } else {
+        text
+    };
+    let html = format!("<!doctype html><body style='margin:0;width:1000000px'>{body}</body>");
+    let tree = turbo_dom_layout::parse_html_tree(&html);
+    perf::reset();
+    let _ = turbo_dom_layout::layout_boxes_tree(
+        &tree,
+        "",
+        1_000_000.0,
+        300.0,
+        &turbo_dom_layout::test_support::fixture_fonts(),
+        &turbo_dom_layout::HtmlOptions::default(),
+        &mut turbo_dom_layout::Diagnostics::default(),
+    );
+    perf::count("inline.clone_scan")
+}
+
+#[test]
+fn clone_bookkeeping_grows_linearly_with_a_line() {
+    // R2 review #6: every word's wrap check re-scanned the whole line for open cloned
+    // boxes, so a line's words cost O(words²) even with no `clone` box. Linear is ~2x.
+    for cloned in [false, true] {
+        let (small, large) = (clone_scans(1000, cloned), clone_scans(2000, cloned));
+        assert!(
+            large * 10 <= small * 25 + 10,
+            "cloned {cloned}: scans {small} at 1000 words vs {large} at 2000"
+        );
+        if cloned {
+            assert!(small >= 1000, "a cloned line scans its words: {small}");
+        } else {
+            assert_eq!(small, 0, "no clone box, nothing to scan");
+        }
+    }
+}
