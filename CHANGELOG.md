@@ -348,7 +348,9 @@ Every item is gated by a deterministic counter test, not wall-clock.
 - turbo-dom-browser-env keeps a process-wide V8 bytecode cache of its engine scripts: every
   page install (turbo-test installs one per test file) compiled each engine script from source,
   ~8-9% of a real app suite's CPU. The cache is produced after the script ran (so it holds the
-  lazily compiled functions) and is replaced when V8 rejects it.
+  lazily compiled functions) and is replaced when V8 rejects it. Only the binding's own fixed
+  engine scripts are cached: the public `run_engine_script`, which serves embedder sources,
+  compiles without it, so the cache stays bounded.
 - `matches()` / `closest()` classify the form-state pseudo-classes (`:disabled`, `:checked`,
   `:invalid`, ...) only for the elements their answer can read: the subject's inclusive
   ancestors (with their preceding siblings for `+` / `~`) and, for the validity classes, each
@@ -369,7 +371,8 @@ Every item is gated by a deterministic counter test, not wall-clock.
   are unchanged. Gates: deterministic fresh-cascade and update-pass counters
   (`computed_style_state_rules_reuse_gate`, `css_animation_update_runs_once_per_style_change_gate`).
 - turbo-dom-browser-env's selector-taking DOM methods (`querySelector[All]`, `matches`,
-  `closest`, ...) parse each selector string's grammar once (a bounded per-thread memo).
+  `closest`, ...) parse each selector string's grammar once (a per-thread memo, bounded in
+  entries, holding only selectors up to 512 UTF-16 units and cleared by each install).
   A selector without a `:` skips the five node-dependent pseudo-class rewrite passes, and
   the SyntaxError message is built only when a selector is rejected (same exact message as
   before). On form-heavy files this took ~9% of CPU.
