@@ -7238,6 +7238,8 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     );
     #[cfg(test)]
     bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
+    #[cfg(test)]
+    bind_method(scope, global, "__noteCssUpdatePass", note_css_update_pass);
     bind_method(scope, global, "__cssomEpoch", cssom_epoch);
     bind_method(scope, global, "__bumpCssomEpoch", bump_cssom_epoch);
 }
@@ -7271,6 +7273,29 @@ fn note_cascade_run(
     _rv: v8::ReturnValue,
 ) {
     CASCADE_RUNS.with(|runs| runs.set(runs.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    /// CSS animation / transition update passes (animations.js `cssUpdate` running its update
+    /// steps) on this thread, counted by the test-only `__noteCssUpdatePass` hook.
+    static CSS_UPDATE_PASSES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The CSS animation / transition update passes counted so far (see `CSS_UPDATE_PASSES`).
+#[cfg(test)]
+fn css_update_passes() -> u64 {
+    CSS_UPDATE_PASSES.with(std::cell::Cell::get)
+}
+
+/// Counts one CSS animation / transition update pass (the test-only `__noteCssUpdatePass` hook).
+#[cfg(test)]
+fn note_css_update_pass(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    CSS_UPDATE_PASSES.with(|passes| passes.set(passes.get() + 1));
 }
 
 /// The current CSSOM epoch (see `CSSOM_EPOCH`).

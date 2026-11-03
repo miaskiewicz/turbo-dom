@@ -1734,6 +1734,7 @@
     const declared = read('animation-name') || read('transition-property');
     if (!declared && !cssStates.has(element)) return;
     cssBusy = true;
+    if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
     try {
       const underlying = property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
       cssAnimations(element, read, underlying);
