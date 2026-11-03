@@ -580,13 +580,24 @@
   // adopted sheets, for elements of the document tree. A shadow tree is its own style scope:
   // document rules never select its elements (turbo-dom#68; its own rules come from the
   // native shadow-scoped cascade).
+  // The owner's sheet list, reread only when its tree version or the CSSOM epoch moved: every
+  // element of one cascade (the read element and each ancestor) shares it.
+  var computedSheetLists=new computedSnapshotMap();
+  function computedOwnerSheets(owner,host){
+    var version=null;try{version=computedStyleVersion(owner);}catch(e){}
+    var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
+    if(entry&&typeof version==='number'&&entry.version===version&&entry.epoch===epoch&&entry.host===host)return entry.sheets;
+    var sheets=host.readSheets();
+    if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets});
+    return sheets;
+  }
   function computedSheets(el){
     var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
     if(owner&&cssApply(computedStyleNativeRoot,el,[])!==owner&&cssApply(computedStyleNativeConnected,el,[]))return [];
     // A live list refreshes on every indexed/length read. Refresh its private
     // backing array once per computation; retained declarations still recompute.
     var ownerRecord=owner&&collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
-    var sheets = host ? host.readSheets() : [];
+    var sheets = host ? computedOwnerSheets(owner,host) : [];
     // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
     var adopted=adoptionStates&&$c.get(adoptionStates,owner);
     if(adopted&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
