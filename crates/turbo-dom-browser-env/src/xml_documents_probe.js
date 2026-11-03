@@ -68,6 +68,20 @@
     ["entityInAttribute", '<!DOCTYPE r [<!ENTITY e "v">]><r a="&e;&lt;&e;"><s xmlns:p="urn:p"/></r>'],
     ["subsetBracket", '<!DOCTYPE r [<!ENTITY a "]"><!ENTITY b "x">]><r xmlns:p="u">&a;&b;</r>'],
     ["subsetComment", "<!DOCTYPE r [<!-- ] > --><?pi ] > ?><!ENTITY b '>]'><!ENTITY d \"<!-- ] -->\">]><r xmlns:p=\"u\"><p:s xmlns:q=\"v\"/>&b;</r>"],
+    // internal-subset ATTLIST defaults (turbo-dom#261): applied after the specified
+    // attributes in declaration order, the first declaration of a name binding it
+    ["attlistCdata", '<!DOCTYPE r [<!ATTLIST r c CDATA "  a  b ">]><r/>'],
+    ["attlistFixed", '<!DOCTYPE r [<!ATTLIST r f CDATA #FIXED "x" g CDATA #IMPLIED h CDATA #REQUIRED>]><r/>'],
+    ["attlistEnumerated", '<!DOCTYPE r [<!ATTLIST r e (a|b) "b" t NMTOKEN "  q  " n NOTATION (x) "x" i ID #IMPLIED>]><r><r e="a"/></r>'],
+    ["attlistOrder", '<!DOCTYPE r [<!ATTLIST r z CDATA "1"><!ATTLIST r a CDATA \'2\' z CDATA "3">]><r m="0"/>'],
+    ["attlistNamespaced", '<!DOCTYPE r [<!ATTLIST s p:x CDATA "v" xml:lang CDATA "en">]><r xmlns:p="urn:p"><s/><s p:x="w"/></r>'],
+    ["attlistUnbound", '<!DOCTYPE r [<!ATTLIST r p:x CDATA "v">]><r/>'],
+    ["attlistReferences", '<!DOCTYPE r [<!ENTITY e "E"><!ATTLIST r c CDATA "&e;&amp;&#65;" d CDATA "a\tb">]><r/>'],
+    ["attlistPrefixedElement", '<!DOCTYPE r [<!ATTLIST p:r c CDATA "1">]><p:r xmlns:p="u"/>'],
+    ["attlistEntityElement", '<!DOCTYPE r [<!ENTITY e "<s/>"><!ATTLIST s c CDATA "d">]><r>&e;<s/></r>'],
+    ["attlistCharacterReferences", '<!DOCTYPE r [<!ATTLIST r c CDATA "&#x42;&#66;&lt;&gt;&apos;&quot;" d CDATA \'&#9;x\'>]><r\n  a="1"\n/>'],
+    ["attlistUnboundInEntity", '<!DOCTYPE r [<!ENTITY e "<s/>"><!ATTLIST s p:x CDATA "v">]><r>&e;</r>'],
+    ["subsetCommentAttlist", "<!DOCTYPE r [<!-- ] > --><?pi ] > ?><!ENTITY b '>]'><!ATTLIST r c CDATA \"]\">]><r xmlns:p=\"u\"><p:s xmlns:q=\"v\"/>&b;</r>"],
     // many / nested entity references: Chrome 156's XML parser counts each reparse that
     // starts before the previous replacement text is consumed (depth 10)
     ["manyEntities", '<!DOCTYPE r [<!ENTITY e "x"><!ENTITY f "<i/>">]><r>' + "&e;&f; ".repeat(60) + "</r>"],
