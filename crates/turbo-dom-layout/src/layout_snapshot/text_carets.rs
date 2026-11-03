@@ -19,7 +19,11 @@ pub(crate) fn offset(
     for (index, cell) in cells.iter().enumerate() {
         let fragment = &snapshot.fragments()[cell.fragment_index];
         let matrix = snapshot.native_hit_transforms[fragment.index];
-        let local = local_point(point, matrix, snapshot.html_layout_scale)?;
+        let mut local = local_point(point, matrix, snapshot.html_layout_scale)?;
+        if cell.vertical {
+            // Measured in the vertical line's own frame, like its cells.
+            local = super::text_geometry::unturn(local, fragment.rect);
+        }
         let distance = vertical_distance(local.y, cell.rect) * matrix[2].hypot(matrix[3]) as f32;
         let mut edge = nearest_edge(local.x, cell);
         edge.0 *= matrix[0].hypot(matrix[1]) as f32;

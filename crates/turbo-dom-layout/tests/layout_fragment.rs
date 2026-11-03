@@ -90,6 +90,7 @@ fn text_line_holds_glyphs_and_face() {
         font_size: 16.0,
         color: Rgba::BLACK,
         vertical: false,
+        upright: false,
     };
     let f = Fragment::new(NodeId(3), 0.0, 0.0, 24.0, 18.0, content);
     match &f.content {

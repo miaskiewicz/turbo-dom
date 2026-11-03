@@ -694,6 +694,7 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
             style.get("-webkit-locale"),
             style.get("hyphenate-limit-chars"),
         ),
+        upright: super::inline::UprightText::of(style),
     })
 }
 
@@ -749,6 +750,7 @@ fn lines_to_fragments(
                 font_size: gr.font_size,
                 color: gr.color,
                 vertical: false,
+                upright: gr.upright,
             };
             out.push(Fragment::new(
                 node_id,
@@ -2722,6 +2724,10 @@ fn layout_box_sized_impl(
     ctx: &mut Ctx,
     force_bfc: bool,
 ) -> Fragment {
+    // A flex / grid item or table cell that is a writing-mode root (#239).
+    if let Some(frag) = super::writing::layout_root_sized(lb, (bx, by), bbw, bs.font_size, ctx) {
+        return frag;
+    }
     lb.begin_layout();
     // A replaced `<img>` sizes from its intrinsic dimensions + caps rather than
     // flowing content — the same as the normal-flow `layout_box` path. Flex/grid
@@ -3126,9 +3132,15 @@ fn embedded_viewport_fragment(
     width: f32,
     ctx: &mut Ctx,
 ) -> Fragment {
+    // The physical 300x150 default, turned in a vertical space.
+    let (natural_width, natural_height) = if ctx.writing.vertical() {
+        (Some(150.0), Some(300.0))
+    } else {
+        (Some(300.0), None)
+    };
     let dimensions = super::imgsize::size_viewport_live(
-        Some(300.0),
-        None,
+        natural_width,
+        natural_height,
         style.aspect_ratio,
         ctx.html_font_scale.unwrap_or(1.0),
         &size_ctx(style, width, ctx),

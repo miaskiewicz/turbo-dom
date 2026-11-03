@@ -511,7 +511,8 @@ fn check_metrics(case: &Value, want: &Value, laid: Laid, failures: &mut Vec<Stri
 /// are unscrolled here) and offset / client / scroll metrics.
 fn compare_vertical_cases() -> (usize, Vec<String>) {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
-    let fonts = crate::test_support::fixture_fonts();
+    let mut fonts = crate::test_support::fixture_fonts();
+    fonts.add(crate::test_support::ic_fixture_face());
     let mut failures = Vec::new();
     let mut compared = 0;
     for case in fixture["cases"].as_array().unwrap() {

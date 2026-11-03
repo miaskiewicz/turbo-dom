@@ -520,6 +520,29 @@ const CASES = [
       { start: ["a", 0, 3], end: ["b", 0, 0] },
     ],
   },
+  // miaskiewicz/turbo-dom#239: Range rects and carets in vertical text (the glyph
+  // clusters map with their line into the vertical box).
+  {
+    id: "vertical-range-and-carets",
+    html: DOC(
+      "",
+      `<div data-cid="v" style="writing-mode:vertical-rl;height:60px">abcd efg<span data-cid="s">hi</span></div>` +
+        `<div data-cid="l" style="writing-mode:vertical-lr;height:60px">xy z</div>`,
+    ),
+    ranges: [
+      { start: ["v", 0, 1], end: ["v", 0, 3] },
+      { start: ["v", 0, 2], end: ["s", 0, 1] },
+      { start: ["l", 0, 0], end: ["l", 0, 4] },
+    ],
+    carets: [
+      [15, 3],
+      [15, 13],
+      [3, 20],
+      [15, 45],
+      [5, 70],
+      [5, 110],
+    ],
+  },
 ];
 
 const read = (cid) =>

@@ -98,10 +98,13 @@ pub fn caret(
         // A line wholly above the point ranks after every line at or below it: Chrome
         // takes the first block whose end is past the point (a point in the gap below
         // a block lands on the next block's first line, miaskiewicz/turbo-dom#127).
+        // A vertical line's block axis is horizontal: lines rank by their horizontal
+        // distance first (miaskiewicz/turbo-dom#239).
+        let gap = distance(point, rect);
         let candidate = Candidate {
             source,
-            above: f64::from(rect.y + rect.height) < point[1],
-            gap: distance(point, rect),
+            above: !run.vertical && f64::from(rect.y + rect.height) < point[1],
+            gap: if run.vertical { [gap[1], gap[0]] } else { gap },
             translation,
             matrix: run_matrix,
         };
@@ -229,11 +232,16 @@ pub fn run_rect(
     }
     let fragment = &snapshot.fragments()[run.fragment_index];
     let font = run.font_box;
-    Some(Rect {
+    let rect = Rect {
         x: fragment.rect.x + left,
         y: fragment.rect.y + font.baseline - font.ascent,
         width: right - left,
         height: font.ascent + font.descent,
+    };
+    Some(if run.vertical {
+        crate::layout_snapshot::text_geometry::turn(rect, fragment.rect)
+    } else {
+        rect
     })
 }
 
@@ -297,6 +305,7 @@ mod tests {
                     if (source, offset) == expected
                         && close(r.x, chrome[0])
                         && close(r.y, chrome[1])
+                        && close(r.width, chrome[2])
                         && close(r.height, chrome[3]) => {}
                 got => failures.push(format!("{point:?}: {got:?}, Chrome {want}")),
             }
@@ -309,6 +318,13 @@ mod tests {
     fn caret_positions_from_points_match_chrome_156() {
         let mut failures = caret_failures("caret-from-point", |point| !GAPS.contains(&point));
         failures.extend(caret_failures("caret-wrap-and-markers", |_| true));
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    /// miaskiewicz/turbo-dom#239: carets in vertical text are horizontal, across the line.
+    #[test]
+    fn carets_in_vertical_text_match_chrome_156() {
+        let failures = caret_failures("vertical-range-and-carets", |_| true);
         assert!(failures.is_empty(), "{}", failures.join("\n"));
     }
 

@@ -11,6 +11,8 @@ pub(crate) struct SvgViewport {
     ratio: Option<f32>,
     width_from_attribute: bool,
     height_from_attribute: bool,
+    /// Laid out in a space whose axes swap with the physical ones ([`Self::relabelled`]).
+    turned: bool,
 }
 impl SvgViewport {
     pub(crate) fn from_element(element: &StyledElement, layout_scale: f32) -> Self {
@@ -21,7 +23,24 @@ impl SvgViewport {
             ratio: viewbox_ratio(element),
             width_from_attribute: !css_dimension_overrides(element.style.get("width")),
             height_from_attribute: !css_dimension_overrides(element.style.get("height")),
+            turned: false,
         }
+    }
+    /// The viewport in a logical space whose axes swap with its own when `swap`
+    /// (miaskiewicz/turbo-dom#239): its `width` / `height` (attributes, their CSS
+    /// overrides and the default 300x150) are physical, so they trade places.
+    pub(crate) fn relabelled(&self, swap: bool) -> Self {
+        let mut out = self.clone();
+        if swap {
+            std::mem::swap(&mut out.width, &mut out.height);
+            std::mem::swap(
+                &mut out.width_from_attribute,
+                &mut out.height_from_attribute,
+            );
+            out.ratio = out.ratio.map(f32::recip);
+            out.turned = !out.turned;
+        }
+        out
     }
     pub(crate) fn apply_attributes(&self, mut style: BoxStyle) -> BoxStyle {
         if self.width_from_attribute {
@@ -35,9 +54,14 @@ impl SvgViewport {
         style
     }
     pub(crate) fn size(&self, context: &SizeCtx) -> (f32, f32) {
-        let width = intrinsic(self.width.as_deref(), context.style.font_size);
-        let height = intrinsic(self.height.as_deref(), context.style.font_size);
+        let mut width = intrinsic(self.width.as_deref(), context.style.font_size);
+        let mut height = intrinsic(self.height.as_deref(), context.style.font_size);
         let ratio = dimension_ratio(width, height).or(self.ratio);
+        if self.turned && ratio.is_none() {
+            // The physical 300x150 default, turned.
+            width = width.or(Some(150.0));
+            height = height.or(Some(300.0));
+        }
         size_viewport_live(width, height, ratio, self.layout_scale, context)
     }
     pub(crate) fn natural_width(&self, font_size: f32) -> f32 {
