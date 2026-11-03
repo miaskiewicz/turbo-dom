@@ -124,3 +124,22 @@ fn implicit_visibility_inheritance_reads_the_edited_rule() {
         serde_json::json!(["hidden", "visible", "collapse", "visible"])
     );
 }
+
+#[test]
+fn style_rules_in_grouping_rules_cascade_like_chrome156() {
+    // turbo-dom#273: getComputedStyle applies style rules nested in @supports (condition
+    // evaluated), @layer (layer order; unlayered beats layered for normal declarations, the
+    // reverse for !important), @media and @scope; never @container or @starting-style.
+    let probe = include_str!("css_grouping_cascade_probe.js");
+    let expected = fixture(include_str!("css_grouping_cascade_chrome156.json"), probe);
+    let actual = evaluate(probe);
+    let (expected, actual) = (expected.as_array().unwrap(), actual.as_array().unwrap());
+    assert_eq!(expected.len(), actual.len());
+    let diverged: Vec<_> = expected
+        .iter()
+        .zip(actual)
+        .filter(|(expected, actual)| expected != actual)
+        .map(|(expected, actual)| format!("chrome {expected}\n  ours {actual}"))
+        .collect();
+    assert!(diverged.is_empty(), "{}", diverged.join("\n"));
+}
