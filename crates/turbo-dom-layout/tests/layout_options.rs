@@ -742,14 +742,29 @@ fn recorded_sources_map_list_markers_to_their_item() {
     owners.sort_by_key(|id| id.0);
     owners.dedup();
     assert_eq!(owners, [id_of("a"), id_of("c")]);
+    let item = |name: &str| {
+        let frags = fragments(&laid.galley);
+        frags
+            .iter()
+            .find(|f| f.node_id == id_of(name))
+            .unwrap()
+            .clone()
+    };
+    // The item's first child is its marker box, beside (left of) the item's content.
+    for name in ["a", "c"] {
+        let first = &item(name).children;
+        assert!(first
+            .iter()
+            .any(|f| laid.sources.list_markers.get(&f.node_id) == Some(&id_of(name))));
+    }
     for (marker, owner) in &laid.sources.list_markers {
         assert!(!laid.sources.elements.contains_key(marker));
         assert!(!laid.sources.texts.contains_key(marker));
         let frags = fragments(&laid.galley);
         let item = frags.iter().find(|f| f.node_id == *owner).unwrap();
         assert!(
-            item.children.iter().any(|f| f.node_id == *marker),
-            "the marker box is a child of its item's fragment"
+            fragments(item).iter().any(|f| f.node_id == *marker),
+            "the marker is laid out inside its item's fragment"
         );
     }
 }

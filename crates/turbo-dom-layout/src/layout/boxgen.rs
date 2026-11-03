@@ -736,6 +736,8 @@ pub(crate) struct Recorded {
     pub(crate) texts: std::collections::HashMap<NodeId, turbo_dom::Handle>,
     /// The anonymous table grid boxes ([`LayoutBox::table_grid`]).
     pub(crate) table_grids: std::collections::HashSet<NodeId>,
+    /// `::marker` box / text ids -> their list item's box id.
+    pub(crate) list_markers: std::collections::HashMap<NodeId, NodeId>,
 }
 
 /// A monotonic source of pre-order node ids.
@@ -805,6 +807,9 @@ impl Ids {
         let id = self.alloc();
         if let Some(sources) = &mut self.sources {
             sources.list_marker(id, owner);
+        }
+        if let Some(recorded) = &mut self.recorded {
+            recorded.list_markers.insert(id, owner);
         }
         id
     }
