@@ -66,7 +66,7 @@ const FONT = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/liber
 const FACE = `@font-face{font-family:"Liberation Serif";src:url(data:font/ttf;base64,${FONT})}`;
 const SERIF = `font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent`;
 // A `w`x`h` inline-block, transparent unless `bg` is given.
-const ATOM = (w, h, bg = "") => `<span style="display:inline-block;width:${w}px;height:${h}px${bg ? `;background:${bg}` : ""}"></span>`;
+const ATOM = (w, h, bg = "", cid = "") => `<span${cid ? ` data-cid="${cid}"` : ""} style="display:inline-block;width:${w}px;height:${h}px${bg ? `;background:${bg}` : ""}"></span>`;
 const RTL_OVERRIDE = (inner) => `<span style="direction:rtl;unicode-bidi:bidi-override">${inner}</span>`;
 
 // A 40x40 inline-block of colour `bg`.
@@ -301,17 +301,16 @@ const CASES = [
   // miaskiewicz/turbo-dom#244: an inline box paints its background, padding and border
   // per line fragment (box-decoration-break: slice): the start edge on its first
   // fragment, the end edge on its last; padding and border also push its neighbours.
-  // Text is transparent so the probes see the decoration only. The text cases record no
-  // boxes: their x positions follow the text advances, which the static layout does not
-  // accumulate in LayoutUnits like Chrome (off by up to 0.03px); the atom cases do.
+  // Text is transparent so the probes see the decoration only. The text cases' boxes
+  // follow the text advances in Chrome's 1/64px LayoutUnits (miaskiewicz/turbo-dom#246).
   {
     id: "inline-background-text",
-    html: DOC(`<div style="${at(20, 20)};${SERIF}">aaa <span style="background:#ff0000">MMMM</span> bbb</div>`),
+    html: DOC(`<div style="${at(20, 20)};${SERIF}">aaa <span data-cid="s" style="background:#ff0000">MMMM</span> bbb${ATOM(10, 10, "", "a")}</div>`),
     probes: [[87, 35], [53, 35], [121, 35], [49, 35], [125, 35], [87, 25], [87, 22], [87, 45], [87, 48]],
   },
   {
     id: "inline-edges-text",
-    html: DOC(`<div style="${at(20, 20)};${SERIF}">aa<span style="background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px">MM</span>${ATOM(40, 40, "#00ff00")}</div>`),
+    html: DOC(`<div style="${at(20, 20)};${SERIF}">aa<span data-cid="s" style="background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px">MM</span>${ATOM(40, 40, "#00ff00", "a")}</div>`),
     probes: [[49, 50], [52, 50], [104, 50], [87, 36], [87, 40], [87, 69], [87, 73], [45, 50], [110, 50], [135, 40]],
   },
   {
