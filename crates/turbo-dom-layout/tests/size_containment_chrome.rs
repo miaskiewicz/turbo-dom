@@ -3,7 +3,9 @@
 //! `scripts/live-geometry-chrome-control.mjs`) laid out through [`layout_boxes`] (the
 //! `data-cid` geometry seam of `layout_html`) at Chrome's 1280x800 viewport. A box with
 //! `container-type: inline-size` / `contain: inline-size` takes its frame as its
-//! shrink-to-fit width; `size` / `strict` also size an auto height as if empty.
+//! shrink-to-fit width; `size` / `strict` also size an auto height as if empty. The
+//! `contain-fc-*` cases add layout containment and baselines (and a fixed-width grid
+//! item, miaskiewicz/turbo-dom#267).
 use serde_json::Value;
 use turbo_dom_layout::{layout_boxes, Diagnostics};
 
@@ -20,7 +22,7 @@ fn size_containment_sizes_boxes_as_if_empty_like_chrome_156() {
     let mut compared = 0;
     for case in fixture["cases"].as_array().unwrap() {
         let id = case["id"].as_str().unwrap();
-        if !id.starts_with("contain-") || id.starts_with("contain-fc-") {
+        if !id.starts_with("contain-") {
             continue;
         }
         let html = case["html"].as_str().unwrap();
@@ -46,6 +48,6 @@ fn size_containment_sizes_boxes_as_if_empty_like_chrome_156() {
             }
         }
     }
-    assert_eq!(compared, 8 * 12, "every contain-* box is compared");
+    assert_eq!(compared, 8 * 12 + 6 * 15, "every contain-* box is compared");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
