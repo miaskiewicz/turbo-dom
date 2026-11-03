@@ -333,7 +333,9 @@ fn mutation_hook<'s>(
 #[derive(Default)]
 struct ReactionFrames(RefCell<Vec<Rc<ReactionQueue>>>);
 struct ReactionQueue {
-    events: v8::Weak<v8::Array>,
+    /// The frame's queued mutation events, created when the first one can be queued (a
+    /// custom element definition exists): most frames never queue one.
+    events: RefCell<Option<v8::Weak<v8::Array>>>,
     order: RefCell<Option<v8::Weak<v8::Array>>>,
     callbacks: RefCell<Option<v8::Weak<v8::Map>>>,
     collecting: std::cell::Cell<bool>,
@@ -341,7 +343,7 @@ struct ReactionQueue {
 pub(super) struct ReactionScope<'s> {
     frames: Rc<ReactionFrames>,
     entry: Rc<ReactionQueue>,
-    queue: v8::Local<'s, v8::Array>,
+    _scope: std::marker::PhantomData<v8::Local<'s, v8::Array>>,
 }
 impl Drop for ReactionScope<'_> {
     fn drop(&mut self) {
@@ -363,9 +365,8 @@ pub(super) fn reactions<'s>(scope: &mut v8::PinScope<'s, '_>) -> ReactionScope<'
             scope.set_slot(frames.clone());
             frames
         });
-    let queue = v8::Array::new(scope, 0);
     let entry = Rc::new(ReactionQueue {
-        events: v8::Weak::new(scope, queue),
+        events: RefCell::new(None),
         order: RefCell::new(None),
         callbacks: RefCell::new(None),
         collecting: std::cell::Cell::new(false),
@@ -374,7 +375,39 @@ pub(super) fn reactions<'s>(scope: &mut v8::PinScope<'s, '_>) -> ReactionScope<'
     ReactionScope {
         frames,
         entry,
-        queue,
+        _scope: std::marker::PhantomData,
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    static REACTION_QUEUES_BUILT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Reaction queues frames have created on this thread (the perf gate in `perf_gates_tests`).
+#[cfg(test)]
+pub(super) fn reaction_queues_built() -> usize {
+    REACTION_QUEUES_BUILT.with(std::cell::Cell::get)
+}
+
+impl ReactionQueue {
+    /// The frame's queued events, if any were queued.
+    fn queued<'s>(&self, scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8::Array>> {
+        self.events
+            .borrow()
+            .as_ref()
+            .and_then(|weak| weak.to_local(scope))
+    }
+    /// The frame's event queue, created on first use.
+    fn queue<'s>(&self, scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Array> {
+        if let Some(queue) = self.queued(scope) {
+            return queue;
+        }
+        #[cfg(test)]
+        REACTION_QUEUES_BUILT.with(|built| built.set(built.get() + 1));
+        let queue = v8::Array::new(scope, 0);
+        *self.events.borrow_mut() = Some(v8::Weak::new(scope, queue));
+        queue
     }
 }
 fn react(
@@ -436,18 +469,17 @@ fn react(
 }
 impl ReactionScope<'_> {
     pub(super) fn flush(&self, scope: &mut v8::PinScope) {
-        if self.queue.length() == 0 {
+        let Some(queue) = self.entry.queued(scope).filter(|queue| queue.length() > 0) else {
             return;
-        }
+        };
         let order = v8::Array::new(scope, 0);
         let callbacks = v8::Map::new(scope);
         *self.entry.order.borrow_mut() = Some(v8::Weak::new(scope, order));
         *self.entry.callbacks.borrow_mut() = Some(v8::Weak::new(scope, callbacks));
         self.entry.collecting.set(true);
         let mut index = 0;
-        while index < self.queue.length() && !scope.is_execution_terminating() {
-            if let Some(event) = self
-                .queue
+        while index < queue.length() && !scope.is_execution_terminating() {
+            if let Some(event) = queue
                 .get_index(scope, index)
                 .and_then(|value| value.to_object(scope))
             {
@@ -538,14 +570,11 @@ pub(super) fn mutation(scope: &mut v8::PinScope, event: v8::Local<v8::Object>) {
     if scope.get_slot::<DefinitionsActive>().is_none() {
         return;
     }
-    let queue = scope.get_slot::<Rc<ReactionFrames>>().and_then(|frames| {
-        frames
-            .0
-            .borrow()
-            .last()
-            .and_then(|entry| entry.events.to_local(scope))
-    });
-    if let Some(queue) = queue {
+    let entry = scope
+        .get_slot::<Rc<ReactionFrames>>()
+        .and_then(|frames| frames.0.borrow().last().cloned());
+    if let Some(entry) = entry {
+        let queue = entry.queue(scope);
         append(scope, queue, event.into());
     } else {
         deliver_mutation(scope, event);
@@ -605,7 +634,7 @@ pub(super) fn parsed_fragment(
 pub(super) fn event_mark(scope: &mut v8::PinScope) -> Option<u32> {
     let frames = scope.get_slot::<Rc<ReactionFrames>>()?.clone();
     let entry = frames.0.borrow().last().cloned()?;
-    entry.events.to_local(scope).map(|queue| queue.length())
+    Some(entry.queued(scope).map_or(0, |queue| queue.length()))
 }
 /// The HTML fragment parser created `nodes` (innerHTML / outerHTML / insertAdjacentHTML /
 /// setHTMLUnsafe): their upgrades are queued before the setter's removals queue
@@ -634,13 +663,10 @@ pub(super) fn parser_inserted(
     let values = nodes.iter().map(|node| (*node).into()).collect::<Vec<_>>();
     let values = v8::Array::new_with_elements(scope, &values);
     set_prop(scope, event, "nodes", values.into());
-    let queue = scope.get_slot::<Rc<ReactionFrames>>().and_then(|frames| {
-        frames
-            .0
-            .borrow()
-            .last()
-            .and_then(|entry| entry.events.to_local(scope))
-    });
+    let queue = scope
+        .get_slot::<Rc<ReactionFrames>>()
+        .and_then(|frames| frames.0.borrow().last().cloned())
+        .map(|entry| entry.queue(scope));
     match (queue, mark) {
         (Some(queue), Some(mark)) if mark < queue.length() => {
             // Shift the setter's own mutations up one slot and deliver this event first.
