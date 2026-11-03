@@ -217,13 +217,13 @@ fn collection<'s>(
     let template = v8::ObjectTemplate::new(scope);
     template.set_named_property_handler(
         v8::NamedPropertyHandlerConfiguration::new()
-            .getter(named_getter)
-            .setter(all_named_setter)
-            .query(named_query)
-            .descriptor(named_descriptor)
-            .deleter(all_named_deleter)
-            .enumerator(named_enumerator)
-            .definer(all_named_definer)
+            .getter(ext!(NamedPropertyGetterCallback, named_getter))
+            .setter(ext!(NamedPropertySetterCallback, all_named_setter))
+            .query(ext!(NamedPropertyQueryCallback, named_query))
+            .descriptor(ext!(NamedPropertyDescriptorCallback, named_descriptor))
+            .deleter(ext!(NamedPropertyDeleterCallback, all_named_deleter))
+            .enumerator(ext!(NamedPropertyEnumeratorCallback, named_enumerator))
+            .definer(ext!(NamedPropertyDefinerCallback, all_named_definer))
             .data(named.into())
             .flags(
                 v8::PropertyHandlerFlags::NON_MASKING
@@ -232,16 +232,16 @@ fn collection<'s>(
     );
     template.set_indexed_property_handler(
         v8::IndexedPropertyHandlerConfiguration::new()
-            .getter(indexed_getter)
-            .setter(all_index_setter)
-            .query(indexed_query)
-            .descriptor(indexed_descriptor)
-            .deleter(all_index_deleter)
-            .enumerator(indexed_enumerator)
-            .definer(all_index_definer)
+            .getter(ext!(IndexedPropertyGetterCallback, indexed_getter))
+            .setter(ext!(IndexedPropertySetterCallback, all_index_setter))
+            .query(ext!(IndexedPropertyQueryCallback, indexed_query))
+            .descriptor(ext!(IndexedPropertyDescriptorCallback, indexed_descriptor))
+            .deleter(ext!(IndexedPropertyDeleterCallback, all_index_deleter))
+            .enumerator(ext!(IndexedPropertyEnumeratorCallback, indexed_enumerator))
+            .definer(ext!(IndexedPropertyDefinerCallback, all_index_definer))
             .data(indexed.into()),
     );
-    let callback: v8::FunctionCallback = legacy_call.map_fn_to();
+    let callback: v8::FunctionCallback = ext!(FunctionCallback, legacy_call).map_fn_to();
     let caller: v8::Local<v8::Value> = caller.into();
     // SAFETY: both symbols are non-virtual public V8 methods on the template
     // this local refers to; `Local<Value>` is a trivially copied handle slot.
@@ -263,6 +263,7 @@ fn private_key<'s>(scope: &mut v8::PinScope<'s, '_>, name: &str) -> v8::Local<'s
 /// The per-realm factory builds a Document's collection in that Document's
 /// own realm, whichever realm's accessor first asks for it.
 struct AllFactory(v8::Weak<v8::Function>);
+fn_slots!([AllFactory]);
 
 fn all_of<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -627,11 +628,7 @@ fn dispatch<'s>(
         }
         "register" => {
             if let Ok(factory) = v8::Local::<v8::Function>::try_from(args.get(1)) {
-                if let Some(factory) = dom_ownership::helper_function(scope, factory) {
-                    scope
-                        .get_current_context()
-                        .set_slot(std::rc::Rc::new(AllFactory(factory)));
-                }
+                context_rehydrate::capture::<AllFactory>(scope, factory);
             }
             return;
         }

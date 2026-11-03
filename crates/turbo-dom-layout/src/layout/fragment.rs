@@ -58,9 +58,11 @@ pub enum FragmentContent {
     Box {
         background: Option<Rgba>,
         border: BorderEdges,
-        /// `border-radius` resolved to px (0 = square corners). Clamped to half the
-        /// box's shorter side at layout, so `50%` on a square is a full circle.
-        border_radius: f32,
+        /// The used `border-*-radius` of each corner in px (horizontal and vertical:
+        /// elliptical corners), percentages resolved against the border box and scaled
+        /// down by the overlap rule at layout (miaskiewicz/turbo-dom#253; it was one
+        /// `f32`). [`BorderRadii::ZERO`] = square corners.
+        border_radius: BorderRadii,
         /// `box-shadow` (first/topmost layer), painted behind the box by the raster
         /// so overlay cards/modals read as raised chrome. `None` = no shadow.
         shadow: Option<BoxShadow>,
@@ -170,6 +172,165 @@ pub struct ImagePlacement {
     pub orientation: crate::image::Orientation,
 }
 
+/// One corner's used radii in px: `h` along the horizontal axis, `v` along the vertical
+/// one. Either at zero makes the corner square.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct CornerRadii {
+    pub h: f32,
+    pub v: f32,
+}
+
+impl CornerRadii {
+    /// A circular corner of radius `r`.
+    #[must_use]
+    pub const fn circle(r: f32) -> CornerRadii {
+        CornerRadii { h: r, v: r }
+    }
+
+    /// Whether the corner is visibly rounded (both radii over half a pixel).
+    #[must_use]
+    pub fn is_rounded(self) -> bool {
+        self.h > 0.5 && self.v > 0.5
+    }
+}
+
+/// A box's four used corner radii (CSS Backgrounds 3 §5, as Chrome 156 paints them):
+/// physical corners, each elliptical, already scaled so adjacent radii never overlap
+/// (miaskiewicz/turbo-dom#253).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct BorderRadii {
+    pub top_left: CornerRadii,
+    pub top_right: CornerRadii,
+    pub bottom_right: CornerRadii,
+    pub bottom_left: CornerRadii,
+}
+
+impl From<f32> for BorderRadii {
+    /// Every corner circular with radius `r` (the pre-#253 single scalar).
+    fn from(r: f32) -> BorderRadii {
+        BorderRadii::uniform(r)
+    }
+}
+
+impl BorderRadii {
+    /// Square corners.
+    pub const ZERO: BorderRadii = BorderRadii::uniform(0.0);
+
+    /// Every corner circular with radius `r`.
+    #[must_use]
+    pub const fn uniform(r: f32) -> BorderRadii {
+        let c = CornerRadii::circle(r);
+        BorderRadii {
+            top_left: c,
+            top_right: c,
+            bottom_right: c,
+            bottom_left: c,
+        }
+    }
+
+    /// The corners in CSS order: top-left, top-right, bottom-right, bottom-left.
+    #[must_use]
+    pub fn corners(&self) -> [CornerRadii; 4] {
+        [
+            self.top_left,
+            self.top_right,
+            self.bottom_right,
+            self.bottom_left,
+        ]
+    }
+
+    /// The radii from corners in CSS order (see [`Self::corners`]).
+    #[must_use]
+    pub fn from_corners(
+        [top_left, top_right, bottom_right, bottom_left]: [CornerRadii; 4],
+    ) -> Self {
+        BorderRadii {
+            top_left,
+            top_right,
+            bottom_right,
+            bottom_left,
+        }
+    }
+
+    /// Whether any corner is visibly rounded ([`CornerRadii::is_rounded`]).
+    #[must_use]
+    pub fn is_rounded(&self) -> bool {
+        self.corners().into_iter().any(CornerRadii::is_rounded)
+    }
+
+    /// `Some(r)` when every corner is the same circle of radius `r` (what a painter
+    /// limited to one radius, such as the pre-#253 `f32`, can draw exactly).
+    #[must_use]
+    pub fn as_uniform(&self) -> Option<f32> {
+        let r = self.top_left.h;
+        self.corners()
+            .into_iter()
+            .all(|c| c == CornerRadii::circle(r))
+            .then_some(r)
+    }
+
+    /// Scale every radius down by one factor so the radii along each side of a
+    /// `width` x `height` box fit it (CSS Backgrounds 3 §5.5 "Overlapping Curves").
+    #[must_use]
+    pub fn fit(self, width: f32, height: f32) -> BorderRadii {
+        let [tl, tr, br, bl] = self.corners();
+        let ratio = |side: f32, a: f32, b: f32| {
+            if a + b > 0.0 {
+                side.max(0.0) / (a + b)
+            } else {
+                f32::INFINITY
+            }
+        };
+        let f = ratio(width, tl.h, tr.h)
+            .min(ratio(width, bl.h, br.h))
+            .min(ratio(height, tl.v, bl.v))
+            .min(ratio(height, tr.v, br.v));
+        if f >= 1.0 {
+            return self;
+        }
+        self.map(|c| CornerRadii {
+            h: c.h * f,
+            v: c.v * f,
+        })
+    }
+
+    /// The radii of an edge `top` / `right` / `bottom` / `left` px inside this one (the
+    /// padding edge from the border edge, the content edge from the padding edge): each
+    /// radius less the adjacent side's inset, floored at zero (CSS Backgrounds 3 §5.2).
+    #[must_use]
+    pub fn inset(self, top: f32, right: f32, bottom: f32, left: f32) -> BorderRadii {
+        let shrink = |c: CornerRadii, h: f32, v: f32| CornerRadii {
+            h: (c.h - h).max(0.0),
+            v: (c.v - v).max(0.0),
+        };
+        BorderRadii {
+            top_left: shrink(self.top_left, left, top),
+            top_right: shrink(self.top_right, right, top),
+            bottom_right: shrink(self.bottom_right, right, bottom),
+            bottom_left: shrink(self.bottom_left, left, bottom),
+        }
+    }
+
+    /// Apply `f` to every corner.
+    #[must_use]
+    pub fn map(self, f: impl Fn(CornerRadii) -> CornerRadii) -> BorderRadii {
+        BorderRadii::from_corners(self.corners().map(f))
+    }
+}
+
+/// The region an `overflow` other than `visible` clips a box's descendants to (CSS
+/// Overflow 3 §3): its padding box with the inner corner radii, in px from the fragment's
+/// border-box top-left. An axis whose overflow is `visible` (beside `clip`) is not clipped:
+/// its extent is unbounded (miaskiewicz/turbo-dom#253).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct OverflowClip {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    pub radii: BorderRadii,
+}
+
 /// The region an absolutely positioned box's `clip: rect()` keeps (CSS 2.1 §11.1.2), in
 /// px from the fragment's border-box top-left (so it moves with the fragment). The box
 /// and every descendant fragment paint only inside it; it may be empty (paints nothing)
@@ -180,6 +341,10 @@ pub struct ClipRect {
     pub y: f32,
     pub width: f32,
     pub height: f32,
+    /// The region's corner radii ([`BorderRadii::ZERO`] = square): a background layer
+    /// clipped to a rounded box's clip area (miaskiewicz/turbo-dom#248; per corner and
+    /// elliptical since #253).
+    pub radii: BorderRadii,
 }
 
 /// Break hints attached to a fragment, consumed by the fragmenter.
@@ -234,6 +399,10 @@ pub struct Fragment {
     /// The box's `clip: rect()` region (`None` = unclipped): painters clip this fragment
     /// and its subtree to it.
     pub clip: Option<ClipRect>,
+    /// The region the box's `overflow` clips its descendants to (`None` = `visible`):
+    /// painters clip the children, not the box's own background and border
+    /// (miaskiewicz/turbo-dom#253).
+    pub overflow_clip: Option<OverflowClip>,
     /// The box's CSS `opacity` (`0..=1`, `1` = opaque): painters composite this
     /// fragment and its whole subtree as one group at this alpha. Below `1` it also
     /// makes a stacking context ([`Fragment::stacks_as_positioned`]).
@@ -263,6 +432,7 @@ impl Fragment {
             z_index: None,
             is_positioned: false,
             clip: None,
+            overflow_clip: None,
             opacity: 1.0,
         }
     }

@@ -385,7 +385,7 @@ fn shape_fragment(
         FragmentContent::Box {
             background,
             border,
-            border_radius: radius,
+            border_radius: radius.into(),
             shadow: None,
             gradient: None,
             transform: None,
@@ -403,7 +403,7 @@ fn empty_box(node_id: NodeId, x: f32, y: f32, width: f32, height: f32) -> Fragme
         FragmentContent::Box {
             background: None,
             border: BorderEdges::default(),
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: None,
             gradient: None,
             transform: None,

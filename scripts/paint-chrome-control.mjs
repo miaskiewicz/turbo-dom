@@ -395,6 +395,51 @@ const CASES = [
     probes: [[22, 30], [58, 30], [62, 30], [98, 30], [22, 65], [58, 65]],
   },
   {
+    // `space`: 5 whole 40px tiles over 220px, 5px apart, the first at the edge.
+    id: "bg-space",
+    html: DOC(`<div style="${at(20, 20)};width:220px;height:60px;background:#00ff00 url(${SPRITE}) space;background-size:40px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 30], [55, 30], [62, 30], [67, 30], [97, 30], [102, 30], [205, 30], [235, 30], [237, 30], [25, 70]],
+  },
+  {
+    // `round`: 230 / 40 rounds to 6 tiles of 38.33px (20 / 20 rows stay 20px).
+    id: "bg-round",
+    html: DOC(`<div style="${at(20, 20)};width:230px;height:60px;background:#00ff00 url(${SPRITE}) round;background-size:40px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 30], [56, 30], [60, 30], [76, 30], [96, 30], [98, 30], [138, 30], [244, 30], [248, 30], [25, 75]],
+  },
+  {
+    // A rounded box: the layer is clipped to the border box's outer radius, and the
+    // (opaque) border paints over it.
+    id: "bg-radius-border-box",
+    html: DOC(`<div style="${at(20, 20)};width:80px;height:80px;border:10px solid #ffff00;border-radius:30px;background:#00ff00 url(${SPRITE}) center/40px 40px"></div>`),
+    assets: [SPRITE],
+    probes: [[21, 21], [24, 24], [31, 31], [25, 70], [70, 70], [80, 70], [118, 118]],
+  },
+  {
+    // `background-clip: padding-box` clips to the inner radius (30 - 10px border).
+    id: "bg-radius-padding-box",
+    html: DOC(`<div style="${at(20, 20)};width:80px;height:80px;border:10px solid transparent;border-radius:30px;background:#00ff00 url(${SPRITE}) padding-box;background-size:40px 40px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 70], [31, 31], [33, 33], [40, 40], [70, 40], [109, 109], [106, 106]],
+  },
+  {
+    // 75 x 75 = 5625 tiles: every one paints (the far corner too).
+    id: "bg-many-tiles",
+    html: DOC(`<div style="${at(20, 20)};width:600px;height:300px;background:#00ff00 url(${SPRITE});background-size:8px 4px"></div>`),
+    assets: [SPRITE],
+    probes: [[21, 21], [25, 21], [613, 317], [617, 317], [21, 317], [617, 21]],
+  },
+  {
+    // An inline `content-box` origin: the first fragment's content starts after its
+    // left padding, the last ends before its right padding; the 20px image sits at the
+    // strip's content end.
+    id: "inline-bg-content-box",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span style="background:#00ff00 url(${SPRITE}) no-repeat content-box right center/20px 10px;background-clip:border-box;padding:5px 10px">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[85, 80], [95, 80], [105, 80], [75, 80], [25, 50]],
+  },
+  {
     // An inline box: the positioning area is its fragments' strip (160px over two
     // lines); a right-aligned 40px no-repeat image lands at the end of the last one.
     id: "inline-bg-position",
@@ -426,6 +471,96 @@ const CASES = [
     id: "inline-gradient-clone",
     html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:linear-gradient(to right,#ff0000,#0000ff);padding:5px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
     probes: [[22, 52], [98, 52], [22, 82], [98, 82]],
+  },  // miaskiewicz/turbo-dom#253: Chrome 156's full border-radius model. Per-corner and
+  // elliptical radii, percentages against the border box's own axes, the overlap scale-down,
+  // inner (padding / content edge) radii, logical corners under RTL and vertical writing
+  // modes, and the radius clipping backgrounds, borders, shadows and overflow.
+  {
+    // Shorthand order TL TR BR BL: a square TL, a small TR, larger BR and BL.
+    id: "radius-per-corner",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:100px;background:#ff0000;border-radius:0 10px 30px 50px"></div>`),
+    probes: [[21, 21], [118, 21], [115, 115], [100, 100], [30, 110], [40, 100], [70, 70], [112, 28]],
+  },
+  {
+    // Longhands, one of them elliptical (h 40px, v 10px).
+    id: "radius-longhands",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:60px;background:#00ff00;border-top-left-radius:40px;border-bottom-right-radius:40px 10px"></div>`),
+    probes: [[25, 25], [45, 30], [119, 21], [21, 79], [115, 77], [100, 76], [110, 74], [70, 50]],
+  },
+  {
+    // `h / v` in the shorthand.
+    id: "radius-elliptical",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#0000ff;border-radius:50px / 20px"></div><div style="${at(300, 20)};width:200px;height:100px;background:#ff0000;border-radius:10px 60px / 40px 10px"></div>`),
+    probes: [[25, 25], [30, 45], [40, 28], [22, 30], [215, 115], [120, 70], [302, 24], [325, 25], [496, 22], [470, 22], [302, 116], [498, 117], [400, 70]],
+  },
+  {
+    // `50%` on a 200x100 box is a 100x50 ellipse at each corner (an ellipse, not a pill).
+    id: "radius-percent",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#ff0000;border-radius:50%"></div><div style="${at(300, 20)};width:100px;height:100px;background:#00ff00;border-radius:20% 0 0 0 / 40% 0 0 0"></div>`),
+    probes: [[70, 25], [120, 23], [120, 70], [30, 70], [45, 40], [302, 22], [302, 60], [319, 30], [330, 60], [398, 22]],
+  },
+  {
+    // The overlap rule: TL 150 + TR 50 on a 100px top side scale every radius by 0.5.
+    id: "radius-overlap",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:200px;background:#ff0000;border-top-left-radius:150px;border-top-right-radius:50px"></div><div style="${at(200, 20)};width:100px;height:100px;background:#0000ff;border-radius:100px 100px 100px 100px / 50px 150px 50px 150px"></div>`),
+    probes: [[23, 65], [112, 28], [117, 25], [70, 120], [30, 30], [210, 22], [298, 22], [250, 70], [202, 70]],
+  },
+  {
+    // Different border widths and colours per side at a rounded corner: the inner (padding
+    // edge) radius is the outer one less each side's width (here 10px wide, 26px tall).
+    id: "radius-border-sides",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:100px;background:#00ff00;border-style:solid;border-width:4px 20px 4px 20px;border-color:#ff0000 #0000ff #ff0000 #0000ff;border-radius:30px"></div>`),
+    probes: [[90, 22], [30, 74], [150, 74], [90, 126], [90, 74], [21, 21], [42, 30], [60, 22], [45, 26], [41, 40], [158, 118]],
+  },
+  {
+    // A uniform rounded border, and a border wider than the radius (square inner corner).
+    id: "radius-border-uniform",
+    html: DOC(`<div style="${at(20, 20)};width:60px;height:60px;background:#00ff00;border:10px solid #0000ff;border-radius:40px"></div><div style="${at(200, 20)};width:60px;height:60px;background:#00ff00;border:20px solid #0000ff;border-radius:15px"></div>`),
+    probes: [[22, 22], [30, 30], [60, 25], [60, 60], [42, 42], [36, 36], [201, 21], [203, 38], [202, 22], [221, 41], [241, 41], [290, 22]],
+  },
+  {
+    // Logical corners under `direction: rtl`: start-start is the top-right corner, end-end
+    // the bottom-left; a physical longhand stays put.
+    id: "radius-rtl",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:60px;background:#ff0000;direction:rtl;border-start-start-radius:40px;border-end-end-radius:40px"></div><div style="${at(200, 20)};width:100px;height:60px;background:#ff0000;direction:rtl;border-top-left-radius:40px"></div>`),
+    probes: [[22, 22], [118, 22], [22, 78], [118, 78], [70, 50], [202, 22], [298, 22], [202, 78]],
+  },
+  {
+    // Logical corners in `vertical-rl` (block-start = right, inline-start = top) and
+    // `vertical-lr`; a physical elliptical longhand keeps its corner and axes; the
+    // block-start border is the right side in vertical-rl.
+    id: "radius-vertical",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:60px;background:#00ff00;writing-mode:vertical-rl;border-start-start-radius:40px;border-start-end-radius:20px;border-top-left-radius:30px 10px;border-right:10px solid #0000ff"></div><div style="${at(200, 20)};width:100px;height:60px;background:#00ff00;writing-mode:vertical-lr;border-start-end-radius:40px;border-end-start-radius:40px"></div>`),
+    probes: [[128, 22], [128, 78], [25, 22], [25, 29], [124, 50], [60, 50], [22, 78], [202, 22], [202, 78], [298, 22], [298, 78], [298, 50]],
+  },
+  {
+    // `overflow: hidden` clips descendants to the rounded padding box; square too.
+    id: "radius-overflow",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:100px;overflow:hidden;border-radius:50px">${BLOCK(100, 100, "#ff0000")}</div><div style="${at(200, 20)};width:50px;height:50px;overflow:hidden">${BLOCK(100, 100, "#00ff00")}</div><div style="${at(400, 20)};width:80px;height:80px;overflow:hidden;border:10px solid #0000ff;border-radius:40px">${BLOCK(200, 200, "#ff0000")}</div>`),
+    probes: [[25, 25], [70, 70], [115, 115], [70, 22], [240, 40], [260, 40], [240, 90], [440, 60], [402, 60], [413, 60], [418, 33], [470, 112], [460, 170]],
+  },
+  {
+    // Background layers (miaskiewicz/turbo-dom#248) clip to the radius: gradient tiles over
+    // the border box and a colour clipped to the content box with its inner radius.
+    id: "radius-background-layers",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:100px;border-radius:50px;background:linear-gradient(#ff0000,#ff0000) 0 0 / 50px 50px repeat"></div><div style="${at(200, 20)};width:80px;height:80px;padding:10px;border-radius:40px;background:#0000ff;background-clip:content-box"></div>`),
+    probes: [[25, 25], [70, 70], [45, 25], [115, 115], [70, 22], [212, 32], [221, 41], [205, 60], [250, 25], [250, 60]],
+  },
+  {
+    // Shadows follow each corner's radius: a spread shadow grows a rounded corner by the
+    // spread and keeps a square one square; an inset shadow follows an elliptical padding
+    // box.
+    id: "radius-shadows",
+    html: DOC(`<div style="${at(100, 100)};width:60px;height:60px;background:#00ff00;border-radius:30px 0 0 0;box-shadow:0 0 0 10px #ff0000"></div><div style="${at(300, 100)};width:100px;height:60px;background:#00ff00;border-radius:50px / 30px;box-shadow:inset 0 0 0 8px #ff0000"></div>`),
+    probes: [[92, 92], [167, 92], [95, 130], [167, 167], [130, 95], [130, 130], [302, 102], [304, 130], [350, 104], [350, 130], [312, 112]],
+  },
+  {
+    // A background image clipped to the padding box of a box with per-corner elliptical
+    // radii: each corner's inner radii (outer less the adjacent border widths) clip it.
+    id: "radius-background-image-corners",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:60px;border:10px solid transparent;border-radius:40px 0 10px 0 / 20px 0 10px 0;background:url(${SPRITE}) 0 0 / 100% 100% no-repeat;background-clip:padding-box"></div>`),
+    assets: [SPRITE],
+    probes: [[35, 31], [45, 38], [128, 88], [128, 32], [22, 50], [31, 88], [70, 60], [100, 60]],
   },
   // miaskiewicz/turbo-dom#252 (`media-*`): <canvas>, <video>, <audio controls> and <object>
   // are replaced boxes that paint their own background and border (a 4px blue border, a

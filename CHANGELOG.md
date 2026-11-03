@@ -47,8 +47,39 @@ at the time); this file reconstructs them from history.
   A page that is recording mutations for script preparation, with nothing observing them,
   no longer allocates one per mutation (4-5% on React-heavy files).
 
+### Changed (breaking, turbo-dom-layout)
+
+- `border-radius` follows Chrome 156's full model (#253), which changes turbo-dom-layout's
+  public types:
+  - `FragmentContent::Box::border_radius` is a `BorderRadii` (four physical corners, each
+    an elliptical `CornerRadii { h, v }` in px, already scaled by the overlap rule) instead
+    of one `f32`. `BorderRadii::as_uniform()` returns the old scalar when every corner is
+    the same circle, `BorderRadii::from(f32)` / `uniform(r)` build one, and `inset` gives
+    the padding / content edge radii. A consumer that paints one radius (html2pdf's PDF
+    emitter) can keep its path for `as_uniform()` and must draw the corners otherwise.
+  - `BoxStyle::border_radius` is `[CornerRadius; 4]` (specified `h` / `v` per corner)
+    instead of one `LengthPct`; `layout::value::resolve_radii` resolves it.
+  - `Fragment` has a new `overflow_clip: Option<OverflowClip>` field: the padding box (with
+    the inner radii) that a box's `overflow` other than `visible` clips its descendants
+    to. `Fragment::new` sets it to `None`; struct literals must add it.
+  - `ClipRect::radius: f32` (#248, unreleased) is `ClipRect::radii: BorderRadii`: background
+    layers clip to the painting area's per-corner inner radii.
+
 ### Fixed
 
+- turbo-dom-layout and turbo-dom-raster implement `border-radius` like Chrome 156 (#253):
+  per-corner longhands and the `border-radius` shorthand's 1-4 values with `h / v`
+  elliptical radii (expanded in cascade order), percentages against the border box's own
+  width / height (`50%` on a non-square box is an ellipse, it was a pill), the overlap
+  scale-down, the flow-relative `border-{start,end}-{start,end}-radius` corners under
+  `direction: rtl` and vertical writing modes, and inner radii at the padding / content
+  edges. The PNG and SVG screenshots use them for backgrounds and gradients, borders (the
+  ring between the outer and inner outlines, each side in its own width and colour, sides
+  meeting on the corner diagonals; it was one stroke in the widest side's colour), outer
+  and inset shadows, #248's background layers (clipped to the rounded painting area) and
+  `overflow` clipping, which the screenshots now apply to every box whose `overflow` is not
+  `visible` (descendants were never clipped). A box laid out in a vertical writing mode
+  also paints its borders on the right physical sides (they were the logical ones).
 - turbo-dom-layout places background images and gradients like Chrome 156 (#248):
   `background-size` (lengths, `%`, `auto`, `cover`, `contain`), `-position` (1-4 values),
   `-repeat` (`repeat-x` / `-y`, two values; `space` / `round` tile like `repeat`),
@@ -56,8 +87,8 @@ at the time); this file reconstructs them from history.
   shorthand, on block and inline boxes, in PNG, SVG and PDF. A background image was
   stretched over the content box; it now tiles at its size from the padding box, which
   changes the tools/parity image pages' `.bg` boxes (declared in
-  `tools/parity/expected/turbo-dom-248-background-layers.json`). Layers ignore
-  `border-radius`.
+  `tools/parity/expected/turbo-dom-248-background-layers.json`). Layers clip to the
+  rounded painting area, per corner since #253.
 - turbo-dom-raster's static screenshots (PNG and SVG) paint inline boxes like Chrome 156
   (#244): an inline with a background, box shadow, padding, border or horizontal margin
   keeps its box through turbo-dom-layout's static line layout and paints per line fragment

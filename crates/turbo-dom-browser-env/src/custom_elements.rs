@@ -166,7 +166,7 @@ fn constructor(
     let delegate = v8::Local::<v8::Function>::try_from(args.get(0))
         .expect("custom_elements.js passes its construction delegate");
     let name = args.get(1).to_rust_string_lossy(scope);
-    if let Some(function) = v8::Function::builder(construct)
+    if let Some(function) = v8::Function::builder(ext!(FunctionCallback, construct))
         .data(delegate.into())
         .length(0)
         .build(scope)
@@ -314,6 +314,7 @@ fn defining(
 struct MutationHook(v8::Weak<v8::Function>);
 struct CloneHook(v8::Weak<v8::Function>);
 struct ParsedHook(v8::Weak<v8::Function>);
+fn_slots!([ErrorHook, MutationHook, CloneHook, ParsedHook]);
 
 fn mutation_hook<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -766,7 +767,7 @@ fn bind_native<F>(scope: &mut v8::PinScope, global: v8::Local<v8::Object>, name:
 where
     F: v8::MapFnTo<v8::FunctionCallback>,
 {
-    if let Some(function) = v8::FunctionTemplate::builder(callback)
+    if let Some(function) = v8::FunctionTemplate::builder(ext!(FunctionCallback, callback))
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .build(scope)
         .get_function(scope)
@@ -798,23 +799,14 @@ pub(super) fn install(scope: &mut v8::PinScope) {
             .get(scope, key.into())
             .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
         {
-            let Some(function) = dom_ownership::helper_function(scope, function) else {
-                return;
+            let captured = match family {
+                0 => context_rehydrate::capture::<MutationHook>(scope, function),
+                1 => context_rehydrate::capture::<CloneHook>(scope, function),
+                2 => context_rehydrate::capture::<ErrorHook>(scope, function),
+                _ => context_rehydrate::capture::<ParsedHook>(scope, function),
             };
-            let context = scope.get_current_context();
-            match family {
-                0 => {
-                    context.set_slot(Rc::new(MutationHook(function)));
-                }
-                1 => {
-                    context.set_slot(Rc::new(CloneHook(function)));
-                }
-                2 => {
-                    context.set_slot(Rc::new(ErrorHook(function)));
-                }
-                _ => {
-                    context.set_slot(Rc::new(ParsedHook(function)));
-                }
+            if captured.is_none() {
+                return;
             }
         }
         global.delete(scope, key.into());

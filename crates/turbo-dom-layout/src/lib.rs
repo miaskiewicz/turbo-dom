@@ -41,8 +41,9 @@ pub use html_layout::{
 };
 pub use image::{ImageResolver, NoImages};
 pub use layout::fragment::{
-    BoxShadow, BreakMeta, ClipRect, Fragment, FragmentContent, GradientStop, ImagePlacement,
-    LinearGradient, NodeId, PositionedGlyph, RepeatKind, Transform2D,
+    BorderRadii, BoxShadow, BreakMeta, ClipRect, CornerRadii, Fragment, FragmentContent,
+    GradientStop, ImagePlacement, LinearGradient, NodeId, OverflowClip, PositionedGlyph,
+    RepeatKind, Transform2D,
 };
 pub use layout::value::{BreakRule, Rgba};
 pub use layout::{

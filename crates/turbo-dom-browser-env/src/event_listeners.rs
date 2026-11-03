@@ -1,12 +1,37 @@
 //! Private phased Window dispatch and listener option capabilities.
 use super::*;
 
-struct WindowPhases(v8::Weak<v8::Function>);
+pub(crate) struct WindowPhases(v8::Weak<v8::Function>);
 struct ListenerParser(v8::Weak<v8::Function>);
 struct SignalReader(v8::Weak<v8::Function>);
 struct WindowInterfaces(v8::Weak<v8::Function>);
 struct SignalSubscription(v8::Weak<v8::Function>);
 struct ErrorGetters(Vec<v8::Weak<v8::Function>>);
+fn_slots!(
+    [
+        WindowPhases,
+        ListenerParser,
+        SignalReader,
+        WindowInterfaces,
+        SignalSubscription,
+    ],
+    context_rehydrate::Entry {
+        name: concat!(module_path!(), "::ErrorGetters"),
+        set: |scope, context, value| {
+            let Some(getters) = context_rehydrate::functions_of(scope, value) else {
+                return false;
+            };
+            context.set_slot(std::rc::Rc::new(ErrorGetters(getters)));
+            true
+        },
+        get: |scope, context| {
+            let Some(getters) = context.get_slot::<ErrorGetters>() else {
+                return Vec::new();
+            };
+            context_rehydrate::locals(scope, &getters.0.iter().collect::<Vec<_>>())
+        },
+    },
+);
 fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     let operation = args.get(0).to_rust_string_lossy(scope);
     let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
@@ -101,26 +126,15 @@ pub(super) fn install(scope: &mut v8::PinScope) {
             .get(scope, key.into())
             .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
         {
-            let Some(function) = dom_ownership::helper_function(scope, function) else {
-                return;
+            let captured = match family {
+                0 => context_rehydrate::capture::<WindowPhases>(scope, function),
+                1 => context_rehydrate::capture::<ListenerParser>(scope, function),
+                2 => context_rehydrate::capture::<SignalReader>(scope, function),
+                3 => context_rehydrate::capture::<WindowInterfaces>(scope, function),
+                _ => context_rehydrate::capture::<SignalSubscription>(scope, function),
             };
-            let context = scope.get_current_context();
-            match family {
-                0 => {
-                    context.set_slot(std::rc::Rc::new(WindowPhases(function)));
-                }
-                1 => {
-                    context.set_slot(std::rc::Rc::new(ListenerParser(function)));
-                }
-                2 => {
-                    context.set_slot(std::rc::Rc::new(SignalReader(function)));
-                }
-                3 => {
-                    context.set_slot(std::rc::Rc::new(WindowInterfaces(function)));
-                }
-                _ => {
-                    context.set_slot(std::rc::Rc::new(SignalSubscription(function)));
-                }
+            if captured.is_none() {
+                return;
             }
         }
         global.delete(scope, key.into());
@@ -251,6 +265,7 @@ pub fn capture_window_event_interfaces(scope: &mut v8::PinScope) {
         };
         let mut functions = Vec::with_capacity(names.len());
         let mut getters = Vec::new();
+        let mut getter_values = Vec::new();
         for (index, name) in names.iter().enumerate() {
             // invariant: engine-built name, far below V8's string length limit
             let key = v8::String::new(scope, name).unwrap();
@@ -270,6 +285,7 @@ pub fn capture_window_event_interfaces(scope: &mut v8::PinScope) {
                 if interface == "ErrorEvent" {
                     // invariant: value produced by engine code, never page input
                     let function = v8::Local::<v8::Function>::try_from(value).unwrap();
+                    getter_values.push(value);
                     let Some(function) = dom_ownership::helper_function(scope, function) else {
                         return;
                     };
@@ -281,6 +297,12 @@ pub fn capture_window_event_interfaces(scope: &mut v8::PinScope) {
         }
         if interface == "ErrorEvent" {
             context.set_slot(std::rc::Rc::new(ErrorGetters(getters)));
+            let stored = v8::Array::new_with_elements(scope, &getter_values);
+            context_rehydrate::store(
+                scope,
+                concat!(module_path!(), "::ErrorGetters"),
+                stored.into(),
+            );
         }
         let functions = v8::Array::new_with_elements(scope, &functions);
         set_prop(scope, values, interface, functions.into());
@@ -443,7 +465,7 @@ pub(super) fn attach(
     };
     let scope = &mut v8::ContextScope::new(scope, context);
     let data = v8::Integer::new_from_unsigned(scope, listener.id);
-    let Some(hook) = v8::Function::builder(abort_listener)
+    let Some(hook) = v8::Function::builder(ext!(FunctionCallback, abort_listener))
         .data(data.into())
         .build(scope)
     else {

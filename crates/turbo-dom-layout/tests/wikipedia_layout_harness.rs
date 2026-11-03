@@ -683,8 +683,8 @@ fn border_radius_50pct_is_half_the_shorter_side() {
     use turbo_dom_layout::FragmentContent;
     fn radius(f: &Fragment) -> Option<f32> {
         if let FragmentContent::Box { border_radius, .. } = &f.content {
-            if *border_radius > 0.0 {
-                return Some(*border_radius);
+            if border_radius.is_rounded() {
+                return border_radius.as_uniform();
             }
         }
         f.children.iter().find_map(radius)

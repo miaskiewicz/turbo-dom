@@ -32,6 +32,7 @@ mod paint_canvas_coretext;
 mod paint_canvas_gpu;
 mod paint_png;
 mod paint_svg;
+mod rrect;
 mod style_extract;
 #[cfg(test)]
 mod vertical_upright_tests;

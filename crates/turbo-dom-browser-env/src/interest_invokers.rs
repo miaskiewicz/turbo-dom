@@ -7,6 +7,28 @@ use super::*;
 struct InterestHook(v8::Weak<v8::Function>);
 /// Whether any interest is currently shown in this context (removal hooks stay cheap).
 struct InterestEngaged(std::cell::Cell<bool>);
+impl context_rehydrate::FnSlot for InterestHook {
+    const NAME: &'static str = concat!(module_path!(), "::InterestHook");
+    fn wrap(function: v8::Weak<v8::Function>) -> Self {
+        Self(function)
+    }
+    fn weak(&self) -> &v8::Weak<v8::Function> {
+        &self.0
+    }
+}
+/// The hook's engagement state starts disengaged with it.
+pub(super) const SLOTS: &[context_rehydrate::Entry] = &[context_rehydrate::Entry {
+    set: |scope, context, value| {
+        let set = (context_rehydrate::Entry::of::<InterestHook>().set)(scope, context, value);
+        if set {
+            context.set_slot(std::rc::Rc::new(InterestEngaged(std::cell::Cell::new(
+                false,
+            ))));
+        }
+        set
+    },
+    ..context_rehydrate::Entry::of::<InterestHook>()
+}];
 
 fn engaged(scope: &mut v8::PinScope) -> bool {
     scope
@@ -264,9 +286,8 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(function) = dom_ownership::helper_function(scope, function) {
+        if context_rehydrate::capture::<InterestHook>(scope, function).is_some() {
             let context = scope.get_current_context();
-            context.set_slot(std::rc::Rc::new(InterestHook(function)));
             context.set_slot(std::rc::Rc::new(InterestEngaged(std::cell::Cell::new(
                 false,
             ))));

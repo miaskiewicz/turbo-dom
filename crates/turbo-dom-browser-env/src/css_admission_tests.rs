@@ -76,6 +76,36 @@ fn implicit_color_inheritance_follows_cssom_mutations_like_chrome156() {
 }
 
 #[test]
+fn grouping_and_condition_rules_match_chrome156_cssom() {
+    // turbo-dom#254: @container / @media / @supports / @layer / @scope / @starting-style
+    // rules expose their own interfaces, attributes, child lists and insertRule / deleteRule.
+    let probe = include_str!("css_grouping_rules_probe.js");
+    let expected = fixture(include_str!("css_grouping_rules_chrome156.json"), probe);
+    let actual = evaluate(probe);
+    for key in [
+        "rules",
+        "mutations",
+        "interfaces",
+        "illegal",
+        "inserted",
+        "mediaRows",
+    ] {
+        let (expected, actual) = (
+            expected[key].as_array().unwrap(),
+            actual[key].as_array().unwrap(),
+        );
+        assert_eq!(expected.len(), actual.len(), "{key}");
+        let diverged: Vec<_> = expected
+            .iter()
+            .zip(actual)
+            .filter(|(expected, actual)| expected != actual)
+            .map(|(expected, actual)| format!("chrome {expected}\n  ours {actual}"))
+            .collect();
+        assert!(diverged.is_empty(), "{key}:\n{}", diverged.join("\n"));
+    }
+}
+
+#[test]
 fn implicit_visibility_inheritance_reads_the_edited_rule() {
     let value = evaluate(
         r#"(()=>{

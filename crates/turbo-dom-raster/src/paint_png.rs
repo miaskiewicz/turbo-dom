@@ -5,17 +5,18 @@
 
 use tiny_skia::{
     FillRule, GradientStop, LinearGradient, Mask, Paint, Path, PathBuilder, Pixmap, PixmapPaint,
-    Point, Rect, SpreadMode, Stroke, Transform,
+    Point, Rect, SpreadMode, Transform,
 };
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
-    BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient, PositionedGlyph,
-    Rgba, Transform2D as BoxTransform,
+    BorderRadii, BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient,
+    OverflowClip, PositionedGlyph, Rgba, Transform2D as BoxTransform,
 };
 
 use crate::glyph::{self, Pen, Tracer};
 use crate::image_paint::DecodedAssets;
+use crate::rrect::{self, Seg};
 
 /// Neutral fill for an `<img>` box whose pixels we don't have.
 const IMAGE_PLACEHOLDER: Rgba = Rgba {
@@ -38,8 +39,34 @@ pub fn paint(
     let mut pm =
         Pixmap::new(width, height).ok_or_else(|| format!("bad canvas {width}x{height}"))?;
     pm.fill(tiny_skia::Color::from_rgba8(bg.r, bg.g, bg.b, bg.a));
+    SCALED.with(|memo| memo.borrow_mut().take());
     paint_fragment(&mut pm, galley, images, Transform::identity());
     pm.encode_png().map_err(|e| format!("png encode: {e}"))
+}
+
+/// The image scaled to `size` px, memoized for the render's next tile of the same image
+/// (a background layer draws one image many times; miaskiewicz/turbo-dom#248).
+type ScaledKey = (usize, turbo_dom_layout::image::Orientation, (u32, u32));
+thread_local! {
+    static SCALED: std::cell::RefCell<Option<(ScaledKey, Option<Pixmap>)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+fn scaled(
+    image: &crate::image_paint::DecodedImage,
+    orientation: turbo_dom_layout::image::Orientation,
+    size: (u32, u32),
+) -> Option<Pixmap> {
+    let key = (std::ptr::from_ref(image) as usize, orientation, size);
+    SCALED.with(|memo| {
+        let mut memo = memo.borrow_mut();
+        if let Some((_, pixmap)) = memo.as_ref().filter(|(seen, _)| *seen == key) {
+            return pixmap.clone();
+        }
+        let pixmap = image.oriented(orientation).scaled_pixmap(size.0, size.1);
+        *memo = Some((key, pixmap.clone()));
+        pixmap
+    })
 }
 
 /// Compose a box's CSS `transform` about its absolute origin onto the inherited
@@ -182,7 +209,26 @@ fn paint_clipped(
     let Some(region) = Rect::from_xywh(f.x + clip.x, f.y + clip.y, clip.width, clip.height) else {
         return;
     };
-    let path = PathBuilder::from_rect(region);
+    // `region` is a valid rect (positive size), so its outline always builds.
+    let path = rrect_path(
+        (region.x(), region.y(), region.width(), region.height()),
+        &clip.radii,
+    )
+    .expect("the outline of a valid region");
+    paint_masked(pm, &path, xf, |layer, local| {
+        paint_subtree(layer, f, images, local);
+    });
+}
+
+/// Run `paint` into a layer covering `path`'s device bounds (`path` in the space `xf`
+/// maps from), keep only what falls inside `path`, and composite the layer onto `pm`.
+/// A path whose bounds miss the canvas paints nothing.
+fn paint_masked(
+    pm: &mut Pixmap,
+    path: &Path,
+    xf: Transform,
+    paint: impl FnOnce(&mut Pixmap, Transform),
+) {
     let Some(bounds) = path.clone().transform(xf).map(|p| p.bounds()) else {
         return;
     };
@@ -199,8 +245,8 @@ fn paint_clipped(
     let mut layer = Pixmap::new(w, h).expect("clip layer within the canvas");
     let mut mask = Mask::new(w, h).expect("clip mask within the canvas");
     let local = Transform::from_translate(-x0 as f32, -y0 as f32).pre_concat(xf);
-    paint_subtree(&mut layer, f, images, local);
-    mask.fill_path(&path, FillRule::Winding, true, local);
+    paint(&mut layer, local);
+    mask.fill_path(path, FillRule::Winding, true, local);
     layer.apply_mask(&mask);
     pm.draw_pixmap(
         x0,
@@ -210,6 +256,53 @@ fn paint_clipped(
         Transform::identity(),
         None,
     );
+}
+
+/// Paint `f`'s children in stacking order, clipped to its `overflow` region
+/// (miaskiewicz/turbo-dom#253) when it has one: an empty region paints none of them, and
+/// children all inside a square region paint directly.
+fn paint_children(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Transform) {
+    let paint = |pm: &mut Pixmap, xf: Transform| {
+        // Paint children back-to-front in CSS stacking order (§9.9), not raw DOM
+        // order, so `position`/`z-index` boxes (menus, modals) layer correctly.
+        for &i in &f.paint_order() {
+            paint_fragment(pm, &f.children[i], images, xf);
+        }
+    };
+    let Some(clip) = f.overflow_clip.filter(|_| !f.children.is_empty()) else {
+        paint(pm, xf);
+        return;
+    };
+    let region = overflow_region(f, &clip);
+    if !clip.radii.is_rounded() && f.children.iter().all(|c| within(c, region)) {
+        paint(pm, xf);
+        return;
+    }
+    if let Some(path) = rrect_path(region, &clip.radii) {
+        paint_masked(pm, &path, xf, paint);
+    }
+}
+
+/// `f`'s overflow clip region as an absolute rectangle.
+pub(crate) fn overflow_region(f: &Fragment, clip: &OverflowClip) -> rrect::Rect {
+    (f.x + clip.x, f.y + clip.y, clip.width, clip.height)
+}
+
+/// Whether `f` and its whole subtree paint inside `(x, y, w, h)` (untransformed and
+/// unshadowed: anything that could paint past its own box answers `false`).
+pub(crate) fn within(f: &Fragment, (x, y, w, h): rrect::Rect) -> bool {
+    let plain = match &f.content {
+        FragmentContent::Box {
+            shadow, transform, ..
+        } => shadow.is_none() && transform.is_none(),
+        _ => true,
+    };
+    plain
+        && f.x >= x
+        && f.y >= y
+        && f.x + f.width <= x + w
+        && f.y + f.height <= y + h
+        && f.children.iter().all(|c| within(c, (x, y, w, h)))
 }
 
 /// Paint a fragment's own content, then its children in stacking order.
@@ -226,25 +319,25 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
             // An outer shadow paints behind the box (before its fill/border) so the
             // card sits on it; an inset one paints over the background, under the border.
             if let Some(sh) = shadow.filter(|s| !s.inset && s.color.a > 0) {
-                paint_box_shadow(pm, f, *border_radius, &sh, xf);
+                paint_box_shadow(pm, f, border_radius, &sh, xf);
             }
-            if *border_radius > 0.5 {
+            if border_radius.is_rounded() {
                 if let Some(bg) = background {
-                    fill_round_rect(pm, f.x, f.y, f.width, f.height, *border_radius, *bg, xf);
+                    fill_rrect(pm, (f.x, f.y, f.width, f.height), border_radius, *bg, xf);
                 }
                 if let Some(g) = gradient {
-                    paint_gradient(pm, f, *border_radius, g, xf);
+                    paint_gradient(pm, f, border_radius, g, xf);
                 }
-                paint_inset_shadow(pm, f, border, *border_radius, shadow.as_ref(), xf);
-                paint_round_border(pm, f, border, *border_radius, xf);
+                paint_inset_shadow(pm, f, border, border_radius, shadow.as_ref(), xf);
+                paint_round_border(pm, f, border, border_radius, xf);
             } else {
                 if let Some(bg) = background {
                     fill_rect(pm, f.x, f.y, f.width, f.height, *bg, xf);
                 }
                 if let Some(g) = gradient {
-                    paint_gradient(pm, f, 0.0, g, xf);
+                    paint_gradient(pm, f, &BorderRadii::ZERO, g, xf);
                 }
-                paint_inset_shadow(pm, f, border, 0.0, shadow.as_ref(), xf);
+                paint_inset_shadow(pm, f, border, &BorderRadii::ZERO, shadow.as_ref(), xf);
                 paint_border(pm, f, border, xf);
             }
         }
@@ -267,11 +360,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
         FragmentContent::Image(placement) => paint_image(pm, f, placement, images, xf),
         FragmentContent::Marker(_) => {}
     }
-    // Paint children back-to-front in CSS stacking order (§9.9), not raw DOM
-    // order, so `position`/`z-index` boxes (menus, modals) layer correctly.
-    for &i in &f.paint_order() {
-        paint_fragment(pm, &f.children[i], images, xf);
-    }
+    paint_children(pm, f, images, xf);
 }
 
 /// Draw an image into its layout box: scale the decoded pixels and blit them. An image
@@ -289,7 +378,7 @@ fn paint_image(
 ) {
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
     let decoded = images.get(&placement.name);
-    let img = decoded.and_then(|d| d.oriented(placement.orientation).scaled_pixmap(w, h));
+    let img = decoded.and_then(|d| scaled(d, placement.orientation, (w, h)));
     // Fold the box's top-left into the transform so a transformed image (a rotated
     // thumbnail, a translated slide) maps correctly; draw the pixmap at (0,0).
     let place = xf.pre_concat(Transform::from_translate(f.x.round(), f.y.round()));
@@ -387,27 +476,37 @@ fn paint_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
     }
 }
 
-/// A rounded-rectangle path (four cubic corner arcs, `kappa` control points).
-fn round_rect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<Path> {
-    const K: f32 = 0.552_284_7; // circle-arc cubic-Bézier control ratio
-    let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
-    let c = r * K;
-    let (r0, b0) = (x + w, y + h); // right, bottom edges
+/// Append outline steps to a path.
+fn trace(p: &mut PathBuilder, segs: &[Seg]) {
+    for seg in segs {
+        match *seg {
+            Seg::Move(x, y) => p.move_to(x, y),
+            Seg::Line(x, y) => p.line_to(x, y),
+            Seg::Cubic(a, b, c, d, x, y) => p.cubic_to(a, b, c, d, x, y),
+            Seg::Close => p.close(),
+        }
+    }
+}
+
+/// A rectangle with elliptical corner radii (miaskiewicz/turbo-dom#253) as a path.
+pub(crate) fn rrect_path(rect: rrect::Rect, radii: &BorderRadii) -> Option<Path> {
     let mut p = PathBuilder::new();
-    p.move_to(x + r, y);
-    p.line_to(r0 - r, y);
-    p.cubic_to(r0 - r + c, y, r0, y + r - c, r0, y + r);
-    p.line_to(r0, b0 - r);
-    p.cubic_to(r0, b0 - r + c, r0 - r + c, b0, r0 - r, b0);
-    p.line_to(x + r, b0);
-    p.cubic_to(x + r - c, b0, x, b0 - r + c, x, b0 - r);
-    p.line_to(x, y + r);
-    p.cubic_to(x, y + r - c, x + r - c, y, x + r, y);
-    p.close();
+    trace(&mut p, &rrect::outline(rect, radii));
     p.finish()
 }
 
-/// Fill a rounded rectangle (e.g. a `border-radius:50%` radio/checkbox circle).
+/// Fill a rectangle with elliptical corner radii.
+fn fill_rrect(pm: &mut Pixmap, rect: rrect::Rect, radii: &BorderRadii, c: Rgba, xf: Transform) {
+    if rect.2 <= 0.0 || rect.3 <= 0.0 || c.a == 0 {
+        return;
+    }
+    if let Some(path) = rrect_path(rect, radii) {
+        pm.fill_path(&path, &solid(c), FillRule::Winding, xf, None);
+    }
+}
+
+/// Fill a rounded rectangle with one circular radius `r`.
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)] // geometry + colour + the inherited transform
 fn fill_round_rect(
     pm: &mut Pixmap,
@@ -419,12 +518,7 @@ fn fill_round_rect(
     c: Rgba,
     xf: Transform,
 ) {
-    if w <= 0.0 || h <= 0.0 || c.a == 0 {
-        return;
-    }
-    if let Some(path) = round_rect_path(x, y, w, h, r) {
-        pm.fill_path(&path, &solid(c), FillRule::Winding, xf, None);
-    }
+    fill_rrect(pm, (x, y, w, h), &BorderRadii::uniform(r.max(0.0)), c, xf);
 }
 
 /// Paint an outer `box-shadow` behind the box: stamp its rounded-rect silhouette
@@ -435,7 +529,7 @@ fn fill_round_rect(
 fn paint_box_shadow(
     pm: &mut Pixmap,
     f: &Fragment,
-    border_radius: f32,
+    border_radius: &BorderRadii,
     sh: &BoxShadow,
     xf: Transform,
 ) {
@@ -447,10 +541,10 @@ fn paint_box_shadow(
     if sw < 0.5 || sh_h < 0.5 {
         return;
     }
-    let radius = shadow_radius(border_radius, spread);
+    let radii = rrect::shadow_radii(border_radius, spread);
     let blur = shadow_blur(sh);
     if blur < 0.5 {
-        fill_round_rect(pm, sx, sy, sw, sh_h, radius, sh.color, xf);
+        fill_rrect(pm, (sx, sy, sw, sh_h), &radii, sh.color, xf);
         return;
     }
     let silhouette = Silhouette {
@@ -458,28 +552,10 @@ fn paint_box_shadow(
         y: sy,
         width: sw,
         height: sh_h,
-        radius,
+        radii,
         color: sh.color,
     };
     blurred_shadow(pm, &silhouette, blur, xf, SHADOW_TILE, MAX_SHADOW_SCRATCH);
-}
-
-/// The padding box of `f` (its border box less the border widths) as `(x, y, w, h, r)`,
-/// `r` the corner radius less the widest border side (exact for a uniform border).
-pub(crate) fn padding_box(f: &Fragment, b: &BorderEdges, radius: f32) -> (f32, f32, f32, f32, f32) {
-    let (t, r, bo, l) = (
-        f32::from(b.top.width),
-        f32::from(b.right.width),
-        f32::from(b.bottom.width),
-        f32::from(b.left.width),
-    );
-    (
-        f.x + l,
-        f.y + t,
-        f.width - l - r,
-        f.height - t - bo,
-        (radius - t.max(r).max(bo).max(l)).max(0.0),
-    )
 }
 
 /// Paint an inset `box-shadow` (miaskiewicz/turbo-dom#192): the padding box in the shadow
@@ -490,37 +566,34 @@ fn paint_inset_shadow(
     pm: &mut Pixmap,
     f: &Fragment,
     border: &BorderEdges,
-    border_radius: f32,
+    border_radius: &BorderRadii,
     shadow: Option<&BoxShadow>,
     xf: Transform,
 ) {
     let Some(sh) = shadow.filter(|s| s.inset && s.color.a > 0) else {
         return;
     };
-    let (px, py, pw, ph, pr) = padding_box(f, border, border_radius);
+    let ((px, py, pw, ph), pr) = rrect::padding_box(f, border, border_radius);
     // The scratch layers have the canvas's size, which tiny-skia already allocated.
     let mut layer = Pixmap::new(pm.width(), pm.height()).expect("a canvas-sized layer");
-    fill_round_rect(&mut layer, px, py, pw, ph, pr, sh.color, xf);
+    fill_rrect(&mut layer, (px, py, pw, ph), &pr, sh.color, xf);
     let spread = sh.spread as f32;
     let hole = Silhouette {
         x: px + sh.offset_x as f32 + spread,
         y: py + sh.offset_y as f32 + spread,
         width: pw - 2.0 * spread,
         height: ph - 2.0 * spread,
-        radius: (pr - spread).max(0.0),
+        radii: pr.inset(spread, spread, spread, spread),
         color: Rgba { a: 255, ..sh.color },
     };
     if hole.width >= 0.5 && hole.height >= 0.5 {
         let mut cut = Pixmap::new(pm.width(), pm.height()).expect("a canvas-sized layer");
         let blur = shadow_blur(sh);
         if blur < 0.5 {
-            fill_round_rect(
+            fill_rrect(
                 &mut cut,
-                hole.x,
-                hole.y,
-                hole.width,
-                hole.height,
-                hole.radius,
+                (hole.x, hole.y, hole.width, hole.height),
+                &hole.radii,
                 hole.color,
                 xf,
             );
@@ -541,19 +614,6 @@ fn paint_inset_shadow(
         Transform::identity(),
         None,
     );
-}
-
-/// An outer shadow's corner radius for a box radius `r` and a `spread` (CSS Backgrounds 3
-/// §7.1, as Chrome paints it): the radius plus the spread, floored at zero — except that
-/// below the spread the spread is first scaled by `1 + (r/spread - 1)^3`, so a square box
-/// keeps a square shadow and small radii grow continuously.
-pub(crate) fn shadow_radius(r: f32, spread: f32) -> f32 {
-    if spread > 0.0 && r < spread {
-        let t = r / spread - 1.0;
-        r + spread * (1.0 + t * t * t)
-    } else {
-        (r + spread).max(0.0)
-    }
 }
 
 /// The blur radius Chrome paints a shadow with: every `blur` from 256px up paints the same
@@ -579,7 +639,7 @@ struct Silhouette {
     y: f32,
     width: f32,
     height: f32,
-    radius: f32,
+    radii: BorderRadii,
     color: Rgba,
 }
 
@@ -653,13 +713,15 @@ fn blurred_shadow(
             // At most `tile + 2 * reach` (< 3000) px a side: within tiny-skia's limits.
             let mut scratch =
                 Pixmap::new((gx1 - gx0) as u32, (gy1 - gy0) as u32).expect("bounded shadow tile");
-            fill_round_rect(
+            fill_rrect(
                 &mut scratch,
-                (margin - gx0) as f32,
-                (margin - gy0) as f32,
-                s.width,
-                s.height,
-                s.radius,
+                (
+                    (margin - gx0) as f32,
+                    (margin - gy0) as f32,
+                    s.width,
+                    s.height,
+                ),
+                &s.radii,
                 s.color,
                 Transform::identity(),
             );
@@ -714,7 +776,7 @@ fn blurred_shadow(
 fn paint_gradient(
     pm: &mut Pixmap,
     f: &Fragment,
-    border_radius: f32,
+    border_radius: &BorderRadii,
     g: &CssGradient,
     xf: Transform,
 ) {
@@ -748,8 +810,8 @@ fn paint_gradient(
         anti_alias: true,
         ..Paint::default()
     };
-    if border_radius > 0.5 {
-        if let Some(path) = round_rect_path(f.x, f.y, w, h, border_radius) {
+    if border_radius.is_rounded() {
+        if let Some(path) = rrect_path((f.x, f.y, w, h), border_radius) {
             pm.fill_path(&path, &paint, FillRule::Winding, xf, None);
         }
     } else if let Some(rect) = Rect::from_xywh(f.x, f.y, w, h) {
@@ -811,32 +873,52 @@ fn box_blur_vertical(data: &mut [u8], w: usize, h: usize, r: usize) {
     }
 }
 
-/// Stroke a box's border as a single rounded outline (uniform width/color from the
-/// widest side — enough for the common uniform-radius controls). Inset by half the
-/// stroke so the outline stays inside the border box.
-fn paint_round_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, r: f32, xf: Transform) {
-    let widest = [&b.top, &b.right, &b.bottom, &b.left]
-        .into_iter()
-        .filter(|s| s.width > 0)
-        .max_by_key(|s| s.width);
-    let Some((w, color)) = widest.and_then(|s| s.color.map(|c| (f32::from(s.width), c))) else {
+/// Paint a rounded box's border (miaskiewicz/turbo-dom#253): the ring between the
+/// border-box outline and the padding-box outline (its inner radii), in one fill when every
+/// painted side has one colour, else each side's part of the ring in its colour, the sides
+/// meeting on each corner's diagonal ([`rrect::side_region`]).
+fn paint_round_border(
+    pm: &mut Pixmap,
+    f: &Fragment,
+    b: &BorderEdges,
+    radii: &BorderRadii,
+    xf: Transform,
+) {
+    let rect = (f.x, f.y, f.width, f.height);
+    let (inner, inner_radii) = rrect::padding_box(f, b, radii);
+    let mut ring = PathBuilder::new();
+    trace(&mut ring, &rrect::outline(rect, radii));
+    if inner.2 > 0.0 && inner.3 > 0.0 {
+        trace(&mut ring, &rrect::outline(inner, &inner_radii));
+    }
+    let Some(ring) = ring.finish() else {
         return;
     };
-    let hw = w / 2.0;
-    let Some(path) = round_rect_path(
-        f.x + hw,
-        f.y + hw,
-        f.width - w,
-        f.height - w,
-        (r - hw).max(0.0),
-    ) else {
+    let sides = [&b.top, &b.right, &b.bottom, &b.left];
+    let painted: Vec<(usize, Rgba)> = sides
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| s.width > 0)
+        .filter_map(|(i, s)| s.color.map(|c| (i, c)))
+        .collect();
+    let widths = rrect::widths(b);
+    let all = widths.iter().filter(|w| **w > 0.0).count();
+    if painted.len() == all && painted.windows(2).all(|p| p[0].1 == p[1].1) {
+        if let Some(&(_, c)) = painted.first() {
+            pm.fill_path(&ring, &solid(c), FillRule::EvenOdd, xf, None);
+        }
         return;
-    };
-    let stroke = Stroke {
-        width: w,
-        ..Default::default()
-    };
-    pm.stroke_path(&path, &solid(color), &stroke, xf, None);
+    }
+    for (side, c) in painted {
+        let region = rrect::side_region(rect, widths, side);
+        let mut clip = PathBuilder::new();
+        trace(&mut clip, &rrect::polygon(&region));
+        if let Some(clip) = clip.finish() {
+            paint_masked(pm, &clip, xf, |layer, local| {
+                layer.fill_path(&ring, &solid(c), FillRule::EvenOdd, local, None);
+            });
+        }
+    }
 }
 
 /// A tiny-skia path sink for [`glyph::trace_glyph`].
@@ -1004,7 +1086,7 @@ mod tests {
             FragmentContent::Box {
                 background,
                 border: BorderEdges::default(),
-                border_radius: 0.0,
+                border_radius: BorderRadii::ZERO,
                 shadow: None,
                 gradient: None,
                 transform: None,
@@ -1030,7 +1112,9 @@ mod tests {
             ..
         } = &mut f.content
         {
-            edit(border_radius, shadow, gradient, transform);
+            let mut r = border_radius.as_uniform().unwrap_or(0.0);
+            edit(&mut r, shadow, gradient, transform);
+            *border_radius = r.into();
         }
         f
     }
@@ -1293,6 +1377,7 @@ mod tests {
             y: 0.0,
             width: -5.0,
             height: 10.0,
+            radii: BorderRadii::ZERO,
         });
         assert!(all_white(&render(&negative, 10, 10, &HashMap::new())));
         let mut overflow = with_box(plain(0.0, 0.0, 10.0, 10.0, Some(RED)), |_, _, _, t| {
@@ -1307,6 +1392,7 @@ mod tests {
             y: 1.0,
             width: 5.0,
             height: 5.0,
+            radii: BorderRadii::ZERO,
         });
         assert!(all_white(&render(&overflow, 10, 10, &HashMap::new())));
     }
@@ -1391,7 +1477,7 @@ mod tests {
             y,
             width: 70.0,
             height: 40.0,
-            radius: 6.0,
+            radii: BorderRadii::uniform(6.0),
             color: Rgba::new(0, 0, 255, 200),
         }
     }
@@ -1535,7 +1621,7 @@ mod tests {
         ];
         for ((r, spread), want) in cases {
             assert!(
-                (shadow_radius(r, spread) - want).abs() < 1e-5,
+                (crate::rrect::shadow_radius(r, spread) - want).abs() < 1e-5,
                 "{r} + {spread}"
             );
         }
@@ -1776,7 +1862,7 @@ mod exact_tests {
             FragmentContent::Box {
                 background: Some(RED),
                 border: BorderEdges::default(),
-                border_radius: radius,
+                border_radius: radius.into(),
                 shadow,
                 gradient: None,
                 transform: None,
@@ -1878,7 +1964,7 @@ mod exact_tests {
             m,
             s.width,
             s.height,
-            s.radius,
+            s.radii.top_left.h,
             s.color,
             Transform::identity(),
         );
@@ -1897,7 +1983,7 @@ mod exact_tests {
             y,
             width,
             height,
-            radius: 5.0,
+            radii: BorderRadii::uniform(5.0),
             color: Rgba::new(0, 0, 255, 220),
         };
         for (s, xf, blur) in [
@@ -2013,7 +2099,7 @@ mod exact_tests {
     }
 
     #[test]
-    fn rounded_borders_are_inset_strokes_of_the_widest_side() {
+    fn rounded_borders_paint_each_side_in_its_own_width_and_colour() {
         let side = |width: u16, color: Option<Rgba>| BorderSide { width, color };
         let mut f = boxed(10.0, 10.0, 40.0, 30.0, 8.0, None);
         if let FragmentContent::Box {
@@ -2033,39 +2119,26 @@ mod exact_tests {
             let p = pm.pixel(x, y).unwrap();
             [p.red(), p.green(), p.blue()]
         };
-        // The 4px blue band on every straight edge, the green fill inside, white outside.
-        for (x, y) in [
-            (10, 25),
-            (13, 25),
-            (49, 25),
-            (46, 25),
-            (30, 10),
-            (30, 13),
-            (30, 39),
-            (30, 36),
-        ] {
-            assert_eq!(rgb(x, y), [0, 0, 255], "band ({x},{y})");
+        // Each straight edge is its own side's band (miaskiewicz/turbo-dom#253); the
+        // zero-width left side paints nothing over the fill.
+        for (x, y) in [(30, 10), (30, 11), (30, 39)] {
+            assert_eq!(rgb(x, y), [255, 0, 0], "red band ({x},{y})");
         }
-        for (x, y) in [(14, 25), (45, 25), (30, 14), (30, 35)] {
+        for (x, y) in [(49, 25), (46, 25)] {
+            assert_eq!(rgb(x, y), [0, 0, 255], "blue band ({x},{y})");
+        }
+        for (x, y) in [(10, 25), (45, 25), (30, 12), (30, 38)] {
             assert_eq!(rgb(x, y), [0, 255, 0], "fill ({x},{y})");
         }
         for (x, y) in [(9, 25), (50, 25), (30, 9), (30, 40), (10, 10), (49, 39)] {
             assert_eq!(rgb(x, y), [255, 255, 255], "outside ({x},{y})");
         }
-        // On the corner diagonals the band follows the 8px outer radius.
-        let d = std::f32::consts::FRAC_1_SQRT_2;
-        for (cx, cy, sx, sy) in [
-            (18.0, 18.0, -1.0, -1.0),
-            (42.0, 18.0, 1.0, -1.0),
-            (42.0, 32.0, 1.0, 1.0),
-            (18.0, 32.0, -1.0, 1.0),
-        ] {
-            let at = |r: f32| ((cx + sx * r * d) as u32, (cy + sy * r * d) as u32);
-            let (bx, by) = at(6.0);
-            assert_eq!(rgb(bx, by), [0, 0, 255], "band on ({cx},{cy})");
-            let (gx, gy) = at(2.0);
-            assert_eq!(rgb(gx, gy), [0, 255, 0], "fill on ({cx},{cy})");
-        }
+        // Around the top-right corner the inner edge follows the inner radii (8 less the
+        // 4px right and 2px top sides): fill just inside it, the blue band on the
+        // right half of the corner and red on the top half.
+        assert_eq!(rgb(43, 13), [0, 255, 0]);
+        assert_eq!(rgb(47, 15), [0, 0, 255]);
+        assert_eq!(rgb(41, 11), [255, 0, 0]);
         // Zero-width sides draw no hairline.
         let mut none = boxed(10.0, 10.0, 40.0, 30.0, 8.0, None);
         if let FragmentContent::Box { border, .. } = &mut none.content {
@@ -2181,5 +2254,100 @@ mod exact_tests {
             );
             assert_eq!(got.data(), want.data(), "{family}");
         }
+    }
+
+    /// A 20x20 box at (10, 10) clipping its children to `clip` (relative region).
+    fn clipping(clip: turbo_dom_layout::OverflowClip, children: Vec<Fragment>) -> Fragment {
+        let mut f = boxed(10.0, 10.0, 20.0, 20.0, 0.0, None);
+        if let FragmentContent::Box { background, .. } = &mut f.content {
+            *background = None;
+        }
+        f.overflow_clip = Some(clip);
+        f.children = children;
+        f
+    }
+
+    fn region(x: f32, y: f32, w: f32, h: f32, r: f32) -> turbo_dom_layout::OverflowClip {
+        turbo_dom_layout::OverflowClip {
+            x,
+            y,
+            width: w,
+            height: h,
+            radii: r.into(),
+        }
+    }
+
+    #[test]
+    fn overflow_clips_children_to_the_rounded_padding_box() {
+        let id = Transform::identity();
+        // A child overflowing a square region is cut at it (miaskiewicz/turbo-dom#253).
+        let got = drawn(
+            &clipping(
+                region(0.0, 0.0, 20.0, 20.0, 0.0),
+                vec![boxed(0.0, 0.0, 50.0, 50.0, 0.0, None)],
+            ),
+            50,
+            50,
+        );
+        let mut want = white(50, 50);
+        fill_rect(&mut want, 10.0, 10.0, 20.0, 20.0, RED, id);
+        assert_eq!(got.data(), want.data());
+        // A rounded region cuts the corners: the child paints the region's rounded shape.
+        let got = drawn(
+            &clipping(
+                region(0.0, 0.0, 20.0, 20.0, 10.0),
+                vec![boxed(0.0, 0.0, 50.0, 50.0, 0.0, None)],
+            ),
+            50,
+            50,
+        );
+        assert_eq!(got.pixel(11, 11).unwrap().red(), 255, "corner cut");
+        assert_eq!(got.pixel(11, 11).unwrap().green(), 255, "corner cut");
+        assert_eq!(got.pixel(20, 20).unwrap().green(), 0, "inside");
+        // An empty region paints no child.
+        let got = drawn(
+            &clipping(
+                region(0.0, 0.0, 0.0, 20.0, 0.0),
+                vec![boxed(0.0, 0.0, 50.0, 50.0, 0.0, None)],
+            ),
+            50,
+            50,
+        );
+        assert_eq!(got.data(), white(50, 50).data());
+        // Children inside a square region paint directly, whatever their content (a
+        // marker child too), exactly as unclipped.
+        let inside = vec![
+            boxed(12.0, 12.0, 5.0, 5.0, 0.0, None),
+            Fragment::new(
+                NodeId(1),
+                12.0,
+                20.0,
+                5.0,
+                5.0,
+                FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                    id: 1,
+                    inline: false,
+                }),
+            ),
+        ];
+        let mut unclipped = clipping(region(0.0, 0.0, 20.0, 20.0, 0.0), inside.clone());
+        unclipped.overflow_clip = None;
+        assert_eq!(
+            drawn(&clipping(region(0.0, 0.0, 20.0, 20.0, 0.0), inside), 50, 50).data(),
+            drawn(&unclipped, 50, 50).data()
+        );
+        // A shadowed or transformed child may paint past its box: it is clipped.
+        let shadowed = boxed(12.0, 12.0, 5.0, 5.0, 0.0, Some(hard(30, 0, 0)));
+        let got = drawn(
+            &clipping(region(0.0, 0.0, 20.0, 20.0, 0.0), vec![shadowed]),
+            50,
+            50,
+        );
+        assert_eq!(
+            got.pixel(44, 14).unwrap().blue(),
+            255,
+            "shadow clipped away"
+        );
+        assert_eq!(got.pixel(44, 14).unwrap().red(), 255, "shadow clipped away");
     }
 }

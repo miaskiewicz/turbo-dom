@@ -103,7 +103,7 @@ fn blank(content: &mut FragmentContent) {
             *content = FragmentContent::Box {
                 background: None,
                 border: BorderEdges::default(),
-                border_radius: 0.0,
+                border_radius: super::fragment::BorderRadii::ZERO,
                 shadow: None,
                 gradient: None,
                 transform: None,

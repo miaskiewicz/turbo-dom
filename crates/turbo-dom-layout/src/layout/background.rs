@@ -1,17 +1,15 @@
 //! Background layers placed like Chrome 156 (CSS Backgrounds 3 §3,
 //! miaskiewicz/turbo-dom#248): `background-size`, `-position`, `-repeat`, `-origin` and
-//! `-clip` turn one background image or gradient into tiles, each an `Image` / gradient
-//! `Box` fragment clipped to the painting area, which the painters draw like any other
-//! fragment. Longhands win over the `background` shorthand's parts. `space` / `round`
-//! tile like `repeat`, and the painting area ignores `border-radius`.
+//! `-clip` turn one background image or gradient into tiles (`Image` / gradient `Box`
+//! fragments) under one container fragment clipped to the painting area — rounded by
+//! the clip box's per-corner radii (miaskiewicz/turbo-dom#253) — which the painters draw like any other fragment. Longhands
+//! win over the `background` shorthand's parts. Only the tiles that meet the painting
+//! area are laid out.
 use super::fragment::{
-    ClipRect, Fragment, FragmentContent, ImagePlacement, LinearGradient, NodeId,
+    BorderRadii, ClipRect, Fragment, FragmentContent, ImagePlacement, LinearGradient, NodeId,
 };
 use super::value::{css_value_tokens, parse_length_pct, BorderEdges, LengthPct, Rgba};
 use crate::ComputedStyle;
-
-/// The most tiles one layer paints (a tiny image repeated over a huge box).
-const MAX_TILES: usize = 4096;
 
 /// A rectangle `(x, y, width, height)` in absolute px.
 pub(crate) type Rect = (f32, f32, f32, f32);
@@ -38,6 +36,15 @@ struct Axis {
     offset: LengthPct,
 }
 
+/// One axis of `background-repeat`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Tiling {
+    Repeat,
+    NoRepeat,
+    Space,
+    Round,
+}
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Size {
     Cover,
@@ -50,7 +57,7 @@ enum Size {
 pub(crate) struct Props {
     size: Size,
     position: (Axis, Axis),
-    repeat: (bool, bool),
+    repeat: (Tiling, Tiling),
     pub(crate) origin: Area,
     pub(crate) clip: Area,
 }
@@ -68,7 +75,7 @@ impl Props {
             == Props {
                 size: Size::Lengths(LengthPct::Auto, LengthPct::Auto),
                 position: (START, START),
-                repeat: (true, true),
+                repeat: (Tiling::Repeat, Tiling::Repeat),
                 origin: Area::Padding,
                 clip: Area::Border,
             }
@@ -216,14 +223,19 @@ fn parse_size(value: &str, font_size: f32) -> Option<Size> {
     }
 }
 
-fn parse_repeat(tokens: &[String]) -> (bool, bool) {
-    let repeats = |t: &str| t != "no-repeat";
+fn parse_repeat(tokens: &[String]) -> (Tiling, Tiling) {
+    let one = |t: &str| match t {
+        "no-repeat" => Tiling::NoRepeat,
+        "space" => Tiling::Space,
+        "round" => Tiling::Round,
+        _ => Tiling::Repeat,
+    };
     match tokens {
-        [one] if one == "repeat-x" => (true, false),
-        [one] if one == "repeat-y" => (false, true),
-        [one] => (repeats(one), repeats(one)),
-        [x, y, ..] => (repeats(x), repeats(y)),
-        [] => (true, true),
+        [x] if x == "repeat-x" => (Tiling::Repeat, Tiling::NoRepeat),
+        [y] if y == "repeat-y" => (Tiling::NoRepeat, Tiling::Repeat),
+        [both] => (one(both), one(both)),
+        [x, y, ..] => (one(x), one(y)),
+        [] => (Tiling::Repeat, Tiling::Repeat),
     }
 }
 
@@ -373,80 +385,193 @@ fn place(axis: Axis, area: f32, tile: f32) -> f32 {
     }
 }
 
-/// The tile starts along one axis: from `start` (repeated) across `paint`.
-fn starts(start: f32, tile: f32, repeat: bool, (from, len): (f32, f32)) -> Vec<f32> {
-    if !repeat {
+/// `round`: the tile shrinks or grows so a whole number of tiles fills the area.
+fn rounded(tile: f32, area: f32) -> f32 {
+    let count = (area / tile).round().max(1.0);
+    area / count
+}
+
+/// The tile starts along one axis, from `start` (a tile's place) across `paint`, every
+/// `step` (0 = one tile only).
+fn starts(start: f32, step: f32, (from, len): (f32, f32)) -> Vec<f32> {
+    if step <= 0.0 {
         return vec![start];
     }
-    let first = start - ((start - from) / tile).ceil() * tile;
-    let count = ((from + len - first) / tile).ceil().max(0.0) as usize;
-    (0..count.min(MAX_TILES))
-        .map(|i| first + i as f32 * tile)
-        .collect()
+    // The last tile start at or before the painting area's start.
+    let first = start - ((start - from) / step).ceil() * step;
+    let count = ((from + len - first) / step).ceil().max(0.0) as usize;
+    (0..count).map(|i| first + i as f32 * step).collect()
+}
+
+/// One axis's tile start and step (0: not repeated): `space` spreads the whole tiles
+/// that fit from the area's edges (one or none fit: placed once, by position).
+fn axis(repeat: Tiling, placed: f32, (area_from, area): (f32, f32), tile: f32) -> (f32, f32) {
+    match repeat {
+        Tiling::NoRepeat => (placed, 0.0),
+        Tiling::Repeat | Tiling::Round => (placed, tile),
+        Tiling::Space => {
+            let count = (area / tile).floor();
+            if count < 2.0 {
+                (placed, 0.0)
+            } else {
+                (area_from, tile + (area - count * tile) / (count - 1.0))
+            }
+        }
+    }
 }
 
 /// The fragments of one background layer of box `id`: `source` tiled over the
-/// positioning area `origin` and clipped to the painting area `paint`.
+/// positioning area `origin` under a container clipped to the painting area `paint`
+/// with corner `radius` (its per-corner radii).
 pub(crate) fn layer(
     id: NodeId,
     props: &Props,
     source: &Source,
-    origin: Rect,
-    paint: Rect,
+    (origin, paint, radius): (Rect, Rect, BorderRadii),
 ) -> Vec<Fragment> {
-    let (tw, th) = tile_size(props.size, source, (origin.2, origin.3));
+    let (mut tw, mut th) = tile_size(props.size, source, (origin.2, origin.3));
     if tw <= 0.0 || th <= 0.0 || paint.2 <= 0.0 || paint.3 <= 0.0 {
         return Vec::new();
     }
+    let (round_x, round_y) = (
+        props.repeat.0 == Tiling::Round,
+        props.repeat.1 == Tiling::Round,
+    );
+    let auto = |side: LengthPct| matches!(props.size, Size::Lengths(..)) && side == LengthPct::Auto;
+    let (auto_w, auto_h) = match props.size {
+        Size::Lengths(w, h) => (auto(w), auto(h)),
+        _ => (false, false),
+    };
+    if round_x {
+        let w = rounded(tw, origin.2);
+        if !round_y && auto_h {
+            th *= w / tw;
+        }
+        tw = w;
+    }
+    if round_y {
+        let h = rounded(th, origin.3);
+        if !round_x && auto_w {
+            tw *= h / th;
+        }
+        th = h;
+    }
     let x = origin.0 + place(props.position.0, origin.2, tw);
     let y = origin.1 + place(props.position.1, origin.3, th);
-    let xs = starts(x, tw, props.repeat.0, (paint.0, paint.2));
-    let ys = starts(y, th, props.repeat.1, (paint.1, paint.3));
-    let mut out = Vec::new();
+    let (x, step_x) = axis(props.repeat.0, x, (origin.0, origin.2), tw);
+    let (y, step_y) = axis(props.repeat.1, y, (origin.1, origin.3), th);
+    let xs = starts(x, step_x, (paint.0, paint.2));
+    let ys = starts(y, step_y, (paint.1, paint.3));
+    let mut tiles = Vec::new();
     for &ty in &ys {
         for &tx in &xs {
             let outside = tx >= paint.0 + paint.2
                 || ty >= paint.1 + paint.3
                 || tx + tw <= paint.0
                 || ty + th <= paint.1;
-            if outside || out.len() == MAX_TILES {
+            if outside {
                 continue;
             }
             let content = match source {
                 Source::Image(image) => FragmentContent::Image(image.clone()),
-                Source::Gradient(gradient) => gradient_box(None, Some(gradient.clone())),
+                Source::Gradient(gradient) => {
+                    gradient_box(None, Some(gradient.clone()), BorderRadii::ZERO)
+                }
             };
-            let mut tile = Fragment::new(id, tx, ty, tw, th, content);
-            tile.clip = Some(ClipRect {
-                x: paint.0 - tx,
-                y: paint.1 - ty,
-                width: paint.2,
-                height: paint.3,
-            });
-            out.push(tile);
+            // Tiles snap to whole pixels, so neighbours meet without a seam.
+            let (x0, y0) = (tx.round(), ty.round());
+            let (w, h) = ((tx + tw).round() - x0, (ty + th).round() - y0);
+            tiles.push(Fragment::new(id, x0, y0, w, h, content));
         }
     }
-    out
+    if tiles.is_empty() {
+        return Vec::new();
+    }
+    let mut container = Fragment::new(
+        id,
+        paint.0,
+        paint.1,
+        paint.2,
+        paint.3,
+        gradient_box(None, None, BorderRadii::ZERO),
+    );
+    container.clip = Some(ClipRect {
+        x: 0.0,
+        y: 0.0,
+        width: paint.2,
+        height: paint.3,
+        radii: radius,
+    });
+    container.children = tiles;
+    vec![container]
 }
 
 /// A background colour painted over `paint` only (a `background-clip` other than the
 /// border box).
-pub(crate) fn color_layer(id: NodeId, color: Rgba, paint: Rect) -> Fragment {
+pub(crate) fn color_layer(id: NodeId, color: Rgba, paint: Rect, radius: BorderRadii) -> Fragment {
     Fragment::new(
         id,
         paint.0,
         paint.1,
         paint.2,
         paint.3,
-        gradient_box(Some(color), None),
+        gradient_box(Some(color), None, radius),
     )
 }
 
-fn gradient_box(background: Option<Rgba>, gradient: Option<LinearGradient>) -> FragmentContent {
+/// The corner radii of `which` area of a box with `radius` on its border box: each
+/// corner's radii shrink by the adjacent sides' border (and padding) widths
+/// (miaskiewicz/turbo-dom#253).
+pub(crate) fn area_radius(
+    radius: BorderRadii,
+    border: &BorderEdges,
+    padding: &super::value::Edges,
+    which: Area,
+) -> BorderRadii {
+    let b = border.widths();
+    match which {
+        Area::Border => radius,
+        Area::Padding => radius.inset(b.top, b.right, b.bottom, b.left),
+        Area::Content => radius.inset(
+            b.top + padding.top,
+            b.right + padding.right,
+            b.bottom + padding.bottom,
+            b.left + padding.left,
+        ),
+    }
+}
+
+/// The box's border alone, painted over its background layers (the box keeps its
+/// colour, shadow and transform).
+pub(crate) fn border_overlay(
+    id: NodeId,
+    rect: Rect,
+    border: BorderEdges,
+    radius: BorderRadii,
+) -> Fragment {
+    let mut overlay = Fragment::new(
+        id,
+        rect.0,
+        rect.1,
+        rect.2,
+        rect.3,
+        gradient_box(None, None, radius),
+    );
+    if let FragmentContent::Box { border: own, .. } = &mut overlay.content {
+        *own = border;
+    }
+    overlay
+}
+
+fn gradient_box(
+    background: Option<Rgba>,
+    gradient: Option<LinearGradient>,
+    border_radius: BorderRadii,
+) -> FragmentContent {
     FragmentContent::Box {
         background,
         border: BorderEdges::default(),
-        border_radius: 0.0,
+        border_radius,
         shadow: None,
         gradient,
         transform: None,
@@ -478,7 +603,7 @@ mod tests {
             props.size,
             Size::Lengths(LengthPct::Px(40.0), LengthPct::Auto)
         );
-        assert_eq!(props.repeat, (true, false));
+        assert_eq!(props.repeat, (Tiling::Repeat, Tiling::NoRepeat));
         assert_eq!((props.origin, props.clip), (Area::Content, Area::Padding));
         assert_eq!(
             props.position.0,
@@ -500,7 +625,7 @@ mod tests {
         ]);
         assert_eq!(props.position.1, START);
         assert_eq!(props.position.0.offset, LengthPct::Pct(50.0));
-        assert_eq!(props.repeat, (false, true));
+        assert_eq!(props.repeat, (Tiling::NoRepeat, Tiling::Repeat));
         assert!(props_of(&[]).is_initial());
         let props = props_of(&[
             ("background-repeat", "no-repeat repeat"),
@@ -508,7 +633,7 @@ mod tests {
             ("background-clip", "content-box"),
             ("background-size", "cover"),
         ]);
-        assert_eq!(props.repeat, (false, true));
+        assert_eq!(props.repeat, (Tiling::NoRepeat, Tiling::Repeat));
         assert_eq!(
             (props.origin, props.clip, props.size),
             (Area::Border, Area::Content, Size::Cover)
@@ -575,23 +700,173 @@ mod tests {
             (4.0, 20.0)
         );
         let props = props_of(&[("background-size", "0px 4px")]);
+        let square = (0.0, 0.0, 10.0, 10.0);
         assert!(layer(
             NodeId(1),
             &props,
             &gradient,
-            (0.0, 0.0, 10.0, 10.0),
-            (0.0, 0.0, 10.0, 10.0)
+            (square, square, BorderRadii::ZERO)
         )
         .is_empty());
-        let props = props_of(&[("background-size", "1px 1px")]);
-        let tiles = layer(
+        // Only the tiles meeting the painting area: 1px tiles over a 4x3 window of a
+        // 100px area, positioned off the pixel grid.
+        let props = props_of(&[
+            ("background-size", "1px 1px"),
+            ("background-position", "0.5px 0.5px"),
+        ]);
+        let layers = layer(
             NodeId(1),
             &props,
             &gradient,
-            (0.0, 0.0, 100.0, 100.0),
-            (0.0, 0.0, 100.0, 100.0),
+            ((0.0, 0.0, 100.0, 100.0), (10.0, 20.0, 4.0, 3.0), 2.0.into()),
         );
-        assert_eq!(tiles.len(), MAX_TILES);
+        assert_eq!(layers.len(), 1);
+        assert_eq!(layers[0].clip.unwrap().radii, BorderRadii::uniform(2.0));
+        assert_eq!(layers[0].children.len(), 5 * 4);
+        assert_eq!(
+            (layers[0].children[0].x, layers[0].children[0].y),
+            (10.0, 20.0)
+        );
+        // A tile placed wholly outside a no-repeat painting area paints nothing.
+        let props = props_of(&[
+            ("background-size", "1px 1px"),
+            ("background-repeat", "no-repeat"),
+            ("background-position", "50px 50px"),
+        ]);
+        assert!(layer(
+            NodeId(1),
+            &props,
+            &gradient,
+            (square, square, BorderRadii::ZERO)
+        )
+        .is_empty());
+        // `space` with fewer than two whole tiles places one by position; `round` with
+        // an auto side keeps the ratio.
+        let props = props_of(&[
+            ("background-size", "8px 4px"),
+            ("background-repeat", "space"),
+            ("background-position", "1px 2px"),
+        ]);
+        let tiles = &layer(
+            NodeId(1),
+            &props,
+            &gradient,
+            (square, square, BorderRadii::ZERO),
+        )[0]
+        .children;
+        assert_eq!((tiles.len(), tiles[0].x, tiles[0].y), (2, 1.0, 0.0));
+        let image = Source::Image(ImagePlacement {
+            name: "a".into(),
+            intrinsic_w: 4,
+            intrinsic_h: 2,
+            has_alpha: false,
+            tint: None,
+            orientation: crate::image::Orientation::IDENTITY,
+        });
+        let big = (0.0, 0.0, 120.0, 120.0);
+        let props = props_of(&[
+            ("background-size", "35px auto"),
+            ("background-repeat", "round no-repeat"),
+        ]);
+        let tile = &layer(NodeId(1), &props, &image, (big, big, BorderRadii::ZERO))[0].children[0];
+        assert_eq!((tile.width, tile.height), (40.0, 20.0));
+        let props = props_of(&[
+            ("background-size", "auto 35px"),
+            ("background-repeat", "no-repeat round"),
+        ]);
+        let tile = &layer(NodeId(1), &props, &image, (big, big, BorderRadii::ZERO))[0].children[0];
+        assert_eq!((tile.width, tile.height), (80.0, 40.0));
+    }
+
+    #[test]
+    fn areas_radii_and_placement_follow_the_box_model() {
+        let side = super::super::value::BorderSide {
+            width: 2,
+            color: None,
+        };
+        let border = BorderEdges {
+            left: side,
+            top: side,
+            ..BorderEdges::default()
+        };
+        let padding = super::super::value::Edges {
+            left: 3.0,
+            top: 3.0,
+            right: 1.0,
+            bottom: 1.0,
+        };
+        let rect = (0.0, 0.0, 20.0, 20.0);
+        assert_eq!(
+            area_rect(rect, &border, &padding, Area::Content),
+            (5.0, 5.0, 14.0, 14.0)
+        );
+        let c = |h, v| super::super::fragment::CornerRadii { h, v };
+        let ten = BorderRadii::uniform(10.0);
+        assert_eq!(area_radius(ten, &border, &padding, Area::Border), ten);
+        // Each corner shrinks by its own adjacent sides (miaskiewicz/turbo-dom#253).
+        assert_eq!(
+            area_radius(ten, &border, &padding, Area::Padding),
+            BorderRadii::from_corners([c(8.0, 8.0), c(10.0, 8.0), c(10.0, 10.0), c(8.0, 10.0)])
+        );
+        assert_eq!(
+            area_radius(BorderRadii::uniform(4.0), &border, &padding, Area::Content),
+            BorderRadii::from_corners([c(0.0, 0.0), c(3.0, 0.0), c(3.0, 3.0), c(0.0, 3.0)])
+        );
+        let red = Rgba {
+            r: 255,
+            g: 0,
+            b: 0,
+            a: 255,
+        };
+        let colour = color_layer(NodeId(3), red, rect, 6.0.into());
+        assert!(matches!(
+            colour.content,
+            FragmentContent::Box { border_radius, background: Some(_), .. } if border_radius == BorderRadii::uniform(6.0)
+        ));
+        let from_end = Axis {
+            from_end: true,
+            offset: LengthPct::Px(10.0),
+        };
+        assert_eq!(place(from_end, 100.0, 20.0), 70.0);
+        // A repeated tile placed past the painting area's start steps back over it.
+        assert_eq!(starts(15.0, 10.0, (0.0, 20.0)), vec![-5.0, 5.0, 15.0]);
+        assert_eq!(starts(10.0, 10.0, (0.0, 20.0)), vec![0.0, 10.0]);
+        assert_eq!(
+            props_of(&[("background-size", "10px")]).size,
+            Size::Lengths(LengthPct::Px(10.0), LengthPct::Auto)
+        );
+        assert_eq!(
+            props_of(&[("background-size", "bogus")]).size,
+            Size::Lengths(LengthPct::Auto, LengthPct::Auto)
+        );
+    }
+
+    #[test]
+    fn cover_and_contain_scale_the_image_and_round_refits_them() {
+        let image = Source::Image(ImagePlacement {
+            name: "a".into(),
+            intrinsic_w: 100,
+            intrinsic_h: 40,
+            has_alpha: false,
+            tint: None,
+            orientation: crate::image::Orientation::IDENTITY,
+        });
+        assert_eq!(
+            tile_size(Size::Cover, &image, (200.0, 100.0)),
+            (250.0, 100.0)
+        );
+        assert_eq!(
+            tile_size(Size::Contain, &image, (200.0, 100.0)),
+            (200.0, 80.0)
+        );
+        let props = props_of(&[
+            ("background-size", "contain"),
+            ("background-repeat", "round"),
+        ]);
+        let area = (0.0, 0.0, 300.0, 100.0);
+        let tiles = &layer(NodeId(1), &props, &image, (area, area, BorderRadii::ZERO))[0].children;
+        // A 250x100 contain tile rounds to 300 / 1 and 100 / 1.
+        assert_eq!((tiles[0].width, tiles[0].height), (300.0, 100.0));
     }
 
     #[test]

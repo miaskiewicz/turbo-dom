@@ -18,7 +18,10 @@ use crate::text::{Align, FontRegistry};
 use std::collections::{HashMap, HashSet};
 
 use super::boxgen::{memo_key, BoxKind, ImageSource, InlineItem, LayoutBox};
-use super::fragment::{BreakMeta, Fragment, FragmentContent, ImagePlacement, NodeId, Transform2D};
+use super::fragment::{
+    BorderRadii, BreakMeta, Fragment, FragmentContent, ImagePlacement, NodeId, OverflowClip,
+    Transform2D,
+};
 use super::imgsize::{size_replaced, SizeCtx, SizedImage};
 use super::inline::{self, InlineRun};
 use super::value::{
@@ -2629,7 +2632,7 @@ fn content_kind(lb: &LayoutBox, bs: &BoxStyle, bbw: f32, bbh: f32) -> FragmentCo
                 .background
                 .filter(|_| lb.mask.is_none() && bs.background_gradient.is_none()),
             border: bs.border,
-            border_radius: resolve_radius(bs.border_radius, bbw, bbh),
+            border_radius: super::value::resolve_radii(&bs.border_radius, bbw, bbh),
             shadow: bs.box_shadow,
             gradient: bs.background_gradient.clone(),
             // Resolve a `%` translate against the box size and the `transform-origin`
@@ -2709,11 +2712,62 @@ fn record_dropped_end_margin(
     }
 }
 
-/// Resolve `border-radius` to px against the border box, clamped to half the
-/// shorter side (so `50%` on a square is a circle, and no corner over-rounds).
-fn resolve_radius(r: LengthPct, bbw: f32, bbh: f32) -> f32 {
-    let px = r.resolve(bbw.min(bbh)).unwrap_or(0.0);
-    px.clamp(0.0, (bbw.min(bbh) / 2.0).max(0.0))
+/// How far an axis whose `overflow` is `visible` (beside `clip`) reaches past the box
+/// in an [`OverflowClip`]: unbounded for painting purposes.
+const UNCLIPPED: f32 = 1.0e6;
+
+/// The used `overflow-x` and `overflow-y` keywords of `style` (the `overflow` shorthand's
+/// one or two values, longhands winning).
+fn overflow_axes(style: &crate::ComputedStyle) -> (String, String) {
+    let shorthand: Vec<String> = style
+        .get("overflow")
+        .map(|v| v.split_whitespace().map(str::to_ascii_lowercase).collect())
+        .unwrap_or_default();
+    let axis = |longhand: &str, i: usize| {
+        style
+            .get(longhand)
+            .map(|v| v.trim().to_ascii_lowercase())
+            .or_else(|| shorthand.get(i).or(shorthand.first()).cloned())
+            .unwrap_or_default()
+    };
+    (axis("overflow-x", 0), axis("overflow-y", 1))
+}
+
+/// The region a box's `overflow` clips its descendants to (miaskiewicz/turbo-dom#253): its
+/// padding box with the inner corner radii, when either axis is not `visible`. A
+/// `visible` axis beside a `hidden` / `auto` / `scroll` one computes to `auto` and clips;
+/// beside `clip` it stays unclipped (CSS Overflow 3 §3.1).
+fn overflow_clip_of(
+    style: &crate::ComputedStyle,
+    bs: &BoxStyle,
+    bbw: f32,
+    bbh: f32,
+) -> Option<OverflowClip> {
+    let (x, y) = overflow_axes(style);
+    let scrolls = |v: &str| matches!(v, "hidden" | "auto" | "scroll");
+    let any_scrolls = scrolls(&x) || scrolls(&y);
+    let (clip_x, clip_y) = (x == "clip" || any_scrolls, y == "clip" || any_scrolls);
+    if !clip_x && !clip_y {
+        return None;
+    }
+    let b = bs.border.widths();
+    let (mut rx, mut rw) = (b.left, (bbw - b.horizontal()).max(0.0));
+    let (mut ry, mut rh) = (b.top, (bbh - b.vertical()).max(0.0));
+    let mut radii = super::value::resolve_radii(&bs.border_radius, bbw, bbh)
+        .inset(b.top, b.right, b.bottom, b.left);
+    if !clip_x {
+        (rx, rw, radii) = (-UNCLIPPED, bbw + 2.0 * UNCLIPPED, BorderRadii::ZERO);
+    }
+    if !clip_y {
+        (ry, rh, radii) = (-UNCLIPPED, bbh + 2.0 * UNCLIPPED, BorderRadii::ZERO);
+    }
+    Some(OverflowClip {
+        x: rx,
+        y: ry,
+        width: rw,
+        height: rh,
+        radii,
+    })
 }
 
 /// Lay out a box whose border-box width is already decided (`bbw`), at border-box
@@ -2867,6 +2921,7 @@ fn layout_box_sized_impl(
         &mut children,
     );
     record_metrics(lb, bs, content_w, fill_h, ctx);
+    let overflow_clip = overflow_clip_of(&lb.style, bs, bbw, bbh);
     Fragment {
         node_id: lb.node_id,
         x: bx,
@@ -2879,6 +2934,7 @@ fn layout_box_sized_impl(
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
         clip: super::value::clip_region(&lb.style, bbw, bbh, 1.0),
+        overflow_clip,
         opacity: bs.opacity,
     }
 }
@@ -2896,52 +2952,50 @@ fn prepend_background_layers(
     content: &mut FragmentContent,
     children: &mut Vec<Fragment>,
 ) {
-    use super::background::{area_rect, color_layer, layer, props, Area, Source};
-    let FragmentContent::Box {
+    use super::background::{
+        area_radius, area_rect, border_overlay, color_layer, layer, props, Area, Source,
+    };
+    if let FragmentContent::Box {
         background,
         gradient,
+        border,
+        border_radius,
         ..
     } = content
-    else {
-        return;
-    };
-    let image = background_placement(lb, ctx);
-    if image.is_none() && gradient.is_none() && background.is_none() {
-        return;
-    }
-    let props = props(&lb.style, bs.font_size);
-    let origin = area_rect(border_box, &bs.border, &bs.padding, props.origin);
-    let paint = area_rect(border_box, &bs.border, &bs.padding, props.clip);
-    let mut layers = Vec::new();
-    let tiled_gradient = gradient.take_if(|_| !props.is_initial());
-    if tiled_gradient.is_some() && lb.mask.is_none() {
-        // The gradient no longer covers the box: its colour shows around the tiles.
-        *background = bs.background;
-    }
-    if props.clip != Area::Border {
-        if let Some(color) = background.take() {
-            layers.push(color_layer(lb.node_id, color, paint));
+    {
+        let image = background_placement(lb, ctx);
+        let props = props(&lb.style, bs.font_size);
+        let origin = area_rect(border_box, &bs.border, &bs.padding, props.origin);
+        let paint = area_rect(border_box, &bs.border, &bs.padding, props.clip);
+        let radius = area_radius(*border_radius, &bs.border, &bs.padding, props.clip);
+        let mut layers = Vec::new();
+        let tiled_gradient = gradient.take_if(|_| !props.is_initial());
+        if tiled_gradient.is_some() && lb.mask.is_none() {
+            // The gradient no longer covers the box: its colour shows around the tiles.
+            *background = bs.background;
         }
-    }
-    if let Some(gradient) = tiled_gradient {
-        layers.extend(layer(
+        if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
+            layers.push(color_layer(lb.node_id, color, paint, radius));
+        }
+        let sources = tiled_gradient
+            .map(Source::Gradient)
+            .into_iter()
+            .chain(image.map(Source::Image));
+        for source in sources {
+            layers.extend(layer(lb.node_id, &props, &source, (origin, paint, radius)));
+        }
+        if layers.is_empty() {
+            return;
+        }
+        // The border paints over the background layers.
+        layers.push(border_overlay(
             lb.node_id,
-            &props,
-            &Source::Gradient(gradient),
-            origin,
-            paint,
+            border_box,
+            std::mem::take(border),
+            *border_radius,
         ));
+        children.splice(0..0, layers);
     }
-    if let Some(image) = image {
-        layers.extend(layer(
-            lb.node_id,
-            &props,
-            &Source::Image(image),
-            origin,
-            paint,
-        ));
-    }
-    children.splice(0..0, layers);
 }
 
 /// The placement for a box's `background-image`, if it has one the resolver can
@@ -3302,6 +3356,7 @@ fn image_fragment(lb: &LayoutBox, bx: f32, by: f32, sized: &SizedImage, bs: &Box
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
         clip: super::value::clip_region(&lb.style, sized.width, sized.height, 1.0),
+        overflow_clip: None,
         opacity: bs.opacity,
     }
 }

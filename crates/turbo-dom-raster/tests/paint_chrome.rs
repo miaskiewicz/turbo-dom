@@ -13,6 +13,7 @@
 //! - `clip-*`: miaskiewicz/turbo-dom#52, an absolutely positioned box's `clip: rect()`
 //!   clips it and its descendants (it keeps its border box); a zero-area clip paints
 //!   nothing (its box still has its border box, #75); `clip` does not apply to other boxes.
+//! - `radius-*`: miaskiewicz/turbo-dom#253, the full `border-radius` model.
 use std::collections::HashMap;
 
 use turbo_dom_layout::image::decode_data_url;
@@ -286,9 +287,9 @@ fn shadow_blur_is_capped_at_256px_like_chrome_156() {
 
 /// The SVG screenshot rasterized by resvg. This resvg build has no `raster-images` decoders
 /// (turning them on in the dev-dependency would also change turbo-dom-layout's rasterizer
-/// under test), so each embedded PNG `data:` image is first re-embedded as an SVG of its
-/// pixels (one rect per run of equal pixels, crisp edges) — the same image, drawn the same
-/// way into its `<image>` box.
+/// under test), so each embedded PNG `data:` image element is first replaced by an inline
+/// `<svg>` of its pixels (one rect per run of equal pixels, crisp edges) with the same box
+/// — the same image, drawn the same way; inline, so a `<use>`d image is parsed once.
 fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
     use resvg::{tiny_skia as rsk, usvg};
     use std::fmt::Write;
@@ -300,7 +301,7 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
         let png = decode_data_url(&svg[start..end]).unwrap().bytes;
         let img = image::load_from_memory(&png).unwrap().to_rgba8();
         let mut pixels = format!(
-            "<svg xmlns='http://www.w3.org/2000/svg' width='{0}' height='{1}' viewBox='0 0 {0} {1}' preserveAspectRatio='none' shape-rendering='crispEdges'>",
+            "viewBox='0 0 {0} {1}' shape-rendering='crispEdges'>",
             img.width(),
             img.height()
         );
@@ -323,8 +324,10 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
             }
         }
         pixels.push_str("</svg>");
-        let escaped = pixels.replace('<', "&lt;").replace('>', "&gt;");
-        svg.replace_range(start..end, &format!("data:image/svg+xml;utf8,{escaped}"));
+        let open = svg[..at].rfind("<image ").unwrap();
+        let close = end + svg[end..].find("/>").unwrap() + 2;
+        let attrs = svg[open + "<image ".len()..at].to_string();
+        svg.replace_range(open..close, &format!("<svg {attrs}{pixels}"));
     }
     let tree = usvg::Tree::from_str(&svg, &usvg::Options::default()).expect("valid svg");
     let mut pm = rsk::Pixmap::new(VIEWPORT.width, VIEWPORT.height).unwrap();
@@ -416,5 +419,17 @@ fn svg_screenshot_clips_with_a_clip_path() {
 fn inset_box_shadows_paint_inside_the_padding_box_like_chrome_156() {
     let mut failures = differences(|id| id.starts_with("inset-"));
     failures.extend(svg_differences(|id| id.starts_with("inset-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// Chrome 156's full `border-radius` model (miaskiewicz/turbo-dom#253: it was one scalar):
+/// per-corner, elliptical and percentage radii, the overlap scale-down, inner radii,
+/// logical corners under RTL and vertical writing modes, and the radius clipping
+/// backgrounds (with #248's layers), borders with per-side widths and colours, shadows
+/// and `overflow` — in both painters.
+#[test]
+fn border_radii_paint_like_chrome_156() {
+    let mut failures = differences(|id| id.starts_with("radius-"));
+    failures.extend(svg_differences(|id| id.starts_with("radius-")));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

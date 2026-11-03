@@ -524,7 +524,7 @@ fn empty_fragment(
         FragmentContent::Box {
             background: None,
             border: BorderEdges::default(),
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: None,
             gradient: None,
             transform: None,
@@ -710,7 +710,7 @@ fn background_layers(
     (id, source, used): (NodeId, &ComputedStyle, &BoxStyle),
     ctx: &Ctx,
 ) {
-    use super::background::{area_rect, color_layer, layer, props, Area, Source};
+    use super::background::{area_rect, border_overlay, color_layer, layer, props, Area, Source};
     let image = super::boxgen::background_image(source).and_then(|name| {
         let intrinsic = super::imgsize::box_intrinsic(ctx.images.resolver, &name, source)?;
         Some(super::imgsize::placement_of(name, intrinsic))
@@ -721,30 +721,39 @@ fn background_layers(
     if image.is_none() && !gradient && !colour {
         return;
     }
-    let padding = super::value::Edges {
-        left: 0.0,
-        right: 0.0,
-        ..used.padding
-    };
-    let parts = out
-        .iter()
-        .enumerate()
-        .filter_map(|(index, frag)| match &frag.content {
-            FragmentContent::Box { border, .. } if frag.node_id == id => {
-                let rect = (frag.x, frag.y, frag.width, frag.height);
-                Some((
-                    index,
-                    area_rect(rect, border, &padding, props.origin),
-                    area_rect(rect, border, &padding, props.clip),
-                ))
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
     let cloned = cloned(source);
-    let total: f32 = parts.iter().map(|(_, origin, _)| origin.2).sum();
+    let parts: Vec<usize> = (0..out.len()).filter(|&i| out[i].node_id == id).collect();
+    // Each fragment's padding: all of it when cloned, else the start side on the first
+    // fragment and the end side on the last.
+    let padding = |n: usize| {
+        let (first, last) = (cloned || n == 0, cloned || n + 1 == parts.len());
+        let (left, right) = if used.rtl {
+            (last, first)
+        } else {
+            (first, last)
+        };
+        super::value::Edges {
+            left: if left { used.padding.left } else { 0.0 },
+            right: if right { used.padding.right } else { 0.0 },
+            ..used.padding
+        }
+    };
+    let mut areas = Vec::new();
+    for (n, &index) in parts.iter().enumerate() {
+        let frag = &out[index];
+        if let FragmentContent::Box { border, .. } = &frag.content {
+            let rect = (frag.x, frag.y, frag.width, frag.height);
+            let pad = padding(n);
+            areas.push((
+                index,
+                area_rect(rect, border, &pad, props.origin),
+                area_rect(rect, border, &pad, props.clip),
+            ));
+        }
+    }
+    let total: f32 = areas.iter().map(|(_, origin, _)| origin.2).sum();
     let mut offset = 0.0;
-    for (index, origin, paint) in parts {
+    for (index, origin, paint) in areas {
         let strip = if cloned {
             origin
         } else {
@@ -752,33 +761,47 @@ fn background_layers(
         };
         offset += origin.2;
         let frag = &mut out[index];
-        let FragmentContent::Box {
+        if let FragmentContent::Box {
             background,
             gradient,
+            border,
             ..
         } = &mut frag.content
-        else {
-            continue;
-        };
-        let mut layers = Vec::new();
-        if props.clip != Area::Border {
-            if let Some(color) = background.take() {
-                layers.push(color_layer(id, color, paint));
+        {
+            let mut layers = Vec::new();
+            if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
+                layers.push(color_layer(
+                    id,
+                    color,
+                    paint,
+                    super::fragment::BorderRadii::ZERO,
+                ));
             }
+            let sources = gradient
+                .take()
+                .map(Source::Gradient)
+                .into_iter()
+                .chain(image.clone().map(Source::Image));
+            for source in sources {
+                layers.extend(layer(
+                    id,
+                    &props,
+                    &source,
+                    (strip, paint, super::fragment::BorderRadii::ZERO),
+                ));
+            }
+            if !layers.is_empty() {
+                // The border paints over the background layers.
+                let rect = (frag.x, frag.y, frag.width, frag.height);
+                layers.push(border_overlay(
+                    id,
+                    rect,
+                    std::mem::take(border),
+                    super::fragment::BorderRadii::ZERO,
+                ));
+            }
+            frag.children.extend(layers);
         }
-        if let Some(gradient) = gradient.take() {
-            layers.extend(layer(id, &props, &Source::Gradient(gradient), strip, paint));
-        }
-        if let Some(image) = &image {
-            layers.extend(layer(
-                id,
-                &props,
-                &Source::Image(image.clone()),
-                strip,
-                paint,
-            ));
-        }
-        frag.children.extend(layers);
     }
 }
 
@@ -815,7 +838,7 @@ fn append_part(
         inherited.content = FragmentContent::Box {
             background: None,
             border: BorderEdges::default(),
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: None,
             gradient: None,
             transform: None,
@@ -896,7 +919,7 @@ fn fragment(
         FragmentContent::Box {
             background: used.background,
             border,
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: used.box_shadow,
             gradient: used.background_gradient.clone(),
             transform: None,

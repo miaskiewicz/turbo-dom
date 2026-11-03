@@ -4,6 +4,7 @@
 use super::*;
 
 struct FocusGroupHook(v8::Weak<v8::Function>);
+fn_slots!([FocusGroupHook]);
 
 const BEHAVIORS: [&str; 6] = [
     "toolbar",
@@ -354,11 +355,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(function) = dom_ownership::helper_function(scope, function) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(FocusGroupHook(function)));
-        }
+        context_rehydrate::capture::<FocusGroupHook>(scope, function);
     }
     global.delete(scope, key.into());
 }
