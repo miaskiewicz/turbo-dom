@@ -530,7 +530,7 @@ mod tests {
     #[test]
     fn foreign_events_and_nodes_keep_their_native_window_owner() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);
@@ -567,7 +567,7 @@ mod tests {
     #[test]
     fn refreshed_private_abort_errors_keep_their_realm_and_genuine_brand() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);
@@ -634,7 +634,7 @@ mod tests {
     }
     fn fixture(source: &str) {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

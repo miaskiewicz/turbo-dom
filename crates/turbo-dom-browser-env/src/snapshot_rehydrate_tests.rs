@@ -143,3 +143,105 @@ fn rehydrating_a_bare_context_installs_no_dom() {
     assert!(with_tree(|tree| tree.root()).is_none());
     reset();
 }
+
+const SMOKE_LOG: &str = r#"[1,"hi<p>new</p>","t","a:p:1,p:2,body:3",true,true,"x-el","yes",true,true,true,false,true,true,"rgb(1, 2, 3)","inline-block",0,0,"b",true,true,"slotted",true,"hi\nnew\n\n","hinew",true]"#;
+const SMOKE_RECORDS: &str = r#"["attributes:0:title","childList:1:","childList:1:"]"#;
+
+fn expected() -> (String, String) {
+    (SMOKE_LOG.to_owned(), SMOKE_RECORDS.to_owned())
+}
+
+/// The public opt-in: `install_from_snapshot` makes and owns the isolate, runs no engine
+/// script, and its window behaves like an installed one.
+#[test]
+fn install_from_snapshot_owns_its_isolate_and_runs_no_engine_script() {
+    crate::browser_env::tests::init_v8();
+    let blob = snapshot_blob().expect("the process blob builds");
+    assert!(
+        std::ptr::eq(blob, snapshot_blob().unwrap()),
+        "cached per process"
+    );
+    let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);
+    let mut window = install_from_snapshot(PAGE).expect("a blob");
+    assert_eq!(
+        ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get),
+        before,
+        "install_from_snapshot ran an engine script"
+    );
+    let (isolate, context) = window.parts();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Local::new(scope, context);
+        let scope = &mut v8::ContextScope::new(scope, context);
+        assert_eq!(smoke(scope), expected());
+    }
+    assert!(window.context() == window.context());
+    let _ = window.isolate();
+    reset();
+}
+
+/// A second context of a snapshot isolate (an independent document) rehydrates too: the
+/// collection-record key the snapshot carried is handed out once per isolate, so both
+/// contexts share it, and the first window keeps working.
+#[test]
+fn a_second_snapshot_context_in_one_isolate_rehydrates() {
+    crate::browser_env::tests::init_v8();
+    SNAPSHOT_PATH_FOR_TEST.with(|on| on.set(true));
+    let blob = snapshot_blob().expect("the process blob builds");
+    let isolate = &mut v8::Isolate::new(blob.create_params());
+    v8::scope!(let scope, isolate);
+    let first = v8::Context::new(scope, Default::default());
+    {
+        let scope = &mut v8::ContextScope::new(scope, first);
+        install_with_html(scope, PAGE);
+    }
+    let second = v8::Context::new(scope, Default::default());
+    {
+        let scope = &mut v8::ContextScope::new(scope, second);
+        install_independent_html(scope, PAGE);
+        assert_eq!(smoke(scope), expected());
+    }
+    {
+        let scope = &mut v8::ContextScope::new(scope, first);
+        assert_eq!(smoke(scope), expected());
+    }
+    SNAPSHOT_PATH_FOR_TEST.with(|on| on.set(false));
+    reset();
+}
+
+/// The custom-element constructors the bootstrap makes (one per HTML element interface)
+/// call this realm's construction delegate: a snapshot that copied the delegate through
+/// the template data would construct with the copy's registry, which knows no definition.
+#[test]
+fn custom_element_constructors_of_a_snapshot_context_use_its_registry() {
+    crate::browser_env::tests::init_v8();
+    const PROBE: &str = "class Y extends HTMLElement {} customElements.define('y-el', Y); \
+        class Z extends HTMLParagraphElement {} customElements.define('z-el', Z, {extends: 'p'}); \
+        const y = new Y(), z = new Z(); \
+        JSON.stringify([y.localName, y instanceof Y, z.localName, z.getAttribute('is'), z instanceof Z, document.createElement('y-el') instanceof Y])";
+    let blob = snapshot_blob().expect("the process blob builds");
+    let isolate = &mut v8::Isolate::new(blob.create_params());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    assert!(
+        install_snapshot_context(scope, Tree::parse_with_processing_instructions(PAGE)).is_ok()
+    );
+    assert_eq!(eval(scope, PROBE), r#"["y-el",true,"p",null,true,true]"#);
+    reset();
+}
+
+/// A context that is not from the snapshot keeps the usual install on the snapshot path.
+#[test]
+fn the_snapshot_path_installs_a_plain_context_as_usual() {
+    crate::browser_env::tests::init_v8();
+    SNAPSHOT_PATH_FOR_TEST.with(|on| on.set(true));
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, PAGE);
+    assert_eq!(smoke(scope), expected());
+    SNAPSHOT_PATH_FOR_TEST.with(|on| on.set(false));
+    reset();
+}

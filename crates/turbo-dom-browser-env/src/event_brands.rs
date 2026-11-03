@@ -173,7 +173,7 @@ mod tests {
     fn native_listener_observers_follow_once_remove_abort_and_creation_realms() {
         super::super::tests::init_v8();
         LISTENER_OBSERVATIONS.with(|observations| observations.borrow_mut().clear());
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);
@@ -240,7 +240,7 @@ mod tests {
     #[test]
     fn opaque_host_targets_are_initialized_privately_without_guest_brand_hooks() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -267,7 +267,7 @@ mod tests {
     #[test]
     fn event_identity_uses_private_records_across_realms_and_ignores_forged_prototypes() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);

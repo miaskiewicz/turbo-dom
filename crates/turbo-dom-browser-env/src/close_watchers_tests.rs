@@ -160,7 +160,7 @@ const DRIVER: &str = r#"(() => {
 /// task runs after the microtasks of the previous one).
 fn run_probe() -> (serde_json::Value, serde_json::Value) {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -274,7 +274,7 @@ fn close_watchers_and_light_dismiss_match_chrome156() {
 #[test]
 fn light_dismiss_ignores_untrusted_and_other_events() {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -351,7 +351,7 @@ fn light_dismiss_ignores_untrusted_and_other_events() {
 #[test]
 fn activation_host_answers_from_the_window_flags() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

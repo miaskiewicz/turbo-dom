@@ -108,7 +108,9 @@ fn event_target<'s>(
 }
 fn flush(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v8::ReturnValue) {
     // `queue` builds each flush function with its [owner, node, task, record] array as data.
-    let data = v8::Local::<v8::Array>::try_from(args.data()).expect("the flush data is an array");
+    let data = template_data::of_call(scope, &args)
+        .and_then(|data| v8::Local::<v8::Array>::try_from(data).ok())
+        .expect("the flush data is an array");
     let owner = data
         .get_index(scope, 0)
         .and_then(|value| value.integer_value(scope))
@@ -204,8 +206,11 @@ fn queue<'s>(
         scope,
         &[owner.into(), handle.into(), task.into(), record.into()],
     );
+    // Not a context object as template data: a snapshot's startup part would copy it
+    // (turbo-dom#249).
+    let data = template_data::key(scope, data.into()).expect("a fresh table slot");
     let Some(function) = v8::FunctionTemplate::builder(ext!(FunctionCallback, flush))
-        .data(data.into())
+        .data(data)
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .build(scope)
         .get_function(scope)
@@ -852,7 +857,7 @@ mod tests {
     #[test]
     fn post_install_schedulers_follow_their_native_context_document() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);
@@ -897,7 +902,7 @@ mod tests {
     }
     fn fixture(source: &str) {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

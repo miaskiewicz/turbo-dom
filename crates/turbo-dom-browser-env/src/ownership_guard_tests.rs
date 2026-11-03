@@ -4,7 +4,7 @@ use super::*;
 #[test]
 fn subtree_ownership_maps_use_the_document_realm_after_foreign_calls() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let main = v8::Context::new(scope, Default::default());
@@ -62,7 +62,7 @@ fn interrupted_helper(
 #[test]
 fn interrupted_private_helper_is_not_published_and_can_be_retried() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -124,7 +124,7 @@ fn interrupt_setter(
 #[test]
 fn native_method_guard_preserves_materialized_termination() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -147,7 +147,7 @@ fn native_method_guard_preserves_materialized_termination() {
 #[test]
 fn native_setter_guard_preserves_materialized_termination() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

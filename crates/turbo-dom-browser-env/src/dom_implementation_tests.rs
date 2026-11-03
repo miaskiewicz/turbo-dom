@@ -4,7 +4,7 @@ use crate::browser_env::crate_surface::harness_tests::thrown;
 #[test]
 fn inert_initializer_uses_its_creation_realm_with_shared_embedder_ops() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let main = v8::Context::new(scope, Default::default());
@@ -47,7 +47,7 @@ fn inert_initializer_uses_its_creation_realm_with_shared_embedder_ops() {
 #[test]
 fn independent_factories_and_constructors_match_authored_chrome155_control() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -73,7 +73,7 @@ fn independent_factories_and_constructors_match_authored_chrome155_control() {
 #[test]
 fn raw_parsed_html_without_interface_metadata_keeps_name_getters_exception_free() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -101,7 +101,7 @@ fn raw_parsed_html_without_interface_metadata_keeps_name_getters_exception_free(
 #[test]
 fn xml_element_case_namespaces_and_receivers_match_authored_chrome155_control() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -127,7 +127,7 @@ fn xml_element_case_namespaces_and_receivers_match_authored_chrome155_control() 
 #[test]
 fn text_and_fragment_constructors_use_native_factories_and_preserve_subclass_semantics() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -166,7 +166,7 @@ fn text_and_fragment_constructors_use_native_factories_and_preserve_subclass_sem
 #[test]
 fn borrowed_text_and_fragment_constructors_keep_their_creation_document() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let parent = v8::Context::new(scope, Default::default());
     {

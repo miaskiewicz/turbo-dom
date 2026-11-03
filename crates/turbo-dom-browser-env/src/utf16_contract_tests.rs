@@ -2,7 +2,7 @@ use super::*;
 #[test]
 fn native_units_match_fresh_chrome_for_creation_mutation_clone_adoption_and_ranges() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -52,7 +52,7 @@ fn native_units_match_fresh_chrome_for_creation_mutation_clone_adoption_and_rang
 #[test]
 fn utf16_coercion_uses_native_units_and_conversion_failure_is_atomic() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -83,7 +83,7 @@ fn utf16_coercion_uses_native_units_and_conversion_failure_is_atomic() {
 #[test]
 fn exact_surrogate_node_equality_remains_distinct_from_replacement_character() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -105,7 +105,7 @@ fn exact_surrogate_node_equality_remains_distinct_from_replacement_character() {
 #[test]
 fn native_name_id_class_and_css_string_units_match_fresh_chrome() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -135,7 +135,7 @@ fn parse_units<'s>(
 #[test]
 fn original_html_parser_units_and_marker_entities_match_fresh_chrome() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -168,7 +168,7 @@ fn original_html_parser_units_and_marker_entities_match_fresh_chrome() {
 #[test]
 fn original_document_factories_metadata_nonce_and_names_match_fresh_chrome() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -192,7 +192,7 @@ fn original_document_factories_metadata_nonce_and_names_match_fresh_chrome() {
 #[test]
 fn prepared_inline_source_keeps_real_units_through_direct_v8_compilation() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -241,7 +241,7 @@ fn prepared_inline_source_keeps_real_units_through_direct_v8_compilation() {
 #[test]
 fn dom_string_parser_bom_behavior_matches_fresh_chrome() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -265,7 +265,7 @@ fn dom_string_parser_bom_behavior_matches_fresh_chrome() {
 #[test]
 fn independent_domstring_document_retains_original_units_and_prepared_script_source() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let parent = v8::Context::new(scope, Default::default());
     {
@@ -317,7 +317,7 @@ fn independent_domstring_document_retains_original_units_and_prepared_script_sou
 #[test]
 fn native_inline_handler_units_refresh_and_clone_sources_match_fresh_chrome() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn engine_source_reads_only_real_private_script_values_without_guest_coercion() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -334,7 +334,7 @@ mod tests {
     #[test]
     fn native_factory_values_descriptors_conversions_and_mapping_match_chrome() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let cases: serde_json::Value =
@@ -387,7 +387,7 @@ mod tests {
     #[test]
     fn exhaustive_sink_mapping_and_conversion_errors_match_independent_chrome() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         for (probe, oracle) in [
             (
@@ -433,7 +433,7 @@ mod tests {
     #[test]
     fn native_html_script_attribute_and_range_sinks_match_chrome() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let cases: serde_json::Value =
             serde_json::from_str(include_str!("trusted_types_sinks_cases.json")).unwrap();
@@ -483,7 +483,7 @@ mod tests {
     #[test]
     fn private_rules_and_strings_ignore_guest_collection_prototype_replacements() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -508,7 +508,7 @@ mod tests {
     #[test]
     fn guest_retained_policy_keeps_its_native_callback_realm_alive_only_until_release() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let (owner, weak) = {
             v8::scope!(let scope, &mut isolate);
             let child = v8::Context::new(scope, Default::default());
@@ -571,7 +571,7 @@ mod tests {
     #[test]
     fn brands_are_cross_realm_and_private_state_has_no_host_realm_roots() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let weak = {
             v8::scope!(let scope, &mut isolate);
             let context = v8::Context::new(scope, Default::default());

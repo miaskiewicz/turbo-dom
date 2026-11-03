@@ -179,13 +179,19 @@ fn native<'s>(
     }
 }
 
-pub(super) fn install(scope: &mut v8::PinScope) {
+/// Capture the reference-target key (idempotent; a context deserialized from a startup
+/// snapshot captures it again in its new isolate, turbo-dom#249).
+pub(super) fn ensure_key(scope: &mut v8::PinScope) {
     if scope.get_slot::<std::rc::Rc<Key>>().is_none() {
         let name = v8::String::new(scope, "turbo.shadow-root.reference-target").unwrap();
         let private = v8::Private::for_api(scope, Some(name));
         let key = v8::Global::new(scope, private);
         scope.set_slot(std::rc::Rc::new(Key(key)));
     }
+}
+
+pub(super) fn install(scope: &mut v8::PinScope) {
+    ensure_key(scope);
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__referenceTargetNative", native);
     run_js(scope, include_str!("reference_target.js"));

@@ -12,7 +12,7 @@ use turbo_dom_browser_env::browser_env::{
     finish_form_data_constructor, finish_key_order, form_submission_base_href,
     form_submission_base_target, get_interface_record, hide_node_nonce, host_pointer,
     import_document_node, install, install_css_policy, install_form_submission_handler,
-    install_form_value_reader, install_html, install_independent_html,
+    install_form_value_reader, install_from_snapshot, install_html, install_independent_html,
     install_independent_html_units, install_independent_srcdoc_units,
     install_independent_utf16_source_positions, install_inline_event_handlers,
     install_mutation_consumer, install_trusted_types_policy, install_with_html,
@@ -26,9 +26,9 @@ use turbo_dom_browser_env::browser_env::{
     run_engine_script, script_document, set_activation_host, set_document_domain_sandboxed,
     set_document_last_modified, set_document_origin_keyed, set_document_resource_active,
     set_form_submission_blocked, set_inert_document_initializer, set_interface_record,
-    set_native_event_target_observer, string_code_units, sweep_collected_documents,
+    set_native_event_target_observer, snapshot_blob, string_code_units, sweep_collected_documents,
     trusted_script_source, trusted_type_string, ActivationQuery, NativeDomScope, PointerLockPolicy,
-    ENGINE_NAMESPACE_PARAM,
+    SnapshotBlob, SnapshotWindow, ENGINE_NAMESPACE_PARAM,
 };
 
 #[test]
@@ -57,7 +57,7 @@ fn eval_string(scope: &mut v8::PinScope, source: &str) -> String {
 #[test]
 fn install_html_document_html_and_srcdoc_documents() {
     init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut v8::Isolate::new(snapshot_params());
     v8::scope!(let scope, isolate);
     assert_eq!(document_html(), "");
     let context = v8::Context::new(scope, Default::default());
@@ -91,4 +91,15 @@ fn install_html_document_html_and_srcdoc_documents() {
         assert_eq!(eval_string(scope, "document.body.textContent"), "s");
     }
     reset();
+}
+
+/// Isolate parameters: from the startup snapshot when `TURBO_DOM_SNAPSHOT_PATH` is set
+/// (installs then take the snapshot path, turbo-dom#249).
+fn snapshot_params() -> v8::CreateParams {
+    match std::env::var_os("TURBO_DOM_SNAPSHOT_PATH")
+        .and(turbo_dom_browser_env::browser_env::snapshot_blob())
+    {
+        Some(blob) => blob.create_params(),
+        None => Default::default(),
+    }
 }

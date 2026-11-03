@@ -6,7 +6,7 @@ fn run(html: &str, code: &str) -> serde_json::Value {
 
 fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) -> serde_json::Value {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -732,7 +732,7 @@ fn computed_font_context_follows_actual_owner_preferences_adoption_and_retiremen
         serde_json::from_str(&value.to_rust_string_lossy(scope)).unwrap()
     }
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let parent = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, parent);
@@ -1323,7 +1323,7 @@ fn css_animation_update_runs_once_per_style_change_gate() {
 #[test]
 fn computed_style_reuse_follows_cssom_edits_in_another_realm() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let parent = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, parent);

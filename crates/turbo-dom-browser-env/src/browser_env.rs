@@ -7549,6 +7549,27 @@ pub fn install_with_utf16_source_positions(scope: &mut v8::PinScope, units: &[u1
     );
 }
 fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
+    if snapshot_path() {
+        #[cfg(test)]
+        let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);
+        match install_snapshot_context(scope, tree) {
+            Ok(()) => {
+                // The gate of the snapshot path (turbo-dom#249): no install runs an engine script.
+                #[cfg(test)]
+                assert_eq!(
+                    ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get),
+                    before,
+                    "a snapshot install ran an engine script"
+                );
+                return;
+            }
+            Err(tree) => return install_split_or_full(scope, tree),
+        }
+    }
+    install_split_or_full(scope, tree);
+}
+
+fn install_split_or_full(scope: &mut v8::PinScope, tree: Tree) {
     if attach_path() {
         bootstrap_engine(scope);
         attach_document(scope, tree);
@@ -7559,14 +7580,143 @@ fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
 
 /// Whether installs take the split path (turbo-dom#249): [`bootstrap_engine`] over the
 /// empty shell, then [`attach_document`]. Off by default; `TURBO_DOM_ATTACH_PATH` turns it
-/// on so CI runs the whole suite on both paths. A V8 startup snapshot of the bootstrapped
-/// shell (the next phase) makes the attach the only per-install work.
+/// on so CI runs the whole suite on this path too. [`snapshot_path`] goes one step further:
+/// a startup snapshot of the bootstrapped shell leaves the attach as the only per-install work.
 fn attach_path() -> bool {
     #[cfg(test)]
     if ATTACH_PATH_FOR_TEST.with(std::cell::Cell::get) {
         return true;
     }
     std::env::var_os("TURBO_DOM_ATTACH_PATH").is_some()
+}
+
+/// Whether installs into a context made from the startup snapshot take the snapshot path
+/// (turbo-dom#249): rehydrate the snapshotted window, then [`attach_document`]. Off by
+/// default; `TURBO_DOM_SNAPSHOT_PATH` turns it on, and the test isolates then come from
+/// [`snapshot_blob`], so CI runs the whole suite on this path too. An install into any
+/// other context takes the usual path.
+fn snapshot_path() -> bool {
+    #[cfg(test)]
+    if SNAPSHOT_PATH_FOR_TEST.with(std::cell::Cell::get) {
+        return true;
+    }
+    std::env::var_os("TURBO_DOM_SNAPSHOT_PATH").is_some()
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Test hook: take the snapshot install path on this thread.
+    pub(crate) static SNAPSHOT_PATH_FOR_TEST: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Rehydrate the current context, made from the startup snapshot, and attach `tree` as its
+/// document. Runs no engine script. `Err(tree)` when the context was not made from the
+/// snapshot (or already holds a document).
+fn install_snapshot_context(scope: &mut v8::PinScope, tree: Tree) -> Result<(), Tree> {
+    SETUP_TERMINATED.with(|t| t.set(false));
+    if !crate_surface::startup_snapshot::rehydrate(scope) {
+        return Err(tree);
+    }
+    attach_document(scope, tree);
+    Ok(())
+}
+
+/// The process's V8 startup snapshot of a bootstrapped window (turbo-dom#249): the blob
+/// and the external reference table every isolate made from it must be given. Built once
+/// per process on first use, from this process's own V8 (a blob is tied to the V8 build
+/// and flags), on a thread of its own so no caller's DOM is touched. `None` when V8 could
+/// not snapshot the bootstrap (never expected; installs then keep the usual path).
+/// Initialize V8 before the first call.
+pub fn snapshot_blob() -> Option<&'static SnapshotBlob> {
+    static BLOB: std::sync::OnceLock<Option<SnapshotBlob>> = std::sync::OnceLock::new();
+    BLOB.get_or_init(|| {
+        std::thread::spawn(|| {
+            let blob = crate_surface::startup_snapshot::build()?;
+            let data: &'static [u8] = Box::leak(blob.data.to_vec().into_boxed_slice());
+            Some(SnapshotBlob {
+                data,
+                references: blob.references,
+            })
+        })
+        .join()
+        .ok()
+        .flatten()
+    })
+    .as_ref()
+}
+
+/// A startup blob and its external reference table ([`snapshot_blob`]).
+pub struct SnapshotBlob {
+    /// The serialized heap.
+    pub data: &'static [u8],
+    /// The external references the blob was made with, in table order.
+    pub references: &'static [v8::ExternalReference],
+}
+
+// SAFETY: the references are addresses of `extern "C"` functions, immutable and valid
+// process-wide; the data is an immutable leaked byte slice.
+unsafe impl Send for SnapshotBlob {}
+unsafe impl Sync for SnapshotBlob {}
+
+impl SnapshotBlob {
+    /// Isolate parameters that deserialize this blob. A context the isolate makes with
+    /// `v8::Context::new` is the snapshotted window; installing into it (any `install*`
+    /// with `TURBO_DOM_SNAPSHOT_PATH` set, or [`install_from_snapshot`]) runs no engine
+    /// script.
+    pub fn create_params(&self) -> v8::CreateParams {
+        v8::CreateParams::default()
+            .snapshot_blob(v8::StartupData::from(self.data))
+            .external_references(std::borrow::Cow::Borrowed(self.references))
+    }
+}
+
+/// A window installed from the startup snapshot: the isolate [`install_from_snapshot`]
+/// created and owns, and the window's context in it. Drops the context before the isolate.
+pub struct SnapshotWindow {
+    context: v8::Global<v8::Context>,
+    isolate: v8::OwnedIsolate,
+}
+
+impl SnapshotWindow {
+    /// The isolate (enter a `HandleScope` on it to use the context).
+    pub fn isolate(&mut self) -> &mut v8::OwnedIsolate {
+        &mut self.isolate
+    }
+    /// The window's context.
+    pub fn context(&self) -> &v8::Global<v8::Context> {
+        &self.context
+    }
+    /// Both at once, for `v8::scope!` + `v8::Local::new(scope, context)`.
+    pub fn parts(&mut self) -> (&mut v8::OwnedIsolate, &v8::Global<v8::Context>) {
+        (&mut self.isolate, &self.context)
+    }
+}
+
+/// Opt-in fast install (turbo-dom#249): create an isolate from [`snapshot_blob`], take its
+/// snapshotted window context, rehydrate the native state the snapshot could not carry and
+/// attach `html` as the document. Runs no engine script, so it costs a deserialization and
+/// a parse instead of a bootstrap. The window behaves like one [`install_with_html`]
+/// installs; embedder capabilities (activation host, timers, fonts, …) are registered on it
+/// as after any install. The thread's current DOM becomes this window's, as with any
+/// install. `None` when no blob could be built.
+pub fn install_from_snapshot(html: &str) -> Option<SnapshotWindow> {
+    install_tree_from_snapshot(Tree::parse_with_processing_instructions(html))
+}
+
+fn install_tree_from_snapshot(tree: Tree) -> Option<SnapshotWindow> {
+    let blob = snapshot_blob()?;
+    let mut isolate = v8::Isolate::new(blob.create_params());
+    let context = {
+        v8::scope!(let scope, &mut isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        // invariant: a context made from the blob holds the snapshotted window
+        install_snapshot_context(scope, tree)
+            .ok()
+            .expect("a blob context rehydrates");
+        v8::Global::new(scope, context)
+    };
+    Some(SnapshotWindow { context, isolate })
 }
 
 #[cfg(test)]
@@ -8100,12 +8250,33 @@ mod tests {
         });
     }
 
+    /// The isolate a test installs into: from the startup snapshot when
+    /// `TURBO_DOM_SNAPSHOT_PATH` is set (its installs then take the snapshot path,
+    /// turbo-dom#249), else a plain one.
+    pub(crate) fn new_isolate() -> v8::OwnedIsolate {
+        init_v8();
+        if snapshot_path() {
+            if let Some(blob) = snapshot_blob() {
+                return v8::Isolate::new(blob.create_params());
+            }
+        }
+        v8::Isolate::new(Default::default())
+    }
+
+    /// A plain isolate on every path, for a test that configures the engine bootstrap
+    /// itself (test namespaces, deferred key order, embedder global templates, termination
+    /// inside install scripts): a snapshot carries one fixed bootstrap.
+    pub(crate) fn plain_isolate() -> v8::OwnedIsolate {
+        init_v8();
+        v8::Isolate::new(Default::default())
+    }
+
     /// turbo-dom#183 without the allocation: a refused string (None) throws V8's own
     /// `RangeError: Invalid string length` and yields the empty string; a made one passes through.
     #[test]
     fn string_or_range_error_throws() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8134,7 +8305,7 @@ mod tests {
     #[ignore = "turbo-dom#183: allocates about 1 GiB; string_or_range_error_throws covers it"]
     fn unit_string_past_the_limit_throws_range_error() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8155,7 +8326,7 @@ mod tests {
     #[test]
     fn native_parser_positions_use_actual_units_and_private_window_ownership() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8204,7 +8375,7 @@ mod tests {
     #[test]
     fn parser_positions_follow_actual_adoption_owner_across_creation_realms() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);
@@ -8250,7 +8421,7 @@ mod tests {
     #[test]
     fn css_authorization_preserves_original_source_code_units() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8285,7 +8456,7 @@ mod tests {
     #[test]
     fn css_parser_metadata_keeps_template_sheets_inert_and_reauthorizes_adoption() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8330,7 +8501,7 @@ mod tests {
     #[test]
     fn native_range_clones_preserve_boundaries_without_exposing_or_forging_records() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8361,7 +8532,7 @@ mod tests {
     #[test]
     fn borrowed_range_clone_uses_method_realm_and_preserves_foreign_document_boundaries() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);
@@ -8401,7 +8572,7 @@ mod tests {
     #[test]
     fn native_media_queries_validate_receivers_without_advertising_unavailable_decoders() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8429,7 +8600,7 @@ mod tests {
     #[test]
     fn native_click_prevents_recursive_activation_and_preserves_cancelable_untrusted_dispatch() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8458,7 +8629,7 @@ mod tests {
         // Oracle: Chrome 156.0.8078.47 headless; Document's lookup start is its
         // documentElement, which bootstrap captured before document_basics.js defined it.
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8485,7 +8656,7 @@ mod tests {
     #[test]
     fn native_namespace_attributes_preserve_uri_identity_ownership_and_scope() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8521,7 +8692,7 @@ mod tests {
     #[test]
     fn processing_instruction_uses_real_tree_and_utf16_character_data() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8561,7 +8732,7 @@ mod tests {
     #[test]
     fn native_control_prototypes_match_independent_chrome() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8602,7 +8773,7 @@ mod tests {
     #[test]
     fn native_checkedness_matches_independent_chrome() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8636,7 +8807,7 @@ mod tests {
     #[test]
     fn native_control_labels_borrow_uses_receiver_realm() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let parent = v8::Context::new(scope, Default::default());
         let child = v8::Context::new(scope, Default::default());
@@ -8672,7 +8843,7 @@ mod tests {
     #[test]
     fn native_control_labels_match_chrome() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8715,7 +8886,7 @@ mod tests {
     #[test]
     fn native_form_data_constructor_entry_arguments_match_chrome() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8774,7 +8945,7 @@ mod tests {
     #[test]
     fn native_form_value_reader_uses_only_registered_private_authority() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8803,7 +8974,7 @@ mod tests {
     #[test]
     fn native_form_submission_snapshots_are_ordered_and_host_admitted() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8889,7 +9060,7 @@ mod tests {
     #[test]
     fn native_form_validation_and_request_submit_match_independent_chrome() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8938,7 +9109,7 @@ mod tests {
     #[test]
     fn native_form_sandbox_admission_preserves_clicks_and_document_ownership() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -8983,7 +9154,7 @@ mod tests {
     #[test]
     fn authored_handlers_compile_real_functions_and_preserve_property_override_and_scope() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9005,7 +9176,7 @@ mod tests {
     fn document_collections_and_adoption_preserve_live_native_nodes() {
         init_v8();
         EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9098,7 +9269,7 @@ mod tests {
     #[test]
     fn host_frame_membership_uses_native_light_document_connections() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9138,7 +9309,7 @@ mod tests {
     fn event_records_preserve_readonly_descriptors_and_dispatch_phases() {
         init_v8();
         EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9191,7 +9362,7 @@ mod tests {
     #[test]
     fn host_event_trust_is_private_and_script_redispatch_clears_it() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
         v8::scope!(let scope, isolate);
         let global_template = v8::ObjectTemplate::new(scope);
         global_template.set_internal_field_count(2);
@@ -9289,7 +9460,7 @@ mod tests {
     #[test]
     fn page_intrinsic_overrides_and_listener_caller_cannot_capture_trusted_event_state() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9357,7 +9528,7 @@ mod tests {
     #[test]
     fn native_dom_methods_reject_construction_and_preserve_call_behavior() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9399,7 +9570,7 @@ mod tests {
     #[test]
     fn projected_native_accessors_are_shared_live_and_receiver_checked() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9434,7 +9605,7 @@ mod tests {
     fn native_named_objects_preserve_nonmasking_properties_and_private_mutations() {
         init_v8();
         EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9472,7 +9643,7 @@ mod tests {
     fn native_indexed_objects_keep_live_readonly_entries_and_ordinary_expandos() {
         init_v8();
         EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9509,7 +9680,7 @@ mod tests {
     #[test]
     fn replacing_a_document_rebuilds_projected_native_methods() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9548,7 +9719,7 @@ mod tests {
     fn native_facade_functions_preserve_class_construction_and_live_collections() {
         init_v8();
         EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9581,7 +9752,7 @@ mod tests {
     fn native_facade_constructor_can_preserve_date_call_and_subclass_contracts() {
         init_v8();
         EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9605,7 +9776,7 @@ mod tests {
     #[test]
     fn native_dom_methods_check_receiver_type_before_tree_access() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9636,7 +9807,7 @@ mod tests {
     #[test]
     fn inert_same_realm_documents_keep_native_tree_ownership_and_imports() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9674,7 +9845,7 @@ mod tests {
     #[test]
     fn document_policy_installation_routes_by_context_and_preserves_parent_handlers() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);
@@ -9743,7 +9914,7 @@ mod tests {
     #[test]
     fn independent_context_documents_route_native_nodes_and_reentrant_events() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);
@@ -9798,7 +9969,7 @@ mod tests {
     #[test]
     fn dom_slice_smoke() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9851,7 +10022,7 @@ mod tests {
     fn private_css_policy_preserves_authored_dom_and_effective_cssom() {
         init_v8();
         EXPOSE_TEST_NAMESPACE.with(|expose| expose.set(true));
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -9895,7 +10066,7 @@ mod tests {
     #[test]
     fn css_shared_records_allow_cross_realm_borrowed_getters_and_guard_opaque_sheets() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let first = v8::Context::new(scope, Default::default());
         let retained = {
@@ -9960,7 +10131,7 @@ mod tests {
     #[test]
     fn cssom_parses_style_text_and_parser_created_controls_have_idl_values() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -10006,7 +10177,7 @@ mod tests {
     #[test]
     fn iframe_second_realm_bridges_post_message_both_ways() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -10096,7 +10267,7 @@ mod tests {
     #[test]
     fn native_document_fragments_clone_and_move_owned_children() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -10128,7 +10299,7 @@ mod tests {
     #[test]
     fn native_outer_html_replaces_and_detaches_the_original_element() {
         init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, &mut isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -10161,7 +10332,7 @@ mod tests {
     #[test]
     fn native_shadow_roots_have_separate_contents_brand_and_open_closed_modes() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -10204,7 +10375,7 @@ mod tests {
     #[test]
     fn webgl_reports_a_coherent_swiftshader_signature() {
         init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

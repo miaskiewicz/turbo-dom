@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 #[test]
 fn form_pseudo_classes_match_chrome156_control() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -67,7 +67,7 @@ fn form_pseudo_classes_match_chrome156_control() {
 #[test]
 fn form_pseudo_classifier_ignores_guest_prototypes() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -148,7 +148,7 @@ fn run_page_script(scope: &mut v8::PinScope, source: &str) -> String {
 #[test]
 fn subject_local_matches_and_closest_agree_with_query_selector_all() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -163,7 +163,7 @@ fn subject_local_matches_and_closest_agree_with_query_selector_all() {
 #[test]
 fn matches_classifies_only_the_subjects_ancestors() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

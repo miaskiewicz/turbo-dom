@@ -8,7 +8,7 @@ at the time); this file reconstructs them from history.
 ## [Unreleased]
 
 Still landing for 0.7.0 (other agents add their entries below as they merge): form
-controls in vertical writing modes (#239) and the V8 startup snapshot install (#249 phase C).
+controls in vertical writing modes (#239).
 
 ## [0.7.0] — <date TBD at tag>
 
@@ -239,6 +239,11 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
 - CSSOM rule interfaces (#254): `CSSGroupingRule`, `CSSConditionRule`, `CSSContainerRule`
   (`containerName`, `containerQuery`), `CSSMediaRule`, `CSSSupportsRule`,
   `CSSLayerBlockRule`, `CSSLayerStatementRule`, `CSSScopeRule`, `CSSStartingStyleRule`.
+- Opt-in startup snapshot install (#249): `snapshot_blob()` (a per-process V8 startup
+  snapshot of the bootstrapped window, built from the process's own V8, plus its external
+  reference table; `SnapshotBlob::create_params()`) and `install_from_snapshot(html)`,
+  which creates and owns the isolate and returns a `SnapshotWindow` (isolate + context).
+  The existing `install*` functions are unchanged.
 
 ### Fixed
 
@@ -366,12 +371,18 @@ Every item is gated by a deterministic counter test, not wall-clock.
 - Loaded pages without `<?` keep the scalar html5ever parse (2b62721, #135).
 - Measured: 9731a05 took the payroll `EditExpenseModal` test file from 444 s to 263 s of
   CPU; 3c979fe alone took 147 payroll files from 37.1 to 33.3 CPU-s.
-- In progress (#249): a V8 startup snapshot of the installed window. Landed so far:
-  `install_with_tree` split into `bootstrap_engine` + `attach_document` (e9304e7;
-  `TURBO_DOM_ATTACH_PATH=1` routes installs through it and CI runs the suite on both
-  paths), the external-reference registry and snapshot build (1a505f6), and the rehydrate
-  registry for function-holding context slots (e199b56). The default install is
-  unchanged; the snapshot-backed install is not wired in yet.
+- V8 startup snapshot install (#249): `install_from_snapshot` deserializes a
+  bootstrapped window and rehydrates it instead of running the ~50 engine scripts of a
+  bootstrap. Install cost on darwin-arm64 (release, min / median of 30): fresh isolate +
+  `install_with_html` 21.04 / 22.63 ms, `install_from_snapshot` 4.99 /
+  5.38 ms (isolate included); the blob is built once per process (171 ms). The
+  install is split into `bootstrap_engine` + `attach_document`; the external reference
+  registry, the context-slot / isolate-key / live-range rehydrate and context-independent
+  template data (`template_data`, also for the custom-element constructors, popover flush
+  and mutation-observer delivery functions) make a deserialized context behave like an
+  installed one. CI runs the browser-env suite on three paths: default,
+  `TURBO_DOM_ATTACH_PATH=1` and `TURBO_DOM_SNAPSHOT_PATH=1` (test isolates from the blob,
+  each install asserted to run 0 engine scripts).
 
 ### CI
 

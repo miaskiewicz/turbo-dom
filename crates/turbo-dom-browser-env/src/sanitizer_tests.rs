@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 /// Run a committed async probe against the binding with `page` as the parsed document.
 fn run_probe(page: &str, probe: &str) -> serde_json::Value {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -146,7 +146,7 @@ fn declarative_shadow_roots_in_document_parsing_match_chrome_156() {
 #[test]
 fn parser_scripts_follow_parse_order_through_declarative_roots() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

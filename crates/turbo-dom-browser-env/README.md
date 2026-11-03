@@ -93,8 +93,36 @@ the per-document work: parser scripts, declarative shadow roots, nonces, checked
 template contents and inline handlers. The attach runs no engine script. By default every
 `install_*` call still runs the original interleaved install. Setting
 `TURBO_DOM_ATTACH_PATH=1` makes each install bootstrap the empty shell and then attach the
-parsed document. CI runs the whole suite on both paths. A V8 startup snapshot of the
-bootstrapped shell (next phase) will leave the attach as the only per-install work.
+parsed document.
+
+**Startup snapshot install (turbo-dom#249, opt-in).** `snapshot_blob()` builds, once per
+process and from the process's own V8, a startup snapshot whose default context is the
+bootstrapped shell, plus the external reference table every isolate made from it needs
+(`SnapshotBlob::create_params()`). The blob is never shipped: it is tied to the V8 build
+and flags. `install_from_snapshot(html)` creates and owns an isolate from the blob,
+rehydrates what the snapshot cannot carry (context slots, isolate keys, the live-range
+registry, the window document's native state) and attaches the document. It returns a
+`SnapshotWindow` (isolate + context). It runs no engine script, so per install it costs a
+deserialization and a parse instead of a bootstrap. The existing `install*` functions are
+unchanged. Embedder capabilities (activation host, timers, fonts, …) are registered on
+the new context as after any install. Bootstrap options cannot apply to a snapshot
+context: a test namespace, deferred key order, an embedder global template, or page script
+run before the install. Embedders that use them keep the normal install.
+
+Measured on darwin-arm64, release build, min / median of 30
+(`cargo run --release -p turbo-dom-browser-env --example snapshot_install_cost`):
+
+| | min | median |
+|---|---|---|
+| fresh isolate + `install_with_html` | 21.04 ms | 22.63 ms |
+| `install_from_snapshot` (isolate included) | 4.99 ms | 5.38 ms |
+| one-time `snapshot_blob()` build | 171 ms | |
+
+`TURBO_DOM_SNAPSHOT_PATH=1` makes the test isolates come from the blob and routes every
+install into a snapshot context through the same rehydrate + attach. Each such install
+asserts that it ran 0 engine scripts. CI runs the whole suite on all three paths
+(default, `TURBO_DOM_ATTACH_PATH`, `TURBO_DOM_SNAPSHOT_PATH`). Tests that configure the
+bootstrap itself use a plain isolate on every path.
 
 `tests/public_api.rs`, `tests/host_internals_api.rs` and `tests/test_support_api.rs` pin
 every item that turbo-test and turbo-surf call, from outside the crate.
@@ -123,6 +151,7 @@ export RUSTY_V8_ARCHIVE=/path/to/librusty_v8_release_<target>.a   # v150.4.0
 cargo test -p turbo-dom-browser-env
 cargo test -p turbo-dom-browser-env --features host-internals,test-support
 TURBO_DOM_ATTACH_PATH=1 cargo test -p turbo-dom-browser-env --features host-internals,test-support   # split install path
+TURBO_DOM_SNAPSHOT_PATH=1 cargo test -p turbo-dom-browser-env --features host-internals,test-support   # startup snapshot path
 ```
 
 **Chrome controls.** Every `src/*_chrome15x.json` file is Chrome's own result for the

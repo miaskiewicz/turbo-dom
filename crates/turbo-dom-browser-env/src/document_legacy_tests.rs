@@ -42,7 +42,7 @@ pub(super) fn run_probe(
     setup: impl Fn(&mut v8::PinScope, bool),
 ) -> serde_json::Value {
     super::super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     let value = {
         v8::scope!(let scope, isolate);
         let parent = v8::Context::new(scope, Default::default());

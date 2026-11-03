@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 /// setTimeout/requestAnimationFrame, and return the resolved JSON value.
 fn run_probe(probe: &str, prelude: &str) -> serde_json::Value {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -205,7 +205,7 @@ fn edit_context_matches_chrome_156() {
 /// record their JSON completion value; `insertText` / `key` steps drive the embedder input entry.
 fn run_input_steps(steps: &serde_json::Value) -> serde_json::Value {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

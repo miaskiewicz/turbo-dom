@@ -247,7 +247,7 @@ mod contracts {
     impl Runtime {
         fn new(label: &str) -> Self {
             tests::init_v8();
-            let mut isolate = v8::Isolate::new(Default::default());
+            let mut isolate = crate::browser_env::tests::new_isolate();
             let context = {
                 v8::scope!(let scope,&mut isolate);
                 let context = v8::Context::new(scope, Default::default());
@@ -392,7 +392,7 @@ mod contracts {
     fn uninstalled_isolate_activation_and_reset_preserve_existing_world() {
         let mut first = Runtime::new("first");
         first.eval("globalThis.held=document.querySelector('p');held.expando=17");
-        let empty = v8::Isolate::new(Default::default());
+        let empty = crate::browser_env::tests::new_isolate();
         {
             let _empty = activate_isolate(&empty);
             reset_isolate(&empty);
@@ -432,7 +432,7 @@ mod contracts {
     fn cold_install_inside_uninstalled_guard_restores_peer_world_at_operation_end() {
         let mut peer = Runtime::new("peer");
         peer.eval("globalThis.held=document.querySelector('p');held.expando=17");
-        let mut cold = v8::Isolate::new(Default::default());
+        let mut cold = crate::browser_env::tests::new_isolate();
         {
             let _active = activate_isolate(&cold);
             v8::scope!(let scope,&mut cold);

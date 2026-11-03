@@ -125,7 +125,7 @@ mod tests {
     }
     fn assert_control(cases: &[u8], probe: &str, control: &str, adapter: bool) {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn native_form_collection_records_retain_only_their_genuine_owner_context() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let (keep, context, document, form, controls, list) = {
             v8::scope!(let scope,&mut isolate);
             let context = v8::Context::new(scope, Default::default());
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn native_form_collection_base_accessors_borrow_across_genuine_contexts() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let child = v8::Context::new(scope, Default::default());
         let collection = {
@@ -279,7 +279,7 @@ mod tests {
     #[test]
     fn native_dirty_checkedness_survives_gc_and_requery() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         let context = {
             v8::scope!(let scope,isolate);
             let context = v8::Context::new(scope, Default::default());

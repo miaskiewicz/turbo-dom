@@ -47,7 +47,7 @@ const LOOP: &str = r#"(() => {
 
 pub(super) fn run_probe(html: &str, probe: &str, frozen: bool) -> serde_json::Value {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -326,7 +326,7 @@ fn animations_request_frames_only_when_needed() {
 #[test]
 fn animations_without_frame_host_are_inactive() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

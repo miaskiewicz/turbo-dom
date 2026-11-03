@@ -248,7 +248,7 @@ mod tests {
     }
     fn prepared_fixture(source: &str, prepare: impl FnOnce(&mut Tree)) {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn xpath_borrowed_interfaces_accept_foreign_native_records_and_keep_result_realms() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);

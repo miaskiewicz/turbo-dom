@@ -113,7 +113,7 @@ test-only jobs stay on `ubuntu-latest`. A newer push to a pull request cancels t
 | base | napi addon matrix (linux x64 glibc/musl, linux arm64, windows x64; + macOS arm64 in release), WASM build, `cargo test -p turbo-dom-parser --lib`, `cargo test -p turbo-dom` + churn allocation gate, clippy `-p turbo-dom -p turbo-dom-parser` (+ wasm front-ends), JS / vitest / jest / html5lib conformance |
 | layout (linux; + macOS in release) | clippy (default / `svg,perf,serde,test-support` / no-default); tests default, `--no-default-features` (exact red list via `scripts/check-baseline-red.py`), `svg`, `perf`, `serde,test-support`; wasm32 check (no default features); musl check |
 | raster (linux; + macOS in release) | clippy + tests, default, `--features avif` and `--features jxl`; `coretext` / `gpu-metal` clippy and checks on macOS (release run), `gpu-metal` check on Linux |
-| v8 + browser-env | linux x64/arm64, windows x64 (+ macOS arm64 in release) × default/simdutf: generate turbo-dom-v8, prebuilt rusty_v8 150.4.0 archive (cached) as `RUSTY_V8_ARCHIVE`, fork tests (no ignored interceptor tests), browser-env tests default and `host-internals,test-support`, and the latter again with `TURBO_DOM_ATTACH_PATH=1` (the split bootstrap + attach install, turbo-dom#249), separate target dirs per crate × variant |
+| v8 + browser-env | linux x64/arm64, windows x64 (+ macOS arm64 in release) × default/simdutf: generate turbo-dom-v8, prebuilt rusty_v8 150.4.0 archive (cached) as `RUSTY_V8_ARCHIVE`, fork tests (no ignored interceptor tests), browser-env tests default and `host-internals,test-support`, and the latter twice more: with `TURBO_DOM_ATTACH_PATH=1` (the split bootstrap + attach install) and with `TURBO_DOM_SNAPSHOT_PATH=1` (test isolates from the startup snapshot, every install rehydrate + attach with 0 engine scripts; turbo-dom#249), separate target dirs per crate × variant |
 | msrv | `cargo +1.89 check --all-targets` for turbo-dom, -layout, -raster |
 | guards | `check-versions.py`, `check-no-selector-dual.sh`, turbo-dom-v8 generator/release self-tests + `generate.py --check`, `scripts/` and `tools/parity` self-tests, `verify-copied.sh` (verbatim + current), `verify-copied-collectors.sh`, `verify-copied-layout.sh` |
 | coverage | tarpaulin 0.37.5 (LLVM, ubuntu) per crate with `--fail-under` floors (blocking) |
@@ -216,6 +216,21 @@ become blocking required checks.
 
 `crates/turbo-dom-layout`'s old cc <= 5 allow-list for the surf-origin `cssom_view` modules
 is superseded by this gate.
+
+## Startup snapshot install (turbo-dom#249)
+
+turbo-dom-browser-env 0.7.0 adds an opt-in install from a V8 startup snapshot:
+`snapshot_blob()` (built once per process from its own V8, never shipped) and
+`install_from_snapshot(html)`, which owns the isolate it creates. A snapshot install runs
+0 engine scripts; CI asserts that for every install of the suite's third run
+(`TURBO_DOM_SNAPSHOT_PATH=1`). Install cost, darwin-arm64, release, min / median of 30
+(`examples/snapshot_install_cost.rs`):
+
+| | min | median |
+|---|---|---|
+| fresh isolate + `install_with_html` | 21.04 ms | 22.63 ms |
+| `install_from_snapshot` (isolate included) | 4.99 ms | 5.38 ms |
+| `snapshot_blob()` build, once per process | 171 ms | |
 
 ## Parity harness
 

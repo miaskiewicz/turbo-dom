@@ -10,11 +10,22 @@ fn initialize(scope: &mut v8::PinScope) {
     if scope.get_slot::<Rc<Records>>().is_some() || scope.is_execution_terminating() {
         return;
     }
+    // An isolate made from a startup snapshot keeps the snapshot's key, whichever context
+    // first needs it: records on the snapshotted objects of every context stay readable.
+    rehydrate(scope, SNAPSHOT_DATA);
+    if scope.get_slot::<Rc<Records>>().is_some() {
+        return;
+    }
     let key = v8::Private::new(scope, None);
     scope.set_slot(Rc::new(Records {
         key: v8::Global::new(scope, key),
     }));
 }
+/// The isolate data index a startup snapshot carries the record key at (turbo-dom#249):
+/// the key is the only isolate data, so it is always index 0. V8 hands isolate data out
+/// once per isolate; the key then lives in the isolate slot, shared by every context.
+pub(super) const SNAPSHOT_DATA: usize = 0;
+
 /// The isolate's record key, for a startup snapshot to carry (turbo-dom#249).
 pub(super) fn key<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8::Private>> {
     let records = scope.get_slot::<Rc<Records>>().cloned()?;
@@ -94,7 +105,7 @@ mod tests {
     #[test]
     fn private_records_ignore_guest_proxy_hooks_and_reset_without_retaining_a_realm() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let context = {
             v8::scope!(let scope,&mut isolate);
             let context = v8::Context::new(scope, Default::default());
@@ -146,7 +157,7 @@ mod tests {
     #[test]
     fn private_record_lookups_preserve_a_materialized_termination() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

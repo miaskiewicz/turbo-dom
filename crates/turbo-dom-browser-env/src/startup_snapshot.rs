@@ -50,6 +50,7 @@ pub(crate) fn build() -> Option<Blob> {
         let scope = &mut v8::ContextScope::new(scope, context);
         bootstrap_engine(scope);
         persist_dom_state(scope);
+        range_live::persist(scope);
         strip_wrappers(scope);
         // The slot annex is a heap pointer (and a Weak) in the context's embedder data:
         // serialized, a context made from the blob would read the freed annex.
@@ -88,10 +89,14 @@ pub(crate) fn rehydrate(scope: &mut v8::PinScope) -> bool {
     let Some(document) = window_document(scope, context) else {
         return false;
     };
-    collection_records::rehydrate(scope, RECORDS_DATA);
+    collection_records::rehydrate(scope, collection_records::SNAPSHOT_DATA);
     rehydrate_context(scope, context);
     dom_isolation::install(scope);
     dom_ownership::track_gc(scope);
+    // The install-time isolate keys (registered privates, so the same keys again).
+    shadow_html::ensure_keys(scope);
+    shadow_slots::ensure_keys(scope);
+    reference_target::ensure_key(scope);
     STYLE.with(|s| s.borrow_mut().clear());
     LISTENERS.with(|s| s.borrow_mut().clear());
     ACTIVE.with(|s| *s.borrow_mut() = None);
@@ -124,11 +129,10 @@ pub(crate) fn rehydrate(scope: &mut v8::PinScope) -> bool {
     capture_control_clone(scope);
     html_popover::capture(scope);
     template_contents::rehydrate(scope);
+    range_live::rehydrate(scope);
     true
 }
 
-/// The isolate data index of the collection-record key (the only isolate data).
-const RECORDS_DATA: usize = 0;
 /// The captured-function store name of the document's `basics_state` object.
 const BASICS_STATE: &str = "DomState::basics_state";
 
@@ -170,7 +174,8 @@ fn persist_dom_state(scope: &mut v8::PinScope) {
     if let Some(key) = collection_records::key(scope) {
         let index = scope.add_isolate_data(key);
         assert_eq!(
-            index, RECORDS_DATA,
+            index,
+            collection_records::SNAPSHOT_DATA,
             "the record key is the only isolate data"
         );
     }

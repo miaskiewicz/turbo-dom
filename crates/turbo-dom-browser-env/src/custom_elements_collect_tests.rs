@@ -25,7 +25,7 @@ fn defined_matches_chrome156_after_native_storage_collection() {
     let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
     let cases: serde_json::Value = serde_json::from_slice(CASES).unwrap();
     super::tests::init_v8();
-    let mut isolate = v8::Isolate::new(Default::default());
+    let mut isolate = crate::browser_env::tests::new_isolate();
     let context = {
         v8::scope!(let scope, &mut isolate);
         let context = v8::Context::new(scope, Default::default());

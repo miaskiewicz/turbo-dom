@@ -24,7 +24,7 @@ fn selector_work() -> (usize, usize) {
 #[test]
 fn a_repeated_selector_is_parsed_once_and_plain_selectors_skip_the_rewrites() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -68,7 +68,7 @@ fn a_repeated_selector_is_parsed_once_and_plain_selectors_skip_the_rewrites() {
 #[test]
 fn memoized_invalid_selectors_still_throw_chromes_exact_syntax_error() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -107,7 +107,7 @@ fn memoized_invalid_selectors_still_throw_chromes_exact_syntax_error() {
 #[test]
 fn wrapper_owner_tags_are_small_integers_that_still_name_their_live_tree() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -138,7 +138,7 @@ fn wrapper_owner_tags_are_small_integers_that_still_name_their_live_tree() {
 #[test]
 fn flush_builds_no_records_when_nothing_observes() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());

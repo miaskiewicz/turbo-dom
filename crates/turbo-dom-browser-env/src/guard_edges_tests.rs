@@ -25,7 +25,7 @@ fn guard_edges_match_chrome156() {
 /// Run `source` (an expression) in a fresh page and return its JSON serialization.
 pub(super) fn page_json(html: &str, source: &str) -> String {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -72,7 +72,7 @@ fn function<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s,
 /// script once the termination is cancelled.
 fn install_terminated_at_helper(at: usize) -> Option<String> {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -123,7 +123,7 @@ fn termination_at_every_install_helper_unwinds() {
 #[test]
 fn inline_handlers_without_a_base_compile_as_about_blank() {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -154,7 +154,7 @@ fn terminate_now(
 /// by termination. Then cancel it, run the microtasks and return `after`'s JSON.
 fn terminated(html: &str, source: &str, after: &str) -> String {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

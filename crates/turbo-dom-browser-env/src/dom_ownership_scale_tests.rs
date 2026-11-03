@@ -42,7 +42,7 @@ fn sweeps() -> usize {
 /// return how many wrappers the ownership reconciles walked meanwhile.
 fn visits_building(rows: usize) -> usize {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     let visited;
     {
         v8::scope!(let scope, isolate);
@@ -97,7 +97,7 @@ fn building_a_large_tree_walks_linearly_many_wrappers() {
 
 fn with_page(f: impl FnOnce(&mut v8::PinScope)) {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -199,6 +199,8 @@ fn a_detached_subtree_is_collectable_after_the_host_turn() {
 fn collected_listener_sweeps_wait_for_a_gc() {
     with_page(|scope| {
         reset_work();
+        let epoch = || dom_ownership::GC_EPOCH.with(std::cell::Cell::get);
+        let start = epoch();
         eval(
             scope,
             "const host = document.createElement('div');
@@ -207,9 +209,13 @@ fn collected_listener_sweeps_wait_for_a_gc() {
              'built'",
         );
         // ~2000 mutating calls; weak listener/document handles only empty during a GC, so a
-        // sweep per call is wasted work. A rare young-generation GC may still trigger one.
+        // sweep per call is wasted work. A young-generation GC may still trigger one: at most
+        // one sweep per GC. (An isolate fresh from a startup snapshot has not grown its young
+        // generation yet, so it scavenges more often than one an engine bootstrap warmed.)
         let quiet = sweeps();
-        assert!(quiet <= 10, "{quiet} sweeps without a GC");
+        let gcs = (epoch() - start) as usize;
+        assert!(quiet <= gcs + 1, "{quiet} sweeps for {gcs} GCs");
+        assert!(quiet <= 10.max(gcs + 1), "{quiet} sweeps without a GC");
         eval(
             scope,
             "__gc(); host.appendChild(document.createElement('p')); 'swept'",

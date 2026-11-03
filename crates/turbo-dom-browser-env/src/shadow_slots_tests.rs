@@ -2,7 +2,7 @@ use super::*;
 #[test]
 fn native_named_manual_flattened_slots_and_notification_order_match_chrome() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -39,7 +39,7 @@ fn native_named_manual_flattened_slots_and_notification_order_match_chrome() {
 #[test]
 fn replacing_manual_assignment_releases_the_old_slot_edge_after_notification() {
     super::tests::init_v8();
-    let mut isolate = v8::Isolate::new(Default::default());
+    let mut isolate = crate::browser_env::tests::new_isolate();
     let (context, old_slot) = {
         v8::scope!(let scope, &mut isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -85,7 +85,7 @@ fn replacing_manual_assignment_releases_the_old_slot_edge_after_notification() {
 #[test]
 fn deep_shadow_fallback_distribution_uses_an_iterative_native_walk() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -123,7 +123,7 @@ fn deep_shadow_fallback_distribution_uses_an_iterative_native_walk() {
 #[test]
 fn host_composed_projection_uses_private_manual_edges_and_closed_shadow_roots() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

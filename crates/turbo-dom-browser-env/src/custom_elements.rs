@@ -121,9 +121,11 @@ fn construct(
         type_error(scope, "Illegal constructor");
         return;
     }
-    // `constructor` below builds every such function with its delegate as the data.
-    let delegate =
-        v8::Local::<v8::Function>::try_from(args.data()).expect("the delegate is the data");
+    // `constructor` below builds every such function with its delegate as the data (a
+    // `template_data` key while a startup snapshot is built, turbo-dom#249).
+    let delegate = template_data::of_call(scope, &args)
+        .and_then(|data| v8::Local::<v8::Function>::try_from(data).ok())
+        .expect("the delegate is the data");
     let prototype = args
         .this()
         .get_prototype(scope)
@@ -166,8 +168,11 @@ fn constructor(
     let delegate = v8::Local::<v8::Function>::try_from(args.get(0))
         .expect("custom_elements.js passes its construction delegate");
     let name = args.get(1).to_rust_string_lossy(scope);
+    // The bootstrap builds one per HTML element interface: the data must not pin the
+    // delegate, a closure of this context, into a snapshot's startup part (turbo-dom#249).
+    let data = template_data::key(scope, delegate.into()).expect("a fresh table slot");
     if let Some(function) = v8::Function::builder(ext!(FunctionCallback, construct))
-        .data(delegate.into())
+        .data(data)
         .length(0)
         .build(scope)
     {
@@ -841,7 +846,7 @@ mod tests {
 
     fn check_chrome_probe_with_consumers(probe: &str, oracle: &str, consumers: bool) {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -940,7 +945,7 @@ mod tests {
         );
         let cases: serde_json::Value = serde_json::from_slice(CASES).unwrap();
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1031,7 +1036,7 @@ mod tests {
     #[test]
     fn already_queued_callbacks_stop_when_the_definition_realm_retires() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1063,7 +1068,7 @@ mod tests {
     #[test]
     fn retired_definition_context_retains_registry_but_suppresses_automatic_lifecycle() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let main = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, main);
@@ -1145,7 +1150,7 @@ mod tests {
     #[test]
     fn global_registry_associations_are_primitive_and_parsed_tracking_stays_private() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1168,7 +1173,7 @@ mod tests {
     #[test]
     fn pages_without_custom_definitions_do_not_record_or_budget_plain_dom_mutations() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1184,7 +1189,7 @@ mod tests {
     #[test]
     fn custom_move_and_adoption_payloads_ignore_guest_object_prototype_setters() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1202,7 +1207,7 @@ mod tests {
     #[test]
     fn interrupted_definition_and_reaction_scopes_recover_without_guest_finally() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1227,7 +1232,7 @@ mod tests {
     #[test]
     fn installed_document_without_custom_definitions_releases_context() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let context = {
             v8::scope!(let scope,&mut isolate);
             let context = v8::Context::new(scope, Default::default());
@@ -1245,7 +1250,7 @@ mod tests {
     #[test]
     fn custom_element_private_records_retain_live_nodes_and_collect_unused_cycles() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let (context, weak_context, weak_node, weak_constructor, weak_shadow) = {
             v8::scope!(let scope,&mut isolate);
             let context = v8::Context::new(scope, Default::default());
@@ -1295,7 +1300,7 @@ mod tests {
     #[test]
     fn native_construction_preserves_existing_nodes_and_nested_stack_identity() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1338,7 +1343,7 @@ mod tests {
     #[test]
     fn interrupted_native_construction_unwinds_without_guest_finally() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

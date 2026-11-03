@@ -663,7 +663,7 @@ fn page_processing_instructions_match_chrome156() {
     let mut failures = Vec::new();
     for (page, expected) in control["results"].as_object().unwrap() {
         for (index, install) in installers.iter().enumerate() {
-            let isolate = &mut v8::Isolate::new(Default::default());
+            let isolate = &mut crate::browser_env::tests::new_isolate();
             v8::scope!(let scope, isolate);
             let context = v8::Context::new(scope, Default::default());
             let scope = &mut v8::ContextScope::new(scope, context);

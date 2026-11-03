@@ -351,7 +351,7 @@ pub(super) fn forget_deferred() {
 
 thread_local! {
     /// Bumped by every GC on an isolate with an installed DOM (`track_gc`).
-    static GC_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    pub(super) static GC_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     /// `GC_EPOCH` at the last collected-listener/document sweep.
     static SWEPT_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(u64::MAX) };
 }

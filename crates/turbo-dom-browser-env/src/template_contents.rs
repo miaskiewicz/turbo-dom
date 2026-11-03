@@ -668,7 +668,7 @@ mod tests {
     #[test]
     fn legacy_void_elements_serialize_without_end_tags() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -683,7 +683,7 @@ mod tests {
     #[test]
     fn context_free_template_private_keys_do_not_retain_realms() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let weak = {
             v8::scope!(let scope,&mut isolate);
             let context = v8::Context::new(scope, Default::default());
@@ -699,7 +699,7 @@ mod tests {
     #[test]
     fn interrupted_template_private_lookup_does_not_allocate_or_publish() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -718,7 +718,7 @@ mod tests {
     #[test]
     fn associated_template_document_uses_new_owner_realm_after_foreign_adoption() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let main = v8::Context::new(scope, Default::default());
         let foreign = v8::Context::new(scope, Default::default());
@@ -758,7 +758,7 @@ mod tests {
     #[test]
     fn template_native_graph_retains_connected_and_held_content_then_collects_cycles() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let (context, weak_host, weak_content, weak_child) = {
             v8::scope!(let scope,&mut isolate);
             let context = v8::Context::new(scope, Default::default());
@@ -850,7 +850,7 @@ mod tests {
     #[test]
     fn native_template_lifecycle_queues_parsing_and_handler_activation_match_chrome() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -877,7 +877,7 @@ mod tests {
     #[test]
     fn native_template_ownership_clone_adoption_and_source_match_independent_chrome() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

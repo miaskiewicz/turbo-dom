@@ -244,7 +244,9 @@ fn consume(
 
 fn deliver(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v8::ReturnValue) {
     registry(scope).notification.borrow_mut().take();
-    let Ok(pending) = v8::Local::<v8::Array>::try_from(args.data()) else {
+    let Some(pending) = template_data::of_call(scope, &args)
+        .and_then(|data| v8::Local::<v8::Array>::try_from(data).ok())
+    else {
         return;
     };
     let private = key(scope, "signal-slots");
@@ -305,8 +307,11 @@ fn notification<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8
         }
     }
     let pending = v8::Array::new(scope, 0);
+    // Not a context object as template data: a snapshot's startup part would copy it
+    // (turbo-dom#249).
+    let data = template_data::key(scope, pending.into())?;
     let notification = v8::Function::builder(ext!(FunctionCallback, deliver))
-        .data(pending.into())
+        .data(data)
         .build(scope)?;
     notification.set_private(scope, private, pending.into());
     *registry.notification.borrow_mut() = Some(v8::Weak::new(scope, notification));
