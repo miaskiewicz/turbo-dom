@@ -263,3 +263,40 @@ fn flush_builds_no_records_when_nothing_observes() {
     }
     clear_interface_records(isolate);
 }
+
+/// A [CEReactions] frame allocates its reaction queue (a V8 array behind a weak global
+/// handle) only when a reaction can be queued: with no custom element definition, the DOM
+/// calls a React page makes create none (they were a V8 global-handle create and release per
+/// call). With a definition, reactions are still queued and delivered in order.
+#[test]
+fn reaction_frames_allocate_no_queue_without_custom_element_definitions() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><div id=root></div>");
+        let before = custom_elements::reaction_queues_built();
+        let out = run(
+            scope,
+            "const root = document.getElementById('root'); for (let i = 0; i < 100; i++) { \
+             const d = document.createElement('div'); d.setAttribute('class', 'c' + i); root.appendChild(d); d.remove(); } \
+             String(root.children.length)",
+        );
+        assert_eq!(out, "0");
+        assert_eq!(custom_elements::reaction_queues_built() - before, 0);
+        let out = run(
+            scope,
+            "globalThis.log = []; customElements.define('x-r', class extends HTMLElement { \
+             connectedCallback() { log.push('c:' + this.id); } disconnectedCallback() { log.push('d:' + this.id); } \
+             attributeChangedCallback(n, o, v) { log.push('a:' + v); } static get observedAttributes() { return ['data-v']; } }); \
+             const x = document.createElement('x-r'); x.id = 'one'; root.appendChild(x); x.setAttribute('data-v', '1'); x.remove(); \
+             root.innerHTML = '<x-r id=two></x-r>'; log.join()",
+        );
+        assert_eq!(out, "c:one,a:1,d:one,c:two");
+        assert!(custom_elements::reaction_queues_built() - before > 0);
+        reset();
+    }
+    clear_interface_records(isolate);
+}
