@@ -7656,12 +7656,19 @@ fn attach_path() -> bool {
 /// [`snapshot_blob`], so CI runs the whole suite on this path too. An install into any
 /// other context takes the usual path.
 fn snapshot_path() -> bool {
+    SNAPSHOT_INSTALL.load(std::sync::atomic::Ordering::Relaxed) || snapshot_path_configured()
+}
+
+/// [`snapshot_path`] without the process-wide [`set_snapshot_install`] switch: the
+/// environment variable (and the test hook). The test isolates follow this one, so a test
+/// that switches snapshot installs on does not move the tests running beside it onto blob
+/// isolates.
+fn snapshot_path_configured() -> bool {
     #[cfg(test)]
     if SNAPSHOT_PATH_FOR_TEST.with(std::cell::Cell::get) {
         return true;
     }
-    SNAPSHOT_INSTALL.load(std::sync::atomic::Ordering::Relaxed)
-        || std::env::var_os("TURBO_DOM_SNAPSHOT_PATH").is_some()
+    std::env::var_os("TURBO_DOM_SNAPSHOT_PATH").is_some()
 }
 
 /// Set by [`set_snapshot_install`].
@@ -8386,7 +8393,7 @@ mod tests {
     /// turbo-dom#249), else a plain one.
     pub(crate) fn new_isolate() -> v8::OwnedIsolate {
         init_v8();
-        if snapshot_path() {
+        if snapshot_path_configured() {
             if let Some(blob) = snapshot_blob() {
                 return v8::Isolate::new(blob.create_params());
             }
