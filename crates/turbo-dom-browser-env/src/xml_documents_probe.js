@@ -106,6 +106,10 @@
     ["attlistDefaultReplacementText", '<!DOCTYPE r [<!ENTITY e0 "x"><!ENTITY e1 "&e0;"><!ENTITY c "&#65;&#x42;&lt;x&amp;y&#9;z&zz;"><!ENTITY w "a\tb\nc"><!ATTLIST r a CDATA "&e1;|&c;|&w;|\t">]><r/>'],
     ["attlistDefaultBadCharacterReference", '<!DOCTYPE r [<!ENTITY c "a&#xZ;b&#"><!ATTLIST r a CDATA "&c;">]><r/>'],
     ["attlistNamespaceDefaultBadCharacterReference", '<!DOCTYPE r [<!ENTITY c "a&#xZ;b&#"><!ATTLIST r xmlns:p CDATA "&c;">]><r/>'],
+    // a specified attribute value inserts an entity's replacement text once, verbatim (#268)
+    ["attributeEntityLaughs", '<!DOCTYPE r [<!ENTITY l0 "lol">' + Array.from({ length: 9 }, (_, i) => `<!ENTITY l${i + 1} "${`&l${i};`.repeat(10)}">`).join("") + ']><r a="&l9;"/>'],
+    ["attributeEntitySelfReference", '<!DOCTYPE r [<!ENTITY e "&e;&e;">]><r a="&e;" b="x&e;y"/>'],
+    ["attributeEntityReplacementText", '<!DOCTYPE r [<!ENTITY e0 "x"><!ENTITY e1 "&e0;"><!ENTITY e2 "&e1;"><!ENTITY c "&#65;&#x42;&lt;x&amp;y&#9;z&zz;"><!ENTITY w "a\tb\nc">]><r a="&e2;|&c;|&w;|\t" xmlns:p="&e1;"><p:s/></r>'],
     // well-formedness errors
     ["mismatch", "<a><b></a>"],
     ["empty", ""],

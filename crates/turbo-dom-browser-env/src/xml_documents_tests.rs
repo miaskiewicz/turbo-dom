@@ -211,6 +211,58 @@ fn attlist_default_amplification_is_bounded() {
     }
 }
 
+/// Specified attribute values (#268) insert an entity's replacement text once, verbatim,
+/// like Chrome (the control's `attributeEntity*` rows), and share the ATTLIST defaults'
+/// expansion budget (10x the source plus 1 MB): one large entity referenced many times,
+/// in one value or across elements, stops with a `<parsererror>` (Chrome builds such a
+/// document; this native parser stops instead), while values within it still expand.
+#[test]
+fn specified_attribute_expansion_is_bounded() {
+    let big = "x".repeat(100_000);
+    let source = format!(
+        "<!DOCTYPE r [<!ENTITY e \"{}\">]><r a=\"{}\"/>",
+        &big[..10_000],
+        "&e;".repeat(50)
+    );
+    let parsed = xml_documents::parse(&source);
+    assert!(parsed.well_formed);
+    let text = xml_documents::serialize(&parsed.tree, parsed.tree.root(), None);
+    assert_eq!(text.len(), "<!DOCTYPE r><r a=\"\"/>".len() + 500_000);
+    let over = [
+        format!(
+            "<!DOCTYPE r [<!ENTITY e \"{big}\">]><r a=\"{}\"/>",
+            "&e;".repeat(1000)
+        ),
+        format!(
+            "<!DOCTYPE r [<!ENTITY e \"{big}\">]><r>{}</r>",
+            "<s a=\"&e;\"/>".repeat(1000)
+        ),
+        format!(
+            "<!DOCTYPE r [<!ENTITY e \"{big}\"><!ATTLIST s b CDATA \"&e;\">]><r>{}</r>",
+            "<s a=\"&e;\"/>".repeat(1000)
+        ),
+        // an element an entity spells once and the content repeats
+        format!(
+            "<!DOCTYPE r [<!ENTITY e \"{big}\"><!ENTITY s '<s a=\"&e;\"/>'>]><r>{}</r>",
+            "&s;".repeat(1000)
+        ),
+    ];
+    for source in over {
+        let started = std::time::Instant::now();
+        let parsed = xml_documents::parse(&source);
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
+        assert!(!parsed.well_formed);
+        let text = xml_documents::serialize(&parsed.tree, parsed.tree.root(), None);
+        assert!(
+            text.contains("Entity too big"),
+            "{}",
+            &text[..text.len().min(2000)]
+        );
+        // what was built before the error stays within the budget
+        assert!(text.len() < 12 * source.len() + 1_000_000, "{}", text.len());
+    }
+}
+
 /// `parse_xml_document_units` reports whether the source was well-formed, so an embedder
 /// (turbo-surf's `responseXML`) need not look for a `<parsererror>` in the tree: a valid
 /// document that itself holds a `parsererror` element is still well-formed.

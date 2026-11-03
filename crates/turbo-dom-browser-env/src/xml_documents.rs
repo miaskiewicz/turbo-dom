@@ -94,6 +94,9 @@ impl<'a> Builder<'a, '_> {
         namespace: &XmlNamespace,
     ) -> Result<(), String> {
         let mut declared = self.tags.next_declarations(&qualified(name));
+        // specified values (their entities expanded once by xml-rs) share the budget
+        let specified = attributes.iter().map(|a| a.value.len()).sum();
+        self.tags.charge(specified)?;
         let defaults = self.defaults(&qualified(name), &attributes, namespace)?;
         let element = if name.namespace.as_deref() == Some(UNBOUND_NAMESPACE) {
             self.tree.create_element_ns_units(
@@ -253,6 +256,8 @@ struct StartTags<'a> {
     entity_depth: usize,
     /// Bytes ATTLIST defaults may still expand to ([`EXPANSION_ALLOWANCE`]).
     budget: std::cell::Cell<usize>,
+    /// The attribute values (quotes included) of the start tags scanned so far.
+    values: Vec<&'a str>,
 }
 
 /// Entity references followed at once: xml-rs stops a reparse deeper than 10 (as Chrome
@@ -266,6 +271,15 @@ const ENTITY_SCAN_DEPTH: usize = 10;
 /// with "Entity too big" (Chrome 156 builds such documents).
 const EXPANSION_ALLOWANCE: usize = 1_000_000;
 
+/// The expansion budget of `source`: what its attribute values (specified, #268, and
+/// ATTLIST defaults) may add up to.
+fn expansion_budget(source: &str) -> usize {
+    source
+        .len()
+        .saturating_mul(10)
+        .saturating_add(EXPANSION_ALLOWANCE)
+}
+
 impl<'a> StartTags<'a> {
     fn new(source: &'a str) -> Self {
         StartTags {
@@ -276,12 +290,8 @@ impl<'a> StartTags<'a> {
             defaults: std::collections::HashMap::new(),
             namespace_defaults: std::collections::HashMap::new(),
             entity_depth: ENTITY_SCAN_DEPTH,
-            budget: std::cell::Cell::new(
-                source
-                    .len()
-                    .saturating_mul(10)
-                    .saturating_add(EXPANSION_ALLOWANCE),
-            ),
+            budget: std::cell::Cell::new(expansion_budget(source)),
+            values: Vec::new(),
         }
     }
     /// Skip past `end`, or to the end of the current text.
@@ -479,9 +489,14 @@ impl<'a> StartTags<'a> {
             rest = &after[(end + 1).min(after.len())..];
         }
         push_normalized(&mut out, rest);
-        let left = self.budget.get().checked_sub(out.len());
+        self.charge(out.len())?;
+        Ok(out)
+    }
+    /// Spend `bytes` of the expansion budget; "Entity too big" past it.
+    fn charge(&self, bytes: usize) -> Result<(), String> {
+        let left = self.budget.get().checked_sub(bytes);
         self.budget.set(left.unwrap_or(0));
-        left.map(|_| out).ok_or_else(|| "Entity too big".to_owned())
+        left.map(|_| ()).ok_or_else(|| "Entity too big".to_owned())
     }
     fn attributes(&mut self) -> (&'a str, Vec<&'a str>) {
         let end = self
@@ -503,6 +518,7 @@ impl<'a> StartTags<'a> {
             let close = value[1..]
                 .find(quote)
                 .map_or(value.len(), |index| index + 2);
+            self.values.push(&value[..close]);
             if attribute == "xmlns" {
                 prefixes.push("");
             } else if let Some(prefix) = attribute.strip_prefix("xmlns:") {
@@ -723,6 +739,50 @@ fn text_position(before: &str) -> xml::common::TextPosition {
     }
 }
 
+/// Bound every specified attribute value before xml-rs builds it (#268): xml-rs inserts
+/// each entity's replacement text once, but checks its own length limit only between
+/// literal characters, so `&e;&e;…` would build the whole value first. Each value spelled
+/// in the source or an entity's literal is charged its expanded length (an upper bound)
+/// against the budget; "Entity too big" at the value past it. The elements an entity
+/// repeats are charged again as xml-rs builds them ([`Builder::start`]).
+fn spelled_values_fit(source: &str) -> Result<(), xml::reader::Error> {
+    let mut scan = StartTags::new(source);
+    scan.entity_depth = 0;
+    while scan.next_tag().is_some() {}
+    let mut values = std::mem::take(&mut scan.values);
+    for &text in scan.entities.values() {
+        let mut tags = StartTags::new(text);
+        tags.entity_depth = 0;
+        while tags.next_tag().is_some() {}
+        values.append(&mut tags.values);
+    }
+    for value in values {
+        let expanded = expanded_length(value, &scan.entities);
+        scan.charge(expanded).map_err(|message| {
+            let offset = value.as_ptr() as usize - source.as_ptr() as usize;
+            xml::reader::Error::from((&text_position(&source[..offset]), message))
+        })?;
+    }
+    Ok(())
+}
+
+/// `value`'s length with each declared entity's replacement text in place of its
+/// reference (other references count as written, at least their character's length).
+fn expanded_length(value: &str, entities: &std::collections::HashMap<&str, &str>) -> usize {
+    let mut length = 0;
+    let mut rest = value;
+    while let Some(index) = rest.find('&') {
+        let after = &rest[index + 1..];
+        let end = after.find(';').unwrap_or(after.len());
+        length += index
+            + entities
+                .get(&after[..end])
+                .map_or(end + 2, |text| text.len());
+        rest = &after[(end + 1).min(after.len())..];
+    }
+    length + rest.len()
+}
+
 /// An insertion [`with_namespace_defaults`] made: row, column (in the original source)
 /// and length in characters.
 type Insertion = (u64, u64, u64);
@@ -835,7 +895,8 @@ pub(crate) fn parse(source: &str) -> ParsedXml {
     }
     let mut declaration = None;
     let mut well_formed = true;
-    let built = match with_namespace_defaults(source) {
+    let rewritten = spelled_values_fit(source).and_then(|()| with_namespace_defaults(source));
+    let built = match rewritten {
         // a default past the expansion budget stops the parse before any node
         Err(error) => Err(error),
         Ok(None) => build(&mut tree, root, source, &mut declaration),
