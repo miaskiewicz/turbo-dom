@@ -653,7 +653,7 @@ fn check_pseudo(pseudo: &mut Pseudo) -> Result<(), SelectorError> {
     match pseudo {
         Pseudo::Unknown(unknown) => *pseudo = cascade_pseudo(unknown)?,
         // a DOM-API extension (the JS runtime's `:selected`); not a CSS pseudo-class
-        Pseudo::Selected => return Err(invalid("unknown pseudo-class")),
+        Pseudo::Selected => return Err(SelectorError::UnknownPseudoClass("selected".into())),
         Pseudo::Is(list) | Pseudo::Where(list) => forgive(list),
         Pseudo::Not(list) | Pseudo::NthChildOf(_, _, list) | Pseudo::NthLastChildOf(_, _, list) => {
             // never empty: the shared parser makes a pseudo with an empty, unplaceable or
@@ -811,7 +811,10 @@ fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
         ("active-view-transition-type", Some(list)) if is_ident_list(list) => {
             Ok(Pseudo::unknown(lower.as_str(), arg))
         }
-        _ => Err(invalid("unknown pseudo-class")),
+        _ => Err(SelectorError::UnknownPseudoClass(match arg {
+            Some(_) => format!("{}()", unknown.name),
+            None => unknown.name.clone(),
+        })),
     }
 }
 
