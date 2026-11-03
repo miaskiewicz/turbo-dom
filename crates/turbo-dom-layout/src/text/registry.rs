@@ -65,6 +65,16 @@ fn html_generic_candidates<'a>(
             "Liberation Serif",
             "DejaVu Serif",
         ]
+    } else if prefer_native_mac_serif && generic == "monospace" {
+        // Chrome 156's macOS monospace is the physical Courier face
+        // (miaskiewicz/turbo-dom#260), not Menlo.
+        &[
+            "Courier",
+            "Courier New",
+            "Menlo",
+            "Monaco",
+            "DejaVu Sans Mono",
+        ]
     } else if courier_monospace && generic == "monospace" {
         // The default policy's monospace stays Courier New, Chrome 156's macOS
         // generic (miaskiewicz/turbo-dom#259), now that Menlo (named only in
@@ -215,7 +225,7 @@ impl FontRegistry {
     /// default rendering, e.g. PDF generation, uses only the shipped/bundled
     /// faces). Walks the OS font directories, registering each face under its own
     /// family, and aliases the CSS generics to the conventional system families
-    /// (`sans-serif`→Helvetica/Arial, `serif`→Times, `monospace`→Menlo/Courier) so
+    /// (`sans-serif`→Helvetica/Arial, `serif`→Times, `monospace`→Courier New, or Courier under the macOS HTML policy) so
     /// a page that names an installed font — or a generic — renders in it, matching
     /// a browser on the same machine. Best-effort: unreadable dirs/files skipped.
     pub fn load_system_fonts(&mut self) {
@@ -224,7 +234,7 @@ impl FontRegistry {
 
     /// Load installed fonts for continuous native HTML layout, including faces
     /// whose family exists only in platform name records. Choose generic aliases
-    /// after admitting those real primary faces (for example Menlo on macOS).
+    /// after admitting those real primary faces (for example Courier and Helvetica on macOS).
     /// Ordinary PDF callers retain the policy of [`Self::load_system_fonts`].
     pub fn load_system_fonts_for_html(&mut self) {
         self.load_system_fonts_with_primary_policy(true);
@@ -663,14 +673,23 @@ mod tests {
         let mut registry = FontRegistry::new();
         registry.load_system_fonts_for_html();
         let explicit = registry.select(&["Menlo"], 400, false).unwrap();
-        let generic = registry.select(&["monospace"], 400, false).unwrap();
         assert_eq!(explicit.data(), bytes);
-        assert_eq!(generic.data(), explicit.data());
-        assert_eq!(generic.index(), explicit.index());
-        assert!(generic
+        assert!(explicit
             .native_postscript_name()
             .unwrap()
             .starts_with("Menlo"));
+        // The generic is the platform-only Courier, Chrome 156's macOS monospace
+        // (miaskiewicz/turbo-dom#260; tests/native_generic_families.rs).
+        let courier = std::fs::read("/System/Library/Fonts/Courier.ttc").unwrap();
+        let generic = registry.select(&["monospace"], 400, false).unwrap();
+        let physical = registry.select(&["Courier"], 400, false).unwrap();
+        assert_eq!(generic.data(), courier);
+        assert_eq!(generic.data(), physical.data());
+        assert_eq!(generic.index(), physical.index());
+        assert!(generic
+            .native_postscript_name()
+            .unwrap()
+            .starts_with("Courier"));
     }
     #[test]
     fn loaded_collection_shares_program_without_changing_registration_order() {

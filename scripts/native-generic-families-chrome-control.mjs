@@ -31,7 +31,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(playwrightCore);
 
 const TEXT = "Hello world";
-const FAMILIES = ["sans-serif", "serif", "monospace", "Helvetica", "Helvetica Neue", "Arial", "Times", "Times New Roman", "Courier New", "Menlo"];
+const FAMILIES = ["sans-serif", "serif", "monospace", "Helvetica", "Helvetica Neue", "Arial", "Times", "Times New Roman", "Courier New", "Courier", "Menlo"];
 const css = (family) => (family.includes("-") || family === "serif" || family === "monospace" ? family : `"${family}"`);
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
