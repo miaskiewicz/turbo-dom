@@ -503,6 +503,15 @@ const CASES = [
     probes: [[190, 80], [196, 80], [197, 80], [198, 80], [199, 80], [200, 80], [201, 80], [202, 80], [203, 80], [210, 80]],
   },
   {
+    // miaskiewicz/turbo-dom#272: a transform on the `<img>` itself scales it (paint and
+    // getBoundingClientRect), here about its default centre origin: the 100x40 box
+    // becomes 400x160 at (50,140). The edge blend is img-scaled-4x's.
+    id: "img-transformed",
+    html: DOC(`<img data-cid="i" src="${SPRITE}" style="${at(200, 200)};width:100px;height:40px;transform:scale(4)">`),
+    assets: [SPRITE],
+    probes: [[60, 160], [100, 220], [240, 220], [248, 220], [252, 220], [400, 220], [449, 299], [451, 220], [100, 301]],
+  },
+  {
     // The same for image tiles: 50x20 sprite tiles under scale(4), edges at device x=100
     // (red to blue inside a tile) and x=200 (blue to the next tile's red).
     id: "bg-image-tiles-scaled-4x",
