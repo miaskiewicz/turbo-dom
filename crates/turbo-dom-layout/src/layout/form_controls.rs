@@ -94,6 +94,13 @@ pub(crate) fn positive(value: Option<&str>) -> Option<u32> {
     value[..digits].parse().ok().filter(|n| *n > 0)
 }
 
+/// [`positive`] that also fits a signed 32-bit int, as Chrome reads `textarea rows/cols`
+/// and `input size` (`> 0x7fffffff` is the default there; `select size` keeps the
+/// unsigned range, fixture `form_control_size_attrs_chrome156.json`).
+fn positive_int(value: Option<&str>) -> Option<u32> {
+    positive(value).filter(|n| i32::try_from(*n).is_ok())
+}
+
 /// The text a `<select>`'s options show (whitespace collapsed) and the text its width
 /// measures (an option in an `<optgroup>` indented by four spaces, as Chrome's menu list
 /// sizes it), in document order, the selected one (the last with `selected`, else the
@@ -198,7 +205,7 @@ pub(crate) fn intrinsic_size(
             .iter()
             .find(|a| a.name == name)
             .map(|a| a.value.as_str());
-        positive(value).unwrap_or(default) as f32
+        positive_int(value).unwrap_or(default) as f32
     };
     Some(match control {
         Control::Toggle | Control::Button | Control::Color => return None,
@@ -254,5 +261,9 @@ mod tests {
         assert_eq!(positive(Some("0")), None);
         assert_eq!(positive(Some("x")), None);
         assert_eq!(positive(None), None);
+        assert_eq!(positive(Some("2147483648")), Some(2_147_483_648));
+        assert_eq!(positive_int(Some("2147483647")), Some(2_147_483_647));
+        assert_eq!(positive_int(Some("2147483648")), None);
+        assert_eq!(positive_int(Some("0")), None);
     }
 }
