@@ -95,6 +95,10 @@ mod trusted_controls_tests;
 mod xpath_contexts_tests;
 
 #[cfg(test)]
+#[path = "install_split_tests.rs"]
+mod install_split_tests;
+
+#[cfg(test)]
 #[path = "engine_namespace_tests.rs"]
 mod engine_namespace_tests;
 
@@ -156,6 +160,8 @@ pub fn run_engine_script<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     source: &str,
 ) -> Option<v8::Local<'s, v8::Value>> {
+    #[cfg(test)]
+    ENGINE_SCRIPTS_RUN.with(|n| n.set(n.get() + 1));
     let namespace = engine_namespace(scope)?;
     let wrapped = format!("(function({ENGINE_NAMESPACE_PARAM}){{{source}\n}})");
     let code = v8::String::new(scope, &wrapped)?;

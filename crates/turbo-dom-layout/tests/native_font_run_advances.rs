@@ -440,7 +440,7 @@ fn ordinary_run(face: turbo_dom_layout::FontFace) -> InlineRun {
     }
 }
 #[test]
-fn ordinary_pdf_paragraph_and_generic_snapshot_keep_unquantized_real_advances() {
+fn ordinary_pdf_paragraph_keeps_real_advances_and_generic_snapshot_layout_units() {
     let face = fonts().select(&["IBM Plex Mono"], 400, false).unwrap();
     let raw = face.measure("abcde", 16.0, 0.0);
     assert_eq!(raw, 48.000_004_f32);
@@ -474,5 +474,11 @@ fn ordinary_pdf_paragraph_and_generic_snapshot_keep_unquantized_real_advances() 
     assert_eq!(advances.len(), 5);
     assert!(advances
         .iter()
-        .all(|advance| *advance == face.measure("a", 16.0, 0.0)));
+        .all(|advance| *advance == static_advance(face, "a")));
+}
+
+/// A glyph's advance on the static (PDF / screenshot) path: Chrome's 1/64px `LayoutUnit`
+/// advance at device scale 1 (`FontFace::blink_advances`, miaskiewicz/turbo-dom#246).
+fn static_advance(face: &turbo_dom_layout::FontFace, letter: &str) -> f32 {
+    face.blink_advances(&face.shape(letter), 16.0, 1.0)[0] as f32
 }

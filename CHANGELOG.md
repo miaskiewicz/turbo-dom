@@ -88,7 +88,9 @@ at the time); this file reconstructs them from history.
   item's first line box. turbo-dom-raster paints them (PNG and SVG), and
   `cssom_view::hit::elements_at_point` hits a marker's list item (#128;
   `scripts/list-marker-chrome-control.mjs`). The UA sheet gains Chrome's list-style-type
-  defaults and zero block margins for nested lists.
+  defaults and zero block margins for nested lists. `layout_recorded`'s `NodeSources` gains
+  `list_markers` (marker box / text id -> its list item's box), since a marker has no source
+  element (html2pdf tags it as the PDF/UA `Lbl`).
 - turbo-dom-raster paints inset `box-shadow`s (PNG and SVG) inside the padding box, over the
   background and under the border, with offset, spread and blur, like Chrome 156 (#192).
 - HTML processing instructions like Chrome 156 (turbo-dom#135): `Tree::parse_utf16_with_processing_instructions`

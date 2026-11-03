@@ -7516,7 +7516,99 @@ pub fn install_with_utf16_source_positions(scope: &mut v8::PinScope, units: &[u1
         Tree::parse_utf16_with_source_positions_and_processing_instructions(units),
     );
 }
-fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
+fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
+    if attach_path() {
+        bootstrap_engine(scope);
+        attach_document(scope, tree);
+        return;
+    }
+    install_engine_with_tree(scope, tree);
+}
+
+/// Whether installs take the split path (turbo-dom#249): [`bootstrap_engine`] over the
+/// empty shell, then [`attach_document`]. Off by default; `TURBO_DOM_ATTACH_PATH` turns it
+/// on so CI runs the whole suite on both paths. A V8 startup snapshot of the bootstrapped
+/// shell (the next phase) makes the attach the only per-install work.
+fn attach_path() -> bool {
+    #[cfg(test)]
+    if ATTACH_PATH_FOR_TEST.with(std::cell::Cell::get) {
+        return true;
+    }
+    std::env::var_os("TURBO_DOM_ATTACH_PATH").is_some()
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Test hook: take the split install path on this thread.
+    pub(crate) static ATTACH_PATH_FOR_TEST: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The tree-independent engine bootstrap: the whole install over the canonical empty shell.
+fn bootstrap_engine(scope: &mut v8::PinScope) {
+    install_engine_with_tree(
+        scope,
+        Tree::parse_with_processing_instructions(
+            "<!DOCTYPE html><html><head></head><body></body></html>",
+        ),
+    );
+}
+
+/// Replace the bootstrapped shell's tree with `tree`, redoing only the per-document steps
+/// [`install_engine_with_tree`] interleaves with the engine scripts: parser scripts,
+/// declarative shadow roots, nonces, checkedness, template contents and inline event
+/// handlers. Runs no engine script. The document wrapper is kept (retagged to the new tree
+/// generation); every other shell node leaves the identity cache and the ownership graph,
+/// so a wrapper the bootstrap made never aliases a node of the attached tree.
+fn attach_document(scope: &mut v8::PinScope, mut tree: Tree) {
+    tree.set_processing_instructions(true);
+    let root = tree.root();
+    let parser_scripts = script_state::parse_order(&tree);
+    let declared = shadow_html::declarative(&mut tree, root, None);
+    STYLE.with(|s| s.borrow_mut().retain(|handle, _| *handle == root));
+    LISTENERS.with(|s| s.borrow_mut().retain(|(handle, _), _| *handle == root));
+    ACTIVE.with(|s| *s.borrow_mut() = None);
+    let graph = DOM.with(|d| {
+        let mut d = d.borrow_mut();
+        // invariant: bootstrap_engine installed a DOM
+        let state = d.as_mut().unwrap();
+        assert_eq!(
+            state.tree.root(),
+            root,
+            "shell and document share the root handle"
+        );
+        // invariant: bind_document cached the document wrapper, which the global holds
+        let document = state.cache.remove(&root).unwrap();
+        state.cache.clear();
+        state.cache.insert(root, document);
+        state.scripts = script_state::initial(&tree);
+        state.parser_scripts = parser_scripts;
+        state.nonces = initial_nonces(&tree);
+        state.tree = tree;
+        // A new generation: wrappers the bootstrap made for shell nodes never resolve
+        // against this tree's nodes under a reused id.
+        state.serial = next_tree_serial();
+        state.checked_radios = Default::default();
+        state.shadow_modes = HashMap::new();
+        state.ownership_dirty = true;
+        state.ownership.clone()
+    });
+    // The shell's node wrappers leave the document's ownership graph with their tree.
+    if let Some(graph) = graph {
+        graph.borrow_mut().retire_nodes(scope, root.raw());
+    }
+    form_checked_state::parsed(root);
+    let document = wrap(scope, root);
+    let owner = owner_tag(scope, DOM_ID.with(std::cell::Cell::get));
+    document.set_internal_field(1, owner.into());
+    let declared = shadow_html::register(scope, declared);
+    template_contents::realize(scope, document);
+    for root in declared.iter().rev() {
+        template_contents::realize(scope, *root);
+    }
+    event_handlers::install(scope, None, "about:blank");
+}
+
+fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     SETUP_TERMINATED.with(|t| t.set(false));
     // Fragment parsing tokenizes `<?target data?>` like Chrome (turbo-dom#135).
     tree.set_processing_instructions(true);
@@ -7875,6 +7967,12 @@ thread_local! {
     /// Test hook (turbo-dom#184): terminate execution as the N-th install script starts, the
     /// way an embedder's watchdog can land in the middle of setup.
     pub(crate) static TERMINATE_AT_RUN_JS: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Test gate (turbo-dom#249): install scripts run on this thread.
+    pub(crate) static ENGINE_SCRIPTS_RUN: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 fn run_js(scope: &mut v8::PinScope, src: &str) {

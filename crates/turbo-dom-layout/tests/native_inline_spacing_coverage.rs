@@ -425,7 +425,7 @@ fn leading_collapsible_space_after_images_and_inline_blocks_keeps_native_sources
     assert!(errors.is_empty(), "{}", errors.join("\n"));
 }
 #[test]
-fn generic_snapshot_and_pdf_atom_caption_keep_raw_font_advances() {
+fn generic_snapshot_and_pdf_atom_caption_keep_layout_unit_advances() {
     let face = fonts().select(&["IBM Plex Mono"], 400, false).unwrap();
     let (generic, ids) = capture(
         "<span id=atom style='display:inline-block;width:10px;height:10px'></span>",
@@ -440,7 +440,7 @@ fn generic_snapshot_and_pdf_atom_caption_keep_raw_font_advances() {
         .collect::<Vec<_>>();
     assert_eq!(glyphs.len(), 3);
     for glyph in glyphs {
-        assert_eq!(glyph.source.advance, face.measure("a", 16.0, 0.0));
+        assert_eq!(glyph.source.advance, static_advance(face, "a"));
     }
     let pieces = [
         Piece::Atom(InlineAtom {
@@ -742,7 +742,7 @@ fn assert_generic_whitespace_ranges(width: usize) {
     let face = fonts().select(&["IBM Plex Mono"], 400, false).unwrap();
     for (glyph, letter) in glyphs.iter().zip(["a", "b"]) {
         assert!(!glyph.source.collapsed_whitespace);
-        assert_eq!(glyph.source.advance, face.measure(letter, 16.0, 0.0));
+        assert_eq!(glyph.source.advance, static_advance(face, letter));
     }
     let before = cells[0].rect;
     let after = cells[1].rect;
@@ -814,3 +814,9 @@ fn generic_pdf_whitespace_ranges_keep_raw_placed_gaps_without_native_source_cell
 // device size (32px) and truncates the 16.16 advance there, 19.2 -> 1258291/65536 device px
 // (turbo-dom#236: the host-font Times control pins device-size font creation).
 const IBM_SPACE_DSF2: f32 = (1_258_291.0 / 65536.0 / 2.0) as f32;
+
+/// A glyph's advance on the static (PDF / screenshot) path: Chrome's 1/64px `LayoutUnit`
+/// advance at device scale 1 (`FontFace::blink_advances`, miaskiewicz/turbo-dom#246).
+fn static_advance(face: &turbo_dom_layout::FontFace, letter: &str) -> f32 {
+    face.blink_advances(&face.shape(letter), 16.0, 1.0)[0] as f32
+}

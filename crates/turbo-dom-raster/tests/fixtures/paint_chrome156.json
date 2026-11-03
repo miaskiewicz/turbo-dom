@@ -2370,9 +2370,24 @@
   },
   {
    "id": "inline-background-text",
-   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent\">aaa <span style=\"background:#ff0000\">MMMM</span> bbb</div></body></html>",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent\">aaa <span data-cid=\"s\" style=\"background:#ff0000\">MMMM</span> bbb<span data-cid=\"a\" style=\"display:inline-block;width:10px;height:10px\"></span></div></body></html>",
    "assets": [],
-   "boxes": [],
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 51.641,
+     "y": 24,
+     "width": 71.141,
+     "height": 22
+    },
+    {
+     "cid": "a",
+     "x": 157.781,
+     "y": 32,
+     "width": 10,
+     "height": 10
+    }
+   ],
    "probes": [
     {
      "x": 87,
@@ -2468,9 +2483,24 @@
   },
   {
    "id": "inline-edges-text",
-   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent\">aa<span style=\"background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px\">MM</span><span style=\"display:inline-block;width:40px;height:40px;background:#00ff00\"></span></div></body></html>",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent\">aa<span data-cid=\"s\" style=\"background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px\">MM</span><span data-cid=\"a\" style=\"display:inline-block;width:40px;height:40px;background:#00ff00\"></span></div></body></html>",
    "assets": [],
-   "boxes": [],
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 47.766,
+     "y": 35,
+     "width": 57.578,
+     "height": 36
+    },
+    {
+     "cid": "a",
+     "x": 115.344,
+     "y": 20,
+     "width": 40,
+     "height": 40
+    }
+   ],
    "probes": [
     {
      "x": 49,

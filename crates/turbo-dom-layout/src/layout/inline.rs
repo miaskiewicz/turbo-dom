@@ -1700,6 +1700,38 @@ fn wrapped_extra_spaces(previous: &Word, next: &Word) -> bool {
 /// top-down so each line's available width is queried from `region` at its own
 /// vertical position — text wraps in the narrow column beside a float, then widens
 /// once past its bottom — and flushes eagerly at a forced break (`<br>`).
+/// The device scales of a line policy (miaskiewicz/turbo-dom#246): `advances` adds
+/// text advances in Chrome's 1/64px `LayoutUnit`s ([`inline_advances`]), `metrics`
+/// rounds font metrics and baselines natively. The native HTML path sets both; the
+/// static (PDF / screenshot) path sets only the advances, so its glyphs land where
+/// Chrome's do while its line box model keeps its own metrics.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct NativeScale {
+    pub metrics: Option<f32>,
+    pub advances: Option<f32>,
+}
+
+impl NativeScale {
+    const NONE: NativeScale = NativeScale {
+        metrics: None,
+        advances: None,
+    };
+
+    /// Both scales (the native HTML path).
+    pub(crate) fn both(scale: Option<f32>) -> NativeScale {
+        NativeScale {
+            metrics: scale,
+            advances: scale,
+        }
+    }
+
+    /// 1/64px advances at device scale 1 with the legacy metrics (the static path).
+    const STATIC: NativeScale = NativeScale {
+        metrics: None,
+        advances: Some(1.0),
+    };
+}
+
 struct Placer<'a> {
     align: Align,
     region: LineRegion<'a>,
@@ -1709,6 +1741,7 @@ struct Placer<'a> {
     capture_sources: bool,
     html_font_metrics: bool,
     html_font_scale: Option<f32>,
+    advance_scale: Option<f32>,
     advances: Option<inline_advances::Cursor>,
     strut_metrics: Option<(f32, f32)>,
     /// Lines align on the central baseline (see [`NativeLineOptions::central`]).
@@ -1735,9 +1768,9 @@ impl<'a> Placer<'a> {
         align: Align,
         region: LineRegion<'a>,
         strut: f32,
-        policy: (bool, bool, Option<f32>),
+        policy: (bool, bool, NativeScale),
     ) -> Self {
-        let (capture_sources, html_font_metrics, html_font_scale) = policy;
+        let (capture_sources, html_font_metrics, scales) = policy;
         let (indent, lw) = region(0.0);
         Placer {
             align,
@@ -1745,8 +1778,11 @@ impl<'a> Placer<'a> {
             strut,
             capture_sources,
             html_font_metrics,
-            html_font_scale,
-            advances: html_font_scale.map(|scale| inline_advances::Cursor::new(scale, 0.0)),
+            html_font_scale: scales.metrics,
+            advance_scale: scales.advances,
+            advances: scales
+                .advances
+                .map(|scale| inline_advances::Cursor::new(scale, 0.0)),
             strut_metrics: None,
             central: false,
             quirk_roots: None,
@@ -1816,7 +1852,10 @@ impl<'a> Placer<'a> {
             (
                 self.capture_sources,
                 self.html_font_metrics,
-                self.html_font_scale,
+                NativeScale {
+                    metrics: self.html_font_scale,
+                    advances: self.advance_scale,
+                },
             ),
         );
         self.open_edges = next_open;
@@ -1827,7 +1866,7 @@ impl<'a> Placer<'a> {
         (self.indent, self.lw) = (self.region)(self.y);
         self.x = 0.0;
         self.advances = self
-            .html_font_scale
+            .advance_scale
             .map(|scale| inline_advances::Cursor::new(scale, 0.0));
     }
 
@@ -1928,7 +1967,7 @@ impl<'a> Placer<'a> {
     }
 
     fn place(&mut self, word: Word) {
-        let width = self.html_font_scale.map_or(word.width, |scale| {
+        let width = self.advance_scale.map_or(word.width, |scale| {
             inline_advances::Cursor::new(scale, 0.0).candidate_width(&word)
         });
         self.avoid_floats(width);
@@ -2052,7 +2091,7 @@ fn wrap_and_place(
     align: Align,
     region: LineRegion,
     strut: f32,
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
 ) -> Vec<SourceLine> {
     let ParagraphWords { mut words, bidi } = paragraph;
     let mut placer = Placer::new(align, region, strut, policy);
@@ -2401,8 +2440,9 @@ fn native_seg_advances(seg: &Seg, shaped: &[crate::text::ShapedGlyph], device: f
     advances
 }
 
-fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f32>)) -> SourceRun {
-    let (capture_sources, html_font_metrics, html_font_scale) = policy;
+fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, NativeScale)) -> SourceRun {
+    let (capture_sources, html_font_metrics, scales) = policy;
+    let (html_font_scale, advance_scale) = (scales.metrics, scales.advances);
     let scale = seg.face.scale(seg.font_size);
     let shift = seg
         .baseline_shift
@@ -2439,7 +2479,7 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
         (Vec::new(), Vec::new())
     };
     let ends: Vec<bool> = crate::text::cluster_ends(&shaped).collect();
-    let native = html_font_scale.map(|device| native_seg_advances(seg, &shaped, device));
+    let native = advance_scale.map(|device| native_seg_advances(seg, &shaped, device));
     for (index, (g, cluster_end)) in shaped.into_iter().zip(ends).enumerate() {
         let letter_spacing = if cluster_end { seg.letter_spacing } else { 0.0 };
         let ordinary_advance = if seg.upright {
@@ -2454,8 +2494,8 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
         let native_advance = native
             .as_ref()
             .map_or(f64::from(ordinary_advance), |advances| advances[index]);
-        let advance = html_font_scale.map_or(ordinary_advance, |_| native_advance as f32);
-        let position = html_font_scale.map_or(x, |_| native_x as f32);
+        let advance = advance_scale.map_or(ordinary_advance, |_| native_advance as f32);
+        let position = advance_scale.map_or(x, |_| native_x as f32);
         if capture_sources {
             let start = g.cluster as usize;
             let end = boundaries[boundaries
@@ -2662,7 +2702,7 @@ struct LinePlacement {
     pen: f32,
     baseline: f32,
     height: f32,
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
     /// The line aligns on the central baseline (see [`NativeLineOptions::central`]).
     central: bool,
     runs: Vec<SourceRun>,
@@ -2750,8 +2790,12 @@ impl LinePlacement {
         if self.central == seg.upright {
             return self.baseline;
         }
-        let font = source_font_metrics(seg, self.policy.2);
-        let (ascent, _) = central_metrics(font.ascent, font.descent, self.policy.2.unwrap_or(1.0));
+        let font = source_font_metrics(seg, self.policy.2.metrics);
+        let (ascent, _) = central_metrics(
+            font.ascent,
+            font.descent,
+            self.policy.2.metrics.unwrap_or(1.0),
+        );
         if seg.upright {
             self.baseline + ascent - font.ascent
         } else {
@@ -2909,7 +2953,7 @@ impl LinePlacement {
             let baseline = self.seg_baseline(space);
             self.runs
                 .push(shape_space(space, pen, baseline, self.policy, advance));
-            if self.policy.2.is_some() {
+            if self.policy.2.advances.is_some() {
                 pen += advance;
             }
         }
@@ -2962,7 +3006,7 @@ fn shape_space(
     space: &Seg,
     pen: f32,
     baseline: f32,
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
     advance: f32,
 ) -> SourceRun {
     let mut run = shape_seg(space, pen, baseline, policy);
@@ -2989,7 +3033,7 @@ fn line_box_metrics(
     words: &[Word],
     open_edges: &[InlineEdge],
     (strut, strut_metrics): (f32, Option<NativeStrut>),
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
 ) -> Metrics {
     if words.iter().all(phantom_word) {
         return Metrics {
@@ -3000,9 +3044,9 @@ fn line_box_metrics(
     }
     match strut_metrics {
         Some((strut, central)) => {
-            native_line_metrics(words, open_edges, strut, (policy.2, central))
+            native_line_metrics(words, open_edges, strut, (policy.2.metrics, central))
         }
-        None => line_metrics(words, strut, policy.1, policy.2, open_edges),
+        None => line_metrics(words, strut, policy.1, policy.2.metrics, open_edges),
     }
 }
 
@@ -3014,22 +3058,23 @@ fn place_line(
     strut: f32,
     open_edges: &[InlineEdge],
     (strut_metrics, bidi): (Option<NativeStrut>, bool),
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
 ) -> SourceLine {
     let m = line_box_metrics(&words, open_edges, (strut, strut_metrics), policy);
     let half_leading = (m.height - m.ascent - m.descent) / 2.0;
     let leading = policy
         .2
+        .metrics
         .map_or(half_leading, |scale| (half_leading * scale).floor() / scale);
     // The approximate (non-native) policy measures fractional font metrics; Blink's
     // are whole pixels there, so its line baselines are too (#219). The native
     // policies keep their own sub-pixel baselines.
-    let baseline = match (strut_metrics.map(|(metrics, _)| metrics), policy.2) {
+    let baseline = match (strut_metrics.map(|(metrics, _)| metrics), policy.2.metrics) {
         (Some(_), _) => m.ascent,
         (None, Some(_)) => m.ascent + leading,
         (None, None) => (m.ascent + leading).round(),
     };
-    let width = policy.2.map_or_else(
+    let width = policy.2.advances.map_or_else(
         || line_used_width(&words),
         |scale| inline_advances::line_width(&words, scale),
     );
@@ -3045,6 +3090,7 @@ fn place_line(
         central: strut_metrics.is_some_and(|(_, central)| central),
         advances: policy
             .2
+            .advances
             .map(|scale| inline_advances::Cursor::new(scale, pen)),
         record: bidi.then(|| Recorder::new(open_edges)),
     };
@@ -3165,7 +3211,7 @@ pub fn layout_paragraph_in(
         align,
         region,
         strut,
-        (false, false, None),
+        (false, false, NativeScale::NONE),
     ))
     .layout
 }
@@ -3196,7 +3242,7 @@ pub fn layout_paragraph_in_with_sources(
         align,
         region,
         strut,
-        (true, false, None),
+        (true, false, NativeScale::NONE),
     ))
 }
 
@@ -3225,7 +3271,7 @@ pub fn layout_html_paragraph_in_with_sources(
         align,
         region,
         strut,
-        (true, true, None),
+        (true, true, NativeScale::NONE),
     ))
 }
 
@@ -3253,7 +3299,12 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
     if let Some(scale) = options.scale {
         inline_advances::prepare(&mut words, scale);
     }
-    let mut placer = Placer::new(align, region, strut, (true, true, options.scale));
+    let mut placer = Placer::new(
+        align,
+        region,
+        strut,
+        (true, true, NativeScale::both(options.scale)),
+    );
     placer.strut_metrics = options.strut_metrics;
     placer.central = options.central;
     placer.quirk_roots = options.quirk_roots;
@@ -3287,12 +3338,13 @@ pub(crate) fn layout_paragraph_in_chrome_lines(
         diags,
         SourcePolicy {
             capture,
-            advances: false,
+            advances: true,
         },
         None,
     );
     apply_baselines(&mut words, lines.baselines);
-    let mut placer = Placer::new(align, region, strut, (capture, false, None));
+    inline_advances::prepare(&mut words, 1.0);
+    let mut placer = Placer::new(align, region, strut, (capture, false, NativeScale::STATIC));
     placer.strut_metrics = lines.strut_metrics;
     placer.central = lines.central;
     placer.quirk_roots = lines.quirk_roots;
@@ -3331,20 +3383,25 @@ pub(crate) fn layout_runs_with_units(
     (html_metrics, scale): (bool, Option<f32>),
 ) -> ParagraphLayout {
     let pieces: Vec<_> = runs.iter().cloned().map(Piece::Run).collect();
-    // A native HTML box measures with the device-scale advances its lines are placed
-    // with (miaskiewicz/turbo-dom#241), so a shrink-to-fit width holds its own text.
-    let scale = scale.filter(|_| html_metrics);
+    // A box measures with the advances its lines are placed with: the native HTML
+    // path's device-scale ones (miaskiewicz/turbo-dom#241), the static path's 1/64px
+    // ones at scale 1 (#246), so a shrink-to-fit width holds its own text.
+    let scales = if html_metrics {
+        NativeScale::both(scale)
+    } else {
+        NativeScale::STATIC
+    };
     let mut words = build_pieces(
         &pieces,
         fonts,
         diags,
         SourcePolicy {
             capture: html_metrics,
-            advances: scale.is_some(),
+            advances: scales.advances.is_some(),
         },
         original,
     );
-    if let Some(scale) = scale {
+    if let Some(scale) = scales.advances {
         inline_advances::prepare(&mut words.words, scale);
     }
     finalize(wrap_and_place(
@@ -3352,7 +3409,7 @@ pub(crate) fn layout_runs_with_units(
         Align::Left,
         &|_| (0.0, width),
         0.0,
-        (html_metrics, html_metrics, scale),
+        (html_metrics, html_metrics, scales),
     ))
     .layout
 }
