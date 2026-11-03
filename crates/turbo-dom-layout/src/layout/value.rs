@@ -1373,11 +1373,92 @@ fn apply_border_longhands(b: &mut BorderSide, s: &ComputedStyle, name: &str, fs:
 }
 
 fn resolve_borders(s: &ComputedStyle, fs: f32) -> BorderEdges {
+    let mode = super::writing::WritingMode::of(s);
+    let side = |i: usize, name| {
+        shade_side(
+            resolve_border_side(s, name, fs),
+            s,
+            name,
+            mode.top_or_left(i),
+        )
+    };
     BorderEdges {
-        top: resolve_border_side(s, "top", fs),
-        right: resolve_border_side(s, "right", fs),
-        bottom: resolve_border_side(s, "bottom", fs),
-        left: resolve_border_side(s, "left", fs),
+        top: side(0, "top"),
+        right: side(1, "right"),
+        bottom: side(2, "bottom"),
+        left: side(3, "left"),
+    }
+}
+
+/// The `border-style` keyword of side `name`: the `border-<name>-style` longhand's, else
+/// `border-<name>`'s, else the `border` shorthand's.
+fn border_side_style<'a>(s: &'a ComputedStyle, name: &str) -> Option<&'a str> {
+    let keyword = |v: &'a str| v.split_whitespace().find(|t| BORDER_STYLES.contains(t));
+    s.get(&format!("border-{name}-style"))
+        .map(str::trim)
+        .or_else(|| s.get(&format!("border-{name}")).and_then(keyword))
+        .or_else(|| s.get("border").and_then(keyword))
+}
+
+const BORDER_STYLES: [&str; 10] = [
+    "none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset",
+];
+
+/// An `inset` / `outset` side's colour as Chrome 156 paints it (miaskiewicz/turbo-dom#257):
+/// an inset border's physical top and left (an outset one's bottom and right) are its dark
+/// sides. `name` is a side of the box's own writing-mode space, `top_or_left` whether it
+/// is a physical top or left side.
+fn shade_side(mut b: BorderSide, s: &ComputedStyle, name: &str, top_or_left: bool) -> BorderSide {
+    let inset = match border_side_style(s, name) {
+        Some("inset") => true,
+        Some("outset") => false,
+        _ => return b,
+    };
+    b.color = b
+        .color
+        .map(|c| border_style_colour(c, top_or_left == inset));
+    b
+}
+
+/// The dark (`dark`) or light side's colour of an inset / outset border of colour `c`
+/// (Blink's `CalculateBorderStyleColor`): the colour darkened and lightened; a colour too
+/// dark to darken (it darkens to black) is lightened once for the dark sides and twice
+/// for the light ones.
+pub(crate) fn border_style_colour(c: Rgba, dark: bool) -> Rgba {
+    let darkened = scale_colour(c, |v| (v - 0.33).max(0.0) / v);
+    let too_dark = (darkened.r, darkened.g, darkened.b) == (0, 0, 0);
+    match (too_dark, dark) {
+        (false, true) => darkened,
+        (false, false) | (true, true) => lighten(c),
+        (true, false) => lighten(lighten(c)),
+    }
+}
+
+/// Blink's `Color::Light()`: the brightest channel gains a third, the others in
+/// proportion; black becomes `#545454`.
+fn lighten(c: Rgba) -> Rgba {
+    if (c.r, c.g, c.b) == (0, 0, 0) {
+        return Rgba {
+            r: 0x54,
+            g: 0x54,
+            b: 0x54,
+            a: c.a,
+        };
+    }
+    scale_colour(c, |v| (v + 0.33).min(1.0) / v)
+}
+
+/// `c` with every channel times `multiplier(v)` (`v` its brightest channel in 0..=1),
+/// truncated like Blink's `nextafterf(256, 0)` scale; black stays black.
+fn scale_colour(c: Rgba, multiplier: impl Fn(f32) -> f32) -> Rgba {
+    let v = f32::from(c.r.max(c.g).max(c.b)) / 255.0;
+    let m = if v == 0.0 { 0.0 } else { multiplier(v) };
+    let channel = |x: u8| (f32::from(x) / 255.0 * m * 255.999_98) as u8;
+    Rgba {
+        r: channel(c.r),
+        g: channel(c.g),
+        b: channel(c.b),
+        a: c.a,
     }
 }
 
@@ -2381,6 +2462,80 @@ mod border_longhand_tests {
         ]);
         let side = resolve_border_side(&s, "top", 16.0);
         assert_eq!(side.width, 4);
+    }
+
+    fn grey(v: u8) -> Rgba {
+        Rgba::new(v, v, v, 255)
+    }
+
+    /// Chrome 156's inset / outset side colours (`border-inset-*` / `border-outset-*`
+    /// in the paint control; miaskiewicz/turbo-dom#257): (colour, dark side, light side).
+    #[test]
+    fn inset_and_outset_sides_shade_like_chrome() {
+        let cases = [
+            (grey(0x76), grey(33), grey(202)),
+            (grey(0x80), grey(44), grey(212)),
+            (grey(0xff), grey(171), grey(255)),
+            (
+                Rgba::new(255, 0, 0, 255),
+                Rgba::new(171, 0, 0, 255),
+                Rgba::new(255, 0, 0, 255),
+            ),
+            // Too dark to darken: lightened once / twice.
+            (grey(0), grey(84), grey(168)),
+            (
+                Rgba::new(0x10, 0x20, 0x30, 255),
+                Rgba::new(44, 88, 132, 255),
+                Rgba::new(72, 144, 216, 255),
+            ),
+            // Alpha is kept.
+            (
+                Rgba::new(0, 0, 0, 128),
+                Rgba::new(84, 84, 84, 128),
+                Rgba::new(168, 168, 168, 128),
+            ),
+        ];
+        for (colour, dark, light) in cases {
+            assert_eq!(border_style_colour(colour, true), dark, "{colour:?}");
+            assert_eq!(border_style_colour(colour, false), light, "{colour:?}");
+        }
+    }
+
+    #[test]
+    fn inset_and_outset_pick_their_dark_sides_from_every_style_source() {
+        let edges = |pairs: &[(&str, &str)]| {
+            let s = ComputedStyle::from_pairs(
+                pairs
+                    .iter()
+                    .map(|(k, v)| ((*k).to_string(), (*v).to_string())),
+            );
+            let b = resolve_borders(&s, 16.0);
+            [b.top, b.right, b.bottom, b.left].map(|side| side.color.map(|c| c.r))
+        };
+        let (d, l, w) = (Some(33), Some(202), Some(0x76));
+        assert_eq!(edges(&[("border", "2px inset #767676")]), [d, l, l, d]);
+        assert_eq!(edges(&[("border", "2px outset #767676")]), [l, d, d, l]);
+        // A vertical box's sides name its logical space's: `vertical-rl`'s top side is
+        // the physical right, its left side the physical top.
+        assert_eq!(
+            edges(&[
+                ("border", "2px inset #767676"),
+                ("writing-mode", "vertical-rl")
+            ]),
+            [l, l, d, d]
+        );
+        // `border-<side>` and the `border-<side>-style` longhand override the shorthand.
+        assert_eq!(
+            edges(&[
+                ("border", "2px inset #767676"),
+                ("border-top", "2px solid #767676"),
+                ("border-left-style", "outset"),
+            ]),
+            [w, l, l, l]
+        );
+        // No style, or a colourless border, is left as is.
+        assert_eq!(edges(&[("border", "2px #767676")]), [w, w, w, w]);
+        assert_eq!(edges(&[("border", "2px inset")]), [None; 4]);
     }
 }
 

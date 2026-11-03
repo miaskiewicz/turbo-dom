@@ -64,6 +64,12 @@ impl WritingMode {
         }
     }
 
+    /// Whether the side `side` (in [`SIDES`] order) of this mode's space is a physical
+    /// top or left side.
+    pub(crate) fn top_or_left(self, side: usize) -> bool {
+        matches!(self.logical_sides()[side], 0 | 3)
+    }
+
     /// For each physical side, the logical side it is (the inverse of
     /// [`Self::logical_sides`]).
     fn physical_sides(self) -> [usize; 4] {

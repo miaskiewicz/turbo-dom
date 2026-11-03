@@ -60,31 +60,6 @@ const ANTIALIASED_EDGES: &[(&str, u32, u32, u8)] = &[
     ("form-native-range-step-max", 66, 21, 9),
 ];
 
-/// `?` probes whose colour still differs from Chrome's by more than an anti-aliased
-/// edge (found when the wildcard became Chrome's RGB; round-1 review of 0.7.0, finding
-/// 17): only their class is compared until the painting is fixed. (case, x, y).
-/// - `form-native-text-appearance-none`: the UA `border: 2px inset` paints solid
-///   rgb(118,118,118); Chrome darkens an inset border's top and left to rgb(33,33,33)
-///   (the painters have no `inset` / `outset` line styles).
-/// - `form-native-button-author-background`: Chrome's border is black once an author
-///   background drops the native look; ours stays rgb(118,118,118).
-/// - `form-native-select`: Chrome's chevron is solid black at these pixels; ours is a
-///   thinner, offset stroke.
-const KNOWN_RGB_GAPS: &[(&str, u32, u32)] = &[
-    ("form-native-text-appearance-none", 20, 20),
-    ("form-native-text-appearance-none", 35, 20),
-    ("form-native-text-appearance-none", 35, 21),
-    ("form-native-text-appearance-none", 20, 31),
-    ("form-native-text-appearance-none", 21, 31),
-    ("form-native-button-author-background", 20, 20),
-    ("form-native-button-author-background", 40, 20),
-    ("form-native-button-author-background", 40, 21),
-    ("form-native-button-author-background", 21, 31),
-    ("form-native-select", 51, 29),
-    ("form-native-select", 55, 32),
-    ("form-native-select", 58, 29),
-];
-
 /// Why `got` (the screenshot's RGB at `probe`) differs from Chrome's, if it does: a
 /// different colour class, or, at a `?` probe, a channel more than the probe's tolerance
 /// from Chrome's stored RGB.
@@ -98,7 +73,7 @@ fn probe_difference(id: &str, probe: &serde_json::Value, got: [u8; 3]) -> Option
     if class.to_string() != want {
         return Some(format!("({x},{y}): {class} {got:?}, Chrome {want}"));
     }
-    if want != "?" || KNOWN_RGB_GAPS.contains(&(id, x, y)) {
+    if want != "?" {
         return None;
     }
     let chrome: [u8; 3] = serde_json::from_value(probe["rgb"].clone()).unwrap();
@@ -303,6 +278,17 @@ fn form_controls_paint_their_fields_like_chrome_156() {
 fn form_controls_paint_chrome_native_appearance() {
     let mut failures = differences(|id| id.starts_with("form-native-"));
     failures.extend(svg_differences(|id| id.starts_with("form-native-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// miaskiewicz/turbo-dom#257: `inset` / `outset` borders shade their sides like Chrome
+/// (darkened top and left of an inset border, lightened bottom and right; a colour too
+/// dark to darken lightened instead), in the PNG and SVG screenshots.
+#[test]
+fn inset_and_outset_borders_shade_their_sides_like_chrome_156() {
+    let pick = |id: &str| id.starts_with("border-inset-") || id.starts_with("border-outset-");
+    let mut failures = differences(pick);
+    failures.extend(svg_differences(pick));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
