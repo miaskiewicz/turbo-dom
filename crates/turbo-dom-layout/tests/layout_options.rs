@@ -720,3 +720,36 @@ fn markers_in_vertical_roots_and_inline_blocks_take_no_space() {
     assert_eq!(without.len(), 4);
     assert_eq!(boxes(&marked), without);
 }
+
+/// A list item's `::marker` boxes (miaskiewicz/turbo-dom#128) have no source element; the
+/// recorded sources map them to their list item's box so a consumer can tell them from
+/// anonymous blocks (html2pdf tags them `Lbl`, not `P`, for PDF/UA).
+#[test]
+fn recorded_sources_map_list_markers_to_their_item() {
+    let tree = parse_html_tree(
+        "<body><ul><li id=a>one</li><li id=b style='list-style:none'>two</li></ul><ol><li id=c>three</li></ol></body>",
+    );
+    let laid = lay(&tree, "", LayoutOptions::default());
+    let id_of = |name: &str| {
+        laid.sources
+            .elements
+            .iter()
+            .find(|(_, &h)| tree.get_attribute(h, "id") == Some(name))
+            .map(|(id, _)| *id)
+            .unwrap()
+    };
+    let mut owners: Vec<NodeId> = laid.sources.list_markers.values().copied().collect();
+    owners.sort_by_key(|id| id.0);
+    owners.dedup();
+    assert_eq!(owners, [id_of("a"), id_of("c")]);
+    for (marker, owner) in &laid.sources.list_markers {
+        assert!(!laid.sources.elements.contains_key(marker));
+        assert!(!laid.sources.texts.contains_key(marker));
+        let frags = fragments(&laid.galley);
+        let item = frags.iter().find(|f| f.node_id == *owner).unwrap();
+        assert!(
+            item.children.iter().any(|f| f.node_id == *marker),
+            "the marker box is a child of its item's fragment"
+        );
+    }
+}
