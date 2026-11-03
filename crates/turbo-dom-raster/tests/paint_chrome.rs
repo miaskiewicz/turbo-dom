@@ -51,24 +51,26 @@ const RGB_TOLERANCE: u8 = 8;
 /// - A radio button's 1px ring: Chrome's circle covers about three quarters of these
 ///   pixels (its grey blends with the white inside and the backdrop outside), ours all
 ///   of it.
-/// - `overflow-glyph-ink-*` (0.7.0 round-2 review, finding 3): edge pixels of the 40px
-///   "g". Chrome's glyph rasterizer darkens stems (its ink is about half a pixel wider
-///   on each side), ours draws the bare outline. Measured green channel, ours vs Chrome
-///   (red and blue match): (22,25) 111 vs 46 (65), (22,44) 159 vs 118 (41), (28,44) 255
-///   vs 139 (116: the descender's lower-left curve, which Chrome's wider stem reaches
-///   and ours misses). The descender's left part is also pinned by the solid-ink probes
-///   (23,42) and (24,44), compared by class; closing these edges needs Chrome-like stem
-///   darkening in the glyph rasterizer.
+/// - `overflow-glyph-ink-*` (0.7.0 round-2 review, finding 3; miaskiewicz/turbo-dom#266):
+///   edge pixels of the 40px "gy". The PNG painter now grows and lifts the outline like
+///   Chrome's CoreText smoothing and pre-blends the coverage (`src/glyph_raster.rs`); the
+///   SVG one emits the same grown outline but cannot express the pre-blend. Measured
+///   green channel (red and blue match), Chrome / PNG / SVG: (22,25) 46 / 35 / 63 (17),
+///   (22,44) 118 / 100 / 159 (41, the SVG blend; PNG 18), (28,44) 139 / 154 / 144 (15;
+///   before #266 the bare outline missed this pixel, 255, tolerance 116). The
+///   descender's left part is also pinned by the solid-ink probes (23,42) and (24,44),
+///   compared by class; the glyph-wide residual is measured in
+///   `tests/glyph_coverage_chrome.rs`.
 const ANTIALIASED_EDGES: &[(&str, u32, u32, u8)] = &[
     ("form-native-radio", 26, 20, 36),
     ("form-native-radio", 20, 26, 36),
     ("form-native-radio", 32, 26, 36),
     ("form-native-radio", 26, 32, 36),
     ("form-native-radio-checked", 26, 20, 45),
-    ("overflow-glyph-ink-hidden", 22, 25, 65),
-    ("overflow-glyph-ink-visible", 22, 25, 65),
+    ("overflow-glyph-ink-hidden", 22, 25, 17),
+    ("overflow-glyph-ink-visible", 22, 25, 17),
     ("overflow-glyph-ink-visible", 22, 44, 41),
-    ("overflow-glyph-ink-visible", 28, 44, 116),
+    ("overflow-glyph-ink-visible", 28, 44, 15),
     // The 90% thumb's (centre 67.6, 28; radius 7) top arc crosses this pixel: measured
     // rgb(0,126,255) against Chrome's rgb(0,117,255), PNG and SVG (round-2 review #9).
     ("form-native-range-step-max", 66, 21, 9),
@@ -117,10 +119,10 @@ fn unclassed_probes_compare_chromes_rgb_within_a_tolerance() {
     // An anti-aliased edge compares the RGB within its tolerance, across classes.
     let edge = serde_json::json!({"x": 22, "y": 25, "class": "B", "rgb": [0, 46, 255]});
     assert_eq!(
-        probe_difference("overflow-glyph-ink-visible", &edge, [0, 111, 255]),
+        probe_difference("overflow-glyph-ink-visible", &edge, [0, 63, 255]),
         None
     );
-    assert!(probe_difference("overflow-glyph-ink-visible", &edge, [0, 112, 255]).is_some());
+    assert!(probe_difference("overflow-glyph-ink-visible", &edge, [0, 64, 255]).is_some());
 }
 
 fn fixture() -> serde_json::Value {
