@@ -3120,25 +3120,31 @@ pub(crate) fn layout_runs_with_units(
     width: f32,
     diags: &mut Diagnostics,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-    html_metrics: bool,
+    (html_metrics, scale): (bool, Option<f32>),
 ) -> ParagraphLayout {
     let pieces: Vec<_> = runs.iter().cloned().map(Piece::Run).collect();
-    let words = build_pieces(
+    // A native HTML box measures with the device-scale advances its lines are placed
+    // with (miaskiewicz/turbo-dom#241), so a shrink-to-fit width holds its own text.
+    let scale = scale.filter(|_| html_metrics);
+    let mut words = build_pieces(
         &pieces,
         fonts,
         diags,
         SourcePolicy {
             capture: html_metrics,
-            advances: false,
+            advances: scale.is_some(),
         },
         original,
     );
+    if let Some(scale) = scale {
+        inline_advances::prepare(&mut words.words, scale);
+    }
     finalize(wrap_and_place(
         words,
         Align::Left,
         &|_| (0.0, width),
         0.0,
-        (html_metrics, html_metrics, None),
+        (html_metrics, html_metrics, scale),
     ))
     .layout
 }

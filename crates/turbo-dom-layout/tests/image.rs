@@ -597,13 +597,21 @@ fn box_kids(
     }
 }
 
-/// Whether any box in the tree records a replaced image named `name`.
+/// Whether any box in the tree records a replaced image named `name`. An `<img>` is
+/// inline by default (miaskiewicz/turbo-dom#242), so it is an atomic item of a line box.
 fn tree_has_replaced_image(b: &turbo_dom_layout::layout::boxgen::LayoutBox, name: &str) -> bool {
+    use turbo_dom_layout::layout::boxgen::{BoxKind, InlineItem};
     let here = b
         .image
         .as_ref()
         .is_some_and(|s| s.replaced && s.name == name);
-    here || box_kids(b).iter().any(|k| tree_has_replaced_image(k, name))
+    let atoms = match &b.kind {
+        BoxKind::Lines(items) => items
+            .iter()
+            .any(|it| matches!(it, InlineItem::Atomic(k) if tree_has_replaced_image(k, name))),
+        _ => false,
+    };
+    here || atoms || box_kids(b).iter().any(|k| tree_has_replaced_image(k, name))
 }
 
 #[test]
