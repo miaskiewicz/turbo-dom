@@ -46,10 +46,15 @@ pub fn paint(
     pm.encode_png().map_err(|e| format!("png encode: {e}"))
 }
 
-/// The image scaled to `size` px, memoized for the render's next tile of the same image
-/// (a background layer draws one image many times; miaskiewicz/turbo-dom#248). Shared, so
-/// a hit costs no copy.
-type ScaledKey = (usize, turbo_dom_layout::image::Orientation, (u32, u32));
+/// The `window` (x, y, width, height) of the image scaled to `size` px, memoized for
+/// the render's next tile of the same image (a background layer draws one image many
+/// times; miaskiewicz/turbo-dom#248). Shared, so a hit costs no copy.
+type ScaledKey = (
+    usize,
+    turbo_dom_layout::image::Orientation,
+    (u32, u32),
+    (u32, u32, u32, u32),
+);
 thread_local! {
     static SCALED: std::cell::RefCell<Option<(ScaledKey, Option<Rc<Pixmap>>)>> =
         const { std::cell::RefCell::new(None) };
@@ -59,8 +64,14 @@ fn scaled(
     image: &crate::image_paint::DecodedImage,
     orientation: turbo_dom_layout::image::Orientation,
     size: (u32, u32),
+    window: (u32, u32, u32, u32),
 ) -> Option<Rc<Pixmap>> {
-    let key = (std::ptr::from_ref(image) as usize, orientation, size);
+    let key = (
+        std::ptr::from_ref(image) as usize,
+        orientation,
+        size,
+        window,
+    );
     SCALED.with(|memo| {
         let mut memo = memo.borrow_mut();
         if let Some((_, pixmap)) = memo.as_ref().filter(|(seen, _)| *seen == key) {
@@ -68,34 +79,32 @@ fn scaled(
         }
         let pixmap = image
             .oriented(orientation)
-            .scaled_pixmap(size.0, size.1)
+            .scaled_window(size, window)
             .map(Rc::new);
         *memo = Some((key, pixmap.clone()));
         pixmap
     })
 }
 
-/// The pixmap an image box of `size` device px draws, and the scale it is drawn at. An
-/// image whose box is no larger than the canvas is resized to it (drawn 1:1); a larger
-/// one is drawn from its own pixels scaled by the transform with a bilinear filter, so
-/// the scratch never exceeds the source or the canvas, however large the layout box (a
-/// 40000px `background-size`; round-1 review of 0.7.0, finding 4).
-fn image_source(
-    image: &crate::image_paint::DecodedImage,
-    orientation: turbo_dom_layout::image::Orientation,
+/// The part `(x, y, width, height)` of a `size` image box drawn through `place` (box
+/// px to device px) that can reach a `canvas`-sized pixmap, in whole box px: the
+/// painter resamples only that window, so the scratch never exceeds the canvas's
+/// reach however large the layout box (a 40000px `<img>` or `background-size`;
+/// round-1 review of 0.7.0, finding 4). `None` when none of it can show.
+fn visible_window(
+    place: Transform,
     size: (u32, u32),
     canvas: (u32, u32),
-) -> Option<(Rc<Pixmap>, Transform)> {
-    if u64::from(size.0) * u64::from(size.1) <= u64::from(canvas.0) * u64::from(canvas.1) {
-        return scaled(image, orientation, size).map(|p| (p, Transform::identity()));
-    }
-    let shown = image.oriented(orientation);
-    let src = scaled(image, orientation, (shown.width, shown.height))?;
-    let scale = Transform::from_scale(
-        size.0 as f32 / src.width() as f32,
-        size.1 as f32 / src.height() as f32,
-    );
-    Some((src, scale))
+) -> Option<(u32, u32, u32, u32)> {
+    let device = Rect::from_xywh(0.0, 0.0, canvas.0 as f32, canvas.1 as f32)?;
+    let local = PathBuilder::from_rect(device)
+        .transform(place.invert()?)?
+        .bounds();
+    let x0 = local.left().floor().max(0.0);
+    let y0 = local.top().floor().max(0.0);
+    let x1 = local.right().ceil().min(size.0 as f32);
+    let y1 = local.bottom().ceil().min(size.1 as f32);
+    (x1 > x0 && y1 > y0).then_some((x0 as u32, y0 as u32, (x1 - x0) as u32, (y1 - y0) as u32))
 }
 
 /// Compose a box's CSS `transform` about its absolute origin onto the inherited
@@ -396,7 +405,9 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
     paint_children(pm, f, images, xf);
 }
 
-/// Draw an image into its layout box: scale the decoded pixels and blit them. An image
+/// Draw an image into its layout box: resample the decoded pixels to the box (one
+/// kernel, [`DecodedImage::scaled_window`](crate::image_paint::DecodedImage::scaled_window),
+/// over the part of the box the canvas can show) and blit them. An image
 /// laid out at its size whose pixels did not decode paints nothing, as in Chrome
 /// (miaskiewicz/turbo-dom#107); the neutral placeholder stands for an image the caller did
 /// not supply or this build cannot decode (`DecodedImage::placeholder`).
@@ -410,31 +421,37 @@ fn paint_image(
     xf: Transform,
 ) {
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
-    let decoded = images.get(&placement.name);
-    let img = decoded
-        .and_then(|d| image_source(d, placement.orientation, (w, h), (pm.width(), pm.height())));
     // Fold the box's top-left into the transform so a transformed image (a rotated
-    // thumbnail, a translated slide) maps correctly; draw the pixmap at (0,0).
+    // thumbnail, a translated slide) maps correctly.
     let place = xf.pre_concat(Transform::from_translate(f.x.round(), f.y.round()));
-    match (img, placement.tint) {
-        (Some((src, scale)), tint) => {
+    let Some(decoded) = images.get(&placement.name) else {
+        if placement.tint.is_none() {
+            fill_rect(pm, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER, xf);
+        }
+        return;
+    };
+    let Some(window) = visible_window(place, (w, h), (pm.width(), pm.height())) else {
+        return;
+    };
+    match (
+        scaled(decoded, placement.orientation, (w, h), window),
+        placement.tint,
+    ) {
+        (Some(src), tint) => {
             let stencilled = tint.map(|tint| tint_pixmap(&src, tint));
             let paint = PixmapPaint {
-                quality: if scale.is_identity() {
-                    tiny_skia::FilterQuality::Nearest
-                } else {
-                    tiny_skia::FilterQuality::Bilinear
-                },
+                quality: tiny_skia::FilterQuality::Nearest,
                 ..PixmapPaint::default()
             };
             let src = stencilled.as_ref().unwrap_or(&src);
-            pm.draw_pixmap(0, 0, src.as_ref(), &paint, place.pre_concat(scale), None);
+            let at = Transform::from_translate(window.0 as f32, window.1 as f32);
+            pm.draw_pixmap(0, 0, src.as_ref(), &paint, place.pre_concat(at), None);
         }
         // A missing mask paints nothing (no placeholder box for a glyph), nor does an
         // image whose pixels did not decode; a missing real image shows the neutral
         // placeholder.
         (None, Some(_)) => {}
-        (None, None) if decoded.is_some_and(|d| !d.placeholder) => {}
+        (None, None) if !decoded.placeholder => {}
         (None, None) => fill_rect(pm, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER, xf),
     }
 }
@@ -1358,11 +1375,11 @@ mod tests {
             placeholder: false,
         };
         SCALED.with(|memo| memo.borrow_mut().take());
-        let first = scaled(&img, Orientation::IDENTITY, (4, 3)).unwrap();
-        let again = scaled(&img, Orientation::IDENTITY, (4, 3)).unwrap();
+        let first = scaled(&img, Orientation::IDENTITY, (4, 3), (0, 0, 4, 3)).unwrap();
+        let again = scaled(&img, Orientation::IDENTITY, (4, 3), (0, 0, 4, 3)).unwrap();
         assert!(std::rc::Rc::ptr_eq(&first, &again));
         assert_eq!((again.width(), again.height()), (4, 3));
-        let other = scaled(&img, Orientation::IDENTITY, (2, 3)).unwrap();
+        let other = scaled(&img, Orientation::IDENTITY, (2, 3), (0, 0, 2, 3)).unwrap();
         assert!(!std::rc::Rc::ptr_eq(&first, &other));
     }
 
@@ -1395,6 +1412,37 @@ mod tests {
         let pm = render(&marker, 10, 10, &HashMap::new());
         assert_eq!(rgb(&pm, 2, 5), [255, 255, 255], "the marker itself");
         assert_eq!(rgb(&pm, 7, 5), [255, 0, 0], "its child");
+    }
+
+    #[test]
+    fn only_the_part_of_an_image_the_canvas_shows_is_resampled() {
+        let red = crate::image_paint::DecodedImage {
+            width: 1,
+            height: 1,
+            rgba: vec![255, 0, 0, 255],
+            intrinsic: turbo_dom_layout::image::Intrinsic::new(1, 1, false),
+            placeholder: false,
+        };
+        let place = Transform::from_translate(-5.0, 3.0);
+        // A 20px box at (-5, 3) on a 10px canvas: its columns 5..15 and rows 0..7.
+        assert_eq!(
+            visible_window(place, (20, 20), (10, 10)),
+            Some((5, 0, 10, 7))
+        );
+        // Wholly off the canvas, or through a transform with no inverse: nothing.
+        let off = Transform::from_translate(30.0, 0.0);
+        assert_eq!(visible_window(off, (20, 20), (10, 10)), None);
+        let flat = Transform::from_scale(0.0, 1.0);
+        assert_eq!(visible_window(flat, (20, 20), (10, 10)), None);
+        let mut images = HashMap::new();
+        images.insert("pic".to_string(), red);
+        let mut pic = image("pic", None);
+        pic.x = 40.0;
+        assert!(all_white(&render(&pic, 10, 10, &images)), "off the canvas");
+        let mut pic = image("pic", None);
+        pic.x = 2.0;
+        let pm = render(&pic, 10, 10, &images);
+        assert_eq!(rgb(&pm, 5, 5), [255, 0, 0]);
     }
 
     #[test]
