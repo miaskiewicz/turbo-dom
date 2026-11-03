@@ -9131,6 +9131,410 @@
    ]
   },
   {
+   "id": "form-native-range-step-default",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"range\" min=\"0\" max=\"10\" value=\"4.6\" style=\"position:absolute;left:20px;top:20px;margin:0;width:60px\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 60,
+     "height": 16
+    }
+   ],
+   "probes": [
+    {
+     "x": 25,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 46,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 35,
+     "class": "T",
+     "rgb": [
+      0,
+      197,
+      255
+     ]
+    },
+    {
+     "x": 54,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 65,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 78,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      179,
+      188,
+      188
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-range-step",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"range\" min=\"0\" max=\"10\" step=\"5\" value=\"7\" style=\"position:absolute;left:20px;top:20px;margin:0;width:60px\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 60,
+     "height": 16
+    }
+   ],
+   "probes": [
+    {
+     "x": 25,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 35,
+     "class": "T",
+     "rgb": [
+      0,
+      197,
+      255
+     ]
+    },
+    {
+     "x": 58,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 65,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 78,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      179,
+      188,
+      188
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-range-step-any",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"range\" min=\"0\" max=\"10\" step=\"any\" value=\"4.6\" style=\"position:absolute;left:20px;top:20px;margin:0;width:60px\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 60,
+     "height": 16
+    }
+   ],
+   "probes": [
+    {
+     "x": 25,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      116,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      178,
+      255
+     ]
+    },
+    {
+     "x": 48,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 48,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 48,
+     "y": 35,
+     "class": "T",
+     "rgb": [
+      0,
+      197,
+      255
+     ]
+    },
+    {
+     "x": 54,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 65,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 78,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      179,
+      188,
+      188
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-range-step-max",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"range\" min=\"0\" max=\"10\" step=\"3\" value=\"8\" style=\"position:absolute;left:20px;top:20px;margin:0;width:60px\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 60,
+     "height": 16
+    }
+   ],
+   "probes": [
+    {
+     "x": 25,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 65,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 66,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 72,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 72,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      252,
+      255
+     ]
+    },
+    {
+     "x": 78,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      179,
+      188,
+      188
+     ]
+    },
+    {
+     "x": 73,
+     "y": 34,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
    "id": "form-native-color",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"color\" style=\"position:absolute;left:20px;top:20px;margin:0\"></body></html>",
    "assets": [],
