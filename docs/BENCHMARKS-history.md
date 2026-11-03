@@ -1,10 +1,11 @@
 # Benchmarks — history (pre-consolidation)
 
-turbo-dom 0.6.0 has **not** been re-benchmarked yet; a re-run of all four repositories
+turbo-dom 0.6.0 / 0.7.0 have **not** been re-benchmarked against jsdom / happy-dom yet; a re-run of all four repositories
 (turbo-dom, turbo-test, turbo-html2pdf, turbo-surf) together on a quiet machine is planned
 after the release. Until then this page keeps the last measured numbers, unchanged, with the
 version, date and machine they were taken on. They describe the JS runtime before the
-consolidation and are not a claim about 0.6.0.
+consolidation and are not a claim about 0.6.0 or 0.7.0 (0.7.0's browser-env performance
+work, measured on a real React/MUI suite, is in [CHANGELOG.md](../CHANGELOG.md)).
 
 ## JS runtime vs happy-dom and jsdom — v0.1.55, 2026-06-07
 

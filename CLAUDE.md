@@ -4,7 +4,7 @@ Dev guide for this repo. See `turbo-dom-spec.md` for the full design and `README
 
 ## What this is
 
-The shared browser-engine base of turbo-test, turbo-html2pdf and turbo-surf (0.6.0):
+The shared browser-engine base of turbo-test, turbo-html2pdf and turbo-surf (0.7.0):
 
 - the npm package `@miaskiewicz/turbo-dom` — a lazy JS DOM runtime (`src/runtime/`) over a
   native html5ever parser (`turbo-dom-parser`: napi-rs addon + wasm-bindgen fallback over one
@@ -49,7 +49,8 @@ browser-env matrix / msrv 1.89 / guards / coverage floors / complexity). PRs and
 Linux + Windows; `publish.yml` runs it on a `v*` tag with `darwin: true` (adds the macOS arm64
 builds and jobs) and then publishes every package in dependency order. Linux binaries (napi
 matrix, publish `crates`/`npm`) build on `ubuntu-22.04`(`-arm`), glibc 2.35, never `ubuntu-latest`;
-`scripts/check-glibc-ceiling.sh` fails any linux-gnu `.node` needing > GLIBC_2.35. See `docs/CONSOLIDATION.md`.
+`scripts/check-glibc-ceiling.sh` fails any linux-gnu `.node` needing > GLIBC_2.35. A newer push to a
+PR cancels its superseded run (`concurrency`, pull_request only; main/tag/publish runs never cancel). See `docs/CONSOLIDATION.md`.
 
 **Two independent runtimes, one repo.** The JS runtime (`src/runtime/*.mjs`, the npm/vitest path)
 and the Rust runtime (`crates/turbo-dom`, the workspace-member crate published to crates.io as
@@ -108,7 +109,7 @@ closures are scored on their own), installed from its home rather than copied he
 tracked `.rs` file (`git ls-files`, so the generated `crates/turbo-dom-v8/crate/` is never
 scanned). JS uses oxlint's ESLint-compatible `complexity` rule (pinned `oxlint@1.87.0` via npx,
 no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`. **Both jobs are
-report-only for 0.6.0**: the functions above 15 (59 Rust, 228 JS measured 2026-10-28;
+report-only for 0.6.0 and 0.7.0**: the functions above 15 (59 Rust, 228 JS measured 2026-10-28;
 `docs/CONSOLIDATION.md` "Complexity"; a failing job writes the current list to its step
 summary) are the refactor backlog, refactored after the release. Until then both jobs run
 with `continue-on-error` (red job, green workflow, so `publish.yml` is not blocked) and are
@@ -204,11 +205,11 @@ package or publish workflow.
   every writing mode (`boxgen::media_source`: Chrome's default sizes, canvas `width`/`height`
   attributes as natural size, video poster; no fallback content; frame + background painted;
   `live_geometry_chrome156.json` `media-*`, raster `paint_chrome156.json` `media-*`). Form controls
-  still fail per element (`SnapshotError::UnsupportedVerticalWriting`); border radii are one scalar,
-  so there are no corners to map. Since turbo-dom#238 inline layout is UAX #9 bidi
+  still fail per element (`SnapshotError::UnsupportedVerticalWriting`, turbo-dom#239); the
+  flow-relative `border-*-*-radius` corners map with the sides (turbo-dom#253). Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
-  `unicode-bidi`/`direction` as formatting characters (the static path, which flattens
-  inline boxes, emits them as zero-width text items), segments shaped in their level's
+  `unicode-bidi`/`direction` as formatting characters (for inlines the static path
+  flattens — `flatten_inline_elements` — it emits them as zero-width text items), segments shaped in their level's
   direction (`FontFace::shape_in`), lines broken in logical order then reordered (L2;
   a line's hanging trailing space keeps the preceding character's level), inline-box
   decorations on their physical sides with a box split per contiguous visual run
@@ -381,7 +382,7 @@ npm run bench:query     # query-heavy DOM work (RTL-style) vs jsdom
 npm run bench:wasm      # wasm vs native parseBuffer
 npm run bench:all       # all of the above
 ```
-0.6.0 is not re-benchmarked yet (re-run of all four repos planned after the release); the last
+0.6.0 / 0.7.0 are not re-benchmarked yet (re-run of all four repos planned); the last
 measured numbers (v0.1.55, 2026-06-07, darwin-arm64) are in `docs/BENCHMARKS-history.md`.
 Conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom#104).
 - querySelectorAll/getElementsBy*/getElementById results are cached per (selector,

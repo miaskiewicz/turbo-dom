@@ -7,7 +7,11 @@ surface with **no JavaScript DOM implementation**:
 - `window`, `document`, nodes, ranges and selection;
 - CSSOM, forms, events;
 - custom elements, shadow DOM, view transitions;
-- canvas state, Trusted Types and the rest of the surface.
+- canvas state and text metrics, Trusted Types and the rest of the surface;
+- XML documents (`DOMParser` XML types, CDATA sections, `XMLSerializer`), HTML processing
+  instructions, XPath (fragment and shadow-root contexts included), CSS animations and
+  transitions in `getAnimations()`, the CSSOM grouping / condition rule interfaces
+  (`CSSContainerRule`, `CSSMediaRule`, `CSSLayerBlockRule`, …).
 
 Behaviour is held to Chrome by committed Chrome 155/156 controls asserted in the crate's
 tests. The crate ships its engine JS (`src/*.js`, run in V8) and production JSON with it.
@@ -29,9 +33,9 @@ so turbo-test and turbo-surf share one published crate. `scripts/verify-copied.s
 
 ```toml
 [dependencies]
-turbo-dom-browser-env = "0.6"                       # embedders: features = ["host-internals"]
+turbo-dom-browser-env = "0.7"                       # embedders: features = ["host-internals"]
 [dev-dependencies]
-turbo-dom-browser-env = { version = "0.6", features = ["test-support"] }
+turbo-dom-browser-env = { version = "0.7", features = ["test-support"] }
 ```
 
 MSRV 1.91. The crate links `turbo-dom-v8` `~150.4`, which downloads the prebuilt rusty_v8
@@ -98,7 +102,7 @@ every item that turbo-test and turbo-surf call, from outside the crate.
 ## Gates
 
 - Line coverage **97.6%** floor in the `host-internals,test-support` configuration
-  (blocking). This is the accepted bar for 0.6.0; the remaining lines are on the
+  (blocking). This is the accepted bar since 0.6.0; the remaining lines are on the
   post-release list. Measurement history is in docs/CONSOLIDATION.md "Coverage".
 - CI `v8 + browser-env` job: tests in the default configuration and with
   `host-internals,test-support`, plus clippy with `-D warnings` (new warnings only).
@@ -146,8 +150,10 @@ The `--runner` collectors drive turbo-surf's `harness/detection/chrome-cdp-trace
 Pass its absolute path. A refreshed control changes the oracle, so commit it together
 with the probe change that needed it.
 
-Layout-dependent reads (geometry, fonts) belong to the embedder: this crate has no
-layout. turbo-surf answers them with turbo-dom-layout, whose tests use fixture fonts.
+Layout-dependent reads (geometry) belong to the embedder: this crate lays nothing out.
+turbo-surf answers them with turbo-dom-layout, whose tests use fixture fonts. The one
+exception is canvas `measureText`, which measures with turbo-dom-layout's text stack
+(a dependency since 0.7.0) against the fonts the host passes to `set_canvas_fonts`.
 
 ## Links
 

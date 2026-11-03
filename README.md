@@ -9,7 +9,7 @@ Release **0.7.0**. turbo-dom is the shared browser-engine base of three projects
 turbo-dom is also a standalone npm package: a fast, spec-correct DOM environment for
 **vitest** and **jest**, usable in place of jsdom or happy-dom.
 
-Up to 0.5.x, each consumer kept its own copy of these pieces. In 0.6.0 each piece lives
+Up to 0.5.x, each consumer kept its own copy of these pieces. Since 0.6.0 each piece lives
 in this repository once and is published from here. The consumers depend on the
 published crates and keep no copies.
 [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) has the architecture, the dependency graph
@@ -19,11 +19,11 @@ and the publish order.
 
 | package | registry | version | what it is | used by |
 |---|---|---|---|---|
-| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.6.0 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
-| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.6.0 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
-| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.6.0 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
-| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.6.0 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
-| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.6.0 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
+| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.7.0 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
+| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.7.0 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
+| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.7.0 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
+| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.7.0 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
+| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.7.0 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
 | [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.0 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
 
 The root `turbo-dom-parser` crate is `publish = false`. It ships inside the npm package.
@@ -105,10 +105,10 @@ parseBuffer, parseFragment })` or set it as `globalThis.__TURBO_DOM_PARSER__`. T
 
 ```toml
 [dependencies]
-turbo-dom = "0.6"
-turbo-dom-layout = "0.6"                 # bundled fonts on by default
-turbo-dom-raster = "0.6"
-turbo-dom-browser-env = "0.6"            # needs a V8 archive, see its README
+turbo-dom = "0.7"
+turbo-dom-layout = "0.7"                 # bundled fonts on by default
+turbo-dom-raster = "0.7"
+turbo-dom-browser-env = "0.7"            # needs a V8 archive, see its README
 ```
 
 ```rust
@@ -133,6 +133,7 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 | crate | feature | default | effect |
 |---|---|---|---|
 | `turbo-dom-layout` | `bundled-fonts` | on | embeds OFL faces (Inter/Roboto, Liberation Serif/PT Serif, Fira Code/IBM Plex Mono) so a document lays out with no caller fonts |
+| | `hyphenation` | on | `hyphens: auto` for English (`en` / `en-*`, not en-GB) with the embedded en-US TeX patterns (~90 KB); off, `auto` acts as `manual` |
 | | `svg` | off | routes `image/svg+xml` through the SVG rasterizer in the image pipeline (implies `svg-rasterize`) |
 | | `svg-rasterize` | off | the shared resvg rasterizer only (`svg::rasterize`) |
 | | `serde` | off | `Serialize` for the CSSOM-View metrics records |
@@ -157,20 +158,17 @@ upstream rusty_v8's features (for example `simdutf`).
   upstream html5ever has not adopted yet. The Rust `rtdom` tree passes its direct
   html5lib-tests gate at 100% (`npm run conformance:rtdom`).
 - **Chrome parity:** behaviour fixes are backed by Chrome 156 controls. These are
-  fixtures recorded from headless Chrome and asserted in tests. At the 0.6.0 parity
-  remeasure (2026-10-29), turbo-surf's API inventory against Chrome 156 has 2 missing
-  members, down from 142. Every corpus output change is declared in
-  [`tools/parity/expected/`](tools/parity/expected) (checkpoint `b-0.6.0`).
+  fixtures recorded from headless Chrome and asserted in tests. Every corpus output change
+  is declared in [`tools/parity/expected/`](tools/parity/expected) (checkpoint `b-0.7.0`).
+  0.7.0 adds vertical writing modes, UAX #9 bidi, Chrome's line box model on the PDF path,
+  the full `border-radius` model with `overflow` clipping, background tiling, XML
+  documents, processing instructions, CSS animations in `getAnimations()` and real canvas
+  `measureText` (see [CHANGELOG.md](CHANGELOG.md)).
 - **Open gaps (tracked as issues):**
-  - XPath fragment contexts (turbo-dom#185)
-  - XML parsing (#186)
-  - CSS animations in `getAnimations` (#187)
-  - focus / dialog details (#188)
-  - FileList and selector error text (#189)
-  - RTL scroll (#190) and vertical writing residuals: form controls in vertical modes (#239)
-  - shaping and font metrics (#191)
-  - block and table layout residuals (#53–#102, #128, #178)
-- **The npm runtime has no layout:** `getBoundingClientRect()` returns zeros, and
+  - form controls in vertical writing modes (turbo-dom#239)
+  - `hyphens: auto` covers English only; Chrome on macOS uses the system dictionary,
+    whose points differ for some words (#213)
+- **The npm runtime has no layout:** `getBoundingClientRect()` returns a synthetic, stable size at position 0, and
   `getComputedStyle` is a partial cascade. It resolves real `<style>` rules and inline
   styles, applies inheritance, and serializes colours as `rgb()`. It never invents a
   value. `@media`, state pseudo-classes, pseudo-elements and unit conversion return `''`.
@@ -180,11 +178,12 @@ upstream rusty_v8's features (for example `simdutf`).
 
 ## Benchmarks — pending re-run
 
-0.6.0 has not been benchmarked yet. All four repositories will be re-run together on a
-quiet machine after the release. Until then, the last measured numbers (v0.1.55,
-2026-06-07, darwin-arm64, JS runtime vs happy-dom and jsdom) are kept unchanged and
-labelled in [docs/BENCHMARKS-history.md](docs/BENCHMARKS-history.md). They predate the
-consolidation and say nothing about 0.6.0.
+0.6.0 and 0.7.0 have not been benchmarked against jsdom / happy-dom yet. All four
+repositories will be re-run together on a quiet machine. Until then, the last measured
+numbers (v0.1.55, 2026-06-07, darwin-arm64, JS runtime vs happy-dom and jsdom) are kept
+unchanged and labelled in [docs/BENCHMARKS-history.md](docs/BENCHMARKS-history.md). They
+predate the consolidation. 0.7.0's browser-env performance work (measured on a real
+React/MUI suite) is listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Development
 
@@ -229,7 +228,10 @@ the host-font policy itself read system fonts.
 **CI runners.** Pull requests and pushes to `main` run on Linux (x64 and arm64) and on
 Windows x64: the napi build, and the V8 / browser-env matrix with the default and
 simdutf archives. macOS arm64 builds and jobs run only in the release workflow.
-`publish.yml` calls `ci.yml` with `darwin: true`.
+`publish.yml` calls `ci.yml` with `darwin: true`. Linux binaries build on ubuntu-22.04 and a
+guard (`scripts/check-glibc-ceiling.sh`) rejects any addon needing glibc above 2.35. A newer
+push to a pull request cancels its superseded CI run; `main`, tag and publish runs are never
+cancelled.
 
 ## Releasing
 

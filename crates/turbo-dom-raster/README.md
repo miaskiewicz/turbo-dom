@@ -19,8 +19,8 @@ It depends on turbo-dom-layout with explicit features: `bundled-fonts` and
 ## Install
 
 ```toml
-turbo-dom-raster = "0.6"                                        # MSRV 1.89
-turbo-dom-raster = { version = "0.6", features = ["avif", "jxl"] }
+turbo-dom-raster = "0.7"                                        # MSRV 1.89
+turbo-dom-raster = { version = "0.7", features = ["avif", "jxl"] }
 ```
 
 ## Features
@@ -68,6 +68,14 @@ Images follow Blink's load decision:
   cannot decode.
 
 Inline `<svg>` elements and `<img src="data:…">` paint as in Chrome (turbo-dom#25, #27).
+
+Painting follows Chrome 156 for: per-corner elliptical `border-radius` on backgrounds,
+gradients, borders (each side in its own width and colour), outer and inset box shadows,
+and `overflow` clipping (turbo-dom#253, #192); background layers with size / position /
+repeat (incl. `space` / `round`) / origin / clip, tiled from one decoded image (#248);
+inline-box decorations per line fragment with `box-decoration-break` (#244); vertical and
+upright text (#234, #239); bidi-reordered runs (#238); list markers (#128). Broken or
+unloaded `<img>`s paint their box without pixels (#243).
 
 ## Gates
 

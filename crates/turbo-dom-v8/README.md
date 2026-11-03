@@ -20,8 +20,8 @@ turbo-dom-v8 ──► turbo-dom-browser-env ──► turbo-test, turbo-surf
 `~150.4`. Stock `v8` declares no `links` key, so Cargo does not stop it from coexisting with the
 fork (both would link a `librusty_v8`): keep stock `v8` out of the graph (`cargo tree -i v8`).
 It replaces the `turbo-surf-v8` crates (149.3.0 in turbo-test, 150.4.0 in turbo-surf), which
-stay on crates.io untouched. Part of the [turbo-dom](https://github.com/miaskiewicz/turbo-dom)
-0.6.0 release (see [docs/CONSOLIDATION.md](../../docs/CONSOLIDATION.md)).
+stay on crates.io untouched. Introduced with the [turbo-dom](https://github.com/miaskiewicz/turbo-dom)
+0.6.0 release and unchanged (150.4.0) in 0.7.0 (see [docs/CONSOLIDATION.md](../../docs/CONSOLIDATION.md)).
 
 ## Install
 
