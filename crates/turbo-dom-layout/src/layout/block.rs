@@ -2811,13 +2811,13 @@ fn layout_box_sized_impl(
         &*ctx,
         &mut children,
     );
-    prepend_background_image(
+    let mut content = content_kind(lb, bs, bbw, bbh);
+    prepend_background_layers(
         lb,
-        content_x,
-        content_y,
-        content_w,
-        fill_h,
+        bs,
+        (bx, by, bbw, bbh),
         &*ctx,
+        &mut content,
         &mut children,
     );
     record_metrics(lb, bs, content_w, fill_h, ctx);
@@ -2827,7 +2827,7 @@ fn layout_box_sized_impl(
         y: by,
         width: bbw,
         height: bbh,
-        content: content_kind(lb, bs, bbw, bbh),
+        content,
         break_meta: break_meta_of(bs),
         children,
         z_index: bs.z_index,
@@ -2837,30 +2837,65 @@ fn layout_box_sized_impl(
     }
 }
 
-/// If the box carries a resolvable `background-image`, insert an `Image`
-/// fragment filling its content box *behind* the box's children (index 0, so it
-/// paints first). A `background-image` does not resize the box.
-fn prepend_background_image(
+/// Insert the box's background layers *behind* its children (miaskiewicz/turbo-dom#248):
+/// its resolvable `background-image` tiled per `background-size` / `-position` /
+/// `-repeat` / `-origin` / `-clip`, and its gradient too unless those are all initial
+/// (then the box paints it itself). A colour clipped to the padding or content box
+/// moves to a layer as well. A background does not resize the box.
+fn prepend_background_layers(
     lb: &LayoutBox,
-    cx: f32,
-    cy: f32,
-    cw: f32,
-    ch: f32,
+    bs: &BoxStyle,
+    border_box: super::background::Rect,
     ctx: &Ctx,
+    content: &mut FragmentContent,
     children: &mut Vec<Fragment>,
 ) {
-    let Some(placement) = background_placement(lb, ctx) else {
+    use super::background::{area_rect, color_layer, layer, props, Area, Source};
+    let FragmentContent::Box {
+        background,
+        gradient,
+        ..
+    } = content
+    else {
         return;
     };
-    let frag = Fragment::new(
-        lb.node_id,
-        cx,
-        cy,
-        cw,
-        ch,
-        FragmentContent::Image(placement),
-    );
-    children.insert(0, frag);
+    let image = background_placement(lb, ctx);
+    if image.is_none() && gradient.is_none() && background.is_none() {
+        return;
+    }
+    let props = props(&lb.style, bs.font_size);
+    let origin = area_rect(border_box, &bs.border, &bs.padding, props.origin);
+    let paint = area_rect(border_box, &bs.border, &bs.padding, props.clip);
+    let mut layers = Vec::new();
+    let tiled_gradient = gradient.take_if(|_| !props.is_initial());
+    if tiled_gradient.is_some() && lb.mask.is_none() {
+        // The gradient no longer covers the box: its colour shows around the tiles.
+        *background = bs.background;
+    }
+    if props.clip != Area::Border {
+        if let Some(color) = background.take() {
+            layers.push(color_layer(lb.node_id, color, paint));
+        }
+    }
+    if let Some(gradient) = tiled_gradient {
+        layers.extend(layer(
+            lb.node_id,
+            &props,
+            &Source::Gradient(gradient),
+            origin,
+            paint,
+        ));
+    }
+    if let Some(image) = image {
+        layers.extend(layer(
+            lb.node_id,
+            &props,
+            &Source::Image(image),
+            origin,
+            paint,
+        ));
+    }
+    children.splice(0..0, layers);
 }
 
 /// The placement for a box's `background-image`, if it has one the resolver can
