@@ -155,7 +155,7 @@ fn run_and_consumes(source: &str) -> (String, Vec<bool>) {
     engine_code_cache::CONSUMED.with(|consumed| consumed.borrow_mut().clear());
     with_page(|scope| {
         engine_code_cache::CONSUMED.with(|consumed| consumed.borrow_mut().clear());
-        value = run_engine_script(scope, source)
+        value = run_engine_script_cached(scope, source)
             .unwrap()
             .to_rust_string_lossy(scope);
     });

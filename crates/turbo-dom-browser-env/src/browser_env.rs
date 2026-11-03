@@ -8164,7 +8164,7 @@ fn run_js(scope: &mut v8::PinScope, src: &str) {
     });
     let tc = std::pin::pin!(v8::TryCatch::new(scope));
     let tc = &mut tc.init();
-    run_engine_script(tc, src);
+    crate_surface::run_engine_script_cached(tc, src);
     if tc.has_terminated() {
         SETUP_TERMINATED.with(|t| t.set(true));
     }
