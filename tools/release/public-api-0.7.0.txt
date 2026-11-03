@@ -1,0 +1,294 @@
+# Public Rust API diff, 0.6.0 (origin/main 8525dfc9) -> 0.7.0 (ci/ubuntu-2204-glibc-guard 55dd9d38)
+# cargo-public-api 0.52.0, nightly rustdoc JSON, `cargo public-api -sss` (blanket / auto-trait / auto-derived impls omitted)
+# features: turbo-dom (default), turbo-dom-parser (default), turbo-dom-layout svg,perf,serde,test-support,
+#   turbo-dom-raster avif,jxl, turbo-dom-browser-env host-internals,test-support
+# '-' = item in 0.6.0 only, '+' = item in 0.7.0 only (a changed item shows as - and +).
+
+## turbo-dom
++ pub const turbo_dom::rtdom::css_shorthand::LENGTH_UNITS: &[&str]
++ pub turbo_dom::rtdom::query::SelectorError::UnknownPseudoClass(alloc::string::String)
++ pub turbo_dom::rtdom::tree::NodeType::CDataSection = 4
++ pub fn turbo_dom::rtdom::tree::Tree::create_cdata_section_utf16(&mut self, &[u16]) -> turbo_dom::rtdom::tree::Handle
++ pub fn turbo_dom::rtdom::tree::Tree::parse_utf16_with_processing_instructions(&[u16]) -> Self
++ pub fn turbo_dom::rtdom::tree::Tree::parse_with_processing_instructions(&str) -> Self
++ pub fn turbo_dom::rtdom::tree::Tree::processing_instructions(&self) -> bool
++ pub fn turbo_dom::rtdom::tree::Tree::set_processing_instructions(&mut self, bool)
++ pub fn turbo_dom::rtdom::tree::Tree::parse_utf16_with_source_positions_and_processing_instructions(&[u16]) -> Self
++ pub fn turbo_dom::rtdom::tree::Tree::create_cdata_section_utf16(&mut self, &[u16]) -> turbo_dom::rtdom::tree::Handle
++ pub fn turbo_dom::rtdom::tree::Tree::parse_utf16_with_processing_instructions(&[u16]) -> Self
++ pub fn turbo_dom::rtdom::tree::Tree::parse_with_processing_instructions(&str) -> Self
++ pub fn turbo_dom::rtdom::tree::Tree::processing_instructions(&self) -> bool
++ pub fn turbo_dom::rtdom::tree::Tree::set_processing_instructions(&mut self, bool)
++ pub fn turbo_dom::rtdom::tree::Tree::parse_utf16_with_source_positions_and_processing_instructions(&[u16]) -> Self
++ pub fn turbo_dom::rtdom::tree::Tree::create_cdata_section_utf16(&mut self, &[u16]) -> turbo_dom::rtdom::tree::Handle
++ pub fn turbo_dom::rtdom::tree::Tree::parse_utf16_with_processing_instructions(&[u16]) -> Self
++ pub fn turbo_dom::rtdom::tree::Tree::parse_with_processing_instructions(&str) -> Self
++ pub fn turbo_dom::rtdom::tree::Tree::processing_instructions(&self) -> bool
++ pub fn turbo_dom::rtdom::tree::Tree::set_processing_instructions(&mut self, bool)
++ pub fn turbo_dom::rtdom::tree::Tree::parse_utf16_with_source_positions_and_processing_instructions(&[u16]) -> Self
+
+## turbo-dom-parser
+
+## turbo-dom-layout
++ pub turbo_dom_layout::cssom_view::scroll::ScrollMetrics::min_x: f64
++ pub fn turbo_dom_layout::cssom_view::scroll::inline_alignment([turbo_dom_layout::cssom_view::scroll::Align; 3], bool) -> [turbo_dom_layout::cssom_view::scroll::Align; 3]
++ pub turbo_dom_layout::html_layout::HtmlOptions::flatten_inline_elements: bool
++ pub turbo_dom_layout::html_layout::HtmlOptions::uncapped_images: bool
++ pub turbo_dom_layout::layout::boxgen::ImageSource::fallback: core::option::Option<(u32, u32)>
+- pub turbo_dom_layout::layout::fragment::FragmentContent::Box::border_radius: f32
++ pub turbo_dom_layout::layout::fragment::FragmentContent::Box::border_radius: turbo_dom_layout::layout::fragment::BorderRadii
++ pub turbo_dom_layout::layout::fragment::FragmentContent::TextLine::upright: bool
++ pub turbo_dom_layout::layout::fragment::FragmentContent::TextLine::vertical: bool
++ pub turbo_dom_layout::layout::fragment::FragmentContent::Tiles(turbo_dom_layout::layout::fragment::TilePattern)
++ pub struct turbo_dom_layout::layout::fragment::BorderRadii
++ pub turbo_dom_layout::layout::fragment::BorderRadii::bottom_left: turbo_dom_layout::layout::fragment::CornerRadii
++ pub turbo_dom_layout::layout::fragment::BorderRadii::bottom_right: turbo_dom_layout::layout::fragment::CornerRadii
++ pub turbo_dom_layout::layout::fragment::BorderRadii::top_left: turbo_dom_layout::layout::fragment::CornerRadii
++ pub turbo_dom_layout::layout::fragment::BorderRadii::top_right: turbo_dom_layout::layout::fragment::CornerRadii
++ impl turbo_dom_layout::layout::fragment::BorderRadii
++ pub const turbo_dom_layout::layout::fragment::BorderRadii::ZERO: turbo_dom_layout::layout::fragment::BorderRadii
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::as_uniform(&self) -> core::option::Option<f32>
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::corners(&self) -> [turbo_dom_layout::layout::fragment::CornerRadii; 4]
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::fit(self, f32, f32) -> turbo_dom_layout::layout::fragment::BorderRadii
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::from_corners([turbo_dom_layout::layout::fragment::CornerRadii; 4]) -> Self
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::inset(self, f32, f32, f32, f32) -> turbo_dom_layout::layout::fragment::BorderRadii
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::is_rounded(&self) -> bool
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::map(self, impl core::ops::function::Fn(turbo_dom_layout::layout::fragment::CornerRadii) -> turbo_dom_layout::layout::fragment::CornerRadii) -> turbo_dom_layout::layout::fragment::BorderRadii
++ pub const fn turbo_dom_layout::layout::fragment::BorderRadii::uniform(f32) -> turbo_dom_layout::layout::fragment::BorderRadii
++ impl core::convert::From<f32> for turbo_dom_layout::layout::fragment::BorderRadii
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::from(f32) -> turbo_dom_layout::layout::fragment::BorderRadii
++ pub turbo_dom_layout::layout::fragment::ClipRect::radii: turbo_dom_layout::layout::fragment::BorderRadii
++ pub struct turbo_dom_layout::layout::fragment::CornerRadii
++ pub turbo_dom_layout::layout::fragment::CornerRadii::h: f32
++ pub turbo_dom_layout::layout::fragment::CornerRadii::v: f32
++ impl turbo_dom_layout::layout::fragment::CornerRadii
++ pub const fn turbo_dom_layout::layout::fragment::CornerRadii::circle(f32) -> turbo_dom_layout::layout::fragment::CornerRadii
++ pub fn turbo_dom_layout::layout::fragment::CornerRadii::is_rounded(self) -> bool
++ pub turbo_dom_layout::layout::fragment::Fragment::overflow_clip: core::option::Option<turbo_dom_layout::layout::fragment::OverflowClip>
++ pub struct turbo_dom_layout::layout::fragment::OverflowClip
++ pub turbo_dom_layout::layout::fragment::OverflowClip::height: f32
++ pub turbo_dom_layout::layout::fragment::OverflowClip::radii: turbo_dom_layout::layout::fragment::BorderRadii
++ pub turbo_dom_layout::layout::fragment::OverflowClip::width: f32
++ pub turbo_dom_layout::layout::fragment::OverflowClip::x: f32
++ pub turbo_dom_layout::layout::fragment::OverflowClip::y: f32
++ pub struct turbo_dom_layout::layout::fragment::TilePattern
++ pub turbo_dom_layout::layout::fragment::TilePattern::step_x: f32
++ pub turbo_dom_layout::layout::fragment::TilePattern::step_y: f32
++ pub turbo_dom_layout::layout::fragment::TilePattern::tile: alloc::boxed::Box<turbo_dom_layout::layout::fragment::FragmentContent>
++ pub turbo_dom_layout::layout::fragment::TilePattern::tile_height: f32
++ pub turbo_dom_layout::layout::fragment::TilePattern::tile_width: f32
++ pub turbo_dom_layout::layout::fragment::TilePattern::x: f32
++ pub turbo_dom_layout::layout::fragment::TilePattern::y: f32
++ impl turbo_dom_layout::layout::fragment::TilePattern
++ pub fn turbo_dom_layout::layout::fragment::TilePattern::period(&self) -> core::option::Option<(f32, f32)>
++ pub fn turbo_dom_layout::layout::fragment::TilePattern::tiles(&self, (f32, f32, f32, f32)) -> impl core::iter::traits::iterator::Iterator<Item = (f32, f32, f32, f32)> + '_
++ pub enum turbo_dom_layout::layout::inline::UnicodeBidi
++ pub turbo_dom_layout::layout::inline::UnicodeBidi::BidiOverride
++ pub turbo_dom_layout::layout::inline::UnicodeBidi::Embed
++ pub turbo_dom_layout::layout::inline::UnicodeBidi::Isolate
++ pub turbo_dom_layout::layout::inline::UnicodeBidi::IsolateOverride
++ pub turbo_dom_layout::layout::inline::UnicodeBidi::Normal
++ pub turbo_dom_layout::layout::inline::UnicodeBidi::Plaintext
++ impl turbo_dom_layout::layout::inline::UnicodeBidi
++ pub fn turbo_dom_layout::layout::inline::UnicodeBidi::parse(core::option::Option<&str>) -> Self
++ pub enum turbo_dom_layout::layout::inline::UprightText
++ pub turbo_dom_layout::layout::inline::UprightText::All
++ pub turbo_dom_layout::layout::inline::UprightText::Mixed
++ pub turbo_dom_layout::layout::inline::UprightText::None
++ impl turbo_dom_layout::layout::inline::UprightText
++ pub fn turbo_dom_layout::layout::inline::UprightText::of(&turbo_dom_layout::ComputedStyle) -> turbo_dom_layout::layout::inline::UprightText
++ pub fn turbo_dom_layout::layout::inline::UprightText::sets(self, char) -> bool
++ pub fn turbo_dom_layout::layout::inline::UprightText::sets_after(self, char, core::option::Option<bool>) -> bool
++ pub struct turbo_dom_layout::layout::inline::AutoHyphens
++ pub turbo_dom_layout::layout::inline::AutoHyphens::min_prefix: usize
++ pub turbo_dom_layout::layout::inline::AutoHyphens::min_suffix: usize
++ pub turbo_dom_layout::layout::inline::AutoHyphens::min_word: usize
++ impl turbo_dom_layout::layout::inline::AutoHyphens
++ pub fn turbo_dom_layout::layout::inline::AutoHyphens::from_computed(core::option::Option<&str>, core::option::Option<&str>, core::option::Option<&str>) -> core::option::Option<Self>
++ pub turbo_dom_layout::layout::inline::GlyphRun::upright: bool
++ pub turbo_dom_layout::layout::inline::GlyphSourceCluster::bidi_level: u8
++ pub turbo_dom_layout::layout::inline::GlyphSourceCluster::paragraph_level: u8
++ pub turbo_dom_layout::layout::inline::InlineEdge::bidi: turbo_dom_layout::layout::inline::UnicodeBidi
++ pub turbo_dom_layout::layout::inline::InlineEdge::clone_advance: core::option::Option<f32>
++ pub turbo_dom_layout::layout::inline::InlineEdge::rtl: bool
++ pub turbo_dom_layout::layout::inline::InlineRun::upright: turbo_dom_layout::layout::inline::UprightText
++ pub turbo_dom_layout::layout::inline::PlacedInlineEdge::decorated: bool
++ pub turbo_dom_layout::layout::inline::WordBreaking::auto: core::option::Option<turbo_dom_layout::layout::inline::AutoHyphens>
++ pub fn turbo_dom_layout::layout::inline::WordBreaking::with_auto_hyphens(self, core::option::Option<&str>, core::option::Option<&str>, core::option::Option<&str>) -> Self
+- pub turbo_dom_layout::layout::value::BoxStyle::background_gradient: core::option::Option<turbo_dom_layout::layout::fragment::LinearGradient>
++ pub turbo_dom_layout::layout::value::BoxStyle::background_gradient: core::option::Option<turbo_dom_layout::layout::value::GradientSpec>
+- pub turbo_dom_layout::layout::value::BoxStyle::border_radius: turbo_dom_layout::layout::value::LengthPct
++ pub turbo_dom_layout::layout::value::BoxStyle::border_radius: [turbo_dom_layout::layout::value::CornerRadius; 4]
++ pub turbo_dom_layout::layout::value::BoxStyle::rtl: bool
++ pub struct turbo_dom_layout::layout::value::CornerRadius
++ pub turbo_dom_layout::layout::value::CornerRadius::h: turbo_dom_layout::layout::value::LengthPct
++ pub turbo_dom_layout::layout::value::CornerRadius::v: turbo_dom_layout::layout::value::LengthPct
++ impl turbo_dom_layout::layout::value::CornerRadius
++ pub const turbo_dom_layout::layout::value::CornerRadius::ZERO: turbo_dom_layout::layout::value::CornerRadius
++ pub fn turbo_dom_layout::layout::value::CornerRadius::resolve(&self, f32, f32) -> turbo_dom_layout::layout::fragment::CornerRadii
++ pub struct turbo_dom_layout::layout::value::GradientSpec
++ pub turbo_dom_layout::layout::value::GradientSpec::angle_deg: f32
++ pub turbo_dom_layout::layout::value::GradientSpec::repeating: bool
++ pub turbo_dom_layout::layout::value::GradientSpec::stops: alloc::vec::Vec<turbo_dom_layout::layout::value::StopSpec>
++ impl turbo_dom_layout::layout::value::GradientSpec
++ pub fn turbo_dom_layout::layout::value::GradientSpec::resolve(&self, f32, f32) -> core::option::Option<turbo_dom_layout::layout::fragment::LinearGradient>
++ pub struct turbo_dom_layout::layout::value::StopSpec
++ pub turbo_dom_layout::layout::value::StopSpec::color: turbo_dom_layout::layout::value::Rgba
++ pub turbo_dom_layout::layout::value::StopSpec::pos: core::option::Option<turbo_dom_layout::layout::value::LengthPct>
++ pub fn turbo_dom_layout::layout::value::resolve_radii(&[turbo_dom_layout::layout::value::CornerRadius; 4], f32, f32) -> turbo_dom_layout::layout::fragment::BorderRadii
++ pub turbo_dom_layout::layout::Fragment::overflow_clip: core::option::Option<turbo_dom_layout::layout::fragment::OverflowClip>
++ pub turbo_dom_layout::layout::LayoutOptions::flatten_inline_elements: bool
++ pub turbo_dom_layout::layout::LayoutOptions::uncapped_images: bool
++ pub turbo_dom_layout::layout::NodeSources::list_markers: std::collections::hash::map::HashMap<turbo_dom_layout::layout::fragment::NodeId, turbo_dom_layout::layout::fragment::NodeId>
++ pub turbo_dom_layout::layout_snapshot::SnapshotError::UnsupportedVerticalWriting
++ pub fn turbo_dom_layout::layout_snapshot::LayoutSnapshot::list_marker_owner(&self, usize) -> core::option::Option<turbo_dom_layout::layout_snapshot::SourceId>
++ pub turbo_dom_layout::layout_snapshot::SnapshotTextRun::vertical: bool
++ pub turbo_dom_layout::layout_snapshot::SourceClusterBox::bidi_level: u8
++ pub turbo_dom_layout::layout_snapshot::SourceClusterBox::paragraph_level: u8
++ pub turbo_dom_layout::layout_snapshot::SourceClusterBox::vertical: bool
++ pub const turbo_dom_layout::style::QUIRKS_LINE_HEIGHT: &str
++ pub fn turbo_dom_layout::test_support::cascaded(&str) -> turbo_dom_layout::ComputedStyle
++ pub fn turbo_dom_layout::test_support::ic_fixture_face() -> turbo_dom_layout::FontFace
++ pub enum turbo_dom_layout::text::CanvasShaping
++ pub turbo_dom_layout::text::CanvasShaping::NoKerning
++ pub turbo_dom_layout::text::CanvasShaping::WholeRun
++ pub turbo_dom_layout::text::CanvasShaping::WordByWord
++ pub struct turbo_dom_layout::text::CanvasTextMetrics
++ pub turbo_dom_layout::text::CanvasTextMetrics::em_ascent: f32
++ pub turbo_dom_layout::text::CanvasTextMetrics::em_descent: f32
++ pub turbo_dom_layout::text::CanvasTextMetrics::font_ascent: f32
++ pub turbo_dom_layout::text::CanvasTextMetrics::font_descent: f32
++ pub turbo_dom_layout::text::CanvasTextMetrics::ink_ascent: f32
++ pub turbo_dom_layout::text::CanvasTextMetrics::ink_descent: f32
++ pub turbo_dom_layout::text::CanvasTextMetrics::ink_left: f32
++ pub turbo_dom_layout::text::CanvasTextMetrics::ink_right: f32
++ pub turbo_dom_layout::text::CanvasTextMetrics::width: f64
++ pub struct turbo_dom_layout::text::CanvasTextOptions
++ pub turbo_dom_layout::text::CanvasTextOptions::letter_spacing: f32
++ pub turbo_dom_layout::text::CanvasTextOptions::shaping: turbo_dom_layout::CanvasShaping
++ pub turbo_dom_layout::text::CanvasTextOptions::word_spacing: f32
++ pub fn turbo_dom_layout::FontFace::blink_device_glyph_advance(&self, f32, f32, i32) -> f64
++ pub fn turbo_dom_layout::FontFace::blink_glyph_advance(&self, f32, i32) -> f64
++ pub fn turbo_dom_layout::FontFace::from_web_font_bytes(alloc::vec::Vec<u8>, impl core::convert::Into<alloc::string::String>, u16, bool) -> core::option::Option<turbo_dom_layout::FontFace>
++ pub fn turbo_dom_layout::FontFace::is_fixed_pitch(&self) -> bool
++ pub fn turbo_dom_layout::FontFace::measure_canvas(&self, &str, f32) -> f64
++ pub fn turbo_dom_layout::FontFace::measure_in(&self, &str, f32, f32, bool) -> f32
++ pub fn turbo_dom_layout::FontFace::shape_in(&self, &str, bool) -> alloc::vec::Vec<turbo_dom_layout::text::ShapedGlyph>
++ pub fn turbo_dom_layout::FontFace::blink_advances(&self, &[turbo_dom_layout::text::ShapedGlyph], f32, f32) -> alloc::vec::Vec<f64>
++ impl turbo_dom_layout::FontFace
++ pub fn turbo_dom_layout::FontFace::canvas_text_metrics(&self, &str, f32) -> turbo_dom_layout::CanvasTextMetrics
++ pub fn turbo_dom_layout::FontFace::canvas_text_metrics_with(&self, &str, f32, turbo_dom_layout::CanvasTextOptions) -> turbo_dom_layout::CanvasTextMetrics
++ pub fn turbo_dom_layout::FontFace::cap_height_px(&self, f32) -> f32
++ pub fn turbo_dom_layout::FontFace::ideographic_advance_px(&self, f32) -> core::option::Option<f32>
++ pub fn turbo_dom_layout::FontFace::x_height_px(&self, f32) -> f32
++ impl turbo_dom_layout::FontFace
++ pub fn turbo_dom_layout::text::blink_font_size(f32) -> f32
++ pub enum turbo_dom_layout::CanvasShaping
++ pub turbo_dom_layout::CanvasShaping::NoKerning
++ pub turbo_dom_layout::CanvasShaping::WholeRun
++ pub turbo_dom_layout::CanvasShaping::WordByWord
+- pub turbo_dom_layout::FragmentContent::Box::border_radius: f32
++ pub turbo_dom_layout::FragmentContent::Box::border_radius: turbo_dom_layout::layout::fragment::BorderRadii
++ pub turbo_dom_layout::FragmentContent::TextLine::upright: bool
++ pub turbo_dom_layout::FragmentContent::TextLine::vertical: bool
++ pub turbo_dom_layout::FragmentContent::Tiles(turbo_dom_layout::layout::fragment::TilePattern)
++ pub struct turbo_dom_layout::BorderRadii
++ pub turbo_dom_layout::BorderRadii::bottom_left: turbo_dom_layout::layout::fragment::CornerRadii
++ pub turbo_dom_layout::BorderRadii::bottom_right: turbo_dom_layout::layout::fragment::CornerRadii
++ pub turbo_dom_layout::BorderRadii::top_left: turbo_dom_layout::layout::fragment::CornerRadii
++ pub turbo_dom_layout::BorderRadii::top_right: turbo_dom_layout::layout::fragment::CornerRadii
++ impl turbo_dom_layout::layout::fragment::BorderRadii
++ pub const turbo_dom_layout::layout::fragment::BorderRadii::ZERO: turbo_dom_layout::layout::fragment::BorderRadii
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::as_uniform(&self) -> core::option::Option<f32>
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::corners(&self) -> [turbo_dom_layout::layout::fragment::CornerRadii; 4]
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::fit(self, f32, f32) -> turbo_dom_layout::layout::fragment::BorderRadii
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::from_corners([turbo_dom_layout::layout::fragment::CornerRadii; 4]) -> Self
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::inset(self, f32, f32, f32, f32) -> turbo_dom_layout::layout::fragment::BorderRadii
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::is_rounded(&self) -> bool
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::map(self, impl core::ops::function::Fn(turbo_dom_layout::layout::fragment::CornerRadii) -> turbo_dom_layout::layout::fragment::CornerRadii) -> turbo_dom_layout::layout::fragment::BorderRadii
++ pub const fn turbo_dom_layout::layout::fragment::BorderRadii::uniform(f32) -> turbo_dom_layout::layout::fragment::BorderRadii
++ impl core::convert::From<f32> for turbo_dom_layout::layout::fragment::BorderRadii
++ pub fn turbo_dom_layout::layout::fragment::BorderRadii::from(f32) -> turbo_dom_layout::layout::fragment::BorderRadii
++ pub struct turbo_dom_layout::CanvasTextMetrics
++ pub turbo_dom_layout::CanvasTextMetrics::em_ascent: f32
++ pub turbo_dom_layout::CanvasTextMetrics::em_descent: f32
++ pub turbo_dom_layout::CanvasTextMetrics::font_ascent: f32
++ pub turbo_dom_layout::CanvasTextMetrics::font_descent: f32
++ pub turbo_dom_layout::CanvasTextMetrics::ink_ascent: f32
++ pub turbo_dom_layout::CanvasTextMetrics::ink_descent: f32
++ pub turbo_dom_layout::CanvasTextMetrics::ink_left: f32
++ pub turbo_dom_layout::CanvasTextMetrics::ink_right: f32
++ pub turbo_dom_layout::CanvasTextMetrics::width: f64
++ pub struct turbo_dom_layout::CanvasTextOptions
++ pub turbo_dom_layout::CanvasTextOptions::letter_spacing: f32
++ pub turbo_dom_layout::CanvasTextOptions::shaping: turbo_dom_layout::CanvasShaping
++ pub turbo_dom_layout::CanvasTextOptions::word_spacing: f32
++ pub turbo_dom_layout::ClipRect::radii: turbo_dom_layout::layout::fragment::BorderRadii
++ pub struct turbo_dom_layout::CornerRadii
++ pub turbo_dom_layout::CornerRadii::h: f32
++ pub turbo_dom_layout::CornerRadii::v: f32
++ impl turbo_dom_layout::layout::fragment::CornerRadii
++ pub const fn turbo_dom_layout::layout::fragment::CornerRadii::circle(f32) -> turbo_dom_layout::layout::fragment::CornerRadii
++ pub fn turbo_dom_layout::layout::fragment::CornerRadii::is_rounded(self) -> bool
++ pub fn turbo_dom_layout::FontFace::blink_device_glyph_advance(&self, f32, f32, i32) -> f64
++ pub fn turbo_dom_layout::FontFace::blink_glyph_advance(&self, f32, i32) -> f64
++ pub fn turbo_dom_layout::FontFace::from_web_font_bytes(alloc::vec::Vec<u8>, impl core::convert::Into<alloc::string::String>, u16, bool) -> core::option::Option<turbo_dom_layout::FontFace>
++ pub fn turbo_dom_layout::FontFace::is_fixed_pitch(&self) -> bool
++ pub fn turbo_dom_layout::FontFace::measure_canvas(&self, &str, f32) -> f64
++ pub fn turbo_dom_layout::FontFace::measure_in(&self, &str, f32, f32, bool) -> f32
++ pub fn turbo_dom_layout::FontFace::shape_in(&self, &str, bool) -> alloc::vec::Vec<turbo_dom_layout::text::ShapedGlyph>
++ pub fn turbo_dom_layout::FontFace::blink_advances(&self, &[turbo_dom_layout::text::ShapedGlyph], f32, f32) -> alloc::vec::Vec<f64>
++ impl turbo_dom_layout::FontFace
++ pub fn turbo_dom_layout::FontFace::canvas_text_metrics(&self, &str, f32) -> turbo_dom_layout::CanvasTextMetrics
++ pub fn turbo_dom_layout::FontFace::canvas_text_metrics_with(&self, &str, f32, turbo_dom_layout::CanvasTextOptions) -> turbo_dom_layout::CanvasTextMetrics
++ pub fn turbo_dom_layout::FontFace::cap_height_px(&self, f32) -> f32
++ pub fn turbo_dom_layout::FontFace::ideographic_advance_px(&self, f32) -> core::option::Option<f32>
++ pub fn turbo_dom_layout::FontFace::x_height_px(&self, f32) -> f32
++ impl turbo_dom_layout::FontFace
++ pub turbo_dom_layout::Fragment::overflow_clip: core::option::Option<turbo_dom_layout::layout::fragment::OverflowClip>
++ pub turbo_dom_layout::HtmlOptions::flatten_inline_elements: bool
++ pub turbo_dom_layout::HtmlOptions::uncapped_images: bool
++ pub turbo_dom_layout::LayoutOptions::flatten_inline_elements: bool
++ pub turbo_dom_layout::LayoutOptions::uncapped_images: bool
++ pub turbo_dom_layout::NodeSources::list_markers: std::collections::hash::map::HashMap<turbo_dom_layout::layout::fragment::NodeId, turbo_dom_layout::layout::fragment::NodeId>
++ pub struct turbo_dom_layout::OverflowClip
++ pub turbo_dom_layout::OverflowClip::height: f32
++ pub turbo_dom_layout::OverflowClip::radii: turbo_dom_layout::layout::fragment::BorderRadii
++ pub turbo_dom_layout::OverflowClip::width: f32
++ pub turbo_dom_layout::OverflowClip::x: f32
++ pub turbo_dom_layout::OverflowClip::y: f32
++ pub struct turbo_dom_layout::TilePattern
++ pub turbo_dom_layout::TilePattern::step_x: f32
++ pub turbo_dom_layout::TilePattern::step_y: f32
++ pub turbo_dom_layout::TilePattern::tile: alloc::boxed::Box<turbo_dom_layout::layout::fragment::FragmentContent>
++ pub turbo_dom_layout::TilePattern::tile_height: f32
++ pub turbo_dom_layout::TilePattern::tile_width: f32
++ pub turbo_dom_layout::TilePattern::x: f32
++ pub turbo_dom_layout::TilePattern::y: f32
++ impl turbo_dom_layout::layout::fragment::TilePattern
++ pub fn turbo_dom_layout::layout::fragment::TilePattern::period(&self) -> core::option::Option<(f32, f32)>
++ pub fn turbo_dom_layout::layout::fragment::TilePattern::tiles(&self, (f32, f32, f32, f32)) -> impl core::iter::traits::iterator::Iterator<Item = (f32, f32, f32, f32)> + '_
+
+## turbo-dom-raster
++ pub fn turbo_dom_raster::measure_canvas_text(&str, &str) -> f64
+
+## turbo-dom-browser-env
++ pub struct turbo_dom_browser_env::browser_env::ParsedXmlDocument<'s>
++ pub turbo_dom_browser_env::browser_env::ParsedXmlDocument::document: v8::handle::Local<'s, v8::data::Object>
++ pub turbo_dom_browser_env::browser_env::ParsedXmlDocument::well_formed: bool
++ pub struct turbo_dom_browser_env::browser_env::SnapshotBlob
++ pub turbo_dom_browser_env::browser_env::SnapshotBlob::data: &'static [u8]
++ pub turbo_dom_browser_env::browser_env::SnapshotBlob::references: &'static [v8::external_references::ExternalReference]
++ impl turbo_dom_browser_env::browser_env::SnapshotBlob
++ pub fn turbo_dom_browser_env::browser_env::SnapshotBlob::create_params(&self) -> v8::isolate_create_params::CreateParams
++ impl core::marker::Send for turbo_dom_browser_env::browser_env::SnapshotBlob
++ impl core::marker::Sync for turbo_dom_browser_env::browser_env::SnapshotBlob
++ pub struct turbo_dom_browser_env::browser_env::SnapshotWindow
++ impl turbo_dom_browser_env::browser_env::SnapshotWindow
++ pub fn turbo_dom_browser_env::browser_env::SnapshotWindow::context(&self) -> &v8::handle::Global<v8::data::Context>
++ pub fn turbo_dom_browser_env::browser_env::SnapshotWindow::isolate(&mut self) -> &mut v8::isolate::OwnedIsolate
++ pub fn turbo_dom_browser_env::browser_env::SnapshotWindow::parts(&mut self) -> (&mut v8::isolate::OwnedIsolate, &v8::handle::Global<v8::data::Context>)
++ pub fn turbo_dom_browser_env::browser_env::install_from_snapshot(&str) -> core::option::Option<turbo_dom_browser_env::browser_env::SnapshotWindow>
++ pub fn turbo_dom_browser_env::browser_env::parse_xml_document_units<'s>(&mut v8::scope::PinScope<'s, '_>, &[u16], &str) -> turbo_dom_browser_env::browser_env::ParsedXmlDocument<'s>
++ pub fn turbo_dom_browser_env::browser_env::set_canvas_fonts(v8::handle::Local<'_, v8::data::Context>, turbo_dom_layout::text::registry::FontRegistry)
++ pub fn turbo_dom_browser_env::browser_env::snapshot_blob() -> core::option::Option<&'static turbo_dom_browser_env::browser_env::SnapshotBlob>

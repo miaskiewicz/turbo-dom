@@ -73,6 +73,12 @@ Rust API changes, per crate. The npm package's JS API is unchanged.
   (#238), and `SourceClusterBox` / `SnapshotTextRun` gain `vertical: bool` (#239).
   Struct literals must set them (`None` / `true` / `0` reproduce the old LTR,
   horizontal behaviour).
+- `InlineEdge` also gains `rtl: bool` and `bidi: UnicodeBidi` (#238; `false` /
+  `UnicodeBidi::Normal` for an LTR box with no embedding), `InlineRun` gains
+  `upright: UprightText` (#239; `UprightText::of(style)`, or `UprightText::None` for
+  horizontal text), `BoxStyle` gains `rtl: bool` (`direction: rtl`, #190; `false` =
+  LTR), and `boxgen::ImageSource` gains `fallback: Option<(u32, u32)>` (the broken-image
+  intrinsic size, #243; `None` keeps the old behaviour). Struct literals must set them.
 - `WordBreaking` gains `auto: Option<AutoHyphens>` (#213); build it with
   `WordBreaking::with_auto_hyphens` or set `auto: None`.
 - `cssom_view::scroll::ScrollMetrics` gains `min_x: f64` (#190): `0` for an LTR box,
@@ -132,11 +138,12 @@ Rust API changes, per crate. The npm package's JS API is unchanged.
   stale wrappers from a discarded tree are still refused (turbo-test#204).
 - The crate now depends on `turbo-dom-layout` (bundled fonts) for canvas text
   measurement (#237).
-- `parse_xml_document_units` returns `ParsedXmlDocument { document, well_formed }`
-  instead of the bare document object. `well_formed` is false when a well-formedness
-  error produced Chrome's `<parsererror>` document, so an embedder (turbo-surf's
-  `responseXML`) no longer needs to look for a `parsererror` element; a valid document
-  that holds one itself reports `true`. Take `.document` for the old value.
+
+**turbo-dom-raster, turbo-dom-parser:** no breaking Rust API changes (raster only adds
+`measure_canvas_text`; the parser's Rust API is unchanged).
+
+The full item-level diff against 0.6.0 (`cargo public-api`, CI's features) is in
+`tools/release/public-api-0.7.0.txt`.
 
 ### Behaviour changes
 
@@ -146,6 +153,10 @@ Rust API changes, per crate. The npm package's JS API is unchanged.
   Chrome). A `background` value Chrome's grammar rejects is dropped whole, and a failed
   `var()` in a shorthand unsets its longhands (also `border-radius`, which used to fall
   back to `inherit`).
+- CSSOM shorthands clamp an overflowing length like Chrome (#262, both runtimes: Rust
+  `rtdom::css_shorthand` behind browser-env's `CSSStyleDeclaration`, and npm `el.style`):
+  a dimension past `f32`'s range such as `1e39px` now reads `3.40282e+38px` (it read
+  `0px`).
 
 Chrome 156-matching changes that move layout, screenshot or PDF output. Every corpus
 output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
@@ -236,7 +247,9 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
   `layout::value::resolve_radii`.
 - Backgrounds (#248): `background-size` / `-position` / `-repeat` (incl. `space` /
   `round`) / `-origin` / `-clip` from longhands or the shorthand, on block and inline
-  boxes; `ClipRect`.
+  boxes; `ClipRect::radii`; `TilePattern`; `GradientSpec` / `StopSpec`.
+- `UnicodeBidi`, `UprightText`, `style::QUIRKS_LINE_HEIGHT`, `FontFace::is_fixed_pitch`,
+  `test_support::cascaded`.
 - Inline boxes on the static path (#244): decorated inlines, `box-decoration-break:
   slice | clone`, per-fragment inline background images / gradients.
 - `LayoutOptions::flatten_inline_elements` / `HtmlOptions::flatten_inline_elements` (#245).
@@ -259,13 +272,16 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
   clipping, painted from one tile pattern per layer (a pattern shader in PNG, a
   `<pattern>` in SVG; no tile cap) (#248, 0.7.0 round-2 review); inline-box decorations per line fragment
   (#244); vertical and upright text (#234, #239); bidi-reordered runs (#238); list
-  markers (#128); the `coretext` canvas painter selects the bold / italic face (#236).
+  markers (#128); the `coretext` canvas painter selects the bold / italic face (#236);
+  `measure_canvas_text(text, font)` (#237).
 
 **turbo-dom-browser-env**
 
 - XML documents (#186): `parse_xml_document_units` (DOMParser's `application/xml`,
   `text/xml`, `image/svg+xml`, `application/xhtml+xml`, with Chrome's `<parsererror>`
-  document and error positions, via the `xml` crate), `XMLSerializer`,
+  document and error positions, via the `xml` crate; it returns `ParsedXmlDocument
+  { document, well_formed }`, `well_formed` false when Chrome's `<parsererror>` document
+  was produced), `XMLSerializer`,
   `createCDATASection`, XML `innerHTML` / `outerHTML`. Internal DTD subsets apply their
   ATTLIST defaults (attributes and namespace declarations, also on elements an entity
   spells; #261) and the `xmlns` attributes of entity-expanded elements stay on their own
