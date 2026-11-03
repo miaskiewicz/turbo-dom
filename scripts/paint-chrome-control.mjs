@@ -471,7 +471,35 @@ const CASES = [
     id: "inline-gradient-clone",
     html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:linear-gradient(to right,#ff0000,#0000ff);padding:5px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
     probes: [[22, 52], [98, 52], [22, 82], [98, 82]],
-  },  // miaskiewicz/turbo-dom#253: Chrome 156's full border-radius model. Per-corner and
+  },
+  // Round-1 review of 0.7.0, finding 18: a cloned inline box's radius, background image and
+  // inset shadow repeat on every fragment (two lines of two 40x60 atoms; with 12px 6px
+  // padding around the zero-height content area each fragment is 92x24 at x 20..112, y
+  // 68..92 and 128..152).
+  {
+    id: "inline-clone-radius",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:12px 6px;border-radius:10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 60)}${ATOM(40, 60)}${ATOM(40, 60)}${ATOM(40, 60)}</span></div>`),
+    probes: [[21, 69], [111, 69], [21, 91], [111, 91], [21, 129], [111, 129], [21, 151], [111, 151], [60, 80], [60, 140], [22, 80], [110, 140]],
+  },
+  {
+    id: "inline-clone-image-radius",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span style="background:url(${SPRITE}) 0 0/100% 100% no-repeat;padding:12px 6px;border-radius:10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 60)}${ATOM(40, 60)}${ATOM(40, 60)}${ATOM(40, 60)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[30, 80], [100, 80], [30, 140], [100, 140], [21, 69], [111, 91], [21, 129], [111, 151]],
+  },
+  {
+    id: "inline-clone-inset-shadow",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span style="background:#ffff00;padding:12px 6px;box-shadow:inset 0 0 0 5px #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 60)}${ATOM(40, 60)}${ATOM(40, 60)}${ATOM(40, 60)}</span></div>`),
+    probes: [[22, 80], [110, 80], [60, 70], [60, 90], [60, 130], [60, 150], [22, 140], [110, 140], [60, 80], [60, 140], [30, 80], [100, 140]],
+  },
+  // Round-1 review of 0.7.0, finding 7: `overflow: hidden` clips glyph ink past the line
+  // box (a 40px "gy" in a 10px-high line); unclipped, the same ink reaches below the box.
+  ...["hidden", "visible"].map((overflow) => ({
+    id: `overflow-glyph-ink-${overflow}`,
+    html: DOC(`<div data-cid="m" style="${at(20, 20)};width:100px;height:10px;line-height:10px;font-size:40px;overflow:${overflow};font-family:'Liberation Serif';color:#0000ff">gy</div>`),
+    probes: [[22, 12], [28, 12], [34, 12], [40, 12], [46, 12], [52, 12], [22, 25], [28, 25], [34, 25], [40, 25], [46, 25], [52, 25], [22, 36], [28, 36], [34, 36], [40, 36], [46, 36], [52, 36], [22, 44], [28, 44], [34, 44], [40, 44], [46, 44], [52, 44]],
+  })),
+  // miaskiewicz/turbo-dom#253: Chrome 156's full border-radius model. Per-corner and
   // elliptical radii, percentages against the border box's own axes, the overlap scale-down,
   // inner (padding / content edge) radii, logical corners under RTL and vertical writing
   // modes, and the radius clipping backgrounds, borders, shadows and overflow.

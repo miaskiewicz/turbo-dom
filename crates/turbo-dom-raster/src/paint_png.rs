@@ -1305,6 +1305,26 @@ mod tests {
     }
 
     #[test]
+    fn a_repeated_tile_shares_one_scaled_pixmap() {
+        // A background layer draws one image many times: every hit of the memo is the
+        // same pixmap, not a copy of it (round-1 review of 0.7.0, finding 6).
+        let img = crate::image_paint::DecodedImage {
+            width: 1,
+            height: 1,
+            rgba: vec![255, 0, 0, 255],
+            intrinsic: turbo_dom_layout::image::Intrinsic::new(1, 1, false),
+            placeholder: false,
+        };
+        SCALED.with(|memo| memo.borrow_mut().take());
+        let first = scaled(&img, Orientation::IDENTITY, (4, 3)).unwrap();
+        let again = scaled(&img, Orientation::IDENTITY, (4, 3)).unwrap();
+        assert!(std::rc::Rc::ptr_eq(&first, &again));
+        assert_eq!((again.width(), again.height()), (4, 3));
+        let other = scaled(&img, Orientation::IDENTITY, (2, 3)).unwrap();
+        assert!(!std::rc::Rc::ptr_eq(&first, &other));
+    }
+
+    #[test]
     fn a_zero_or_oversized_canvas_is_an_error() {
         let root = plain(0.0, 0.0, 1.0, 1.0, None);
         let images = HashMap::new();
@@ -2349,5 +2369,66 @@ mod exact_tests {
             "shadow clipped away"
         );
         assert_eq!(got.pixel(44, 14).unwrap().red(), 255, "shadow clipped away");
+    }
+
+    #[test]
+    fn glyph_ink_past_its_line_box_is_clipped_by_overflow() {
+        // `overflow:hidden; height:10px; line-height:10px; font-size:40px` around "gy": the
+        // line box fits the region, its glyphs' ink does not.
+        let face = FontRegistry::new()
+            .select(&["Inter"], 400, false)
+            .unwrap()
+            .clone();
+        let scale = 40.0 / f32::from(face.units_per_em());
+        let mut x = 0.0;
+        let glyphs: Vec<PositionedGlyph> = face
+            .shape("gy")
+            .iter()
+            .map(|g| {
+                let pg = PositionedGlyph {
+                    glyph_id: g.glyph_id,
+                    x,
+                    y: 20.0,
+                    text_start: 0,
+                    text_end: 0,
+                };
+                x += g.x_advance as f32 * scale;
+                pg
+            })
+            .collect();
+        let line = Fragment::new(
+            NodeId(1),
+            10.0,
+            10.0,
+            x.min(20.0),
+            10.0,
+            FragmentContent::TextLine {
+                glyphs,
+                text: String::new(),
+                face,
+                font_size: 40.0,
+                color: BLUE,
+                vertical: false,
+                upright: false,
+            },
+        );
+        let got = drawn(
+            &clipping(region(0.0, 0.0, 20.0, 10.0, 0.0), vec![line]),
+            60,
+            60,
+        );
+        for y in 0..60 {
+            for x in 0..60 {
+                let inside = (10..30).contains(&x) && (10..20).contains(&y);
+                let p = got.pixel(x, y).unwrap();
+                if !inside {
+                    assert_eq!((p.red(), p.green()), (255, 255), "ink at ({x}, {y})");
+                }
+            }
+        }
+        assert!(
+            (10..30).any(|x| (10..20).any(|y| got.pixel(x, y).unwrap().red() < 128)),
+            "the glyphs paint inside the region"
+        );
     }
 }

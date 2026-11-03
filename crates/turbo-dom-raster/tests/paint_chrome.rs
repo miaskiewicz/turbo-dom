@@ -2,7 +2,7 @@
 //!
 //! The control is `tests/fixtures/paint_chrome156.json` (turbo-dom's
 //! `scripts/paint-chrome-control.mjs`): pages over a `#00ffff` backdrop with Chrome's colour
-//! class (R/G/B/Y/W/T = backdrop/`?`) at each case's probe points and the
+//! class (R/G/B/Y/W/T = backdrop/`?`) and raw RGB at each case's probe points and the
 //! `getBoundingClientRect()` of every `[data-cid]` element. Each case is screenshot here
 //! (its `<img src="data:…">` bytes supplied as fetched assets keyed by the raw `src`) and
 //! laid out through turbo-dom-layout's `layout_boxes` (the same static layout the
@@ -38,6 +38,56 @@ fn class([r, g, b]: [u8; 3]) -> char {
     } else {
         '?'
     }
+}
+
+/// The widest per-channel difference from Chrome's RGB a probe outside the six classes
+/// (`?`: a grey, a dark, a mixed colour) may have.
+const RGB_TOLERANCE: u8 = 8;
+
+/// Probes whose `?` pixel sits on an anti-aliased edge, with the per-channel tolerance
+/// each needs: (case, x, y, tolerance). Every other `?` probe matches Chrome's RGB within
+/// [`RGB_TOLERANCE`].
+const ANTIALIASED_EDGES: &[(&str, u32, u32, u8)] = &[];
+
+/// Why `got` (the screenshot's RGB at `probe`) differs from Chrome's, if it does: a
+/// different colour class, or, at a `?` probe, a channel more than the probe's tolerance
+/// from Chrome's stored RGB.
+fn probe_difference(id: &str, probe: &serde_json::Value, got: [u8; 3]) -> Option<String> {
+    let (x, y) = (
+        probe["x"].as_u64().unwrap() as u32,
+        probe["y"].as_u64().unwrap() as u32,
+    );
+    let want = probe["class"].as_str().unwrap();
+    let class = class(got);
+    if class.to_string() != want {
+        return Some(format!("({x},{y}): {class} {got:?}, Chrome {want}"));
+    }
+    if want != "?" {
+        return None;
+    }
+    let chrome: [u8; 3] = serde_json::from_value(probe["rgb"].clone()).unwrap();
+    let tolerance = ANTIALIASED_EDGES
+        .iter()
+        .find(|&&(case, ex, ey, _)| case == id && (ex, ey) == (x, y))
+        .map_or(RGB_TOLERANCE, |e| e.3);
+    let far = got
+        .iter()
+        .zip(chrome)
+        .any(|(&g, c)| g.abs_diff(c) > tolerance);
+    far.then(|| format!("({x},{y}): {got:?}, Chrome {chrome:?} (tolerance {tolerance})"))
+}
+
+#[test]
+fn unclassed_probes_compare_chromes_rgb_within_a_tolerance() {
+    let probe = serde_json::json!({"x": 1, "y": 2, "class": "?", "rgb": [100, 100, 100]});
+    assert_eq!(probe_difference("c", &probe, [108, 92, 100]), None);
+    assert!(probe_difference("c", &probe, [109, 100, 100]).is_some());
+    assert!(probe_difference("c", &probe, [100, 100, 91]).is_some());
+    // A classed pixel is never a `?` match.
+    assert!(probe_difference("c", &probe, [0, 0, 255]).is_some());
+    let blue = serde_json::json!({"x": 1, "y": 2, "class": "B", "rgb": [0, 0, 255]});
+    assert_eq!(probe_difference("c", &blue, [20, 20, 200]), None);
+    assert!(probe_difference("c", &blue, [100, 100, 100]).is_some());
 }
 
 fn fixture() -> serde_json::Value {
@@ -85,10 +135,8 @@ fn differences(select: impl Fn(&str) -> bool) -> Vec<String> {
                 probe["y"].as_u64().unwrap() as u32,
             );
             let c = pm.pixel(x, y).expect("in bounds");
-            let got = class([c.red(), c.green(), c.blue()]);
-            let want = probe["class"].as_str().unwrap();
-            if got.to_string() != want {
-                failures.push(format!("{id} ({x},{y}): {got}, Chrome {want}"));
+            if let Some(d) = probe_difference(id, probe, [c.red(), c.green(), c.blue()]) {
+                failures.push(format!("{id} {d}"));
             }
         }
         let mut diags = Diagnostics::default();
@@ -380,10 +428,8 @@ fn svg_differences(select: impl Fn(&str) -> bool) -> Vec<String> {
                 probe["y"].as_u64().unwrap() as u32,
             );
             let c = pm.pixel(x, y).expect("in bounds").demultiply();
-            let got = class([c.red(), c.green(), c.blue()]);
-            let want = probe["class"].as_str().unwrap();
-            if got.to_string() != want {
-                failures.push(format!("{id} ({x},{y}): svg {got}, Chrome {want}"));
+            if let Some(d) = probe_difference(id, probe, [c.red(), c.green(), c.blue()]) {
+                failures.push(format!("{id} svg {d}"));
             }
         }
     }
@@ -453,5 +499,24 @@ fn inset_box_shadows_paint_inside_the_padding_box_like_chrome_156() {
 fn border_radii_paint_like_chrome_156() {
     let mut failures = differences(|id| id.starts_with("radius-"));
     failures.extend(svg_differences(|id| id.starts_with("radius-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// Round-1 review of 0.7.0, finding 7: `overflow: hidden` clips glyph ink past the line box
+/// (a 40px "gy" in a 10px-high line) in both painters; unclipped, it reaches below the box.
+#[test]
+fn overflow_clips_glyph_ink_past_the_line_box_like_chrome_156() {
+    let mut failures = differences(|id| id.starts_with("overflow-glyph-ink-"));
+    failures.extend(svg_differences(|id| id.starts_with("overflow-glyph-ink-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// Round-1 review of 0.7.0, finding 18: `box-decoration-break: clone` repeats a multi-line
+/// inline box's border radius, background image and inset shadow on every fragment, in
+/// both painters.
+#[test]
+fn cloned_inline_decorations_paint_like_chrome_156() {
+    let mut failures = differences(|id| id.starts_with("inline-clone-"));
+    failures.extend(svg_differences(|id| id.starts_with("inline-clone-")));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

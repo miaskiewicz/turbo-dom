@@ -1415,4 +1415,51 @@ mod tests {
         }
         assert!(body(&f, &HashMap::new()).starts_with("<path d=\"M5.00 1.00 L9.00 1.00"));
     }
+
+    /// Every `id="…"` the document defines.
+    fn ids(svg: &str) -> Vec<String> {
+        svg.split(" id=\"")
+            .skip(1)
+            .map(|rest| rest[..rest.find('"').unwrap()].to_string())
+            .collect()
+    }
+
+    #[test]
+    fn boxes_at_one_origin_get_their_own_gradient_and_shadow_ids() {
+        let blue = Rgba::new(0, 0, 255, 255);
+        let stops = |c: Rgba| {
+            Some(CssGradient {
+                angle_deg: 90.0,
+                stops: vec![
+                    GradientStop { color: c, pos: 0.0 },
+                    GradientStop {
+                        color: WHITE,
+                        pos: 1.0,
+                    },
+                ],
+            })
+        };
+        let mut root = plain(0.0, 0.0, 100.0, 100.0, None);
+        root.children = vec![
+            decorated(10.0, 10.0, 40.0, 20.0, 0.0, |s, g, _| {
+                *s = Some(shadow(2, 2, 6, 0, RED, false));
+                *g = stops(RED);
+            }),
+            decorated(10.0, 10.0, 30.0, 30.0, 0.0, |s, g, _| {
+                *s = Some(shadow(4, 4, 8, 0, blue, false));
+                *g = stops(blue);
+            }),
+        ];
+        let svg = body(&root, &HashMap::new());
+        let ids = ids(&svg);
+        assert_eq!(ids.len(), 4, "{svg}");
+        let mut unique = ids.clone();
+        unique.sort();
+        unique.dedup();
+        assert_eq!(unique.len(), 4, "{ids:?}");
+        // Each box's fill and filter reference its own definitions.
+        for id in &ids {
+            assert_eq!(svg.matches(&format!("url(#{id})")).count(), 1, "{id}: {svg}");
+        }
+    }
 }
