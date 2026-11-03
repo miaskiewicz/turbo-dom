@@ -16,6 +16,7 @@ use turbo_dom_layout::{
 use crate::glyph::{self, Pen, Tracer};
 use crate::image_paint::{self, DecodedAssets};
 use crate::rrect::{self, Seg};
+use crate::tile_cell::TileCell;
 
 const IMAGE_PLACEHOLDER: Rgba = Rgba {
     r: 220,
@@ -160,44 +161,36 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
 /// The most tiles without a whole-pixel period [`paint_tiles`] writes one by one.
 const MAX_LISTED_TILES: usize = 4096;
 
-/// A background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1): one
-/// tile, at its snapped place and size, in a `<pattern>` repeating every step, filling
-/// the box (only the tile's own row or column on an axis that does not repeat). Tiles
-/// without a whole-pixel period (a `round` or `space` step off the pixel grid) snap to
-/// alternating sizes: up to [`MAX_LISTED_TILES`] of them are written one by one, more
-/// as a pattern of the exact tile (viewers that rasterize a pattern tile at whole
-/// pixels drift from Chrome there). The pattern id is the document offset, unique.
+/// A background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1): the
+/// tiles of one [`TileCell`] (a whole-pixel super-period of the snapped tiles, the same
+/// cell the PNG painter repeats), at their snapped places and sizes, in a `<pattern>`
+/// repeating every cell, filling the box (only the tile's own row or column on an axis
+/// that does not repeat). Tiles without a whole-pixel period (a `round` or `space` step
+/// off the pixel grid) are written one by one when there are at most
+/// [`MAX_LISTED_TILES`] of them. The pattern id is the document offset, unique.
 fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &DecodedAssets) {
     let area = (f.x, f.y, f.width, f.height);
-    let Some(snapped) = pattern.tiles(area).next() else {
+    let Some(first) = pattern.tiles(area).next() else {
         return;
     };
-    let few = pattern.tiles(area).nth(MAX_LISTED_TILES).is_none();
-    let (x, y, w, h) = match pattern.period() {
-        Some(_) => snapped,
-        None if few => {
-            for (x, y, w, h) in pattern.tiles(area) {
-                let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
-                paint_subtree(svg, &tile, images);
-            }
-            return;
+    if pattern.period().is_none() && pattern.tiles(area).nth(MAX_LISTED_TILES).is_none() {
+        for (x, y, w, h) in pattern.tiles(area) {
+            let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
+            paint_subtree(svg, &tile, images);
         }
-        None => (
-            pattern.x,
-            pattern.y,
-            pattern.tile_width,
-            pattern.tile_height,
-        ),
-    };
-    let along = |step: f32, (from, len): (f32, f32), (at, size): (f32, f32)| {
-        if step > 0.0 {
-            (step, from, len)
+        return;
+    }
+    let cell = TileCell::new(pattern, first);
+    let ((x, y), (pw, ph)) = (cell.origin, cell.size);
+    let along = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
+        if repeats {
+            (from, len)
         } else {
-            (size, at, size)
+            (at, size)
         }
     };
-    let (pw, fx, fw) = along(pattern.step_x, (f.x, f.width), (x, w));
-    let (ph, fy, fh) = along(pattern.step_y, (f.y, f.height), (y, h));
+    let (fx, fw) = along(cell.repeats.0, (f.x, f.width), (first.0, first.2));
+    let (fy, fh) = along(cell.repeats.1, (f.y, f.height), (first.1, first.3));
     let id = svg.len();
     let _ = write!(
         svg,
@@ -206,12 +199,18 @@ fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &D
     );
     // A tile's `<image>` lives in the pattern: no `<use>` outside may share it.
     SHARED.with(|memo| memo.borrow_mut().take());
-    let tile = Fragment::new(f.node_id, 0.0, 0.0, w, h, (*pattern.tile).clone());
-    paint_subtree(svg, &tile, images);
+    // The cell's tiles meet edge to edge on whole pixels: drawn without anti-aliasing
+    // their shared edges leave no seam however small a viewer draws the cell (a
+    // `scale(0.25)` box: 0.75 device px).
+    svg.push_str("<g shape-rendering=\"crispEdges\">");
+    for (tx, ty, w, h) in cell.tiles(pattern) {
+        let tile = Fragment::new(f.node_id, tx, ty, w, h, (*pattern.tile).clone());
+        paint_subtree(svg, &tile, images);
+    }
     SHARED.with(|memo| memo.borrow_mut().take());
     let _ = writeln!(
         svg,
-        "</pattern><rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>"
+        "</g></pattern><rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>"
     );
 }
 
@@ -805,7 +804,8 @@ mod tests {
             "{row}"
         );
         // Without a period: a few tiles are written one by one at their snapped boxes,
-        // many as a pattern of the exact tile.
+        // many as a pattern of one cell of snapped tiles (0.7.0 round-3 review, finding 7:
+        // the PNG painter's cell, not the exact unsnapped tile).
         let few = body(&tiles((0.0, 0.0), (1.5, 10.0), (1.5, 0.0)), &HashMap::new());
         assert_eq!(few.matches("<rect").count(), 7, "{few}");
         assert!(!few.contains("<pattern"), "{few}");
@@ -816,7 +816,16 @@ mod tests {
             (p.tile_width, p.tile_height, p.step_x, p.step_y) = (1.5, 1.5, 1.5, 1.5);
         }
         let many = body(&many, &HashMap::new());
-        assert!(many.contains("width=\"1.5\" height=\"1.5\">"), "{many}");
+        assert!(
+            many.contains("x=\"0\" y=\"0\" width=\"3\" height=\"3\">"),
+            "{many}"
+        );
+        // Two snapped tiles per axis (2px and 1px): four in the cell, then the fill.
+        assert_eq!(many.matches("<rect").count(), 5, "{many}");
+        assert!(
+            many.contains("<rect x=\"2.00\" y=\"2.00\" width=\"1.00\" height=\"1.00\""),
+            "{many}"
+        );
         // No tile meets the box: nothing.
         assert_eq!(
             body(&tiles((20.0, 0.0), (1.0, 1.0), (0.0, 2.0)), &HashMap::new()),
