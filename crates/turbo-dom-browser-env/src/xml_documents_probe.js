@@ -86,6 +86,8 @@
     ["attlistNamespaceOverride", '<!DOCTYPE r [<!ATTLIST s xmlns:q CDATA "urn:q" xmlns CDATA "urn:d" q:a CDATA "1">]><r><s xmlns:q="urn:v"><q:c/></s><s/><s xmlns=""/></r>'],
     ["attlistNamespaceEscapes", "<!DOCTYPE r [<!ENTITY e 'E'><!ATTLIST r xmlns:q CDATA 'urn:&quot;&lt;&amp;&e;'>]><r q:a=\"1\"/>"],
     ["attlistNamespaceErrorColumn", '<!DOCTYPE r [<!ATTLIST r xmlns:q CDATA "urn:q">]><r><r><q:c/></r><x></r>'],
+    ["attlistNamespaceInEntity", "<!DOCTYPE r [<!ATTLIST s xmlns:q CDATA 'urn:q' xmlns CDATA 'urn:d'><!ENTITY e \"<s><q:c/></s>\"><!ENTITY f '<s xmlns:q=\"v\"><q:c/></s>'><!ENTITY g '<x><s/>&e;</x>'>]><r>&e;&f;&g;</r>"],
+    ["attlistNamespaceLaughs", '<!DOCTYPE r [<!ATTLIST s xmlns:q CDATA "urn:q"><!ENTITY l0 "<s/>"><!ENTITY l1 "&l0;&l0;&l0;&l0;&l0;&l0;&l0;&l0;&l0;&l0;"><!ENTITY l2 "&l1;&l1;&l1;&l1;&l1;&l1;&l1;&l1;&l1;&l1;"><!ENTITY l3 "&l2;&l2;&l2;&l2;&l2;&l2;&l2;&l2;&l2;&l2;"><!ENTITY l4 "&l3;&l3;&l3;&l3;&l3;&l3;&l3;&l3;&l3;&l3;"><!ENTITY l5 "&l4;&l4;&l4;&l4;&l4;&l4;&l4;&l4;&l4;&l4;"><!ENTITY l6 "&l5;&l5;&l5;&l5;&l5;&l5;&l5;&l5;&l5;&l5;"><!ENTITY l7 "&l6;&l6;&l6;&l6;&l6;&l6;&l6;&l6;&l6;&l6;"><!ENTITY l8 "&l7;&l7;&l7;&l7;&l7;&l7;&l7;&l7;&l7;&l7;"><!ENTITY l9 "&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;">]><r>&l9;</r>'],
     ["subsetCommentAttlist", "<!DOCTYPE r [<!-- ] > --><?pi ] > ?><!ENTITY b '>]'><!ATTLIST r c CDATA \"]\">]><r xmlns:p=\"u\"><p:s xmlns:q=\"v\"/>&b;</r>"],
     // many / nested entity references: Chrome 156's XML parser counts each reparse that
     // starts before the previous replacement text is consumed (depth 10)

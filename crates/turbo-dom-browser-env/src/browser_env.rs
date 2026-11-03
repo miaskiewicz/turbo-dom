@@ -146,7 +146,7 @@ mod document_xpath;
 #[path = "xml_documents.rs"]
 mod xml_documents;
 pub use document_xpath::is_native_xpath_object;
-pub use xml_documents::parse_xml_document_units;
+pub use xml_documents::{parse_xml_document_units, ParsedXmlDocument};
 #[path = "dom_mutations.rs"]
 mod dom_mutations;
 #[path = "editing.rs"]

@@ -30,6 +30,19 @@ fn units(value: &str) -> Vec<u16> {
 pub(crate) struct ParsedXml {
     pub(crate) tree: Tree,
     pub(crate) declaration: Option<String>,
+    /// False when a well-formedness error stopped the parse (the tree holds Chrome's
+    /// `<parsererror>`).
+    pub(crate) well_formed: bool,
+}
+
+/// [`parse_xml_document_units`]' result: the `XMLDocument` and whether its source was
+/// well-formed. A malformed source still yields a document (Chrome's `<parsererror>`
+/// one); `well_formed` tells it apart from a valid document that holds a `parsererror`
+/// element itself, without looking at the tree (turbo-surf's `responseXML`).
+#[derive(Clone, Copy)]
+pub struct ParsedXmlDocument<'s> {
+    pub document: v8::Local<'s, v8::Object>,
+    pub well_formed: bool,
 }
 
 /// The namespace a fragment parse binds an unbound prefix to; Chrome's fragment parser
@@ -685,37 +698,68 @@ type Insertion = (u64, u64, u64);
 /// defaulted declarations like specified ones), and the insertions made. None when the
 /// internal subset defaults no namespace declaration.
 fn with_namespace_defaults(source: &str) -> Option<(String, Vec<Insertion>)> {
-    let mut tags = StartTags::new(source);
-    // a whole-source scan must not expand entities (billion laughs): it only writes
-    // into tags the source spells
-    tags.entity_depth = 0;
+    // Whole-text scans never follow entity references (billion laughs): each start tag
+    // is written into where it is spelled, the source or an entity's literal value.
+    let mut scan = StartTags::new(source);
+    scan.entity_depth = 0;
+    while scan.next_tag().is_some() {}
+    if scan.namespace_defaults.is_empty() {
+        return None;
+    }
+    let mut inserted = Vec::new();
+    declarations_in(source, 0, '"', &scan, &mut inserted);
+    for &value in scan.entities.values() {
+        let offset = value.as_ptr() as usize - source.as_ptr() as usize;
+        // the literal's own delimiter cannot appear in what is written into it
+        let quote = if source[..offset].ends_with('"') {
+            '\''
+        } else {
+            '"'
+        };
+        declarations_in(value, offset, quote, &scan, &mut inserted);
+    }
+    inserted.sort_by_key(|&(offset, _)| offset);
     let mut out = String::new();
     let mut copied = 0;
     let mut insertions = Vec::new();
-    while let Some((name, declared)) = tags.next_tag() {
-        let Some(defaults) = tags.namespace_defaults.get(name) else {
-            continue;
-        };
-        let mut text = String::new();
-        for &(attribute, value) in defaults {
-            if !declared.contains(&attribute.strip_prefix("xmlns:").unwrap_or("")) {
-                text.push_str(&format!(" {attribute}=\""));
-                escape(&mut text, &tags.expand(value), true);
-                text.push('"');
-            }
-        }
-        let offset = source.len() - tags.rest.len();
+    for (offset, text) in inserted {
         let position = text_position(&source[..offset]);
         out.push_str(&source[copied..offset]);
         out.push_str(&text);
         copied = offset;
         insertions.push((position.row, position.column, text.chars().count() as u64));
     }
-    if insertions.is_empty() {
-        return None;
-    }
     out.push_str(&source[copied..]);
     Some((out, insertions))
+}
+
+/// The defaulted namespace declarations (from `scan`'s internal subset) each start tag
+/// spelled in `text` lacks, as (offset in the source, text to insert) pairs; `text`
+/// starts at `base` in the source and the values are delimited by `quote`.
+fn declarations_in(
+    text: &str,
+    base: usize,
+    quote: char,
+    scan: &StartTags<'_>,
+    out: &mut Vec<(usize, String)>,
+) {
+    let mut tags = StartTags::new(text);
+    tags.entity_depth = 0;
+    while let Some((name, declared)) = tags.next_tag() {
+        let Some(defaults) = scan.namespace_defaults.get(name) else {
+            continue;
+        };
+        let mut inserted = String::new();
+        for &(attribute, value) in defaults {
+            if !declared.contains(&attribute.strip_prefix("xmlns:").unwrap_or("")) {
+                let mut escaped = String::new();
+                escape(&mut escaped, &scan.expand(value), true);
+                let escaped = escaped.replace('\'', "&apos;");
+                inserted.push_str(&format!(" {attribute}={quote}{escaped}{quote}"));
+            }
+        }
+        out.push((base + text.len() - tags.rest.len(), inserted));
+    }
 }
 
 /// `error` at its position in the source before [`with_namespace_defaults`] (a position
@@ -744,6 +788,7 @@ pub(crate) fn parse(source: &str) -> ParsedXml {
         tree.remove_child(root, child);
     }
     let mut declaration = None;
+    let mut well_formed = true;
     let rewritten = with_namespace_defaults(source);
     let text = rewritten.as_ref().map_or(source, |(text, _)| text.as_str());
     if let Err(error) = build(&mut tree, root, text, &mut declaration) {
@@ -752,8 +797,13 @@ pub(crate) fn parse(source: &str) -> ParsedXml {
             None => error,
         };
         report(&mut tree, &error);
+        well_formed = false;
     }
-    ParsedXml { tree, declaration }
+    ParsedXml {
+        tree,
+        declaration,
+        well_formed,
+    }
 }
 
 /// The prefix bindings in scope at `element` (its ancestors' and its own `xmlns`
@@ -870,15 +920,16 @@ fn prototype_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Priv
 /// Parse `units` as an XML document of `content_type` (`application/xml`, `text/xml`,
 /// `image/svg+xml` or `application/xhtml+xml`) into an inert `XMLDocument`, as Chrome
 /// 156's `DOMParser.parseFromString` does: a well-formedness error yields Chrome's
-/// `<parsererror>` document instead of throwing. Like [`parse_html_document_units`] the
+/// `<parsererror>` document instead of throwing, and `well_formed` is false. Like [`parse_html_document_units`] the
 /// embedder's inert-document initializer is not called; the embedder registers the
 /// document itself.
 pub fn parse_xml_document_units<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     units: &[u16],
     content_type: &str,
-) -> v8::Local<'s, v8::Object> {
+) -> ParsedXmlDocument<'s> {
     let parsed = parse(&String::from_utf16_lossy(units));
+    let well_formed = parsed.well_formed;
     let doc = parse_html_tree_with(scope, parsed.tree, false, None);
     let record = document_record(scope, doc);
     let content = record_key(scope, "nativeContentType");
@@ -894,7 +945,10 @@ pub fn parse_xml_document_units<'s>(
     if let Some(prototype) = global.get_private(scope, key) {
         doc.set_prototype(scope, prototype);
     }
-    doc
+    ParsedXmlDocument {
+        document: doc,
+        well_formed,
+    }
 }
 
 /// The XML declaration a parsed document keeps for `XMLSerializer`.
