@@ -463,15 +463,32 @@ mod tests {
             &value,
             (36.2, 1.0, 14.0, 14.0, Some(ACCENT), None, 0, 7.0, false)
         ));
-        // A max not above min falls back to min + 100; a value past it clamps to it.
-        let clamped = at("min=10 max=5 value=500");
-        assert!(
-            has(
-                &clamped,
-                (45.0, 1.0, 14.0, 14.0, Some(ACCENT), None, 0, 7.0, false)
-            ),
-            "{clamped:?}"
-        );
+        // A max below the min is the min, so the value clamps to it and the thumb sits at
+        // the start, as in Chrome (paint fixture `form-native-range-max-below-min`).
+        let start = (1.0, 1.0, 14.0, 14.0, Some(ACCENT), None, 0, 7.0, false);
+        for below in [
+            "min=10 max=5 value=500",
+            "min=10 max=10 value=3",
+            "min=1e38",
+        ] {
+            let clamped = at(below);
+            assert!(has(&clamped, start), "{below}: {clamped:?}");
+        }
+        // Non-finite or invalid numbers are ignored (`form-native-range-nan`), and huge
+        // finite bounds neither overflow nor divide by zero (`form-native-range-huge`).
+        let middle = (23.0, 1.0, 14.0, 14.0, Some(ACCENT), None, 0, 7.0, false);
+        for ignored in [
+            "min=NaN max=Infinity value=NaN",
+            "min=inf max=-inf value=+5",
+            "min=-1e308 max=1e308 value=1e400",
+            "min=5. max=' 100' value=50abc",
+            "min=-1e39 max=1e39",
+        ] {
+            let parts = at(ignored);
+            assert!(has(&parts, middle), "{ignored}: {parts:?}");
+        }
+        // A leading `.` and an exponent are valid: 0.5e2 of 0..100 is the middle too.
+        assert!(has(&at("min=.0e1 value=.5e2"), middle));
         // No value: the middle.
         assert!(has(
             &at(""),
