@@ -541,11 +541,42 @@ fn with_dom_state<R>(id: u64, f: impl FnOnce(&DomState) -> R) -> Option<R> {
     OTHER_DOMS.with(|doms| doms.try_borrow().ok()?.get(&id)?.dom.as_ref().map(f))
 }
 
-/// A wrapper's owner tag (internal field 1): its DOM id and that DOM's tree generation.
-fn owner_tag<'s>(scope: &mut v8::PinScope<'s, '_>, id: u64) -> v8::Local<'s, v8::BigInt> {
+thread_local! {
+    /// Owner tags handed out on this thread: tag `k` names `OWNER_TAGS[k]`, a (DOM id, tree
+    /// generation) pair. Entries are never reused or removed (one per installed tree, 16 bytes),
+    /// so a tag keeps naming the tree it was minted for after that tree is gone.
+    static OWNER_TAGS: RefCell<Vec<(u64, u64)>> = const { RefCell::new(Vec::new()) };
+    static OWNER_TAG_INDEX: RefCell<HashMap<(u64, u64), i32>> = RefCell::new(HashMap::new());
+    /// The last pair interned and its tag: wrappers are minted in runs for one tree.
+    static LAST_OWNER_TAG: std::cell::Cell<(u64, u64, i32)> = const { std::cell::Cell::new((0, 0, -1)) };
+}
+
+/// The small-integer tag of (DOM `id`, its current tree generation).
+fn owner_tag_index(id: u64) -> i32 {
     let serial = with_dom_state(id, |state| state.serial).unwrap_or(0);
-    // invariant: two words are far below V8's BigInt length limit
-    v8::BigInt::new_from_words(scope, false, &[id, serial]).unwrap()
+    let (last_id, last_serial, last_tag) = LAST_OWNER_TAG.with(std::cell::Cell::get);
+    if last_tag >= 0 && last_id == id && last_serial == serial {
+        return last_tag;
+    }
+    let tag = OWNER_TAG_INDEX.with(|index| {
+        *index.borrow_mut().entry((id, serial)).or_insert_with(|| {
+            OWNER_TAGS.with(|tags| {
+                let mut tags = tags.borrow_mut();
+                tags.push((id, serial));
+                // invariant: one tag per installed tree; 2^31 trees on one thread is unreachable
+                i32::try_from(tags.len() - 1).expect("owner tags fit an i32")
+            })
+        })
+    });
+    LAST_OWNER_TAG.with(|last| last.set((id, serial, tag)));
+    tag
+}
+
+/// A wrapper's owner tag (internal field 1): a Smi naming its DOM id and that DOM's tree
+/// generation (turbo-dom 0.7.0 perf item 5; a two-word BigInt before, allocated per wrapper
+/// and decoded on every native call).
+fn owner_tag<'s>(scope: &mut v8::PinScope<'s, '_>, id: u64) -> v8::Local<'s, v8::Integer> {
+    v8::Integer::new(scope, owner_tag_index(id))
 }
 
 /// The owner of a tagged wrapper: `Some(Some(id))` while its tree is still DOM `id`'s,
@@ -555,12 +586,13 @@ fn tagged_owner(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> Opti
     let tag = object
         .get_internal_field(scope, 1)
         .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())
-        .and_then(|value| v8::Local::<v8::BigInt>::try_from(value).ok())?;
-    let mut words = [0u64; 2];
-    let (_, words) = tag.to_words_array(&mut words);
-    // Tags are always two words: generations start at 1.
-    let id = words.first().copied().unwrap_or(0);
-    let serial = words.get(1).copied().unwrap_or(0);
+        .and_then(|value| v8::Local::<v8::Int32>::try_from(value).ok())?
+        .value();
+    let (id, serial) = OWNER_TAGS.with(|tags| {
+        usize::try_from(tag)
+            .ok()
+            .and_then(|tag| tags.borrow().get(tag).copied())
+    })?;
     let live = with_dom_state(id, |state| state.serial) == Some(serial);
     Some(live.then_some(id))
 }
@@ -3264,10 +3296,71 @@ fn el_remove_attribute<'s>(
     }
 }
 
+/// What `selector_argument` learns from a selector string alone, independent of the node and
+/// the document: memoized per string (a React form re-runs the same few selectors on every
+/// render; turbo-dom 0.7.0 perf item 4).
+struct SelectorFacts {
+    /// Admitted by the stylesheet selector grammar.
+    valid: bool,
+    /// Contains a `:`. Every node-dependent rewrite (`:popover-open`, `:modal`, `:open`,
+    /// `:interest-*`, the form pseudo-classes, `:active-view-transition*`) starts at a colon
+    /// delimiter, which an escape cannot produce, so a selector without one is never rewritten.
+    pseudo: bool,
+    /// Matched through the UTF-16 API (a lone surrogate or an escape).
+    unit_path: bool,
+    scalar: String,
+}
+
+/// The memo's bound: past it the memo starts over, so a page minting unbounded distinct
+/// selector strings costs at most this many entries.
+const SELECTOR_MEMO_LIMIT: usize = 1024;
+
+thread_local! {
+    static SELECTOR_MEMO: RefCell<HashMap<Vec<u16>, std::rc::Rc<SelectorFacts>>> =
+        RefCell::new(HashMap::new());
+}
+
+/// Work counters for the deterministic selector perf gate (`perf_gates_tests`).
+#[cfg(test)]
+#[derive(Default)]
+pub(super) struct SelectorWork {
+    pub(super) grammar_parses: std::cell::Cell<usize>,
+    pub(super) rewrites: std::cell::Cell<usize>,
+}
+#[cfg(test)]
+thread_local! {
+    pub(super) static SELECTOR_WORK: SelectorWork = SelectorWork::default();
+}
+
+fn selector_facts(units: &[u16]) -> std::rc::Rc<SelectorFacts> {
+    if let Some(facts) = SELECTOR_MEMO.with(|memo| memo.borrow().get(units).cloned()) {
+        return facts;
+    }
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.grammar_parses.set(work.grammar_parses.get() + 1));
+    let scalar = String::from_utf16_lossy(units);
+    // The matcher is lenient; admission uses the same grammar as stylesheets.
+    let facts = std::rc::Rc::new(SelectorFacts {
+        valid: !scalar.is_empty() && css_selector_syntax::selector_list(&scalar).is_some(),
+        pseudo: units.contains(&u16::from(b':')),
+        unit_path: String::from_utf16(units).is_err() || units.contains(&92),
+        scalar,
+    });
+    SELECTOR_MEMO.with(|memo| {
+        let mut memo = memo.borrow_mut();
+        if memo.len() >= SELECTOR_MEMO_LIMIT {
+            memo.clear();
+        }
+        memo.insert(units.to_vec(), facts.clone());
+    });
+    facts
+}
+
 /// The selector argument of `operation` (`matches`, `closest`, `querySelector`, ...) on
 /// `node`. A SyntaxError names the operation and the interface it runs on, as Chrome's
 /// bindings do: `Element`, `Document`, or `DocumentFragment` (also for a ShadowRoot, which
-/// inherits the ParentNode members from DocumentFragment).
+/// inherits the ParentNode members from DocumentFragment). The message is built only when
+/// the selector is rejected.
 fn selector_argument<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: &v8::FunctionCallbackArguments<'s>,
@@ -3278,41 +3371,41 @@ fn selector_argument<'s>(
         return None;
     }
     let units = dom_units(scope, args.get(0))?;
-    let scalar = String::from_utf16_lossy(&units);
-    let interface = match with_tree(|tree| tree.node_type_id(node)) {
-        Some(9) => "Document",
-        Some(11) => "DocumentFragment",
-        _ => "Element",
-    };
-    let prefix = format!("Failed to execute '{operation}' on '{interface}': ");
-    if scalar.is_empty() {
+    let facts = selector_facts(&units);
+    if !facts.valid {
+        let interface = match with_tree(|tree| tree.node_type_id(node)) {
+            Some(9) => "Document",
+            Some(11) => "DocumentFragment",
+            _ => "Element",
+        };
+        let reason = if facts.scalar.is_empty() {
+            "The provided selector is empty.".to_owned()
+        } else {
+            format!("'{}' is not a valid selector.", facts.scalar)
+        };
         throw_dom_error(
             scope,
             "SyntaxError",
-            &format!("{prefix}The provided selector is empty."),
+            &format!("Failed to execute '{operation}' on '{interface}': {reason}"),
         );
         return None;
     }
-    // The matcher is lenient; admission uses the same grammar as stylesheets.
-    if css_selector_syntax::selector_list(&scalar).is_none() {
-        throw_dom_error(
-            scope,
-            "SyntaxError",
-            &format!("{prefix}'{scalar}' is not a valid selector."),
-        );
-        return None;
+    if !facts.pseudo {
+        return Some((facts.scalar.clone(), units, facts.unit_path));
     }
-    let transformed = html_popover::selector(scope, node, &scalar)?;
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.rewrites.set(work.rewrites.get() + 1));
+    let scalar = &facts.scalar;
+    let transformed = html_popover::selector(scope, node, scalar)?;
     let transformed = html_dialog::selector(scope, node, &transformed)?;
     let transformed = interest_invokers::selector(scope, node, &transformed)?;
     let subject_local = matches!(operation, "matches" | "webkitMatchesSelector" | "closest");
     let transformed = form_pseudo::selector(scope, node, &transformed, subject_local)?;
     let transformed = view_transitions::selector(scope, node, &transformed)?;
-    let original = if transformed == scalar {
-        units
-    } else {
-        transformed.encode_utf16().collect()
-    };
+    if transformed == *scalar {
+        return Some((transformed, units, facts.unit_path));
+    }
+    let original: Vec<u16> = transformed.encode_utf16().collect();
     let unit_path = String::from_utf16(&original).is_err() || original.contains(&92);
     Some((transformed, original, unit_path))
 }

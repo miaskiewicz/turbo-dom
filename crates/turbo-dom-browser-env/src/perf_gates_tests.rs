@@ -41,8 +41,16 @@ fn a_repeated_selector_is_parsed_once_and_plain_selectors_skip_the_rewrites() {
         );
         assert_eq!(found, "600");
         let (after_parses, after_rewrites) = selector_work();
-        assert_eq!(after_parses - parses, 2, "one grammar parse per distinct selector");
-        assert_eq!(after_rewrites - rewrites, 0, "no rewrite pass without a ':'");
+        assert_eq!(
+            after_parses - parses,
+            2,
+            "one grammar parse per distinct selector"
+        );
+        assert_eq!(
+            after_rewrites - rewrites,
+            0,
+            "no rewrite pass without a ':'"
+        );
         // A pseudo-class still reaches the node-dependent rewrites, on every call.
         let found = run(
             scope,
@@ -75,16 +83,16 @@ fn memoized_invalid_selectors_still_throw_chromes_exact_syntax_error() {
               const div = document.getElementById('a');
               const frag = document.createDocumentFragment();
               for (let i = 0; i < 2; i++) for (const [target, op, sel] of [
-                [document, 'querySelector', 'a[b'], [div, 'matches', 'a[b'], [frag, 'querySelectorAll', 'a[b'],
+                [document, 'querySelector', 'a..b'], [div, 'matches', 'a..b'], [frag, 'querySelectorAll', 'a..b'],
                 [div, 'closest', ''], [document, 'querySelectorAll', ''], [div, 'querySelector', ':nope'],
               ]) { try { target[op](sel); out.push('no throw'); } catch (e) { out.push(e.name + ': ' + e.message); } }
               out.join('\n')
             ",
         );
         let expected = [
-            "SyntaxError: Failed to execute 'querySelector' on 'Document': 'a[b' is not a valid selector.",
-            "SyntaxError: Failed to execute 'matches' on 'Element': 'a[b' is not a valid selector.",
-            "SyntaxError: Failed to execute 'querySelectorAll' on 'DocumentFragment': 'a[b' is not a valid selector.",
+            "SyntaxError: Failed to execute 'querySelector' on 'Document': 'a..b' is not a valid selector.",
+            "SyntaxError: Failed to execute 'matches' on 'Element': 'a..b' is not a valid selector.",
+            "SyntaxError: Failed to execute 'querySelectorAll' on 'DocumentFragment': 'a..b' is not a valid selector.",
             "SyntaxError: Failed to execute 'closest' on 'Element': The provided selector is empty.",
             "SyntaxError: Failed to execute 'querySelectorAll' on 'Document': The provided selector is empty.",
             "SyntaxError: Failed to execute 'querySelector' on 'Element': ':nope' is not a valid selector.",
@@ -137,7 +145,10 @@ fn flush_builds_no_records_when_nothing_observes() {
         let scope = &mut v8::ContextScope::new(scope, context);
         // A parser-inserted script keeps the document recording (script preparation), as
         // on every React page.
-        install_with_html(scope, "<head><script>1</script></head><body><div id=root></div>");
+        install_with_html(
+            scope,
+            "<head><script>1</script></head><body><div id=root></div>",
+        );
         assert!(mutation_observers::recording());
         let before = mutation_observers::payloads_built();
         let out = run(
@@ -152,9 +163,12 @@ fn flush_builds_no_records_when_nothing_observes() {
         let out = run(
             scope,
             "globalThis.records = []; new MutationObserver(r => records.push(...r)).observe(root, {childList: true}); \
-             root.appendChild(document.createElement('span')); root.appendChild(document.createElement('span')); 'ok'",
+             root.appendChild(document.createElement('span')); root.firstChild.setAttribute('id', 'x'); 'ok'",
         );
         assert_eq!(out, "ok");
+        // A microtask checkpoint delivers them to the callback.
+        scope.perform_microtask_checkpoint();
+        assert_eq!(run(scope, "records.map(r => r.type).join()"), "childList");
         assert_eq!(mutation_observers::payloads_built() - before, 2);
         reset();
     }
