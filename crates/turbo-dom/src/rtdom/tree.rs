@@ -2633,6 +2633,39 @@ mod tests {
         assert_eq!(tree.get_attribute(div, "id"), Some("a"));
     }
 
+    /// `selector_version` moves with every mutation but a `style` attribute change: an
+    /// element's inline style is read by selectors only through attribute selectors naming it,
+    /// so an embedder that checks for those can keep other elements' computed styles across an
+    /// inline style write (`version` still moves).
+    #[test]
+    fn selector_version_skips_style_attribute_changes_only() {
+        let mut tree = t("<div id=a><p></p></div>");
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
+        let (v0, s0) = (tree.version, tree.selector_version);
+        tree.set_attribute(div, "style", "width: 1px");
+        assert!(tree.version > v0);
+        assert_eq!(tree.selector_version, s0);
+        let v1 = tree.version;
+        tree.remove_attribute(div, "style");
+        assert!(tree.version > v1);
+        assert_eq!(tree.selector_version, s0);
+        tree.set_attribute(div, "class", "card");
+        assert!(tree.selector_version > s0);
+        let s1 = tree.selector_version;
+        tree.remove_attribute(div, "class");
+        assert!(tree.selector_version > s1);
+        let s2 = tree.selector_version;
+        let p = tree.create_element("p");
+        tree.append_child(div, p);
+        assert!(tree.selector_version > s2);
+        assert!(!tree.has_shadow_roots());
+        tree.attach_shadow(div);
+        assert!(tree.has_shadow_roots());
+    }
+
     #[test]
     fn append_and_remove_child() {
         let mut tree = t("<div></div>");
