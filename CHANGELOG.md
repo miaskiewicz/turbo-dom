@@ -10,6 +10,17 @@ at the time); this file reconstructs them from history.
 Still landing for 0.7.0 (other agents add their entries below as they merge): form
 controls in vertical writing modes (#239).
 
+- Form controls paint Chrome 156's native appearance (#255): text fields, textareas and
+  menu lists a 1px `#767676` rounded frame on white (a menu list its chevron), buttons and
+  colour wells the frame on `#efefef` (a colour well its value's swatch), checkboxes /
+  radio buttons Chrome's glyphs (checked included), range sliders their track and thumb.
+  Drawn with ordinary galley boxes in `turbo-dom-layout`, so PNG / SVG screenshots (and
+  PDFs) show it; `appearance: none`, an author border / background and vertical writing
+  modes keep the CSS painting. An `appearance: none` checkbox / radio has no size.
+- Menu lists centre their label (their baseline follows) and colour wells sit 4px above
+  their content-box bottom on the line, like Chrome (#255); the `form-*` live-geometry
+  control compares their full boxes.
+
 ## [0.7.0] — <date TBD at tag>
 
 | crate | version |

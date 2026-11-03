@@ -200,6 +200,17 @@ fn form_controls_paint_their_fields_like_chrome_156() {
     );
 }
 
+/// miaskiewicz/turbo-dom#255: a control with its default appearance paints Chrome's
+/// native look (frames, menu-list chevron, checkbox / radio glyphs, range track and
+/// thumb, colour swatch) in the PNG and SVG screenshots; `appearance: none` or an author
+/// border / background keeps the CSS painting.
+#[test]
+fn form_controls_paint_chrome_native_appearance() {
+    let mut failures = differences(|id| id.starts_with("form-native-"));
+    failures.extend(svg_differences(|id| id.starts_with("form-native-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// The painter's box decoration paths (P5-cov): a rounded border, a gradient in a rounded
 /// box, unblurred / collapsed / spread shadows, transparent text.
 #[test]
