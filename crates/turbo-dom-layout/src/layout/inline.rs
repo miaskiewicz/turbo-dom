@@ -1673,6 +1673,8 @@ struct Placer<'a> {
     out: Vec<SourceLine>,
     cur: Vec<Word>,
     open_edges: Vec<InlineEdge>,
+    /// The cloned boxes a forced break closed, reopened by the next word.
+    reopen: Vec<InlineEdge>,
     y: f32,
     indent: f32,
     lw: f32,
@@ -1708,6 +1710,7 @@ impl<'a> Placer<'a> {
             out: Vec::new(),
             cur: Vec::new(),
             open_edges: Vec::new(),
+            reopen: Vec::new(),
             y: 0.0,
             indent,
             lw,
@@ -1788,6 +1791,8 @@ impl<'a> Placer<'a> {
     /// Add one word: wrap first if it no longer fits, then flush after it if it is
     /// a forced break (so a `<br>` ends its line and the next word starts below).
     fn add(&mut self, mut word: Word) {
+        let reopen = std::mem::take(&mut self.reopen);
+        reopen_clones(&mut word, &reopen);
         if self.attach_trailing_close(&word) {
             return;
         }
@@ -1892,7 +1897,13 @@ impl<'a> Placer<'a> {
         }
         self.cur.push(word);
         if forced {
+            // A forced break ends a cloned box's fragment like a soft wrap does.
+            let cloned = self.cloned_open(None);
+            if let Some(last) = self.cur.last_mut() {
+                close_clones(last, &cloned);
+            }
             self.flush();
+            self.reopen = cloned;
         }
     }
 

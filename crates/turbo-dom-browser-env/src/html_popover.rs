@@ -310,6 +310,7 @@ fn hide_from<'s>(
             .open
             .retain(|entry| entry.node != node)
     });
+    bump_style_state();
     user_activation_gates::popover_hidden(node);
     if events {
         queue(scope, node, true, false, source);
@@ -395,6 +396,7 @@ fn show_steps<'s>(
             mode: mode.clone(),
         })
     });
+    bump_style_state();
     if mode != "manual" {
         user_activation_gates::popover_shown(node);
     }

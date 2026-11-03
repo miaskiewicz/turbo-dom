@@ -32,6 +32,7 @@ fn set_modal(node: Handle, value: bool) {
             dom.dialog.modal.push(node);
         }
     });
+    bump_style_state();
 }
 
 /// Shadow-including inclusive descendant.
