@@ -685,37 +685,68 @@ type Insertion = (u64, u64, u64);
 /// defaulted declarations like specified ones), and the insertions made. None when the
 /// internal subset defaults no namespace declaration.
 fn with_namespace_defaults(source: &str) -> Option<(String, Vec<Insertion>)> {
-    let mut tags = StartTags::new(source);
-    // a whole-source scan must not expand entities (billion laughs): it only writes
-    // into tags the source spells
-    tags.entity_depth = 0;
+    // Whole-text scans never follow entity references (billion laughs): each start tag
+    // is written into where it is spelled, the source or an entity's literal value.
+    let mut scan = StartTags::new(source);
+    scan.entity_depth = 0;
+    while scan.next_tag().is_some() {}
+    if scan.namespace_defaults.is_empty() {
+        return None;
+    }
+    let mut inserted = Vec::new();
+    declarations_in(source, 0, '"', &scan, &mut inserted);
+    for &value in scan.entities.values() {
+        let offset = value.as_ptr() as usize - source.as_ptr() as usize;
+        // the literal's own delimiter cannot appear in what is written into it
+        let quote = if source[..offset].ends_with('"') {
+            '\''
+        } else {
+            '"'
+        };
+        declarations_in(value, offset, quote, &scan, &mut inserted);
+    }
+    inserted.sort_by_key(|&(offset, _)| offset);
     let mut out = String::new();
     let mut copied = 0;
     let mut insertions = Vec::new();
-    while let Some((name, declared)) = tags.next_tag() {
-        let Some(defaults) = tags.namespace_defaults.get(name) else {
-            continue;
-        };
-        let mut text = String::new();
-        for &(attribute, value) in defaults {
-            if !declared.contains(&attribute.strip_prefix("xmlns:").unwrap_or("")) {
-                text.push_str(&format!(" {attribute}=\""));
-                escape(&mut text, &tags.expand(value), true);
-                text.push('"');
-            }
-        }
-        let offset = source.len() - tags.rest.len();
+    for (offset, text) in inserted {
         let position = text_position(&source[..offset]);
         out.push_str(&source[copied..offset]);
         out.push_str(&text);
         copied = offset;
         insertions.push((position.row, position.column, text.chars().count() as u64));
     }
-    if insertions.is_empty() {
-        return None;
-    }
     out.push_str(&source[copied..]);
     Some((out, insertions))
+}
+
+/// The defaulted namespace declarations (from `scan`'s internal subset) each start tag
+/// spelled in `text` lacks, as (offset in the source, text to insert) pairs; `text`
+/// starts at `base` in the source and the values are delimited by `quote`.
+fn declarations_in(
+    text: &str,
+    base: usize,
+    quote: char,
+    scan: &StartTags<'_>,
+    out: &mut Vec<(usize, String)>,
+) {
+    let mut tags = StartTags::new(text);
+    tags.entity_depth = 0;
+    while let Some((name, declared)) = tags.next_tag() {
+        let Some(defaults) = scan.namespace_defaults.get(name) else {
+            continue;
+        };
+        let mut inserted = String::new();
+        for &(attribute, value) in defaults {
+            if !declared.contains(&attribute.strip_prefix("xmlns:").unwrap_or("")) {
+                let mut escaped = String::new();
+                escape(&mut escaped, &scan.expand(value), true);
+                let escaped = escaped.replace('\'', "&apos;");
+                inserted.push_str(&format!(" {attribute}={quote}{escaped}{quote}"));
+            }
+        }
+        out.push((base + text.len() - tags.rest.len(), inserted));
+    }
 }
 
 /// `error` at its position in the source before [`with_namespace_defaults`] (a position
