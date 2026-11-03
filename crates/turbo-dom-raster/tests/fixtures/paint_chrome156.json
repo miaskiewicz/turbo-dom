@@ -4577,6 +4577,468 @@
    ]
   },
   {
+   "id": "bg-tiles-scaled-2x",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:0px;width:16px;height:8px;transform:scale(2);transform-origin:0 0;background:linear-gradient(to right,#ff0000,#0000ff) 0 0/4px 4px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 0,
+     "y": 4,
+     "class": "R",
+     "rgb": [
+      239,
+      0,
+      15
+     ]
+    },
+    {
+     "x": 1,
+     "y": 4,
+     "class": "R",
+     "rgb": [
+      207,
+      0,
+      48
+     ]
+    },
+    {
+     "x": 2,
+     "y": 4,
+     "class": "R",
+     "rgb": [
+      175,
+      0,
+      79
+     ]
+    },
+    {
+     "x": 3,
+     "y": 4,
+     "class": "?",
+     "rgb": [
+      144,
+      0,
+      112
+     ]
+    },
+    {
+     "x": 4,
+     "y": 4,
+     "class": "?",
+     "rgb": [
+      111,
+      0,
+      143
+     ]
+    },
+    {
+     "x": 5,
+     "y": 4,
+     "class": "B",
+     "rgb": [
+      80,
+      0,
+      176
+     ]
+    },
+    {
+     "x": 6,
+     "y": 4,
+     "class": "B",
+     "rgb": [
+      48,
+      0,
+      207
+     ]
+    },
+    {
+     "x": 7,
+     "y": 4,
+     "class": "B",
+     "rgb": [
+      16,
+      0,
+      240
+     ]
+    },
+    {
+     "x": 24,
+     "y": 12,
+     "class": "R",
+     "rgb": [
+      239,
+      0,
+      15
+     ]
+    },
+    {
+     "x": 31,
+     "y": 12,
+     "class": "B",
+     "rgb": [
+      16,
+      0,
+      240
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bg-tiles-scaled-4x",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:100px;width:40px;height:20px;transform:scale(4);transform-origin:0 0;background:linear-gradient(to right,#ff0000,#0000ff) 0 0/10px 10px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 0,
+     "y": 110,
+     "class": "R",
+     "rgb": [
+      251,
+      0,
+      3
+     ]
+    },
+    {
+     "x": 4,
+     "y": 110,
+     "class": "R",
+     "rgb": [
+      226,
+      0,
+      28
+     ]
+    },
+    {
+     "x": 8,
+     "y": 110,
+     "class": "R",
+     "rgb": [
+      200,
+      0,
+      54
+     ]
+    },
+    {
+     "x": 12,
+     "y": 110,
+     "class": "R",
+     "rgb": [
+      175,
+      0,
+      79
+     ]
+    },
+    {
+     "x": 16,
+     "y": 110,
+     "class": "?",
+     "rgb": [
+      149,
+      0,
+      105
+     ]
+    },
+    {
+     "x": 20,
+     "y": 110,
+     "class": "?",
+     "rgb": [
+      124,
+      0,
+      130
+     ]
+    },
+    {
+     "x": 24,
+     "y": 110,
+     "class": "?",
+     "rgb": [
+      98,
+      0,
+      156
+     ]
+    },
+    {
+     "x": 28,
+     "y": 110,
+     "class": "B",
+     "rgb": [
+      73,
+      0,
+      181
+     ]
+    },
+    {
+     "x": 32,
+     "y": 110,
+     "class": "B",
+     "rgb": [
+      47,
+      0,
+      207
+     ]
+    },
+    {
+     "x": 36,
+     "y": 110,
+     "class": "B",
+     "rgb": [
+      22,
+      0,
+      232
+     ]
+    },
+    {
+     "x": 156,
+     "y": 170,
+     "class": "B",
+     "rgb": [
+      22,
+      0,
+      232
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bg-tiles-rotated",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:300px;top:300px;width:80px;height:80px;transform:rotate(30deg);background:#00ff00 linear-gradient(to right,#ff0000 50%,#0000ff 50%) 0 0/20px 20px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 332,
+     "y": 292,
+     "class": "R",
+     "rgb": [
+      190,
+      0,
+      65
+     ]
+    },
+    {
+     "x": 332,
+     "y": 293,
+     "class": "B",
+     "rgb": [
+      63,
+      0,
+      192
+     ]
+    },
+    {
+     "x": 331,
+     "y": 294,
+     "class": "?",
+     "rgb": [
+      156,
+      0,
+      99
+     ]
+    },
+    {
+     "x": 330,
+     "y": 296,
+     "class": "?",
+     "rgb": [
+      122,
+      0,
+      133
+     ]
+    },
+    {
+     "x": 341,
+     "y": 297,
+     "class": "?",
+     "rgb": [
+      140,
+      0,
+      115
+     ]
+    },
+    {
+     "x": 329,
+     "y": 298,
+     "class": "B",
+     "rgb": [
+      88,
+      0,
+      167
+     ]
+    },
+    {
+     "x": 340,
+     "y": 298,
+     "class": "B",
+     "rgb": [
+      47,
+      0,
+      208
+     ]
+    },
+    {
+     "x": 328,
+     "y": 299,
+     "class": "R",
+     "rgb": [
+      181,
+      0,
+      74
+     ]
+    },
+    {
+     "x": 340,
+     "y": 299,
+     "class": "R",
+     "rgb": [
+      174,
+      0,
+      81
+     ]
+    },
+    {
+     "x": 328,
+     "y": 300,
+     "class": "B",
+     "rgb": [
+      53,
+      0,
+      202
+     ]
+    },
+    {
+     "x": 339,
+     "y": 300,
+     "class": "B",
+     "rgb": [
+      81,
+      0,
+      174
+     ]
+    },
+    {
+     "x": 327,
+     "y": 301,
+     "class": "?",
+     "rgb": [
+      147,
+      0,
+      108
+     ]
+    },
+    {
+     "x": 339,
+     "y": 301,
+     "class": "R",
+     "rgb": [
+      208,
+      0,
+      47
+     ]
+    },
+    {
+     "x": 340,
+     "y": 340,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 325,
+     "y": 320,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bg-tiles-shrunk-fractional",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:0px;width:5120px;height:3200px;transform:scale(0.25);transform-origin:0 0;background:#00ff00 linear-gradient(#ff0000,#ff0000) 0 0/1.5px 1.5px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 0,
+     "y": 0,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 640,
+     "y": 400,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 1279,
+     "y": 0,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 0,
+     "y": 799,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 640,
+     "y": 700,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 1279,
+     "y": 700,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 1279,
+     "y": 799,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
    "id": "inline-bg-content-box",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;font-size:0\"><span style=\"background:#00ff00 url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=) no-repeat content-box right center/20px 10px;background-clip:border-box;padding:5px 10px\"><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span></span></div></body></html>",
    "assets": [

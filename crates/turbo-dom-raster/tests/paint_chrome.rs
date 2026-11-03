@@ -573,3 +573,44 @@ fn cloned_inline_decorations_paint_like_chrome_156() {
     failures.extend(svg_differences(|id| id.starts_with("inline-clone-")));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// 0.7.0 round-3 review, finding 7: a pattern of more than 4096 tiles without a
+/// whole-pixel period (2.5px tiles snap to alternating 3px and 2px) paints the same
+/// snapped tiles in both painters: the vector screenshot, rasterized, matches the PNG
+/// pixel for pixel (an unsnapped `<pattern>` of the exact tile put edges up to 1px off).
+#[test]
+fn fractional_tile_patterns_paint_alike_in_png_and_svg() {
+    let html = r#"<body style="margin:0;background:#0ff"><div style="position:absolute;left:3px;top:5px;width:203px;height:201px;background:#0f0 linear-gradient(to right,#f00 40%,#00f 40%) 0 0/2.5px 2.5px"></div>"#;
+    let none = ImageAssets::new();
+    let png = screenshot_png_with_opts(html, "", VIEWPORT, &none, false, false).expect("png");
+    let png = tiny_skia::Pixmap::decode_png(&png).expect("decode");
+    let svg = screenshot_svg_with_opts(html, "", VIEWPORT, &none, false, false).expect("svg");
+    assert!(
+        svg.matches("<rect").count() < 100,
+        "one pattern, not one rect per tile"
+    );
+    let raster = rasterize_svg(&svg);
+    let mut differences = Vec::new();
+    for y in 0..220 {
+        for x in 0..220 {
+            let p = png.pixel(x, y).unwrap();
+            let s = raster.pixel(x, y).unwrap().demultiply();
+            let far = [
+                p.red().abs_diff(s.red()),
+                p.green().abs_diff(s.green()),
+                p.blue().abs_diff(s.blue()),
+            ]
+            .into_iter()
+            .any(|d| d > 2);
+            if far {
+                differences.push(format!("({x},{y}): png {p:?}, svg {s:?}"));
+            }
+        }
+    }
+    assert!(
+        differences.is_empty(),
+        "{} pixels differ:\n{}",
+        differences.len(),
+        differences[..differences.len().min(20)].join("\n")
+    );
+}

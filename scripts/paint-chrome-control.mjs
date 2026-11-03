@@ -466,6 +466,43 @@ const CASES = [
     probes: [[1, 0], [1, 1], [640, 400], [640, 401], [5, 600], [5, 601], [1279, 796], [1279, 798], [1279, 799]],
   },
   {
+    // 0.7.0 round-3 review, finding 3: a scaled box's gradient tiles are drawn at device
+    // resolution, smooth (a 4px red-to-blue tile under scale(2): eight shades per 8px
+    // period, not four 2px bands).
+    id: "bg-tiles-scaled-2x",
+    html: DOC(`<div style="${at(0, 0)};width:16px;height:8px;transform:scale(2);transform-origin:0 0;background:linear-gradient(to right,#ff0000,#0000ff) 0 0/4px 4px"></div>`),
+    assets: [],
+    probes: [[0, 4], [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4], [7, 4], [24, 12], [31, 12]],
+  },
+  {
+    // The same under scale(4): a 10px tile, 40 device px per period.
+    id: "bg-tiles-scaled-4x",
+    html: DOC(`<div style="${at(0, 100)};width:40px;height:20px;transform:scale(4);transform-origin:0 0;background:linear-gradient(to right,#ff0000,#0000ff) 0 0/10px 10px"></div>`),
+    assets: [],
+    probes: [[0, 110], [4, 110], [8, 110], [12, 110], [16, 110], [20, 110], [24, 110], [28, 110], [32, 110], [36, 110], [156, 170]],
+  },
+  {
+    // A rotated box's tiles: the hard red/blue stop inside each 20px tile is
+    // anti-aliased along the rotated edge, not stair-stepped.
+    id: "bg-tiles-rotated",
+    html: DOC(`<div style="${at(300, 300)};width:80px;height:80px;transform:rotate(30deg);background:#00ff00 linear-gradient(to right,#ff0000 50%,#0000ff 50%) 0 0/20px 20px"></div>`),
+    assets: [],
+    probes: [
+      [332, 292], [332, 293], [331, 294], [330, 296], [341, 297], [329, 298],
+      [340, 298], [328, 299], [340, 299], [328, 300], [339, 300], [327, 301], [339, 301],
+      [340, 340], [325, 320],
+    ],
+  },
+  {
+    // 0.7.0 round-3 review, finding 4: about 7.3 million 1.5px tiles (no whole-pixel
+    // period) shown under scale(0.25) cover the whole viewport, down to its bottom-right
+    // corner.
+    id: "bg-tiles-shrunk-fractional",
+    html: DOC(`<div style="${at(0, 0)};width:5120px;height:3200px;transform:scale(0.25);transform-origin:0 0;background:#00ff00 linear-gradient(#ff0000,#ff0000) 0 0/1.5px 1.5px"></div>`),
+    assets: [],
+    probes: [[0, 0], [640, 400], [1279, 0], [0, 799], [640, 700], [1279, 700], [1279, 799]],
+  },
+  {
     // An inline `content-box` origin: the first fragment's content starts after its
     // left padding, the last ends before its right padding; the 20px image sits at the
     // strip's content end.
