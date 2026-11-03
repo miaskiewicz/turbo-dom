@@ -777,6 +777,10 @@ struct Word {
     /// hyphenation points: the whole word's width. Like Chrome, that word is not
     /// hyphenated on a line holding earlier content; it moves to the next line.
     last_word_width: Option<f32>,
+    /// The end edges of the inline boxes closing right after this word (closing-only
+    /// words, no space between): no break opportunity separates them, so the word fits
+    /// a line only with them (Chrome 156: paint fixtures `inline-clone-reserve*`).
+    close_after: f32,
     /// The bidi level of the white space after the word (`None`: no such space).
     space_level: Option<u8>,
     /// The bidi level of the atom (U+FFFC is a neutral).
@@ -925,6 +929,7 @@ fn break_word() -> Word {
         hyphen: None,
         dictionary_break: false,
         last_word_width: None,
+        close_after: 0.0,
         space_level: None,
         atom_level: 0,
     }
@@ -1141,6 +1146,7 @@ fn atom_word(atom: InlineAtom, shift: f32) -> Word {
         hyphen: None,
         dictionary_break: false,
         last_word_width: None,
+        close_after: 0.0,
         space_level: None,
         atom_level: 0,
     }
@@ -1635,6 +1641,7 @@ fn marked_word(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> 
         hyphen: None,
         dictionary_break: false,
         last_word_width: None,
+        close_after: 0.0,
         space_level: None,
         atom_level: 0,
     }
@@ -1918,7 +1925,7 @@ impl<'a> Placer<'a> {
             return self.add_breakable(word, parts);
         }
         // A word ending at a soft hyphen fits only with the hyphen it may draw.
-        if self.needs_wrap(word.hyphen.as_deref().unwrap_or(&word)) {
+        if self.needs_wrap(word.hyphen.as_deref().unwrap_or(&word), word.close_after) {
             self.wrap_before(&mut word);
         }
         self.place(word);
@@ -1934,7 +1941,7 @@ impl<'a> Placer<'a> {
             }
         }
         word.leading_spaces = self.wrapped_leading_spaces(word);
-        let cloned = self.cloned_open(None);
+        let cloned = self.cloned_open();
         if let Some(last) = self.cur.last_mut() {
             close_clones(last, &cloned);
         }
@@ -1943,14 +1950,10 @@ impl<'a> Placer<'a> {
     }
 
     /// The `box-decoration-break: clone` boxes open after the current line's words
-    /// (and `next`, when given), outermost first (miaskiewicz/turbo-dom#244).
-    fn cloned_open(&mut self, next: Option<&Word>) -> Vec<InlineEdge> {
+    /// outermost first (miaskiewicz/turbo-dom#244).
+    fn cloned_open(&mut self) -> Vec<InlineEdge> {
         self.sync_clones();
-        let mut open = self.clones.clone();
-        if let Some(next) = next {
-            apply_clone_edges(&mut open, next);
-        }
-        open
+        self.clones.clone()
     }
 
     /// Bring [`Placer::clones`] up to the current line: only the words placed since the
@@ -1979,23 +1982,11 @@ impl<'a> Placer<'a> {
         self.clones_len = Some(self.cur.len());
     }
 
-    /// The end edges a line must keep room for after `word`: the cloned boxes still
-    /// open there repeat their end edge on this line.
-    fn clone_reserve(&mut self, word: &Word) -> f32 {
-        if !self.any_clone && !word.edges.iter().any(|(_, e)| e.clone_advance.is_some()) {
-            return 0.0;
-        }
-        self.cloned_open(Some(word))
-            .iter()
-            .filter_map(|edge| edge.clone_advance)
-            .sum()
-    }
-
     /// A word with `overflow-wrap` opportunities: placed whole when it fits a line
     /// (after wrapping, if need be), else broken at them (miaskiewicz/turbo-dom#212).
     fn add_breakable(&mut self, mut word: Word, mut parts: Vec<Word>) {
         // A word ending at a hyphenating break fits only with the hyphen it may draw.
-        if self.needs_wrap(word.hyphen.as_deref().unwrap_or(&word)) {
+        if self.needs_wrap(word.hyphen.as_deref().unwrap_or(&word), word.close_after) {
             self.wrap_before(&mut word);
         }
         let width = word
@@ -2015,6 +2006,7 @@ impl<'a> Placer<'a> {
         last.space_after = word.space_after;
         last.space_level = word.space_level;
         last.break_after = word.break_after;
+        last.close_after = word.close_after;
         for part in parts {
             self.add(part);
         }
@@ -2035,7 +2027,7 @@ impl<'a> Placer<'a> {
         self.cur.push(word);
         if forced {
             // A forced break ends a cloned box's fragment like a soft wrap does.
-            let cloned = self.cloned_open(None);
+            let cloned = self.cloned_open();
             if let Some(last) = self.cur.last_mut() {
                 close_clones(last, &cloned);
             }
@@ -2076,12 +2068,15 @@ impl<'a> Placer<'a> {
         last.line.width = x - last.line.inline_origin;
         true
     }
-    fn needs_wrap(&mut self, word: &Word) -> bool {
-        let reserve = self.clone_reserve(word);
+    /// Whether `word`, with the end edges `close_after` glued to it, breaks to a new
+    /// line. The end edges of cloned boxes still open after it repeat on this line but
+    /// take no room in the break (Chrome 156: paint fixtures `inline-clone-reserve*`,
+    /// the edge overflows the line).
+    fn needs_wrap(&mut self, word: &Word, close_after: f32) -> bool {
         if !self.html_font_metrics {
-            return !self.cur.is_empty() && self.x + word.width + reserve > self.lw;
+            return !self.cur.is_empty() && self.x + word.width + close_after > self.lw;
         }
-        let width = reserve
+        let width = close_after
             + self
                 .advances
                 .as_ref()
@@ -2125,6 +2120,18 @@ fn closing_only(word: &Word) -> bool {
         && word.spaces.is_empty()
         && word.edges.iter().all(|(_, edge)| !edge.start)
 }
+/// Glue to each word the end edges of the closing-only words right after it (no
+/// space or forced break between): [`Word::close_after`].
+fn mark_closing_edges(words: &mut [Word]) {
+    for at in (1..words.len()).rev() {
+        let (before, after) = words.split_at_mut(at);
+        let (word, next) = (&mut before[at - 1], &after[0]);
+        if closing_only(next) && word.spaces.is_empty() && !word.break_after {
+            word.close_after = next.width + next.close_after;
+        }
+    }
+}
+
 /// Mark the paragraph's last source word when it has dictionary hyphenation
 /// points: its first part carries the whole word's width
 /// ([`Word::last_word_width`]).
@@ -2153,6 +2160,7 @@ fn wrap_and_place(
     let mut placer = Placer::new(align, region, strut, policy);
     placer.bidi = bidi;
     mark_last_word(&mut words);
+    mark_closing_edges(&mut words);
     for word in words {
         placer.add(word);
     }
@@ -3382,6 +3390,7 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
     placer.first_indent = options.first_indent;
     placer.clearance = Some(options.clearance);
     mark_last_word(&mut words);
+    mark_closing_edges(&mut words);
     for word in words {
         placer.add(word);
     }
@@ -3420,6 +3429,7 @@ pub(crate) fn layout_paragraph_in_chrome_lines(
     placer.quirk_roots = lines.quirk_roots;
     placer.bidi = bidi;
     mark_last_word(&mut words);
+    mark_closing_edges(&mut words);
     for word in words {
         placer.add(word);
     }

@@ -153,9 +153,10 @@ fn nested_alternating_writing_modes_grow_polynomially() {
 }
 
 /// How many words the `box-decoration-break: clone` bookkeeping scans laying out one
-/// `words`-word line (the box 1e6px wide), inside a cloned `<span>` or not.
+/// `words`-word line (the box 1e6px wide) ended by a forced break, inside a cloned
+/// `<span>` or not. The bookkeeping runs where a line ends (a wrap or a `<br>`).
 fn clone_scans(words: usize, cloned: bool) -> u64 {
-    let text = "ab ".repeat(words);
+    let text = format!("{}<br>", "ab ".repeat(words));
     let body = if cloned {
         format!("<span style='box-decoration-break:clone;padding:0 3px'>{text}</span>")
     } else {
