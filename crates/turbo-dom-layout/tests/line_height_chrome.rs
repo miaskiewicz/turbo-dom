@@ -39,7 +39,7 @@ fn line_height_below_the_content_area_is_honoured_like_chrome_156() {
         let id = case["id"].as_str().unwrap();
         let style = case["style"].as_str().unwrap();
         let html = format!(
-            "<div style=\"width:60px;{style}\"><span>aa</span> <span>bb</span> <span>cc</span></div>"
+            "<!doctype html><div style=\"width:60px;{style}\"><span>aa</span> <span>bb</span> <span>cc</span></div>"
         );
         let mut diags = Diagnostics::default();
         let galley = layout_html(&html, "", 400.0, &fixture_fonts(), &mut diags).expect("layout");

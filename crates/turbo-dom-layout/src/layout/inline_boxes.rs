@@ -405,10 +405,8 @@ pub(super) fn positions(items: &[InlineItem], font: f32, width: f32, ctx: &Ctx) 
         },
         stack: Vec::new(),
     };
-    if ctx.html_font_metrics {
-        for item in items {
-            source.item(item, font, width, ctx);
-        }
+    for item in items {
+        source.item(item, font, width, ctx);
     }
     source.placement
 }
@@ -441,11 +439,7 @@ pub(super) fn native_atoms(
     pieces: &mut [super::inline::Piece],
     atoms: &[Fragment],
     baselines: &HashMap<NodeId, f32>,
-    native: bool,
 ) {
-    if !native {
-        return;
-    }
     for piece in pieces {
         if let super::inline::Piece::Atom(atom) = piece {
             let shift = baselines

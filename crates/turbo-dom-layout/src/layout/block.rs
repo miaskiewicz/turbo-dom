@@ -865,12 +865,7 @@ fn layout_nonempty_lines(
     let (mut pieces, atom_frags, directives) =
         build_inline_pieces(items, bs, (cx, cy, central), cw, ctx);
     let quirk_roots = quirks_line_height(lb).then(|| quirk_line_roots(items, &mut pieces));
-    super::inline_boxes::native_atoms(
-        &mut pieces,
-        &atom_frags,
-        &placement.baselines,
-        ctx.html_font_metrics,
-    );
+    super::inline_boxes::native_atoms(&mut pieces, &atom_frags, &placement.baselines);
     // Per-line float wrapping: each line's `(indent, width)` is the free inline
     // region the BFC's floats leave at that line's own y (absolute `cy + top`), so
     // text flows beside a `float:right` infobox and widens once below its bottom.
@@ -1191,28 +1186,26 @@ fn paragraph(
                 quirk_roots: inputs.quirk_roots,
             },
         )
-    } else if ctx.text_capture.is_some() {
-        inline::layout_paragraph_in_with_sources(
+    } else {
+        let lines = inline::NativeLineOptions {
+            scale: None,
+            first_indent: text_indent,
+            clearance: &clearance,
+            original_units: None,
+            baselines: inputs.baselines,
+            strut_metrics: inputs.strut_metrics,
+            central: inputs.central,
+            quirk_roots: inputs.quirk_roots,
+        };
+        inline::layout_paragraph_in_chrome_lines(
             pieces,
             ctx.fonts,
-            inputs.align,
+            (inputs.align, ctx.text_capture.is_some()),
             diags,
             &region,
             inputs.strut,
+            &lines,
         )
-    } else {
-        inline::ParagraphSourceLayout {
-            layout: inline::layout_paragraph_in(
-                pieces,
-                ctx.fonts,
-                inputs.align,
-                diags,
-                &region,
-                inputs.strut,
-            ),
-            clusters: Vec::new(),
-            font_boxes: Vec::new(),
-        }
     }
 }
 
@@ -1458,11 +1451,17 @@ fn append_source_break(
     ctx: &Ctx,
     pieces: &mut Vec<inline::Piece>,
 ) {
-    if let Some(mut edge) = super::inline_boxes::edge(node_id, style, true, font, width, ctx) {
-        edge.advance = 0.0;
-        edge.contributes_metrics = false;
-        pieces.push(inline::Piece::SourceBreak(edge));
-    }
+    // With no face to measure (an empty font registry) the `<br>` is a bare break.
+    pieces.push(
+        match super::inline_boxes::edge(node_id, style, true, font, width, ctx) {
+            Some(mut edge) => {
+                edge.advance = 0.0;
+                edge.contributes_metrics = false;
+                inline::Piece::SourceBreak(edge)
+            }
+            None => inline::Piece::Break,
+        },
+    );
 }
 /// The paragraph's bidi base direction (`None`: `unicode-bidi: plaintext`, each
 /// paragraph's first strong character) and its `text-align`, which a plaintext

@@ -155,7 +155,10 @@ package or publish workflow.
   depends on it and re-exports it at its old paths. Since S2 the cascade styles a turbo-dom
   `Tree` directly (`style::TreeView` + `Roots::{Detached, Document}`; since P5b the HTML
   drive styles the whole document like Chrome — head `<style>`s, real `<html>`/`<body>` boxes
-  with `body { margin: 8px }`, root-relative `rem`, canvas background; turbo-html2pdf#29); html2pdf's `t:` directives are opaque `MarkerKind` markers
+  with `body { margin: 8px }`, root-relative `rem`, canvas background; turbo-html2pdf#29;
+  since turbo-dom#245 its PDF metric path (`layout_html`/`layout_boxes`) also takes Chrome's
+  line box model — baseline-aligned lines with the block strut, inline elements as inline
+  boxes, the quirks-mode line height quirk — unless `LayoutOptions::flatten_inline_elements`); html2pdf's `t:` directives are opaque `MarkerKind` markers
   from a caller classifier, and its PDF switches are runtime `LayoutOptions`/`StyleOptions`
   (no PDF features here). Since S3b selectors parse and match with turbo-dom's engine
   (`style::RuleSelectors` = `parse_for_cascade`; the scope `style::Navigator` implements
