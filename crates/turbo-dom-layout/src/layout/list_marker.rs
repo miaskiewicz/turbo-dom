@@ -477,7 +477,7 @@ pub(crate) fn inside_symbol_fragment(
 }
 
 /// The baseline of the first in-flow text line in `frags` (document order).
-fn first_baseline(frags: &[Fragment]) -> Option<f32> {
+pub(crate) fn first_baseline(frags: &[Fragment]) -> Option<f32> {
     frags.iter().find_map(|f| match &f.content {
         FragmentContent::TextLine { glyphs, .. } => glyphs.first().map(|g| f.y + g.y),
         _ if f.is_positioned => None,

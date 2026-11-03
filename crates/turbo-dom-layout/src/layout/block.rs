@@ -1345,7 +1345,7 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f3
         return None;
     }
     if !(inline_block(b) || b.shows_alt_text()) {
-        return contained_flow_baseline(b, f);
+        return flow_atom_baseline(b, f);
     }
     let scrolls = ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {
         matches!(
@@ -1363,14 +1363,20 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f3
     last.map(|(_, baseline)| baseline - f.y)
 }
 
-/// A block-axis size-contained flex / grid atom keeps its content's baseline although
-/// its auto height ignores the content (Chrome 156, miaskiewicz/turbo-dom#265): its first
-/// item's border-box bottom (an item without line boxes synthesises its baseline there).
-fn contained_flow_baseline(b: &LayoutBox, f: &Fragment) -> Option<f32> {
-    if !b.containment().height || !matches!(b.kind, BoxKind::Flex(_) | BoxKind::Grid(_)) {
+/// A flex / grid atom sits on its first item's baseline, also when block-axis size
+/// containment makes its auto height ignore the content (Chrome 156,
+/// miaskiewicz/turbo-dom#265, live fixture `contain-flow-baselines`): the item's first
+/// text line, else its border-box bottom (an item without line boxes synthesises its
+/// baseline there).
+fn flow_atom_baseline(b: &LayoutBox, f: &Fragment) -> Option<f32> {
+    if !matches!(b.kind, BoxKind::Flex(_) | BoxKind::Grid(_)) {
         return None;
     }
-    f.children.first().map(|item| item.y + item.height - f.y)
+    f.children.first().map(|item| {
+        super::list_marker::first_baseline(std::slice::from_ref(item))
+            .unwrap_or(item.y + item.height)
+            - f.y
+    })
 }
 
 /// A form control's baseline below its border-box top, where Chrome 156's differs from an
