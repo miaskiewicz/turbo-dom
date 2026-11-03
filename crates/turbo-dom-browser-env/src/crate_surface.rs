@@ -110,6 +110,10 @@ mod startup_snapshot_tests;
 mod context_rehydrate_tests;
 
 #[cfg(test)]
+#[path = "snapshot_rehydrate_tests.rs"]
+mod snapshot_rehydrate_tests;
+
+#[cfg(test)]
 #[path = "engine_namespace_tests.rs"]
 mod engine_namespace_tests;
 

@@ -68,6 +68,11 @@ pub(crate) fn build() -> Option<Blob> {
     Some(Blob { data, references })
 }
 
+/// Rehydrate the current context, deserialized from a [`build`] blob (turbo-dom#249).
+pub(crate) fn rehydrate(_scope: &mut v8::PinScope) -> bool {
+    false
+}
+
 /// Clear the node wrappers' internal fields (handle id, owner tag) before serialization.
 /// They are Smis, which V8's snapshot serializer cannot tell from embedder pointers; and
 /// the ids name nodes of a tree that does not outlive the build.
