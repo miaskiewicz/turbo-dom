@@ -679,3 +679,12 @@ fn fractional_tiles_blend_their_edges_like_chrome_156() {
     }));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// miaskiewicz/turbo-dom#272: a `transform` on an `<img>` itself scales the painted image
+/// and its `getBoundingClientRect()` (through `layout_boxes`) like Chrome. SVG:
+/// [`svg_screenshots_paint_like_chrome_156`].
+#[test]
+fn a_transformed_img_paints_and_measures_like_chrome_156() {
+    let failures = differences(|id| id == "img-transformed");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

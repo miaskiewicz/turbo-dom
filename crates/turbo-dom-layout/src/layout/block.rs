@@ -2675,17 +2675,50 @@ fn content_kind(lb: &LayoutBox, bs: &BoxStyle, bbw: f32, bbh: f32) -> FragmentCo
             // Resolve a `%` translate against the box size and the `transform-origin`
             // (its `%`/keyword parts) against the box's own width/height. The raster
             // composes this about the box's absolute position.
-            transform: bs.transform.map(|t| {
-                let e = t.tx.resolve(bbw).unwrap_or(0.0);
-                let f = t.ty.resolve(bbh).unwrap_or(0.0);
-                Transform2D {
-                    matrix: [t.linear[0], t.linear[1], t.linear[2], t.linear[3], e, f],
-                    origin_x: bs.transform_origin.0.resolve(bbw).unwrap_or(bbw / 2.0),
-                    origin_y: bs.transform_origin.1.resolve(bbh).unwrap_or(bbh / 2.0),
-                }
-            }),
+            transform: used_transform(bs, bbw, bbh),
         },
     }
+}
+
+/// `bs`'s `transform` on a `w x h` box: a `%` translate against the box size and the
+/// `transform-origin` (its `%`/keyword parts) against the box's own width/height. The
+/// raster composes it about the box's absolute position.
+fn used_transform(bs: &BoxStyle, w: f32, h: f32) -> Option<Transform2D> {
+    bs.transform.map(|t| {
+        let e = t.tx.resolve(w).unwrap_or(0.0);
+        let f = t.ty.resolve(h).unwrap_or(0.0);
+        Transform2D {
+            matrix: [t.linear[0], t.linear[1], t.linear[2], t.linear[3], e, f],
+            origin_x: bs.transform_origin.0.resolve(w).unwrap_or(w / 2.0),
+            origin_y: bs.transform_origin.1.resolve(h).unwrap_or(h / 2.0),
+        }
+    })
+}
+
+/// A transformed image (miaskiewicz/turbo-dom#272): an `Image` fragment carries no
+/// transform, so the image goes inside a box of its own size that carries it (and the
+/// image's stacking metadata); painters and `getBoundingClientRect` compose the
+/// transform from that box. Untransformed images are returned as they are.
+fn transformed_image(image: Fragment, bs: &BoxStyle) -> Fragment {
+    let Some(transform) = used_transform(bs, image.width, image.height) else {
+        return image;
+    };
+    let mut outer = Fragment {
+        content: FragmentContent::Box {
+            background: None,
+            border: super::value::BorderEdges::default(),
+            border_radius: BorderRadii::ZERO,
+            shadow: None,
+            gradient: None,
+            transform: Some(transform),
+        },
+        children: Vec::new(),
+        ..image.clone()
+    };
+    let mut image = image;
+    (image.z_index, image.is_positioned) = (None, false);
+    outer.children.push(image);
+    outer
 }
 
 /// The colour a `mask-image` box paints through the mask: its `background-color`,
@@ -3281,8 +3314,9 @@ fn replaced_image_box(
     if !loaded {
         // A broken image's box paints its own background and border, no image.
         fragment.content = content_kind(lb, bs, fragment.width, fragment.height);
+        return Some(fragment);
     }
-    Some(fragment)
+    Some(transformed_image(fragment, bs))
 }
 
 /// An image's intrinsic size in the logical space being laid out: a vertical space's
