@@ -1,7 +1,7 @@
 {
  "generator": "scripts/live-geometry-chrome-control.mjs",
  "chrome": "156.0.8078.47",
- "playwright_core": "1.60.0",
+ "playwright_core": "1.61.0",
  "viewport": [
   1280,
   800
@@ -10171,6 +10171,3180 @@
      "width": 300,
      "height": 150,
      "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-input",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 153,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-input-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" size=\"5\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 48,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-input-size-1",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" size=\"1\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 20,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-input-value",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" value=\"hello\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 153,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-password",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"password\" size=\"10\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 83,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-search",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"search\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 153,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-number",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"number\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 153,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-checkbox",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"checkbox\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 13.859375,
+     "y": 3,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-radio",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"radio\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 14.859375,
+     "y": 3,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-range",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"range\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 23,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 11.859375,
+     "y": 2,
+     "width": 129,
+     "height": 16,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-color",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"color\">b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "w"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 27,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 50,
+     "height": 27,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-button",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<button data-cid=\"m\">ok</button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 29.34375,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-button-empty",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<button data-cid=\"m\"></button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 12,
+     "width": 16,
+     "height": 6,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-submit",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"submit\" value=\"ok\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 29.34375,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-submit-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"submit\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 54.53125,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-reset-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"reset\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 45.625,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-select",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "w"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 1,
+     "width": 37,
+     "height": 19,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-select-widest",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "w"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 1,
+     "width": 75,
+     "height": 19,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-textarea",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<textarea data-cid=\"m\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 43,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 162,
+     "height": 38,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-serif-textarea-rows-cols",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<textarea data-cid=\"m\" rows=\"4\" cols=\"10\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 75,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 92,
+     "height": 70,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-input",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 176,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-input-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" size=\"5\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 53,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-input-size-1",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" size=\"1\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 20,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-input-value",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" value=\"hello\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 176,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-password",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"password\" size=\"10\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 94,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-search",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"search\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 176,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-number",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"number\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 176,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-checkbox",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"checkbox\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 13.859375,
+     "y": 3,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-radio",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"radio\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 14.859375,
+     "y": 3,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-range",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"range\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 23,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 11.859375,
+     "y": 2,
+     "width": 129,
+     "height": 16,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-color",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"color\">b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "w"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 27,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 50,
+     "height": 27,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-button",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<button data-cid=\"m\">ok</button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 32.40625,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-button-empty",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<button data-cid=\"m\"></button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 12,
+     "width": 16,
+     "height": 6,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-submit",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"submit\" value=\"ok\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 32.40625,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-submit-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"submit\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 65.21875,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-reset-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"reset\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 57.015625,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-select",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "w"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21.5,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 1.5,
+     "width": 43,
+     "height": 20,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-select-widest",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "w"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21.5,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 1.5,
+     "width": 101,
+     "height": 20,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-textarea",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<textarea data-cid=\"m\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 43,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 187,
+     "height": 38,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-mono-textarea-rows-cols",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<textarea data-cid=\"m\" rows=\"4\" cols=\"10\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 75,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 105,
+     "height": 70,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-input",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 160,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-input-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" size=\"5\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 51,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-input-size-1",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" size=\"1\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 21,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-input-value",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" value=\"hello\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 160,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-password",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"password\" size=\"10\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 87,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-search",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"search\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 160,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-number",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"number\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 160,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-checkbox",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"checkbox\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 13.859375,
+     "y": 3,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-radio",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"radio\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 14.859375,
+     "y": 3,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-range",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"range\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 23,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 11.859375,
+     "y": 2,
+     "width": 129,
+     "height": 16,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-color",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"color\">b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "w"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 27,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 50,
+     "height": 27,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-button",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<button data-cid=\"m\">ok</button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 31.3125,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-button-empty",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<button data-cid=\"m\"></button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 12,
+     "width": 16,
+     "height": 6,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-submit",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"submit\" value=\"ok\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 31.3125,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-submit-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"submit\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 59.875,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-reset-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"reset\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 22,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 51.328125,
+     "height": 22,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-select",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "w"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20.5,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0.5,
+     "width": 42,
+     "height": 20,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-select-widest",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "w"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20.5,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0.5,
+     "width": 85,
+     "height": 20,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-textarea",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<textarea data-cid=\"m\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 43,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 168,
+     "height": 38,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-sans-textarea-rows-cols",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<textarea data-cid=\"m\" rows=\"4\" cols=\"10\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 75,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 95,
+     "height": 70,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-input",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 172.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 153,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-input-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" size=\"5\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 67.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 48,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-input-size-1",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" size=\"1\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 39.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 20,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-input-value",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" value=\"hello\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 172.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 153,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-password",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"password\" size=\"10\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 102.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 83,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-search",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"search\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 172.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 153,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-number",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"number\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 172.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 153,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-checkbox",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"checkbox\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20.5,
+     "height": 38.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 4,
+     "y": 12.859375,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-radio",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"radio\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 21.5,
+     "height": 35.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 5,
+     "y": 12.859375,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-range",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"range\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 152.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 2,
+     "y": 11.859375,
+     "width": 16,
+     "height": 129,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-color",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"color\">b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "h"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 27,
+     "height": 69.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 27,
+     "height": 50,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-button",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<button data-cid=\"m\">ok</button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 49.0625,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 29.34375,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-button-empty",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<button data-cid=\"m\"></button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 35.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 7,
+     "y": 9.859375,
+     "width": 6,
+     "height": 16,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-submit",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"submit\" value=\"ok\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 49.0625,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 29.34375,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-submit-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"submit\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 74.25,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 54.53125,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-reset-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"reset\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 65.34375,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 45.625,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-select",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "h"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 56.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 1,
+     "y": 9.859375,
+     "width": 19,
+     "height": 37,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-select-widest",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "h"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 94.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 1,
+     "y": 9.859375,
+     "width": 19,
+     "height": 75,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-textarea",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<textarea data-cid=\"m\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 38,
+     "height": 181.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 38,
+     "height": 162,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-serif-textarea-rows-cols",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<textarea data-cid=\"m\" rows=\"4\" cols=\"10\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 70,
+     "height": 111.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 70,
+     "height": 92,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-input",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 195.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 176,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-input-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" size=\"5\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 72.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 53,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-input-size-1",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" size=\"1\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 39.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 20,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-input-value",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" value=\"hello\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 195.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 176,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-password",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"password\" size=\"10\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 113.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 94,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-search",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"search\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 195.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 176,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-number",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"number\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 195.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 176,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-checkbox",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"checkbox\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20.5,
+     "height": 38.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 4,
+     "y": 12.859375,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-radio",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"radio\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 21.5,
+     "height": 35.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 5,
+     "y": 12.859375,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-range",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"range\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 152.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 2,
+     "y": 11.859375,
+     "width": 16,
+     "height": 129,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-color",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"color\">b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "h"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 27,
+     "height": 69.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 27,
+     "height": 50,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-button",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<button data-cid=\"m\">ok</button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 52.125,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 32.40625,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-button-empty",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<button data-cid=\"m\"></button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 35.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 7,
+     "y": 9.859375,
+     "width": 6,
+     "height": 16,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-submit",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"submit\" value=\"ok\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 52.125,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 32.40625,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-submit-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"submit\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 84.9375,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 65.21875,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-reset-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"reset\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 76.734375,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 57.015625,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-select",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "h"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 21,
+     "height": 62.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 20,
+     "height": 43,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-select-widest",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "h"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 21,
+     "height": 120.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 20,
+     "height": 101,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-textarea",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<textarea data-cid=\"m\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 38,
+     "height": 206.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 38,
+     "height": 187,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-mono-textarea-rows-cols",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<textarea data-cid=\"m\" rows=\"4\" cols=\"10\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 70,
+     "height": 124.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 70,
+     "height": 105,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-input",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 179.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 160,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-input-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" size=\"5\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 70.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 51,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-input-size-1",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" size=\"1\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 40.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 21,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-input-value",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" value=\"hello\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 179.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 160,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-password",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"password\" size=\"10\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 106.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 87,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-search",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"search\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 179.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 160,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-number",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"number\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 179.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 160,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-checkbox",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"checkbox\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20.5,
+     "height": 38.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 4,
+     "y": 12.859375,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-radio",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"radio\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 21.5,
+     "height": 35.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 5,
+     "y": 12.859375,
+     "width": 13,
+     "height": 13,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-range",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"range\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 152.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 2,
+     "y": 11.859375,
+     "width": 16,
+     "height": 129,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-color",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"color\">b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "h"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 27,
+     "height": 69.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 27,
+     "height": 50,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-button",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<button data-cid=\"m\">ok</button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 51.03125,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 31.3125,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-button-empty",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<button data-cid=\"m\"></button>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 35.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 7,
+     "y": 9.859375,
+     "width": 6,
+     "height": 16,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-submit",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"submit\" value=\"ok\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 51.03125,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 31.3125,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-submit-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"submit\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 79.59375,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 59.875,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-reset-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"reset\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 22,
+     "height": 71.046875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 22,
+     "height": 51.328125,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-select",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "h"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 21,
+     "height": 61.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 20,
+     "height": 42,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-select-widest",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
+   "fonts": true,
+   "measure": {
+    "m": "wh",
+    "p": "h"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 21,
+     "height": 104.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 20,
+     "height": 85,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-textarea",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<textarea data-cid=\"m\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 38,
+     "height": 187.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 38,
+     "height": 168,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "form-rl-sans-textarea-rows-cols",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<textarea data-cid=\"m\" rows=\"4\" cols=\"10\"></textarea>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 70,
+     "height": 114.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 70,
+     "height": 95,
+     "display": "inline-block",
      "position": "static"
     }
    ]

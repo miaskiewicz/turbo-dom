@@ -443,6 +443,20 @@ const CASES = [
       { id: `media-${tag}-frame-rl`, html: DOC(`<div data-cid="p" style="${at(20, 20)};font-size:0;writing-mode:vertical-rl">${media}</div>`), probes },
     ];
   }),
+  // miaskiewicz/turbo-dom#239 (`form-*`): form controls paint Chrome's field / button
+  // backgrounds inside their frames at Chrome's sizes (fixture font).
+  ...[
+    ["input", `<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px">`],
+    ["textarea", `<textarea data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px"></textarea>`],
+    ["button", `<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px"></button>`],
+    ["select", `<select data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px"></select>`],
+  ].map(([tag, html]) => ({
+    id: `form-${tag}`,
+    html: DOC(html),
+    // Chrome paints the native frames (rounded, thinner than their 2px border box):
+    // only the field inside and the page around them are probed.
+    probes: [[19, 30], [24, 30], [40, 30], [50, 36], [70, 30], [40, 50]],
+  })),
   {
     id: "media-video-poster",
     html: DOC(`<video data-cid="m" poster="${SPRITE}" style="${at(20, 20)};width:100px;height:40px"></video>`),

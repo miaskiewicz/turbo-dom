@@ -5,7 +5,8 @@
 //! `<embed>` are inline replaced boxes in horizontal and vertical writing modes; an
 //! element Chrome renders no box for (`<audio>` without controls, `<embed>` without a
 //! source, a canvas's fallback content) reads an all-zero rect there and has no box here.
-//! The live path asserts the same cases exactly (`live::chrome_tests`).
+//! The live path asserts the same cases exactly (`live::chrome_tests`). The `form-*`
+//! cases (miaskiewicz/turbo-dom#239) check the form controls the same way.
 use serde_json::Value;
 use turbo_dom_layout::{layout_boxes, Diagnostics};
 
@@ -22,7 +23,7 @@ fn media_elements_are_replaced_boxes_on_the_html_path_like_chrome_156() {
     let mut compared = 0;
     for case in fixture["cases"].as_array().unwrap() {
         let id = case["id"].as_str().unwrap();
-        if !id.starts_with("media-") {
+        if !(id.starts_with("media-") || id.starts_with("form-")) {
             continue;
         }
         let html = case["html"].as_str().unwrap();
@@ -43,8 +44,20 @@ fn media_elements_are_replaced_boxes_on_the_html_path_like_chrome_156() {
             // The media box's size is exact; its position and its line's extent move
             // with the text beside it, which this path measures with its own advances
             // and line metrics (within 0.3px of Chrome's here; the live path is exact).
-            let tolerance = |i: usize| if cid == "m" && i >= 2 { 0.01 } else { 0.3 };
-            let off = (0..4).any(|i| (ours[i] - chrome[i]).abs() > tolerance(i));
+            // A button is as wide as its label, and this path rounds a shrink-to-fit
+            // width up to a whole pixel (the line holding it too): within 1.5px there.
+            let label = ["button", "submit", "reset"].iter().any(|k| id.contains(k));
+            let tolerance = |i: usize| match (label, cid == "m" && i >= 2) {
+                (true, _) => 1.5,
+                (false, true) => 0.01,
+                (false, false) => 0.3,
+            };
+            // A case's `measure` names the fields compared for a cid ("xywh" when absent).
+            let fields = case["measure"][cid].as_str().unwrap_or("xywh");
+            let off = (0..4).any(|i| {
+                fields.contains(["x", "y", "w", "h"][i])
+                    && (ours[i] - chrome[i]).abs() > tolerance(i)
+            });
             if off {
                 failures.push(format!("{id}: {cid} = {ours:?}, Chrome {chrome:?}"));
             }

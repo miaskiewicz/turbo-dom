@@ -229,8 +229,10 @@ fn datauri_mask_image_icon_paints_without_a_fetched_asset() {
     let assets: ImageAssets = HashMap::new();
     let png = screenshot_png_with_assets(page, &css, vp, &assets, false).expect("png");
     let pm = tiny_skia::Pixmap::decode_png(&png).expect("decode");
-    // Inside the caret (top-center, y<12): the blue tint painted through the mask.
-    let on = pm.pixel(10, 5).expect("pixel");
+    // Inside the caret (top-center, y<12): the blue tint painted through the mask. The
+    // button centres its inline content (Chrome's `text-align: center` for buttons,
+    // miaskiewicz/turbo-dom#239), so the 20px icon spans x 20..40 of the 60px button.
+    let on = pm.pixel(30, 5).expect("pixel");
     assert!(
         on.blue() > 140 && on.red() < 130 && on.green() < 140,
         "data-URI caret must paint the tint, got ({},{},{})",
@@ -239,7 +241,7 @@ fn datauri_mask_image_icon_paints_without_a_fetched_asset() {
         on.blue()
     );
     // Below the caret apex (y=18): blank — a stencilled mask, not a filled box.
-    let off = pm.pixel(3, 18).expect("pixel");
+    let off = pm.pixel(23, 18).expect("pixel");
     assert!(
         off.blue() > 200 && off.red() > 200 && off.green() > 200,
         "outside the caret shape must stay blank (mask, not a box), got ({},{},{})",

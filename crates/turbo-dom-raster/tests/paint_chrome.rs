@@ -184,6 +184,21 @@ fn media_boxes_paint_their_frame_and_poster_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// miaskiewicz/turbo-dom#239: form controls paint their field / button background at
+/// Chrome's sizes.
+#[test]
+fn form_controls_paint_their_fields_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("form-"));
+    assert!(
+        failures.is_empty(),
+        "{}",
+        failures.join(
+            "
+"
+        )
+    );
+}
+
 /// The painter's box decoration paths (P5-cov): a rounded border, a gradient in a rounded
 /// box, unblurred / collapsed / spread shadows, transparent text.
 #[test]

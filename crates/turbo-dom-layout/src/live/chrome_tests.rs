@@ -279,7 +279,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 15] = [
+    let groups: [fn(&str) -> bool; 16] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -295,6 +295,7 @@ fn held_out(id: &str) -> bool {
         rtl_block_case,
         vertical_case,
         media_case,
+        |id| id.starts_with("form-"),
     ];
     groups.iter().any(|group| group(id))
 }
@@ -569,4 +570,22 @@ fn media_case(id: &str) -> bool {
 #[test]
 fn media_elements_are_replaced_boxes_like_chrome_156() {
     assert_matches_chrome(compare_cases(media_case));
+}
+
+/// miaskiewicz/turbo-dom#239: form controls with Chrome 156's UA styling and intrinsic
+/// sizes, in horizontal mode.
+fn form_case(id: &str) -> bool {
+    id.starts_with("form-") && !id.starts_with("form-rl-")
+}
+
+#[test]
+fn form_controls_are_sized_like_chrome_156() {
+    assert_matches_chrome(compare_cases(form_case));
+}
+
+/// miaskiewicz/turbo-dom#239: form controls in vertical-rl lay out vertically like
+/// Chrome 156 (their inline axis the physical height, flow-relative padding turned).
+#[test]
+fn vertical_form_controls_lay_out_like_chrome_156() {
+    assert_matches_chrome(compare_cases(|id| id.starts_with("form-rl-")));
 }

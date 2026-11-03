@@ -662,11 +662,10 @@ mod tests {
         assert_eq!(markers(&turned), 1);
     }
 
-    /// What the vertical layer does not lay out fails that element's reads only:
-    /// form controls (upright text, img / svg / iframe and canvas, #252, lay out).
+    /// Every box of a vertical layout lays out: upright text, img / svg / iframe, canvas
+    /// (#252) and form controls (#239) included.
     #[test]
-    fn unsupported_vertical_boxes_fail_per_element() {
-        use crate::layout_snapshot::SnapshotError;
+    fn vertical_boxes_lay_out_without_per_element_failures() {
         let (tree, snapshot, _) = crate::live::testing::layout(
             "<body><div id=v style='writing-mode:vertical-rl'>ok <span id=s>span</span>\
              <div id=f style='display:flex'>f</div><img id=i><b id=ib style='display:inline-block'>b</b>\
@@ -681,7 +680,7 @@ mod tests {
         );
         let id = |selector| crate::live::testing::id(&tree, selector);
         for supported in [
-            "#v", "#s", "#e", "#h", "#f", "#i", "#ib", "#sv", "#ss", "#n", "#cv",
+            "#v", "#s", "#e", "#h", "#f", "#i", "#ib", "#sv", "#ss", "#n", "#cv", "#in",
         ] {
             assert_eq!(
                 snapshot.unsupported_inline_geometry(id(supported)),
@@ -689,10 +688,6 @@ mod tests {
                 "{supported}"
             );
         }
-        assert_eq!(
-            snapshot.unsupported_inline_geometry(id("#in")),
-            Some(&SnapshotError::UnsupportedVerticalWriting)
-        );
     }
 
     /// Upright clusters advance once (a combining mark adds nothing), a horizontal flex
