@@ -1478,7 +1478,7 @@ fn form_content(el: &StyledElement, control: super::form_controls::Control) -> V
             }
         }
         Control::TextArea => super::form_controls::text_of(&el.children),
-        Control::Select | Control::Toggle | Control::Button => {
+        Control::Select | Control::Toggle | Control::Button | Control::Color => {
             super::form_controls::select_options(el)
                 .into_iter()
                 .next()
