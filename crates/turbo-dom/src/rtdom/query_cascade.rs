@@ -1397,8 +1397,8 @@ mod tests {
         );
         // every other rejection keeps its fixed reason
         assert_eq!(
-            parse_for_cascade(":is(::before)").unwrap_err().to_string(),
-            "invalid selector: pseudo-element inside a pseudo-class argument"
+            parse_for_cascade("a::bogus").unwrap_err().to_string(),
+            "invalid selector: unknown pseudo-element"
         );
         let list = parse_for_cascade(" a , b.c ").unwrap();
         let texts: Vec<&str> = list.selectors().iter().map(CascadeSelector::text).collect();
