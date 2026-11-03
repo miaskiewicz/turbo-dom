@@ -82,6 +82,27 @@ const QUIRKS_CASES = [
 const PNG8X6 =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=";
 // miaskiewicz/turbo-dom#234 vertical writing-mode cases: [id suffix, body, extra fields].
+const BROKEN_PNG = "data:image/png;base64,AAAA";
+const IMG_CASES = [
+  ["inline-default", `src="${PNG8X6}"`],
+  ["no-src", ``],
+  ["no-src-size", `width="40" height="30"`],
+  ["no-src-width", `width="40"`],
+  ["empty-src", `src=""`],
+  ["empty-src-size", `src="" width="40" height="30"`],
+  ["broken", `src="${BROKEN_PNG}"`],
+  ["broken-size", `src="${BROKEN_PNG}" width="40" height="30"`],
+  ["no-src-alt", `alt="hi there"`],
+  ["no-src-alt-size", `alt="hi there" width="40" height="30"`],
+  ["no-src-empty-alt-size", `alt="" width="40" height="30"`],
+  ["broken-alt", `src="${BROKEN_PNG}" alt="hi there"`],
+  ["broken-alt-size", `src="${BROKEN_PNG}" alt="hi there" width="40" height="30"`],
+  ["broken-empty-alt", `src="${BROKEN_PNG}" alt=""`],
+  ["broken-css-size", `src="${BROKEN_PNG}" style="width:40px;height:30px"`],
+  ["no-src-alt-big-size", `alt="hi there" width="200" height="50"`],
+  ["broken-alt-big-size", `src="${BROKEN_PNG}" alt="hi there" width="200" height="50"`],
+  ["broken-alt-width", `src="${BROKEN_PNG}" alt="hi there" width="200"`],
+];
 const VERTICAL_CSS = 'body{margin:0;font:16px/20px "Fira Code"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}';
 const VERTICAL_CASES = [
   ["issue-monospace", `<div data-cid="v" style="writing-mode:vertical-rl;height:100px;font:16px/20px monospace">ab</div>`],
@@ -150,9 +171,6 @@ const VERTICAL_CASES = [
   [
     "lr-inline-block-text",
     `<div data-cid="v" class="lr" style="height:100px">a<span data-cid="i" style="display:inline-block;padding:2px">bc</span></div>`,
-    // The inline size is the text's max-content, 1/64 px short in horizontal flow too
-    // (shrink-to-fit sums shaper advances, not the native ones; a separate issue).
-    { measure: { i: "xyw" } },
   ],
   [
     "rl-svg",
@@ -486,6 +504,21 @@ const CASES = [
     fonts: true,
     metrics: true,
     ...(extra || {}),
+  })),
+  // miaskiewicz/turbo-dom#241: shrink-to-fit of text uses the native (device-scale)
+  // advances line layout places it with, in horizontal flow too.
+  {
+    id: "shrink-to-fit-native-advances",
+    html: DOC(VERTICAL_CSS, `<div data-cid="v">a<span data-cid="i" style="display:inline-block;padding:2px">bc</span></div><div data-cid="f" style="float:left">abc</div>`),
+    fonts: true,
+  },
+  // miaskiewicz/turbo-dom#242 / #243: <img> is inline by default (html.css has no display
+  // rule for it) and a replaced box whether or not its source loads: no src, an empty
+  // src or an undecodable one, with and without width / height and alt text.
+  ...IMG_CASES.map(([id, img]) => ({
+    id: `img-${id}`,
+    html: DOC(VERTICAL_CSS, `<div data-cid="p">a<img data-cid="i" ${img}>b</div>`),
+    fonts: true,
   })),
 ];
 const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
