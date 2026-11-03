@@ -10025,6 +10025,92 @@
    ]
   },
   {
+   "id": "form-native-range-step-base",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"range\" min=\"5\" max=\"10\" step=\"2\" value=\"10\" style=\"position:absolute;left:20px;top:20px;margin:0;width:60px\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 60,
+     "height": 16
+    }
+   ],
+   "probes": [
+    {
+     "x": 25,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 66,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 66,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      179,
+      255
+     ]
+    },
+    {
+     "x": 76,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 78,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      179,
+      188,
+      188
+     ]
+    }
+   ]
+  },
+  {
    "id": "form-native-color",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"color\" style=\"position:absolute;left:20px;top:20px;margin:0\"></body></html>",
    "assets": [],

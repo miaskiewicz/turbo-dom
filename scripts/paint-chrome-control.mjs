@@ -684,6 +684,9 @@ const CASES = [
     ["range-step", `<input data-cid="m" type="range" min="0" max="10" step="5" value="7" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [30, 8], [30, 1], [30, 15], [38, 1], [45, 8], [58, 8]]],
     ["range-step-any", `<input data-cid="m" type="range" min="0" max="10" step="any" value="4.6" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [24, 1], [28, 8], [28, 1], [28, 15], [34, 1], [45, 8], [58, 8]]],
     ["range-step-max", `<input data-cid="m" type="range" min="0" max="10" step="3" value="8" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [30, 8], [45, 8], [46, 1], [52, 8], [52, 1], [58, 8], [53, 14]]],
+    // A value that rounds to a step above the max goes one step back from a non-zero base:
+    // 5 + 2n within 5..10 is 9, 80% along (mutation audit 0.7.0).
+    ["range-step-base", `<input data-cid="m" type="range" min="5" max="10" step="2" value="10" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [30, 8], [46, 8], [46, 1], [56, 8], [58, 8]]],
     ["color", `<input data-cid="m" type="color" style="${at(20, 20)};margin:0">`, [[0, 0], [25, 0], [25, 1], [2, 13], [4, 13], [25, 13], [10, 10], [40, 18], [25, 4], [25, 23], [25, 26], [49, 13], [48, 13]]],
     ["color-value", `<input data-cid="m" type="color" value="#ff0000" style="${at(20, 20)};margin:0">`, [[25, 13], [10, 10], [40, 18], [4, 13], [25, 4]]],
     ["text-appearance-none", `<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px;appearance:none">`, [[0, 0], [15, 0], [15, 1], [15, 2], [0, 11], [1, 11], [2, 11]]],

@@ -610,6 +610,9 @@ mod tests {
         assert_eq!(step_align(0.0, 10.0, 4.0, Some(3.0), 2.0), 5.0);
         // A base above the min: a snap below the min is the min.
         assert_eq!(step_align(1.0, 10.0, 1.0, Some(3.0), 2.5), 1.0);
+        // A value rounding past the max from an odd base goes one step back: 5 + 2n
+        // within 5..10 is 9 (paint fixture `form-native-range-step-base`).
+        assert_eq!(step_align(5.0, 10.0, 10.0, Some(2.0), 5.0), 9.0);
         // Steps an f64 cannot count leave the value (Chrome's Decimal snaps 0.5 to 0 here,
         // `input.value`, a difference no thumb position across 2e308 can show).
         assert_eq!(snap(-1e308, 1e308, 0.5, Some(1.0)), 0.5);
