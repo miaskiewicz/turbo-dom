@@ -50,6 +50,9 @@ pub(crate) fn build() -> Option<Blob> {
         let scope = &mut v8::ContextScope::new(scope, context);
         bootstrap_engine(scope);
         strip_wrappers(scope);
+        // The slot annex is a heap pointer (and a Weak) in the context's embedder data:
+        // serialized, a context made from the blob would read the freed annex.
+        context.clear_all_slots();
         scope.set_default_context(context);
     }
     reset();
