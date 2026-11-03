@@ -5,6 +5,14 @@
 use super::*;
 use std::borrow::Cow;
 
+#[cfg(test)]
+thread_local! {
+    /// Test hook: the non-document node wrappers `strip_wrappers` cleared in the last build.
+    static DIAG: std::cell::RefCell<Vec<v8::Weak<v8::Object>>> = const { std::cell::RefCell::new(Vec::new()) };
+    /// Test hook: how many of them were still reachable when the last build serialized.
+    pub(crate) static RETAINED_FOR_TEST: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+}
+
 thread_local! {
     static BUILDING: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
@@ -58,6 +66,14 @@ pub(crate) fn build() -> Option<Blob> {
         scope.set_default_context(context);
     }
     reset();
+    #[cfg(test)]
+    {
+        let stripped = DIAG.with(std::cell::RefCell::take);
+        v8::scope!(let scope, &mut isolate);
+        scope.low_memory_notification();
+        let retained = stripped.iter().filter(|weak| !weak.is_empty()).count();
+        RETAINED_FOR_TEST.with(|count| count.set(Some(retained)));
+    }
     BUILDING.with(|building| building.set(false));
     if !external_refs::end_build_log(references) {
         // A creator isolate can only be disposed through create_blob, which would abort on
@@ -206,6 +222,19 @@ fn strip_wrappers(scope: &mut v8::PinScope) {
     if let Some(document) = document.and_then(|weak| weak.to_local(scope)) {
         template_contents::forget_associated(scope, document);
     }
+    #[cfg(test)]
+    DOM.with(|dom| {
+        if let Some(state) = dom.borrow().as_ref() {
+            let root = state.tree.root();
+            DIAG.with(|stripped| {
+                stripped.borrow_mut().extend(
+                    (state.cache.iter())
+                        .filter(|(handle, _)| **handle != root)
+                        .map(|(_, weak)| weak.clone()),
+                );
+            });
+        }
+    });
     let undefined = v8::undefined(scope);
     for wrapper in wrappers {
         if let Some(wrapper) = wrapper.to_local(scope) {

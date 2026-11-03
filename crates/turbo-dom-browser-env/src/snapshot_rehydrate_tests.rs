@@ -231,6 +231,87 @@ fn custom_element_constructors_of_a_snapshot_context_use_its_registry() {
     reset();
 }
 
+/// Whether `value` is a node wrapper whose internal fields `strip_wrappers` cleared (a
+/// wrapper of the build's shell tree that survived into the blob).
+fn stale_wrapper(scope: &mut v8::PinScope, value: v8::Local<v8::Value>) -> bool {
+    let Ok(object) = v8::Local::<v8::Object>::try_from(value) else {
+        return false;
+    };
+    object.internal_field_count() >= 2
+        && object
+            .get_internal_field(scope, 0)
+            .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())
+            .is_some_and(|field| field.is_undefined())
+}
+
+/// Only the document wrapper outlives the snapshot build (round-1 review #15): every other
+/// shell node wrapper is released before serialization, so no engine closure can hand a
+/// stripped wrapper to page script. The rehydrated window keeps node identity for the
+/// document, its head, body, root element and template contents, and every captured engine
+/// helper, called through, returns no stripped wrapper.
+#[test]
+fn no_shell_node_wrapper_survives_into_the_snapshot() {
+    crate::browser_env::tests::init_v8();
+    assert!(startup_snapshot::build().is_some(), "the blob builds");
+    assert_eq!(
+        startup_snapshot::RETAINED_FOR_TEST.with(std::cell::Cell::get),
+        Some(0),
+        "a shell node wrapper is reachable from the snapshotted context"
+    );
+    let blob = snapshot_blob().expect("the process blob builds");
+    let isolate = &mut v8::Isolate::new(blob.create_params());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    assert!(
+        install_snapshot_context(scope, Tree::parse_with_processing_instructions(PAGE)).is_ok()
+    );
+    assert_eq!(
+        eval(
+            scope,
+            "const t = document.getElementById('t'); JSON.stringify([\
+             document === window.document, document.body === document.body, document.head === document.head, \
+             document.documentElement === document.documentElement, t.content === t.content, \
+             document.body.parentNode === document.documentElement, document.head.parentNode === document.documentElement, \
+             document.documentElement.parentNode === document, document.body.ownerDocument === document, \
+             document.doctype === document.firstChild, document.body.firstChild === document.getElementById('a'), \
+             t.content.firstChild === t.content.firstChild, document.body.localName, document.head.childNodes.length])"
+        ),
+        "[true,true,true,true,true,true,true,true,true,true,true,true,\"body\",2]"
+    );
+    assert_eq!(smoke(scope), expected());
+    // Every captured helper, called through (most reject the missing arguments): none
+    // answers with a stripped wrapper.
+    let mut called = 0;
+    for entry in context_rehydrate::entries() {
+        for function in (entry.get)(scope, context) {
+            v8::tc_scope!(let tc, scope);
+            let receiver = context.global(tc).into();
+            let document = eval_value(tc, "document");
+            for args in [&[][..], &[document][..]] {
+                called += 1;
+                if let Some(value) = function.call(tc, receiver, args) {
+                    assert!(
+                        !stale_wrapper(tc, value),
+                        "{} returned a stripped wrapper",
+                        entry.name
+                    );
+                }
+            }
+        }
+    }
+    assert!(called > 0);
+    reset();
+}
+
+fn eval_value<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v8::Value> {
+    let code = v8::String::new(scope, source).unwrap();
+    v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+}
+
 /// A context that is not from the snapshot keeps the usual install on the snapshot path.
 #[test]
 fn the_snapshot_path_installs_a_plain_context_as_usual() {
