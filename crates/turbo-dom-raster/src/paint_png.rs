@@ -16,7 +16,6 @@ use turbo_dom_layout::{
 
 use std::rc::Rc;
 
-use crate::glyph::{self, Pen, Tracer};
 use crate::image_paint::DecodedAssets;
 use crate::rrect::{self, Seg};
 use crate::tile_cell::TileCell;
@@ -1116,27 +1115,6 @@ fn paint_round_border(
     }
 }
 
-/// A tiny-skia path sink for [`glyph::trace_glyph`].
-struct PathSink(PathBuilder);
-
-impl Tracer for PathSink {
-    fn move_to(&mut self, x: f32, y: f32) {
-        self.0.move_to(x, y);
-    }
-    fn line_to(&mut self, x: f32, y: f32) {
-        self.0.line_to(x, y);
-    }
-    fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
-        self.0.quad_to(cx, cy, x, y);
-    }
-    fn cubic_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
-        self.0.cubic_to(c1x, c1y, c2x, c2y, x, y);
-    }
-    fn close(&mut self) {
-        self.0.close();
-    }
-}
-
 /// Fill a line's glyph outlines in `color` (a transparent colour paints nothing). The
 /// face's `units_per_em` is non-zero: `ttf-parser` rejects a `head` outside 16..=16384.
 /// Where a line's glyph pens land: as positioned, or for a line laid out in a vertical
@@ -1171,22 +1149,8 @@ fn paint_text(
     if color.a == 0 {
         return;
     }
-    let scale = font_size / f32::from(face.units_per_em());
-    let face = glyph::outline_face(face);
-    let paint = solid(color);
-    for g in glyphs {
-        let pen = Pen {
-            origin_x: f.x + g.x,
-            baseline_y: f.y + g.y,
-            scale,
-        };
-        let mut sink = PathSink(PathBuilder::new());
-        glyph::trace_glyph(&face, g.glyph_id, pen, &mut sink);
-        if let Some(path) = sink.0.finish() {
-            let turn = upright_turn(upright, (pen.origin_x, pen.baseline_y));
-            pm.fill_path(&path, &paint, FillRule::Winding, xf.pre_concat(turn), None);
-        }
-    }
+    let run = crate::glyph_raster::run_outline((f, upright), glyphs, face, font_size, xf);
+    crate::glyph_raster::fill(pm, &run, color);
 }
 
 #[cfg(test)]
@@ -2610,7 +2574,7 @@ mod exact_tests {
         let reg = FontRegistry::new();
         for family in ["Inter", "Liberation Serif"] {
             let face = reg.select(&[family], 400, false).unwrap().clone();
-            let ttf = glyph::outline_face(&face);
+            let ttf = crate::glyph::outline_face(&face);
             let size = 30.0;
             let scale = size / f32::from(face.units_per_em());
             let mut x = 0.0;
@@ -2664,7 +2628,25 @@ mod exact_tests {
                 got.pixels().iter().filter(|p| p.red() < 128).count() > 100,
                 "{family}"
             );
-            assert_eq!(got.data(), want.data(), "{family}");
+            // Chrome's glyphs are the outline grown a fraction of a pixel (#266): every
+            // pixel a full pixel inside the bare outline is solid ink, and every pixel a
+            // full pixel clear of it stays white.
+            let ink = |pm: &Pixmap, x: i32, y: i32| {
+                pm.pixel(x.clamp(0, 89) as u32, y.clamp(0, 44) as u32)
+                    .map_or(0, |p| 255 - p.red())
+            };
+            for y in 0..45 {
+                for x in 0..90 {
+                    let got_ink = ink(&got, x, y);
+                    let around = || (-1..=1).flat_map(|dy| (-1..=1).map(move |dx| (dx, dy)));
+                    if around().all(|(dx, dy)| ink(&want, x + dx, y + dy) == 255) {
+                        assert!(got_ink >= 250, "{family} ({x},{y}) {got_ink}");
+                    }
+                    if around().all(|(dx, dy)| ink(&want, x + dx, y + dy) == 0) {
+                        assert_eq!(got_ink, 0, "{family} ({x},{y})");
+                    }
+                }
+            }
         }
     }
 

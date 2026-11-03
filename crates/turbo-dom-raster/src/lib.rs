@@ -23,6 +23,7 @@
 mod avif;
 mod canvas_ops;
 mod glyph;
+mod glyph_raster;
 mod image_paint;
 mod jxl;
 mod paint_canvas;
