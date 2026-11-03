@@ -25,6 +25,12 @@ on:
         type: boolean
         default: false
 
+# A newer push to a PR supersedes its running CI. Only pull_request runs are
+# cancelled: main pushes, tag runs and publish.yml's workflow_call never are.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
