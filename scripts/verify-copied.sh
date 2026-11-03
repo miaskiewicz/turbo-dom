@@ -315,6 +315,8 @@ range_contents.rs: 0.7.0 turbo-dom#249 function-holding context slots register w
 select_element.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
 selection.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
 user_activation_gates.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+browser_env.js: turbo-dom#254 CSSGroupingRule / CSSConditionRule and the @container / @media / @supports / @layer / @scope / @starting-style rule interfaces (attributes, insertRule / deleteRule, normalized container query)
+css_admission_tests.rs: turbo-dom#254 grouping / condition rules vs their Chrome 156 control
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -343,6 +345,7 @@ OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contex
 OWNED="$OWNED css_animations_cases.json css_animations_chrome156.json css_animations_probe.js processing_instructions_chrome156.json processing_instructions_probe.js page_processing_instructions_chrome156.json"
 OWNED="$OWNED page_patched_intrinsics_probe.js captured_intrinsics.js"
 OWNED="$OWNED xml_documents.rs xml_documents.js xml_documents_tests.rs xml_documents_probe.js xml_documents_chrome156.json xml_inner_html_probe.js xml_inner_html_chrome156.json"
+OWNED="$OWNED css_grouping_rules_probe.js css_grouping_rules_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

@@ -395,6 +395,51 @@ const CASES = [
     probes: [[22, 30], [58, 30], [62, 30], [98, 30], [22, 65], [58, 65]],
   },
   {
+    // `space`: 5 whole 40px tiles over 220px, 5px apart, the first at the edge.
+    id: "bg-space",
+    html: DOC(`<div style="${at(20, 20)};width:220px;height:60px;background:#00ff00 url(${SPRITE}) space;background-size:40px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 30], [55, 30], [62, 30], [67, 30], [97, 30], [102, 30], [205, 30], [235, 30], [237, 30], [25, 70]],
+  },
+  {
+    // `round`: 230 / 40 rounds to 6 tiles of 38.33px (20 / 20 rows stay 20px).
+    id: "bg-round",
+    html: DOC(`<div style="${at(20, 20)};width:230px;height:60px;background:#00ff00 url(${SPRITE}) round;background-size:40px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 30], [56, 30], [60, 30], [76, 30], [96, 30], [98, 30], [138, 30], [244, 30], [248, 30], [25, 75]],
+  },
+  {
+    // A rounded box: the layer is clipped to the border box's outer radius, and the
+    // (opaque) border paints over it.
+    id: "bg-radius-border-box",
+    html: DOC(`<div style="${at(20, 20)};width:80px;height:80px;border:10px solid #ffff00;border-radius:30px;background:#00ff00 url(${SPRITE}) center/40px 40px"></div>`),
+    assets: [SPRITE],
+    probes: [[21, 21], [24, 24], [31, 31], [25, 70], [70, 70], [80, 70], [118, 118]],
+  },
+  {
+    // `background-clip: padding-box` clips to the inner radius (30 - 10px border).
+    id: "bg-radius-padding-box",
+    html: DOC(`<div style="${at(20, 20)};width:80px;height:80px;border:10px solid transparent;border-radius:30px;background:#00ff00 url(${SPRITE}) padding-box;background-size:40px 40px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 70], [31, 31], [33, 33], [40, 40], [70, 40], [109, 109], [106, 106]],
+  },
+  {
+    // 75 x 75 = 5625 tiles: every one paints (the far corner too).
+    id: "bg-many-tiles",
+    html: DOC(`<div style="${at(20, 20)};width:600px;height:300px;background:#00ff00 url(${SPRITE});background-size:8px 4px"></div>`),
+    assets: [SPRITE],
+    probes: [[21, 21], [25, 21], [613, 317], [617, 317], [21, 317], [617, 21]],
+  },
+  {
+    // An inline `content-box` origin: the first fragment's content starts after its
+    // left padding, the last ends before its right padding; the 20px image sits at the
+    // strip's content end.
+    id: "inline-bg-content-box",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span style="background:#00ff00 url(${SPRITE}) no-repeat content-box right center/20px 10px;background-clip:border-box;padding:5px 10px">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[85, 80], [95, 80], [105, 80], [75, 80], [25, 50]],
+  },
+  {
     // An inline box: the positioning area is its fragments' strip (160px over two
     // lines); a right-aligned 40px no-repeat image lands at the end of the last one.
     id: "inline-bg-position",

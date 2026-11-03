@@ -39,6 +39,7 @@ pub fn paint(
          viewBox=\"0 0 {width} {height}\">\n<rect width=\"{width}\" height=\"{height}\" {}/>",
         fill_attrs(bg)
     );
+    SHARED.with(|memo| memo.borrow_mut().take());
     paint_fragment(&mut svg, galley, images);
     svg.push_str("</svg>\n");
     svg
@@ -100,11 +101,12 @@ fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &Decode
     let id = svg.len();
     let _ = write!(
         svg,
-        "<clipPath id=\"clip{id}\"><rect x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\"/></clipPath><g clip-path=\"url(#clip{id})\">",
+        "<clipPath id=\"clip{id}\"><rect x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\"{}/></clipPath><g clip-path=\"url(#clip{id})\">",
         f.x + clip.x,
         f.y + clip.y,
         clip.width,
-        clip.height
+        clip.height,
+        if clip.radius > 0.0 { format!(" rx=\"{:.2}\"", clip.radius) } else { String::new() }
     );
     paint_subtree(svg, f, images);
     svg.push_str("</g>");
@@ -175,19 +177,68 @@ fn paint_image(
     images: &DecodedAssets,
 ) {
     let decoded = images.get(&placement.name);
+    let key = decoded.map(|img| {
+        let size = (f.width.to_bits(), f.height.to_bits());
+        (
+            std::ptr::from_ref(img) as usize,
+            placement.orientation,
+            size,
+        )
+    });
+    // The next tile of the same image at the same size reuses the first one's `<image>`
+    // through a `<use>` (miaskiewicz/turbo-dom#248: a background layer draws one image
+    // many times); the id is given to that `<image>` only once it is reused.
+    let reused = SHARED.with(|memo| {
+        let mut memo = memo.borrow_mut();
+        let shared = memo.as_mut().filter(|shared| Some(shared.key) == key)?;
+        if !shared.named {
+            svg.insert_str(
+                shared.at + "<image".len(),
+                &format!(" id=\"img{}\"", shared.at),
+            );
+            shared.named = true;
+        }
+        Some((shared.at, f.x - shared.x, f.y - shared.y))
+    });
+    if let Some((id, dx, dy)) = reused {
+        let _ = writeln!(svg, "<use href=\"#img{id}\" x=\"{dx:.2}\" y=\"{dy:.2}\"/>");
+        return;
+    }
     let uri = decoded.and_then(|img| image_paint::data_uri(&img.oriented(placement.orientation)));
-    match uri {
-        Some(uri) => {
+    match (uri, key) {
+        (Some(uri), Some(key)) => {
+            let at = svg.len();
             let _ = writeln!(
                 svg,
                 "<image x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\" \
                  preserveAspectRatio=\"none\" href=\"{uri}\"/>",
                 f.x, f.y, f.width, f.height
             );
+            let shared = Shared {
+                key,
+                at,
+                x: f.x,
+                y: f.y,
+                named: false,
+            };
+            SHARED.with(|memo| *memo.borrow_mut() = Some(shared));
         }
-        None if decoded.is_some_and(|d| !d.placeholder) => {}
-        None => rect(svg, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER),
+        _ if decoded.is_some_and(|d| !d.placeholder) => {}
+        _ => rect(svg, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER),
     }
+}
+
+/// The last `<image>` painted: its key, offset in the document (its id once reused)
+/// and position.
+struct Shared {
+    key: (usize, turbo_dom_layout::image::Orientation, (u32, u32)),
+    at: usize,
+    x: f32,
+    y: f32,
+    named: bool,
+}
+thread_local! {
+    static SHARED: std::cell::RefCell<Option<Shared>> = const { std::cell::RefCell::new(None) };
 }
 
 /// `rgba(...)`-free fill: an opaque `#rrggbb` plus a separate `fill-opacity`
@@ -667,6 +718,21 @@ mod tests {
             ),
             "{embedded}"
         );
+        // The next tile of the same image and size reuses it through a `<use>`, naming
+        // it (miaskiewicz/turbo-dom#248); another size draws its own.
+        let mut tiles = image("red.png");
+        let mut second = image("red.png");
+        second.x = 5.0;
+        let mut third = image("red.png");
+        third.y = 7.0;
+        let mut wider = image("red.png");
+        wider.width = 8.0;
+        tiles.children = vec![second, third, wider];
+        let painted = body(&tiles, &images);
+        assert_eq!(painted.matches("<image").count(), 2, "{painted}");
+        assert_eq!(painted.matches(" id=\"img").count(), 1, "{painted}");
+        assert!(painted.contains(r#"" x="4.00" y="0.00"/>"#), "{painted}");
+        assert!(painted.contains(r#"" x="0.00" y="5.00"/>"#), "{painted}");
         // A size-only entry whose pixels did not decode paints nothing, as in Chrome
         // (turbo-dom#107); absent bytes, or a size-only entry this build has no decoder
         // for, are the placeholder.

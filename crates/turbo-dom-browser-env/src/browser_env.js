@@ -1525,16 +1525,48 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   $c.forEach(['type','parentRule','parentStyleSheet'],function(name){cssRuleMember('CSSRule',name,function(){return cssRuleRecord(this)[name];});});
   function cssRuleText(record){if(record.type===1||record.type===5){var text=declarationText(declarationRecord(record.style));return (record.type===1?record.selectorText:record.prelude)+' {'+(text?' '+text+' ':' ')+'}';}
     // Chrome 156: grouping rules and @keyframes list one child rule per line (turbo-dom#134).
-    if((record.grouping||record.type===7)&&record.cssRules){var rules=cssItems(record.cssRules),out=record.prelude+(record.type===7?' { \n':' {\n');for(var index=0;index<rules.length;index++)out+='  '+cssRuleText(cssRuleRecord(rules[index]))+'\n';return out+'}';}
+    if((record.grouping||record.type===7)&&record.cssRules){var rules=cssItems(record.cssRules),out=(record.kind?groupPrelude(record):record.prelude)+(record.type===7?' { \n':' {\n');for(var index=0;index<rules.length;index++)out+='  '+cssRuleText(cssRuleRecord(rules[index]))+'\n';return out+'}';}
     return record.cssText;}
   __ns.readCssRuleText=function(rule){return cssRuleText(cssRuleRecord(rule));};
   cssRuleMember('CSSRule','cssText',function(){return cssRuleText(cssRuleRecord(this));},function(value){cssRuleRecord(this);if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');String(value);});
   cssRuleMember('CSSStyleRule','selectorText',function(){return cssRuleRecord(this,1).selectorText;},function(value){var record=cssRuleRecord(this,1);if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');var parsed=parseCssRules(String(value)+' {}',record.parentStyleSheet,record.parentRule);if(parsed.length===1&&cssRuleRecord(parsed[0]).type===1)record.selectorText=cssRuleRecord(parsed[0],1).selectorText;});
   cssRuleMember('CSSStyleRule','style',function(){return cssRuleRecord(this,1).style;},function(value){var record=cssRuleRecord(this,1);if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');record.style.cssText=String(value);});
   $c.forEach(['href','media','styleSheet'],function(name){cssRuleMember('CSSImportRule',name,function(){return cssRuleRecord(this,3)[name];});});
+  // Grouping / condition rules (turbo-dom#254): Chrome 156's interface per at-rule. `kind`
+  // is the at-keyword; the attributes read the (native-normalized) prelude.
+  var groupingInterfaces={media:'CSSMediaRule',supports:'CSSSupportsRule',container:'CSSContainerRule',layer:'CSSLayerBlockRule','layer-statement':'CSSLayerStatementRule',scope:'CSSScopeRule','starting-style':'CSSStartingStyleRule'};
+  cssRuleInterface('CSSGroupingRule',g.CSSRule.prototype);cssRuleInterface('CSSConditionRule',g.CSSGroupingRule.prototype);
+  $c.forEach(['CSSContainerRule','CSSMediaRule','CSSSupportsRule'],function(name){cssRuleInterface(name,g.CSSConditionRule.prototype);});
+  $c.forEach(['CSSLayerBlockRule','CSSScopeRule','CSSStartingStyleRule'],function(name){cssRuleInterface(name,g.CSSGroupingRule.prototype);});
+  cssRuleInterface('CSSLayerStatementRule',g.CSSRule.prototype);
+  var conditionKinds={media:1,supports:1,container:1};
+  function groupRecord(rule,kinds){var record=$c.get(cssRuleStates,rule);if(!record||!record.kind||(kinds?!kinds[record.kind]:record.kind==='layer-statement'))throw new TypeError('Illegal invocation');return record;}
+  function preludeRest(record){return $c.trim($c.replace(record.prelude,/^@[a-z-]+/i,''));}
+  function mediaList(record){if(!record.mediaList)record.mediaList=makeMedia(preludeRest(record));return record.mediaList;}
+  function containerParts(record){var rest=preludeRest(record),match=$c.exec(/^([^\s(]+)\s*([\s\S]*)$/,rest),parts=match&&$c.toLowerCase(match[1])!=='not'?[match[1],match[2]]:['',rest];parts[1]=containerQueryText(parts[1]);return parts;}
+  // Size queries serialize like media features (Chrome: `(min-width: 200px)`); a query the
+  // media grammar rejects (style(), scroll-state()) keeps its authored text.
+  function containerQueryText(query){if(!query||typeof cssNativeParse!=='function')return query;var text=cssNativeParse(query,'media');return text&&text!=='not all'?text:query;}
+  function scopeParts(record){var match=$c.exec(/^(?:\(([\s\S]*?)\))?\s*(?:to\s*\(([\s\S]*)\))?$/i,preludeRest(record));return match?[match[1]===undefined?null:$c.trim(match[1]),match[2]===undefined?null:$c.trim(match[2])]:[null,null];}
+  function groupPrelude(record){if(record.kind==='media')return '@media '+conditionText(record);if(record.kind==='container')return '@container '+$c.trim($c.join(containerParts(record),' '));return record.prelude;}
+  function conditionText(record){if(record.kind==='media')return $c.join(mediaRecord(mediaList(record)).items,', ');if(record.kind==='container')return $c.trim($c.join(containerParts(record),' '));return preludeRest(record);}
+  cssRuleMember('CSSGroupingRule','cssRules',function(){return groupRecord(this).cssRules;});
+  cssRuleMember('CSSConditionRule','conditionText',function(){return conditionText(groupRecord(this,conditionKinds));});
+  cssRuleMember('CSSContainerRule','containerName',function(){return containerParts(groupRecord(this,{container:1}))[0];});
+  cssRuleMember('CSSContainerRule','containerQuery',function(){return containerParts(groupRecord(this,{container:1}))[1];});
+  cssRuleMember('CSSContainerRule','conditions',function(){var parts=containerParts(groupRecord(this,{container:1})),condition={};condition.name=parts[0];condition.query=parts[1];return [condition];});
+  cssRuleMember('CSSMediaRule','media',function(){return mediaList(groupRecord(this,{media:1}));},function(value){mediaList(groupRecord(this,{media:1})).mediaText=value;});
+  cssRuleMember('CSSLayerBlockRule','name',function(){return preludeRest(groupRecord(this,{layer:1}));});
+  cssRuleMember('CSSLayerStatementRule','nameList',function(){return $c.map(cssParts(preludeRest(groupRecord(this,{'layer-statement':1})),','),function(name){return $c.trim(name);});});
+  cssRuleMember('CSSScopeRule','start',function(){return scopeParts(groupRecord(this,{scope:1}))[0];});
+  cssRuleMember('CSSScopeRule','end',function(){return scopeParts(groupRecord(this,{scope:1}))[1];});
+  function insertGroupRule(rule,record,text,index){var list=cssItems(record.cssRules),i=index===undefined?0:Number(index)>>>0;if(i>list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');text=cssString(text);var source=cssNativeParse(text,false,true),parsed=source===null?cssList():parseCssRules(source,record.parentStyleSheet,rule,true);if($c.test(/^\s*@import\b/i,text))throw new __ns.DOMException('Imports are not allowed in a grouping rule','HierarchyRequestError');if(parsed.length!==1)throw new __ns.DOMException('Expected one CSS rule','SyntaxError');$c.splice(list,i,0,cssItems(parsed)[0]);return i;}
+  function deleteGroupRule(record,index){var list=cssItems(record.cssRules),i=Number(index)>>>0;if(i>=list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');detachCssRule(list[i]);$c.splice(list,i,1);}
+  cssMethod(g.CSSGroupingRule.prototype,'insertRule',1,function(text,index){var record=groupRecord(this);if(!arguments.length)throw new TypeError("Failed to execute 'insertRule' on 'CSSGroupingRule': 1 argument required, but only 0 present.");return insertGroupRule(this,record,text,index);});
+  cssMethod(g.CSSGroupingRule.prototype,'deleteRule',1,function(index){var record=groupRecord(this);if(!arguments.length)throw new TypeError("Failed to execute 'deleteRule' on 'CSSGroupingRule': 1 argument required, but only 0 present.");deleteGroupRule(record,index);});
   var cssRuleConstants={STYLE_RULE:1,CHARSET_RULE:2,IMPORT_RULE:3,MEDIA_RULE:4,FONT_FACE_RULE:5,PAGE_RULE:6,KEYFRAMES_RULE:7,KEYFRAME_RULE:8,MARGIN_RULE:9,NAMESPACE_RULE:10,COUNTER_STYLE_RULE:11,SUPPORTS_RULE:12,FONT_FEATURE_VALUES_RULE:14};
   $c.forEach($O.keys(cssRuleConstants),function(name){$c.forEach([g.CSSRule,g.CSSRule.prototype],function(owner){$O.defineProperty(owner,name,{value:cssRuleConstants[name],enumerable:true,configurable:true});});});
-  function finishCssRule(rule){var record={__proto__:null};$c.forEach(['type','parentRule','parentStyleSheet','cssText','selectorText','href','media','styleSheet','prelude','grouping'],function(name){if($O.hasOwn(rule,name)){record[name]=rule[name];delete rule[name];}});if(rule.style){record.style=rule.style;if(record.type===1)delete rule.style;}if(rule.cssRules)record.cssRules=rule.cssRules;$c.set(cssRuleStates,rule,record);$O.setPrototypeOf(rule,record.type===1?g.CSSStyleRule.prototype:record.type===3?g.CSSImportRule.prototype:g.CSSRule.prototype);return rule;}
+  function finishCssRule(rule){var record={__proto__:null};$c.forEach(['type','parentRule','parentStyleSheet','cssText','selectorText','href','media','styleSheet','prelude','grouping','kind'],function(name){if($O.hasOwn(rule,name)){record[name]=rule[name];delete rule[name];}});if(rule.style){record.style=rule.style;if(record.type===1)delete rule.style;}if(rule.cssRules){record.cssRules=rule.cssRules;if(record.kind)delete rule.cssRules;}$c.set(cssRuleStates,rule,record);var kind=record.kind&&groupingInterfaces[record.kind];$O.setPrototypeOf(rule,kind?g[kind].prototype:record.type===1?g.CSSStyleRule.prototype:record.type===3?g.CSSImportRule.prototype:g.CSSRule.prototype);return rule;}
   var parseCssRules = function(text, sheet, parent, validated){
     text=String(text);if(!validated&&typeof cssNativeParse==='function')text=cssNativeParse(text);
     var out=cssList(), start=0, depth=0, quote='', escaped=false, comment=false, open=-1;
@@ -1549,7 +1581,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if(head){
           var isAt=head[0]==='@',rule={};
           rule.parentStyleSheet=sheet;rule.parentRule=parent||null;
-          if(isAt){rule.prelude=head;rule.type=$c.test(/^@media\b/i,head)?4:$c.test(/^@supports\b/i,head)?12:$c.test(/^@font-face\b/i,head)?5:$c.test(/^@(-webkit-)?keyframes\b/i,head)?7:0;rule.grouping=$c.test(/^@(media|supports|container|scope|starting-style|layer)\b/i,head);rule.cssText=head+($c.trim(body)?' { '+$c.trim(body)+' }':' { }');if(rule.type===5)rule.style=cssDeclaration(body,null,rule,false,true);else if(!$c.test(/^@(property|view-transition)\b/i,head))rule.cssRules=parseCssRules(body,sheet,rule,true);}
+          if(isAt){rule.prelude=head;rule.type=$c.test(/^@media\b/i,head)?4:$c.test(/^@supports\b/i,head)?12:$c.test(/^@font-face\b/i,head)?5:$c.test(/^@(-webkit-)?keyframes\b/i,head)?7:0;rule.grouping=$c.test(/^@(media|supports|container|scope|starting-style|layer)\b/i,head);if(rule.grouping)rule.kind=$c.toLowerCase($c.exec(/^@([a-z-]+)/i,head)[1]);rule.cssText=head+($c.trim(body)?' { '+$c.trim(body)+' }':' { }');if(rule.type===5)rule.style=cssDeclaration(body,null,rule,false,true);else if(!$c.test(/^@(property|view-transition)\b/i,head))rule.cssRules=parseCssRules(body,sheet,rule,true);}
           else {rule.type=1;rule.selectorText=cssPrelude(head,true);rule.style=cssDeclaration(body,null,rule);rule.cssText=head+' { '+$c.trim(body)+' }';}
           $c.push(cssItems(out),finishCssRule(rule));
         }
@@ -1557,7 +1589,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       } else if(c===';'&&depth===0){
         var statement=$c.trim($c.slice(text,start,i)),imported=$c.exec(/^@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*(.*)$/i,statement);
         if(imported){var rule={};rule.type=3;rule.href=imported[1];rule.media=makeMedia(imported[2]||'');rule.styleSheet=null;rule.parentStyleSheet=sheet;rule.parentRule=parent||null;rule.cssText=statement+';';$c.push(cssItems(out),finishCssRule(rule));}
-        else if($c.test(/^@layer\s/i,statement)){var layer={};layer.type=0;layer.parentStyleSheet=sheet;layer.parentRule=parent||null;layer.cssText=statement+';';$c.push(cssItems(out),finishCssRule(layer));}start=i+1;
+        else if($c.test(/^@layer\s/i,statement)){var layer={};layer.type=0;layer.kind='layer-statement';layer.prelude=statement;layer.parentStyleSheet=sheet;layer.parentRule=parent||null;layer.cssText=statement+';';$c.push(cssItems(out),finishCssRule(layer));}start=i+1;
       }
     }
     return out;
@@ -1593,7 +1625,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   $O.defineProperty(sheetConstructor.prototype,'cssRules',{get:cssStyleSheetRulesGetter,enumerable:true,configurable:true});
   cssMember(sheetConstructor.prototype,'rules',function(){return readableSheet(this).rules;});
 
-  function detachCssRule(rule,parent){var record=cssRuleRecord(rule);record.parentStyleSheet=null;record.parentRule=parent||null;if(rule.cssRules)for(var $childList=cssItems(rule.cssRules),$childAt=0;$childAt<$childList.length;$childAt++)detachCssRule($childList[$childAt],rule);}
+  function detachCssRule(rule,parent){var record=cssRuleRecord(rule);record.parentStyleSheet=null;record.parentRule=parent||null;if(record.cssRules)for(var $childList=cssItems(record.cssRules),$childAt=0;$childAt<$childList.length;$childAt++)detachCssRule($childList[$childAt],rule);}
   function replaceSheetRules(sheet,record,text,keepImports){invalidateComputedStyles();var parsed=cssItems(parseCssRules(cssString(text),sheet,null));if(!keepImports)parsed=$c.filter(parsed,function(rule){return cssRuleRecord(rule).type!==3;});var list=cssItems(record.rules);for(var $ruleAt=0;$ruleAt<list.length;$ruleAt++)detachCssRule(list[$ruleAt]);list.length=0;for(var $parsedAt=0;$parsedAt<parsed.length;$parsedAt++)$c.push(list,parsed[$parsedAt]);}
   function insertSheetRule(sheet,text,index){invalidateComputedStyles();var record=readableSheet(sheet),list=cssItems(record.rules),i=index===undefined?0:Number(index)>>>0;if(record.replacing)throw new __ns.DOMException('The sheet is being replaced','NotAllowedError');if(i>list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');var source=cssNativeParse(cssString(text),false,true),parsed=source===null?cssList():parseCssRules(source,sheet,null,true);if(parsed.length!==1)throw new __ns.DOMException('Expected one CSS rule','SyntaxError');var rule=cssItems(parsed)[0],type=cssRuleRecord(rule).type;if(type===3&&record.constructed)throw new __ns.DOMException('Cannot insert an import into a constructed sheet','SyntaxError');if(type===3&&$c.some($c.slice(list,0,i),function(prior){return cssRuleRecord(prior).type!==3;}))throw new __ns.DOMException('Imports must precede style rules','HierarchyRequestError');if(type!==3&&$c.some($c.slice(list,i),function(next){return cssRuleRecord(next).type===3;}))throw new __ns.DOMException('Style rules must follow imports','HierarchyRequestError');$c.splice(list,i,0,rule);return i;}
   function deleteSheetRule(sheet,index){invalidateComputedStyles();var record=readableSheet(sheet),list=cssItems(record.rules),i=Number(index)>>>0;if(record.replacing)throw new __ns.DOMException('The sheet is being replaced','NotAllowedError');if(i>=list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');detachCssRule(list[i]);$c.splice(list,i,1);}

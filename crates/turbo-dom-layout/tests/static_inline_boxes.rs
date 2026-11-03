@@ -76,7 +76,7 @@ impl turbo_dom_layout::ImageResolver for Sprite {
     }
 }
 
-/// Each line fragment's background layers: `(x, width, clip x, clip width)`.
+/// Each line fragment's background layer: `(tile x, tile width, clip x, clip width)`.
 fn layers(background: &str, clone: bool) -> Vec<(f32, f32, f32, f32)> {
     let bytes = turbo_dom_layout::image::decode_data_url(SPRITE)
         .unwrap()
@@ -103,8 +103,9 @@ fn layers(background: &str, clone: bool) -> Vec<(f32, f32, f32, f32)> {
     let mut stack = vec![&root];
     while let Some(frag) = stack.pop() {
         for layer in &frag.children {
-            if let Some(clip) = layer.clip.filter(|_| layer.node_id == frag.node_id) {
-                out.push((layer.x, layer.width, clip.x, clip.width));
+            if layer.clip.is_some() && layer.node_id == frag.node_id {
+                let tile = &layer.children[0];
+                out.push((tile.x, tile.width, layer.x, layer.width));
             }
         }
         stack.extend(frag.children.iter());
@@ -117,7 +118,7 @@ fn layers(background: &str, clone: bool) -> Vec<(f32, f32, f32, f32)> {
 /// right half); cloned, each shows the whole image over its own padding box.
 #[test]
 fn inline_background_images_and_gradients_span_the_fragments_strip() {
-    let slice = vec![(0.0, 160.0, 0.0, 80.0), (-80.0, 160.0, 80.0, 80.0)];
+    let slice = vec![(0.0, 160.0, 0.0, 80.0), (-80.0, 160.0, 0.0, 80.0)];
     assert_eq!(
         layers("url(sprite.png) 0 0/100% 100% no-repeat", false),
         slice
@@ -135,4 +136,53 @@ fn inline_background_images_and_gradients_span_the_fragments_strip() {
         clone
     );
     assert_eq!(layers("#ff0000", false), vec![]);
+}
+
+/// Every fragment's colour layer: `(x, width, radius)` of each child `Box` of its own
+/// box painting a background colour.
+fn colour_layers(body: &str) -> Vec<(f32, f32, f32)> {
+    let html = format!("{DOC}{body}</body></html>");
+    let mut diags = Diagnostics::default();
+    let fonts = FontRegistry::new();
+    let root = turbo_dom_layout::layout_html(&html, "", 800.0, &fonts, &mut diags).unwrap();
+    let mut out = Vec::new();
+    let mut stack = vec![&root];
+    while let Some(frag) = stack.pop() {
+        for child in &frag.children {
+            if let turbo_dom_layout::FragmentContent::Box {
+                background: Some(_),
+                border_radius,
+                ..
+            } = &child.content
+            {
+                if child.node_id == frag.node_id {
+                    out.push((child.x, child.width, *border_radius));
+                }
+            }
+        }
+        stack.extend(frag.children.iter());
+    }
+    out.sort_by(|a, b| a.0.total_cmp(&b.0));
+    out
+}
+
+/// miaskiewicz/turbo-dom#248: a colour clipped to the content box paints there, with
+/// the content edge's radius (12 - 2 border - 4 padding).
+#[test]
+fn a_block_colour_clipped_to_its_content_box_keeps_the_inner_radius() {
+    let body = r#"<div style="width:40px;height:20px;padding:4px;border:2px solid transparent;border-radius:12px;background:#ff0000;background-clip:content-box"></div>"#;
+    assert_eq!(colour_layers(body), vec![(6.0, 40.0, 6.0)]);
+}
+
+/// An RTL inline box's content area: its first fragment (the first line's) keeps its
+/// start (right) padding, the last its end (left) padding.
+#[test]
+fn an_rtl_inline_colour_clipped_to_its_content_box_skips_each_fragments_own_padding() {
+    let body = format!(
+        r#"<div dir="rtl" style="width:100px;font-size:0"><span style="background:#ff0000;background-clip:content-box;padding:5px 10px">{ATOM}{ATOM}{ATOM}{ATOM}</span></div>"#
+    );
+    assert_eq!(
+        colour_layers(&body),
+        vec![(10.0, 80.0, 0.0), (20.0, 80.0, 0.0)]
+    );
 }
