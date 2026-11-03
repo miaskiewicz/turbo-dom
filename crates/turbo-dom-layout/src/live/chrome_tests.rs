@@ -279,7 +279,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 18] = [
+    let groups: [fn(&str) -> bool; 19] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -298,6 +298,7 @@ fn held_out(id: &str) -> bool {
         |id| id.starts_with("form-"),
         input_image_case,
         contain_case,
+        close_glued_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -604,10 +605,16 @@ fn image_inputs_have_no_control_frame_like_chrome_156() {
 }
 
 /// miaskiewicz/turbo-dom#244 (mutation audit 0.7.0): an atom wraps with the end tags
-/// right after it; a cloned box's repeated end edge takes no room in the break.
+/// right after it; a cloned box's repeated end edge takes no room in the break. Its
+/// decorated inline boxes need a face for their edges (the bundled set).
+fn close_glued_case(id: &str) -> bool {
+    id == "inline-close-glued"
+}
+
+#[cfg(feature = "bundled-fonts")]
 #[test]
 fn end_tags_stay_with_the_atom_before_them_like_chrome_156() {
-    assert_matches_chrome(compare_cases(|id| id == "inline-close-glued"));
+    assert_matches_chrome(compare_cases(close_glued_case));
 }
 
 /// miaskiewicz/turbo-dom#265: size containment (`container-type` / `contain`).
