@@ -309,6 +309,11 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
   reference table; `SnapshotBlob::create_params()`) and `install_from_snapshot(html)`,
   which creates and owns the isolate and returns a `SnapshotWindow` (isolate + context).
   The existing `install*` functions are unchanged.
+- Startup snapshots for embedders with their own startup context (#249, turbo-test):
+  `snapshot_blob_with(prelude)` builds a blob whose default context ran the embedder's
+  `prelude` alone and whose context `SNAPSHOT_WINDOW_CONTEXT` ran the prelude, then the
+  engine bootstrap (`v8::Context::from_snapshot`); `set_snapshot_install(true)` makes
+  installs into such a context rehydrate the window, as `TURBO_DOM_SNAPSHOT_PATH` does.
 
 ### Fixed
 
@@ -435,6 +440,14 @@ Detail per fix (each backed by a Chrome 156 control):
 turbo-dom-browser-env, measured on a React/MUI payroll suite (turbo-test 0.7.0 work).
 Every item is gated by a deterministic counter test, not wall-clock.
 
+- A CSS animation / transition update's display:none ancestor check (`rendered`) resolves
+  each ancestor once per read through one snapshot map. It called the public
+  getComputedStyle per ancestor, so every reused ancestor revalidated its whole ancestor
+  chain: O(depth^2) style lookups per read after a DOM change (1978 at depth 40). MUI's
+  TextareaAutosize in a Dialog (standalone-chat-app FeedbackDialog under turbo-test): worker
+  CPU 5.2 s to 2.4 s.
+- A cascade reads the owner's sheet list once per tree version and CSSOM epoch instead of
+  once per element it resolves (24 reads for one read at depth 20).
 - turbo-dom-browser-env keeps a process-wide V8 bytecode cache of its engine scripts: every
   page install (turbo-test installs one per test file) compiled each engine script from source,
   ~8-9% of a real app suite's CPU. The cache is produced after the script ran (so it holds the
