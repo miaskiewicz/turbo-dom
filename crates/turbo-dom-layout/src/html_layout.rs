@@ -595,7 +595,14 @@ fn collect_data_uri_images(view: &TreeView, nodes: &[Handle], out: &mut HashMap<
 /// an `img` with an as-yet-unseen, decodable data URI.
 fn record_img_data_uri(view: &TreeView, h: Handle, out: &mut HashMap<String, Vec<u8>>) {
     // An `<img src>` or a `<video poster>` (miaskiewicz/turbo-dom#252).
-    let attr = if is_plain(view, h, "img") {
+    // An `<input type=image src>` too (miaskiewicz/turbo-dom#258).
+    let image_input = || {
+        is_plain(view, h, "input")
+            && view
+                .attr(h, "type")
+                .is_some_and(|t| t.eq_ignore_ascii_case("image"))
+    };
+    let attr = if is_plain(view, h, "img") || image_input() {
         "src"
     } else if is_plain(view, h, "video") {
         "poster"
@@ -804,6 +811,26 @@ mod tests {
             "intrinsic-aspect height 150, got {}",
             pic.height
         );
+    }
+
+    #[test]
+    fn layout_boxes_loads_an_image_inputs_data_uri() {
+        // miaskiewicz/turbo-dom#258: an `<input type=image>` shows its `src` like an
+        // `<img>` (Chrome 156 `input-image-src`: the 8x6 PNG, no control frame); a
+        // `type=Image` matches ASCII case-insensitively, any other input loads nothing.
+        let png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=";
+        let html = format!(
+            r#"<html><body><input data-cid="i" type="Image" src="{png}"><input data-cid="t" type="text" src="{png}" style="width:0;height:0;padding:0;border:0"></body></html>"#
+        );
+        let mut diags = Diagnostics::default();
+        let boxes = layout_boxes(&html, "", 600.0, 800.0, &FontRegistry::new(), &mut diags)
+            .expect("layout_boxes");
+        let size = |cid: &str| {
+            let b = boxes.iter().find(|b| b.cid == cid).expect("box");
+            (b.width, b.height)
+        };
+        assert_eq!(size("i"), (8.0, 6.0));
+        assert_eq!(size("t"), (0.0, 0.0));
     }
 
     #[test]

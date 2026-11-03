@@ -159,6 +159,22 @@ const MEDIA_CASES = [
   ["embed-src", `<embed data-cid="m" src="${PNG8X6}" width="40" height="20">`],
   ["embed-src-default", `<embed data-cid="m" src="about:blank">`],
 ];
+const INPUT_IMAGE_CASES = [
+  ["src", `src="${PNG8X6}"`],
+  ["src-size", `src="${PNG8X6}" width="40" height="30"`],
+  ["no-src", ``],
+  ["no-src-size", `width="40" height="30"`],
+  ["no-src-alt", `alt="hi there"`],
+  ["no-src-alt-size", `alt="hi there" width="40" height="30"`],
+  ["broken-size", `src="${BROKEN_PNG}" width="40" height="30"`],
+  ["height-only", `height="30"`],
+  ["css-size", `style="width:40px;height:30px"`],
+  ["value", `value="x"`],
+  ["value-size", `value="x" width="40" height="30"`],
+  ["empty-value", `value=""`],
+  ["empty-alt", `alt=""`],
+  ["empty-alt-size", `alt="" width="40" height="30"`],
+];
 // miaskiewicz/turbo-dom#239: form controls with Chrome 156's UA styling (html.css: the
 // 13.333px control font, 2px inset / outset borders, paddings, checkbox / radio / range
 // sizes and margins) and intrinsic sizes (a text field's `size` average characters, a
@@ -648,6 +664,14 @@ const CASES = [
   ...IMG_CASES.map(([id, img]) => ({
     id: `img-${id}`,
     html: DOC(VERTICAL_CSS, `<div data-cid="p">a<img data-cid="i" ${img}>b</div>`),
+    fonts: true,
+  })),
+  // turbo-surf 0.7.0 adoption: <input type=image> is a replaced image control: html.css
+  // resets its padding, border and background (the #239 input frame does not apply),
+  // with and without a source, alt text and width / height, inside a line.
+  ...INPUT_IMAGE_CASES.map(([id, attrs]) => ({
+    id: `input-image-${id}`,
+    html: DOC(`${VERTICAL_CSS}input{font-family:"Fira Code"}`, `<div data-cid="p">a<input data-cid="i" type="image" ${attrs}>b</div>`),
     fonts: true,
   })),
   ...["", "rl", "lr"].flatMap((mode) =>

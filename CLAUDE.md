@@ -345,7 +345,9 @@ package or publish workflow.
   and iframe-sizing controls, at a real `--force-device-scale-factor=2`, since emulated DSF rounds
   font metrics in CSS pixels). Only tests of the host-font policy itself read installed fonts and
   stay `cfg(target_os = "macos")`: `native_serif_policy` (serif resolves to the physical Times
-  face), `original_text_units`' script-fallback comparison (CoreText picks the fallback face)
+  face), `native_generic_families` (sans-serif resolves to Helvetica under both system-font
+  policies, turbo-dom#259; bare `FontRegistry::new()` stays on the bundled Inter, a 20px line
+  vs Chrome's 18px — see the turbo-dom-layout README), `original_text_units`' script-fallback comparison (CoreText picks the fallback face)
   and `host_font_advances_chrome` (system Times: AAT `morx` + legacy `kern` table, whose pairs
   HarfBuzz splits across both glyphs; `scripts/host-font-chrome-control.mjs`, turbo-dom#236);
   what they test is the host lookup, so fixture fonts would test nothing. Native advances follow
