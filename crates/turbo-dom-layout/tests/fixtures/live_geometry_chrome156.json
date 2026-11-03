@@ -5722,6 +5722,200 @@
    ]
   },
   {
+   "id": "vertical-rl-upright-cjk",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"rl\" style=\"height:100px;font-family:'Ic Fixture'\"><span data-cid=\"c\">水水</span><span data-cid=\"a\">ab</span><span data-cid=\"u\" style=\"text-orientation:upright\">ab</span><span data-cid=\"m\">a水b</span></div>",
+   "fonts": true,
+   "metrics": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 0,
+     "width": 40,
+     "height": 100,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 40,
+      "offsetHeight": 100,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 40,
+      "clientHeight": 100,
+      "scrollWidth": 40,
+      "scrollHeight": 100,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "c",
+     "x": 22,
+     "y": 0,
+     "width": 16,
+     "height": 32,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 22,
+      "offsetTop": 0,
+      "offsetWidth": 16,
+      "offsetHeight": 32,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "a",
+     "x": 22,
+     "y": 32,
+     "width": 16,
+     "height": 16.96875,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 22,
+      "offsetTop": 32,
+      "offsetWidth": 16,
+      "offsetHeight": 17,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "u",
+     "x": 22,
+     "y": 48.96875,
+     "width": 16,
+     "height": 32,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 22,
+      "offsetTop": 49,
+      "offsetWidth": 16,
+      "offsetHeight": 32,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "m",
+     "x": 2,
+     "y": 0,
+     "width": 36,
+     "height": 89.296875,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 22,
+      "offsetTop": 81,
+      "offsetWidth": 36,
+      "offsetHeight": 89,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "vertical-lr-upright-lines",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"lr\" style=\"height:40px;font-family:'Ic Fixture'\"><span data-cid=\"c\">水水水 水水水</span></div><div data-cid=\"w\" class=\"rl\" style=\"height:40px;font-family:'Ic Fixture';text-orientation:upright\">aaa bb</div>",
+   "fonts": true,
+   "metrics": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 40,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 60,
+      "offsetHeight": 40,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 60,
+      "clientHeight": 40,
+      "scrollWidth": 60,
+      "scrollHeight": 40,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 0,
+     "width": 56,
+     "height": 36,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 2,
+      "offsetTop": 0,
+      "offsetWidth": 56,
+      "offsetHeight": 36,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 40,
+     "width": 40,
+     "height": 40,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 40,
+      "offsetWidth": 40,
+      "offsetHeight": 40,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 40,
+      "clientHeight": 40,
+      "scrollWidth": 40,
+      "scrollHeight": 48,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
+  {
    "id": "vertical-rl-rtl",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"rl\" dir=\"rtl\" style=\"height:100px\"><div data-cid=\"a\" style=\"height:30px;width:10px\"></div><div data-cid=\"b\" style=\"width:10px\">ab</div></div>",
    "fonts": true,

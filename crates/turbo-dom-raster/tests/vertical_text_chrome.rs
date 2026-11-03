@@ -71,7 +71,11 @@ fn differences(paint: fn(&str) -> Pixels) -> Vec<String> {
     let mut failures = Vec::new();
     let mut compared = 0;
     let fonts = FontRegistry::new();
+    // The `ic` (upright text) cases need the Ic Fixture face: `src/vertical_upright_tests.rs`.
     for case in fixture["cases"].as_array().unwrap() {
+        if case["ic"].as_bool() == Some(true) {
+            continue;
+        }
         let id = case["id"].as_str().unwrap();
         let html = case["html"].as_str().unwrap();
         let pixels = paint(html);
