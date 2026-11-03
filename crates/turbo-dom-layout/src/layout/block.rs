@@ -2607,6 +2607,7 @@ fn prepend_mask_image(
         name: name.clone(),
         replaced: false,
         fallback: None,
+        unloaded: std::cell::Cell::new(false),
     };
     let Some(intrinsic) = probe_source(lb, &src, ctx) else {
         return;
@@ -2971,7 +2972,9 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
     let Some(src) = lb.image.as_ref().filter(|s| s.replaced) else {
         return;
     };
-    if let Some((i, _)) = super::imgsize::replaced_intrinsic(images.resolver, src, &lb.style) {
+    let probed = super::imgsize::replaced_intrinsic(images.resolver, src, &lb.style);
+    src.unloaded.set(probed.is_none_or(|(_, loaded)| !loaded));
+    if let Some((i, _)) = probed {
         lb.intrinsic_w.set(Some(i.width as f32));
     }
 }

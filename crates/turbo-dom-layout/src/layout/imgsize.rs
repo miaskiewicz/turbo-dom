@@ -314,12 +314,15 @@ fn resolve_dim(v: LengthPct, basis: Option<f32>) -> Option<f32> {
 
 /// The dependent axis when one axis is fixed at `given`: `given * (other /
 /// base)`, preserving aspect ratio. Falls back to `given` for a degenerate
-/// (zero) base so the result stays finite.
+/// (zero) base so the result stays finite, except that a 0x0 image (an `<img>` that
+/// represents nothing, miaskiewicz/turbo-dom#243) has no ratio and keeps its 0.
 fn scale_other(given: f32, base: f32, other: f32) -> f32 {
     if base > 0.0 {
         given * other / base
-    } else {
+    } else if other > 0.0 {
         given
+    } else {
+        0.0
     }
 }
 

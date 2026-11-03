@@ -222,15 +222,33 @@ impl LayoutBox {
     }
 
     /// An `<img>` showing its alt text (miaskiewicz/turbo-dom#243): it has alt text
-    /// (no [`ImageSource::fallback`]) and its image did not load (no intrinsic width
-    /// was stamped from the resolver). It lays out that text like an inline-block,
-    /// ignoring `width` / `height`, as Chrome 156 does.
+    /// (no [`ImageSource::fallback`]) and its image did not load. It lays out that
+    /// text like an inline-block, ignoring `width` / `height`, as Chrome 156 does.
     pub(crate) fn shows_alt_text(&self) -> bool {
+        self.unloaded_image()
+            .is_some_and(|source| source.fallback.is_none())
+    }
+
+    /// The replaced image source of an `<img>` whose image did not load.
+    fn unloaded_image(&self) -> Option<&ImageSource> {
         self.image
             .as_ref()
-            .is_some_and(|source| source.replaced && source.fallback.is_none())
-            && self.svg_viewport.is_none()
-            && self.intrinsic_w.get().is_none()
+            .filter(|source| source.replaced && source.unloaded.get())
+            .filter(|_| self.svg_viewport.is_none())
+    }
+
+    /// Whether `width` / `height` do not apply: an `<img>` showing its alt text, or
+    /// its broken-image icon with only one of the two set (Chrome 156 keeps the icon's
+    /// 16x16 then, miaskiewicz/turbo-dom#243).
+    fn ignores_size(&self, style: &BoxStyle) -> bool {
+        use super::value::LengthPct::Auto;
+        self.unloaded_image()
+            .is_some_and(|source| match source.fallback {
+                None => true,
+                Some(size) => {
+                    size == BROKEN_ICON && ((style.width == Auto) != (style.height == Auto))
+                }
+            })
     }
 
     /// This box's margin memo, allocated on first use (boxed so inline items stay small).
@@ -320,7 +338,7 @@ impl LayoutBox {
             None => style,
         };
         super::value::quantize_html_box_style(&mut style, self.native_scale());
-        if self.shows_alt_text() {
+        if self.ignores_size(&style) {
             style.width = super::value::LengthPct::Auto;
             style.height = super::value::LengthPct::Auto;
         }
@@ -572,6 +590,9 @@ pub struct ImageSource {
     /// for an `<img>` with alt text, which shows that text instead (the box's own
     /// content, see [`img_alt_text`]).
     pub fallback: Option<(u32, u32)>,
+    /// Set before layout when the resolver could not load this `<img>`'s image
+    /// (`crate::layout::stamp_intrinsic_widths`).
+    pub(crate) unloaded: std::cell::Cell<bool>,
 }
 
 /// What a box contains, by formatting context.
@@ -1378,6 +1399,7 @@ fn image_of(el: &StyledElement) -> Option<ImageSource> {
             name: src.to_string(),
             replaced: true,
             fallback: broken_image_size(el),
+            unloaded: std::cell::Cell::new(false),
         });
     }
     if img_alt_text(el).is_some() {
@@ -1386,20 +1408,25 @@ fn image_of(el: &StyledElement) -> Option<ImageSource> {
             name: String::new(),
             replaced: true,
             fallback: None,
+            unloaded: std::cell::Cell::new(false),
         });
     }
     background_image(&el.style).map(|name| ImageSource {
         name,
         replaced: false,
         fallback: None,
+        unloaded: std::cell::Cell::new(false),
     })
 }
+
+/// The intrinsic size of Chrome's broken-image icon.
+const BROKEN_ICON: (u32, u32) = (16, 16);
 
 /// [`ImageSource::fallback`] of an `<img>` with a source: the broken-image icon's
 /// 16x16 without `alt`, 0x0 with `alt=""`, `None` with alt text.
 fn broken_image_size(el: &StyledElement) -> Option<(u32, u32)> {
     match attr_value(&el.attrs, "alt") {
-        None => Some((16, 16)),
+        None => Some(BROKEN_ICON),
         Some("") => Some((0, 0)),
         Some(_) => None,
     }
