@@ -7660,7 +7660,19 @@ fn snapshot_path() -> bool {
     if SNAPSHOT_PATH_FOR_TEST.with(std::cell::Cell::get) {
         return true;
     }
-    std::env::var_os("TURBO_DOM_SNAPSHOT_PATH").is_some()
+    SNAPSHOT_INSTALL.load(std::sync::atomic::Ordering::Relaxed)
+        || std::env::var_os("TURBO_DOM_SNAPSHOT_PATH").is_some()
+}
+
+/// Set by [`set_snapshot_install`].
+static SNAPSHOT_INSTALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Turn snapshot installs on or off for the process (what `TURBO_DOM_SNAPSHOT_PATH` turns on):
+/// an install into a context made from a startup blob ([`snapshot_blob`],
+/// [`snapshot_blob_with`]) rehydrates the snapshotted window instead of running the engine
+/// scripts. Installs into any other context are unaffected.
+pub fn set_snapshot_install(on: bool) {
+    SNAPSHOT_INSTALL.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
 #[cfg(test)]
@@ -7703,6 +7715,27 @@ pub fn snapshot_blob() -> Option<&'static SnapshotBlob> {
         .flatten()
     })
     .as_ref()
+}
+
+/// [`snapshot_blob`] for an embedder that bakes its own startup context (turbo-test's
+/// framework layer): a new blob whose default context ran `prelude`, then the engine
+/// bootstrap. Its contexts are the embedder's context with the window installed; with
+/// [`set_snapshot_install`] on, installing into one runs no engine script. Built on a thread
+/// of its own (no caller's DOM is touched) every call: the embedder keeps the blob. `prelude`
+/// must hand V8 no native callback. `None` when the build failed (installs then keep the
+/// usual path).
+pub fn snapshot_blob_with(prelude: fn(&mut v8::PinScope)) -> Option<SnapshotBlob> {
+    std::thread::spawn(move || {
+        let blob = crate_surface::startup_snapshot::build_with(prelude)?;
+        let data: &'static [u8] = Box::leak(blob.data.to_vec().into_boxed_slice());
+        Some(SnapshotBlob {
+            data,
+            references: blob.references,
+        })
+    })
+    .join()
+    .ok()
+    .flatten()
 }
 
 /// A startup blob and its external reference table ([`snapshot_blob`]).

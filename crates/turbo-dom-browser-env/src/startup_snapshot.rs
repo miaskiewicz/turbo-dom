@@ -86,13 +86,21 @@ fn record_references() {
 /// process when one is dropped, including during a panic's unwind. So no failure may unwind
 /// past it: each one leaks the creator instead (a panic is caught for that).
 pub(crate) fn build() -> Option<Blob> {
+    build_with(|_| {})
+}
+
+/// [`build`] for an embedder with its own startup context: `prelude` runs in the snapshot
+/// context before the engine bootstrap (the order of a prelude, then an install), so the
+/// blob's default context holds both. The prelude must hand V8 no native callback (none is
+/// in the reference table).
+pub(crate) fn build_with(prelude: fn(&mut v8::PinScope)) -> Option<Blob> {
     record_references();
     let references: &'static [v8::ExternalReference] =
         Box::leak(external_refs::table().into_boxed_slice());
     let mut isolate = v8::Isolate::snapshot_creator(Some(Cow::Borrowed(references)), None);
     BUILDING.with(|building| building.set(true));
     external_refs::begin_build_log();
-    let prepared = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| prepare(&mut isolate)));
+    let prepared = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| prepare(&mut isolate, prelude)));
     reset();
     let failure = match prepared {
         Ok(Ok(stripped)) => {
@@ -123,12 +131,16 @@ pub(crate) fn build() -> Option<Blob> {
 
 /// The snapshot isolate's default context: the bootstrapped shell window, its native state
 /// persisted into the heap and its node wrappers stripped (returned, see [`strip_wrappers`]).
-fn prepare(isolate: &mut v8::OwnedIsolate) -> Result<Vec<v8::Weak<v8::Object>>, &'static str> {
+fn prepare(
+    isolate: &mut v8::OwnedIsolate,
+    prelude: fn(&mut v8::PinScope),
+) -> Result<Vec<v8::Weak<v8::Object>>, &'static str> {
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     #[cfg(test)]
     forced_failure(scope, BuildFailure::IsolateData);
+    prelude(scope);
     bootstrap_engine(scope);
     #[cfg(test)]
     forced_failure(scope, BuildFailure::Panic);
