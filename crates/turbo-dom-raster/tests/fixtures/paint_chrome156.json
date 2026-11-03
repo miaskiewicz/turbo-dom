@@ -8442,7 +8442,7 @@
   },
   {
    "id": "form-native-button-author-background",
-   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><button data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:42px;height:22px;background:#ffff00\"></button></body></html>",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><button data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:42px;height:22px;background-color:#ffff00;border-style:solid\"></button></body></html>",
    "assets": [],
    "boxes": [
     {
@@ -8457,31 +8457,31 @@
     {
      "x": 20,
      "y": 20,
-     "class": "W",
+     "class": "?",
      "rgb": [
-      168,
-      168,
-      168
+      0,
+      0,
+      0
      ]
     },
     {
      "x": 40,
      "y": 20,
-     "class": "W",
+     "class": "?",
      "rgb": [
-      168,
-      168,
-      168
+      0,
+      0,
+      0
      ]
     },
     {
      "x": 40,
      "y": 21,
-     "class": "W",
+     "class": "?",
      "rgb": [
-      168,
-      168,
-      168
+      0,
+      0,
+      0
      ]
     },
     {
@@ -8497,11 +8497,11 @@
     {
      "x": 21,
      "y": 31,
-     "class": "W",
+     "class": "?",
      "rgb": [
-      168,
-      168,
-      168
+      0,
+      0,
+      0
      ]
     },
     {

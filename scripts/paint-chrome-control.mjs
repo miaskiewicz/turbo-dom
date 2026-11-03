@@ -612,7 +612,7 @@ const CASES = [
     ["color-value", `<input data-cid="m" type="color" value="#ff0000" style="${at(20, 20)};margin:0">`, [[25, 13], [10, 10], [40, 18], [4, 13], [25, 4]]],
     ["text-appearance-none", `<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px;appearance:none">`, [[0, 0], [15, 0], [15, 1], [15, 2], [0, 11], [1, 11], [2, 11]]],
     ["text-author-border", `<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px;border:2px solid #ff0000">`, [[0, 0], [15, 0], [15, 1], [15, 2], [0, 11], [1, 11], [2, 11]]],
-    ["button-author-background", `<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px;background:#ffff00"></button>`, [[0, 0], [20, 0], [20, 1], [20, 2], [1, 11], [2, 11], [20, 11]]],
+    ["button-author-background", `<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px;background-color:#ffff00;border-style:solid"></button>`, [[0, 0], [20, 0], [20, 1], [20, 2], [1, 11], [2, 11], [20, 11]]],
     ["checkbox-appearance-none", `<input data-cid="m" type="checkbox" checked style="${at(20, 20)};margin:0;appearance:none">`, [[0, 0], [6, 0], [6, 6], [5, 8]]],
   ].map(([kind, html, probes]) => ({
     id: `form-native-${kind}`,

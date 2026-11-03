@@ -1430,6 +1430,10 @@ fn ua_logical_size(computed: &ComputedStyle, style: &mut BoxStyle) {
     let Some(value) = computed.get(UA_LOGICAL_SIZE) else {
         return;
     };
+    // The size is the native control's: `appearance: none` drops it (#255).
+    if computed.get("appearance").map(str::trim) == Some("none") {
+        return;
+    }
     let mut sizes = value
         .split_whitespace()
         .filter_map(|v| v.strip_suffix("px")?.parse::<f32>().ok());

@@ -2937,7 +2937,7 @@ fn layout_box_sized_impl(
     );
     record_metrics(lb, bs, content_w, fill_h, ctx);
     let overflow_clip = overflow_clip_of(&lb.style, bs, bbw, bbh);
-    Fragment {
+    let mut frag = Fragment {
         node_id: lb.node_id,
         x: bx,
         y: by,
@@ -2951,7 +2951,11 @@ fn layout_box_sized_impl(
         clip: super::value::clip_region(&lb.style, bbw, bbh, 1.0),
         overflow_clip,
         opacity: bs.opacity,
+    };
+    if let Some(control) = lb.form_control() {
+        super::form_paint::apply(control, &lb.attrs, &lb.style, bs, &mut frag);
     }
+    frag
 }
 
 /// A menu list's label is centred in its content box (Chrome 156's, as its baseline

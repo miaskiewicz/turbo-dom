@@ -9,6 +9,7 @@ pub mod boxgen;
 pub(crate) mod contents;
 pub mod flex;
 pub(crate) mod form_controls;
+mod form_paint;
 pub mod fragment;
 pub mod imgsize;
 pub mod inline;
