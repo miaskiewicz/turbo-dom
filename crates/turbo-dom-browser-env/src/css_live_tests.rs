@@ -1634,3 +1634,29 @@ fn inline_style_reuse_matches_the_chrome_control() {
     );
     assert_eq!(actual, fixture["result"]);
 }
+
+/// A computation that read a rule under a conditional @media is reused while every media
+/// condition it evaluated still gives the same `matchMedia` answer (a page or test can swap
+/// `matchMedia`, so the answers are checked again, not assumed): MUI puts @media rules on most
+/// elements, and never reusing those styles made every read a fresh cascade.
+#[test]
+fn media_rule_styles_are_reused_until_a_media_answer_changes() {
+    let value = run(
+        "<style>p{color:rgb(1, 1, 1)} @media (min-width: 600px) { p { color: rgb(2, 2, 2) } }</style><body><p id=p>p</p></body>",
+        r#"(()=>{
+      let wide=true;globalThis.matchMedia=query=>({matches:query.includes('600px')?wide:false,media:query});
+      const p=document.getElementById('p');
+      const first=getComputedStyle(p).color;
+      const before=__cssTestCascadeRuns();
+      const again=getComputedStyle(p).color;
+      const reused=__cssTestCascadeRuns()-before;
+      wide=false;
+      const narrow=getComputedStyle(p).color;
+      return JSON.stringify({first,again,reused,narrow});
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"first":"rgb(2, 2, 2)","again":"rgb(2, 2, 2)","reused":0,"narrow":"rgb(1, 1, 1)"})
+    );
+}
