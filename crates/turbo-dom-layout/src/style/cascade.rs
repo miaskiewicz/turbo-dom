@@ -1170,6 +1170,16 @@ mod order_tests {
 mod background_shorthand_tests {
     use crate::test_support::cascaded;
 
+    /// A layer whose two position axes are the same length keeps both (`0 0` is the top
+    /// left corner; a lone `0px` would centre the y axis).
+    #[test]
+    fn equal_position_lengths_keep_both_axes() {
+        let style = cascaded("background: red 0 0/2px 2px");
+        assert_eq!(style.get("background-position"), Some("0px 0px"));
+        let style = cascaded("background: url(a.png) 5% 5%, url(b.png) center");
+        assert_eq!(style.get("background-position"), Some("5% 5%, center"));
+    }
+
     /// miaskiewicz/turbo-dom#256: the shorthand sets every longhand (omitted ones to
     /// their initial value, which reads as absent) and is not stored itself.
     #[test]
