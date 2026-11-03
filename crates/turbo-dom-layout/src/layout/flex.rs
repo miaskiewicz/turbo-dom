@@ -724,6 +724,10 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         if let LengthPct::Px(w) = bs.width {
             return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
+        if lb.containment().width {
+            // Size containment (miaskiewicz/turbo-dom#265): sized as if empty.
+            return frame;
+        }
         if lb.orthogonal_root && lb.writing_root {
             return super::writing::orthogonal_extent(lb, fonts);
         }
@@ -821,6 +825,10 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
         if let LengthPct::Px(w) = bs.width {
             return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
+        }
+        if lb.containment().width {
+            // Size containment (miaskiewicz/turbo-dom#265): sized as if empty.
+            return frame;
         }
         if lb.is_replaced() || (lb.orthogonal_root && lb.writing_root) {
             // A replaced image: its intrinsic / declared size; an orthogonal root: its

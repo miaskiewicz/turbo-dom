@@ -186,7 +186,42 @@ enum SourceRole {
     FormControl(super::form_controls::Control),
 }
 
+/// The physical axes a box's size containment applies to (CSS Contain 2 / Containment 3
+/// `container-type`; miaskiewicz/turbo-dom#265): a contained axis is sized as if the box
+/// had no content.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Containment {
+    pub(crate) width: bool,
+    pub(crate) height: bool,
+}
+
+impl Containment {
+    /// `contain: size | strict` / `container-type: size` contain both axes, `contain:
+    /// inline-size` / `container-type: inline-size` the inline axis (the height in a
+    /// vertical writing mode).
+    pub(crate) fn of(style: &ComputedStyle) -> Containment {
+        let has = |property, word: &str| {
+            style
+                .get(property)
+                .is_some_and(|v| v.split_whitespace().any(|t| t.eq_ignore_ascii_case(word)))
+        };
+        let size =
+            has("contain", "size") || has("contain", "strict") || has("container-type", "size");
+        let inline = has("contain", "inline-size") || has("container-type", "inline-size");
+        let vertical = super::writing::WritingMode::of(style).vertical();
+        Containment {
+            width: size || (inline && !vertical),
+            height: size || (inline && vertical),
+        }
+    }
+}
+
 impl LayoutBox {
+    /// This box's size containment ([`Containment`]).
+    pub(crate) fn containment(&self) -> Containment {
+        Containment::of(&self.style)
+    }
+
     pub(crate) fn anonymous_inline_flow(&self) -> bool {
         self.source_role == SourceRole::AnonymousInlineFlow
     }
@@ -2282,6 +2317,37 @@ pub(crate) fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// miaskiewicz/turbo-dom#265: the inline axis is the height in a vertical writing
+    /// mode (the horizontal cases are asserted against Chrome 156 in `live::chrome_tests`).
+    #[test]
+    fn size_containment_axes_follow_the_writing_mode() {
+        let of = |pairs: &[(&str, &str)]| {
+            Containment::of(&ComputedStyle::from_pairs(pairs.iter().copied()))
+        };
+        let axes = |width, height| Containment { width, height };
+        assert_eq!(of(&[]), axes(false, false));
+        assert_eq!(of(&[("container-type", "inline-size")]), axes(true, false));
+        assert_eq!(
+            of(&[
+                ("container-type", "inline-size"),
+                ("writing-mode", "vertical-rl")
+            ]),
+            axes(false, true)
+        );
+        assert_eq!(
+            of(&[
+                ("contain", "INLINE-SIZE layout"),
+                ("writing-mode", "vertical-lr")
+            ]),
+            axes(false, true)
+        );
+        assert_eq!(
+            of(&[("container-type", "size"), ("writing-mode", "vertical-rl")]),
+            axes(true, true)
+        );
+        assert_eq!(of(&[("contain", "content")]), axes(false, false));
+    }
 
     /// A `div` with `style` (property, value) pairs and `children`.
     fn styled_div(pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNode {
