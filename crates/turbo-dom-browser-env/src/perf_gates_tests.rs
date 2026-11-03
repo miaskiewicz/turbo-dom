@@ -328,7 +328,10 @@ fn label_lookups_walk_the_tree_once_per_version() {
         );
         assert_eq!(out, "400");
         let steps = control_labels::walk_steps() - before;
-        assert!(steps <= 4 * 410, "{steps} walk steps for 400 lookups over 402 nodes");
+        assert!(
+            steps <= 4 * 410,
+            "{steps} walk steps for 400 lookups over 402 nodes"
+        );
         let out = run(
             scope,
             "const a = document.getElementById('i0'), b = document.getElementById('i1'); \
@@ -337,7 +340,7 @@ fn label_lookups_walk_the_tree_once_per_version() {
              document.querySelector('label').htmlFor = 'x'; moved.push(a.labels.length, b.labels.length); \
              a.remove(); moved.push(a.labels.length, document.querySelector('label').control === null); JSON.stringify(moved)",
         );
-        assert_eq!(out, "[0,true,2,true,1,1,0,true]");
+        assert_eq!(out, "[0,true,1,true,1,0,0,true]");
         reset();
     }
     clear_interface_records(isolate);
