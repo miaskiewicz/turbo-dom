@@ -154,7 +154,7 @@ python3 scripts/check-baseline-red.py scripts/baseline-red/turbo-dom-layout-no-d
   Linux fontconfig's sans face (Liberation Sans / DejaVu Sans). For Chrome parity load the
   host fonts: under both `SystemFontPolicy::Default` (`load_system_fonts`, PDF / raster)
   and `Html` the macOS `sans-serif` is Helvetica, `serif` Times New Roman (PDF) / Times
-  (HTML) and the default policy's `monospace` Courier New, checked against Chrome 156 by
+  (HTML) and `monospace` Courier New (PDF) / Courier (HTML, #260), checked against Chrome 156 by
   `tests/native_generic_families.rs` (`scripts/native-generic-families-chrome-control.mjs`,
   miaskiewicz/turbo-dom#259).
 - **Chrome 156 controls.** Fixtures in `tests/fixtures/*_chrome15x.json` are recorded by the
