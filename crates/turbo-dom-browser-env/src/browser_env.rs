@@ -494,7 +494,7 @@ mod template_contents;
 struct DomState {
     tree: Tree,
     /// handle → JS node object, for identity (`el === el`).
-    cache: HashMap<Handle, v8::Weak<v8::Object>>,
+    cache: rustc_hash::FxHashMap<Handle, v8::Weak<v8::Object>>,
     checked_radios: HashMap<Handle, Option<Handle>>,
     dialog: html_dialog::State,
     /// shared element object template (internal_field_count = 2).
@@ -817,7 +817,7 @@ fn parse_html_tree_with<'s>(
             resource_active: false,
             nonces: initial_nonces(&tree),
             tree,
-            cache: HashMap::new(),
+            cache: rustc_hash::FxHashMap::default(),
             checked_radios: Default::default(),
             dialog: Default::default(),
             el_template: template,
@@ -7970,7 +7970,7 @@ fn window_dom_state(
         resource_active: true,
         nonces: initial_nonces(&tree),
         tree,
-        cache: HashMap::new(),
+        cache: rustc_hash::FxHashMap::default(),
         checked_radios: Default::default(),
         dialog: Default::default(),
         el_template,

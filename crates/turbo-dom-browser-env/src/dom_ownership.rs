@@ -142,8 +142,10 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
         let state = state.borrow();
         let state = state.as_ref()?;
         let graph = state.ownership.clone()?;
-        let mut roots = std::collections::HashMap::new();
-        let mut connected = std::collections::HashSet::new();
+        let size = state.cache.len();
+        let mut roots = rustc_hash::FxHashMap::with_capacity_and_hasher(size, Default::default());
+        let mut connected =
+            rustc_hash::FxHashSet::with_capacity_and_hasher(size, Default::default());
         #[cfg(test)]
         WORK.with(|work| {
             work.wrappers_visited
@@ -151,7 +153,8 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
         });
         // Every node walked on the way up shares the root found: memoized for this pass
         // (cached wrappers and their uncached ancestors), each edge is walked once.
-        let mut found: std::collections::HashMap<u32, u32> = std::collections::HashMap::new();
+        let mut found: rustc_hash::FxHashMap<u32, u32> =
+            rustc_hash::FxHashMap::with_capacity_and_hasher(size * 2, Default::default());
         let mut path = Vec::new();
         for handle in state.cache.keys() {
             let mut node = *handle;

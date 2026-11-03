@@ -1,8 +1,6 @@
 //! Native weak lookups with V8-owned document and native subtree edges.
-use std::{
-    collections::{HashMap, HashSet},
-    rc::Rc,
-};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+use std::rc::Rc;
 
 fn key<'s>(scope: &mut v8::PinScope<'s, '_>, name: &str) -> Option<v8::Local<'s, v8::Private>> {
     let name = v8::String::new(scope, name)?;
@@ -79,11 +77,11 @@ impl DocumentGraph {
         Some(Self {
             document: v8::Weak::new(scope, document),
             context: v8::Weak::new(scope, context),
-            wrappers: HashMap::new(),
-            connected: HashSet::new(),
-            components: HashMap::new(),
-            placed: HashMap::new(),
-            fresh: HashSet::new(),
+            wrappers: HashMap::default(),
+            connected: HashSet::default(),
+            components: HashMap::default(),
+            placed: HashMap::default(),
+            fresh: HashSet::default(),
             next_helper,
         })
     }
