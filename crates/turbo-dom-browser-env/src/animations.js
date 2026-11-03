@@ -1687,22 +1687,29 @@
   function cssRefresh(element, animation, rule, lists, i, underlying) {
     const record = animations.get(animation), effect = record.effect && effects.get(record.effect);
     if (!effect || !effect.css) return;
+    const timed = cssRefreshTiming(effect, cssTiming(lists, i));
+    const framed = !effect.css.frames && cssRefreshFrames(effect, cssFrames(element, rule, lists, i, underlying));
+    if (timed || framed) ownerTouched(effect);
+    if (!record.css.scriptPlayState) cssRefreshPlayState(animation, record, pickList(lists['play-state'], i, 'running') === 'paused');
+  }
+  // Timing keys script did not set follow the CSS values; whether any changed.
+  function cssRefreshTiming(effect, timing) {
     let touched = false;
-    const timing = cssTiming(lists, i);
     for (const key in timing) if (!effect.css.timing[key] && effect.timing[key] !== timing[key]) { effect.timing[key] = timing[key]; touched = true; }
-    if (!effect.css.frames) {
-      const input = cssFrames(element, rule, lists, i, underlying), signature = frameSignature(input);
-      if (signature !== effect.css.signature) {
-        effect.css.signature = signature;
-        effect.keyframes = processKeyframes(input, '');
-        insertionOrder(effect.keyframes, input);
-        effect.frames = propertyFrames(effect.keyframes);
-        touched = true;
-      }
-    }
-    if (touched) ownerTouched(effect);
-    if (record.css.scriptPlayState) return;
-    const paused = pickList(lists['play-state'], i, 'running') === 'paused', state = playState(record);
+    return touched;
+  }
+  // The @keyframes input replaces the keyframes when it changed; whether it did.
+  function cssRefreshFrames(effect, input) {
+    const signature = frameSignature(input);
+    if (signature === effect.css.signature) return false;
+    effect.css.signature = signature;
+    effect.keyframes = processKeyframes(input, '');
+    insertionOrder(effect.keyframes, input);
+    effect.frames = propertyFrames(effect.keyframes);
+    return true;
+  }
+  function cssRefreshPlayState(animation, record, paused) {
+    const state = playState(record);
     if (paused && state !== 'paused' && state !== 'idle') pause(animation, record, '');
     else if (!paused && state === 'paused') play(animation, record, false, '');
   }
