@@ -311,7 +311,7 @@ impl LayoutBox {
         style
     }
 
-    fn native_scale(&self) -> Option<f32> {
+    pub(crate) fn native_scale(&self) -> Option<f32> {
         let scale = self.html_layout_policy.get().1;
         (scale != 0.0).then_some(scale)
     }

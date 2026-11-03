@@ -493,7 +493,7 @@ fn lines_natural(
     fs: f32,
     fonts: &FontRegistry,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-    html_metrics: bool,
+    (html_metrics, scale): (bool, Option<f32>),
 ) -> f32 {
     let runs = block::build_runs(items, fs, 0.0, fonts);
     let mut scratch = Diagnostics::default();
@@ -508,7 +508,7 @@ fn lines_natural(
         f32::MAX,
         &mut scratch,
         original,
-        html_metrics,
+        (html_metrics, scale),
     )
     .width;
     let text = if html_metrics { text } else { text.ceil() };
@@ -706,7 +706,7 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 bs.font_size,
                 fonts,
                 lb.original_units().as_deref(),
-                lb.uses_html_font_metrics(),
+                (lb.uses_html_font_metrics(), lb.native_scale()),
             ),
             BoxKind::Flex(k) => flex_natural(k, &lb.style, fonts),
             // A table's max-content: its columns side by side plus border-spacing
@@ -727,13 +727,19 @@ fn lines_min(
     fs: f32,
     fonts: &FontRegistry,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-    html_metrics: bool,
+    (html_metrics, scale): (bool, Option<f32>),
 ) -> f32 {
     let runs = block::build_runs(items, fs, 0.0, fonts);
     let mut scratch = Diagnostics::default();
-    let text =
-        inline::layout_runs_with_units(&runs, fonts, 0.0, &mut scratch, original, html_metrics)
-            .width;
+    let text = inline::layout_runs_with_units(
+        &runs,
+        fonts,
+        0.0,
+        &mut scratch,
+        original,
+        (html_metrics, scale),
+    )
+    .width;
     // An atomic doesn't break, so it contributes its own min-content; the line can
     // wrap between pieces, so its min-content is the widest single piece.
     let atom = items
@@ -771,7 +777,7 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 bs.font_size,
                 fonts,
                 lb.original_units().as_deref(),
-                lb.uses_html_font_metrics(),
+                (lb.uses_html_font_metrics(), lb.native_scale()),
             ),
             BoxKind::Table(k) => super::table::min_content_width(k, &lb.style, fonts),
             BoxKind::Flex(k) | BoxKind::Block(k) | BoxKind::Grid(k) => in_flow(k)
