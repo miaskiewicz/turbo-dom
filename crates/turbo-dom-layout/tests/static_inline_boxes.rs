@@ -104,8 +104,14 @@ fn layers(background: &str, clone: bool) -> Vec<(f32, f32, f32, f32)> {
     while let Some(frag) = stack.pop() {
         for layer in &frag.children {
             if layer.clip.is_some() && layer.node_id == frag.node_id {
-                let tile = &layer.children[0];
-                out.push((tile.x, tile.width, layer.x, layer.width));
+                // The layer's tile pattern (0.7.0 round-2 review, finding 1): its tile.
+                let pattern = &layer.children[0];
+                let turbo_dom_layout::FragmentContent::Tiles(tiles) = &pattern.content else {
+                    panic!("{:?}", pattern.content);
+                };
+                let area = (pattern.x, pattern.y, pattern.width, pattern.height);
+                let (x, _, width, _) = tiles.tiles(area).next().unwrap();
+                out.push((x, width, layer.x, layer.width));
             }
         }
         stack.extend(frag.children.iter());

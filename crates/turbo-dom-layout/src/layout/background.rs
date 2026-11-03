@@ -1,12 +1,14 @@
 //! Background layers placed like Chrome 156 (CSS Backgrounds 3 §3,
 //! miaskiewicz/turbo-dom#248): `background-size`, `-position`, `-repeat`, `-origin` and
-//! `-clip` turn one background image or gradient into tiles (`Image` / gradient `Box`
-//! fragments) under one container fragment clipped to the painting area — rounded by
-//! the clip box's per-corner radii (miaskiewicz/turbo-dom#253) — which the painters draw like any other fragment. Longhands
-//! win over the `background` shorthand's parts. Only the tiles that meet the painting
-//! area are laid out.
+//! `-clip` turn one background image or gradient into one repeating tile
+//! pattern (a [`FragmentContent::Tiles`] fragment over the painting area: the tile, its
+//! phase and its step, however many tiles that is; 0.7.0 round-2 review, finding 1) under
+//! one container fragment clipped to the painting area — rounded by the clip box's
+//! per-corner radii (miaskiewicz/turbo-dom#253). Longhands win over the `background`
+//! shorthand's parts.
 use super::fragment::{
     BorderRadii, ClipRect, Fragment, FragmentContent, ImagePlacement, LinearGradient, NodeId,
+    TilePattern,
 };
 use super::value::{css_value_tokens, parse_length_pct, BorderEdges, LengthPct, Rgba};
 use crate::ComputedStyle;
@@ -308,32 +310,14 @@ fn place(axis: Axis, area: f32, tile: f32) -> f32 {
     }
 }
 
-/// The most tile fragments one layer paints (per axis and in all): a hostile tile
-/// size or position cannot exhaust memory. Tiles past it are not painted.
-const MAX_TILES: usize = 1 << 16;
-
-/// The smallest tile painted, in px: a sub-pixel tile is painted at 1px.
+/// The smallest tile painted, in px: a sub-pixel tile is painted at 1px (the only
+/// degenerate case capped; a layer is one fragment however many tiles it has).
 const MIN_TILE: f32 = 1.0;
 
 /// `round`: the tile shrinks or grows so a whole number of tiles fills the area.
 fn rounded(tile: f32, area: f32) -> f32 {
     let count = (area / tile).round().max(1.0);
     area / count
-}
-
-/// The tile starts along one axis, from `start` (a tile's place) across `paint`, every
-/// `step` (0 = one tile only).
-fn starts(start: f32, step: f32, (from, len): (f32, f32)) -> Vec<f32> {
-    if step <= 0.0 {
-        return vec![start];
-    }
-    // The last tile start at or before the painting area's start (the offset reduced
-    // modulo the step, so a huge position keeps its phase and stays finite).
-    let first = from - (from - start).rem_euclid(step);
-    let count = ((from + len - first) / step).ceil().max(0.0) as usize;
-    (0..count.min(MAX_TILES))
-        .map(|i| first + i as f32 * step)
-        .collect()
 }
 
 /// One axis's tile start and step (0: not repeated): `space` spreads the whole tiles
@@ -409,34 +393,38 @@ pub(crate) fn layer(
     if !x.is_finite() || !y.is_finite() {
         return Vec::new();
     }
-    let xs = starts(x, step_x, (paint.0, paint.2));
-    let mut ys = starts(y, step_y, (paint.1, paint.3));
-    ys.truncate(MAX_TILES / xs.len().max(1));
-    let mut tiles = Vec::new();
-    for &ty in &ys {
-        for &tx in &xs {
-            let outside = tx >= paint.0 + paint.2
-                || ty >= paint.1 + paint.3
-                || tx + tw <= paint.0
-                || ty + th <= paint.1;
-            if outside {
-                continue;
+    // One tile at or before the painting area's start on a repeated axis (the offset
+    // reduced modulo the step, so a huge position keeps its phase and stays finite).
+    let phase = |start: f32, step: f32, from: f32| {
+        super::fragment::axis_starts(start, step, (from, 0.0))
+            .next()
+            .unwrap_or(start)
+    };
+    let pattern = TilePattern {
+        tile: Box::new(match source {
+            Source::Image(image) => FragmentContent::Image(image.clone()),
+            Source::Gradient(gradient) => {
+                gradient_box(None, Some(gradient.clone()), BorderRadii::ZERO)
             }
-            let content = match source {
-                Source::Image(image) => FragmentContent::Image(image.clone()),
-                Source::Gradient(gradient) => {
-                    gradient_box(None, Some(gradient.clone()), BorderRadii::ZERO)
-                }
-            };
-            // Tiles snap to whole pixels, so neighbours meet without a seam.
-            let (x0, y0) = (tx.round(), ty.round());
-            let (w, h) = ((tx + tw).round() - x0, (ty + th).round() - y0);
-            tiles.push(Fragment::new(id, x0, y0, w, h, content));
-        }
-    }
-    if tiles.is_empty() {
+        }),
+        x: phase(x, step_x, paint.0),
+        y: phase(y, step_y, paint.1),
+        tile_width: tw,
+        tile_height: th,
+        step_x,
+        step_y,
+    };
+    if pattern.tiles(paint).next().is_none() {
         return Vec::new();
     }
+    let tiles = Fragment::new(
+        id,
+        paint.0,
+        paint.1,
+        paint.2,
+        paint.3,
+        FragmentContent::Tiles(pattern),
+    );
     let mut container = Fragment::new(
         id,
         paint.0,
@@ -452,7 +440,7 @@ pub(crate) fn layer(
         height: paint.3,
         radii: radius,
     });
-    container.children = tiles;
+    container.children = vec![tiles];
     vec![container]
 }
 
@@ -688,11 +676,9 @@ mod tests {
         );
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].clip.unwrap().radii, BorderRadii::uniform(2.0));
-        assert_eq!(layers[0].children.len(), 5 * 4);
-        assert_eq!(
-            (layers[0].children[0].x, layers[0].children[0].y),
-            (10.0, 20.0)
-        );
+        let shown = expand(&layers[0]);
+        assert_eq!(shown.len(), 5 * 4);
+        assert_eq!((shown[0].x, shown[0].y), (10.0, 20.0));
         // A tile placed wholly outside a no-repeat painting area paints nothing.
         let props = props_of(&[
             ("background-size", "1px 1px"),
@@ -713,13 +699,14 @@ mod tests {
             ("background-repeat", "space"),
             ("background-position", "1px 2px"),
         ]);
-        let tiles = &layer(
-            NodeId(1),
-            &props,
-            &gradient,
-            (square, square, BorderRadii::ZERO),
-        )[0]
-        .children;
+        let tiles = expand(
+            &layer(
+                NodeId(1),
+                &props,
+                &gradient,
+                (square, square, BorderRadii::ZERO),
+            )[0],
+        );
         assert_eq!((tiles.len(), tiles[0].x, tiles[0].y), (2, 1.0, 0.0));
         let image = Source::Image(ImagePlacement {
             name: "a".into(),
@@ -734,13 +721,13 @@ mod tests {
             ("background-size", "35px auto"),
             ("background-repeat", "round no-repeat"),
         ]);
-        let tile = &layer(NodeId(1), &props, &image, (big, big, BorderRadii::ZERO))[0].children[0];
+        let tile = &expand(&layer(NodeId(1), &props, &image, (big, big, BorderRadii::ZERO))[0])[0];
         assert_eq!((tile.width, tile.height), (40.0, 20.0));
         let props = props_of(&[
             ("background-size", "auto 35px"),
             ("background-repeat", "no-repeat round"),
         ]);
-        let tile = &layer(NodeId(1), &props, &image, (big, big, BorderRadii::ZERO))[0].children[0];
+        let tile = &expand(&layer(NodeId(1), &props, &image, (big, big, BorderRadii::ZERO))[0])[0];
         assert_eq!((tile.width, tile.height), (80.0, 40.0));
     }
 
@@ -795,6 +782,9 @@ mod tests {
         };
         assert_eq!(place(from_end, 100.0, 20.0), 70.0);
         // A repeated tile placed past the painting area's start steps back over it.
+        let starts = |start, step, area| {
+            super::super::fragment::axis_starts(start, step, area).collect::<Vec<f32>>()
+        };
         assert_eq!(starts(15.0, 10.0, (0.0, 20.0)), vec![-5.0, 5.0, 15.0]);
         assert_eq!(starts(10.0, 10.0, (0.0, 20.0)), vec![0.0, 10.0]);
         assert_eq!(
@@ -830,7 +820,7 @@ mod tests {
             ("background-repeat", "round"),
         ]);
         let area = (0.0, 0.0, 300.0, 100.0);
-        let tiles = &layer(NodeId(1), &props, &image, (area, area, BorderRadii::ZERO))[0].children;
+        let tiles = expand(&layer(NodeId(1), &props, &image, (area, area, BorderRadii::ZERO))[0]);
         // A 250x100 contain tile rounds to 300 / 1 and 100 / 1.
         assert_eq!((tiles[0].width, tiles[0].height), (300.0, 100.0));
     }
@@ -863,12 +853,32 @@ mod tests {
         );
     }
 
+    /// The pattern of a layer's container: its one child.
+    fn pattern(container: &Fragment) -> &TilePattern {
+        assert_eq!(container.children.len(), 1, "one fragment per layer");
+        match &container.children[0].content {
+            FragmentContent::Tiles(pattern) => pattern,
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// Every tile of a layer's container as a fragment of its own (the painting area's
+    /// tiles; keep the area small).
+    fn expand(container: &Fragment) -> Vec<Fragment> {
+        let child = &container.children[0];
+        let pattern = pattern(container);
+        pattern
+            .tiles((child.x, child.y, child.width, child.height))
+            .map(|(x, y, w, h)| Fragment::new(child.node_id, x, y, w, h, (*pattern.tile).clone()))
+            .collect()
+    }
+
     /// The tile fragments of one layer (none: an empty list).
     fn tiles(pairs: &[(&str, &str)], source: &Source, area: Rect) -> Vec<Fragment> {
         let props = props_of(pairs);
         layer(NodeId(1), &props, source, (area, area, BorderRadii::ZERO))
             .pop()
-            .map(|container| container.children)
+            .map(|container| expand(&container))
             .unwrap_or_default()
     }
 
@@ -931,15 +941,24 @@ mod tests {
             props_of(&[("background-position", &huge)]).position,
             props_of(&[]).position
         );
+        // Each layer is one fragment however many tiles it has (0.7.0 round-2 review,
+        // finding 1), and a painter's window of it holds at most one tile per pixel.
+        let window = (0.0, 0.0, 300.0, 200.0);
         for (pairs, source) in cases {
-            let tiles = tiles(pairs, source, big);
+            let layers = layer(
+                NodeId(1),
+                &props_of(pairs),
+                source,
+                (big, big, BorderRadii::ZERO),
+            );
+            assert_eq!(layers.len(), 1, "{pairs:?}");
+            let tiles: Vec<_> = pattern(&layers[0]).tiles(window).collect();
             assert!(!tiles.is_empty(), "{pairs:?}");
-            assert!(tiles.len() <= MAX_TILES, "{pairs:?}: {}", tiles.len());
+            assert!(tiles.len() <= 300 * 200, "{pairs:?}: {}", tiles.len());
             assert!(
-                tiles.iter().all(|t| t.width >= 1.0
-                    && t.height >= 1.0
-                    && t.x.is_finite()
-                    && t.y.is_finite()),
+                tiles
+                    .iter()
+                    .all(|t| t.2 >= 1.0 && t.3 >= 1.0 && t.0.is_finite() && t.1.is_finite()),
                 "{pairs:?}"
             );
         }
@@ -970,6 +989,61 @@ mod tests {
     }
 
     #[test]
+    fn a_big_box_of_small_tiles_is_one_pattern_down_to_its_last_tile() {
+        // 0.7.0 round-2 review, finding 1: a 4px grid over a 1200 x 5000 page is
+        // 375000 tiles; the layer is one pattern, and its bottom-right tile is there.
+        let gradient = Source::Gradient(LinearGradient {
+            angle_deg: 180.0,
+            stops: Vec::new(),
+        });
+        let page = (0.0, 0.0, 1200.0, 5000.0);
+        let layers = layer(
+            NodeId(1),
+            &props_of(&[("background-size", "4px 4px")]),
+            &gradient,
+            (page, page, BorderRadii::ZERO),
+        );
+        let pattern = pattern(&layers[0]);
+        assert_eq!(pattern.period(), Some((4.0, 4.0)));
+        assert_eq!(pattern.tiles(page).count(), 300 * 1250);
+        let corner: Vec<_> = pattern.tiles((1199.0, 4999.0, 1.0, 1.0)).collect();
+        assert_eq!(corner, [(1196.0, 4996.0, 4.0, 4.0)]);
+        // Fractional steps snap to alternating sizes: no period.
+        let fine = layer(
+            NodeId(1),
+            &props_of(&[("background-size", "2.5px 4px")]),
+            &gradient,
+            (page, page, BorderRadii::ZERO),
+        );
+        assert_eq!(pattern_of(&fine).period(), None);
+        let widths: Vec<f32> = pattern_of(&fine)
+            .tiles((0.0, 0.0, 10.0, 1.0))
+            .map(|t| t.2)
+            .collect();
+        assert_eq!(widths, [3.0, 2.0, 3.0, 2.0]);
+        // `space` steps by a whole pixel past a whole tile: a period with gaps; a
+        // single tile on an axis has no step there.
+        let spaced = layer(
+            NodeId(1),
+            &props_of(&[
+                ("background-size", "40px 20px"),
+                ("background-repeat", "space no-repeat"),
+            ]),
+            &gradient,
+            (
+                (0.0, 0.0, 220.0, 60.0),
+                (0.0, 0.0, 220.0, 60.0),
+                BorderRadii::ZERO,
+            ),
+        );
+        assert_eq!(pattern_of(&spaced).period(), Some((45.0, 0.0)));
+    }
+
+    fn pattern_of(layers: &[Fragment]) -> &TilePattern {
+        pattern(&layers[0])
+    }
+
+    #[test]
     fn a_huge_offset_keeps_the_tile_phase() {
         // 1e7 + 30 is 30 past a 100px tile boundary: the tiles start 70px left of the box.
         let tiles = tiles(
@@ -996,7 +1070,7 @@ mod tests {
                 BorderRadii::ZERO,
             ),
         );
-        let tiles = &layers[0].children;
+        let tiles = expand(&layers[0]);
         assert!(tiles.iter().all(|t| (t.width, t.height) == (100.0, 40.0)));
         assert!(
             tiles.iter().any(|t| (t.x, t.y) == (40.0, 40.0)),

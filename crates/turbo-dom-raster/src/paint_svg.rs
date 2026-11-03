@@ -10,7 +10,7 @@ use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
     BorderRadii, BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient,
-    PositionedGlyph, Rgba,
+    PositionedGlyph, Rgba, TilePattern,
 };
 
 use crate::glyph::{self, Pen, Tracer};
@@ -151,9 +151,68 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             }
         }
         FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
+        FragmentContent::Tiles(pattern) => paint_tiles(svg, f, pattern, images),
         FragmentContent::Marker(_) => {}
     }
     paint_children(svg, f, images);
+}
+
+/// The most tiles without a whole-pixel period [`paint_tiles`] writes one by one.
+const MAX_LISTED_TILES: usize = 4096;
+
+/// A background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1): one
+/// tile, at its snapped place and size, in a `<pattern>` repeating every step, filling
+/// the box (only the tile's own row or column on an axis that does not repeat). Tiles
+/// without a whole-pixel period (a `round` or `space` step off the pixel grid) snap to
+/// alternating sizes: up to [`MAX_LISTED_TILES`] of them are written one by one, more
+/// as a pattern of the exact tile (viewers that rasterize a pattern tile at whole
+/// pixels drift from Chrome there). The pattern id is the document offset, unique.
+fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &DecodedAssets) {
+    let area = (f.x, f.y, f.width, f.height);
+    let Some(snapped) = pattern.tiles(area).next() else {
+        return;
+    };
+    let few = pattern.tiles(area).nth(MAX_LISTED_TILES).is_none();
+    let (x, y, w, h) = match pattern.period() {
+        Some(_) => snapped,
+        None if few => {
+            for (x, y, w, h) in pattern.tiles(area) {
+                let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
+                paint_subtree(svg, &tile, images);
+            }
+            return;
+        }
+        None => (
+            pattern.x,
+            pattern.y,
+            pattern.tile_width,
+            pattern.tile_height,
+        ),
+    };
+    let along = |step: f32, (from, len): (f32, f32), (at, size): (f32, f32)| {
+        if step > 0.0 {
+            (step, from, len)
+        } else {
+            (size, at, size)
+        }
+    };
+    let (pw, fx, fw) = along(pattern.step_x, (f.x, f.width), (x, w));
+    let (ph, fy, fh) = along(pattern.step_y, (f.y, f.height), (y, h));
+    let id = svg.len();
+    let _ = write!(
+        svg,
+        "<pattern id=\"tiles{id}\" patternUnits=\"userSpaceOnUse\" x=\"{x}\" y=\"{y}\" \
+         width=\"{pw}\" height=\"{ph}\">"
+    );
+    // A tile's `<image>` lives in the pattern: no `<use>` outside may share it.
+    SHARED.with(|memo| memo.borrow_mut().take());
+    let tile = Fragment::new(f.node_id, 0.0, 0.0, w, h, (*pattern.tile).clone());
+    paint_subtree(svg, &tile, images);
+    SHARED.with(|memo| memo.borrow_mut().take());
+    let _ = writeln!(
+        svg,
+        "</pattern><rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>"
+    );
 }
 
 /// Paint `f`'s children in stacking order inside a `<g clip-path>` of its `overflow`
@@ -703,6 +762,66 @@ mod tests {
         let svg = paint(galley, 10, 10, WHITE, images);
         let start = svg.find("/>\n").unwrap() + 3;
         svg[start..svg.len() - "</svg>\n".len()].to_string()
+    }
+
+    fn tiles(at: (f32, f32), tile: (f32, f32), step: (f32, f32)) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            0.0,
+            0.0,
+            10.0,
+            10.0,
+            FragmentContent::Tiles(turbo_dom_layout::TilePattern {
+                tile: Box::new(plain(0.0, 0.0, 1.0, 1.0, Some(RED)).content),
+                x: at.0,
+                y: at.1,
+                tile_width: tile.0,
+                tile_height: tile.1,
+                step_x: step.0,
+                step_y: step.1,
+            }),
+        )
+    }
+
+    #[test]
+    fn tile_patterns_are_one_pattern_or_their_few_tiles() {
+        // 0.7.0 round-2 review, finding 1: a whole-pixel period is one `<pattern>` of the
+        // snapped tile, filling the box (a lone axis: the tile's own row).
+        let grid = body(&tiles((0.5, 0.0), (1.0, 1.0), (2.0, 2.0)), &HashMap::new());
+        let id = &grid["<pattern id=\"".len()..grid.find("\" patternUnits").unwrap()];
+        assert!(grid.starts_with(&format!(
+            "<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" x=\"1\" y=\"0\" width=\"2\" height=\"2\">"
+        )), "{grid}");
+        assert!(
+            grid.contains(&format!(
+                "<rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" fill=\"url(#{id})\"/>"
+            )),
+            "{grid}"
+        );
+        let row = body(&tiles((0.0, 4.0), (2.0, 3.0), (4.0, 0.0)), &HashMap::new());
+        assert!(row.contains("width=\"4\" height=\"3\">"), "{row}");
+        assert!(
+            row.contains("<rect x=\"0\" y=\"4\" width=\"10\" height=\"3\""),
+            "{row}"
+        );
+        // Without a period: a few tiles are written one by one at their snapped boxes,
+        // many as a pattern of the exact tile.
+        let few = body(&tiles((0.0, 0.0), (1.5, 10.0), (1.5, 0.0)), &HashMap::new());
+        assert_eq!(few.matches("<rect").count(), 7, "{few}");
+        assert!(!few.contains("<pattern"), "{few}");
+        let mut many = tiles((0.0, 0.0), (0.0, 0.0), (0.0, 0.0));
+        many.width = 1000.0;
+        many.height = 1000.0;
+        if let FragmentContent::Tiles(p) = &mut many.content {
+            (p.tile_width, p.tile_height, p.step_x, p.step_y) = (1.5, 1.5, 1.5, 1.5);
+        }
+        let many = body(&many, &HashMap::new());
+        assert!(many.contains("width=\"1.5\" height=\"1.5\">"), "{many}");
+        // No tile meets the box: nothing.
+        assert_eq!(
+            body(&tiles((20.0, 0.0), (1.0, 1.0), (0.0, 2.0)), &HashMap::new()),
+            ""
+        );
     }
 
     #[test]
