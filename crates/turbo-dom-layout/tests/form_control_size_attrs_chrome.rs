@@ -91,6 +91,21 @@ fn size_attributes_past_i32_are_the_default_like_chrome_156() {
         }
     }
     assert_eq!(absolute, 18);
+    // A default (monospace, 13.333px) textarea in the fixture Fira Code: default rows and
+    // cols and a few sizes, exact boxes.
+    for cid in [
+        "mono-default",
+        "mono-rows-5",
+        "mono-cols-40",
+        "mono-rows-3-cols-10",
+    ] {
+        let (o, c) = (ours(cid), chrome(cid));
+        absolute += 1;
+        if (o.0 - c.0).abs() > 0.01 || (o.1 - c.1).abs() > 0.01 {
+            failures.push(format!("{cid}: box {o:?}, Chrome {c:?}"));
+        }
+    }
+    assert_eq!(absolute, 22);
     let mut menu_lists = 0;
     for i in 0..=last {
         let cid = format!("select-{i}");
