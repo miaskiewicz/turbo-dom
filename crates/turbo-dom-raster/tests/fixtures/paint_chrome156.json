@@ -10587,6 +10587,912 @@
      ]
     }
    ]
+  },
+  {
+   "id": "border-inset-grey",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px inset #767676\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-inset-black",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px inset #000000\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      84,
+      84,
+      84
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      84,
+      84,
+      84
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "W",
+     "rgb": [
+      168,
+      168,
+      168
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      168,
+      168,
+      168
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-inset-white",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px inset #ffffff\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      171,
+      171,
+      171
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      171,
+      171,
+      171
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-inset-red",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px inset #ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "R",
+     "rgb": [
+      171,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "R",
+     "rgb": [
+      171,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-inset-dark",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px inset #102030\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      44,
+      88,
+      132
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      44,
+      88,
+      132
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "?",
+     "rgb": [
+      72,
+      144,
+      216
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      72,
+      144,
+      216
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-inset-mid",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px inset #808080\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      44,
+      44,
+      44
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      44,
+      44,
+      44
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "W",
+     "rgb": [
+      212,
+      212,
+      212
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      212,
+      212,
+      212
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-outset-grey",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px outset #767676\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-outset-black",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px outset #000000\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      168,
+      168,
+      168
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      168,
+      168,
+      168
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "?",
+     "rgb": [
+      84,
+      84,
+      84
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      84,
+      84,
+      84
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-outset-white",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px outset #ffffff\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "W",
+     "rgb": [
+      171,
+      171,
+      171
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      171,
+      171,
+      171
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-outset-red",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px outset #ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "R",
+     "rgb": [
+      171,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "R",
+     "rgb": [
+      171,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-outset-dark",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px outset #102030\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      72,
+      144,
+      216
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      72,
+      144,
+      216
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "?",
+     "rgb": [
+      44,
+      88,
+      132
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      44,
+      88,
+      132
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-outset-mid",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px outset #808080\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      212,
+      212,
+      212
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      212,
+      212,
+      212
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "?",
+     "rgb": [
+      44,
+      44,
+      44
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      44,
+      44,
+      44
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-inset-vertical-rl",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;writing-mode:vertical-rl;width:20px;height:40px;border:4px inset #767676\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 28,
+     "height": 48
+    }
+   ],
+   "probes": [
+    {
+     "x": 34,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 21,
+     "y": 44,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 34,
+     "y": 66,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    },
+    {
+     "x": 46,
+     "y": 44,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-outset-vertical-lr",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;writing-mode:vertical-lr;width:20px;height:40px;border:4px outset #767676\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 28,
+     "height": 48
+    }
+   ],
+   "probes": [
+    {
+     "x": 34,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    },
+    {
+     "x": 21,
+     "y": 44,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    },
+    {
+     "x": 34,
+     "y": 66,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 46,
+     "y": 44,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-inset-field",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:30px;height:16px;appearance:none\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 38,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 35,
+     "y": 41,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    },
+    {
+     "x": 57,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    },
+    {
+     "x": 35,
+     "y": 40,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    },
+    {
+     "x": 56,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      202,
+      202,
+      202
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-outset-button",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><button data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:42px;height:22px;background-color:#ffff00\"></button></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 42,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 20,
+     "class": "W",
+     "rgb": [
+      168,
+      168,
+      168
+     ]
+    },
+    {
+     "x": 20,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      168,
+      168,
+      168
+     ]
+    },
+    {
+     "x": 40,
+     "y": 41,
+     "class": "?",
+     "rgb": [
+      84,
+      84,
+      84
+     ]
+    },
+    {
+     "x": 61,
+     "y": 31,
+     "class": "?",
+     "rgb": [
+      84,
+      84,
+      84
+     ]
+    },
+    {
+     "x": 40,
+     "y": 31,
+     "class": "Y",
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    }
+   ]
   }
  ]
 }

@@ -703,6 +703,46 @@ const CASES = [
     assets: [SPRITE],
     probes: [[25, 40], [65, 40], [75, 40], [115, 40], [125, 40]],
   },
+  // miaskiewicz/turbo-dom#257 (`border-inset-*` / `border-outset-*`): an `inset` border
+  // darkens its top and left sides and lightens its bottom and right (`outset` the other
+  // way round); a colour too dark to darken is lightened once for the dark sides and
+  // twice for the light ones. Each case is a 40x20 box with a 4px border at (20, 20);
+  // probes are box-relative: top, left, bottom, right.
+  ...["inset", "outset"].flatMap((style) =>
+    [
+      ["grey", "#767676"],
+      ["black", "#000000"],
+      ["white", "#ffffff"],
+      ["red", "#ff0000"],
+      ["dark", "#102030"],
+      ["mid", "#808080"],
+    ].map(([kind, colour]) => ({
+      id: `border-${style}-${kind}`,
+      html: DOC(`<div data-cid="m" style="${at(20, 20)};width:40px;height:20px;border:4px ${style} ${colour}"></div>`),
+      probes: [[20, 1], [1, 14], [20, 26], [46, 14]].map(([dx, dy]) => [20 + dx, 20 + dy]),
+    })),
+  ),
+  // The shading names physical sides in vertical writing modes too.
+  ...[
+    ["inset", "vertical-rl"],
+    ["outset", "vertical-lr"],
+  ].map(([style, mode]) => ({
+    id: `border-${style}-${mode}`,
+    html: DOC(`<div data-cid="m" style="${at(20, 20)};writing-mode:${mode};width:20px;height:40px;border:4px ${style} #767676"></div>`),
+    probes: [[14, 1], [1, 24], [14, 46], [26, 24]].map(([dx, dy]) => [20 + dx, 20 + dy]),
+  })),
+  // The `appearance: none` text field's UA `2px inset` border, bottom and right; a button
+  // with an author background keeps the UA `2px outset` border in black.
+  {
+    id: "border-inset-field",
+    html: DOC(`<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px;appearance:none">`),
+    probes: [[15, 21], [37, 11], [15, 20], [36, 11]].map(([dx, dy]) => [20 + dx, 20 + dy]),
+  },
+  {
+    id: "border-outset-button",
+    html: DOC(`<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px;background-color:#ffff00"></button>`),
+    probes: [[20, 0], [0, 11], [20, 21], [41, 11], [20, 11]].map(([dx, dy]) => [20 + dx, 20 + dy]),
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
