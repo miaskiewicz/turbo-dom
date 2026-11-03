@@ -494,6 +494,39 @@ const CASES = [
     ],
   },
   {
+    // miaskiewicz/turbo-dom#269: an `<img>` in a scale(4) box is sampled at device
+    // resolution: its red/blue edge (sprite x=50) blends over a few device px. (The
+    // transform is on a wrapper: a transform on the `<img>` itself is not applied yet.)
+    id: "img-scaled-4x",
+    html: DOC(`<div style="${at(0, 0)};transform:scale(4);transform-origin:0 0"><img src="${SPRITE}" style="display:block;width:100px;height:40px"></div>`),
+    assets: [SPRITE],
+    probes: [[190, 80], [196, 80], [197, 80], [198, 80], [199, 80], [200, 80], [201, 80], [202, 80], [203, 80], [210, 80]],
+  },
+  {
+    // The same for image tiles: 50x20 sprite tiles under scale(4), edges at device x=100
+    // (red to blue inside a tile) and x=200 (blue to the next tile's red).
+    id: "bg-image-tiles-scaled-4x",
+    html: DOC(`<div style="${at(0, 300)};width:100px;height:20px;transform:scale(4);transform-origin:0 0;background:url(${SPRITE}) 0 0/50px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[97, 340], [98, 340], [99, 340], [100, 340], [101, 340], [102, 340], [197, 340], [198, 340], [199, 340], [200, 340], [201, 340], [202, 340]],
+  },
+  {
+    // miaskiewicz/turbo-dom#270: 2.5px tiles (red 40%, blue after) are not snapped to
+    // whole pixels: Chrome draws the tile once and repeats it every 2.5px, blending the
+    // pixels the tile edges cross.
+    id: "bg-tiles-fractional-blend",
+    html: DOC(`<div style="${at(0, 0)};width:200px;height:200px;background:#00ff00 linear-gradient(to right,#ff0000 40%,#0000ff 40%) 0 0/2.5px 2.5px"></div>`),
+    assets: [],
+    probes: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [7, 0], [8, 0], [102, 50], [103, 50], [197, 199], [198, 199]],
+  },
+  {
+    // The same with 1.5px tiles over a small box (fewer than 4096 tiles).
+    id: "bg-tiles-fractional-blend-few",
+    html: DOC(`<div style="${at(0, 0)};width:30px;height:30px;background:#00ff00 linear-gradient(to right,#ff0000 50%,#0000ff 50%) 0 0/1.5px 1.5px"></div>`),
+    assets: [],
+    probes: [[0, 5], [1, 5], [2, 5], [3, 5], [4, 5], [5, 5], [28, 29], [29, 29]],
+  },
+  {
     // 0.7.0 round-3 review, finding 4: about 7.3 million 1.5px tiles (no whole-pixel
     // period) shown under scale(0.25) cover the whole viewport, down to its bottom-right
     // corner.

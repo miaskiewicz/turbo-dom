@@ -430,7 +430,16 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
             img.width(),
             img.height()
         );
-        for y in 0..img.height() {
+        // Identical rows share their rects (one rect per run, as tall as the rows): an
+        // image drawn smaller than its pixels then has no seams between rows.
+        let row = |y: u32| {
+            (0..img.width())
+                .map(|x| img.get_pixel(x, y).0)
+                .collect::<Vec<_>>()
+        };
+        let mut y = 0;
+        while y < img.height() {
+            let rows = (y..img.height()).take_while(|&r| row(r) == row(y)).count() as u32;
             let mut x = 0;
             while x < img.width() {
                 let p = img.get_pixel(x, y).0;
@@ -439,7 +448,7 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
                     .count() as u32;
                 let _ = write!(
                     pixels,
-                    "<rect x='{x}' y='{y}' width='{run}' height='1' fill='rgb({},{},{})' fill-opacity='{}'/>",
+                    "<rect x='{x}' y='{y}' width='{run}' height='{rows}' fill='rgb({},{},{})' fill-opacity='{}'/>",
                     p[0],
                     p[1],
                     p[2],
@@ -447,6 +456,7 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
                 );
                 x += run;
             }
+            y += rows;
         }
         pixels.push_str("</svg>");
         let open = svg[..at].rfind("<image ").unwrap();
@@ -503,7 +513,10 @@ fn svg_rounded_borders_follow_the_radius_like_chrome_156() {
 /// The vector screenshot of every case, rasterized, against the same Chrome probes.
 #[test]
 fn svg_screenshots_paint_like_chrome_156() {
-    let failures = svg_differences(|id| !pending_case(id));
+    // `img-scaled-4x` (miaskiewicz/turbo-dom#269) embeds the source image as it is; how
+    // smoothly it is drawn four times larger is the viewer's filter, and
+    // [`rasterize_svg`] draws embedded images crisp by construction.
+    let failures = svg_differences(|id| !pending_case(id) && id != "img-scaled-4x");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
@@ -615,4 +628,54 @@ fn fractional_tile_patterns_paint_alike_in_png_and_svg() {
         differences.len(),
         differences[..differences.len().min(20)].join("\n")
     );
+}
+
+/// miaskiewicz/turbo-dom#269: an `<img>` and image tiles under `scale(4)` sample the
+/// source at device resolution (their edges blend over a few device px), not a 1x
+/// resample stretched. SVG: [`svg_screenshots_paint_like_chrome_156`].
+#[test]
+fn scaled_images_sample_their_source_at_device_resolution_like_chrome_156() {
+    let scaled = |id: &str| id == "img-scaled-4x" || id == "bg-image-tiles-scaled-4x";
+    let mut failures = differences(scaled);
+    // Every probe, classed or not, within the RGB tolerance of Chrome's: the blend
+    // across an edge is the point here.
+    for case in fixture()["cases"].as_array().unwrap() {
+        let id = case["id"].as_str().unwrap();
+        if !scaled(id) {
+            continue;
+        }
+        let html = case["html"].as_str().unwrap();
+        let png =
+            screenshot_png_with_opts(html, "", VIEWPORT, &assets(case), false, false).expect("png");
+        let pm = tiny_skia::Pixmap::decode_png(&png).expect("decode");
+        for probe in case["probes"].as_array().unwrap() {
+            let (x, y) = (
+                probe["x"].as_u64().unwrap() as u32,
+                probe["y"].as_u64().unwrap() as u32,
+            );
+            let c = pm.pixel(x, y).expect("in bounds");
+            let chrome: [u8; 3] = serde_json::from_value(probe["rgb"].clone()).unwrap();
+            let got = [c.red(), c.green(), c.blue()];
+            if got
+                .iter()
+                .zip(chrome)
+                .any(|(&g, c)| g.abs_diff(c) > RGB_TOLERANCE)
+            {
+                failures.push(format!("{id} ({x},{y}): {got:?}, Chrome {chrome:?}"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// miaskiewicz/turbo-dom#270: fractional tiles (2.5px, 1.5px) are drawn once and repeated
+/// every fractional step, blending the pixels their edges cross, like Chrome, in both
+/// painters.
+#[test]
+fn fractional_tiles_blend_their_edges_like_chrome_156() {
+    let mut failures = differences(|id| id.starts_with("bg-tiles-fractional-blend"));
+    failures.extend(svg_differences(|id| {
+        id.starts_with("bg-tiles-fractional-blend")
+    }));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
