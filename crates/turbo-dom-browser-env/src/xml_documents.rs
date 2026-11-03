@@ -149,7 +149,7 @@ impl<'a> Builder<'a, '_> {
             let specified = attributes
                 .iter()
                 .any(|specified| qualified(&specified.name) == attribute);
-            if specified || attribute == "xmlns" || attribute.starts_with("xmlns:") {
+            if specified {
                 continue;
             }
             let namespace = match attribute.split_once(':') {
@@ -232,8 +232,12 @@ struct StartTags<'a> {
     outer: Vec<&'a str>,
     /// The internal DTD subset's general entities with a literal replacement text.
     entities: std::collections::HashMap<&'a str, &'a str>,
-    /// The internal subset's ATTLIST defaults per element name, in declaration order.
+    /// The internal subset's ATTLIST defaults per element name, in declaration order:
+    /// attributes, and namespace declarations (`xmlns`, `xmlns:p`) apart.
     defaults: std::collections::HashMap<&'a str, Vec<(&'a str, &'a str)>>,
+    namespace_defaults: std::collections::HashMap<&'a str, Vec<(&'a str, &'a str)>>,
+    /// How deep the scan follows entity references (0: not at all).
+    entity_depth: usize,
 }
 
 /// Entity references followed at once: xml-rs stops a reparse deeper than 10 (as Chrome
@@ -248,6 +252,8 @@ impl<'a> StartTags<'a> {
             outer: Vec::new(),
             entities: std::collections::HashMap::new(),
             defaults: std::collections::HashMap::new(),
+            namespace_defaults: std::collections::HashMap::new(),
+            entity_depth: ENTITY_SCAN_DEPTH,
         }
     }
     /// Skip past `end`, or to the end of the current text.
@@ -311,7 +317,7 @@ impl<'a> StartTags<'a> {
         };
         let after = &self.rest[end + 1..];
         match self.entities.get(&self.rest[..end]) {
-            Some(&text) if self.outer.len() < ENTITY_SCAN_DEPTH => {
+            Some(&text) if self.outer.len() < self.entity_depth => {
                 self.outer.push(after);
                 self.rest = text;
             }
@@ -373,14 +379,9 @@ impl<'a> StartTags<'a> {
         if !self.outer.is_empty() {
             return None;
         }
-        let before = &self.source[..self.source.len() - self.rest.len()];
-        let line = before
-            .rfind('\n')
-            .map_or(before, |index| &before[index + 1..]);
-        Some(xml::common::TextPosition {
-            row: before.matches('\n').count() as u64,
-            column: line.chars().count() as u64,
-        })
+        Some(text_position(
+            &self.source[..self.source.len() - self.rest.len()],
+        ))
     }
     /// The next ATTLIST token: a quoted literal (its content, `true`), a parenthesized
     /// enumeration or a name. None at the declaration's `>`.
@@ -419,7 +420,12 @@ impl<'a> StartTags<'a> {
             let Some((value, true)) = default else {
                 continue;
             };
-            let defaults = self.defaults.entry(element).or_default();
+            let defaults = if attribute == "xmlns" || attribute.starts_with("xmlns:") {
+                &mut self.namespace_defaults
+            } else {
+                &mut self.defaults
+            };
+            let defaults = defaults.entry(element).or_default();
             if defaults.iter().all(|&(name, _)| name != attribute) {
                 defaults.push((attribute, value));
             }
@@ -659,6 +665,76 @@ fn build(
     }
 }
 
+/// The (zero-based) row and character column where `before` ends.
+fn text_position(before: &str) -> xml::common::TextPosition {
+    let line = before
+        .rfind('\n')
+        .map_or(before, |index| &before[index + 1..]);
+    xml::common::TextPosition {
+        row: before.matches('\n').count() as u64,
+        column: line.chars().count() as u64,
+    }
+}
+
+/// An insertion [`with_namespace_defaults`] made: row, column (in the original source)
+/// and length in characters.
+type Insertion = (u64, u64, u64);
+
+/// The source with the ATTLIST-defaulted namespace declarations each start tag does not
+/// spell written into the tag, so xml-rs binds them while it reads the tag (Chrome binds
+/// defaulted declarations like specified ones), and the insertions made. None when the
+/// internal subset defaults no namespace declaration.
+fn with_namespace_defaults(source: &str) -> Option<(String, Vec<Insertion>)> {
+    let mut tags = StartTags::new(source);
+    // a whole-source scan must not expand entities (billion laughs): it only writes
+    // into tags the source spells
+    tags.entity_depth = 0;
+    let mut out = String::new();
+    let mut copied = 0;
+    let mut insertions = Vec::new();
+    while let Some((name, declared)) = tags.next_tag() {
+        let Some(defaults) = tags.namespace_defaults.get(name) else {
+            continue;
+        };
+        let mut text = String::new();
+        for &(attribute, value) in defaults {
+            if !declared.contains(&attribute.strip_prefix("xmlns:").unwrap_or("")) {
+                text.push_str(&format!(" {attribute}=\""));
+                escape(&mut text, &tags.expand(value), true);
+                text.push('"');
+            }
+        }
+        let offset = source.len() - tags.rest.len();
+        let position = text_position(&source[..offset]);
+        out.push_str(&source[copied..offset]);
+        out.push_str(&text);
+        copied = offset;
+        insertions.push((position.row, position.column, text.chars().count() as u64));
+    }
+    if insertions.is_empty() {
+        return None;
+    }
+    out.push_str(&source[copied..]);
+    Some((out, insertions))
+}
+
+/// `error` at its position in the source before [`with_namespace_defaults`] (a position
+/// inside an inserted declaration maps to the tag's end, where it was inserted).
+fn unshift(error: &xml::reader::Error, insertions: &[Insertion]) -> xml::reader::Error {
+    let mut position = error.position();
+    let mut shift = 0;
+    for &(_, column, length) in insertions.iter().filter(|(row, ..)| *row == position.row) {
+        if position.column < column + shift {
+            break;
+        }
+        shift += length.min(position.column - column - shift);
+    }
+    position.column -= shift;
+    let text = error.to_string();
+    let message = text.split_once(' ').map_or("", |(_, message)| message);
+    xml::reader::Error::from((&position, message.to_owned()))
+}
+
 /// Parse an XML document into a fresh tree (no browsing context).
 pub(crate) fn parse(source: &str) -> ParsedXml {
     // A no-quirks document (XML documents report CSS1Compat) without children.
@@ -668,7 +744,13 @@ pub(crate) fn parse(source: &str) -> ParsedXml {
         tree.remove_child(root, child);
     }
     let mut declaration = None;
-    if let Err(error) = build(&mut tree, root, source, &mut declaration) {
+    let rewritten = with_namespace_defaults(source);
+    let text = rewritten.as_ref().map_or(source, |(text, _)| text.as_str());
+    if let Err(error) = build(&mut tree, root, text, &mut declaration) {
+        let error = match &rewritten {
+            Some((_, insertions)) => unshift(&error, insertions),
+            None => error,
+        };
         report(&mut tree, &error);
     }
     ParsedXml { tree, declaration }

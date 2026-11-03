@@ -81,6 +81,11 @@
     ["attlistEntityElement", '<!DOCTYPE r [<!ENTITY e "<s/>"><!ATTLIST s c CDATA "d">]><r>&e;<s/></r>'],
     ["attlistCharacterReferences", '<!DOCTYPE r [<!ATTLIST r c CDATA "&#x42;&#66;&lt;&gt;&apos;&quot;" d CDATA \'&#9;x\'>]><r\n  a="1"\n/>'],
     ["attlistUnboundInEntity", '<!DOCTYPE r [<!ENTITY e "<s/>"><!ATTLIST s p:x CDATA "v">]><r>&e;</r>'],
+    // defaulted namespace declarations bind like specified ones
+    ["attlistNamespaceDeclarations", '<!DOCTYPE r [<!ATTLIST r xmlns:q CDATA "urn:q" xmlns CDATA "urn:d">]><r><q:c/></r>'],
+    ["attlistNamespaceOverride", '<!DOCTYPE r [<!ATTLIST s xmlns:q CDATA "urn:q" xmlns CDATA "urn:d" q:a CDATA "1">]><r><s xmlns:q="urn:v"><q:c/></s><s/><s xmlns=""/></r>'],
+    ["attlistNamespaceEscapes", "<!DOCTYPE r [<!ENTITY e 'E'><!ATTLIST r xmlns:q CDATA 'urn:&quot;&lt;&amp;&e;'>]><r q:a=\"1\"/>"],
+    ["attlistNamespaceErrorColumn", '<!DOCTYPE r [<!ATTLIST r xmlns:q CDATA "urn:q">]><r><r><q:c/></r><x></r>'],
     ["subsetCommentAttlist", "<!DOCTYPE r [<!-- ] > --><?pi ] > ?><!ENTITY b '>]'><!ATTLIST r c CDATA \"]\">]><r xmlns:p=\"u\"><p:s xmlns:q=\"v\"/>&b;</r>"],
     // many / nested entity references: Chrome 156's XML parser counts each reparse that
     // starts before the previous replacement text is consumed (depth 10)
