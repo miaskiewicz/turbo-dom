@@ -74,8 +74,8 @@ Pushing a `v*` tag is the publish trigger and requires explicit release authoriz
    binaries build on `ubuntu-22.04` / `ubuntu-22.04-arm` (glibc 2.35), never
    `ubuntu-latest`: `scripts/check-glibc-ceiling.sh` fails any linux-gnu `.node` that needs
    a `GLIBC_` version above 2.35 (0.6.0 was built on 26.04 / glibc 2.43 and broke 24.04
-   consumers). The npm job also runs on `ubuntu-22.04`, since `prepublishOnly` rebuilds the
-   linux-x64 addon there; it runs that build and the guard before `npm publish --ignore-scripts`.
+   consumers). The guard names the expected addons and fails on a missing file, an
+   `objdump` failure or a binary with no `GLIBC_` symbols, so it never passes vacuously.
 2. **preflight** — `check-versions.py --tag vX.Y.Z` (the tag equals every manifest
    version) and `check-no-selector-dual.sh`.
 3. **crates** (sequential, `CARGO_REGISTRY_TOKEN`):
@@ -89,9 +89,14 @@ Pushing a `v*` tag is the publish trigger and requires explicit release authoriz
      turbo-dom-raster -> turbo-dom-browser-env. A version already on crates.io is
      skipped; each published crate is awaited in the index before the next starts, so
      the next one's packaged-consumer verification resolves it.
-4. **npm** (`NPM_TOKEN`, after crates) — bundles all platform binaries into the one
-   scoped package (no per-platform subpackages), rebuilds both WASM targets through
-   `prepublishOnly` and publishes; skipped when that version is already on npm.
+4. **npm** (`NPM_TOKEN`, after crates) — bundles the ci job's napi artifacts into the
+   one scoped package (no per-platform subpackages). It fails unless all five addons are
+   there (linux x64 gnu/musl, linux arm64 gnu, darwin arm64, win32 x64) and no other
+   `.node` is in the package root. It builds no native addon: it runs only
+   `build:wasm:pkg` and `build:wasm:web`, never `prepublishOnly`, which would rebuild the
+   linux-x64 addon over the CI-built one. It reruns the glibc guard on the two linux-gnu
+   addons that ship, then runs `npm publish --ignore-scripts`. The job is skipped when that
+   version is already on npm.
 
 A failed run is resumed by re-running the failed jobs: every publish step is guarded
 against an existing version. Verify npm's `latest` version and tarball contents (platform

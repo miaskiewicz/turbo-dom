@@ -166,14 +166,12 @@ pub(crate) fn paragraph_levels(pieces: &[Piece]) -> ParagraphLevels {
         base.map(|rtl| if rtl { Level::rtl() } else { Level::ltr() }),
     );
     let level = |byte: usize| info.levels.get(byte).map_or(0, Level::number);
-    let paragraph_of = |byte: usize| {
-        info.paragraphs
-            .iter()
-            .find(|p| p.range.contains(&byte))
-            .map_or(0, |p| p.level.number())
-    };
+    let paragraphs = info
+        .paragraphs
+        .iter()
+        .map(|p| (p.range.clone(), p.level.number()));
     ParagraphLevels {
-        paragraph: runs.iter().map(|range| paragraph_of(range.start)).collect(),
+        paragraph: run_paragraphs(paragraphs, runs.iter().map(|range| range.start)),
         runs: runs
             .iter()
             .map(|range| range.clone().map(level).collect())
@@ -181,6 +179,25 @@ pub(crate) fn paragraph_levels(pieces: &[Piece]) -> ParagraphLevels {
         atoms: atoms.into_iter().map(level).collect(),
         active,
     }
+}
+
+/// The level of the paragraph holding each run start (ascending), 0 outside every
+/// paragraph: one cursor walks the paragraphs (in text order) and the starts together,
+/// so many paragraphs (`<br>`s, `pre` lines) stay linear.
+fn run_paragraphs(
+    paragraphs: impl IntoIterator<Item = (Range<usize>, u8)>,
+    starts: impl Iterator<Item = usize>,
+) -> Vec<u8> {
+    let mut paragraphs = paragraphs.into_iter().peekable();
+    starts
+        .map(|byte| {
+            while paragraphs.next_if(|(range, _)| range.end <= byte).is_some() {}
+            paragraphs
+                .peek()
+                .filter(|(range, _)| range.start <= byte)
+                .map_or(0, |&(_, level)| level)
+        })
+        .collect()
 }
 
 /// One placed item of a line in logical order: a shaping segment, an atom, the
@@ -481,5 +498,30 @@ mod tests {
         assert_eq!(first_strong_rtl("12 \u{5d0}b"), Some(true));
         assert_eq!(first_strong_rtl("(a\u{5d0}"), Some(false));
         assert_eq!(first_strong_rtl("123 !"), None);
+    }
+
+    #[test]
+    fn run_paragraphs_walk_the_paragraphs_once() {
+        // 100k one-byte paragraphs (`<br>` / `pre` lines), alternating LTR and RTL, two
+        // runs in each: every paragraph is read once, however many runs there are.
+        let n = 100_000;
+        let reads = Cell::new(0usize);
+        let paragraphs = (0..n).map(|i| {
+            reads.set(reads.get() + 1);
+            (2 * i..2 * i + 2, u8::from(i % 2 == 1))
+        });
+        let starts = 0..2 * n;
+        let levels = run_paragraphs(paragraphs, starts);
+        assert_eq!(levels.len(), 2 * n);
+        assert!(levels
+            .iter()
+            .enumerate()
+            .all(|(run, &level)| level == u8::from(run / 2 % 2 == 1)));
+        assert!(reads.get() <= n, "{} paragraph reads", reads.get());
+        // A run past the last paragraph (or between paragraphs) is level 0.
+        assert_eq!(
+            run_paragraphs([(2..4, 1)], [0, 2, 3, 9].into_iter()),
+            [0, 1, 1, 0]
+        );
     }
 }

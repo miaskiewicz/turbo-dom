@@ -51,6 +51,14 @@ fn html_integers() {
         ("x7", None),
         ("-", None),
         ("", None),
+        // Signed 32-bit, like Chrome (fixture `ol-start-out-of-range`,
+        // `li-value-out-of-range`): out of range is no integer.
+        ("2147483647", Some(2_147_483_647)),
+        ("-2147483648", Some(-2_147_483_648)),
+        ("2147483648", None),
+        ("3000000000", None),
+        ("-2147483649", None),
+        ("99999999999999999999999", None),
     ] {
         assert_eq!(parse_integer(input), want, "{input:?}");
     }
@@ -121,6 +129,27 @@ fn list_item_counters() {
     assert_eq!(counters.ordinal(&li), 1);
     counters.leave();
     assert_eq!(counters.ordinal(&li), 3);
+}
+
+#[test]
+fn a_reversed_list_counts_deeply_nested_items_without_recursing() {
+    // 100k nested `div`s around one list item: counting them must not overflow the
+    // stack (the tree is taken apart iteratively too, as its drop would recurse).
+    let mut node = item("list-item", Vec::new());
+    for _ in 0..100_000 {
+        node = StyledNode::Element(element(Tag::Html("div".into()), &[], vec![node]));
+    }
+    let mut ol = element(Tag::Html("ol".into()), &[("reversed", "")], vec![node]);
+    let mut counters = ListCounters::default();
+    assert!(counters.enter(&ol));
+    let li = element(Tag::Html("li".into()), &[], Vec::new());
+    assert_eq!(counters.ordinal(&li), 1);
+    let mut stack = std::mem::take(&mut ol.children);
+    while let Some(node) = stack.pop() {
+        if let StyledNode::Element(mut element) = node {
+            stack.append(&mut element.children);
+        }
+    }
 }
 
 /// The marker fragments (boxes holding a shape or text) of `html`'s static layout:

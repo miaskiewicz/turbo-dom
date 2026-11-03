@@ -44,7 +44,10 @@ covers `compare`/`record`/`run` and checks the committed checkpoints and expecte
 
 Listed outputs that did not change fail as stale expectations, so every expectation
 matches a real change. `changes` may only name outputs a checkpoint records (the
-self-test checks it). Outputs of a NEW corpus input go in an `added` list instead,
+self-test checks it). `control` must name evidence the self-test can find: a committed path
+of this repo (a Chrome fixture, control script or test, or a note under `evidence/`), a
+sibling repo named first (`turbo-html2pdf crates/…`), or `none (…)` for a change with no
+behaviour change. Outputs of a NEW corpus input go in an `added` list instead,
 e.g. `"added": {"html2pdf-extra": ["new-page.pdf"]}`: compare accepts them only as
 additions (`NOT NEW` if the checkpoint already has the key, stale if it isn't produced),
 and `record` keeps them in the next checkpoint. After a reviewed set of intended changes lands, record a new
@@ -61,7 +64,7 @@ turbo-surf 166d2d6; equal to `b-fixed` plus the 52 surf outputs declared by
 `expected/r3-turbo-dom-142.json` and `expected/r3-turbo-dom-176.json`, 0 undeclared; re-recorded on the
 published crates — turbo-dom 0.6.0, turbo-surf f790383 — after 219 static screenshots moved (≤0.5px glyph
 shifts from baseline pixel snapping, plus the visibility:hidden space fix in conformance 65 and empty opacity
-groups in css-security.svg), each checked against Chrome 156; it holds only the surf corpora, so html2pdf runs keep comparing against `b-fixed`). `b-0.7.0` holds the html2pdf corpora at turbo-html2pdf release/0.7.0 (turbo-dom e425311): equal to the released 0.6.0 outputs plus the changes declared by `expected/turbo-dom-241-242-243.json`, `-245`, `-246`, `-248` and `expected/turbo-html2pdf-0.7.0-release.json`, measured on this host (the html2pdf corpora of `b-fixed` predate 0.6.0's own image and selector changes, so 0.7.0 html2pdf work compares against `b-0.7.0`). Its surf corpora are turbo-surf release/0.7.0 (turbo-dom e425311): `b-0.6.0` plus `expected/turbo-dom-24*.json` and `expected/turbo-surf-0.7.0-release.json`, measured with real surf addons (0.6.0 main reproduces `b-0.6.0` exactly on this host). Per-test cargo results for
+groups in css-security.svg), each checked against Chrome 156; it holds only the surf corpora, so html2pdf runs keep comparing against `b-fixed`). `b-0.7.0` holds the html2pdf corpora at turbo-html2pdf release/0.7.0 (turbo-dom e425311): equal to the released 0.6.0 outputs plus the changes declared by `expected/turbo-dom-241-242-243.json`, `-245`, `-246`, `-248` and `expected/turbo-html2pdf-0.7.0-release.json`, measured on this host (the html2pdf corpora of `b-fixed` predate 0.6.0's own image and selector changes, so 0.7.0 html2pdf work compares against `b-0.7.0`). Its surf corpora are turbo-surf release/0.7.0 (turbo-dom e425311): `b-0.6.0` plus `expected/turbo-dom-24*.json`, `expected/turbo-surf-0.7.0-release.json` and the known gap `expected/turbo-surf-0.7.0-embedded-font-range.json` (Chrome 156 numbers: `evidence/turbo-surf-0.7.0.md`), measured with real surf addons (0.6.0 main reproduces `b-0.6.0` exactly on this host). Per-test cargo results for
 `b-main` and `b2-surf` are in `manifests/<name>/tests/*.tsv`, produced by
 `bin/baseline-cargo.sh` + `bin/cargo-results.py` (binary, test, result).
 

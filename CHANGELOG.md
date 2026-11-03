@@ -407,11 +407,21 @@ Every item is gated by a deterministic counter test, not wall-clock.
 - Linux napi binaries and the publish jobs build on `ubuntu-22.04` / `ubuntu-22.04-arm`
   (glibc 2.35) instead of `ubuntu-latest` (26.04, glibc 2.43), and
   `scripts/check-glibc-ceiling.sh` fails any `linux-gnu` `.node` that needs a `GLIBC_`
-  symbol above 2.35 (d548cae).
+  symbol above 2.35 (d548cae). The guard never passes vacuously: a missing file or an
+  unmatched glob, an `objdump` failure and a binary with no `GLIBC_` symbols all fail
+  (self-test `scripts/test_check_glibc_ceiling.py`), and CI and publish name the expected
+  x64 and arm64 addons.
+- The npm publish job ships the `.node` files the CI napi matrix built and guarded. It
+  builds only the WASM targets, and no longer runs `prepublishOnly`, which rebuilt the
+  linux-x64 addon on the publish runner.
 - The browser-env coverage job's tarpaulin `--timeout` is sized for the whole test binary
   (it bounds a binary run, not one test; #235).
-- Superseded `pull_request` CI runs are cancelled (concurrency group); `workflow_call`
-  (publish), tag and `main` runs never are (5f8407b).
+- Superseded `pull_request` CI runs are cancelled (one concurrency group per PR).
+  `workflow_call` (publish), tag and `main` runs each get their own group (the run id), so
+  they are never cancelled or dropped while pending (5f8407b).
+- Every parity expected-diff entry names committed Chrome evidence (self-tested). The
+  turbo-surf 0.7.0 numbers are in `tools/parity/evidence/`, and embedded-font-range-* is a
+  declared known gap.
 - Every in-repo Chrome control launches the frozen Chrome 156 shell with
   `--use-mock-keychain --password-store=basic`.
 

@@ -1,0 +1,20 @@
+{
+  "id": "turbo-html2pdf#59",
+  "reason": "PDF/UA-1 7.2-20: each LI holds its marker's Lbl plus a synthetic LBody with the item's content (was Lbl plus loose content). Structure tree only: the rasters are identical, template-legal-ua now passes veraPDF ua1, and the others keep their b-0.7.0 verdicts.",
+  "control": "turbo-html2pdf release/0.7.0 90deff8: crates/turbo-html2pdf-core/tests/pdf_ua.rs",
+  "changes": {
+    "html2pdf": [
+      "template-legal-ua.pdf",
+      "template-mixed-ua.pdf",
+      "template-report-ua.pdf"
+    ],
+    "html2pdf-svg": [
+      "template-legal-ua.pdf",
+      "template-mixed-ua.pdf",
+      "template-report-ua.pdf"
+    ],
+    "html2pdf-extra": [
+      "conformance-06-list-indent.ua.pdf"
+    ]
+  }
+}

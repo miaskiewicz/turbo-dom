@@ -18,6 +18,29 @@ _SPEC = importlib.util.spec_from_file_location("parity", HERE / "parity.py")
 parity = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(parity)
 SHA = re.compile(r"^[0-9a-f]{64}$")
+REPO = HERE.parent.parent
+# A repo path in an expected file's `control`: crates/..., scripts/..., tools/..., ...
+CONTROL_PATH = re.compile(
+    r"(?<![\w/.-])((?:crates|scripts|tools|src|test|tests|harness|docs)/[\w./{},*-]*[\w}*])"
+)
+# A control that lives in a sibling repo names it first ("turbo-html2pdf crates/...").
+EXTERNAL_CONTROL = re.compile(r"^(turbo-html2pdf|turbo-surf|turbo-test) ")
+
+
+def _expand_braces(path):
+    match = re.search(r"\{([^}]*)\}", path)
+    if not match:
+        return [path]
+    head, tail = path[: match.start()], path[match.end() :]
+    return [x for alt in match.group(1).split(",") for x in _expand_braces(head + alt + tail)]
+
+
+def _control_path_exists(path):
+    """True if PATH (a glob, maybe crate-relative) names a file of this repo."""
+    roots = [REPO, *sorted((REPO / "crates").glob("*/"))]
+    return all(
+        any(any(root.glob(alt)) for root in roots) for alt in _expand_braces(path)
+    )
 
 
 class Workspace:
@@ -204,6 +227,27 @@ class CommittedDataTest(unittest.TestCase):
                 self.assertIn(corpus, parity.CORPORA, path)
                 for key in keys:
                     self.assertRegex(key, r"\S", f"{path}: {corpus}/{key!r}")
+
+    def test_every_expected_control_names_committed_evidence(self):
+        # The Chrome control behind an expected change must be checkable from the tree:
+        # a committed fixture/script/test of this repo, a named sibling repo, or "none (...)"
+        # for a change with no behaviour change. Prose like "see the notes" is not evidence.
+        for path in sorted((HERE / "expected").glob("*.json")):
+            control = json.loads(path.read_text()).get("control", "")
+            self.assertRegex(control, r"\S", f"{path}: no control")
+            if control.startswith("none (") or EXTERNAL_CONTROL.match(control):
+                continue
+            paths = CONTROL_PATH.findall(control)
+            self.assertTrue(paths, f"{path}: control names no committed path: {control!r}")
+            for ref in paths:
+                self.assertTrue(_control_path_exists(ref), f"{path}: control path {ref} missing")
+
+    def test_control_path_helpers(self):
+        self.assertEqual(_expand_braces("a/{b,c}.json"), ["a/b.json", "a/c.json"])
+        self.assertTrue(_control_path_exists("tools/parity/{parity,test_parity}.py"))
+        self.assertTrue(_control_path_exists("scripts/select-element-chrome-control.mjs"))  # crate-relative
+        self.assertFalse(_control_path_exists("tools/parity/{parity,nope}.py"))
+        self.assertEqual(CONTROL_PATH.findall("x crates/a/b.json (y); see notes"), ["crates/a/b.json"])
 
 
 if __name__ == "__main__":
