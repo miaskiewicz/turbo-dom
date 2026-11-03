@@ -1336,7 +1336,7 @@ fn out_of_flow_atom(id: usize) -> inline::InlineAtom {
 /// aligns instead). `central` (the device scale) reads the last line's central
 /// baseline instead of its alphabetic one (miaskiewicz/turbo-dom#239).
 fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f32> {
-    if b.is_replaced() || !inline_block(b) {
+    if b.is_replaced() || !(inline_block(b) || b.shows_alt_text()) {
         return None;
     }
     let scrolls = ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {
@@ -2606,6 +2606,7 @@ fn prepend_mask_image(
     let src = ImageSource {
         name: name.clone(),
         replaced: false,
+        fallback: None,
     };
     let Some(intrinsic) = probe_source(lb, &src, ctx) else {
         return;
@@ -2970,7 +2971,7 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
     let Some(src) = lb.image.as_ref().filter(|s| s.replaced) else {
         return;
     };
-    if let Some(i) = super::imgsize::box_intrinsic(images.resolver, &src.name, &lb.style) {
+    if let Some((i, _)) = super::imgsize::replaced_intrinsic(images.resolver, src, &lb.style) {
         lb.intrinsic_w.set(Some(i.width as f32));
     }
 }
@@ -2998,17 +2999,28 @@ fn replaced_image_box(
         return Some(fragment);
     }
     let src = lb.image.as_ref().filter(|s| s.replaced)?;
-    let intrinsic = logical_intrinsic(probe_source(lb, src, ctx)?, ctx);
+    let (intrinsic, loaded) =
+        super::imgsize::replaced_intrinsic(ctx.images.resolver, src, &lb.style)?;
+    let intrinsic = logical_intrinsic(intrinsic, ctx);
     let sizing = size_ctx(bs, cb_width, ctx);
     if ctx.live_geometry {
         let mut sized = super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing);
         record_metrics(lb, bs, sized.width, sized.height, ctx);
         physical_placement(&mut sized.placement, ctx);
-        return Some(live_image_fragment(lb, bx, by, &sized, bs));
+        let mut fragment = live_image_fragment(lb, bx, by, &sized, bs);
+        if !loaded {
+            fragment.children.clear();
+        }
+        return Some(fragment);
     }
     let mut sized = size_replaced(src.name.clone(), intrinsic, &sizing);
     physical_placement(&mut sized.placement, ctx);
-    Some(image_fragment(lb, bx, by, &sized, bs))
+    let mut fragment = image_fragment(lb, bx, by, &sized, bs);
+    if !loaded {
+        // A broken image's box paints its own background and border, no image.
+        fragment.content = content_kind(lb, bs, fragment.width, fragment.height);
+    }
+    Some(fragment)
 }
 
 /// An image's intrinsic size in the logical space being laid out: a vertical space's
