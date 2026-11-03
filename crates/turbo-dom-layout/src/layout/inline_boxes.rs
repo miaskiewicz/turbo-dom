@@ -934,6 +934,28 @@ mod defensive_contract_tests {
     use super::*;
 
     #[test]
+    fn upright_characters_follow_unicode_vertical_orientation() {
+        // R2 #8 (UAX #50 Vertical_Orientation 16.0): U / Tu upright, R / Tr turned.
+        let cp = |c: u32| sets_upright(char::from_u32(c).unwrap());
+        // Halfwidth kana and Hangul are R.
+        for r in [0xFF61, 0xFF65, 0xFF9F, 0xFFA0, 0xFFDC] {
+            assert!(!cp(r), "{r:04X} is R");
+        }
+        // ©, ®, enclosed alphanumerics, geometric shapes, miscellaneous symbols and
+        // dingbats (to U+2767), emoji and their skin-tone modifiers are U.
+        for u in [
+            0xA9, 0xAE, 0x2460, 0x24FF, 0x25A0, 0x25FF, 0x2600, 0x2767, 0x2776, 0x1F468, 0x1F3FB,
+            0x6C34, 0x3042, 0xAC00,
+        ] {
+            assert!(cp(u), "{u:04X} is U");
+        }
+        // The rest of Dingbats from U+2768 (ornamental brackets) on, and Latin, are R.
+        for r in [0x2768, 0x2794, 0x27BF, 0x61, 0x2010, 0xFE0F, 0x200D] {
+            assert!(!cp(r), "{r:04X} is R");
+        }
+    }
+
+    #[test]
     fn unmatched_closing_marker_does_not_create_an_element_fragment() {
         // Valid DOM capture emits balanced boundaries. A corrupt intermediate
         // closing marker must not acquire a synthetic source box.
