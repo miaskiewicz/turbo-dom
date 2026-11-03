@@ -1757,6 +1757,12 @@ struct Placer<'a> {
     open_edges: Vec<InlineEdge>,
     /// The cloned boxes a forced break closed, reopened by the next word.
     reopen: Vec<InlineEdge>,
+    /// Whether any placed word carried a `box-decoration-break: clone` edge.
+    any_clone: bool,
+    /// The cloned boxes open after `cur[..clones_len]`, outermost first (`None`:
+    /// rebuild from `open_edges`); see [`Placer::sync_clones`].
+    clones: Vec<InlineEdge>,
+    clones_len: Option<usize>,
     y: f32,
     indent: f32,
     lw: f32,
@@ -1793,6 +1799,9 @@ impl<'a> Placer<'a> {
             cur: Vec::new(),
             open_edges: Vec::new(),
             reopen: Vec::new(),
+            any_clone: false,
+            clones: Vec::new(),
+            clones_len: None,
             y: 0.0,
             indent,
             lw,
@@ -1859,6 +1868,7 @@ impl<'a> Placer<'a> {
             ),
         );
         self.open_edges = next_open;
+        self.clones_len = None;
         line.line.top = self.y;
         line.line.indent = self.indent;
         self.y += line.line.height;
@@ -1900,6 +1910,7 @@ impl<'a> Placer<'a> {
         if let Some(last) = self.cur.last_mut() {
             if let Some(hyphen) = last.hyphen.take() {
                 *last = *hyphen;
+                self.clones_len = None;
             }
         }
         word.leading_spaces = self.wrapped_leading_spaces(word);
@@ -1913,25 +1924,47 @@ impl<'a> Placer<'a> {
 
     /// The `box-decoration-break: clone` boxes open after the current line's words
     /// (and `next`, when given), outermost first (miaskiewicz/turbo-dom#244).
-    fn cloned_open(&self, next: Option<&Word>) -> Vec<InlineEdge> {
-        let mut open = self.open_edges.clone();
-        for word in self.cur.iter().chain(next) {
-            crate::hot!("inline.clone_scan");
-            for (_, edge) in &word.edges {
-                if edge.start {
-                    open.push(edge.clone());
-                } else {
-                    open.retain(|value| value.node_id != edge.node_id);
-                }
+    fn cloned_open(&mut self, next: Option<&Word>) -> Vec<InlineEdge> {
+        self.sync_clones();
+        let mut open = self.clones.clone();
+        if let Some(next) = next {
+            apply_clone_edges(&mut open, next);
+        }
+        open
+    }
+
+    /// Bring [`Placer::clones`] up to the current line: only the words placed since the
+    /// last call are scanned (rebuilt from `open_edges` after a flush or a rewrite), so
+    /// a line costs linear work, not a rescan per word (R2 review #6). Until a cloned
+    /// edge is seen there is nothing to track.
+    fn sync_clones(&mut self) {
+        let start = match self.clones_len {
+            Some(len) if len <= self.cur.len() => len,
+            _ => {
+                self.clones.clear();
+                self.clones.extend(
+                    self.open_edges
+                        .iter()
+                        .filter(|edge| edge.clone_advance.is_some())
+                        .cloned(),
+                );
+                0
+            }
+        };
+        if self.any_clone {
+            for word in &self.cur[start..] {
+                apply_clone_edges(&mut self.clones, word);
             }
         }
-        open.retain(|edge| edge.clone_advance.is_some());
-        open
+        self.clones_len = Some(self.cur.len());
     }
 
     /// The end edges a line must keep room for after `word`: the cloned boxes still
     /// open there repeat their end edge on this line.
-    fn clone_reserve(&self, word: &Word) -> f32 {
+    fn clone_reserve(&mut self, word: &Word) -> f32 {
+        if !self.any_clone && !word.edges.iter().any(|(_, e)| e.clone_advance.is_some()) {
+            return 0.0;
+        }
         self.cloned_open(Some(word))
             .iter()
             .filter_map(|edge| edge.clone_advance)
@@ -1978,6 +2011,7 @@ impl<'a> Placer<'a> {
             advances.word(&word);
             advances.space(&word);
         }
+        self.any_clone |= word.edges.iter().any(|(_, e)| e.clone_advance.is_some());
         self.cur.push(word);
         if forced {
             // A forced break ends a cloned box's fragment like a soft wrap does.
@@ -2018,10 +2052,11 @@ impl<'a> Placer<'a> {
             x += edge.advance;
             self.open_edges.retain(|open| open.node_id != edge.node_id);
         }
+        self.clones_len = None;
         last.line.width = x - last.line.inline_origin;
         true
     }
-    fn needs_wrap(&self, word: &Word) -> bool {
+    fn needs_wrap(&mut self, word: &Word) -> bool {
         let reserve = self.clone_reserve(word);
         if !self.html_font_metrics {
             return !self.cur.is_empty() && self.x + word.width + reserve > self.lw;
@@ -2960,6 +2995,20 @@ impl LinePlacement {
         }
     }
 }
+
+/// Track `word`'s edges in `open`, the cloned boxes open before it: a cloned box's start
+/// opens it, any end closes its box.
+fn apply_clone_edges(open: &mut Vec<InlineEdge>, word: &Word) {
+    crate::hot!("inline.clone_scan");
+    for (_, edge) in &word.edges {
+        if !edge.start {
+            open.retain(|value| value.node_id != edge.node_id);
+        } else if edge.clone_advance.is_some() {
+            open.push(edge.clone());
+        }
+    }
+}
+
 /// End each cloned box (`open`, outermost first) on the line `last` ends: its fragment
 /// there draws its end edge, which takes its own advance.
 fn close_clones(last: &mut Word, open: &[InlineEdge]) {
