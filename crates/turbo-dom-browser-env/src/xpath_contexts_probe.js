@@ -28,6 +28,11 @@
   const detached = document.createElement("article");
   detached.id = "dt";
   detached.innerHTML = '<span id="ds"></span>';
+  const template = document.createElement("template");
+  template.innerHTML = '<p id="tp"><span id="host"></span></p>';
+  const xmlDoc = document.implementation.createDocument(null, "r", null);
+  xmlDoc.documentElement.appendChild(xmlDoc.createElement("s")).setAttribute("id", "host");
+  const xmlDetached = xmlDoc.createElement("q");
   document.body.insertAdjacentHTML("beforeend", '<svg id="sv"><g id="sg"></g></svg>');
   const expressions = [
     ".//span",
@@ -44,6 +49,8 @@
     "preceding-sibling::node()",
     "id('fs')",
     "id('ss')",
+    "id('host')",
+    "id('sv')/*",
     "namespace::*",
     "count(namespace::node())",
   ];
@@ -57,6 +64,9 @@
     shadow_span: shadow.firstChild.firstChild,
     shadow_root: shadow,
     detached_span: detached.firstChild,
+    detached: detached,
+    template_span: template.content.firstChild.firstChild,
+    xml_detached: xmlDetached,
     html: document.documentElement,
     svg_g: document.getElementById("sg"),
     document: document,
