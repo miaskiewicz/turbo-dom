@@ -188,11 +188,16 @@ package or publish workflow.
   quarter clockwise (raster PNG + SVG) and a vertical-rl scroller scrolls from the right. Chrome
   controls: `live_geometry_chrome156.json` `vertical-*`, `scripts/vertical-text-chrome-control.mjs`
   -> turbo-dom-raster `tests/vertical_text_chrome.rs`. Since turbo-dom#239 flex / grid /
-  table boxes, inline-level atoms, `<img>` (intrinsic size turned), `direction: rtl`, floats and
-  absolute boxes lay out in the logical space too, and a vertical line aligns on the central
-  baseline (`writing::central_baseline`: fonts split evenly, baseline-less atoms centre; Blink's
-  `kIdeographicBaseline`); upright text (CJK / `text-orientation: upright`) and replaced elements
-  with a physical default size still fail per element (`SnapshotError::UnsupportedVerticalWriting`). Since S5 the legacy owned `Node` input is gone (`node.rs`,
+  table boxes, atoms, `<img>` / `<svg>` / `<iframe>` (physical intrinsic or default size turned),
+  `direction: rtl`, floats, absolute boxes, orthogonal flex/grid items, table cells and inlines
+  (atomic, `writing::layout_root_sized` / `orthogonal_extent`) lay out in the logical space; a
+  vertical line aligns on the central baseline (`writing::central_baseline`, Blink's
+  `kIdeographicBaseline`); upright text (`inline::UprightText`: CJK under `mixed`, all under
+  `upright`) advances by ascent + descent and paints turned back (`TextLine::upright`, raster
+  `vertical_upright_tests.rs` in the Ic Fixture face); vertical Range rects / carets turn the
+  line frame (`text_geometry::turn`). Canvas / video / object / audio and form controls still
+  fail per element (`SnapshotError::UnsupportedVerticalWriting`); border radii are one scalar,
+  so there are no corners to map. Since S5 the legacy owned `Node` input is gone (`node.rs`,
   `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
   `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the
   header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF
