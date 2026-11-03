@@ -254,11 +254,11 @@ fn paint_masked(
     xf: Transform,
     paint: impl FnOnce(&mut Pixmap, Transform),
 ) {
-    let Some((x0, y0, w, h)) = path
+    let span = path
         .clone()
         .transform(xf)
-        .and_then(|p| device_span(p.bounds(), pm.width(), pm.height()))
-    else {
+        .and_then(|p| device_span(p.bounds(), pm.width(), pm.height()));
+    let Some((x0, y0, w, h)) = span else {
         return;
     };
     let mut layer = Pixmap::new(w, h).expect("clip layer within the canvas");
@@ -2392,6 +2392,16 @@ mod exact_tests {
             50,
         );
         assert_eq!(got.data(), white(50, 50).data());
+        // A rounded region off the canvas paints nothing.
+        let got = drawn(
+            &clipping(
+                region(0.0, 0.0, 20.0, 20.0, 5.0),
+                vec![boxed(0.0, 0.0, 50.0, 50.0, 0.0, None)],
+            ),
+            8,
+            8,
+        );
+        assert_eq!(got.data(), white(8, 8).data());
         // Children inside a square region paint directly, whatever their content (a
         // marker child too), exactly as unclipped.
         let inside = vec![
