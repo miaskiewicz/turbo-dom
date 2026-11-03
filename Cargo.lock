@@ -2842,6 +2842,7 @@ dependencies = [
  "thiserror 2.0.18",
  "turbo-dom",
  "turbo-dom-layout",
+ "unicode-bidi",
  "unicode-linebreak",
 ]
 

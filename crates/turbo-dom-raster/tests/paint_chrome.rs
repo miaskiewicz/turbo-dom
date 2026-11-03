@@ -139,6 +139,26 @@ fn clip_rect_clips_the_box_and_its_descendants_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// miaskiewicz/turbo-dom#238: the screenshot paints bidi-reordered runs — an override's
+/// atoms reversed, an RTL paragraph's atoms right to left, reordered inline boxes with
+/// their backgrounds.
+#[test]
+fn bidi_reordered_runs_paint_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("bidi-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// miaskiewicz/turbo-dom#244: an inline box paints its background, padding and border per
+/// line fragment (`box-decoration-break: slice`): the start edge on its first fragment,
+/// the end edge on its last, also when bidi reordering splits it; its padding, border and
+/// margin push its neighbours. `layout_boxes` gives the union of its fragments. The SVG
+/// screenshot is checked by [`svg_screenshots_paint_like_chrome_156`].
+#[test]
+fn inline_box_decorations_paint_per_fragment_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("inline-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// miaskiewicz/turbo-dom#81: the screenshot's initial containing block is its viewport.
 #[test]
 fn fixed_and_icb_boxes_anchor_to_the_viewport_like_chrome_156() {

@@ -102,18 +102,139 @@ fn tree_elements(tree: &Tree, root: Handle) -> Vec<Handle> {
     elements
 }
 
-/// The matching elements of `root` for each requested pseudo-class, or `None` when this realm
-/// has no classifier (the selector then keeps rtdom's own matching).
+/// Pseudo-classes whose state is the element's own: classifying an element needs no other
+/// element of the tree. (`:indeterminate` reads the radio group, `:valid`/`:invalid` and the
+/// user-validity classes a form's or fieldset's controls.)
+const ELEMENT_LOCAL: [&str; 12] = [
+    "checked",
+    "default",
+    "placeholder-shown",
+    "read-only",
+    "read-write",
+    "in-range",
+    "out-of-range",
+    "enabled",
+    "disabled",
+    "required",
+    "optional",
+    "scope",
+];
+
+/// Pseudo-classes whose state is a form's or fieldset's controls' (`:valid`, `:invalid`) or
+/// the element's own (the user-validity classes match controls only).
+const VALIDITY: [&str; 4] = ["valid", "invalid", "user-valid", "user-invalid"];
+
+/// The elements a `matches()`/`closest()` answer for `anchor` can read the pseudo-classes of:
+/// its inclusive ancestors (every compound of a selector without `:has()` matches one of them
+/// or one of their preceding siblings, the latter only through `+`/`~`) and, for the validity
+/// classes, the controls that make one of them a valid or invalid form or fieldset. `None` when
+/// the selector or a class needs the whole tree.
+fn subject_elements(
+    tree: &Tree,
+    anchor: Handle,
+    source: &str,
+    names: &[&str],
+) -> Option<Vec<Handle>> {
+    if source.to_ascii_lowercase().contains(":has(")
+        || !names
+            .iter()
+            .all(|name| ELEMENT_LOCAL.contains(name) || VALIDITY.contains(name))
+    {
+        return None;
+    }
+    let siblings = source.contains('+') || source.contains('~');
+    let mut elements = Vec::new();
+    let mut node = Some(anchor);
+    while let Some(current) = node {
+        if tree.node_type_id(current) == 1 {
+            elements.push(current);
+        }
+        if siblings {
+            let mut sibling = tree.previous_sibling(current);
+            while let Some(previous) = sibling {
+                if tree.node_type_id(previous) == 1 {
+                    elements.push(previous);
+                }
+                sibling = tree.previous_sibling(previous);
+            }
+        }
+        node = tree.parent(current);
+    }
+    if names.iter().any(|name| VALIDITY.contains(name)) {
+        add_validity_controls(tree, anchor, &mut elements);
+    }
+    Some(elements)
+}
+
+/// A listed element, or one that may be a form-associated custom element.
+fn maybe_control(tree: &Tree, node: Handle) -> bool {
+    tree.namespace_id(node) == 0
+        && tree.local_name(node).is_some_and(|name| {
+            matches!(
+                name,
+                "input" | "button" | "select" | "textarea" | "object" | "output"
+            ) || name.contains('-')
+        })
+}
+
+/// The controls whose validity a form or fieldset among `elements` reads: a fieldset's
+/// descendant controls, and a form's owned ones (its descendants, and anywhere in the tree the
+/// controls naming a form with their `form` attribute).
+fn add_validity_controls(tree: &Tree, anchor: Handle, elements: &mut Vec<Handle>) {
+    let containers: Vec<(Handle, bool)> = elements
+        .iter()
+        .filter(|&&node| tree.namespace_id(node) == 0)
+        .filter_map(|&node| match tree.local_name(node) {
+            Some("form") => Some((node, true)),
+            Some("fieldset") => Some((node, false)),
+            _ => None,
+        })
+        .collect();
+    let mut seen: std::collections::HashSet<Handle> = elements.iter().copied().collect();
+    let mut add = |node: Handle, elements: &mut Vec<Handle>| {
+        if maybe_control(tree, node) && seen.insert(node) {
+            elements.push(node);
+        }
+    };
+    for &(container, _) in &containers {
+        for node in tree.descendants(container) {
+            add(node, elements);
+        }
+    }
+    if containers.iter().any(|&(_, form)| form) {
+        for node in tree.descendants(html_popover::selector_root(tree, anchor)) {
+            if tree.has_attribute(node, "form") {
+                add(node, elements);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Test hook: how many elements the classifier was handed.
+    pub(crate) static CLASSIFIED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// The matching elements of `root` (of `candidates` when given) for each requested
+/// pseudo-class, or `None` when this realm has no classifier (the selector then keeps rtdom's
+/// own matching).
 fn classify(
     scope: &mut v8::PinScope,
     root: Handle,
+    candidates: Option<Vec<Handle>>,
     names: &[&'static str],
 ) -> Option<Vec<Vec<Handle>>> {
     let classifier = scope
         .get_current_context()
         .get_slot::<Classifier>()
         .and_then(|slot| slot.0.to_local(scope))?;
-    let handles = with_tree(|tree| tree_elements(tree, root))?;
+    let handles = match candidates {
+        Some(handles) => handles,
+        None => with_tree(|tree| tree_elements(tree, root))?,
+    };
+    #[cfg(test)]
+    CLASSIFIED.with(|count| count.set(count.get() + handles.len()));
     let elements: Vec<v8::Local<v8::Value>> = handles
         .iter()
         .map(|&handle| wrap(scope, handle).into())
@@ -145,7 +266,14 @@ fn classify(
     Some(sets)
 }
 
-pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+/// `subject_local`: the query is `matches()`/`closest()` on `anchor`, whose answer depends only
+/// on `anchor`'s ancestors (and their siblings), not on the rest of the tree.
+pub(super) fn selector(
+    scope: &mut v8::PinScope,
+    anchor: Handle,
+    source: &str,
+    subject_local: bool,
+) -> Option<String> {
     let mut input = cssparser::ParserInput::new(source);
     let mut parser = cssparser::Parser::new(&mut input);
     let mut ranges = Vec::new();
@@ -173,7 +301,11 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
     let sets = if names.is_empty() {
         Vec::new()
     } else {
-        match classify(scope, root, &names) {
+        let candidates = subject_local
+            .then(|| with_tree(|tree| subject_elements(tree, anchor, source, &names)))
+            .flatten()
+            .flatten();
+        match classify(scope, root, candidates, &names) {
             Some(sets) => sets,
             None => return Some(source.to_owned()),
         }

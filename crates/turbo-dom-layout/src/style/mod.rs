@@ -68,7 +68,7 @@ span { display: inline }
 img { display: inline }
 b, strong, i, em { display: inline }
 code, kbd, samp { display: inline }
-sub, sup, abbr, cite, q, mark, u, s, label, time { display: inline }
+sub, sup, abbr, cite, q, mark, u, s, label, time, bdi, bdo { display: inline }
 sub, sup { font-size: 0.83em }
 sub { vertical-align: sub }
 sup { vertical-align: super }
@@ -95,6 +95,10 @@ button, select, meter, progress, input[type=button], input[type=submit], input[t
 template { display: none }
 [dir=rtl i] { direction: rtl }
 [dir=ltr i] { direction: ltr }
+[dir=rtl i], [dir=ltr i], [dir=auto i], bdi { unicode-bidi: isolate }
+bdo { unicode-bidi: bidi-override }
+bdo[dir=rtl i], bdo[dir=ltr i], bdo[dir=auto i] { unicode-bidi: isolate-override }
+textarea[dir=auto i], pre[dir=auto i] { unicode-bidi: plaintext }
 ";
 
 /// The user-agent rules a whole HTML document adds to [`UA_CSS`] when it is styled

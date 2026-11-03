@@ -1000,11 +1000,45 @@ fn native_inline_items(el: &StyledElement, ids: &mut Ids) -> Level {
     // replaced box on every path, not flattened away like a text inline.
     if is_img(el) || (native && super::inline_boxes::atomic_element(el)) {
         Level::Inline(vec![InlineItem::Atomic(build_block_box(el, ids))])
-    } else if native {
+    } else if native || decorated_inline(el) {
         native_inline_flow(el, ids)
     } else {
         flatten_inline(el, ids)
     }
+}
+
+/// Whether the static path keeps `el`'s inline box (miaskiewicz/turbo-dom#244): an
+/// inline with a background, a box shadow, or a horizontal margin, border or padding
+/// paints per line fragment and pushes its neighbours, so its boundaries survive
+/// flattening; any other inline flattens into its parent's run as before.
+fn decorated_inline(el: &StyledElement) -> bool {
+    if super::inline_boxes::atomic_element(el) {
+        return false;
+    }
+    let used = super::value::resolve_box_style(
+        &el.style,
+        super::value::ResolveCtx {
+            parent_font_size: super::value::DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        },
+    );
+    let border = used.border.widths();
+    super::value::has_background(&el.style)
+        || used.box_shadow.is_some()
+        || [
+            used.margin.left,
+            used.margin.right,
+            used.padding.left,
+            used.padding.right,
+            used.padding.top,
+            used.padding.bottom,
+            border.left,
+            border.right,
+            border.top,
+            border.bottom,
+        ]
+        .iter()
+        .any(|value| *value != 0.0)
 }
 
 fn append_level(out: &mut Vec<FlowLevel>, level: Level) {
@@ -1132,7 +1166,8 @@ fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Level {
     // Without a block the split is a single run (the same as `Level::Inline` to every
     // consumer, `append_level`).
     let mut out = Vec::new();
-    let mut run = Vec::new();
+    let (open, close) = bidi_controls(el, ids);
+    let mut run: Vec<InlineItem> = open.into_iter().collect();
     for level in levels {
         match level {
             FlowLevel::Block(block) if !block.line_placeholder() => {
@@ -1142,8 +1177,27 @@ fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Level {
             other => run.extend(inline_items_of(vec![other])),
         }
     }
+    run.extend(close);
     out.push(FlowLevel::Inline(run));
     Level::Split(out)
+}
+
+/// A flattened inline element's `unicode-bidi` as zero-width text items holding the
+/// formatting characters that open and close its content: the static path has no
+/// inline-box edges to carry it (miaskiewicz/turbo-dom#238).
+fn bidi_controls(el: &StyledElement, ids: &mut Ids) -> (Option<InlineItem>, Option<InlineItem>) {
+    let bidi = super::inline::UnicodeBidi::parse(el.style.get("unicode-bidi"));
+    let rtl = el.style.get("direction").map(str::trim) == Some("rtl");
+    let (open, close) = bidi.controls(rtl);
+    if open.is_empty() {
+        return (None, None);
+    }
+    let mut item = |text: &str| InlineItem::Text {
+        node_id: ids.alloc(),
+        style: el.style.clone(),
+        text: text.to_string(),
+    };
+    (Some(item(open)), Some(item(close)))
 }
 
 // --------------------------------------------------------------------------
@@ -1954,6 +2008,52 @@ mod tests {
     }
 
     const FULLSCREEN: &[(&str, &str)] = &[("position", "fixed"), (TOP_LAYER, "fullscreen")];
+
+    fn element(tag: &str, pairs: &[(&str, &str)]) -> StyledElement {
+        let mut style = ComputedStyle::default();
+        for (property, value) in pairs {
+            style.set(property, (*value).to_string());
+        }
+        StyledElement {
+            tag: Tag::Html(tag.into()),
+            attrs: vec![],
+            style,
+            children: vec![],
+            source: None,
+        }
+    }
+
+    /// miaskiewicz/turbo-dom#244: the static path keeps an inline box that paints or
+    /// takes inline space (each decoration on its own), and flattens a plain inline and
+    /// every replaced element.
+    #[test]
+    fn decorated_inlines_keep_their_box_on_the_static_path() {
+        for pairs in [
+            &[("background-color", "#f00")][..],
+            &[("box-shadow", "1px 1px #000")],
+            &[("margin-left", "3px")],
+            &[("margin-right", "3px")],
+            &[("padding-left", "3px")],
+            &[("padding-right", "3px")],
+            &[("padding-top", "3px")],
+            &[("padding-bottom", "3px")],
+            &[("border-left", "1px solid #000")],
+            &[("border-right", "1px solid #000")],
+            &[("border-top", "1px solid #000")],
+            &[("border-bottom", "1px solid #000")],
+        ] {
+            assert!(decorated_inline(&element("span", pairs)), "{pairs:?}");
+        }
+        assert!(!decorated_inline(&element("span", &[("color", "#f00")])));
+        assert!(!decorated_inline(&element(
+            "span",
+            &[("background-color", "transparent")]
+        )));
+        assert!(!decorated_inline(&element(
+            "img",
+            &[("background-color", "#f00")]
+        )));
+    }
 
     fn kids(b: &LayoutBox) -> &[LayoutBox] {
         match &b.kind {

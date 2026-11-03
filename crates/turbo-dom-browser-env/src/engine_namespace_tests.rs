@@ -145,3 +145,53 @@ fn embedder_window_template_keeps_its_interface_and_gets_the_chain() {
     );
     reset();
 }
+
+fn wrapped_engine_source(source: &str) -> String {
+    format!("(function({ENGINE_NAMESPACE_PARAM}){{{source}\n}})")
+}
+
+fn run_and_consumes(source: &str) -> (String, Vec<bool>) {
+    let mut value = String::new();
+    engine_code_cache::CONSUMED.with(|consumed| consumed.borrow_mut().clear());
+    with_page(|scope| {
+        engine_code_cache::CONSUMED.with(|consumed| consumed.borrow_mut().clear());
+        value = run_engine_script(scope, source)
+            .unwrap()
+            .to_rust_string_lossy(scope);
+    });
+    let consumed = engine_code_cache::CONSUMED.with(|consumed| consumed.take());
+    (value, consumed)
+}
+
+// Every page runs the same engine scripts: the second page compiles them from the bytecode the
+// first produced instead of parsing the source again.
+#[test]
+fn engine_scripts_reuse_bytecode_across_pages() {
+    let source = "return 'cached ' + (() => 6 * 7)();";
+    let key = engine_code_cache::key(&wrapped_engine_source(source));
+    assert!(engine_code_cache::get(key).is_none());
+    assert_eq!(run_and_consumes(source), ("cached 42".to_owned(), vec![]));
+    assert!(engine_code_cache::get(key).is_some());
+    assert_eq!(
+        run_and_consumes(source),
+        ("cached 42".to_owned(), vec![true])
+    );
+}
+
+// Data V8 rejects (another build, a hash collision) still runs the script, and the cache is
+// replaced by a usable one.
+#[test]
+fn rejected_engine_bytecode_is_replaced() {
+    let source = "return 'rejected ' + 1;";
+    let key = engine_code_cache::key(&wrapped_engine_source(source));
+    engine_code_cache::insert(key, vec![0; 64]);
+    assert_eq!(
+        run_and_consumes(source),
+        ("rejected 1".to_owned(), vec![false])
+    );
+    assert_ne!(*engine_code_cache::get(key).unwrap(), vec![0; 64]);
+    assert_eq!(
+        run_and_consumes(source),
+        ("rejected 1".to_owned(), vec![true])
+    );
+}

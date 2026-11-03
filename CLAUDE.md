@@ -178,7 +178,8 @@ package or publish workflow.
   (the UA maps `dir`; `direction` inherits), an RTL scroller overflows to the left with
   offsets `ScrollMetrics::min_x..=0` (`scroll::inline_alignment` swaps start/end for
   scrollIntoView), and a quirks-mode live document follows the line height quirk (the
-  style pass marks it with `style::QUIRKS_LINE_HEIGHT`); inherited-RTL inlines lay out unreordered (bidi: turbo-dom#238). Since turbo-dom#234 `vertical-rl` /
+  style pass marks it with `style::QUIRKS_LINE_HEIGHT`; since turbo-dom#238 the static
+  `style_html_tree` marks a BackCompat document too). Since turbo-dom#234 `vertical-rl` /
   `vertical-lr` lay out through a logical-coordinate layer (`layout::writing`): a box whose
   writing mode differs from its parent's (`LayoutBox::writing_root`, an independent formatting
   context) is laid out in its own inline/block space from a relabelled copy of its subtree
@@ -192,7 +193,18 @@ package or publish workflow.
   absolute boxes lay out in the logical space too, and a vertical line aligns on the central
   baseline (`writing::central_baseline`: fonts split evenly, baseline-less atoms centre; Blink's
   `kIdeographicBaseline`); upright text (CJK / `text-orientation: upright`) and replaced elements
-  with a physical default size still fail per element (`SnapshotError::UnsupportedVerticalWriting`). Since S5 the legacy owned `Node` input is gone (`node.rs`,
+  with a physical default size still fail per element (`SnapshotError::UnsupportedVerticalWriting`). Since turbo-dom#238 inline layout is UAX #9 bidi
+  (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
+  `unicode-bidi`/`direction` as formatting characters (the static path, which flattens
+  inline boxes, emits them as zero-width text items), segments shaped in their level's
+  direction (`FontFace::shape_in`), lines broken in logical order then reordered (L2;
+  a line's hanging trailing space keeps the preceding character's level), inline-box
+  decorations on their physical sides with a box split per contiguous visual run
+  (and, for an embedding/isolate/override, per level), `dir=auto` first-strong
+  direction, `unicode-bidi: plaintext` paragraphs, Blink's caret hit-test adjustment at
+  run boundaries (`text_carets::bidi_adjusted`) and an RTL root (the body's direction)
+  scrolling the viewport `min_x..=0`. Chrome controls: `tests/fixtures/bidi/` (fixture
+  fonts incl. Noto Sans Hebrew / Arabic) and the paint control's `bidi-*` pixels. Since S5 the legacy owned `Node` input is gone (`node.rs`,
   `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
   `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the
   header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF

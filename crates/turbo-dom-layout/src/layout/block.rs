@@ -880,6 +880,8 @@ fn layout_nonempty_lines(
         .and_then(|value| super::value::parse_length_pct(value, bs.font_size))
         .and_then(|value| value.resolve(cw))
         .unwrap_or(0.0);
+    let (base, align) = paragraph_direction(lb, bs, items);
+    let _bidi = super::inline::bidi::base_scope(base);
     let inputs = ParagraphInputs {
         origin: (cx, cy),
         cw,
@@ -888,7 +890,7 @@ fn layout_nonempty_lines(
         strut_metrics: super::inline_boxes::strut(bs, ctx, central),
         central,
         quirk_roots: quirk_roots.as_ref(),
-        align: bs.text_align,
+        align,
         font_size: bs.font_size,
         baselines: &placement.baselines,
     };
@@ -1462,6 +1464,29 @@ fn append_source_break(
         pieces.push(inline::Piece::SourceBreak(edge));
     }
 }
+/// The paragraph's bidi base direction (`None`: `unicode-bidi: plaintext`, each
+/// paragraph's first strong character) and its `text-align`, which a plaintext
+/// paragraph resolves against its own direction (Chrome 156, miaskiewicz/turbo-dom#238).
+fn paragraph_direction(
+    lb: &LayoutBox,
+    bs: &BoxStyle,
+    items: &[InlineItem],
+) -> (Option<bool>, crate::text::Align) {
+    let plaintext = super::inline::UnicodeBidi::parse(lb.style.get("unicode-bidi"))
+        == super::inline::UnicodeBidi::Plaintext;
+    if !plaintext {
+        return (Some(bs.rtl), bs.text_align);
+    }
+    let rtl = items
+        .iter()
+        .find_map(|item| match item {
+            InlineItem::Text { text, .. } => super::inline::bidi::first_strong_rtl(text),
+            _ => None,
+        })
+        .unwrap_or(false);
+    (None, super::value::align_in(&lb.style, rtl))
+}
+
 /// Whether the block's document is in quirks mode, as the live style pass marks every
 /// element of one ([`crate::style::QUIRKS_LINE_HEIGHT`]).
 fn quirks_line_height(lb: &LayoutBox) -> bool {

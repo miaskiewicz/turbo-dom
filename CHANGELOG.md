@@ -7,8 +7,30 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Performance
+
+- turbo-dom-browser-env keeps a process-wide V8 bytecode cache of its engine scripts: every
+  page install (turbo-test installs one per test file) compiled each engine script from source,
+  ~8-9% of a real app suite's CPU. The cache is produced after the script ran (so it holds the
+  lazily compiled functions) and is replaced when V8 rejects it.
+- `matches()` / `closest()` classify the form-state pseudo-classes (`:disabled`, `:checked`,
+  `:invalid`, ...) only for the elements their answer can read: the subject's inclusive
+  ancestors (with their preceding siblings for `+` / `~`) and, for the validity classes, each
+  form / fieldset ancestor's controls. They classified every element of the tree in JS on each
+  call; user-event asks `matches(':disabled')` on every pointer step and MUI's rules ask
+  `:invalid` per input, so large forms were quadratic (turbo-test 0.7.0 perf work).
+  `:has()`, `:indeterminate` and `querySelector[All]` still classify the whole tree.
+
 ### Fixed
 
+- turbo-dom-raster's static screenshots (PNG and SVG) paint inline boxes like Chrome 156
+  (#244): an inline with a background, box shadow, padding, border or horizontal margin
+  keeps its box through turbo-dom-layout's static line layout and paints per line fragment
+  (`box-decoration-break: slice`: the start edge on the first fragment, the end edge on the
+  last, also across bidi-split fragments), its edges push its neighbours and count toward a
+  shrink-to-fit container's max-content width, and `layout_boxes` reports the union of its
+  fragments. Plain inlines still flatten into their parent's run; the tools/parity corpora
+  hold no such inline in a static render, so no checkpoint output changes.
 - turbo-dom-layout implements `hyphens: auto` for English (`lang=en` / `en-US` / other `en-*`
   regions; not en-GB): words break at the en-US Knuth-Liang points (the `hyphenation`
   crate's embedded TeX `hyph-en-us` patterns, behind the new default-on `hyphenation`
