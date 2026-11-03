@@ -70,6 +70,10 @@ impl Cursor {
 }
 
 fn prepare_segment(seg: &mut Seg, scale: f32) {
+    if seg.upright {
+        // Upright glyphs advance by the vertical advance, already `native_width`.
+        return;
+    }
     seg.native_width = native_text_advance::measure(
         &seg.face,
         (seg.font_size, scale),

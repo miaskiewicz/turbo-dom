@@ -5720,6 +5720,565 @@
    ]
   },
   {
+   "id": "vertical-rl-upright-cjk",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"rl\" style=\"height:100px;font-family:'Ic Fixture'\"><span data-cid=\"c\">水水</span><span data-cid=\"a\">ab</span><span data-cid=\"u\" style=\"text-orientation:upright\">ab</span><span data-cid=\"m\">a水b</span></div>",
+   "fonts": true,
+   "metrics": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 0,
+     "width": 40,
+     "height": 100,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 40,
+      "offsetHeight": 100,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 40,
+      "clientHeight": 100,
+      "scrollWidth": 40,
+      "scrollHeight": 100,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "c",
+     "x": 22,
+     "y": 0,
+     "width": 16,
+     "height": 32,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 22,
+      "offsetTop": 0,
+      "offsetWidth": 16,
+      "offsetHeight": 32,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "a",
+     "x": 22,
+     "y": 32,
+     "width": 16,
+     "height": 16.96875,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 22,
+      "offsetTop": 32,
+      "offsetWidth": 16,
+      "offsetHeight": 17,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "u",
+     "x": 22,
+     "y": 48.96875,
+     "width": 16,
+     "height": 32,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 22,
+      "offsetTop": 49,
+      "offsetWidth": 16,
+      "offsetHeight": 32,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "m",
+     "x": 2,
+     "y": 0,
+     "width": 36,
+     "height": 89.296875,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 22,
+      "offsetTop": 81,
+      "offsetWidth": 36,
+      "offsetHeight": 89,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "vertical-lr-upright-lines",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"lr\" style=\"height:40px;font-family:'Ic Fixture'\"><span data-cid=\"c\">水水水 水水水</span></div><div data-cid=\"w\" class=\"rl\" style=\"height:40px;font-family:'Ic Fixture';text-orientation:upright\">aaa bb</div>",
+   "fonts": true,
+   "metrics": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 40,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 60,
+      "offsetHeight": 40,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 60,
+      "clientHeight": 40,
+      "scrollWidth": 60,
+      "scrollHeight": 40,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 0,
+     "width": 56,
+     "height": 36,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 2,
+      "offsetTop": 0,
+      "offsetWidth": 56,
+      "offsetHeight": 36,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 40,
+     "width": 40,
+     "height": 40,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 40,
+      "offsetWidth": 40,
+      "offsetHeight": 40,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 40,
+      "clientHeight": 40,
+      "scrollWidth": 40,
+      "scrollHeight": 48,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "vertical-rl-replaced-defaults",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"rl\" style=\"height:400px\"><svg data-cid=\"s\" style=\"display:block\"></svg><svg data-cid=\"w\" width=\"40\" style=\"display:block\"></svg><iframe data-cid=\"f\" style=\"display:block\"></iframe><svg data-cid=\"h\" height=\"30\" style=\"display:block\"></svg></div>",
+   "fonts": true,
+   "metrics": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 0,
+     "width": 944,
+     "height": 400,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 944,
+      "offsetHeight": 400,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 944,
+      "clientHeight": 400,
+      "scrollWidth": 944,
+      "scrollHeight": 400,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "s",
+     "x": 644,
+     "y": 0,
+     "width": 300,
+     "height": 150,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 300,
+      "clientHeight": 150,
+      "scrollWidth": 300,
+      "scrollHeight": 150,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "w",
+     "x": 604,
+     "y": 0,
+     "width": 40,
+     "height": 150,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 40,
+      "clientHeight": 150,
+      "scrollWidth": 40,
+      "scrollHeight": 150,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "f",
+     "x": 300,
+     "y": 0,
+     "width": 304,
+     "height": 154,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 300,
+      "offsetTop": 0,
+      "offsetWidth": 304,
+      "offsetHeight": 154,
+      "clientLeft": 2,
+      "clientTop": 2,
+      "clientWidth": 300,
+      "clientHeight": 150,
+      "scrollWidth": 300,
+      "scrollHeight": 150,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "h",
+     "x": 0,
+     "y": 0,
+     "width": 300,
+     "height": 30,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 300,
+      "clientHeight": 30,
+      "scrollWidth": 300,
+      "scrollHeight": 30,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "vertical-orthogonal-flex-item",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"f\" style=\"display:flex;width:300px\"><div data-cid=\"fi\" class=\"rl\">aaaa bbbb</div><div data-cid=\"fj\" style=\"width:10px;height:5px\"></div></div>",
+   "fonts": true,
+   "metrics": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 300,
+     "height": 88.625,
+     "display": "flex",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 300,
+      "offsetHeight": 89,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 300,
+      "clientHeight": 89,
+      "scrollWidth": 300,
+      "scrollHeight": 89,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "fi",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 88.625,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 20,
+      "offsetHeight": 89,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 20,
+      "clientHeight": 89,
+      "scrollWidth": 20,
+      "scrollHeight": 89,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "fj",
+     "x": 20,
+     "y": 0,
+     "width": 10,
+     "height": 5,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 20,
+      "offsetTop": 0,
+      "offsetWidth": 10,
+      "offsetHeight": 5,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 10,
+      "clientHeight": 5,
+      "scrollWidth": 10,
+      "scrollHeight": 5,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "vertical-orthogonal-grid-item",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"g\" style=\"display:grid;grid-template-columns:100px 50px\"><div data-cid=\"gi\" class=\"lr\" style=\"padding-left:3px\">ab cd</div><div data-cid=\"gj\">x</div></div>",
+   "fonts": true,
+   "metrics": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 49.234375,
+     "display": "grid",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 1280,
+      "offsetHeight": 49,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 1280,
+      "clientHeight": 49,
+      "scrollWidth": 1280,
+      "scrollHeight": 49,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "gi",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 49.234375,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 100,
+      "offsetHeight": 49,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 100,
+      "clientHeight": 49,
+      "scrollWidth": 100,
+      "scrollHeight": 49,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "gj",
+     "x": 100,
+     "y": 0,
+     "width": 50,
+     "height": 49.234375,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 100,
+      "offsetTop": 0,
+      "offsetWidth": 50,
+      "offsetHeight": 49,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 50,
+      "clientHeight": 49,
+      "scrollWidth": 50,
+      "scrollHeight": 49,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "vertical-orthogonal-table-cell",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><table data-cid=\"t\"><tr><td data-cid=\"td\" class=\"rl\">ab cd</td><td>x</td></tr></table>",
+   "fonts": true,
+   "metrics": true,
+   "measure": {
+    "t": "xyh"
+   },
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 39.859375,
+     "height": 55.234375,
+     "display": "table",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 40,
+      "offsetHeight": 55,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 40,
+      "clientHeight": 55,
+      "scrollWidth": 40,
+      "scrollHeight": 55,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 2,
+     "width": 22,
+     "height": 51.234375,
+     "display": "table-cell",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 2,
+      "offsetTop": 2,
+      "offsetWidth": 22,
+      "offsetHeight": 51,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 22,
+      "clientHeight": 51,
+      "scrollWidth": 22,
+      "scrollHeight": 51,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "vertical-orthogonal-inline",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\" style=\"width:300px\">a<span data-cid=\"s\" class=\"rl\">bcd</span>e</div>",
+   "fonts": true,
+   "metrics": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 300,
+     "height": 34.546875,
+     "display": "block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 0,
+      "offsetTop": 0,
+      "offsetWidth": 300,
+      "offsetHeight": 35,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 300,
+      "clientHeight": 35,
+      "scrollWidth": 300,
+      "scrollHeight": 35,
+      "scrollLeft": 0
+     }
+    },
+    {
+     "cid": "s",
+     "x": 9.859375,
+     "y": 0,
+     "width": 20,
+     "height": 29.546875,
+     "display": "inline-block",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 10,
+      "offsetTop": 0,
+      "offsetWidth": 20,
+      "offsetHeight": 30,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 20,
+      "clientHeight": 30,
+      "scrollWidth": 20,
+      "scrollHeight": 30,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
+  {
    "id": "vertical-rl-rtl",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"rl\" dir=\"rtl\" style=\"height:100px\"><div data-cid=\"a\" style=\"height:30px;width:10px\"></div><div data-cid=\"b\" style=\"width:10px\">ab</div></div>",
    "fonts": true,

@@ -59,6 +59,7 @@ fn source_pieces(fonts: &FontRegistry, contributes: bool, line_height: Option<f3
             forced_newlines: false,
             text_transform: turbo_dom_layout::text::TextTransform::default(),
             word_breaking: turbo_dom_layout::layout::inline::WordBreaking::default(),
+            upright: turbo_dom_layout::layout::inline::UprightText::None,
         }),
         Piece::Edge(end),
     ]

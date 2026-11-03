@@ -85,13 +85,25 @@ fn rounded(value: f32) -> Result<i32, String> {
     }
     Ok(value.round() as i32)
 }
+/// Whether `source`'s first border box is an ordinary inline box's fragment.
+fn inline_box(snapshot: &LayoutSnapshot, source: &crate::layout_snapshot::SnapshotSource) -> bool {
+    source.fragment_indices.iter().any(|&i| {
+        let fragment = &snapshot.fragments()[i];
+        fragment.kind == GeometryKind::BorderBox
+            && fragment.used_box.is_some_and(|used| used.inline_fragment)
+    })
+}
+
 pub fn scroll_metrics(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     id: SourceId,
 ) -> Result<ScrollMetrics, String> {
     let source = snapshot.source(id).ok_or("native scroll source missing")?;
+    // An inline box (no box of its own to scroll) reads zero, like a box-less element
+    // (CSSOM View `scrollWidth` / `scrollHeight`; Chrome 156, miaskiewicz/turbo-dom#239).
     if source.excluded_from_layout
+        || inline_box(snapshot, source)
         || styles
             .get(&id)
             .is_some_and(|entry| entry.style.get("display") == Some("contents"))

@@ -86,6 +86,9 @@ pub enum FragmentContent {
         /// from the line-over edge) and the run paints turned a quarter clockwise, a
         /// glyph at `(x, y)` landing at `(frag.x + frag.width - y, frag.y + x)`.
         vertical: bool,
+        /// The glyphs stand upright (miaskiewicz/turbo-dom#239): in a `vertical` run
+        /// each glyph turns back a quarter about its pen, so it paints unturned there.
+        upright: bool,
     },
     /// A classified marker element ([`MarkerKind`]) kept opaque for the consumer
     /// (html2pdf's paged-media directives: the fragmenter/emitter read it).

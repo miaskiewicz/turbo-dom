@@ -105,6 +105,11 @@ impl Relabel {
         }
     }
 
+    /// Whether the inline and block axes swap.
+    pub(crate) fn swaps(self) -> bool {
+        self.swap
+    }
+
     fn edges(self, edges: Edges) -> Edges {
         let source = [edges.top, edges.right, edges.bottom, edges.left];
         Edges {
@@ -272,8 +277,31 @@ struct Saved {
 /// current containing block's inline size. `None` for any other box.
 pub(crate) fn layout_root(
     lb: &super::boxgen::LayoutBox,
-    (bx, by): (f32, f32),
+    origin: (f32, f32),
     cb_width: f32,
+    parent_fs: f32,
+    ctx: &mut Ctx,
+) -> Option<Fragment> {
+    layout_root_in(lb, origin, (cb_width, None), parent_fs, ctx)
+}
+
+/// [`layout_root`] for a root whose border-box width (in the current space) is
+/// already decided: a flex or grid item or a table cell (`layout_box_sized`). The
+/// width is the root's block size when it is orthogonal, else its inline size.
+pub(crate) fn layout_root_sized(
+    lb: &super::boxgen::LayoutBox,
+    origin: (f32, f32),
+    bbw: f32,
+    parent_fs: f32,
+    ctx: &mut Ctx,
+) -> Option<Fragment> {
+    layout_root_in(lb, origin, (bbw, Some(bbw)), parent_fs, ctx)
+}
+
+fn layout_root_in(
+    lb: &super::boxgen::LayoutBox,
+    (bx, by): (f32, f32),
+    (cb_width, sized): (f32, Option<f32>),
     parent_fs: f32,
     ctx: &mut Ctx,
 ) -> Option<Fragment> {
@@ -283,7 +311,18 @@ pub(crate) fn layout_root(
         return None;
     }
     let relabel = Relabel::between(parent, mode);
-    let root = lb.relabelled(relabel);
+    let mut root = lb.relabelled(relabel);
+    // In its own space the root is no orthogonal flow (its intrinsic widths measure
+    // its content there, not through [`orthogonal_extent`]).
+    root.orthogonal_root = false;
+    if let Some(bbw) = sized {
+        let axis = if relabel.swap { "height" } else { "width" };
+        root.style.set(axis, format!("{bbw}px"));
+        root.style.set("box-sizing", "border-box".to_string());
+        for limit in ["min-", "max-"] {
+            root.style.remove(&format!("{limit}{axis}"));
+        }
+    }
     let orthogonal = relabel.swap;
     let available = if orthogonal {
         orthogonal_available(parent, ctx)
@@ -314,6 +353,62 @@ pub(crate) fn layout_root(
     map_tree(&mut frag, mode, parent);
     frag.translate(bx, by);
     Some(frag)
+}
+
+/// An orthogonal root's border-box width in its parent's space when its size is not
+/// given: laid out on its own (a scratch layout at the viewport's available size), its
+/// block size fits its content. The max- and min-content width a flex / grid / table
+/// container sizes it by (CSS Writing Modes 4 §7.3; miaskiewicz/turbo-dom#239).
+pub(crate) fn orthogonal_extent(lb: &super::boxgen::LayoutBox, fonts: &crate::FontRegistry) -> f32 {
+    let images = crate::ImageCtx {
+        resolver: &crate::NoImages,
+        body_height: None,
+    };
+    let mut diags = crate::Diagnostics::default();
+    let (width, height) = crate::style::viewport_px();
+    let parent = if WritingMode::of(&lb.style).vertical() {
+        WritingMode::HorizontalTb
+    } else {
+        WritingMode::VerticalRl
+    };
+    let (html_font_metrics, html_font_scale) = lb.html_layout_policy_pair();
+    let mut ctx = Ctx {
+        fonts,
+        images: &images,
+        diags: &mut diags,
+        abs_cb_x: 0.0,
+        abs_cb_y: 0.0,
+        abs_cb_w: width,
+        abs_cb_h: 0.0,
+        abs_cb_h_known: false,
+        cb_h: 0.0,
+        cb_h_known: false,
+        root_w: width,
+        root_h: height,
+        icb_h: height,
+        abs_cb_icb: false,
+        live_geometry: html_font_metrics,
+        used_metrics: None,
+        text_capture: None,
+        html_font_metrics,
+        html_font_scale,
+        original_units: None,
+        native_transforms: None,
+        floats: Vec::new(),
+        table_rows: None,
+        dropped_end_margins: std::collections::HashSet::new(),
+        sticky_pending: Vec::new(),
+        writing: parent,
+    };
+    let available = if parent.vertical() { height } else { width };
+    layout_root(
+        lb,
+        (0.0, 0.0),
+        available,
+        super::value::DEFAULT_FONT_SIZE,
+        &mut ctx,
+    )
+    .map_or(0.0, |frag| frag.width)
 }
 
 /// The space available to an orthogonal root's inline size: the containing block's
@@ -520,15 +615,55 @@ mod tests {
     #[test]
     fn subtrees_of_every_kind_relabel() {
         let html = "<body style='margin:0'><div data-cid=v style='writing-mode:vertical-lr;height:200px'>\
-            <ul><li>item</li></ul><div style='display:flex'><i>f</i></div><div style='display:grid'><i>g</i></div>\
+            <ul><li>item</li></ul><ul style='list-style-position:inside'><li>in</li></ul><div style='display:flex'><i>f</i></div><div style='display:grid'><i>g</i></div>\
             <table><tr><td>t</td></tr></table><p>a<br><span style='padding:1px'>b</span><b style='display:inline-block'>c</b></p></div>";
         let laid = boxes(html, (800.0, 600.0));
         assert_eq!(rect(&laid, "v").3, 200.0);
         assert!(rect(&laid, "v").2 > 0.0);
     }
 
+    /// A consumer marker element (html2pdf's directives) relabels as an opaque box.
+    #[test]
+    fn consumer_markers_relabel() {
+        fn markers(b: &super::super::boxgen::LayoutBox) -> usize {
+            use super::super::boxgen::BoxKind;
+            match &b.kind {
+                BoxKind::Marker(kind) => usize::from(kind.id == 7),
+                BoxKind::Block(kids)
+                | BoxKind::Flex(kids)
+                | BoxKind::Grid(kids)
+                | BoxKind::Table(kids) => kids.iter().map(markers).sum(),
+                BoxKind::Lines(_) => 0,
+            }
+        }
+        use crate::{StyledElement, StyledNode, Tag};
+        let element = |tag, children| StyledElement {
+            tag,
+            attrs: Vec::new(),
+            style: ComputedStyle::default(),
+            children,
+            source: None,
+        };
+        let marker = element(
+            Tag::Marker(crate::MarkerKind {
+                id: 7,
+                inline: false,
+            }),
+            Vec::new(),
+        );
+        let root = super::super::boxgen::build_box_tree(&[StyledNode::Element(element(
+            Tag::Html("div".into()),
+            vec![StyledNode::Element(marker)],
+        ))]);
+        let turned = root.relabelled(Relabel::between(
+            WritingMode::HorizontalTb,
+            WritingMode::VerticalRl,
+        ));
+        assert_eq!(markers(&turned), 1);
+    }
+
     /// What the vertical layer does not lay out fails that element's reads only:
-    /// upright text and replaced elements sized by a physical default.
+    /// canvas / video / form controls (upright text and img / svg / iframe lay out).
     #[test]
     fn unsupported_vertical_boxes_fail_per_element() {
         use crate::layout_snapshot::SnapshotError;
@@ -536,7 +671,7 @@ mod tests {
             "<body><div id=v style='writing-mode:vertical-rl'>ok <span id=s>span</span>\
              <div id=f style='display:flex'>f</div><img id=i><b id=ib style='display:inline-block'>b</b>\
              <svg id=sv width=5 height=6></svg><svg id=ss style='width:5px;height:6px'></svg>\
-             <svg id=sw width=5></svg><svg id=sa width=5 style='height:auto'></svg><iframe id=if></iframe><input id=in>\
+             <svg id=sw width=5></svg><svg id=sa width=5 style='height:auto'></svg><iframe id=if></iframe><input id=in><canvas id=cv></canvas>\
              <p id=c>\u{6f22}\u{5b57}</p><p id=u style='text-orientation:upright'>up</p><p id=e> </p>\
              <span id=n style='display:none'><input></span></div>\
              <p id=h style='writing-mode:vertical-lr;text-orientation:sideways'>side</p></body>",
@@ -554,12 +689,70 @@ mod tests {
                 "{supported}"
             );
         }
-        for unsupported in ["#sw", "#sa", "#if", "#in", "#c", "#u"] {
+        for unsupported in ["#in", "#cv"] {
             assert_eq!(
                 snapshot.unsupported_inline_geometry(id(unsupported)),
                 Some(&SnapshotError::UnsupportedVerticalWriting),
                 "{unsupported}"
             );
+        }
+    }
+
+    /// Upright clusters advance once (a combining mark adds nothing), a horizontal flex
+    /// item in a vertical flex container sizes by its laid-out width, and an inside list
+    /// marker relabels with its line.
+    #[test]
+    fn upright_clusters_orthogonal_items_and_inside_markers() {
+        let mut fonts = crate::test_support::fixture_fonts();
+        fonts.add(crate::test_support::ic_fixture_face());
+        let (tree, snapshot, _) = crate::live::testing::layout_with_fonts(
+            "<!doctype html><body style='margin:0;font:16px/20px \"Ic Fixture\"'>\
+             <div style='writing-mode:vertical-rl;height:100px'><span id=c>\u{6c34}\u{301}\u{6c34}</span>\
+             <div style='display:flex'><div id=h style='writing-mode:horizontal-tb'>ab</div></div>\
+             <ul style='list-style-position:inside;margin:0'><li id=li>x</li></ul></div>",
+            "",
+            (800.0, 600.0),
+            Some(1.0),
+            |_| {},
+            &fonts,
+        );
+        let bounds = |selector| {
+            crate::cssom_view::metrics::element_geometry(
+                &snapshot,
+                crate::live::testing::id(&tree, selector),
+            )
+            .unwrap()
+            .bounds
+        };
+        assert_eq!(bounds("#c").height, 32.0);
+        let h = bounds("#h");
+        assert!(h.width > 15.0 && h.width < 18.0, "{h:?}");
+        assert_eq!(h.height, 20.0);
+        assert!(bounds("#li").height > 0.0);
+        // A cluster of two glyphs in one face (a base and its combining mark) stands
+        // upright once: one vertical advance, its mark's glyph none.
+        let html = "<!doctype html><body style='margin:0;font:16px/20px monospace'>\
+             <div style='writing-mode:vertical-rl;height:100px;text-orientation:upright'>\
+             <span id=m>q\u{301}q</span><span id=n>qq</span></div>";
+        for scale in [Some(1.0), Some(2.0)] {
+            let (tree, snapshot, _) = crate::live::testing::layout_with_fonts(
+                html,
+                "",
+                (800.0, 600.0),
+                scale,
+                |_| {},
+                &crate::test_support::fixture_fonts(),
+            );
+            let height = |selector| {
+                crate::cssom_view::metrics::element_geometry(
+                    &snapshot,
+                    crate::live::testing::id(&tree, selector),
+                )
+                .unwrap()
+                .bounds
+                .height
+            };
+            assert_eq!(height("#m"), height("#n"), "{scale:?}");
         }
     }
 

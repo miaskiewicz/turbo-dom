@@ -1,12 +1,112 @@
 {
  "generator": "scripts/vertical-text-chrome-control.mjs",
  "chrome": "156.0.8078.47",
- "playwright_core": "1.64.1",
+ "playwright_core": "1.61.0",
  "viewport": [
   800,
   600
  ],
  "cases": [
+  {
+   "id": "ic-rl-cjk",
+   "ic": true,
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Ic Fixture\";font-size:16px;line-height:20px;color:#ff0000}</style><div data-cid=\"v\" style=\"writing-mode:vertical-rl;height:120px\">水水</div>",
+   "boxes": [
+    {
+     "cid": "v",
+     "rect": [
+      8,
+      8,
+      20,
+      120
+     ],
+     "ink": {
+      "box": [
+       12,
+       9,
+       24,
+       39
+      ],
+      "count": 336
+     }
+    }
+   ]
+  },
+  {
+   "id": "ic-lr-upright",
+   "ic": true,
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Ic Fixture\";font-size:16px;line-height:20px;color:#ff0000}</style><div data-cid=\"v\" style=\"writing-mode:vertical-lr;height:120px;text-orientation:upright\">ab</div>",
+   "boxes": [
+    {
+     "cid": "v",
+     "rect": [
+      8,
+      8,
+      20,
+      120
+     ],
+     "ink": {
+      "box": [
+       14,
+       14,
+       22,
+       38
+      ],
+      "count": 159
+     }
+    }
+   ]
+  },
+  {
+   "id": "ic-rl-mixed",
+   "ic": true,
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Ic Fixture\";font-size:16px;line-height:20px;color:#ff0000}</style><div data-cid=\"v\" style=\"writing-mode:vertical-rl;height:120px\">a水b</div>",
+   "boxes": [
+    {
+     "cid": "v",
+     "rect": [
+      8,
+      8,
+      20,
+      120
+     ],
+     "ink": {
+      "box": [
+       12,
+       8,
+       24,
+       40
+      ],
+      "count": 316
+     }
+    }
+   ]
+  },
+  {
+   "id": "ic-rl-lines",
+   "ic": true,
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Ic Fixture\";font-size:16px;line-height:20px;color:#ff0000}</style><div data-cid=\"v\" style=\"writing-mode:vertical-rl;height:40px\">水水水水</div>",
+   "boxes": [
+    {
+     "cid": "v",
+     "rect": [
+      8,
+      8,
+      40,
+      40
+     ],
+     "ink": {
+      "box": [
+       12,
+       9,
+       44,
+       39
+      ],
+      "count": 672
+     }
+    }
+   ]
+  },
   {
    "id": "rl-word",
    "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;line-height:20px;color:#ff0000}</style><div data-cid=\"v\" style=\"writing-mode:vertical-rl;height:120px\">Hello</div>",

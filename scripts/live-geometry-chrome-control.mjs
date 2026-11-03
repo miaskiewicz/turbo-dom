@@ -60,7 +60,12 @@ const BOX = (w, h, cid = "") => `<div${cid ? ` data-cid="${cid}"` : ""} style="w
 const CELL = (w, h, cid) => `<td data-cid="${cid}">${BOX(w, h)}</td>`;
 // The repo's Fira Code, for the cases marked `fonts`.
 const fira = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/fira-code/FiraCode-Regular.ttf")).toString("base64");
-const FACE = `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}`;
+// The generated Ic Fixture face (scripts/make-ic-fixture-font.py), for the upright-text
+// cases (U+6C34 and `a` / `b` boxes; 1em vertical advance).
+const ic = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/ic-fixture/IcFixture.ttf")).toString("base64");
+const FACE =
+  `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}` +
+  `@font-face{font-family:"Ic Fixture";src:url(data:font/ttf;base64,${ic})}`;
 // miaskiewicz/turbo-dom#190 quirks-mode line strut cases: [id suffix, body].
 const QUIRKS_CSS = 'body{margin:0;font-family:"Fira Code";font-size:16px}div{font-size:30px}';
 const IB = (h) => `<span style="display:inline-block;width:10px;height:${h}px"></span>`;
@@ -183,6 +188,37 @@ const VERTICAL_CASES = [
   [
     "rl-img",
     `<div data-cid="v" class="rl" style="height:100px"><img data-cid="i" src="${PNG8X6}" style="display:block"><img data-cid="j" src="${PNG8X6}" style="display:inline;height:12px">a<img data-cid="k" src="${PNG8X6}" style="display:inline;width:4px"></div>`,
+  ],
+  [
+    "rl-upright-cjk",
+    `<div data-cid="v" class="rl" style="height:100px;font-family:'Ic Fixture'"><span data-cid="c">\u6c34\u6c34</span><span data-cid="a">ab</span><span data-cid="u" style="text-orientation:upright">ab</span><span data-cid="m">a\u6c34b</span></div>`,
+  ],
+  [
+    "lr-upright-lines",
+    `<div data-cid="v" class="lr" style="height:40px;font-family:'Ic Fixture'"><span data-cid="c">\u6c34\u6c34\u6c34 \u6c34\u6c34\u6c34</span></div><div data-cid="w" class="rl" style="height:40px;font-family:'Ic Fixture';text-orientation:upright">aaa bb</div>`,
+  ],
+  [
+    "rl-replaced-defaults",
+    `<div data-cid="v" class="rl" style="height:400px"><svg data-cid="s" style="display:block"></svg><svg data-cid="w" width="40" style="display:block"></svg><iframe data-cid="f" style="display:block"></iframe><svg data-cid="h" height="30" style="display:block"></svg></div>`,
+  ],
+  [
+    "orthogonal-flex-item",
+    `<div data-cid="f" style="display:flex;width:300px"><div data-cid="fi" class="rl">aaaa bbbb</div><div data-cid="fj" style="width:10px;height:5px"></div></div>`,
+  ],
+  [
+    "orthogonal-grid-item",
+    `<div data-cid="g" style="display:grid;grid-template-columns:100px 50px"><div data-cid="gi" class="lr" style="padding-left:3px">ab cd</div><div data-cid="gj">x</div></div>`,
+  ],
+  [
+    "orthogonal-table-cell",
+    `<table data-cid="t"><tr><td data-cid="td" class="rl">ab cd</td><td>x</td></tr></table>`,
+    // The `x` column's max-content is 1/64 px short in any mode (#241).
+    // (A stretched cell keeps its unstretched clientHeight in any mode; not read here.)
+    { measure: { t: "xyh" } },
+  ],
+  [
+    "orthogonal-inline",
+    `<div data-cid="p" style="width:300px">a<span data-cid="s" class="rl">bcd</span>e</div>`,
   ],
   [
     "rl-rtl",
@@ -533,7 +569,9 @@ for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
   if (testCase.fonts) {
     await page.addStyleTag({ content: FACE });
-    await page.evaluate(() => document.fonts.load('16px "Fira Code"').then(() => document.fonts.ready));
+    await page.evaluate(() =>
+      Promise.all([document.fonts.load('16px "Fira Code"'), document.fonts.load('16px "Ic Fixture"')]).then(() => document.fonts.ready),
+    );
   }
   if (testCase.fullscreen) {
     const target = `[data-cid="${testCase.fullscreen}"]`;

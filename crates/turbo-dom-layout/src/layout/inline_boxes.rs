@@ -59,7 +59,7 @@ fn element_unsupported<'a>(
     let ordinary = ordinary_inline(element, display);
     let mode = WritingMode::of(&element.style);
     match validate_rendered_element(element, display, inside, ordinary)
-        .and_then(|()| validate_writing(element, display, (ordinary, mode != parent)))
+        .and_then(|()| validate_writing(element, display))
     {
         Err(error) => out.push((element, error)),
         Ok(()) => collect_unsupported(
@@ -70,57 +70,35 @@ fn element_unsupported<'a>(
     }
 }
 /// What the vertical writing-mode layer does not lay out (miaskiewicz/turbo-dom#234,
-/// #239): an ordinary inline whose writing mode differs from its parent's, upright text
-/// (CJK under `text-orientation: mixed`, or `upright`), and a replaced element whose
-/// size falls back to a physical default (see [`physical_default_size`]). Block, flex,
-/// grid and table boxes, inline-level atoms and `<img>` lay out in the logical space.
+/// #239): the replaced elements of [`physical_default_size`]. Everything else lays out
+/// in the logical space (an inline whose writing mode differs from its parent's lays
+/// out as an atomic inline, `boxgen::classify`).
 fn validate_writing(
     element: &crate::StyledElement,
     display: Display,
-    (ordinary, own_mode): (bool, bool),
 ) -> Result<(), crate::layout_snapshot::SnapshotError> {
     use crate::layout_snapshot::SnapshotError;
-    if ordinary && own_mode {
-        return Err(SnapshotError::UnsupportedInlineWriting);
-    }
     if !WritingMode::of(&element.style).vertical() {
         return Ok(());
     }
-    if upright_text(element) || physical_default_size(element, display) {
+    if physical_default_size(element, display) {
         return Err(SnapshotError::UnsupportedVerticalWriting);
     }
     Ok(())
 }
-/// A replaced element sized by a physical default the logical layer does not turn: an
-/// `<svg>` without both a width and a height (300x150), an `<iframe>`, `<canvas>`,
-/// `<video>`, `<object>` / `<embed>`, `<audio>` or form control (Chrome lays the form
-/// controls out vertically in a vertical mode). An `<img>` turns its intrinsic size.
+/// A replaced element the logical layer does not size like Chrome in a vertical mode:
+/// `<canvas>`, `<video>`, `<object>` / `<embed>`, `<audio>` (not replaced boxes here
+/// in any mode) and the form controls (Chrome 156 lays them out vertically, with
+/// metrics this crate's horizontal UA approximation does not have either). `<img>`,
+/// `<svg>` and `<iframe>` turn their physical intrinsic / default size.
 fn physical_default_size(element: &crate::StyledElement, display: Display) -> bool {
-    let crate::Tag::Html(name) = &element.tag else {
-        return false;
-    };
-    if display == Display::None || name == "img" || !atomic_element(element) {
-        return false;
-    }
-    let sized = |axis: &str| {
-        element.attrs.iter().any(|attr| attr.name == axis)
-            || element.style.get(axis).is_some_and(|v| v.trim() != "auto")
-    };
-    name != "svg" || !(sized("width") && sized("height"))
-}
-/// Whether the element's own text sets upright in a vertical line.
-fn upright_text(element: &crate::StyledElement) -> bool {
-    let upright = element.style.get("text-orientation").map(str::trim) == Some("upright");
-    element.children.iter().any(|node| match node {
-        crate::StyledNode::Text(text) => {
-            !text.text.trim().is_empty() && (upright || text.text.chars().any(sets_upright))
-        }
-        crate::StyledNode::Element(_) => false,
-    })
+    display != Display::None
+        && atomic_element(element)
+        && !matches!(&element.tag, crate::Tag::Html(name) if matches!(name.as_str(), "img" | "svg" | "iframe"))
 }
 /// A character `text-orientation: mixed` sets upright (Unicode
 /// `Vertical_Orientation` U / Tu, the CJK and related blocks).
-fn sets_upright(c: char) -> bool {
+pub(super) fn sets_upright(c: char) -> bool {
     matches!(u32::from(c),
         0x1100..=0x11FF | 0x2E80..=0xA4CF | 0xA960..=0xA97F | 0xAC00..=0xD7FF
         | 0xF900..=0xFAFF | 0xFE10..=0xFE1F | 0xFE30..=0xFE4F | 0xFF00..=0xFFEF
@@ -596,6 +574,9 @@ struct InlineFragments<'a, 'b> {
     ctx: &'a mut Ctx<'b>,
     origin: (f32, f32, f32),
     offsets: &'a HashMap<NodeId, (f32, f32)>,
+    /// The inline boxes whose content area centres on the line's central baseline
+    /// ([`super::writing::central_baseline`]).
+    central: std::collections::HashSet<NodeId>,
 }
 impl InlineFragments<'_, '_> {
     fn line(&mut self, line: &super::inline::InlineLine, cx: f32, cy: f32) {
@@ -666,7 +647,8 @@ impl InlineFragments<'_, '_> {
         if empty_tail(value, end, used) {
             return;
         }
-        let mut part = fragment(value, used, end, last, self.origin, self.ctx);
+        let central = self.central.contains(&value.edge.node_id);
+        let mut part = fragment(value, used, (end, last, central), self.origin, self.ctx);
         let (dx, dy) = self.offsets.get(&part.node_id).copied().unwrap_or_default();
         part.translate(dx, dy);
         if skip_empty_part(&part, value, last, used) {
@@ -699,6 +681,17 @@ pub(super) fn fragments(
             _ => None,
         })
         .collect::<HashMap<_, _>>();
+    let central = items
+        .iter()
+        .filter_map(|item| match item {
+            InlineItem::Boundary {
+                node_id,
+                style,
+                start: true,
+            } if super::writing::central_baseline(ctx.writing, style) => Some(*node_id),
+            _ => None,
+        })
+        .collect();
     let mut builder = InlineFragments {
         styles,
         open: Vec::new(),
@@ -706,6 +699,7 @@ pub(super) fn fragments(
         ctx,
         origin: (origin.0, origin.1, 0.0),
         offsets,
+        central,
     };
     for line in &layout.lines {
         builder.line(line, origin.0, origin.1);
@@ -875,14 +869,18 @@ fn append_part(
 fn fragment(
     open: &Open,
     used: &BoxStyle,
-    end: f32,
-    last: bool,
+    (end, last, central): (f32, bool, bool),
     origin: (f32, f32, f32),
     ctx: &mut Ctx,
 ) -> Fragment {
     let scale = ctx.html_font_scale.unwrap_or(1.0);
     let font = open.edge.face.html_metrics(open.edge.font_size * scale);
     let content_height = (font.ascent + font.descent) / scale;
+    let ascent = if central {
+        super::inline::central_metrics(font.ascent / scale, font.descent / scale, scale).0
+    } else {
+        font.ascent / scale
+    };
     let mut border = used.border;
     let mut padding = used.padding;
     let x = open.x
@@ -905,7 +903,7 @@ fn fragment(
     let height = content_height + padding.vertical() + border_width.vertical();
     let width = (end - x).max(0.0);
     let shift = open.edge.baseline_shift;
-    let y = origin.1 + origin.2 - shift - font.ascent / scale - padding.top - border_width.top;
+    let y = origin.1 + origin.2 - shift - ascent - padding.top - border_width.top;
     if let Some(metrics) = &mut ctx.used_metrics {
         metrics.entry(open.edge.node_id).or_insert(UsedBoxMetrics {
             inline_fragment: true,
@@ -1003,6 +1001,7 @@ mod defensive_contract_tests {
             ctx: &mut ctx,
             origin: (0.0, 0.0, 18.0),
             offsets: &offsets,
+            central: std::collections::HashSet::new(),
         };
         projection.end(&edge);
         assert!(projection.out.is_empty());

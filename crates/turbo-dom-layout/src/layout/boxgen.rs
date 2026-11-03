@@ -79,6 +79,9 @@ pub struct LayoutBox {
     /// logical space and establishes an independent formatting context
     /// ([`super::writing`]).
     pub(crate) writing_root: bool,
+    /// A writing-mode root whose block axis is its parent's inline axis (an orthogonal
+    /// flow, miaskiewicz/turbo-dom#239).
+    pub(crate) orthogonal_root: bool,
 }
 
 fn same_original_inputs(
@@ -349,6 +352,10 @@ impl LayoutBox {
         let scale = self.html_layout_policy.get().1;
         (scale != 0.0).then_some(scale)
     }
+    /// The HTML font-metrics policy and device scale this box lays out with.
+    pub(crate) fn html_layout_policy_pair(&self) -> (bool, Option<f32>) {
+        (self.uses_html_font_metrics(), self.native_scale())
+    }
     pub(crate) fn uses_html_font_metrics(&self) -> bool {
         self.html_layout_policy.get().0
     }
@@ -501,6 +508,10 @@ impl LayoutBox {
             natural_cache: std::cell::Cell::new(None),
             min_content_cache: std::cell::Cell::new(None),
             margin_memo: MarginMemoSlot::default(),
+            svg_viewport: self
+                .svg_viewport
+                .as_ref()
+                .map(|viewport| Box::new(viewport.relabelled(relabel.swaps()))),
             ..self.clone_shallow()
         };
         copy.clear_measured_values();
@@ -511,6 +522,7 @@ impl LayoutBox {
     fn mark_writing_roots(&mut self, parent: super::writing::WritingMode) {
         let mode = super::writing::WritingMode::of(&self.style);
         self.writing_root = mode != parent;
+        self.orthogonal_root = mode.vertical() != parent.vertical();
         match &mut self.kind {
             BoxKind::Block(kids)
             | BoxKind::Flex(kids)
@@ -551,6 +563,7 @@ impl LayoutBox {
             measure_cache: RefCell::new(self.measure_cache.borrow().clone()),
             margin_memo: MarginMemoSlot::default(),
             writing_root: self.writing_root,
+            orthogonal_root: self.orthogonal_root,
             list_marker: None,
         }
     }
@@ -1150,6 +1163,19 @@ fn classify(node: &StyledNode, parent_style: &ComputedStyle, ids: &mut Ids) -> O
     if ids.is_svg_viewport(el) {
         return Some(classify_svg_viewport(el, ids));
     }
+    // An inline whose writing mode differs from its parent's is an orthogonal (or
+    // reversed) flow root: it lays out as an atomic inline, like an inline-block
+    // (Chrome 156; miaskiewicz/turbo-dom#239).
+    if display_of(&el.style) == Display::Inline
+        && super::writing::WritingMode::of(&el.style)
+            != super::writing::WritingMode::of(parent_style)
+        && !ids.hidden(&el.style)
+        && matches!(el.tag, Tag::Html(_))
+    {
+        return Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
+            el, ids,
+        ))]));
+    }
     classify_element(el, ids)
 }
 
@@ -1267,6 +1293,7 @@ fn table_kind(el: &StyledElement, ids: &mut Ids) -> BoxKind {
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
         writing_root: false,
+        orthogonal_root: false,
         list_marker: None,
     });
     BoxKind::Table(captions)
@@ -1358,6 +1385,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             measure_cache: RefCell::new(None),
             margin_memo: MarginMemoSlot::default(),
             writing_root: false,
+            orthogonal_root: false,
             list_marker: None,
         };
     }
@@ -1404,6 +1432,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
         writing_root: false,
+        orthogonal_root: false,
         list_marker,
     }
 }
@@ -1724,6 +1753,7 @@ fn anon_lines_box(
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
         writing_root: false,
+        orthogonal_root: false,
         list_marker: None,
     }
 }
@@ -1992,6 +2022,7 @@ pub(crate) fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
         writing_root: false,
+        orthogonal_root: false,
         list_marker: None,
     }
 }

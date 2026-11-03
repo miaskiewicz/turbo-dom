@@ -24,7 +24,7 @@ pub(crate) mod text;
 mod text_caret_edges;
 mod text_carets;
 mod text_finite;
-mod text_geometry;
+pub(crate) mod text_geometry;
 mod text_ranges;
 pub(crate) mod text_units;
 
@@ -106,10 +106,9 @@ pub enum SnapshotError {
     /// embedding, lays out since miaskiewicz/turbo-dom#238.)
     #[error("native ordinary inline vertical writing is unsupported")]
     UnsupportedInlineWriting,
-    /// A box in a vertical writing mode the native layout cannot lay out yet: upright
-    /// (CJK / `text-orientation: upright`) text, or a replaced element sized by a
-    /// physical default (an `<svg>` without a width and a height, `<iframe>`,
-    /// `<canvas>`, `<video>`, form controls; miaskiewicz/turbo-dom#234, #239).
+    /// A box in a vertical writing mode the native layout cannot lay out yet: a
+    /// `<canvas>`, `<video>`, `<object>` / `<embed>`, `<audio>` or form control
+    /// (miaskiewicz/turbo-dom#234, #239).
     #[error("native vertical writing-mode layout of this box is unsupported")]
     UnsupportedVerticalWriting,
     /// No longer produced: absolute/fixed inlines blockify and inline sticky boxes

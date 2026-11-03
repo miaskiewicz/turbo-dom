@@ -478,6 +478,7 @@ fn generic_snapshot_and_pdf_atom_caption_keep_layout_unit_advances() {
             forced_newlines: false,
             text_transform: turbo_dom_layout::text::TextTransform::default(),
             word_breaking: turbo_dom_layout::layout::inline::WordBreaking::default(),
+            upright: turbo_dom_layout::layout::inline::UprightText::None,
         }),
     ];
     let paragraph = layout_paragraph(

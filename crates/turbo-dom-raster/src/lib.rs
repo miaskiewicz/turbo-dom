@@ -33,6 +33,8 @@ mod paint_canvas_gpu;
 mod paint_png;
 mod paint_svg;
 mod style_extract;
+#[cfg(test)]
+mod vertical_upright_tests;
 #[cfg(feature = "gpu-metal")]
 mod webgl;
 
