@@ -31,6 +31,8 @@ mod element_internals;
 mod element_members;
 #[path = "external_refs.rs"]
 pub(crate) mod external_refs;
+#[path = "template_data.rs"]
+mod template_data;
 pub use dom_isolation::{activate_isolate, reset_isolate, NativeDomScope};
 #[path = "storage_ownership.rs"]
 mod storage_ownership;
@@ -6649,7 +6651,8 @@ fn native_dom_function_dispatch(
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
-    let Ok(data) = v8::Local::<v8::Array>::try_from(args.data()) else {
+    let Some(Ok(data)) = template_data::of_call(scope, &args).map(v8::Local::<v8::Array>::try_from)
+    else {
         return;
     };
     let Some(delegate) = data
@@ -6797,19 +6800,25 @@ fn make_native_dom_function(
         // invariant: engine-built name, far below V8's string length limit
         v8::String::new(scope, &message).unwrap().into()
     };
+    let Some(construct) = template_data::of_call(scope, &args) else {
+        return;
+    };
     let data = v8::Array::new_with_elements(
         scope,
         &[
             delegate.into(),
             require_new.into(),
             class_construct.into(),
-            args.data(),
+            construct,
             call_message,
         ],
     );
+    let Some(key) = template_data::key(scope, data.into()) else {
+        return;
+    };
     let template =
         v8::FunctionTemplate::builder(ext!(FunctionCallback, native_dom_function_dispatch))
-            .data(data.into())
+            .data(key)
             .constructor_behavior(if constructor {
                 v8::ConstructorBehavior::Allow
             } else {
@@ -6838,7 +6847,8 @@ fn named_dispatch<'s>(
     name: Option<v8::Local<'s, v8::Name>>,
     value: Option<v8::Local<'s, v8::Value>>,
 ) -> Option<v8::Local<'s, v8::Value>> {
-    let callback = v8::Local::<v8::Function>::try_from(args.data()).ok()?;
+    let callback =
+        v8::Local::<v8::Function>::try_from(template_data::of_property(scope, args)?).ok()?;
     let operation = v8::String::new(scope, operation)?;
     let name = name
         .map(Into::into)
@@ -6860,7 +6870,8 @@ fn named_mutation_dispatch<'s>(
     name: v8::Local<'s, v8::Name>,
     value: Option<v8::Local<'s, v8::Value>>,
 ) -> Option<v8::Local<'s, v8::Value>> {
-    let callback = v8::Local::<v8::Function>::try_from(args.data()).ok()?;
+    let callback =
+        v8::Local::<v8::Function>::try_from(template_data::of_property(scope, args)?).ok()?;
     let operation = v8::String::new(scope, operation)?;
     let value = value.unwrap_or_else(|| v8::undefined(scope).into());
     let throws = interceptor_mode::should_throw(scope, args);
@@ -7044,7 +7055,9 @@ where
     // The dispatcher also receives V8's should-throw mode: an interface whose definer rejects a
     // descriptor throws only where the definition must (Object.defineProperty) and reports the
     // Reflect form quietly, as Blink's interceptors do (HTMLOptionsCollection accessors).
-    let Ok(callback) = v8::Local::<v8::Function>::try_from(args.data()) else {
+    let Some(Ok(callback)) =
+        template_data::of_property(scope, &args).map(v8::Local::<v8::Function>::try_from)
+    else {
         return v8::Intercepted::kYes;
     };
     let operation = v8::String::new(scope, "define").unwrap();
@@ -7151,6 +7164,9 @@ fn make_native_named_object(
         scope.throw_exception(error);
         return;
     }
+    let Some(data) = template_data::key(scope, args.get(1)) else {
+        return;
+    };
     let template = v8::ObjectTemplate::new(scope);
     template.set_named_property_handler(
         v8::NamedPropertyHandlerConfiguration::new()
@@ -7161,7 +7177,7 @@ fn make_native_named_object(
             .deleter(ext!(NamedPropertyDeleterCallback, named_deleter))
             .enumerator(ext!(NamedPropertyEnumeratorCallback, named_enumerator))
             .definer(ext!(NamedPropertyDefinerCallback, named_definer))
-            .data(args.get(1))
+            .data(data)
             .flags(if args.get(3).is_true() {
                 v8::PropertyHandlerFlags::ONLY_INTERCEPT_STRINGS
             } else {
@@ -7179,7 +7195,7 @@ fn make_native_named_object(
                 .deleter(ext!(IndexedPropertyDeleterCallback, indexed_deleter))
                 .enumerator(ext!(IndexedPropertyEnumeratorCallback, indexed_enumerator))
                 .definer(ext!(IndexedPropertyDefinerCallback, indexed_definer))
-                .data(args.get(1)),
+                .data(data),
         );
     }
     if let Some(object) = template.new_instance(scope) {
@@ -7559,14 +7575,12 @@ thread_local! {
     pub(crate) static ATTACH_PATH_FOR_TEST: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
+/// The canonical empty shell [`bootstrap_engine`] installs over.
+const SHELL_HTML: &str = "<!DOCTYPE html><html><head></head><body></body></html>";
+
 /// The tree-independent engine bootstrap: the whole install over the canonical empty shell.
 fn bootstrap_engine(scope: &mut v8::PinScope) {
-    install_engine_with_tree(
-        scope,
-        Tree::parse_with_processing_instructions(
-            "<!DOCTYPE html><html><head></head><body></body></html>",
-        ),
-    );
+    install_engine_with_tree(scope, Tree::parse_with_processing_instructions(SHELL_HTML));
 }
 
 /// Replace the bootstrapped shell's tree with `tree`, redoing only the per-document steps
@@ -7624,6 +7638,63 @@ fn attach_document(scope: &mut v8::PinScope, mut tree: Tree) {
     event_handlers::install(scope, None, "about:blank");
 }
 
+/// A window document's fresh native state over `tree`.
+fn window_dom_state(
+    tree: Tree,
+    parser_scripts: Vec<Handle>,
+    el_template: v8::Global<v8::ObjectTemplate>,
+) -> DomState {
+    DomState {
+        serial: next_tree_serial(),
+        scripts: script_state::initial(&tree),
+        parser_scripts,
+        resource_active: true,
+        nonces: initial_nonces(&tree),
+        tree,
+        cache: HashMap::new(),
+        checked_radios: Default::default(),
+        dialog: Default::default(),
+        el_template,
+        // Declarative roots get their modes once the binding can wrap them.
+        shadow_modes: HashMap::new(),
+        basics_state: None,
+        control_clone: None,
+        css_policy: Default::default(),
+        event_handlers: Default::default(),
+        popover: Default::default(),
+        pointer: Default::default(),
+        activation: Default::default(),
+        view_transitions: Default::default(),
+        input_members: Default::default(),
+        browsing_context: true,
+        ownership: None,
+        ownership_dirty: true,
+        template_contents: Default::default(),
+        custom_elements_active: false,
+        form_submission_blocked: false,
+        form_submission_handler: None,
+    }
+}
+
+/// Retain the engine's `cloneControlState` as the document's control-state cloner:
+/// `Some(false)` when the engine has none, `None` when it could not be retained.
+fn capture_control_clone(scope: &mut v8::PinScope) -> Option<bool> {
+    let Some(namespace) = engine_namespace(scope) else {
+        return Some(false);
+    };
+    let key = v8::String::new(scope, "cloneControlState").unwrap();
+    let Some(function) = namespace
+        .get(scope, key.into())
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    else {
+        return Some(false);
+    };
+    let function = dom_ownership::helper_function(scope, function)?;
+    // invariant: natives run under the DomScope of an installed DOM
+    DOM.with(|dom| dom.borrow_mut().as_mut().unwrap().control_clone = Some(function));
+    Some(true)
+}
+
 fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     SETUP_TERMINATED.with(|t| t.set(false));
     // Fragment parsing tokenizes `<?target data?>` like Chrome (turbo-dom#135).
@@ -7649,38 +7720,8 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         let t = build_el_template(scope);
         v8::Global::new(scope, t)
     };
-    DOM.with(|d| {
-        *d.borrow_mut() = Some(DomState {
-            serial: next_tree_serial(),
-            scripts: script_state::initial(&tree),
-            parser_scripts,
-            resource_active: true,
-            nonces: initial_nonces(&tree),
-            tree,
-            cache: HashMap::new(),
-            checked_radios: Default::default(),
-            dialog: Default::default(),
-            el_template,
-            // Declarative roots get their modes once the binding can wrap them.
-            shadow_modes: HashMap::new(),
-            basics_state: None,
-            control_clone: None,
-            css_policy: Default::default(),
-            event_handlers: Default::default(),
-            popover: Default::default(),
-            pointer: Default::default(),
-            activation: Default::default(),
-            view_transitions: Default::default(),
-            input_members: Default::default(),
-            browsing_context: true,
-            ownership: None,
-            ownership_dirty: true,
-            template_contents: Default::default(),
-            custom_elements_active: false,
-            form_submission_blocked: false,
-            form_submission_handler: None,
-        });
-    });
+    let state = window_dom_state(tree, parser_scripts, el_template);
+    DOM.with(|d| *d.borrow_mut() = Some(state));
 
     let context = scope.get_current_context();
     let global = v8::Weak::new(scope, context);
@@ -7716,6 +7757,8 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     let reflect = v8::Local::<v8::Object>::try_from(reflect).unwrap();
     // invariant: install-time intrinsic lookup, before page script runs
     let construct = reflect.get(scope, construct_key.into()).unwrap();
+    // invariant: install-time table entry, before page script runs
+    let construct = template_data::key(scope, construct).unwrap();
     let factory = v8::FunctionTemplate::builder(ext!(FunctionCallback, make_native_dom_function))
         .data(construct)
         .constructor_behavior(v8::ConstructorBehavior::Throw)
@@ -7753,18 +7796,8 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         let key = dom_exception_key(scope);
         global.set_private(scope, key, constructor);
     }
-    if let Some(namespace) = engine_namespace(scope) {
-        let key = v8::String::new(scope, "cloneControlState").unwrap();
-        if let Some(function) = namespace
-            .get(scope, key.into())
-            .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-        {
-            let Some(function) = dom_ownership::helper_function(scope, function) else {
-                return;
-            };
-            // invariant: natives run under the DomScope of an installed DOM
-            DOM.with(|dom| dom.borrow_mut().as_mut().unwrap().control_clone = Some(function));
-        }
+    if capture_control_clone(scope).is_none() {
+        return;
     }
     bind_method(
         scope,

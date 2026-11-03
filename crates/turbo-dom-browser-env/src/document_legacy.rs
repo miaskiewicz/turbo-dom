@@ -39,7 +39,9 @@ fn legacy_call(
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
-    let Ok(caller) = v8::Local::<v8::Function>::try_from(args.data()) else {
+    let Some(Ok(caller)) =
+        template_data::of_call(scope, &args).map(v8::Local::<v8::Function>::try_from)
+    else {
         return;
     };
     let values: Vec<_> = (0..args.length()).map(|index| args.get(index)).collect();
@@ -94,7 +96,8 @@ fn supported<'s>(
     args: &v8::PropertyCallbackArguments<'s>,
     name: v8::Local<'s, v8::Value>,
 ) -> Option<bool> {
-    let callback = v8::Local::<v8::Function>::try_from(args.data()).ok()?;
+    let callback =
+        v8::Local::<v8::Function>::try_from(template_data::of_property(scope, args)?).ok()?;
     let operation = v8::String::new(scope, "has")?;
     let value = v8::undefined(scope).into();
     let result = callback.call(
@@ -214,6 +217,9 @@ fn collection<'s>(
     indexed: v8::Local<'s, v8::Function>,
     caller: v8::Local<'s, v8::Function>,
 ) -> Option<v8::Local<'s, v8::Object>> {
+    let named = template_data::key(scope, named.into())?;
+    let indexed = template_data::key(scope, indexed.into())?;
+    let caller = template_data::key(scope, caller.into())?;
     let template = v8::ObjectTemplate::new(scope);
     template.set_named_property_handler(
         v8::NamedPropertyHandlerConfiguration::new()
@@ -224,7 +230,7 @@ fn collection<'s>(
             .deleter(ext!(NamedPropertyDeleterCallback, all_named_deleter))
             .enumerator(ext!(NamedPropertyEnumeratorCallback, named_enumerator))
             .definer(ext!(NamedPropertyDefinerCallback, all_named_definer))
-            .data(named.into())
+            .data(named)
             .flags(
                 v8::PropertyHandlerFlags::NON_MASKING
                     | v8::PropertyHandlerFlags::ONLY_INTERCEPT_STRINGS,
@@ -239,10 +245,9 @@ fn collection<'s>(
             .deleter(ext!(IndexedPropertyDeleterCallback, all_index_deleter))
             .enumerator(ext!(IndexedPropertyEnumeratorCallback, indexed_enumerator))
             .definer(ext!(IndexedPropertyDefinerCallback, all_index_definer))
-            .data(indexed.into()),
+            .data(indexed),
     );
     let callback: v8::FunctionCallback = ext!(FunctionCallback, legacy_call).map_fn_to();
-    let caller: v8::Local<v8::Value> = caller.into();
     // SAFETY: both symbols are non-virtual public V8 methods on the template
     // this local refers to; `Local<Value>` is a trivially copied handle slot.
     unsafe {

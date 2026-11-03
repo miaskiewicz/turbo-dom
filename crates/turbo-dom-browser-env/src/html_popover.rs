@@ -535,6 +535,11 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__popoverNative", dispatch);
     run_js(scope, include_str!("html_popover.js"));
+    capture(scope);
+}
+/// Retain the window's `ToggleEvent` and timer: the install's native half, which a context
+/// deserialized from a startup snapshot redoes (turbo-dom#249).
+pub(super) fn capture(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     let key = v8::String::new(scope, "ToggleEvent").unwrap();
     if let Some(constructor) = global

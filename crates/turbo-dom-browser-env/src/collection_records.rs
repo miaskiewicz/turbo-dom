@@ -15,6 +15,22 @@ fn initialize(scope: &mut v8::PinScope) {
         key: v8::Global::new(scope, key),
     }));
 }
+/// The isolate's record key, for a startup snapshot to carry (turbo-dom#249).
+pub(super) fn key<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8::Private>> {
+    let records = scope.get_slot::<Rc<Records>>().cloned()?;
+    Some(v8::Local::new(scope, &records.key))
+}
+/// Adopt the record key a startup snapshot carried (its isolate data at `index`), so the
+/// records on the snapshotted objects stay readable. A no-op once the isolate has a key.
+pub(super) fn rehydrate(scope: &mut v8::PinScope, index: usize) {
+    if scope.get_slot::<Rc<Records>>().is_some() {
+        return;
+    }
+    if let Ok(key) = scope.get_isolate_data_from_snapshot_once::<v8::Private>(index) {
+        let key = v8::Global::new(scope, key);
+        scope.set_slot(Rc::new(Records { key }));
+    }
+}
 pub fn get<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     object: v8::Local<'s, v8::Object>,

@@ -65,6 +65,13 @@ fn put(
     let private = key(scope, name)?;
     (object.set_private(scope, private, value.into()) == Some(true)).then_some(())
 }
+/// Drop `document`'s associated template-contents document (a startup snapshot keeps no
+/// inert document: its native tree does not outlive the build; turbo-dom#249).
+pub(super) fn forget_associated(scope: &mut v8::PinScope, document: v8::Local<v8::Object>) {
+    if let Some(private) = key(scope, "turbo.template.associated-document") {
+        document.delete_private(scope, private);
+    }
+}
 fn template(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> bool {
     let _owner = DomScope::for_object(scope, object);
     handle_of(scope, object)
@@ -277,6 +284,19 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let root = with_tree(Tree::root).expect("install runs on an installed document");
     let document = wrap(scope, root);
     realize(scope, document);
+}
+/// [`install`]'s native half, for a document deserialized from a startup snapshot
+/// (turbo-dom#249): the template contents keys and the enabled flag. Its contents are
+/// realized when a document is attached.
+pub(super) fn rehydrate(scope: &mut v8::PinScope) {
+    if capture_keys(scope).is_none() {
+        return;
+    }
+    DOM.with(|dom| {
+        if let Some(dom) = dom.borrow_mut().as_mut() {
+            dom.template_contents.enabled = true
+        }
+    });
 }
 pub(super) fn set_html<'s>(
     scope: &mut v8::PinScope<'s, '_>,

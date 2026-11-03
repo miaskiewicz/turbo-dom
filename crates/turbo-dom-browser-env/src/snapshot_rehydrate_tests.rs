@@ -4,7 +4,7 @@
 use super::*;
 use std::borrow::Cow;
 
-const PAGE: &str = "<!doctype html><title>t</title><style>#a{color:rgb(1, 2, 3)} .x{display:inline-block}</style><body><div id=a class=x>hi</div><form><input id=req required></form>";
+const PAGE: &str = "<!doctype html><title>t</title><style>#a{color:rgb(1, 2, 3)} .x{display:inline-block}</style><body><div id=a class=x>hi</div><form><input id=req required></form><template id=t><b>c</b></template>";
 
 /// Sync DOM, events, custom elements, form validity, computed style; then the
 /// MutationObserver records once microtasks ran.
@@ -42,16 +42,44 @@ new MutationObserver(rs => { for (const r of rs) __records.push(r.type + ':' + r
 a.setAttribute('title', 'z');
 document.body.appendChild(document.createComment('c'));
 __log.push(__records.length);
+// Every engine function belongs to this realm (a snapshot that duplicated the context
+// would hand out functions of the copy, whose Function.prototype differs).
+let foreign = 0;
+const isProto = Object.prototype.isPrototypeOf, F = Function.prototype;
+const fn = f => { if (typeof f === 'function' && !Reflect.apply(isProto, F, [f])) foreign++; };
+const walk = o => { for (const k of Reflect.ownKeys(o)) { let d; try { d = Object.getOwnPropertyDescriptor(o, k); } catch { continue; } if (!d) continue; fn(d.value); fn(d.get); fn(d.set); } };
+walk(globalThis); walk(document); walk(a); walk(p);
+for (const k of Reflect.ownKeys(globalThis)) { let v; try { v = globalThis[k]; } catch { continue; } if (typeof v === 'function' && v.prototype && typeof v.prototype === 'object') walk(v.prototype); }
+__log.push(foreign);
+const t = document.getElementById('t');
+__log.push(t.content.firstChild.localName, t.content.ownerDocument !== document, t.content.ownerDocument.createElement('i').ownerDocument === t.content.ownerDocument);
+const host = document.createElement('div');
+host.innerHTML = '<span slot=s>slotted</span>';
+document.body.appendChild(host);
+const root = host.attachShadow({mode: 'open'});
+root.innerHTML = '<slot name=s></slot>';
+__log.push(root.querySelector('slot').assignedNodes()[0].textContent, host.shadowRoot === root);
+const range = document.createRange();
+range.selectNodeContents(a);
+getSelection().addRange(range);
+__log.push(String(getSelection()), range.toString(), a.classList.contains('x'));
 JSON.stringify(__log)
 ";
 
 fn eval(scope: &mut v8::PinScope, source: &str) -> String {
+    v8::tc_scope!(let scope, scope);
     let code = v8::String::new(scope, source).unwrap();
-    v8::Script::compile(scope, code, None)
-        .unwrap()
-        .run(scope)
-        .unwrap()
-        .to_rust_string_lossy(scope)
+    match v8::Script::compile(scope, code, None).and_then(|script| script.run(scope)) {
+        Some(value) => value.to_rust_string_lossy(scope),
+        None => {
+            let exception = scope.exception().unwrap();
+            let line = scope.message().map(|m| m.get_line_number(scope));
+            panic!(
+                "threw {} at {line:?}",
+                exception.to_rust_string_lossy(scope)
+            );
+        }
+    }
 }
 
 fn smoke(scope: &mut v8::PinScope) -> (String, String) {
@@ -75,9 +103,12 @@ fn a_rehydrated_snapshot_context_behaves_like_an_installed_one() {
     };
     assert_eq!(
         expected.0,
-        r#"[1,"hi<p>new</p>","t","a:p:1,p:2,body:3",true,true,"x-el","yes",true,true,true,false,true,true,"rgb(1, 2, 3)","inline-block",0]"#
+        r#"[1,"hi<p>new</p>","t","a:p:1,p:2,body:3",true,true,"x-el","yes",true,true,true,false,true,true,"rgb(1, 2, 3)","inline-block",0,0,"b",true,true,"slotted",true,"hi\nnew\n\n","hinew",true]"#
     );
-    assert_eq!(expected.1, r#"["attributes:0:title","childList:1:"]"#);
+    assert_eq!(
+        expected.1,
+        r#"["attributes:0:title","childList:1:","childList:1:"]"#
+    );
 
     let blob = startup_snapshot::build().expect("every callback is registered");
     let params = v8::CreateParams::default()
