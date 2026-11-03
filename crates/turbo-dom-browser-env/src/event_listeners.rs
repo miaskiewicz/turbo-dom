@@ -1,7 +1,7 @@
 //! Private phased Window dispatch and listener option capabilities.
 use super::*;
 
-struct WindowPhases(v8::Weak<v8::Function>);
+pub(crate) struct WindowPhases(v8::Weak<v8::Function>);
 struct ListenerParser(v8::Weak<v8::Function>);
 struct SignalReader(v8::Weak<v8::Function>);
 struct WindowInterfaces(v8::Weak<v8::Function>);
@@ -443,7 +443,7 @@ pub(super) fn attach(
     };
     let scope = &mut v8::ContextScope::new(scope, context);
     let data = v8::Integer::new_from_unsigned(scope, listener.id);
-    let Some(hook) = v8::Function::builder(abort_listener)
+    let Some(hook) = v8::Function::builder(ext!(FunctionCallback, abort_listener))
         .data(data.into())
         .build(scope)
     else {

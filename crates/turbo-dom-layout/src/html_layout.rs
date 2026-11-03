@@ -594,10 +594,15 @@ fn collect_data_uri_images(view: &TreeView, nodes: &[Handle], out: &mut HashMap<
 /// Decode this element's `<img src="data:...">` into `out` (keyed by `src`), if it is
 /// an `img` with an as-yet-unseen, decodable data URI.
 fn record_img_data_uri(view: &TreeView, h: Handle, out: &mut HashMap<String, Vec<u8>>) {
-    if !is_plain(view, h, "img") {
+    // An `<img src>` or a `<video poster>` (miaskiewicz/turbo-dom#252).
+    let attr = if is_plain(view, h, "img") {
+        "src"
+    } else if is_plain(view, h, "video") {
+        "poster"
+    } else {
         return;
-    }
-    let Some(src) = view.attr(h, "src").filter(|s| s.starts_with("data:")) else {
+    };
+    let Some(src) = view.attr(h, attr).filter(|s| s.starts_with("data:")) else {
         return;
     };
     if !out.contains_key(src) {

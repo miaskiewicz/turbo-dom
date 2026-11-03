@@ -190,12 +190,12 @@ fn enumerator<'s, 'i>(
 pub(super) fn indexed_handler(tmpl: v8::Local<v8::ObjectTemplate>) {
     tmpl.set_indexed_property_handler(
         v8::IndexedPropertyHandlerConfiguration::new()
-            .getter(getter)
-            .setter(setter)
-            .descriptor(descriptor)
-            .deleter(deleter)
-            .enumerator(enumerator)
-            .definer(definer),
+            .getter(ext!(IndexedPropertyGetterCallback, getter))
+            .setter(ext!(IndexedPropertySetterCallback, setter))
+            .descriptor(ext!(IndexedPropertyDescriptorCallback, descriptor))
+            .deleter(ext!(IndexedPropertyDeleterCallback, deleter))
+            .enumerator(ext!(IndexedPropertyEnumeratorCallback, enumerator))
+            .definer(ext!(IndexedPropertyDefinerCallback, definer)),
     );
 }
 

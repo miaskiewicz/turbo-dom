@@ -759,7 +759,7 @@ mod tests {
     }
 
     /// What the vertical layer does not lay out fails that element's reads only:
-    /// canvas / video / form controls (upright text and img / svg / iframe lay out).
+    /// form controls (upright text, img / svg / iframe and canvas, #252, lay out).
     #[test]
     fn unsupported_vertical_boxes_fail_per_element() {
         use crate::layout_snapshot::SnapshotError;
@@ -777,7 +777,7 @@ mod tests {
         );
         let id = |selector| crate::live::testing::id(&tree, selector);
         for supported in [
-            "#v", "#s", "#e", "#h", "#f", "#i", "#ib", "#sv", "#ss", "#n",
+            "#v", "#s", "#e", "#h", "#f", "#i", "#ib", "#sv", "#ss", "#n", "#cv",
         ] {
             assert_eq!(
                 snapshot.unsupported_inline_geometry(id(supported)),
@@ -785,13 +785,10 @@ mod tests {
                 "{supported}"
             );
         }
-        for unsupported in ["#in", "#cv"] {
-            assert_eq!(
-                snapshot.unsupported_inline_geometry(id(unsupported)),
-                Some(&SnapshotError::UnsupportedVerticalWriting),
-                "{unsupported}"
-            );
-        }
+        assert_eq!(
+            snapshot.unsupported_inline_geometry(id("#in")),
+            Some(&SnapshotError::UnsupportedVerticalWriting)
+        );
     }
 
     /// Upright clusters advance once (a combining mark adds nothing), a horizontal flex

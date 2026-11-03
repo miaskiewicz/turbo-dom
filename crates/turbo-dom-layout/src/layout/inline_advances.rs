@@ -218,7 +218,7 @@ mod tests {
             24.0,
             &[],
             (None, false),
-            (true, true, Some(2.0)),
+            (true, true, super::super::NativeScale::both(Some(2.0))),
         );
         assert_eq!(placed.line.atoms.len(), 1);
         assert_eq!(placed.line.atoms[0].id, 17);

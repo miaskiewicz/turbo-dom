@@ -305,7 +305,7 @@ fn notification<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8
         }
     }
     let pending = v8::Array::new(scope, 0);
-    let notification = v8::Function::builder(deliver)
+    let notification = v8::Function::builder(ext!(FunctionCallback, deliver))
         .data(pending.into())
         .build(scope)?;
     notification.set_private(scope, private, pending.into());

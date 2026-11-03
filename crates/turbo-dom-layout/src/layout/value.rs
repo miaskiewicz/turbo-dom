@@ -1011,6 +1011,7 @@ pub(crate) fn clip_region(
         y: top,
         width: (right - left).max(0.0),
         height: (bottom - top).max(0.0),
+        radii: super::fragment::BorderRadii::ZERO,
     })
 }
 
@@ -2571,6 +2572,7 @@ mod clip_tests {
                 y,
                 width,
                 height,
+                radii: crate::layout::fragment::BorderRadii::ZERO,
             })
         };
         assert_eq!(

@@ -66,7 +66,7 @@ const FONT = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/liber
 const FACE = `@font-face{font-family:"Liberation Serif";src:url(data:font/ttf;base64,${FONT})}`;
 const SERIF = `font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent`;
 // A `w`x`h` inline-block, transparent unless `bg` is given.
-const ATOM = (w, h, bg = "") => `<span style="display:inline-block;width:${w}px;height:${h}px${bg ? `;background:${bg}` : ""}"></span>`;
+const ATOM = (w, h, bg = "", cid = "") => `<span${cid ? ` data-cid="${cid}"` : ""} style="display:inline-block;width:${w}px;height:${h}px${bg ? `;background:${bg}` : ""}"></span>`;
 const RTL_OVERRIDE = (inner) => `<span style="direction:rtl;unicode-bidi:bidi-override">${inner}</span>`;
 
 // A 40x40 inline-block of colour `bg`.
@@ -301,17 +301,16 @@ const CASES = [
   // miaskiewicz/turbo-dom#244: an inline box paints its background, padding and border
   // per line fragment (box-decoration-break: slice): the start edge on its first
   // fragment, the end edge on its last; padding and border also push its neighbours.
-  // Text is transparent so the probes see the decoration only. The text cases record no
-  // boxes: their x positions follow the text advances, which the static layout does not
-  // accumulate in LayoutUnits like Chrome (off by up to 0.03px); the atom cases do.
+  // Text is transparent so the probes see the decoration only. The text cases' boxes
+  // follow the text advances in Chrome's 1/64px LayoutUnits (miaskiewicz/turbo-dom#246).
   {
     id: "inline-background-text",
-    html: DOC(`<div style="${at(20, 20)};${SERIF}">aaa <span style="background:#ff0000">MMMM</span> bbb</div>`),
+    html: DOC(`<div style="${at(20, 20)};${SERIF}">aaa <span data-cid="s" style="background:#ff0000">MMMM</span> bbb${ATOM(10, 10, "", "a")}</div>`),
     probes: [[87, 35], [53, 35], [121, 35], [49, 35], [125, 35], [87, 25], [87, 22], [87, 45], [87, 48]],
   },
   {
     id: "inline-edges-text",
-    html: DOC(`<div style="${at(20, 20)};${SERIF}">aa<span style="background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px">MM</span>${ATOM(40, 40, "#00ff00")}</div>`),
+    html: DOC(`<div style="${at(20, 20)};${SERIF}">aa<span data-cid="s" style="background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px">MM</span>${ATOM(40, 40, "#00ff00", "a")}</div>`),
     probes: [[49, 50], [52, 50], [104, 50], [87, 36], [87, 40], [87, 69], [87, 73], [45, 50], [110, 50], [135, 40]],
   },
   {
@@ -394,6 +393,51 @@ const CASES = [
     html: DOC(`<div style="${at(20, 20)};width:200px;height:60px;background:#00ff00 linear-gradient(to right,#ff0000,#0000ff) 0 0/40px 30px"></div>`),
     assets: [],
     probes: [[22, 30], [58, 30], [62, 30], [98, 30], [22, 65], [58, 65]],
+  },
+  {
+    // `space`: 5 whole 40px tiles over 220px, 5px apart, the first at the edge.
+    id: "bg-space",
+    html: DOC(`<div style="${at(20, 20)};width:220px;height:60px;background:#00ff00 url(${SPRITE}) space;background-size:40px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 30], [55, 30], [62, 30], [67, 30], [97, 30], [102, 30], [205, 30], [235, 30], [237, 30], [25, 70]],
+  },
+  {
+    // `round`: 230 / 40 rounds to 6 tiles of 38.33px (20 / 20 rows stay 20px).
+    id: "bg-round",
+    html: DOC(`<div style="${at(20, 20)};width:230px;height:60px;background:#00ff00 url(${SPRITE}) round;background-size:40px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 30], [56, 30], [60, 30], [76, 30], [96, 30], [98, 30], [138, 30], [244, 30], [248, 30], [25, 75]],
+  },
+  {
+    // A rounded box: the layer is clipped to the border box's outer radius, and the
+    // (opaque) border paints over it.
+    id: "bg-radius-border-box",
+    html: DOC(`<div style="${at(20, 20)};width:80px;height:80px;border:10px solid #ffff00;border-radius:30px;background:#00ff00 url(${SPRITE}) center/40px 40px"></div>`),
+    assets: [SPRITE],
+    probes: [[21, 21], [24, 24], [31, 31], [25, 70], [70, 70], [80, 70], [118, 118]],
+  },
+  {
+    // `background-clip: padding-box` clips to the inner radius (30 - 10px border).
+    id: "bg-radius-padding-box",
+    html: DOC(`<div style="${at(20, 20)};width:80px;height:80px;border:10px solid transparent;border-radius:30px;background:#00ff00 url(${SPRITE}) padding-box;background-size:40px 40px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 70], [31, 31], [33, 33], [40, 40], [70, 40], [109, 109], [106, 106]],
+  },
+  {
+    // 75 x 75 = 5625 tiles: every one paints (the far corner too).
+    id: "bg-many-tiles",
+    html: DOC(`<div style="${at(20, 20)};width:600px;height:300px;background:#00ff00 url(${SPRITE});background-size:8px 4px"></div>`),
+    assets: [SPRITE],
+    probes: [[21, 21], [25, 21], [613, 317], [617, 317], [21, 317], [617, 21]],
+  },
+  {
+    // An inline `content-box` origin: the first fragment's content starts after its
+    // left padding, the last ends before its right padding; the 20px image sits at the
+    // strip's content end.
+    id: "inline-bg-content-box",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span style="background:#00ff00 url(${SPRITE}) no-repeat content-box right center/20px 10px;background-clip:border-box;padding:5px 10px">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[85, 80], [95, 80], [105, 80], [75, 80], [25, 50]],
   },
   {
     // An inline box: the positioning area is its fragments' strip (160px over two
@@ -509,6 +553,36 @@ const CASES = [
     id: "radius-shadows",
     html: DOC(`<div style="${at(100, 100)};width:60px;height:60px;background:#00ff00;border-radius:30px 0 0 0;box-shadow:0 0 0 10px #ff0000"></div><div style="${at(300, 100)};width:100px;height:60px;background:#00ff00;border-radius:50px / 30px;box-shadow:inset 0 0 0 8px #ff0000"></div>`),
     probes: [[92, 92], [167, 92], [95, 130], [167, 167], [130, 95], [130, 130], [302, 102], [304, 130], [350, 104], [350, 130], [312, 112]],
+  },
+  {
+    // A background image clipped to the padding box of a box with per-corner elliptical
+    // radii: each corner's inner radii (outer less the adjacent border widths) clip it.
+    id: "radius-background-image-corners",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:60px;border:10px solid transparent;border-radius:40px 0 10px 0 / 20px 0 10px 0;background:url(${SPRITE}) 0 0 / 100% 100% no-repeat;background-clip:padding-box"></div>`),
+    assets: [SPRITE],
+    probes: [[35, 31], [45, 38], [128, 88], [128, 32], [22, 50], [31, 88], [70, 60], [100, 60]],
+  },
+  // miaskiewicz/turbo-dom#252 (`media-*`): <canvas>, <video>, <audio controls> and <object>
+  // are replaced boxes that paint their own background and border (a 4px blue border, a
+  // 6px green padding and background, in horizontal and vertical-rl writing modes); a
+  // <video> paints its poster image. Chrome's 2D canvas content is the embedder's
+  // (`canvas_ops_png`), so an empty canvas shows its background.
+  ...["canvas width=40 height=20", "video width=40 height=20", "audio controls", "object width=40 height=20"].flatMap((element) => {
+    const tag = element.split(" ")[0];
+    // Chrome paints the audio controls' panel over the content box, which a screenshot
+    // here does not: only the frame is probed there.
+    const probes = tag === "audio" ? [[22, 22], [28, 28], [26, 40], [21, 60]] : [[22, 22], [28, 28], [26, 40], [34, 34], [21, 60], [90, 30]];
+    const media = `<${element} data-cid="m" style="background:#00ff00;border:4px solid #0000ff;padding:6px"></${tag}>`;
+    return [
+      { id: `media-${tag}-frame`, html: DOC(`<div data-cid="p" style="${at(20, 20)};font-size:0">${media}</div>`), probes },
+      { id: `media-${tag}-frame-rl`, html: DOC(`<div data-cid="p" style="${at(20, 20)};font-size:0;writing-mode:vertical-rl">${media}</div>`), probes },
+    ];
+  }),
+  {
+    id: "media-video-poster",
+    html: DOC(`<video data-cid="m" poster="${SPRITE}" style="${at(20, 20)};width:100px;height:40px"></video>`),
+    assets: [SPRITE],
+    probes: [[25, 40], [65, 40], [75, 40], [115, 40], [125, 40]],
   },
 ];
 

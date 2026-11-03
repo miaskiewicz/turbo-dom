@@ -94,6 +94,17 @@ mod trusted_controls_tests;
 #[path = "xpath_contexts_tests.rs"]
 mod xpath_contexts_tests;
 
+#[path = "startup_snapshot.rs"]
+pub(crate) mod startup_snapshot;
+
+#[cfg(test)]
+#[path = "install_split_tests.rs"]
+mod install_split_tests;
+
+#[cfg(test)]
+#[path = "startup_snapshot_tests.rs"]
+mod startup_snapshot_tests;
+
 #[cfg(test)]
 #[path = "engine_namespace_tests.rs"]
 mod engine_namespace_tests;
@@ -156,6 +167,8 @@ pub fn run_engine_script<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     source: &str,
 ) -> Option<v8::Local<'s, v8::Value>> {
+    #[cfg(test)]
+    ENGINE_SCRIPTS_RUN.with(|n| n.set(n.get() + 1));
     let namespace = engine_namespace(scope)?;
     let wrapped = format!("(function({ENGINE_NAMESPACE_PARAM}){{{source}\n}})");
     let code = v8::String::new(scope, &wrapped)?;
@@ -165,7 +178,8 @@ pub fn run_engine_script<'s>(
     let receiver = scope.get_current_context().global(scope);
     let result = function.call(scope, receiver.into(), &[namespace.into()]);
     // Produced after the call, the cache also holds the functions the install compiled lazily.
-    if let Some(key) = produce {
+    // V8 cannot produce a code cache while it builds a startup snapshot (turbo-dom#249).
+    if let Some(key) = produce.filter(|_| !startup_snapshot::building()) {
         engine_code_cache::store(key, &script.get_unbound_script(scope));
     }
     result

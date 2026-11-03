@@ -368,16 +368,8 @@ fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
     // present only when its attribute is set and usable.
     let decls: Vec<Declaration> = [
         bgcolor_decl(element),
-        element
-            .attrs
-            .get("width")
-            .and_then(attr_length)
-            .map(width_decl),
-        element
-            .attrs
-            .get("height")
-            .and_then(attr_length)
-            .map(height_decl),
+        dimension_attr(element, "width").map(width_decl),
+        dimension_attr(element, "height").map(height_decl),
         font_color_decl(element),
         align_decl(element),
         lang_decl(element),
@@ -390,6 +382,16 @@ fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
     if !decls.is_empty() {
         push_decls(&decls, 1, (0, 0, 0), 0, out);
     }
+}
+
+/// A `width` / `height` attribute as a presentational length, except on `<canvas>`
+/// (its attributes are its natural size) and `<audio>` (Chrome 156 maps neither;
+/// miaskiewicz/turbo-dom#252).
+fn dimension_attr(element: Subject, name: &str) -> Option<String> {
+    if is_tag(element, "canvas") || is_tag(element, "audio") {
+        return None;
+    }
+    element.attrs.get(name).and_then(attr_length)
 }
 
 /// A presentational-hint declaration (level 1, never `important`).

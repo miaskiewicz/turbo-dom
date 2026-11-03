@@ -341,6 +341,10 @@ pub struct ClipRect {
     pub y: f32,
     pub width: f32,
     pub height: f32,
+    /// The region's corner radii ([`BorderRadii::ZERO`] = square): a background layer
+    /// clipped to a rounded box's clip area (miaskiewicz/turbo-dom#248; per corner and
+    /// elliptical since #253).
+    pub radii: BorderRadii,
 }
 
 /// Break hints attached to a fragment, consumed by the fragmenter.

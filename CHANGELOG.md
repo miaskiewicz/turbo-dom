@@ -62,6 +62,8 @@ at the time); this file reconstructs them from history.
   - `Fragment` has a new `overflow_clip: Option<OverflowClip>` field: the padding box (with
     the inner radii) that a box's `overflow` other than `visible` clips its descendants
     to. `Fragment::new` sets it to `None`; struct literals must add it.
+  - `ClipRect::radius: f32` (#248, unreleased) is `ClipRect::radii: BorderRadii`: background
+    layers clip to the painting area's per-corner inner radii.
 
 ### Fixed
 
@@ -86,7 +88,7 @@ at the time); this file reconstructs them from history.
   stretched over the content box; it now tiles at its size from the padding box, which
   changes the tools/parity image pages' `.bg` boxes (declared in
   `tools/parity/expected/turbo-dom-248-background-layers.json`). Layers clip to the
-  rounded painting area since #253.
+  rounded painting area, per corner since #253.
 - turbo-dom-raster's static screenshots (PNG and SVG) paint inline boxes like Chrome 156
   (#244): an inline with a background, box shadow, padding, border or horizontal margin
   keeps its box through turbo-dom-layout's static line layout and paints per line fragment
@@ -117,7 +119,9 @@ at the time); this file reconstructs them from history.
   item's first line box. turbo-dom-raster paints them (PNG and SVG), and
   `cssom_view::hit::elements_at_point` hits a marker's list item (#128;
   `scripts/list-marker-chrome-control.mjs`). The UA sheet gains Chrome's list-style-type
-  defaults and zero block margins for nested lists.
+  defaults and zero block margins for nested lists. `layout_recorded`'s `NodeSources` gains
+  `list_markers` (marker box / text id -> its list item's box), since a marker has no source
+  element (html2pdf tags it as the PDF/UA `Lbl`).
 - turbo-dom-raster paints inset `box-shadow`s (PNG and SVG) inside the padding box, over the
   background and under the border, with offset, spread and blur, like Chrome 156 (#192).
 - HTML processing instructions like Chrome 156 (turbo-dom#135): `Tree::parse_utf16_with_processing_instructions`

@@ -2637,6 +2637,7 @@ fn prepend_mask_image(
         replaced: false,
         fallback: None,
         unloaded: std::cell::Cell::new(false),
+        media: super::boxgen::Media::None,
     };
     let Some(intrinsic) = probe_source(lb, &src, ctx) else {
         return;
@@ -2912,99 +2913,50 @@ fn prepend_background_layers(
     content: &mut FragmentContent,
     children: &mut Vec<Fragment>,
 ) {
-    use super::background::{area_rect, color_layer, layer, props, Area, Source};
-    let FragmentContent::Box {
+    use super::background::{
+        area_radius, area_rect, border_overlay, color_layer, layer, props, Area, Source,
+    };
+    if let FragmentContent::Box {
         background,
         gradient,
+        border,
         border_radius,
         ..
     } = content
-    else {
-        return;
-    };
-    let image = background_placement(lb, ctx);
-    if image.is_none() && gradient.is_none() && background.is_none() {
-        return;
-    }
-    let props = props(&lb.style, bs.font_size);
-    let origin = area_rect(border_box, &bs.border, &bs.padding, props.origin);
-    let paint = area_rect(border_box, &bs.border, &bs.padding, props.clip);
-    let mut layers = Vec::new();
-    let tiled_gradient = gradient.take_if(|_| !props.is_initial());
-    if tiled_gradient.is_some() && lb.mask.is_none() {
-        // The gradient no longer covers the box: its colour shows around the tiles.
-        *background = bs.background;
-    }
-    if props.clip != Area::Border {
-        if let Some(color) = background.take() {
-            layers.push(color_layer(lb.node_id, color, paint));
+    {
+        let image = background_placement(lb, ctx);
+        let props = props(&lb.style, bs.font_size);
+        let origin = area_rect(border_box, &bs.border, &bs.padding, props.origin);
+        let paint = area_rect(border_box, &bs.border, &bs.padding, props.clip);
+        let radius = area_radius(*border_radius, &bs.border, &bs.padding, props.clip);
+        let mut layers = Vec::new();
+        let tiled_gradient = gradient.take_if(|_| !props.is_initial());
+        if tiled_gradient.is_some() && lb.mask.is_none() {
+            // The gradient no longer covers the box: its colour shows around the tiles.
+            *background = bs.background;
         }
-    }
-    if let Some(gradient) = tiled_gradient {
-        layers.extend(layer(
+        if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
+            layers.push(color_layer(lb.node_id, color, paint, radius));
+        }
+        let sources = tiled_gradient
+            .map(Source::Gradient)
+            .into_iter()
+            .chain(image.map(Source::Image));
+        for source in sources {
+            layers.extend(layer(lb.node_id, &props, &source, (origin, paint, radius)));
+        }
+        if layers.is_empty() {
+            return;
+        }
+        // The border paints over the background layers.
+        layers.push(border_overlay(
             lb.node_id,
-            &props,
-            &Source::Gradient(gradient),
-            origin,
-            paint,
-        ));
-    }
-    if let Some(image) = image {
-        layers.extend(layer(
-            lb.node_id,
-            &props,
-            &Source::Image(image),
-            origin,
-            paint,
-        ));
-    }
-    if border_radius.is_rounded() && !layers.is_empty() {
-        layers = vec![rounded_layers(
-            lb.node_id,
-            layers,
             border_box,
-            paint,
-            border_radius,
-        )];
+            std::mem::take(border),
+            *border_radius,
+        ));
+        children.splice(0..0, layers);
     }
-    children.splice(0..0, layers);
-}
-
-/// Background `layers` of a rounded box held by one unpainted box whose overflow clip is
-/// the painting area `paint` with its radii: the border box's, less the distance from
-/// each border-box edge (miaskiewicz/turbo-dom#253).
-fn rounded_layers(
-    id: NodeId,
-    layers: Vec<Fragment>,
-    (bx, by, bw, bh): super::background::Rect,
-    paint: super::background::Rect,
-    radii: &BorderRadii,
-) -> Fragment {
-    let (px, py, pw, ph) = paint;
-    let mut holder = Fragment::new(
-        id,
-        bx,
-        by,
-        bw,
-        bh,
-        FragmentContent::Box {
-            background: None,
-            border: super::value::BorderEdges::default(),
-            border_radius: BorderRadii::ZERO,
-            shadow: None,
-            gradient: None,
-            transform: None,
-        },
-    );
-    holder.overflow_clip = Some(OverflowClip {
-        x: px - bx,
-        y: py - by,
-        width: pw,
-        height: ph,
-        radii: radii.inset(py - by, bx + bw - px - pw, by + bh - py - ph, px - bx),
-    });
-    holder.children = layers;
-    holder
 }
 
 /// The placement for a box's `background-image`, if it has one the resolver can
@@ -3125,7 +3077,7 @@ pub(crate) fn stamp_intrinsic_widths(lb: &LayoutBox, images: &ImageCtx) {
 /// Stamp one box's `intrinsic_w` if it is a resolvable replaced image.
 fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
     if lb.native_iframe() {
-        lb.intrinsic_w.set(Some(300.0));
+        lb.set_intrinsic(300.0, Some(150.0));
         return;
     }
     if let Some(viewport) = &lb.svg_viewport {
@@ -3133,8 +3085,7 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
             parent_font_size: super::value::DEFAULT_FONT_SIZE,
             cb_width: 0.0,
         });
-        lb.intrinsic_w
-            .set(Some(viewport.natural_width(style.font_size)));
+        lb.set_intrinsic(viewport.natural_width(style.font_size), None);
         return;
     }
     let Some(src) = lb.image.as_ref().filter(|s| s.replaced) else {
@@ -3143,7 +3094,7 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
     let probed = super::imgsize::replaced_intrinsic(images.resolver, src, &lb.style);
     src.unloaded.set(probed.is_none_or(|(_, loaded)| !loaded));
     if let Some((i, _)) = probed {
-        lb.intrinsic_w.set(Some(i.width as f32));
+        lb.set_intrinsic(i.width as f32, Some(i.height as f32));
     }
 }
 
@@ -3172,6 +3123,18 @@ fn replaced_image_box(
     let src = lb.image.as_ref().filter(|s| s.replaced)?;
     let (intrinsic, loaded) =
         super::imgsize::replaced_intrinsic(ctx.images.resolver, src, &lb.style)?;
+    if !loaded && src.media == super::boxgen::Media::Viewport {
+        // A media default box: no aspect ratio, like an iframe's (#252).
+        let natural = (intrinsic.width as f32, intrinsic.height as f32);
+        return Some(embedded_viewport_fragment(
+            lb,
+            bs,
+            (bx, by),
+            cb_width,
+            natural,
+            ctx,
+        ));
+    }
     let intrinsic = logical_intrinsic(intrinsic, ctx);
     let sizing = size_ctx(bs, cb_width, ctx);
     if ctx.live_geometry {
@@ -3183,6 +3146,13 @@ fn replaced_image_box(
             fragment.children.clear();
         }
         return Some(fragment);
+    }
+    if !loaded && src.media == super::boxgen::Media::Canvas {
+        // A canvas is sized like Chrome's replaced boxes (`box-sizing`, min / max) on
+        // this path too: a content box inside its padding and border (#252).
+        let sized = super::imgsize::size_replaced_live(String::new(), intrinsic, &sizing);
+        let content = (sized.width, sized.height);
+        return Some(viewport_fragment(lb, bs, bx, by, content, ctx));
     }
     let mut sized = size_replaced(src.name.clone(), intrinsic, &sizing);
     physical_placement(&mut sized.placement, ctx);
@@ -3221,25 +3191,33 @@ fn replaced_viewport_box(
     ctx: &mut Ctx,
 ) -> Option<Fragment> {
     if lb.native_iframe() {
-        return Some(embedded_viewport_fragment(lb, style, x, y, width, ctx));
+        return Some(embedded_viewport_fragment(
+            lb,
+            style,
+            (x, y),
+            width,
+            (300.0, 150.0),
+            ctx,
+        ));
     }
     let viewport = lb.svg_viewport.as_ref()?;
     Some(svg_viewport_fragment(lb, viewport, style, x, y, width, ctx))
 }
 
+/// An iframe's or a media element's default box (`natural`: its physical default
+/// size, with no aspect ratio), turned in a vertical space.
 fn embedded_viewport_fragment(
     lb: &LayoutBox,
     style: &BoxStyle,
-    x: f32,
-    y: f32,
+    (x, y): (f32, f32),
     width: f32,
+    natural: (f32, f32),
     ctx: &mut Ctx,
 ) -> Fragment {
-    // The physical 300x150 default, turned in a vertical space.
     let (natural_width, natural_height) = if ctx.writing.vertical() {
-        (Some(150.0), Some(300.0))
+        (Some(natural.1), Some(natural.0))
     } else {
-        (Some(300.0), None)
+        (Some(natural.0), Some(natural.1))
     };
     let dimensions = super::imgsize::size_viewport_live(
         natural_width,

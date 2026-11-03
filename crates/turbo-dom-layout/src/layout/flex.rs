@@ -729,8 +729,8 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         }
         // A replaced `<img>`: its intrinsic width (stamped from the resolver before
         // layout) â so a `<div>` wrapping a logo measures the image, not 0.
-        if let Some(iw) = lb.intrinsic_w.get() {
-            return iw + frame;
+        if let Some(iw) = lb.intrinsic_w() {
+            return replaced_natural(lb, &bs, iw) + frame;
         }
         let inner = match &lb.kind {
             BoxKind::Lines(items) => lines_natural(
@@ -750,6 +750,28 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         };
         inner + frame
     })
+}
+
+/// A replaced box's max-content (content-box) width from its intrinsic width `iw`: a
+/// fixed `height` transfers through the intrinsic aspect ratio when the box has one
+/// (an image, a canvas, a loaded poster; not an iframe or a media default box). In a vertical space
+/// this is how a fixed physical `width` sizes the line (miaskiewicz/turbo-dom#252).
+fn replaced_natural(lb: &LayoutBox, bs: &super::value::BoxStyle, iw: f32) -> f32 {
+    let ratio = lb.image.as_ref().is_some_and(|source| {
+        source.media != super::boxgen::Media::Viewport || !source.unloaded.get()
+    }) && !lb.native_iframe();
+    match (bs.height, lb.intrinsic_h()) {
+        (LengthPct::Px(h), Some(ih)) if ratio && ih > 0.0 => {
+            let h = match bs.box_sizing {
+                super::value::BoxSizing::BorderBox => {
+                    (h - bs.padding.vertical() - bs.border.widths().vertical()).max(0.0)
+                }
+                super::value::BoxSizing::ContentBox => h,
+            };
+            h * iw / ih
+        }
+        _ => iw,
+    }
 }
 
 /// The widest single unbreakable piece (max word / longest line at zero available

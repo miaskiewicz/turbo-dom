@@ -198,27 +198,26 @@ fn overflow_clips_the_padding_box_with_the_inner_radii() {
 
 #[test]
 fn background_layers_of_a_rounded_box_clip_to_its_painting_area() {
+    let c = |h, v| CornerRadii { h, v };
+    // A colour clipped to the content box paints with the content edge's radii, each
+    // corner less its own adjacent border and padding widths.
     let frags = fragments(&format!(
-        "<div style=\"{ABS};width:80px;height:80px;padding:10px;border-radius:40px;background:blue;background-clip:content-box\"></div>"
+        "<div style=\"{ABS};width:80px;height:80px;padding:10px 4px 10px 20px;border-radius:40px 30px / 40px 20px;background:blue;background-clip:content-box\"></div>"
     ));
-    let holder = &at(&frags, (20.0, 20.0, 100.0, 100.0)).children[0];
+    let colour = &at(&frags, (20.0, 20.0, 104.0, 100.0)).children[0];
     assert_eq!(
-        holder.overflow_clip,
-        Some(OverflowClip {
-            x: 10.0,
-            y: 10.0,
-            width: 80.0,
-            height: 80.0,
-            radii: BorderRadii::uniform(30.0),
-        })
+        radii(colour),
+        corners(c(20.0, 30.0), c(26.0, 10.0), c(36.0, 30.0), c(10.0, 10.0))
     );
-    assert_eq!(holder.children.len(), 1);
-    // A square box keeps its layers unwrapped.
-    let square = fragments(&format!(
-        "<div style=\"{ABS};width:80px;height:80px;padding:10px;background:blue;background-clip:content-box\"></div>"
+    // Image / gradient tiles sit in a container clipped to the painting area's radii.
+    let frags = fragments(&format!(
+        "<div style=\"{ABS};width:80px;height:80px;border:10px solid blue;border-radius:40px 0;background:linear-gradient(red,red) 0 0 / 20px 20px\"></div>"
     ));
-    let layer = &at(&square, (20.0, 20.0, 100.0, 100.0)).children[0];
-    assert!(layer.overflow_clip.is_none() && layer.children.is_empty());
+    let container = &at(&frags, (20.0, 20.0, 100.0, 100.0)).children[0];
+    assert_eq!(
+        container.clip.unwrap().radii,
+        corners(c(40.0, 40.0), c(0.0, 0.0), c(40.0, 40.0), c(0.0, 0.0))
+    );
 }
 
 #[test]

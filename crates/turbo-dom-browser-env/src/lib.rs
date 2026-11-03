@@ -26,6 +26,14 @@
 // allowed; clippy's default groups are allowed for the same reason.
 #![allow(unused, clippy::all)]
 
+/// Register a native callback of V8 callback type `$ty` as an external reference
+/// (turbo-dom#249, `browser_env::external_refs`) and pass it on unchanged.
+macro_rules! ext {
+    ($ty:ident, $f:expr) => {
+        $crate::browser_env::external_refs::record::<v8::$ty, _>($f)
+    };
+}
+
 pub mod browser_env;
 pub mod css_snapshot;
 
