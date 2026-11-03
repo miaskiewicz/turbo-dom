@@ -3,6 +3,8 @@
 //! `getBoundingClientRect()`. The pages and Chrome 156's boxes are turbo-dom-raster's
 //! `tests/fixtures/paint_chrome156.json` cases `inline-slice-atoms` and
 //! `inline-bidi-split-atoms` (`scripts/paint-chrome-control.mjs`; text-free, so no font).
+//! The inline boxes still resolve a face for their edges: the bundled set.
+#![cfg(feature = "bundled-fonts")]
 use turbo_dom_layout::{layout_boxes, Diagnostics, FontRegistry};
 
 const DOC: &str =
