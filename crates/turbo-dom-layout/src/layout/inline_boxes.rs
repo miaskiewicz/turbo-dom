@@ -790,8 +790,10 @@ fn background_layers(
             if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
                 layers.push(color_layer(id, color, paint, radius));
             }
+            // A layer's gradient resolves against its tile (miaskiewicz/turbo-dom#264).
             let sources = gradient
                 .take()
+                .and(used.background_gradient.clone())
                 .map(Source::Gradient)
                 .into_iter()
                 .chain(image.clone().map(Source::Image));
@@ -934,7 +936,10 @@ fn fragment(
             border,
             border_radius: super::value::resolve_radii(&corners, width, height),
             shadow: used.box_shadow,
-            gradient: used.background_gradient.clone(),
+            gradient: used
+                .background_gradient
+                .as_ref()
+                .and_then(|g| g.resolve(width, height)),
             transform: None,
         },
     )

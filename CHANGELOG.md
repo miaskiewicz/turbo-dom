@@ -114,6 +114,11 @@ Rust API changes, per crate. The npm package's JS API is unchanged.
   needs an arm; a painter tiles it (turbo-dom-raster: a pattern shader in PNG, `<pattern>`
   in SVG) or walks `tiles` over what it paints. Tile edges snap with `floor(v + 0.5)`
   (was `round`, which differs on negative halves).
+- `BoxStyle::background_gradient` is a `layout::value::GradientSpec` (#264) instead of a
+  `LinearGradient`: the stops keep their specified positions (`StopSpec { color, pos:
+  Option<LengthPct> }`) and `repeating`, and `GradientSpec::resolve(width, height)` gives
+  the painted `LinearGradient` for a box or a background tile (CSS colour stop fixup,
+  repeating gradients unrolled, stops cut to `0..=1`). `LinearGradient` is unchanged.
 - `LayoutOptions` and `HtmlOptions` gain `uncapped_images: bool` (0.7.0 round-2 review,
   finding 2): `true` sizes `<img>` boxes by CSS alone, like Chrome (turbo-dom-raster sets
   it); the `false` default keeps html2pdf's paged-media caps (100% of the containing
@@ -354,6 +359,10 @@ Detail per fix (each backed by a Chrome 156 control):
 - An empty inline box in a bidi-reordered line goes with the item after it (1e34d4c).
 - The orthogonal table width (#250) already matched Chrome once #241 landed; its test mask
   is gone.
+- Gradient colour stops at lengths (`#ccc 1px`, `5em`, `calc()`) and double-position
+  stops place like Chrome on the gradient line of the box or tile they paint, and
+  `repeating-linear-gradient(...)` repeats (it painted once) (#264; Chrome cases
+  `gradient-*`). Only `%` positions were read; a length stop spread evenly instead.
 - From the 0.7.0 round-2 review: a background layer paints every tile however many there
   are (one pattern fragment, painted by a pattern shader / `<pattern>`; Chrome case
   `bg-tiles-fill-a-big-box`); a raster screenshot's `<img>` is no longer squeezed to its

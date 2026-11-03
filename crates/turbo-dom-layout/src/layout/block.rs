@@ -2648,7 +2648,10 @@ fn content_kind(lb: &LayoutBox, bs: &BoxStyle, bbw: f32, bbh: f32) -> FragmentCo
             border: bs.border,
             border_radius: super::value::resolve_radii(&bs.border_radius, bbw, bbh),
             shadow: bs.box_shadow,
-            gradient: bs.background_gradient.clone(),
+            gradient: bs
+                .background_gradient
+                .as_ref()
+                .and_then(|g| g.resolve(bbw, bbh)),
             // Resolve a `%` translate against the box size and the `transform-origin`
             // (its `%`/keyword parts) against the box's own width/height. The raster
             // composes this about the box's absolute position.
@@ -3006,7 +3009,10 @@ fn prepend_background_layers(
         let paint = area_rect(border_box, &bs.border, &bs.padding, props.clip);
         let radius = area_radius(*border_radius, &bs.border, &bs.padding, props.clip);
         let mut layers = Vec::new();
-        let tiled_gradient = gradient.take_if(|_| !props.is_initial());
+        // A tiled gradient's stops resolve against its tile (miaskiewicz/turbo-dom#264).
+        let tiled_gradient = gradient
+            .take_if(|_| !props.is_initial())
+            .and(bs.background_gradient.clone());
         if tiled_gradient.is_some() && lb.mask.is_none() {
             // The gradient no longer covers the box: its colour shows around the tiles.
             *background = bs.background;

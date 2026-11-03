@@ -20,7 +20,8 @@ pub(crate) type Rect = (f32, f32, f32, f32);
 #[derive(Clone)]
 pub(crate) enum Source {
     Image(ImagePlacement),
-    Gradient(LinearGradient),
+    /// Its stops resolve against the tile size (miaskiewicz/turbo-dom#264).
+    Gradient(super::value::GradientSpec),
 }
 
 /// A box area keyword of `background-origin` / `-clip`.
@@ -400,13 +401,17 @@ pub(crate) fn layer(
             .next()
             .unwrap_or(start)
     };
+    let tile = match source {
+        Source::Image(image) => FragmentContent::Image(image.clone()),
+        Source::Gradient(gradient) => {
+            let Some(gradient) = gradient.resolve(tw, th) else {
+                return Vec::new();
+            };
+            gradient_box(None, Some(gradient), BorderRadii::ZERO)
+        }
+    };
     let pattern = TilePattern {
-        tile: Box::new(match source {
-            Source::Image(image) => FragmentContent::Image(image.clone()),
-            Source::Gradient(gradient) => {
-                gradient_box(None, Some(gradient.clone()), BorderRadii::ZERO)
-            }
-        }),
+        tile: Box::new(tile),
         x: phase(x, step_x, paint.0),
         y: phase(y, step_y, paint.1),
         tile_width: tw,
@@ -519,6 +524,19 @@ fn gradient_box(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A two-stop gradient (red to blue, positions unset) at `angle_deg`.
+    fn test_gradient(angle_deg: f32) -> super::super::value::GradientSpec {
+        let stop = |color| super::super::value::StopSpec { color, pos: None };
+        super::super::value::GradientSpec {
+            angle_deg,
+            stops: vec![
+                stop(Rgba::new(255, 0, 0, 255)),
+                stop(Rgba::new(0, 0, 255, 255)),
+            ],
+            repeating: false,
+        }
+    }
 
     fn style(pairs: &[(&str, &str)]) -> ComputedStyle {
         let mut style = ComputedStyle::default();
@@ -637,10 +655,7 @@ mod tests {
 
     #[test]
     fn gradients_fill_the_area_unless_sized() {
-        let gradient = Source::Gradient(LinearGradient {
-            angle_deg: 90.0,
-            stops: Vec::new(),
-        });
+        let gradient = Source::Gradient(test_gradient(90.0));
         assert_eq!(
             tile_size(Size::Cover, &gradient, (10.0, 20.0)),
             (10.0, 20.0)
@@ -895,10 +910,7 @@ mod tests {
 
     #[test]
     fn hostile_tiles_stay_bounded() {
-        let gradient = Source::Gradient(LinearGradient {
-            angle_deg: 90.0,
-            stops: Vec::new(),
-        });
+        let gradient = Source::Gradient(test_gradient(90.0));
         let big = (0.0, 0.0, 1.0e6, 1.0e6);
         let image = sprite();
         // 1e30px and 1e400px (an f32 infinity), spelled out: lengths take no exponent.
@@ -992,10 +1004,7 @@ mod tests {
     fn a_big_box_of_small_tiles_is_one_pattern_down_to_its_last_tile() {
         // 0.7.0 round-2 review, finding 1: a 4px grid over a 1200 x 5000 page is
         // 375000 tiles; the layer is one pattern, and its bottom-right tile is there.
-        let gradient = Source::Gradient(LinearGradient {
-            angle_deg: 180.0,
-            stops: Vec::new(),
-        });
+        let gradient = Source::Gradient(test_gradient(180.0));
         let page = (0.0, 0.0, 1200.0, 5000.0);
         let layers = layer(
             NodeId(1),

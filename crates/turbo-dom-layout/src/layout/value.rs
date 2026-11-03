@@ -852,8 +852,10 @@ pub struct BoxStyle {
     pub background: Option<Rgba>,
     /// `box-shadow` first/topmost layer (outer or inset), or `None`.
     pub box_shadow: Option<super::fragment::BoxShadow>,
-    /// A `linear-gradient(...)` background image, or `None`.
-    pub background_gradient: Option<super::fragment::LinearGradient>,
+    /// A `linear-gradient(...)` / `repeating-linear-gradient(...)` background image, or
+    /// `None`. Its stops resolve against the box or tile it paints
+    /// ([`GradientSpec::resolve`]; miaskiewicz/turbo-dom#264).
+    pub background_gradient: Option<GradientSpec>,
     /// A CSS 2D `transform` — the linear part `[a,b,c,d]` plus the translate
     /// components (kept as `<length-percentage>` so a `%` translate resolves against
     /// the box's own size at layout). `None` for `none`/unparsable/3D-only.
@@ -1641,7 +1643,7 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         widows: int_prop(s, "widows", 2),
         background: background_of(s),
         box_shadow: box_shadow_of(s, fs),
-        background_gradient: linear_gradient_of(s),
+        background_gradient: linear_gradient_of(s, fs),
         transform: transform_of(s, fs),
         transform_origin: transform_origin_of(s, fs),
         opacity: opacity_of(s),
@@ -1854,12 +1856,187 @@ fn scan_until(bytes: &[u8], mut i: usize, stop: u8) -> usize {
     i
 }
 
-/// A `linear-gradient(...)` from `background-image` or the `background` shorthand,
-/// or `None` (no gradient / `radial-`/`conic-` unsupported / unparsable). Syntax:
-/// `linear-gradient( [<angle> | to <side/corner>]? , <color> [<pos>]? , ...)`. The
-/// direction defaults to `to bottom` (180°); stops without a position spread evenly.
-fn linear_gradient_of(s: &ComputedStyle) -> Option<super::fragment::LinearGradient> {
-    let inner = linear_gradient_inner(s)?;
+/// A specified `linear-gradient(...)` (miaskiewicz/turbo-dom#264): its direction, its
+/// colour stops with their positions as written (a length, a percentage of the gradient
+/// line, or none), and whether it repeats. [`GradientSpec::resolve`] places the stops on
+/// the gradient line of the box or tile it paints.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GradientSpec {
+    pub angle_deg: f32,
+    pub stops: Vec<StopSpec>,
+    /// `repeating-linear-gradient(...)`: the stops repeat along the line, every
+    /// distance from the first stop to the last.
+    pub repeating: bool,
+}
+
+/// One specified colour stop: its colour and its position, if it has one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StopSpec {
+    pub color: Rgba,
+    pub pos: Option<LengthPct>,
+}
+
+/// The most stops a repeating gradient unrolls to; a finer one paints its average
+/// colour, as its repeats are far below a pixel.
+const MAX_REPEATED_STOPS: usize = 4096;
+
+impl GradientSpec {
+    /// The gradient as painted over a `width x height` box: CSS Images 3's colour stop
+    /// fixup on the gradient line (`|w sin a| + |h cos a|` long) — a missing first / last
+    /// position is the line's start / end, a position before an earlier one moves up to
+    /// it, missing ones spread evenly — then a repeating gradient unrolled over the line,
+    /// and the stops cut to `0..=1` (the painters pad past them). `None` for a line of no
+    /// length.
+    #[must_use]
+    pub fn resolve(&self, width: f32, height: f32) -> Option<super::fragment::LinearGradient> {
+        let theta = self.angle_deg.to_radians();
+        let line = width * theta.sin().abs() + height * theta.cos().abs();
+        if !(line > 0.0 && line.is_finite()) || self.stops.len() < 2 {
+            return None;
+        }
+        let n = self.stops.len();
+        let mut positions: Vec<Option<f32>> = self
+            .stops
+            .iter()
+            .map(|stop| stop.pos.and_then(|p| p.resolve(line)).map(|px| px / line))
+            .collect();
+        for (i, slot) in positions.iter_mut().enumerate() {
+            if slot.is_none() {
+                *slot = endpoint_default(i, n);
+            }
+        }
+        let mut highest = f32::NEG_INFINITY;
+        for slot in positions.iter_mut().flatten() {
+            highest = highest.max(*slot);
+            *slot = highest;
+        }
+        fill_position_gaps(&mut positions);
+        let stops: Vec<(f32, Rgba)> = positions
+            .into_iter()
+            .map(|p| p.unwrap_or(0.0))
+            .zip(self.stops.iter().map(|s| s.color))
+            .collect();
+        let stops = if self.repeating {
+            repeated(&stops)
+        } else {
+            stops
+        };
+        Some(super::fragment::LinearGradient {
+            angle_deg: self.angle_deg,
+            stops: cut_to_line(&stops)
+                .into_iter()
+                .map(|(pos, color)| super::fragment::GradientStop { color, pos })
+                .collect(),
+        })
+    }
+}
+
+/// A repeating gradient's stops copied every period (first to last stop) across the
+/// whole `0..=1` line; a zero period, or one too fine to unroll, is its average colour.
+fn repeated(stops: &[(f32, Rgba)]) -> Vec<(f32, Rgba)> {
+    let (first, last) = (stops[0].0, stops[stops.len() - 1].0);
+    let period = last - first;
+    let from = ((0.0 - first) / period).floor();
+    let to = ((1.0 - first) / period).ceil();
+    let copies = to - from;
+    if !(period > 0.0 && copies * stops.len() as f32 <= MAX_REPEATED_STOPS as f32) {
+        let color = average(stops);
+        return vec![(0.0, color), (1.0, color)];
+    }
+    let mut out = Vec::new();
+    let mut k = from;
+    while k < to {
+        out.extend(stops.iter().map(|&(pos, color)| (pos + k * period, color)));
+        k += 1.0;
+    }
+    out
+}
+
+/// The colour a gradient averages to over its stops' span (each segment weighted by its
+/// length; the stops' plain mean when they share one position).
+fn average(stops: &[(f32, Rgba)]) -> Rgba {
+    let mut sum = [0.0_f32; 4];
+    let mut total = 0.0;
+    for pair in stops.windows(2) {
+        let weight = pair[1].0 - pair[0].0;
+        for (c, (a, b)) in sum
+            .iter_mut()
+            .zip(channels(pair[0].1).into_iter().zip(channels(pair[1].1)))
+        {
+            *c += (a + b) / 2.0 * weight;
+        }
+        total += weight;
+    }
+    if total <= 0.0 {
+        sum = [0.0; 4];
+        for &(_, color) in stops {
+            for (c, v) in sum.iter_mut().zip(channels(color)) {
+                *c += v;
+            }
+        }
+        total = stops.len() as f32;
+    }
+    let [r, g, b, a] = sum.map(|c| (c / total).round() as u8);
+    Rgba { r, g, b, a }
+}
+
+fn channels(c: Rgba) -> [f32; 4] {
+    [
+        f32::from(c.r),
+        f32::from(c.g),
+        f32::from(c.b),
+        f32::from(c.a),
+    ]
+}
+
+/// The stops of the `0..=1` line: those inside it, plus the colour where the line starts
+/// and ends when stops lie past it (interpolated between the stops either side).
+fn cut_to_line(stops: &[(f32, Rgba)]) -> Vec<(f32, Rgba)> {
+    let at = |t: f32| -> Rgba {
+        let after = stops.iter().position(|&(pos, _)| pos > t);
+        match after {
+            None => stops[stops.len() - 1].1,
+            Some(0) => stops[0].1,
+            Some(i) => {
+                let ((p0, c0), (p1, c1)) = (stops[i - 1], stops[i]);
+                let f = (t - p0) / (p1 - p0);
+                let mix =
+                    |a: u8, b: u8| (f32::from(a) + (f32::from(b) - f32::from(a)) * f).round() as u8;
+                Rgba {
+                    r: mix(c0.r, c1.r),
+                    g: mix(c0.g, c1.g),
+                    b: mix(c0.b, c1.b),
+                    a: mix(c0.a, c1.a),
+                }
+            }
+        }
+    };
+    let mut out = vec![(0.0, at(0.0))];
+    out.extend(
+        stops
+            .iter()
+            .copied()
+            .filter(|&(pos, _)| pos > 0.0 && pos < 1.0),
+    );
+    out.push((1.0, at(1.0)));
+    // A stop exactly on an end keeps its own colour there (a hard stop at 0 or 1).
+    if let Some(&(_, c)) = stops.iter().rev().find(|&&(pos, _)| pos == 0.0) {
+        out[0].1 = c;
+    }
+    if let Some(&(_, c)) = stops.iter().find(|&&(pos, _)| pos == 1.0) {
+        let last = out.len() - 1;
+        out[last].1 = c;
+    }
+    out
+}
+
+/// A `linear-gradient(...)` / `repeating-linear-gradient(...)` from `background-image`
+/// (the `background` shorthand sets it), or `None` (no gradient / `radial-` / `conic-`
+/// unsupported / unparsable). Syntax: `linear-gradient( [<angle> | to <side/corner>]? ,
+/// <color> [<length-percentage>{1,2}]? , ...)`. The direction defaults to `to bottom`
+/// (180°).
+fn linear_gradient_of(s: &ComputedStyle, font_size: f32) -> Option<GradientSpec> {
+    let (inner, repeating) = linear_gradient_inner(s)?;
     let mut parts = top_level_comma_split(inner);
     let first = parts.next()?;
     // Leading angle / `to <side>`, else `first` is actually the first colour stop.
@@ -1867,23 +2044,27 @@ fn linear_gradient_of(s: &ComputedStyle) -> Option<super::fragment::LinearGradie
         Some(a) => (a, None),
         None => (180.0, Some(first)),
     };
-    let stop_tokens: Vec<&str> = first_stop.into_iter().chain(parts).collect();
-    let stops = gradient_stops(&stop_tokens)?;
-    (stops.len() >= 2).then_some(super::fragment::LinearGradient {
+    let mut stops = Vec::new();
+    for token in first_stop.into_iter().chain(parts) {
+        stops.extend(parse_gradient_stop(token, font_size)?);
+    }
+    (stops.len() >= 2).then_some(GradientSpec {
         angle_deg: angle,
         stops,
+        repeating,
     })
 }
 
 /// The balanced text inside the first `linear-gradient(...)` of a box's
-/// `background-image`, or `None` if there is none.
-fn linear_gradient_inner(s: &ComputedStyle) -> Option<&str> {
+/// `background-image` and whether it is a `repeating-linear-gradient(...)`, or `None` if
+/// there is none.
+fn linear_gradient_inner(s: &ComputedStyle) -> Option<(&str, bool)> {
     let raw = s.get("background-image").map(str::trim)?;
-    let inner = raw
-        .find("linear-gradient(")
-        .map(|i| &raw[i + "linear-gradient(".len()..])?;
+    let at = raw.find("linear-gradient(")?;
+    let repeating = raw[..at].ends_with("repeating-");
+    let inner = &raw[at + "linear-gradient(".len()..];
     // Take up to the matching close paren (the gradient's own parens are balanced).
-    balanced_paren_slice(inner)
+    Some((balanced_paren_slice(inner)?, repeating))
 }
 
 /// The substring up to the paren that closes the one just opened before `s`
@@ -1932,47 +2113,33 @@ fn parse_gradient_direction(tok: &str) -> Option<f32> {
     Some(angle)
 }
 
-/// Resolve colour-stop tokens (`<color> [<pos%>]?`) to positioned 0..1 stops.
-/// Explicit `%` positions are honoured; stops without one spread evenly across the
-/// remaining span (endpoints default 0 and 1). `None` if a token names no colour.
-fn gradient_stops(tokens: &[&str]) -> Option<Vec<super::fragment::GradientStop>> {
-    let n = tokens.len();
-    let mut colors = Vec::with_capacity(n);
-    let mut positions: Vec<Option<f32>> = Vec::with_capacity(n);
-    for (i, tok) in tokens.iter().enumerate() {
-        let (color, pos) = parse_gradient_stop(tok)?;
-        colors.push(color);
-        // First/last default to the endpoints when unpositioned.
-        positions.push(pos.or_else(|| endpoint_default(i, n)));
-    }
-    fill_position_gaps(&mut positions);
-    Some(
-        colors
-            .into_iter()
-            .zip(positions)
-            .map(|(color, pos)| super::fragment::GradientStop {
-                color,
-                pos: pos.unwrap_or(0.0),
-            })
-            .collect(),
-    )
-}
-
-/// Parse one gradient stop token (`<color> [<pos%>]?`) into its colour and an
-/// optional explicit 0..1 position. `None` if the token names no colour.
-fn parse_gradient_stop(tok: &str) -> Option<(Rgba, Option<f32>)> {
+/// Parse one gradient stop token (`<color> [<length-percentage>{1,2}]?`) into its
+/// stops: one, or two at the two positions of a double-position stop. `None` if the
+/// token names no colour or a position does not parse.
+fn parse_gradient_stop(tok: &str, font_size: f32) -> Option<Vec<StopSpec>> {
     let mut parts = css_value_tokens(tok).into_iter();
     let color = parse_color(parts.next()?)?;
-    let pos = parts
-        .next()
-        .and_then(|p| p.strip_suffix('%'))
-        .and_then(|p| {
-            p.trim()
-                .parse::<f32>()
-                .ok()
-                .map(|v| (v / 100.0).clamp(0.0, 1.0))
-        });
-    Some((color, pos))
+    let positions: Vec<LengthPct> = parts
+        .map(|p| parse_length_pct(p, font_size).filter(|l| *l != LengthPct::Auto))
+        .collect::<Option<_>>()?;
+    Some(match positions.as_slice() {
+        [] => vec![StopSpec { color, pos: None }],
+        [one] => vec![StopSpec {
+            color,
+            pos: Some(*one),
+        }],
+        [a, b] => vec![
+            StopSpec {
+                color,
+                pos: Some(*a),
+            },
+            StopSpec {
+                color,
+                pos: Some(*b),
+            },
+        ],
+        _ => return None,
+    })
 }
 
 /// The default position for stop `i` of `n` when it carries no explicit one: the
@@ -2366,7 +2533,110 @@ mod gradient_tests {
     use super::*;
 
     fn grad(value: &str) -> Option<super::super::fragment::LinearGradient> {
-        linear_gradient_of(&ComputedStyle::from_pairs([("background-image", value)]))
+        linear_gradient_of(
+            &ComputedStyle::from_pairs([("background-image", value)]),
+            16.0,
+        )?
+        .resolve(100.0, 100.0)
+    }
+
+    /// A painted stop: `(pos, r, g, b, a)`.
+    type Painted = (f32, u8, u8, u8, u8);
+
+    /// Each stop of `value` painted over `w x h`.
+    fn painted(value: &str, (w, h): (f32, f32)) -> Option<Vec<Painted>> {
+        let spec = linear_gradient_of(
+            &ComputedStyle::from_pairs([("background-image", value)]),
+            10.0,
+        )?;
+        let g = spec.resolve(w, h)?;
+        Some(
+            g.stops
+                .iter()
+                .map(|s| (s.pos, s.color.r, s.color.g, s.color.b, s.color.a))
+                .collect(),
+        )
+    }
+
+    #[test]
+    fn length_and_hard_stops_resolve_on_the_gradient_line() {
+        // miaskiewicz/turbo-dom#264: 20px and 5em (font-size 10px) on a 200px line.
+        assert_eq!(
+            painted(
+                "linear-gradient(90deg, #f00 20px, #00f 20px 5em, #0f0 5em)",
+                (200.0, 40.0)
+            )
+            .unwrap(),
+            [
+                (0.0, 255, 0, 0, 255),
+                (0.1, 255, 0, 0, 255),
+                (0.1, 0, 0, 255, 255),
+                (0.25, 0, 0, 255, 255),
+                (0.25, 0, 255, 0, 255),
+                (1.0, 0, 255, 0, 255),
+            ]
+        );
+        // A position before an earlier one moves up to it; a percentage past the line
+        // is cut at its end with the colour there.
+        assert_eq!(
+            painted(
+                "linear-gradient(#000 50%, #fff 10%, #000 150%)",
+                (10.0, 10.0)
+            )
+            .unwrap(),
+            [
+                (0.0, 0, 0, 0, 255),
+                (0.5, 0, 0, 0, 255),
+                (0.5, 255, 255, 255, 255),
+                (1.0, 128, 128, 128, 255),
+            ]
+        );
+        // A stop before the line's start: the colour where it starts.
+        assert_eq!(
+            painted("linear-gradient(#000 -100%, #fff 100%)", (10.0, 10.0)).unwrap(),
+            [(0.0, 128, 128, 128, 255), (1.0, 255, 255, 255, 255)]
+        );
+        // Three positions, or `auto`, is not a stop; a box with no line paints nothing.
+        assert!(painted("linear-gradient(#000 1px 2px 3px, #fff)", (10.0, 10.0)).is_none());
+        assert!(painted("linear-gradient(#000 auto, #fff)", (10.0, 10.0)).is_none());
+        assert!(painted("linear-gradient(90deg, #000, #fff)", (0.0, 0.0)).is_none());
+    }
+
+    #[test]
+    fn repeating_gradients_unroll_over_the_line() {
+        let stops = painted(
+            "repeating-linear-gradient(90deg, #f00 0 10px, #00f 10px 20px)",
+            (40.0, 10.0),
+        )
+        .unwrap();
+        let colour = |s: &Painted| (s.0, s.1, s.3);
+        assert_eq!(
+            stops.iter().map(colour).collect::<Vec<_>>(),
+            [
+                (0.0, 255, 0),
+                (0.25, 255, 0),
+                (0.25, 0, 255),
+                (0.5, 0, 255),
+                (0.5, 255, 0),
+                (0.75, 255, 0),
+                (0.75, 0, 255),
+                (1.0, 0, 255),
+            ]
+        );
+        // A zero period, or one too fine to unroll, paints the average colour.
+        let flat = |v| painted(v, (100.0, 100.0)).unwrap();
+        assert_eq!(
+            flat("repeating-linear-gradient(#f00 5px, #00f 5px)"),
+            [(0.0, 128, 0, 128, 255), (1.0, 128, 0, 128, 255)]
+        );
+        assert_eq!(
+            flat("repeating-linear-gradient(#f00 0, #00f 0.01px)"),
+            [(0.0, 128, 0, 128, 255), (1.0, 128, 0, 128, 255)]
+        );
+        // A repeat shifted off the line's start is cut at both ends.
+        let shifted = flat("repeating-linear-gradient(#000 25px, #fff 75px)");
+        assert_eq!(shifted.first(), Some(&(0.0, 127, 127, 127, 255)));
+        assert_eq!(shifted.last(), Some(&(1.0, 128, 128, 128, 255)));
     }
 
     #[test]
