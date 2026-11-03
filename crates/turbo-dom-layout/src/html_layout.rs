@@ -358,12 +358,12 @@ pub struct CidBox {
 /// the source element's `attrs`, so we build the box tree once to map
 /// `node_id → data-cid`, then walk the laid-out [`Fragment`] galley and emit the
 /// first (outermost, border-box) fragment for each mapped id. The map is exact —
-/// no document-order fallback is needed. A `display:inline` element with a
-/// background, box shadow, padding, border or horizontal margin keeps its inline box
-/// through line layout (miaskiewicz/turbo-dom#244) and reports the union of its line
-/// fragments, like `getBoundingClientRect()`; any other `display:inline` element is
-/// flattened into anonymous inline runs and has no box, so its `data-cid` resolves to
-/// nothing. Tag a box-generating element under test.
+/// no document-order fallback is needed. A `display:inline` element is an inline box
+/// (miaskiewicz/turbo-dom#245) and reports the union of its line fragments, like
+/// `getBoundingClientRect()`. With [`HtmlOptions::flatten_inline_elements`] only one
+/// with a background, box shadow, padding, border or horizontal margin keeps its box
+/// (miaskiewicz/turbo-dom#244); any other is flattened into anonymous inline runs and
+/// its `data-cid` resolves to nothing.
 ///
 /// Like `getBoundingClientRect()`, it also reports the boxes the render leaves out
 /// because they paint nothing at any size: an absolutely positioned box whose
@@ -822,9 +822,9 @@ mod tests {
     }
 
     #[test]
-    fn layout_boxes_ignores_untagged_and_inline_flattened() {
-        // No data-cid anywhere -> empty; an inline element's data-cid is dropped
-        // by inline flattening (documented limitation).
+    fn layout_boxes_ignores_untagged_and_reports_inline_boxes() {
+        // No data-cid anywhere -> empty; an inline element is an inline box
+        // (miaskiewicz/turbo-dom#245), reported as its fragments' union.
         let mut diags = Diagnostics::default();
         let plain = layout_boxes(
             "<body><div>x</div></body>",
@@ -845,9 +845,12 @@ mod tests {
             &mut diags,
         )
         .expect("layout_boxes");
-        assert!(
-            inline.is_empty(),
-            "inline span's data-cid is flattened away"
+        // Its edges need a face: with no font at all it has none to measure.
+        let faces = FontRegistry::new().select(&["serif"], 400, false).is_some();
+        let want: &[&str] = if faces { &["s"] } else { &[] };
+        assert_eq!(
+            inline.iter().map(|b| b.cid.as_str()).collect::<Vec<_>>(),
+            want
         );
     }
 

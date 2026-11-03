@@ -129,8 +129,11 @@ fn inline_external_links_get_their_own_box_but_relative_ones_do_not() {
     );
 }
 
-/// Each text line's `(text, glyph (source byte, x)s, y)`, in fragment order.
-fn text_lines(laid: &LaidOut) -> Vec<(String, Vec<(u32, f32)>, f32)> {
+/// A text line's `(text, glyph (source byte, x)s, y)`.
+type TextLine = (String, Vec<(u32, f32)>, f32);
+
+/// Each text line, in fragment order.
+fn text_lines(laid: &LaidOut) -> Vec<TextLine> {
     fragments(&laid.galley)
         .into_iter()
         .filter_map(|f| match f.content {
@@ -167,7 +170,10 @@ fn flattened_inline_elements_keep_their_breaks_splits_and_bidi() {
     let mut distinct = tops.clone();
     distinct.dedup();
     assert_eq!(distinct.len(), 6, "{tops:?}");
-    assert!(distinct.windows(2).all(|pair| pair[1] > pair[0]), "{tops:?}");
+    assert!(
+        distinct.windows(2).all(|pair| pair[1] > pair[0]),
+        "{tops:?}"
+    );
     // The overridden RTL text is drawn right to left: `g` right of `h`.
     let gh = &lines[6].1;
     assert_eq!(gh.len(), 2, "no formatting character is drawn");

@@ -49,8 +49,10 @@ pub struct LayoutOptions {
     /// (their border / padding / margin edges, inline-box fragments, their fonts'
     /// metrics in the line box and the quirks-mode line height quirk;
     /// miaskiewicz/turbo-dom#245). On, the lines keep Chrome's line box model
-    /// (baseline alignment and the block strut) but an inline element contributes
-    /// no edges, no fragment and no font metrics of its own; it is the pre-0.7 PDF
+    /// (baseline alignment and the block strut) but an inline element without
+    /// decoration (background, box shadow, padding, border, horizontal margin;
+    /// miaskiewicz/turbo-dom#244) contributes no edges, no fragment and no font
+    /// metrics of its own; it is the pre-0.7 PDF
     /// inline model, for a consumer whose output contracts assume no inline-box
     /// fragments (html2pdf's link annotations and PDF/UA tags, #210), and does not
     /// match Chrome for inline boxes.

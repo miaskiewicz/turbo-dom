@@ -1451,11 +1451,17 @@ fn append_source_break(
     ctx: &Ctx,
     pieces: &mut Vec<inline::Piece>,
 ) {
-    if let Some(mut edge) = super::inline_boxes::edge(node_id, style, true, font, width, ctx) {
-        edge.advance = 0.0;
-        edge.contributes_metrics = false;
-        pieces.push(inline::Piece::SourceBreak(edge));
-    }
+    // With no face to measure (an empty font registry) the `<br>` is a bare break.
+    pieces.push(
+        match super::inline_boxes::edge(node_id, style, true, font, width, ctx) {
+            Some(mut edge) => {
+                edge.advance = 0.0;
+                edge.contributes_metrics = false;
+                inline::Piece::SourceBreak(edge)
+            }
+            None => inline::Piece::Break,
+        },
+    );
 }
 /// The paragraph's bidi base direction (`None`: `unicode-bidi: plaintext`, each
 /// paragraph's first strong character) and its `text-align`, which a plaintext
