@@ -59,6 +59,11 @@
     ],
     ["span-edges-hebrew", "ltr", 300, `abc <span id="s" style="padding:0 4px 0 9px">${HE}</span> def`],
     ["span-edges-rtl-para", "rtl", 300, `${HE} <span id="s" style="padding:0 4px 0 9px">${HE2}</span> ${HE3}`],
+    // An empty padded inline box and a box opening on a space in a reordered line.
+    ["span-edges-empty-rtl", "rtl", 300, `${HE} <span id="s" style="padding:0 4px 0 9px"></span> abc`],
+    ["span-edges-leading-space-rtl", "rtl", 300, `${HE}<span id="s" style="padding-left:3px"> abc</span> ${HE2}`],
+    // text-transform inside a reordered line.
+    ["span-uppercase-rtl", "rtl", 300, `${HE} <span id="s" style="text-transform:uppercase">abc</span> ${HE2}`],
     // Atomic inlines are neutral.
     ["rtl-atom", "rtl", 300, `${HE} <span id="a" style="display:inline-block;width:12px;height:8px"></span> abc`],
     // Line breaking in logical order, reordering per line.
