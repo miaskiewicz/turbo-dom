@@ -3707,6 +3707,516 @@
    ]
   },
   {
+   "id": "bg-space",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:220px;height:60px;background:#00ff00 url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=) space;background-size:40px 20px\"></div></body></html>",
+   "assets": [
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII="
+   ],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 25,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 55,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 62,
+     "y": 30,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 67,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 97,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 102,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 205,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 235,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 237,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 70,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bg-round",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:230px;height:60px;background:#00ff00 url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=) round;background-size:40px 20px\"></div></body></html>",
+   "assets": [
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII="
+   ],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 25,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 56,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 76,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 96,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      63,
+      0,
+      191
+     ]
+    },
+    {
+     "x": 98,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 138,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 244,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 248,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 75,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bg-radius-border-box",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:80px;height:80px;border:10px solid #ffff00;border-radius:30px;background:#00ff00 url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=) center/40px 40px\"></div></body></html>",
+   "assets": [
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII="
+   ],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 21,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 24,
+     "y": 24,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 31,
+     "y": 31,
+     "class": "Y",
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 25,
+     "y": 70,
+     "class": "Y",
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 70,
+     "y": 70,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 80,
+     "y": 70,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 118,
+     "y": 118,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bg-radius-padding-box",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:80px;height:80px;border:10px solid transparent;border-radius:30px;background:#00ff00 url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=) padding-box;background-size:40px 40px\"></div></body></html>",
+   "assets": [
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII="
+   ],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 25,
+     "y": 70,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 31,
+     "y": 31,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 33,
+     "y": 33,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 40,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 70,
+     "y": 40,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 109,
+     "y": 109,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 106,
+     "y": 106,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bg-many-tiles",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:600px;height:300px;background:#00ff00 url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=);background-size:8px 4px\"></div></body></html>",
+   "assets": [
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII="
+   ],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 21,
+     "y": 21,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 25,
+     "y": 21,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 613,
+     "y": 317,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 617,
+     "y": 317,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 317,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 617,
+     "y": 21,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-bg-content-box",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;font-size:0\"><span style=\"background:#00ff00 url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=) no-repeat content-box right center/20px 10px;background-clip:border-box;padding:5px 10px\"><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span></span></div></body></html>",
+   "assets": [
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII="
+   ],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 85,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 95,
+     "y": 80,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 105,
+     "y": 80,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 75,
+     "y": 80,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 25,
+     "y": 50,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
    "id": "inline-bg-position",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:80px;font-size:0\"><span style=\"background:#00ff00 url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=) no-repeat right 0/40px 100%;padding:5px 0\"><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span></span></div></body></html>",
    "assets": [
