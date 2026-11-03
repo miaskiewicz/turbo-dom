@@ -300,3 +300,45 @@ fn reaction_frames_allocate_no_queue_without_custom_element_definitions() {
     }
     clear_interface_records(isolate);
 }
+
+/// `labels` and a label's `control` read a per-tree-version index (each root's elements by id,
+/// its label elements in tree order) instead of walking the whole tree on every call:
+/// dom-testing-library reads `labels` of every element it matches by role or label text.
+/// The index follows every change (ids, `for`, structure).
+#[test]
+fn label_lookups_walk_the_tree_once_per_version() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><form id=f></form>");
+        run(
+            scope,
+            "const f = document.getElementById('f'); for (let i = 0; i < 200; i++) { \
+             const l = document.createElement('label'); l.htmlFor = 'i' + i; l.textContent = 'L' + i; \
+             const input = document.createElement('input'); input.id = 'i' + i; f.append(l, input); } 'ok'",
+        );
+        let before = control_labels::walk_steps();
+        let out = run(
+            scope,
+            "let n = 0; for (const input of document.querySelectorAll('input')) n += input.labels.length; \
+             for (const l of document.querySelectorAll('label')) n += l.control ? 1 : 0; String(n)",
+        );
+        assert_eq!(out, "400");
+        let steps = control_labels::walk_steps() - before;
+        assert!(steps <= 4 * 410, "{steps} walk steps for 400 lookups over 402 nodes");
+        let out = run(
+            scope,
+            "const a = document.getElementById('i0'), b = document.getElementById('i1'); \
+             a.id = 'x'; const moved = [a.labels.length, document.querySelector('label').control === null]; \
+             b.id = 'i0'; moved.push(b.labels.length, document.querySelector('label').control === b); \
+             document.querySelector('label').htmlFor = 'x'; moved.push(a.labels.length, b.labels.length); \
+             a.remove(); moved.push(a.labels.length, document.querySelector('label').control === null); JSON.stringify(moved)",
+        );
+        assert_eq!(out, "[0,true,2,true,1,1,0,true]");
+        reset();
+    }
+    clear_interface_records(isolate);
+}

@@ -1,10 +1,26 @@
 //! Label associations use the actual light-tree root, never guest selectors.
 use super::*;
+#[cfg(test)]
+thread_local! {
+    static WALK_STEPS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+/// Nodes the label lookups have walked on this thread (the perf gate in `perf_gates_tests`).
+#[cfg(test)]
+pub(super) fn walk_steps() -> usize {
+    WALK_STEPS.with(std::cell::Cell::get)
+}
+#[cfg(test)]
+fn walked() {
+    WALK_STEPS.with(|steps| steps.set(steps.get() + 1));
+}
+#[cfg(not(test))]
+fn walked() {}
 fn rows(root: Handle) -> Vec<Handle> {
     with_tree(|tree| {
         let mut pending = vec![root];
         let mut result = Vec::new();
         while let Some(node) = pending.pop() {
+            walked();
             result.push(node);
             pending.extend(tree.children(node).into_iter().rev());
         }
@@ -117,6 +133,7 @@ pub(super) fn labels(scope: &mut v8::PinScope, host: Handle) -> Vec<Handle> {
         let mut order = Vec::new();
         let mut pending = vec![outer];
         while let Some(node) = pending.pop() {
+            walked();
             order.push(node);
             pending.extend(tree.children(node).into_iter().rev());
             if chain.contains(&node) {
