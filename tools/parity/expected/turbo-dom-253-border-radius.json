@@ -1,0 +1,16 @@
+{
+ "id": "turbo-dom#253",
+ "reason": "Chrome 156's full border-radius model, and the screenshots apply `overflow` clipping (the overflow clip region carries the inner radii): conformance 62's `overflow:hidden` box and the extra percent-height page's `max-height:5%;overflow:hidden` box now cut their overflowing children at the padding box, as Chrome does (descendants were never clipped). Changed outputs found by hashing turbo-dom-raster's PNG/SVG screenshots of every corpus input before/after the change (the only other change, the legal template's nested-list circle markers now painted as a ring rather than a stroke, is in an input the surf corpora do not render). Box geometry and the surf live dumps are unchanged. The html2pdf corpora need turbo-html2pdf adapted to the BorderRadii / overflow_clip API change first (it reads the old `f32` radius): the PDF emitter does not read `overflow_clip`, so with `BorderRadii::as_uniform()` in place of the scalar no PDF is expected to change. To be confirmed by a full parity run.",
+ "control": "crates/turbo-dom-raster/tests/fixtures/paint_chrome156.json (cases radius-*; scripts/paint-chrome-control.mjs, Chrome 156.0.8078.47 headless shell)",
+ "e2e": "crates/turbo-dom-raster/tests/paint_chrome.rs",
+ "changes": {
+  "surf": [
+   "static-turbo-html2pdf__benches__conformance__fixtures__62-overflow-hidden-clip-box.png",
+   "static-turbo-html2pdf__benches__conformance__fixtures__62-overflow-hidden-clip-box.svg"
+  ],
+  "surf-extra": [
+   "static-extra-percent-height.png",
+   "static-extra-percent-height.svg"
+  ]
+ }
+}
