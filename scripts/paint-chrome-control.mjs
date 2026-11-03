@@ -427,6 +427,28 @@ const CASES = [
     html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:linear-gradient(to right,#ff0000,#0000ff);padding:5px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
     probes: [[22, 52], [98, 52], [22, 82], [98, 82]],
   },
+  // miaskiewicz/turbo-dom#252 (`media-*`): <canvas>, <video>, <audio controls> and <object>
+  // are replaced boxes that paint their own background and border (a 4px blue border, a
+  // 6px green padding and background, in horizontal and vertical-rl writing modes); a
+  // <video> paints its poster image. Chrome's 2D canvas content is the embedder's
+  // (`canvas_ops_png`), so an empty canvas shows its background.
+  ...["canvas width=40 height=20", "video width=40 height=20", "audio controls", "object width=40 height=20"].flatMap((element) => {
+    const tag = element.split(" ")[0];
+    // Chrome paints the audio controls' panel over the content box, which a screenshot
+    // here does not: only the frame is probed there.
+    const probes = tag === "audio" ? [[22, 22], [28, 28], [26, 40], [21, 60]] : [[22, 22], [28, 28], [26, 40], [34, 34], [21, 60], [90, 30]];
+    const media = `<${element} data-cid="m" style="background:#00ff00;border:4px solid #0000ff;padding:6px"></${tag}>`;
+    return [
+      { id: `media-${tag}-frame`, html: DOC(`<div data-cid="p" style="${at(20, 20)};font-size:0">${media}</div>`), probes },
+      { id: `media-${tag}-frame-rl`, html: DOC(`<div data-cid="p" style="${at(20, 20)};font-size:0;writing-mode:vertical-rl">${media}</div>`), probes },
+    ];
+  }),
+  {
+    id: "media-video-poster",
+    html: DOC(`<video data-cid="m" poster="${SPRITE}" style="${at(20, 20)};width:100px;height:40px"></video>`),
+    assets: [SPRITE],
+    probes: [[25, 40], [65, 40], [75, 40], [115, 40], [125, 40]],
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */

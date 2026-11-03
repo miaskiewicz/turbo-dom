@@ -175,6 +175,15 @@ fn fixed_and_icb_boxes_anchor_to_the_viewport_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// miaskiewicz/turbo-dom#252: `<canvas>`, `<video>`, `<audio controls>` and `<object>` are
+/// replaced boxes painting their own background and border, in horizontal and vertical
+/// writing modes, and a `<video>` its poster.
+#[test]
+fn media_boxes_paint_their_frame_and_poster_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("media-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// The painter's box decoration paths (P5-cov): a rounded border, a gradient in a rounded
 /// box, unblurred / collapsed / spread shadows, transparent text.
 #[test]

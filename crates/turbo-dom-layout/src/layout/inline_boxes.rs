@@ -87,13 +87,14 @@ fn validate_writing(
     Ok(())
 }
 /// A replaced element the logical layer does not size like Chrome in a vertical mode:
-/// `<canvas>`, `<video>`, `<object>` / `<embed>`, `<audio>` (not replaced boxes here
-/// in any mode) and the form controls (Chrome 156 lays them out vertically, with
-/// metrics this crate's horizontal UA approximation does not have either). `<img>`,
-/// `<svg>` and `<iframe>` turn their physical intrinsic / default size.
+/// the form controls (Chrome 156 lays them out vertically, with metrics this crate's
+/// horizontal UA approximation does not have either). `<img>`, `<svg>`, `<iframe>`
+/// and the media elements (`<canvas>`, `<video>`, `<audio>`, `<object>`, `<embed>`,
+/// miaskiewicz/turbo-dom#252) turn their physical intrinsic / default size.
 fn physical_default_size(element: &crate::StyledElement, display: Display) -> bool {
     display != Display::None
         && atomic_element(element)
+        && super::boxgen::media_element(element).is_none()
         && !matches!(&element.tag, crate::Tag::Html(name) if matches!(name.as_str(), "img" | "svg" | "iframe"))
 }
 /// A character `text-orientation: mixed` sets upright (Unicode
