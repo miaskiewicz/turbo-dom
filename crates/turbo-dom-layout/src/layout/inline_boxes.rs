@@ -100,22 +100,18 @@ fn validate_writing(
     }
     Ok(())
 }
-/// A replaced element sized by a physical default the logical layer does not turn: an
-/// `<svg>` without both a width and a height (300x150), an `<iframe>`, `<canvas>`,
-/// `<video>`, `<object>` / `<embed>`, `<audio>` or form control (Chrome lays the form
-/// controls out vertically in a vertical mode). An `<img>` turns its intrinsic size.
+/// A replaced element the logical layer does not size like Chrome in a vertical mode:
+/// `<canvas>`, `<video>`, `<object>` / `<embed>`, `<audio>` (not replaced boxes here
+/// in any mode) and the form controls (Chrome 156 lays them out vertically, with
+/// metrics this crate's horizontal UA approximation does not have either). `<img>`,
+/// `<svg>` and `<iframe>` turn their physical intrinsic / default size.
 fn physical_default_size(element: &crate::StyledElement, display: Display) -> bool {
     let crate::Tag::Html(name) = &element.tag else {
         return false;
     };
-    if display == Display::None || name == "img" || !atomic_element(element) {
-        return false;
-    }
-    let sized = |axis: &str| {
-        element.attrs.iter().any(|attr| attr.name == axis)
-            || element.style.get(axis).is_some_and(|v| v.trim() != "auto")
-    };
-    name != "svg" || !(sized("width") && sized("height"))
+    display != Display::None
+        && atomic_element(element)
+        && !matches!(name.as_str(), "img" | "svg" | "iframe")
 }
 /// A character `text-orientation: mixed` sets upright (Unicode
 /// `Vertical_Orientation` U / Tu, the CJK and related blocks).

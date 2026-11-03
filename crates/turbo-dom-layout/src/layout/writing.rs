@@ -105,6 +105,11 @@ impl Relabel {
         }
     }
 
+    /// Whether the inline and block axes swap.
+    pub(crate) fn swaps(self) -> bool {
+        self.swap
+    }
+
     fn edges(self, edges: Edges) -> Edges {
         let source = [edges.top, edges.right, edges.bottom, edges.left];
         Edges {
@@ -528,7 +533,7 @@ mod tests {
     }
 
     /// What the vertical layer does not lay out fails that element's reads only:
-    /// replaced elements sized by a physical default (upright text lays out).
+    /// canvas / video / form controls (upright text and img / svg / iframe lay out).
     #[test]
     fn unsupported_vertical_boxes_fail_per_element() {
         use crate::layout_snapshot::SnapshotError;
@@ -536,7 +541,7 @@ mod tests {
             "<body><div id=v style='writing-mode:vertical-rl'>ok <span id=s>span</span>\
              <div id=f style='display:flex'>f</div><img id=i><b id=ib style='display:inline-block'>b</b>\
              <svg id=sv width=5 height=6></svg><svg id=ss style='width:5px;height:6px'></svg>\
-             <svg id=sw width=5></svg><svg id=sa width=5 style='height:auto'></svg><iframe id=if></iframe><input id=in>\
+             <svg id=sw width=5></svg><svg id=sa width=5 style='height:auto'></svg><iframe id=if></iframe><input id=in><canvas id=cv></canvas>\
              <p id=c>\u{6f22}\u{5b57}</p><p id=u style='text-orientation:upright'>up</p><p id=e> </p>\
              <span id=n style='display:none'><input></span></div>\
              <p id=h style='writing-mode:vertical-lr;text-orientation:sideways'>side</p></body>",
@@ -554,7 +559,7 @@ mod tests {
                 "{supported}"
             );
         }
-        for unsupported in ["#sw", "#sa", "#if", "#in"] {
+        for unsupported in ["#in", "#cv"] {
             assert_eq!(
                 snapshot.unsupported_inline_geometry(id(unsupported)),
                 Some(&SnapshotError::UnsupportedVerticalWriting),

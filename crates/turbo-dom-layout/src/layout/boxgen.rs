@@ -467,6 +467,10 @@ impl LayoutBox {
             natural_cache: std::cell::Cell::new(None),
             min_content_cache: std::cell::Cell::new(None),
             margin_memo: MarginMemoSlot::default(),
+            svg_viewport: self
+                .svg_viewport
+                .as_ref()
+                .map(|viewport| Box::new(viewport.relabelled(relabel.swaps()))),
             ..self.clone_shallow()
         };
         copy.clear_measured_values();

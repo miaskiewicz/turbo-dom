@@ -3054,9 +3054,15 @@ fn embedded_viewport_fragment(
     width: f32,
     ctx: &mut Ctx,
 ) -> Fragment {
+    // The physical 300x150 default, turned in a vertical space.
+    let (natural_width, natural_height) = if ctx.writing.vertical() {
+        (Some(150.0), Some(300.0))
+    } else {
+        (Some(300.0), None)
+    };
     let dimensions = super::imgsize::size_viewport_live(
-        Some(300.0),
-        None,
+        natural_width,
+        natural_height,
         style.aspect_ratio,
         ctx.html_font_scale.unwrap_or(1.0),
         &size_ctx(style, width, ctx),
