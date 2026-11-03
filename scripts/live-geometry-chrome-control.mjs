@@ -82,6 +82,15 @@ const CONTAIN_CASES = [
   ["layout-paint", "contain:layout paint"],
   ["container-normal", "container-type:normal"],
 ];
+// miaskiewicz/turbo-dom#265 formatting-context / container / baseline cases.
+const CONTAIN_FC_CASES = [
+  ["none", ""],
+  ["layout", "contain:layout"],
+  ["container-inline-size", "container-type:inline-size"],
+  ["container-size", "container-type:size"],
+  ["size", "contain:size"],
+  ["inline-size", "contain:inline-size"],
+];
 // miaskiewicz/turbo-dom#190 quirks-mode line strut cases: [id suffix, body].
 const QUIRKS_CSS = 'body{margin:0;font-family:"Fira Code";font-size:16px}div{font-size:30px}';
 const IB = (h) => `<span style="display:inline-block;width:10px;height:${h}px"></span>`;
@@ -678,6 +687,27 @@ const CASES = [
         `<div data-cid="gr" style="display:grid;grid-template-columns:auto 10px;justify-content:start;align-items:start"><div data-cid="gi" class="c" style="${decl}">${BOX(80, 12)}</div><div data-cid="gs" style="height:10px"></div></div>` +
         `<div data-cid="ew" class="c" style="float:left;width:70px;${decl}">${BOX(120, 30)}</div>`,
     ),
+  })),
+  // miaskiewicz/turbo-dom#265 (2): layout containment (`contain: layout` and every
+  // `container-type` but normal) establishes an independent formatting context: it holds
+  // its floats, keeps its children's margins, and sits beside an outer float; size
+  // containment on flex / grid containers themselves; the synthesised baseline of a
+  // size-contained inline-block in text (fonts).
+  ...CONTAIN_FC_CASES.map(([id, decl]) => ({
+    id: `contain-fc-${id}`,
+    html: DOC(
+      VERTICAL_CSS,
+      `<div data-cid="fp" style="${decl}"><div data-cid="ff" style="float:left;width:50px;height:40px"></div></div>` +
+        `<div data-cid="mp" style="${decl};background:#eee"><div data-cid="mk" style="margin-top:20px;height:10px"></div></div>` +
+        `<div style="float:left;width:30px;height:30px"></div><div data-cid="bs" style="${decl};height:10px"></div><div style="clear:both"></div>` +
+        `<div data-cid="fx" style="display:flex;${decl}"><div data-cid="fxk" style="width:40px;height:25px"></div></div>` +
+        `<div data-cid="gr" style="display:grid;${decl}"><div data-cid="grk" style="width:40px;height:25px"></div></div>` +
+        `<div data-cid="ifx" style="display:inline-flex;${decl}"><div style="width:40px;height:25px"></div></div>` +
+        `<div data-cid="igr" style="display:inline-grid;${decl}"><div style="width:40px;height:25px"></div></div>` +
+        `<div data-cid="tl">a<span data-cid="ib" style="display:inline-block;width:30px;height:20px;${decl}">b</span>c</div>` +
+        `<div data-cid="tm">a<span data-cid="ibm" style="display:inline-block;width:30px;height:20px;margin:3px 0 5px;${decl}">b</span>c</div>`,
+    ),
+    fonts: true,
   })),
   // miaskiewicz/turbo-dom#241: shrink-to-fit of text uses the native (device-scale)
   // advances line layout places it with, in horizontal flow too.

@@ -20,7 +20,7 @@ fn size_containment_sizes_boxes_as_if_empty_like_chrome_156() {
     let mut compared = 0;
     for case in fixture["cases"].as_array().unwrap() {
         let id = case["id"].as_str().unwrap();
-        if !id.starts_with("contain-") {
+        if !id.starts_with("contain-") || id.starts_with("contain-fc-") {
             continue;
         }
         let html = case["html"].as_str().unwrap();

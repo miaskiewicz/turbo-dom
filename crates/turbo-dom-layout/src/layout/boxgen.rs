@@ -293,6 +293,11 @@ enum SourceRole {
 pub(crate) struct Containment {
     pub(crate) width: bool,
     pub(crate) height: bool,
+    /// Layout containment (`contain: layout | content | strict`): no content baseline
+    /// (Chrome 156 keeps a size query container's, so this excludes `container-type`).
+    pub(crate) layout: bool,
+    /// An independent formatting context: layout containment or a size query container.
+    pub(crate) formatting_root: bool,
 }
 
 impl Containment {
@@ -309,9 +314,16 @@ impl Containment {
             has("contain", "size") || has("contain", "strict") || has("container-type", "size");
         let inline = has("contain", "inline-size") || has("container-type", "inline-size");
         let vertical = super::writing::WritingMode::of(style).vertical();
+        let layout = ["layout", "content", "strict"]
+            .iter()
+            .any(|word| has("contain", word));
         Containment {
             width: size || (inline && !vertical),
             height: size || (inline && vertical),
+            layout,
+            formatting_root: layout
+                || has("container-type", "size")
+                || has("container-type", "inline-size"),
         }
     }
 }
@@ -2472,10 +2484,28 @@ mod tests {
     /// mode (the horizontal cases are asserted against Chrome 156 in `live::chrome_tests`).
     #[test]
     fn size_containment_axes_follow_the_writing_mode() {
-        let of = |pairs: &[(&str, &str)]| {
+        let full = |pairs: &[(&str, &str)]| {
             Containment::of(&ComputedStyle::from_pairs(pairs.iter().copied()))
         };
-        let axes = |width, height| Containment { width, height };
+        let of = |pairs: &[(&str, &str)]| {
+            let c = full(pairs);
+            (c.width, c.height)
+        };
+        let axes = |width, height| (width, height);
+        // Layout containment vs an independent formatting context (the Chrome cases
+        // `contain-fc-*` in `live::chrome_tests`).
+        let fc = |pairs: &[(&str, &str)]| {
+            let c = full(pairs);
+            (c.layout, c.formatting_root)
+        };
+        assert_eq!(fc(&[]), (false, false));
+        assert_eq!(fc(&[("contain", "layout")]), (true, true));
+        assert_eq!(fc(&[("contain", "content")]), (true, true));
+        assert_eq!(fc(&[("contain", "strict")]), (true, true));
+        assert_eq!(fc(&[("contain", "size")]), (false, false));
+        assert_eq!(fc(&[("container-type", "size")]), (false, true));
+        assert_eq!(fc(&[("container-type", "inline-size")]), (false, true));
+        assert_eq!(fc(&[("container-type", "normal")]), (false, false));
         assert_eq!(of(&[]), axes(false, false));
         assert_eq!(of(&[("container-type", "inline-size")]), axes(true, false));
         assert_eq!(

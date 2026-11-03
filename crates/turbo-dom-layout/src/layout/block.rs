@@ -1339,8 +1339,13 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f3
     if let Some(baseline) = form_baseline(b, f, central.is_some()) {
         return Some(baseline);
     }
-    if b.is_replaced() || !(inline_block(b) || b.shows_alt_text()) {
+    if b.is_replaced() || b.containment().layout {
+        // Layout containment drops the content baseline: the bottom margin edge aligns
+        // (miaskiewicz/turbo-dom#265).
         return None;
+    }
+    if !(inline_block(b) || b.shows_alt_text()) {
+        return contained_flow_baseline(b, f);
     }
     let scrolls = ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {
         matches!(
@@ -1356,6 +1361,16 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f3
     let mut last: Option<(f32, f32)> = None;
     last_line(f, &floats, central, &mut last);
     last.map(|(_, baseline)| baseline - f.y)
+}
+
+/// A block-axis size-contained flex / grid atom keeps its content's baseline although
+/// its auto height ignores the content (Chrome 156, miaskiewicz/turbo-dom#265): its first
+/// item's border-box bottom (an item without line boxes synthesises its baseline there).
+fn contained_flow_baseline(b: &LayoutBox, f: &Fragment) -> Option<f32> {
+    if !b.containment().height || !matches!(b.kind, BoxKind::Flex(_) | BoxKind::Grid(_)) {
+        return None;
+    }
+    f.children.first().map(|item| item.y + item.height - f.y)
 }
 
 /// A form control's baseline below its border-box top, where Chrome 156's differs from an
@@ -2376,6 +2391,11 @@ fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
         lb.kind,
         BoxKind::Flex(_) | BoxKind::Grid(_) | BoxKind::Table(_)
     ) {
+        return true;
+    }
+    // Layout containment (`contain: layout`) and a size query container make an
+    // independent formatting context (miaskiewicz/turbo-dom#265).
+    if lb.containment().formatting_root {
         return true;
     }
     ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {
