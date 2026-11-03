@@ -671,3 +671,46 @@ fn canvas_background_needs_an_html_root() {
         Some(Rgba::new(1, 2, 3, 255))
     );
 }
+
+#[test]
+fn markers_in_vertical_roots_and_inline_blocks_take_no_space() {
+    // A block marker is a zero-size point wherever it sits: inside a vertical writing
+    // root (the logical layer turns it like any box, and it is no physically sized
+    // replaced element) and inside an inline-block (whose baseline still comes from its
+    // last line box), every box lays out exactly as without the markers.
+    let body = |marker: &str| {
+        format!(
+            "<body style='margin:0;font:16px monospace'>\
+             <div style='writing-mode:vertical-rl;height:100px'>{marker}<div data-cid=v \
+             style='inline-size:20px;block-size:10px'></div></div>\
+             <div>x<span data-cid=ib style='display:inline-block'>{marker}y</span>\
+             <span data-cid=a style='display:inline-block;width:5px;height:5px'></span></div></body>"
+        )
+    };
+    let boxes = |html: &str| {
+        let tree = parse_html_tree(html);
+        let mut boxes: Vec<_> = turbo_dom_layout::layout_boxes_tree(
+            &tree,
+            "",
+            400.0,
+            300.0,
+            &common::registry(),
+            &marker_options(),
+            &mut turbo_dom_layout::Diagnostics::default(),
+        )
+        .into_iter()
+        .map(|b| (b.cid, b.x, b.y, b.width, b.height))
+        .collect();
+        boxes.sort_by(|a, b| a.0.cmp(&b.0));
+        boxes
+    };
+    let marked = body("<x-marker-2-b></x-marker-2-b>");
+    let tree = parse_html_tree(&marked);
+    let styled = turbo_dom_layout::style_html_tree(&tree, "", 400.0, &marker_options());
+    let mut markers = 0;
+    count(&styled, &mut markers);
+    assert_eq!(markers, 2);
+    let without = boxes(&body(""));
+    assert_eq!(without.len(), 3);
+    assert_eq!(boxes(&marked), without);
+}

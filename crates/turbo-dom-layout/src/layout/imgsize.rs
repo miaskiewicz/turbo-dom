@@ -249,6 +249,25 @@ pub(crate) fn box_intrinsic(
     Some(resolver.intrinsic(name)?.displayed(from_image))
 }
 
+/// A replaced `<img>`'s intrinsic size and whether its image loaded: the resolver's,
+/// else its [`ImageSource::fallback`](super::boxgen::ImageSource::fallback) (Chrome's
+/// broken-image size, miaskiewicz/turbo-dom#243). `None` when neither applies (the
+/// box lays out its alt text instead).
+pub(crate) fn replaced_intrinsic(
+    resolver: &dyn ImageResolver,
+    src: &super::boxgen::ImageSource,
+    style: &ComputedStyle,
+) -> Option<(Intrinsic, bool)> {
+    let loaded = (!src.name.is_empty())
+        .then(|| box_intrinsic(resolver, &src.name, style))
+        .flatten();
+    if let Some(intrinsic) = loaded {
+        return Some((intrinsic, true));
+    }
+    let (width, height) = src.fallback?;
+    Some((Intrinsic::new(width, height, true), false))
+}
+
 /// The placement an intrinsic-sized image emits (the resolver name plus its
 /// displayed size, alpha flag and the orientation to paint with).
 #[must_use]
@@ -295,12 +314,15 @@ fn resolve_dim(v: LengthPct, basis: Option<f32>) -> Option<f32> {
 
 /// The dependent axis when one axis is fixed at `given`: `given * (other /
 /// base)`, preserving aspect ratio. Falls back to `given` for a degenerate
-/// (zero) base so the result stays finite.
+/// (zero) base so the result stays finite, except that a 0x0 image (an `<img>` that
+/// represents nothing, miaskiewicz/turbo-dom#243) has no ratio and keeps its 0.
 fn scale_other(given: f32, base: f32, other: f32) -> f32 {
     if base > 0.0 {
         given * other / base
-    } else {
+    } else if other > 0.0 {
         given
+    } else {
+        0.0
     }
 }
 
