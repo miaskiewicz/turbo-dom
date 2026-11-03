@@ -1361,12 +1361,16 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f3
 /// A form control's baseline below its border-box top, where Chrome 156's differs from an
 /// inline-block's (miaskiewicz/turbo-dom#239): a checkbox / radio / range at its
 /// border-box bottom (on a vertical line's central baseline: its border-box middle), an
-/// empty button at its content-box top, a textarea at its bottom margin edge.
+/// empty button at its content-box top, a textarea at its bottom margin edge, a colour
+/// well 4px above its content-box bottom (miaskiewicz/turbo-dom#255).
 fn form_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> Option<f32> {
     use super::form_controls::Control;
     match b.form_control()? {
         Control::Toggle if central => Some(f.height / 2.0),
         Control::Toggle => Some(f.height),
+        // A menu list's central baseline is its border-box middle rounded to a whole
+        // pixel (Chrome 156: 10px down a 19px-tall list; miaskiewicz/turbo-dom#255).
+        Control::Select if central => Some((f.height / 2.0).round()),
         _ if central => None,
         // A textarea scrolls: it sits on its bottom margin edge, text or not.
         Control::TextArea => Some(
@@ -1385,9 +1389,19 @@ fn form_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> Option<f32> {
             });
             Some(style.border.widths().top + style.padding.top)
         }
+        Control::Color => {
+            let style = b.resolved(ResolveCtx {
+                parent_font_size: super::value::DEFAULT_FONT_SIZE,
+                cb_width: 0.0,
+            });
+            Some(f.height - style.border.widths().bottom - style.padding.bottom - SWATCH_GAP)
+        }
         _ => None,
     }
 }
+
+/// The bottom padding of a colour well's swatch wrapper, below its baseline.
+const SWATCH_GAP: f32 = 4.0;
 
 /// Whether a fragment subtree holds a line of text.
 fn has_text(f: &Fragment) -> bool {
@@ -2903,6 +2917,7 @@ fn layout_box_sized_impl(
         ctx.root_h
     };
     place_sticky_kids(&mut children, sticky_mark, (content_y, fill_h, vh), ctx);
+    center_menu_list_label(lb, &mut children, (fill_h, content_h));
     let bbh = fill_h + bs.padding.vertical() + bw.vertical();
     prepend_mask_image(
         lb,
@@ -2922,7 +2937,7 @@ fn layout_box_sized_impl(
     );
     record_metrics(lb, bs, content_w, fill_h, ctx);
     let overflow_clip = overflow_clip_of(&lb.style, bs, bbw, bbh);
-    Fragment {
+    let mut frag = Fragment {
         node_id: lb.node_id,
         x: bx,
         y: by,
@@ -2936,6 +2951,28 @@ fn layout_box_sized_impl(
         clip: super::value::clip_region(&lb.style, bbw, bbh, 1.0),
         overflow_clip,
         opacity: bs.opacity,
+    };
+    if let Some(control) = lb.form_control() {
+        super::form_paint::apply(control, &lb.attrs, &lb.style, bs, &mut frag);
+    }
+    frag
+}
+
+/// A menu list's label is centred in its content box (Chrome 156's, as its baseline
+/// shows; miaskiewicz/turbo-dom#255): Chrome centres a box of the face's rounded ascent
+/// plus descent, 2px less than the list's intrinsic content height
+/// ([`super::form_controls::intrinsic_size`]), with the line at its top.
+fn center_menu_list_label(
+    lb: &LayoutBox,
+    children: &mut [Fragment],
+    (fill_h, content_h): (f32, f32),
+) {
+    if lb.form_control() != Some(super::form_controls::Control::Select) {
+        return;
+    }
+    let label = lb.intrinsic_h().map_or(content_h, |h| h - 2.0);
+    for child in children {
+        child.translate(0.0, (fill_h - label) / 2.0);
     }
 }
 

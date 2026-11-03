@@ -10439,10 +10439,7 @@
    "id": "form-serif-color",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"color\">b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -10598,10 +10595,7 @@
    "id": "form-serif-select",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -10627,10 +10621,7 @@
    "id": "form-serif-select-widest",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -10656,10 +10647,7 @@
    "id": "form-serif-select-selected",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\">a<select data-cid=\"m\">\n    <option>a</option><hr><optgroup label=\"g\"><option selected>abcdef</option></optgroup>\n  </select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -11023,10 +11011,7 @@
    "id": "form-mono-color",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"color\">b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -11182,24 +11167,21 @@
    "id": "form-mono-select",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
      "width": 1280,
-     "height": 21.5,
+     "height": 21,
      "display": "block",
      "position": "static"
     },
     {
      "cid": "m",
      "x": 9.859375,
-     "y": 1.5,
+     "y": 1,
      "width": 43,
      "height": 20,
      "display": "inline-block",
@@ -11211,24 +11193,21 @@
    "id": "form-mono-select-widest",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
      "width": 1280,
-     "height": 21.5,
+     "height": 21,
      "display": "block",
      "position": "static"
     },
     {
      "cid": "m",
      "x": 9.859375,
-     "y": 1.5,
+     "y": 1,
      "width": 101,
      "height": 20,
      "display": "inline-block",
@@ -11240,24 +11219,21 @@
    "id": "form-mono-select-selected",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\">a<select data-cid=\"m\">\n    <option>a</option><hr><optgroup label=\"g\"><option selected>abcdef</option></optgroup>\n  </select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
      "width": 1280,
-     "height": 21.5,
+     "height": 21,
      "display": "block",
      "position": "static"
     },
     {
      "cid": "m",
      "x": 9.859375,
-     "y": 1.5,
+     "y": 1,
      "width": 101,
      "height": 20,
      "display": "inline-block",
@@ -11607,10 +11583,7 @@
    "id": "form-sans-color",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<input data-cid=\"m\" type=\"color\">b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -11766,24 +11739,21 @@
    "id": "form-sans-select",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
      "width": 1280,
-     "height": 20.5,
+     "height": 20,
      "display": "block",
      "position": "static"
     },
     {
      "cid": "m",
      "x": 9.859375,
-     "y": 0.5,
+     "y": 0,
      "width": 42,
      "height": 20,
      "display": "inline-block",
@@ -11795,24 +11765,21 @@
    "id": "form-sans-select-widest",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
      "width": 1280,
-     "height": 20.5,
+     "height": 20,
      "display": "block",
      "position": "static"
     },
     {
      "cid": "m",
      "x": 9.859375,
-     "y": 0.5,
+     "y": 0,
      "width": 85,
      "height": 20,
      "display": "inline-block",
@@ -11824,24 +11791,21 @@
    "id": "form-sans-select-selected",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\">a<select data-cid=\"m\">\n    <option>a</option><hr><optgroup label=\"g\"><option selected>abcdef</option></optgroup>\n  </select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "w"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
      "width": 1280,
-     "height": 20.5,
+     "height": 20,
      "display": "block",
      "position": "static"
     },
     {
      "cid": "m",
      "x": 9.859375,
-     "y": 0.5,
+     "y": 0,
      "width": 78,
      "height": 20,
      "display": "inline-block",
@@ -12191,10 +12155,7 @@
    "id": "form-rl-serif-color",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"color\">b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -12350,10 +12311,7 @@
    "id": "form-rl-serif-select",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -12379,10 +12337,7 @@
    "id": "form-rl-serif-select-widest",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -12408,10 +12363,7 @@
    "id": "form-rl-serif-select-selected",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Liberation Serif\"}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\">\n    <option>a</option><hr><optgroup label=\"g\"><option selected>abcdef</option></optgroup>\n  </select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -12775,10 +12727,7 @@
    "id": "form-rl-mono-color",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"color\">b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -12934,16 +12883,13 @@
    "id": "form-rl-mono-select",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
-     "width": 21,
+     "width": 20,
      "height": 62.71875,
      "display": "block",
      "position": "static"
@@ -12963,16 +12909,13 @@
    "id": "form-rl-mono-select-widest",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
-     "width": 21,
+     "width": 20,
      "height": 120.71875,
      "display": "block",
      "position": "static"
@@ -12992,16 +12935,13 @@
    "id": "form-rl-mono-select-selected",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:\"Fira Code\"}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\">\n    <option>a</option><hr><optgroup label=\"g\"><option selected>abcdef</option></optgroup>\n  </select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
-     "width": 21,
+     "width": 20,
      "height": 120.71875,
      "display": "block",
      "position": "static"
@@ -13359,10 +13299,7 @@
    "id": "form-rl-sans-color",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<input data-cid=\"m\" type=\"color\">b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
@@ -13518,16 +13455,13 @@
    "id": "form-rl-sans-select",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>abc</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
-     "width": 21,
+     "width": 20,
      "height": 61.71875,
      "display": "block",
      "position": "static"
@@ -13547,16 +13481,13 @@
    "id": "form-rl-sans-select-widest",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\"><option>a</option><option>abcdefghij</option></select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
-     "width": 21,
+     "width": 20,
      "height": 104.71875,
      "display": "block",
      "position": "static"
@@ -13576,16 +13507,13 @@
    "id": "form-rl-sans-select-selected",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}input,button,select,textarea{font-family:Inter}</style><div data-cid=\"p\" class=\"rl\">a<select data-cid=\"m\">\n    <option>a</option><hr><optgroup label=\"g\"><option selected>abcdef</option></optgroup>\n  </select>b</div>",
    "fonts": true,
-   "measure": {
-    "m": "wh",
-    "p": "h"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "p",
      "x": 0,
      "y": 0,
-     "width": 21,
+     "width": 20,
      "height": 97.71875,
      "display": "block",
      "position": "static"

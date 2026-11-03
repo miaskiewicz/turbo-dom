@@ -663,9 +663,7 @@ const CASES = [
         id: `form-${mode ? `${mode}-` : ""}${face}-${id}`,
         html: DOC(`${VERTICAL_CSS}input,button,select,textarea{font-family:${family}}`, `<div data-cid="p"${mode ? ` class="${mode}"` : ""}>a${element}b</div>`),
         fonts: true,
-        // A menu list's and a colour well's baseline (where they sit on the line) are
-        // not modelled: only their size is compared.
-        ...(/^(select|color)/.test(id) ? { measure: { m: "wh", p: mode ? "h" : "w" } } : {}),
+        rebuild: true,
       })),
     ),
   ),
@@ -682,6 +680,10 @@ for (const testCase of CASES) {
       Promise.all([document.fonts.load('16px "Fira Code"'), document.fonts.load('16px "Ic Fixture"'), document.fonts.load('16px "Liberation Serif"'), document.fonts.load('16px Inter')]).then(() => document.fonts.ready),
     );
   }
+  // A menu list lays its label out once: one created before its web font loaded keeps
+  // the fallback face's baseline (its size follows the font). Re-create the page's
+  // controls once the fonts are in, so they lay out as a page that has them.
+  if (testCase.rebuild) await page.evaluate(() => (document.body.innerHTML = document.body.innerHTML));
   if (testCase.fullscreen) {
     const target = `[data-cid="${testCase.fullscreen}"]`;
     await page.evaluate((sel) => {
@@ -706,7 +708,7 @@ for (const testCase of CASES) {
     });
     return { boxes, hits };
   }, [testCase.hits || [], !!testCase.metrics, testCase.scroll || {}]);
-  const { hits: _points, ...rest } = testCase;
+  const { hits: _points, rebuild: _rebuild, ...rest } = testCase;
   result.push({ ...rest, measure: testCase.measure || {}, boxes, ...(hits.length ? { hits } : {}) });
 }
 await browser.close();

@@ -31,6 +31,10 @@ pub(crate) enum Control {
     /// A `<button>` or a button `<input>` (`submit` / `reset` / `button`): its label lays
     /// out as usual; an empty one's baseline is its content-box top.
     Button,
+    /// A colour well (`<input type=color>`): a fixed-size box (the UA sheet's) holding
+    /// Chrome's swatch, whose baseline is 4px above its content-box bottom (the bottom
+    /// of the swatch wrapper's content box).
+    Color,
 }
 
 impl Control {
@@ -68,8 +72,8 @@ fn input_control(kind: Option<&str>) -> Option<Control> {
     match kind.as_str() {
         "checkbox" | "radio" | "range" => Some(Control::Toggle),
         "submit" | "reset" | "button" => Some(Control::Button),
-        "hidden" | "color" | "file" | "image" | "date" | "datetime-local" | "month" | "week"
-        | "time" => None,
+        "color" => Some(Control::Color),
+        "hidden" | "file" | "image" | "date" | "datetime-local" | "month" | "week" | "time" => None,
         _ => Some(Control::TextField),
     }
 }
@@ -197,7 +201,7 @@ pub(crate) fn intrinsic_size(
         positive(value).unwrap_or(default) as f32
     };
     Some(match control {
-        Control::Toggle | Control::Button => return None,
+        Control::Toggle | Control::Button | Control::Color => return None,
         Control::TextField => (
             (number("size", 20) * m.avg + m.ascent - m.avg).ceil(),
             m.line,
