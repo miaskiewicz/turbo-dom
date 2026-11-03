@@ -105,8 +105,11 @@ fn form_pseudo_classifier_ignores_guest_prototypes() {
 const SUBJECT_LOCAL_PAGE: &str = "<!doctype html><body><form id=f><fieldset id=fs disabled><div id=d>\
 <input id=a required><span id=s1></span><input id=b type=checkbox checked><span id=s2></span></div></fieldset>\
 <input id=r1 type=radio name=g><input id=r2 type=radio name=g><input id=c><textarea id=t readonly></textarea>\
-<select id=sel><option id=o1>x</option><option id=o2 selected disabled>y</option></select></form>\
-<div id=far><input id=e disabled><p id=p><span id=deep></span></p></div></body>";
+<select id=sel><option id=o1>x</option><option id=o2 selected disabled>y</option></select>\
+<fieldset id=fs2><div><input id=in2 required></div></fieldset><x-widget id=w></x-widget></form>\
+<div id=far><input id=e disabled><p id=p><span id=deep></span></p></div>\
+<form id=g><input id=out form=f required><p><span id=gs></span></p></form>\
+<form id=h><p><span id=hs></span></p></form><input id=out2 form=h required></body>";
 
 /// The live answer of matches()/closest() for each selector and element, compared with the
 /// answer querySelectorAll gives (every element of the document classified).
@@ -115,7 +118,8 @@ const SUBJECT_LOCAL_PROBE: &str = r#"(() => {
     ':read-write', ':default', ':disabled + span', ':disabled ~ span', ':checked ~ span',
     ':disabled span', ':disabled > *', 'fieldset:disabled input', ':not(:disabled)',
     ':is(:required, :checked)', ':indeterminate', 'form:invalid input', 'form:valid input',
-    ':invalid', ':has(:checked)', 'div:has(> :disabled) span', 'p:not(:read-write) span',
+    ':invalid', ':valid', 'form:invalid', 'form:valid', 'form:invalid span', 'form:valid span',
+    'fieldset:invalid', 'fieldset:valid input', 'fieldset:invalid div', ':user-invalid', ':has(:checked)', 'div:has(> :disabled) span', 'p:not(:read-write) span',
     ':placeholder-shown', 'option:disabled', 'option:checked'];
   const mismatches = [];
   const elements = Array.from(document.querySelectorAll('*'));
@@ -166,12 +170,14 @@ fn matches_classifies_only_the_subjects_ancestors() {
     let inputs = "<input>".repeat(300);
     install_independent_html(
         scope,
-        &format!("<!doctype html><body><form>{inputs}<div><button id=x>go</button></div></form></body>"),
+        &format!(
+            "<!doctype html><body><form>{inputs}<div><button id=x>go</button></div></form></body>"
+        ),
     );
     let classified = |scope: &mut v8::PinScope, source: &str| {
-        CLASSIFIED.with(|count| count.set(0));
+        form_pseudo::CLASSIFIED.with(|count| count.set(0));
         run_page_script(scope, source);
-        CLASSIFIED.with(|count| count.get())
+        form_pseudo::CLASSIFIED.with(|count| count.get())
     };
     let x = "document.getElementById('x')";
     // html, body, form, div, button
@@ -179,12 +185,28 @@ fn matches_classifies_only_the_subjects_ancestors() {
     assert_eq!(classified(scope, &format!("{x}.closest(':enabled')")), 5);
     // A sibling combinator adds the preceding siblings of the subject and its ancestors.
     // (html, head, body, form, 300 inputs, div, button: the inputs and head precede ancestors)
-    assert_eq!(classified(scope, &format!("{x}.matches(':enabled ~ div > button')")), 306);
+    assert_eq!(
+        classified(scope, &format!("{x}.matches(':enabled ~ div > button')")),
+        306
+    );
     // :has(), the form-wide :invalid and the radio groups of :indeterminate classify the tree.
     let all = 306;
-    assert_eq!(classified(scope, &format!("{x}.matches(':has(:disabled)')")), all);
-    assert_eq!(classified(scope, &format!("{x}.matches('form:invalid button')")), all);
-    assert_eq!(classified(scope, &format!("{x}.matches(':indeterminate')")), all);
-    assert_eq!(classified(scope, "document.querySelectorAll(':disabled').length"), all);
+    assert_eq!(
+        classified(scope, &format!("{x}.matches(':has(:disabled)')")),
+        all
+    );
+    // A form's validity reads its controls (not its other descendants): 5 + the 300 inputs.
+    assert_eq!(
+        classified(scope, &format!("{x}.matches('form:invalid button')")),
+        305
+    );
+    assert_eq!(
+        classified(scope, &format!("{x}.matches(':indeterminate')")),
+        all
+    );
+    assert_eq!(
+        classified(scope, "document.querySelectorAll(':disabled').length"),
+        all
+    );
     reset();
 }
