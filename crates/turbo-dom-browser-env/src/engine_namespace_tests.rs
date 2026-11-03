@@ -195,3 +195,26 @@ fn rejected_engine_bytecode_is_replaced() {
         ("rejected 1".to_owned(), vec![true])
     );
 }
+
+// The public entry point serves embedder sources, which can differ on every call: it never
+// grows the process-wide bytecode cache (round-1 review #13). Only the binding's own fixed
+// engine scripts are cached.
+#[test]
+fn public_engine_scripts_do_not_grow_the_bytecode_cache() {
+    let sources: Vec<String> = (0..64)
+        .map(|n| format!("return 'embedder {n} ' + (() => {n} * 2)();"))
+        .collect();
+    with_page(|scope| {
+        for (n, source) in sources.iter().enumerate() {
+            let value = run_engine_script(scope, source).unwrap();
+            assert_eq!(
+                value.to_rust_string_lossy(scope),
+                format!("embedder {n} {}", n * 2)
+            );
+        }
+    });
+    for source in &sources {
+        let key = engine_code_cache::key(&wrapped_engine_source(source));
+        assert!(engine_code_cache::get(key).is_none(), "{source} was cached");
+    }
+}
