@@ -724,7 +724,7 @@ fn background_layers(
     ctx: &Ctx,
 ) {
     use super::background::{
-        area_radius, area_rect, border_overlay, color_layer, layer, props, Area, Source,
+        area_radius, area_rect, border_overlay, color_layer, props, Area, Source,
     };
     let image = super::boxgen::background_image(source).and_then(|name| {
         let intrinsic = super::imgsize::box_intrinsic(ctx.images.resolver, &name, source)?;
@@ -797,12 +797,19 @@ fn background_layers(
                 .map(Source::Gradient)
                 .into_iter()
                 .chain(image.clone().map(Source::Image));
+            // Built over the fragment's physical shape in vertical text
+            // (miaskiewicz/turbo-dom#278).
+            let rect = (frag.x, frag.y, frag.width, frag.height);
             for source in sources {
-                layers.extend(layer(id, &props, &source, (strip, paint, radius)));
+                layers.extend(super::block::space_layer(
+                    ctx.writing,
+                    rect,
+                    (id, &props, &source),
+                    (strip, paint, radius),
+                ));
             }
             if !layers.is_empty() {
                 // The border paints over the background layers.
-                let rect = (frag.x, frag.y, frag.width, frag.height);
                 layers.push(border_overlay(
                     id,
                     rect,

@@ -3048,7 +3048,7 @@ fn center_menu_list_label(
 /// A background layer of a box laid out in the space of `space` (its border box
 /// `border_box` there): built over the box's physical shape, since background sizes and
 /// positions are physical (miaskiewicz/turbo-dom#277), then moved back into the space.
-fn space_layer(
+pub(super) fn space_layer(
     space: super::writing::WritingMode,
     border_box: super::background::Rect,
     (id, props, source): (
