@@ -86,14 +86,18 @@ fn record_references() {
 /// process when one is dropped, including during a panic's unwind. So no failure may unwind
 /// past it: each one leaks the creator instead (a panic is caught for that).
 pub(crate) fn build() -> Option<Blob> {
-    build_with(|_| {})
+    build_from(None)
 }
 
-/// [`build`] for an embedder with its own startup context: `prelude` runs in the snapshot
-/// context before the engine bootstrap (the order of a prelude, then an install), so the
-/// blob's default context holds both. The prelude must hand V8 no native callback (none is
-/// in the reference table).
+/// [`build`] for an embedder with its own startup context: the blob's default context is
+/// `prelude` alone, and context [`SNAPSHOT_WINDOW_CONTEXT`] ran `prelude`, then the engine
+/// bootstrap (the order of a prelude, then an install). The prelude must hand V8 no native
+/// callback (none is in the reference table).
 pub(crate) fn build_with(prelude: fn(&mut v8::PinScope)) -> Option<Blob> {
+    build_from(Some(prelude))
+}
+
+fn build_from(prelude: Option<fn(&mut v8::PinScope)>) -> Option<Blob> {
     record_references();
     let references: &'static [v8::ExternalReference] =
         Box::leak(external_refs::table().into_boxed_slice());
@@ -133,14 +137,25 @@ pub(crate) fn build_with(prelude: fn(&mut v8::PinScope)) -> Option<Blob> {
 /// persisted into the heap and its node wrappers stripped (returned, see [`strip_wrappers`]).
 fn prepare(
     isolate: &mut v8::OwnedIsolate,
-    prelude: fn(&mut v8::PinScope),
+    prelude: Option<fn(&mut v8::PinScope)>,
 ) -> Result<Vec<v8::Weak<v8::Object>>, &'static str> {
     v8::scope!(let scope, isolate);
+    if let Some(prelude) = prelude {
+        // The embedder's own default context: its prelude, no window.
+        let plain = v8::Context::new(scope, Default::default());
+        {
+            let scope = &mut v8::ContextScope::new(scope, plain);
+            prelude(scope);
+        }
+        scope.set_default_context(plain);
+    }
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     #[cfg(test)]
     forced_failure(scope, BuildFailure::IsolateData);
-    prelude(scope);
+    if let Some(prelude) = prelude {
+        prelude(scope);
+    }
     bootstrap_engine(scope);
     #[cfg(test)]
     forced_failure(scope, BuildFailure::Panic);
@@ -152,7 +167,12 @@ fn prepare(
     // The slot annex is a heap pointer (and a Weak) in the context's embedder data:
     // serialized, a context made from the blob would read the freed annex.
     context.clear_all_slots();
-    scope.set_default_context(context);
+    if prelude.is_some() {
+        let index = scope.add_context(context);
+        debug_assert_eq!(index, SNAPSHOT_WINDOW_CONTEXT);
+    } else {
+        scope.set_default_context(context);
+    }
     Ok(stripped)
 }
 

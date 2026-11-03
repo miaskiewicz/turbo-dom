@@ -89,9 +89,10 @@ fn a_context_from_the_blob_carries_no_slot_annex() {
 }
 
 /// An embedder that bakes its own startup context (turbo-test's framework layer) gets the
-/// window into the same blob: its prelude runs in the snapshot context before the engine
-/// bootstrap (the order of a prelude, then an install), and with snapshot installs on, every
-/// context the isolate makes from the blob (an embedder reusing its isolate makes several)
+/// window into the same blob: the default context is the embedder's alone (no window, for
+/// its non-DOM files), and context [`SNAPSHOT_WINDOW_CONTEXT`] is the embedder's prelude, then
+/// the engine bootstrap (the order of a prelude, then an install). With snapshot installs on,
+/// every window context the isolate makes (an embedder reusing its isolate makes several)
 /// installs its document without running an engine script.
 #[test]
 fn an_embedder_prelude_shares_the_blob_and_contexts_install_from_it() {
@@ -99,30 +100,36 @@ fn an_embedder_prelude_shares_the_blob_and_contexts_install_from_it() {
         let code = v8::String::new(scope, "globalThis.__prelude = typeof document;").unwrap();
         v8::Script::compile(scope, code, None).unwrap().run(scope).unwrap();
     }
+    fn eval(scope: &mut v8::PinScope, code: &str) -> String {
+        let code = v8::String::new(scope, code).unwrap();
+        let value = v8::Script::compile(scope, code, None).unwrap().run(scope).unwrap();
+        value.to_rust_string_lossy(scope)
+    }
     crate::browser_env::tests::init_v8();
     let blob = snapshot_blob_with(prelude).expect("every callback is registered");
     let isolate = &mut v8::Isolate::new(blob.create_params());
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        assert_eq!(eval(scope, "[__prelude, typeof document, typeof Node].join()"), "undefined,undefined,undefined");
+    }
     set_snapshot_install(true);
     for page in ["<p id=x>one</p>", "<p id=x>two</p>"] {
         {
             v8::scope!(let scope, isolate);
-            let context = v8::Context::new(scope, Default::default());
+            let context =
+                v8::Context::from_snapshot(scope, SNAPSHOT_WINDOW_CONTEXT, Default::default())
+                    .expect("the blob holds the window context");
             let scope = &mut v8::ContextScope::new(scope, context);
             let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);
             install_with_html(scope, page);
             assert_eq!(ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get), before, "{page}");
-            let code = v8::String::new(
-                scope,
-                "[__prelude, document.getElementById('x').textContent, document.body.firstChild instanceof HTMLParagraphElement].join()",
-            )
-            .unwrap();
-            let result = v8::Script::compile(scope, code, None)
-                .unwrap()
-                .run(scope)
-                .unwrap()
-                .to_rust_string_lossy(scope);
             let text = if page.contains("one") { "one" } else { "two" };
-            assert_eq!(result, format!("undefined,{text},true"));
+            assert_eq!(
+                eval(scope, "[__prelude, document.getElementById('x').textContent, document.body.firstChild instanceof HTMLParagraphElement].join()"),
+                format!("undefined,{text},true")
+            );
         }
         reset();
     }

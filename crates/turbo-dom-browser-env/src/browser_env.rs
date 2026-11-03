@@ -7717,10 +7717,15 @@ pub fn snapshot_blob() -> Option<&'static SnapshotBlob> {
     .as_ref()
 }
 
+/// The index of the window context in a [`snapshot_blob_with`] blob
+/// (`v8::Context::from_snapshot`).
+pub const SNAPSHOT_WINDOW_CONTEXT: usize = 0;
+
 /// [`snapshot_blob`] for an embedder that bakes its own startup context (turbo-test's
-/// framework layer): a new blob whose default context ran `prelude`, then the engine
-/// bootstrap. Its contexts are the embedder's context with the window installed; with
-/// [`set_snapshot_install`] on, installing into one runs no engine script. Built on a thread
+/// framework layer): a new blob whose default context ran `prelude` alone (the embedder's
+/// non-DOM contexts), and whose context [`SNAPSHOT_WINDOW_CONTEXT`] ran `prelude`, then the
+/// engine bootstrap (`v8::Context::from_snapshot`): the embedder's context with the window
+/// installed. With [`set_snapshot_install`] on, installing into one runs no engine script. Built on a thread
 /// of its own (no caller's DOM is touched) every call: the embedder keeps the blob. `prelude`
 /// must hand V8 no native callback. `None` when the build failed (installs then keep the
 /// usual path).
