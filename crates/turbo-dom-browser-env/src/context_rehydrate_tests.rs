@@ -19,7 +19,10 @@ fn slot_functions(
         let described = functions
             .iter()
             .map(|function| {
-                let source = function.to_string(scope).unwrap().to_rust_string_lossy(scope);
+                let source = function
+                    .to_string(scope)
+                    .unwrap()
+                    .to_rust_string_lossy(scope);
                 let key = v8::String::new(scope, "length").unwrap();
                 let arity = function
                     .get(scope, key.into())
@@ -66,7 +69,10 @@ fn rehydrate_rebuilds_every_function_slot_of_a_bootstrapped_context() {
         // A capture site storing a slot type the registry lacks fails here; a slot type
         // the registry knows but whose capture site does not store, below.
         for name in &stored {
-            assert!(names.contains(name.as_str()), "no registry entry for {name}");
+            assert!(
+                names.contains(name.as_str()),
+                "no registry entry for {name}"
+            );
         }
         let present: BTreeSet<String> = fresh.keys().map(|name| (*name).to_owned()).collect();
         assert_eq!(present, stored, "slots set without storing their function");

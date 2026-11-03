@@ -263,6 +263,7 @@ fn private_key<'s>(scope: &mut v8::PinScope<'s, '_>, name: &str) -> v8::Local<'s
 /// The per-realm factory builds a Document's collection in that Document's
 /// own realm, whichever realm's accessor first asks for it.
 struct AllFactory(v8::Weak<v8::Function>);
+fn_slots!([AllFactory]);
 
 fn all_of<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -627,11 +628,7 @@ fn dispatch<'s>(
         }
         "register" => {
             if let Ok(factory) = v8::Local::<v8::Function>::try_from(args.get(1)) {
-                if let Some(factory) = dom_ownership::helper_function(scope, factory) {
-                    scope
-                        .get_current_context()
-                        .set_slot(std::rc::Rc::new(AllFactory(factory)));
-                }
+                context_rehydrate::capture::<AllFactory>(scope, factory);
             }
             return;
         }
