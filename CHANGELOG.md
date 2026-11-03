@@ -7,20 +7,6 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-Still landing for 0.7.0 (other agents add their entries below as they merge): form
-controls in vertical writing modes (#239).
-
-- Form controls paint Chrome 156's native appearance (#255): text fields, textareas and
-  menu lists a 1px `#767676` rounded frame on white (a menu list its chevron), buttons and
-  colour wells the frame on `#efefef` (a colour well its value's swatch), checkboxes /
-  radio buttons Chrome's glyphs (checked included), range sliders their track and thumb.
-  Drawn with ordinary galley boxes in `turbo-dom-layout`, so PNG / SVG screenshots (and
-  PDFs) show it; `appearance: none`, an author border / background and vertical writing
-  modes keep the CSS painting. An `appearance: none` checkbox / radio has no size.
-- Menu lists centre their label (their baseline follows) and colour wells sit 4px above
-  their content-box bottom on the line, like Chrome (#255); the `form-*` live-geometry
-  control compares their full boxes.
-
 ## [0.7.0] — <date TBD at tag>
 
 | crate | version |
@@ -92,7 +78,7 @@ Rust API changes, per crate. The npm package's JS API is unchanged.
 - `cssom_view::scroll::ScrollMetrics` gains `min_x: f64` (#190): `0` for an LTR box,
   `-(scrollWidth - clientWidth)` for an RTL one, whose offsets run `min_x..=0`.
 - `SnapshotError::UnsupportedVerticalWriting` (#234) is a new variant (a box in a vertical
-  writing mode the native layout cannot lay out yet: form controls, #239 remainder).
+  writing mode the native layout could not lay out; since #239 nothing raises it, the variant stays).
   `UnsupportedInlineWriting` is no longer raised (the variant stays): a direction change
   lays out with bidi (#238) and an inline in another writing mode is an atomic inline (#239).
 - `LayoutOptions` and `HtmlOptions` gain a required `flatten_inline_elements: bool`
@@ -128,6 +114,13 @@ Rust API changes, per crate. The npm package's JS API is unchanged.
   measurement (#237).
 
 ### Behaviour changes
+
+- The `background` shorthand cascades as its longhands (#256): each longhand takes the
+  shorthand's cascade position, so origin, `!important`, specificity and order decide it
+  (an author `background: yellow` now beats the UA button `background-color`, as in
+  Chrome). A `background` value Chrome's grammar rejects is dropped whole, and a failed
+  `var()` in a shorthand unsets its longhands (also `border-radius`, which used to fall
+  back to `inherit`).
 
 Chrome 156-matching changes that move layout, screenshot or PDF output. Every corpus
 output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
@@ -173,6 +166,17 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
   by browser-env make `<?target data?>` a ProcessingInstruction, not a bogus comment.
 
 ### Added
+
+- Form controls paint Chrome 156's native appearance (#255): text fields, textareas and
+  menu lists a 1px `#767676` rounded frame on white (a menu list its chevron), buttons and
+  colour wells the frame on `#efefef` (a colour well its value's swatch), checkboxes /
+  radio buttons Chrome's glyphs (checked included), range sliders their track and thumb.
+  Drawn with ordinary galley boxes in `turbo-dom-layout`, so PNG / SVG screenshots (and
+  PDFs) show it; `appearance: none`, an author border / background and vertical writing
+  modes keep the CSS painting. An `appearance: none` checkbox / radio has no size.
+- Menu lists centre their label (their baseline follows) and colour wells sit 4px above
+  their content-box bottom on the line, like Chrome (#255); the `form-*` live-geometry
+  control compares their full boxes.
 
 **turbo-dom**
 
