@@ -235,18 +235,39 @@ class CommittedDataTest(unittest.TestCase):
         for path in sorted((HERE / "expected").glob("*.json")):
             control = json.loads(path.read_text()).get("control", "")
             self.assertRegex(control, r"\S", f"{path}: no control")
-            if control.startswith("none (") or EXTERNAL_CONTROL.match(control):
-                continue
-            paths = CONTROL_PATH.findall(control)
-            self.assertTrue(paths, f"{path}: control names no committed path: {control!r}")
-            for ref in paths:
-                self.assertTrue(_control_path_exists(ref), f"{path}: control path {ref} missing")
+            self.assertEqual(_control_errors(control), [], f"{path}: {control!r}")
 
     def test_control_path_helpers(self):
         self.assertEqual(_expand_braces("a/{b,c}.json"), ["a/b.json", "a/c.json"])
         self.assertTrue(_control_path_exists("tools/parity/{parity,test_parity}.py"))
-        self.assertTrue(_control_path_exists("scripts/select-element-chrome-control.mjs"))  # crate-relative
         self.assertFalse(_control_path_exists("tools/parity/{parity,nope}.py"))
+        # Crate-relative paths resolve under the crate the control names, never any crate.
+        browser_env = "crates/turbo-dom-browser-env/src/html_image_chrome156.json"
+        crate_script = "scripts/select-element-chrome-control.mjs"
+        self.assertFalse(_control_path_exists(crate_script))
+        self.assertTrue(_control_path_exists(crate_script, ["turbo-dom-browser-env"]))
+        self.assertFalse(_control_path_exists(crate_script, ["turbo-dom-raster"]))
+        self.assertEqual(_control_errors(f"{browser_env} ({crate_script})"), [])
+        self.assertTrue(_control_errors(f"crates/turbo-dom-raster/Cargo.toml ({crate_script})"))
+        self.assertTrue(_control_errors(crate_script))
+
+    def test_control_rejects_unchecked_evidence(self):
+        ok = "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json"
+        self.assertEqual(_control_errors(ok), [])
+        self.assertEqual(_control_errors("none (no behaviour change)"), [])
+        self.assertEqual(
+            _control_errors("turbo-html2pdf crates/turbo-html2pdf-core/tests/pdf_ua.rs"), []
+        )
+        # A sibling repo must be followed by a path in it, not prose.
+        for bare in ("turbo-surf ", "turbo-surf see the notes", "turbo-html2pdf release/0.7.0 x"):
+            self.assertTrue(_control_errors(bare), bare)
+        # Prose, missing files and wildcard-only paths are not evidence.
+        self.assertTrue(_control_errors("see the notes"))
+        self.assertTrue(_control_errors("crates/turbo-dom/tests/fixtures/nope_chrome156.json"))
+        for wild in ("crates/*", "scripts/*", "crates/turbo-dom/*/*", "tools/{parity,*}"):
+            self.assertTrue(_control_errors(wild), wild)
+        # A glob with a literal part still names something checkable.
+        self.assertEqual(_control_errors("crates/turbo-dom/tests/fixtures/*_chrome156.json"), [])
         self.assertEqual(CONTROL_PATH.findall("x crates/a/b.json (y); see notes"), ["crates/a/b.json"])
 
 
