@@ -20,6 +20,20 @@ at the time); this file reconstructs them from history.
   call; user-event asks `matches(':disabled')` on every pointer step and MUI's rules ask
   `:invalid` per input, so large forms were quadratic (turbo-test 0.7.0 perf work).
   `:has()`, `:indeterminate` and `querySelector[All]` still classify the whole tree.
+- turbo-dom-browser-env's selector-taking DOM methods (`querySelector[All]`, `matches`,
+  `closest`, ...) parse each selector string's grammar once (a bounded per-thread memo).
+  A selector without a `:` skips the five node-dependent pseudo-class rewrite passes, and
+  the SyntaxError message is built only when a selector is rejected (same exact message as
+  before). On form-heavy files this took ~9% of CPU.
+- Node wrappers carry their owner tag (DOM id + tree generation) as a small integer that
+  indexes a per-thread table, instead of a two-word BigInt that was allocated per wrapper and
+  decoded on every native call (`handle_of`, `tagged_owner` and the ownership reconcile were
+  3-5% each). Table entries are never reused, so wrappers from a discarded tree are still
+  refused (turbo-test#204).
+- The mutation fanout builds a V8 record object only when something reads it: a
+  MutationObserver, a custom element definition or the host's trusted document consumer.
+  A page that is recording mutations for script preparation, with nothing observing them,
+  no longer allocates one per mutation (4-5% on React-heavy files).
 
 ### Fixed
 
