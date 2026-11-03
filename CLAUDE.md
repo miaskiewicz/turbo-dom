@@ -204,8 +204,13 @@ package or publish workflow.
   `<audio controls>` / `<object>` / `<embed src>` are inline replaced boxes on both paths and in
   every writing mode (`boxgen::media_source`: Chrome's default sizes, canvas `width`/`height`
   attributes as natural size, video poster; no fallback content; frame + background painted;
-  `live_geometry_chrome156.json` `media-*`, raster `paint_chrome156.json` `media-*`). Form controls
-  still fail per element (`SnapshotError::UnsupportedVerticalWriting`, turbo-dom#239); the
+  `live_geometry_chrome156.json` `media-*`, raster `paint_chrome156.json` `media-*`). Since
+  turbo-dom#239 form controls take Chrome 156's `html.css` UA (13.333px control font, inset /
+  outset frames, flow-relative padding and range / colour sizes via the internal
+  `-internal-ua-padding` / `-internal-ua-size`) and font-derived intrinsic sizes
+  (`layout::form_controls`: text field `size`, textarea `cols`/`rows`, menu list widest option),
+  and lay out vertically in vertical modes; nothing fails with `UnsupportedVerticalWriting` any
+  more (`form-*` controls; a menu list's / colour well's line position is not modelled). The
   flow-relative `border-*-*-radius` corners map with the sides (turbo-dom#253). Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
   `unicode-bidi`/`direction` as formatting characters (for inlines the static path

@@ -63,7 +63,12 @@ const fira = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/fira-
 // The generated Ic Fixture face (scripts/make-ic-fixture-font.py), for the upright-text
 // cases (U+6C34 and `a` / `b` boxes; 1em vertical advance).
 const ic = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/ic-fixture/IcFixture.ttf")).toString("base64");
+// Liberation Serif and Inter (fixture faces) for the form-control cases.
+const libSerif = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/liberation-serif/LiberationSerif-Regular.ttf")).toString("base64");
+const inter = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/inter/Inter-Regular.otf")).toString("base64");
 const FACE =
+  `@font-face{font-family:"Liberation Serif";src:url(data:font/ttf;base64,${libSerif})}` +
+  `@font-face{font-family:"Inter";src:url(data:font/otf;base64,${inter})}` +
   `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}` +
   `@font-face{font-family:"Ic Fixture";src:url(data:font/ttf;base64,${ic})}`;
 // miaskiewicz/turbo-dom#190 quirks-mode line strut cases: [id suffix, body].
@@ -154,6 +159,38 @@ const MEDIA_CASES = [
   ["embed-src", `<embed data-cid="m" src="${PNG8X6}" width="40" height="20">`],
   ["embed-src-default", `<embed data-cid="m" src="about:blank">`],
 ];
+// miaskiewicz/turbo-dom#239: form controls with Chrome 156's UA styling (html.css: the
+// 13.333px control font, 2px inset / outset borders, paddings, checkbox / radio / range
+// sizes and margins) and intrinsic sizes (a text field's `size` average characters, a
+// textarea's `cols` x `rows`, a select's widest option); each in a fixture face (the
+// UA family, Arial, is a host font) and in horizontal and vertical-rl modes.
+const FORM_CASES = [
+  ["input", `<input data-cid="m">`],
+  ["input-size", `<input data-cid="m" size="5">`],
+  ["input-size-1", `<input data-cid="m" size="1">`],
+  ["input-value", `<input data-cid="m" value="hello">`],
+  ["password", `<input data-cid="m" type="password" size="10">`],
+  ["search", `<input data-cid="m" type="search">`],
+  ["number", `<input data-cid="m" type="number">`],
+  ["checkbox", `<input data-cid="m" type="checkbox">`],
+  ["radio", `<input data-cid="m" type="radio">`],
+  ["range", `<input data-cid="m" type="range">`],
+  ["color", `<input data-cid="m" type="color">`],
+  ["button", `<button data-cid="m">ok</button>`],
+  ["button-empty", `<button data-cid="m"></button>`],
+  ["submit", `<input data-cid="m" type="submit" value="ok">`],
+  ["submit-default", `<input data-cid="m" type="submit">`],
+  ["reset-default", `<input data-cid="m" type="reset">`],
+  ["select", `<select data-cid="m"><option>abc</option></select>`],
+  ["select-widest", `<select data-cid="m"><option>a</option><option>abcdefghij</option></select>`],
+  ["select-selected", `<select data-cid="m">
+    <option>a</option><hr><optgroup label="g"><option selected>abcdef</option></optgroup>
+  </select>`],
+  ["textarea-text", `<textarea data-cid="m" rows="1" cols="3">hi</textarea>`],
+  ["textarea", `<textarea data-cid="m"></textarea>`],
+  ["textarea-rows-cols", `<textarea data-cid="m" rows="4" cols="10"></textarea>`],
+];
+const FORM_FACES = [["serif", '"Liberation Serif"'], ["mono", '"Fira Code"'], ["sans", "Inter"]];
 const VERTICAL_CSS = 'body{margin:0;font:16px/20px "Fira Code"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}';
 const VERTICAL_CASES = [
   ["issue-monospace", `<div data-cid="v" style="writing-mode:vertical-rl;height:100px;font:16px/20px monospace">ab</div>`],
@@ -620,6 +657,18 @@ const CASES = [
       fonts: true,
     })),
   ),
+  ...["", "rl"].flatMap((mode) =>
+    FORM_FACES.flatMap(([face, family]) =>
+      FORM_CASES.map(([id, element]) => ({
+        id: `form-${mode ? `${mode}-` : ""}${face}-${id}`,
+        html: DOC(`${VERTICAL_CSS}input,button,select,textarea{font-family:${family}}`, `<div data-cid="p"${mode ? ` class="${mode}"` : ""}>a${element}b</div>`),
+        fonts: true,
+        // A menu list's and a colour well's baseline (where they sit on the line) are
+        // not modelled: only their size is compared.
+        ...(/^(select|color)/.test(id) ? { measure: { m: "wh", p: mode ? "h" : "w" } } : {}),
+      })),
+    ),
+  ),
 ];
 const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
@@ -630,7 +679,7 @@ for (const testCase of CASES) {
   if (testCase.fonts) {
     await page.addStyleTag({ content: FACE });
     await page.evaluate(() =>
-      Promise.all([document.fonts.load('16px "Fira Code"'), document.fonts.load('16px "Ic Fixture"')]).then(() => document.fonts.ready),
+      Promise.all([document.fonts.load('16px "Fira Code"'), document.fonts.load('16px "Ic Fixture"'), document.fonts.load('16px "Liberation Serif"'), document.fonts.load('16px Inter')]).then(() => document.fonts.ready),
     );
   }
   if (testCase.fullscreen) {

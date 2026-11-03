@@ -343,12 +343,14 @@ fn input_button_value_renders_as_text() {
             .any(|it| matches!(it, InlineItem::Text { text, .. } if text.contains("Go")));
         assert!(has_go, "{ty} input value should render as text");
     }
-    // a text input's value is NOT drawn as content (it's an editable field).
+    // a text field shows its value too, as Chrome 156 does (miaskiewicz/turbo-dom#239).
     let root = build_box_tree(&[input("text")]);
     let lines = as_lines(&as_block(&root.kind)[0].kind);
     assert!(
-        lines.is_empty(),
-        "text input value is not flowed as content"
+        lines
+            .iter()
+            .any(|it| matches!(it, InlineItem::Text { text, .. } if text.contains("Go"))),
+        "text input value is flowed as its content"
     );
 }
 

@@ -6583,6 +6583,310 @@
    ]
   },
   {
+   "id": "form-input",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:30px;height:16px\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 38,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 19,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 24,
+     "y": 30,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 30,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 36,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 70,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 50,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-textarea",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><textarea data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:30px;height:16px\"></textarea></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 36,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 19,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 24,
+     "y": 30,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 30,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 36,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 70,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 50,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-button",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><button data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:42px;height:22px\"></button></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 42,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 19,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 24,
+     "y": 30,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 40,
+     "y": 30,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 50,
+     "y": 36,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 70,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 50,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-select",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><select data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:42px;height:22px\"></select></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 42,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 19,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 24,
+     "y": 30,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 30,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 36,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 70,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 50,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
    "id": "media-video-poster",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><video data-cid=\"m\" poster=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=\" style=\"position:absolute;left:20px;top:20px;width:100px;height:40px\"></video></body></html>",
    "assets": [

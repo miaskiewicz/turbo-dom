@@ -165,7 +165,7 @@ upstream rusty_v8's features (for example `simdutf`).
   documents, processing instructions, CSS animations in `getAnimations()` and real canvas
   `measureText` (see [CHANGELOG.md](CHANGELOG.md)).
 - **Open gaps (tracked as issues):**
-  - form controls in vertical writing modes (turbo-dom#239)
+  - form controls: native-looking frames, and menu-list / colour-well baselines (turbo-dom#239 follow-up)
   - `hyphens: auto` covers English only; Chrome on macOS uses the system dictionary,
     whose points differ for some words (#213)
 - **The npm runtime has no layout:** `getBoundingClientRect()` returns a synthetic, stable size at position 0, and
