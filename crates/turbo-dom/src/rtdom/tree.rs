@@ -602,6 +602,10 @@ pub struct Tree {
     shadow_root_of_host: FxHashMap<Handle, Handle>,
     host_of_shadow_root: FxHashMap<Handle, Handle>,
     pub version: u64,
+    /// `version` without the `style` attribute changes: everything a selector or another
+    /// element's cascade reads moves it, except an element's inline style, which selectors
+    /// see only through attribute selectors naming `style` (embedders check for those).
+    pub selector_version: u64,
     /// version-keyed query result cache (mirrors JS cachedQSA / Document.__version).
     pub(crate) qcache: RefCell<QueryCache>,
     /// selector-string → parsed selector-list cache. A `matches()` driven over an
@@ -678,6 +682,7 @@ impl Tree {
             shadow_root_of_host: FxHashMap::default(),
             host_of_shadow_root: FxHashMap::default(),
             version: 0,
+            selector_version: 0,
             qcache: RefCell::new(QueryCache::default()),
             parse_cache: RefCell::new(FxHashMap::default()),
             css_cache: RefCell::new(crate::rtdom::cascade::CssCache::default()),
@@ -1465,6 +1470,21 @@ impl Tree {
     // ------------------------------------------------------------- mutations
     fn bump(&mut self) {
         self.version += 1;
+        self.selector_version += 1;
+    }
+
+    /// [`Self::bump`] for an attribute change: a `style` attribute moves `version` only.
+    fn bump_attribute(&mut self, name: &str) {
+        if name == "style" {
+            self.version += 1;
+        } else {
+            self.bump();
+        }
+    }
+
+    /// Whether any element of the tree hosts a shadow root.
+    pub fn has_shadow_roots(&self) -> bool {
+        !self.shadow_root_of_host.is_empty()
     }
 
     fn record_event(
@@ -1616,7 +1636,7 @@ impl Tree {
         self.attribute_units
             .remove(&(h, changed.ns.clone(), changed.local.clone()));
         self.sync_attribute_node(h, &changed);
-        self.bump();
+        self.bump_attribute(name);
         self.record_attributes(h, &changed.local_name, old, changed.namespace.as_deref());
         self.record_old_units(old_units);
         self.record_native_attribute_names(&changed);
@@ -1637,7 +1657,7 @@ impl Tree {
             self.attribute_units
                 .remove(&(h, removed.ns.clone(), removed.local.clone()));
         }
-        self.bump();
+        self.bump_attribute(name);
         if let Some(removed) = removed {
             self.record_attributes(h, &removed.local_name, old, removed.namespace.as_deref());
             self.record_old_units(old_units);
