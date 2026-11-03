@@ -7,6 +7,20 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Performance
+
+- turbo-dom-browser-env keeps a process-wide V8 bytecode cache of its engine scripts: every
+  page install (turbo-test installs one per test file) compiled each engine script from source,
+  ~8-9% of a real app suite's CPU. The cache is produced after the script ran (so it holds the
+  lazily compiled functions) and is replaced when V8 rejects it.
+- `matches()` / `closest()` classify the form-state pseudo-classes (`:disabled`, `:checked`,
+  `:invalid`, ...) only for the elements their answer can read: the subject's inclusive
+  ancestors (with their preceding siblings for `+` / `~`) and, for the validity classes, each
+  form / fieldset ancestor's controls. They classified every element of the tree in JS on each
+  call; user-event asks `matches(':disabled')` on every pointer step and MUI's rules ask
+  `:invalid` per input, so large forms were quadratic (turbo-test 0.7.0 perf work).
+  `:has()`, `:indeterminate` and `querySelector[All]` still classify the whole tree.
+
 ### Fixed
 
 - turbo-dom-layout implements `hyphens: auto` for English (`lang=en` / `en-US` / other `en-*`
