@@ -91,6 +91,19 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
         let key = v8::String::new(scope, "__cssTestStyleLookups").unwrap();
         global.set(scope, key.into(), getter.into());
     }
+    if code.contains("__cssTestEntryBuilds") {
+        // The cascade rule-entry list builds behind the test-only `__noteEntryBuild` hook.
+        fn entry_builds(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::entry_builds() as f64).into());
+        }
+        let getter = v8::Function::new(scope, entry_builds).unwrap();
+        let key = v8::String::new(scope, "__cssTestEntryBuilds").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
     if code.contains("__fontInertDoc") {
         let document = parse_html_document(scope, "<!doctype html><body><b>inert</b>", false);
         let key = v8::String::new(scope, "__fontInertDoc").unwrap();
@@ -1659,4 +1672,33 @@ fn media_rule_styles_are_reused_until_a_media_answer_changes() {
         value,
         serde_json::json!({"first":"rgb(2, 2, 2)","again":"rgb(2, 2, 2)","reused":0,"narrow":"rgb(1, 1, 1)"})
     );
+}
+
+/// The document's rule entries (style rules under their grouping rules, layers and @media
+/// answers) are built once per sheet list, CSSOM epoch and media answers, not once per element
+/// whose style is computed: a read after a DOM change cascades the element and each ancestor.
+#[test]
+fn rule_entries_are_built_once_per_sheet_list() {
+    let value = run(
+        "<style>@layer base { div { color: rgb(1, 1, 1) } } @media (min-width: 1px) { .t { color: rgb(2, 2, 2) } } @supports (color: red) { .u { margin: 1px } }</style><body></body>",
+        r#"(()=>{
+      globalThis.matchMedia=query=>({matches:true,media:query});
+      let parent=document.body;
+      for(let i=0;i<20;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const t=document.createElement('p');t.className='t u';parent.appendChild(t);
+      const first=getComputedStyle(t).color;
+      document.body.setAttribute('data-x','1');
+      const before=__cssTestEntryBuilds();
+      const color=getComputedStyle(t).color, margin=getComputedStyle(t).marginTop, inherited=getComputedStyle(parent).color;
+      const builds=__cssTestEntryBuilds()-before;
+      const sheet=document.querySelector('style').sheet;sheet.insertRule('.t { color: rgb(3, 3, 3) }', sheet.cssRules.length);
+      return JSON.stringify({first,color,margin,inherited,builds,after:getComputedStyle(t).color});
+    })()"#,
+    );
+    assert_eq!(value["first"], "rgb(2, 2, 2)");
+    assert_eq!(value["color"], "rgb(2, 2, 2)");
+    assert_eq!(value["margin"], "1px");
+    assert_eq!(value["inherited"], "rgb(1, 1, 1)");
+    assert_eq!(value["after"], "rgb(3, 3, 3)", "a CSSOM change rebuilds");
+    assert!(value["builds"].as_u64().unwrap() <= 1, "{value}");
 }

@@ -105,6 +105,7 @@
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
   var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
+  var noteEntryBuild=g.__noteEntryBuild;delete g.__noteEntryBuild;
   // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
   if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
@@ -834,6 +835,7 @@
       // Match the private selector list before touching declarations. Native parsing
       // preserves quoted delimiters that serialized text splitting loses.
       var sheets = info && !info.authored ? [] : computedSheets(el),layers=cssLayerTree(),matched=[];
+      if(noteEntryBuild&&sheets.length)noteEntryBuild();
       for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
         var entries = appliedSheetEntries(sheets[si],el,layers);

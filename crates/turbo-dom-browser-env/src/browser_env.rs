@@ -7407,6 +7407,8 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     bind_method(scope, global, "__noteCssUpdatePass", note_css_update_pass);
     #[cfg(test)]
     bind_method(scope, global, "__noteStyleLookup", note_style_lookup);
+    #[cfg(test)]
+    bind_method(scope, global, "__noteEntryBuild", note_entry_build);
     bind_method(scope, global, "__cssomEpoch", cssom_epoch);
     bind_method(scope, global, "__styleStateEpoch", style_state_epoch);
     bind_method(scope, global, "__bumpStyleState", bump_style_state_native);
@@ -7525,6 +7527,28 @@ fn note_style_lookup(
     _rv: v8::ReturnValue,
 ) {
     STYLE_LOOKUPS.with(|lookups| lookups.set(lookups.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Cascade rule-entry list builds on this thread (the test-only `__noteEntryBuild` hook).
+    static ENTRY_BUILDS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The cascade rule-entry list builds counted so far (see `ENTRY_BUILDS`).
+#[cfg(test)]
+fn entry_builds() -> u64 {
+    ENTRY_BUILDS.with(std::cell::Cell::get)
+}
+
+/// Counts one cascade rule-entry list build (the test-only `__noteEntryBuild` hook).
+#[cfg(test)]
+fn note_entry_build(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    ENTRY_BUILDS.with(|builds| builds.set(builds.get() + 1));
 }
 
 /// The current CSSOM epoch (see `CSSOM_EPOCH`).
