@@ -308,3 +308,25 @@ fn moves_between_subtrees_keep_held_components_whole_and_free_the_rest() {
         assert_eq!(eval(scope, "String(document.getElementById('b'))"), "null");
     });
 }
+
+/// Finding each cached wrapper's root walks each tree edge once per reconcile, not once per
+/// wrapper below it: a deep tree (a chain of 600 cached elements) must not cost
+/// wrappers x depth parent steps.
+#[test]
+fn a_reconcile_finds_roots_in_linear_steps() {
+    with_page(|scope| {
+        eval(
+            scope,
+            "globalThis.chain = [];
+             let parent = document.body;
+             for (let i = 0; i < 600; i++) { const d = document.createElement('div'); parent.appendChild(d); chain.push(d); parent = d; }
+             'built'",
+        );
+        host_turn(scope);
+        dom_ownership::WORK.with(|work| work.root_steps.set(0));
+        eval(scope, "chain[599].setAttribute('data-x', '1'); chain[599].appendChild(document.createElement('b')); 'ok'");
+        host_turn(scope);
+        let steps = dom_ownership::WORK.with(|work| work.root_steps.get());
+        assert!(steps <= 4 * 610, "{steps} parent steps to root 600 nested wrappers");
+    });
+}

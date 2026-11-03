@@ -157,6 +157,8 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
                 .or_else(|| state.tree.attribute_owner(root))
                 .or_else(|| state.tree.shadow_host(root))
             {
+                #[cfg(test)]
+                WORK.with(|work| work.root_steps.set(work.root_steps.get() + 1));
                 root = parent;
             }
             roots.insert(handle.raw(), root.raw());
@@ -189,6 +191,8 @@ pub(super) struct Work {
     pub(super) sweeps: std::cell::Cell<usize>,
     /// Wrappers (re)placed in an ownership component or re-retained by their document.
     pub(super) placements: std::cell::Cell<usize>,
+    /// Parent steps `reconcile_current` took to find the wrappers' roots.
+    pub(super) root_steps: std::cell::Cell<usize>,
 }
 #[cfg(test)]
 thread_local! {
