@@ -139,6 +139,15 @@ fn clip_rect_clips_the_box_and_its_descendants_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// miaskiewicz/turbo-dom#238: the screenshot paints bidi-reordered runs — an override's
+/// atoms reversed, an RTL paragraph's atoms right to left, reordered inline boxes with
+/// their backgrounds.
+#[test]
+fn bidi_reordered_runs_paint_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("bidi-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// miaskiewicz/turbo-dom#81: the screenshot's initial containing block is its viewport.
 #[test]
 fn fixed_and_icb_boxes_anchor_to_the_viewport_like_chrome_156() {

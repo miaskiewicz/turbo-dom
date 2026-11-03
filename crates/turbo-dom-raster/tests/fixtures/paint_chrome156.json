@@ -1,7 +1,7 @@
 {
  "generator": "scripts/paint-chrome-control.mjs",
- "chrome": "156.0.8078.4",
- "playwright_core": "1.61.0",
+ "chrome": "156.0.8078.47",
+ "playwright_core": "1.60.0",
  "viewport": [
   1280,
   800
@@ -1050,9 +1050,9 @@
      "y": 115,
      "class": "B",
      "rgb": [
-      12,
+      11,
       0,
-      244
+      243
      ]
     },
     {
@@ -1351,7 +1351,7 @@
      "class": "?",
      "rgb": [
       0,
-      130,
+      132,
       255
      ]
     }
@@ -1641,8 +1641,8 @@
      "class": "T",
      "rgb": [
       0,
-      242,
-      242
+      249,
+      249
      ]
     },
     {
@@ -1651,8 +1651,8 @@
      "class": "T",
      "rgb": [
       0,
-      248,
-      248
+      251,
+      251
      ]
     },
     {
@@ -1661,8 +1661,8 @@
      "class": "T",
      "rgb": [
       0,
-      237,
-      237
+      239,
+      239
      ]
     },
     {
@@ -1681,8 +1681,8 @@
      "class": "T",
      "rgb": [
       0,
-      254,
-      254
+      255,
+      255
      ]
     }
    ]
@@ -1709,8 +1709,8 @@
      "class": "T",
      "rgb": [
       0,
-      242,
-      242
+      249,
+      249
      ]
     },
     {
@@ -1719,8 +1719,8 @@
      "class": "T",
      "rgb": [
       0,
-      248,
-      248
+      251,
+      251
      ]
     },
     {
@@ -1729,8 +1729,8 @@
      "class": "T",
      "rgb": [
       0,
-      237,
-      237
+      239,
+      239
      ]
     },
     {
@@ -1749,8 +1749,8 @@
      "class": "T",
      "rgb": [
       0,
-      254,
-      254
+      255,
+      255
      ]
     }
    ]
@@ -2050,8 +2050,8 @@
      "y": 60,
      "class": "R",
      "rgb": [
-      172,
-      83,
+      179,
+      76,
       0
      ]
     },
@@ -2060,8 +2060,8 @@
      "y": 60,
      "class": "?",
      "rgb": [
-      135,
-      120,
+      138,
+      117,
       0
      ]
     },
@@ -2070,8 +2070,8 @@
      "y": 21,
      "class": "R",
      "rgb": [
-      172,
-      83,
+      179,
+      76,
       0
      ]
     },
@@ -2110,8 +2110,8 @@
      "y": 98,
      "class": "R",
      "rgb": [
-      224,
-      31,
+      232,
+      23,
       0
      ]
     }
@@ -2160,6 +2160,209 @@
      "rgb": [
       0,
       0,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bidi-override-atoms",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:0px;font-size:0\"><span style=\"direction:rtl;unicode-bidi:bidi-override\"><span data-cid=\"a\" style=\"display:inline-block;width:40px;height:40px;background:#ff0000\"></span><span data-cid=\"b\" style=\"display:inline-block;width:40px;height:40px;background:#00ff00\"></span><span data-cid=\"c\" style=\"display:inline-block;width:40px;height:40px;background:#0000ff\"></span></span></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 80,
+     "y": 0,
+     "width": 40,
+     "height": 40
+    },
+    {
+     "cid": "b",
+     "x": 40,
+     "y": 0,
+     "width": 40,
+     "height": 40
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 40,
+     "height": 40
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 20,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 100,
+     "y": 20,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 130,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bidi-rtl-paragraph-atoms",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div dir=\"rtl\" style=\"position:absolute;left:0px;top:50px;width:200px;font-size:0\"><span data-cid=\"d\" style=\"display:inline-block;width:40px;height:40px;background:#ff0000\"></span><span data-cid=\"e\" style=\"display:inline-block;width:40px;height:40px;background:#0000ff\"></span></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 160,
+     "y": 50,
+     "width": 40,
+     "height": 40
+    },
+    {
+     "cid": "e",
+     "x": 120,
+     "y": 50,
+     "width": 40,
+     "height": 40
+    }
+   ],
+   "probes": [
+    {
+     "x": 180,
+     "y": 70,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 140,
+     "y": 70,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 100,
+     "y": 70,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 70,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bidi-bdo-atoms",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:110px;font-size:0\"><bdo dir=\"rtl\"><span data-cid=\"f\" style=\"display:inline-block;width:40px;height:40px;background:#ff0000\"></span><span data-cid=\"g\" style=\"display:inline-block;width:40px;height:40px;background:#00ff00\"></span></bdo><span data-cid=\"h\" style=\"display:inline-block;width:40px;height:40px;background:#0000ff\"></span></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 40,
+     "y": 110,
+     "width": 40,
+     "height": 40
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 110,
+     "width": 40,
+     "height": 40
+    },
+    {
+     "cid": "h",
+     "x": 80,
+     "y": 110,
+     "width": 40,
+     "height": 40
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 130,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 60,
+     "y": 130,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 100,
+     "y": 130,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 140,
+     "y": 130,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
       255
      ]
     }

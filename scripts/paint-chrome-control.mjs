@@ -60,6 +60,9 @@ const TABLE = (style, caption, cellStyle = "") =>
 const SPRITE =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=";
 
+// A 40x40 inline-block of colour `bg`.
+const IB = (bg, cid) => `<span data-cid="${cid}" style="display:inline-block;width:40px;height:40px;background:${bg}"></span>`;
+
 const CASES = [
   // miaskiewicz/turbo-dom#51.
   {
@@ -267,6 +270,25 @@ const CASES = [
     html: DOC(`<div style="${at(420, 20)};width:40px;height:40px;background:#00ff00;border:2px solid #0000ff;box-shadow:inset 0 0 0 30px #ff0000"></div>`),
     probes: [[442, 42], [425, 25], [421, 42], [442, 63]],
   },
+  // miaskiewicz/turbo-dom#238: the screenshot paints bidi-reordered runs. An override
+  // reverses its atoms (U+FFFC is a neutral, so `bidi-override` makes it R), an RTL
+  // paragraph places its neutral atoms right to left, and `<bdo>` overrides in line.
+  {
+    id: "bidi-override-atoms",
+    html: DOC(`<div style="${at(0, 0)};font-size:0"><span style="direction:rtl;unicode-bidi:bidi-override">${IB("#ff0000", "a")}${IB("#00ff00", "b")}${IB("#0000ff", "c")}</span></div>`),
+    probes: [[20, 20], [60, 20], [100, 20], [130, 20]],
+  },
+  {
+    id: "bidi-rtl-paragraph-atoms",
+    html: DOC(`<div dir="rtl" style="${at(0, 50)};width:200px;font-size:0">${IB("#ff0000", "d")}${IB("#0000ff", "e")}</div>`),
+    probes: [[180, 70], [140, 70], [100, 70], [20, 70]],
+  },
+  {
+    // `<bdo dir=rtl>` is an inline isolate-override: its atoms reverse in place.
+    id: "bidi-bdo-atoms",
+    html: DOC(`<div style="${at(0, 110)};font-size:0"><bdo dir="rtl">${IB("#ff0000", "f")}${IB("#00ff00", "g")}</bdo>${IB("#0000ff", "h")}</div>`),
+    probes: [[20, 130], [60, 130], [100, 130], [140, 130]],
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
@@ -331,6 +353,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, dev
 const cases = [];
 for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
+  await page.evaluate(() => document.fonts.ready);
   const boxes = await page.evaluate(async () => {
     for (const img of document.images) await img.decode().catch(() => {});
     const r = (n) => Math.round(n * 1000) / 1000;
