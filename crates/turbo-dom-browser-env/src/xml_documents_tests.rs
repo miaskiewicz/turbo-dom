@@ -241,6 +241,11 @@ fn specified_attribute_expansion_is_bounded() {
             "<!DOCTYPE r [<!ENTITY e \"{big}\"><!ATTLIST s b CDATA \"&e;\">]><r>{}</r>",
             "<s a=\"&e;\"/>".repeat(1000)
         ),
+        // an element an entity spells once and the content repeats
+        format!(
+            "<!DOCTYPE r [<!ENTITY e \"{big}\"><!ENTITY s '<s a=\"&e;\"/>'>]><r>{}</r>",
+            "&s;".repeat(1000)
+        ),
     ];
     for source in over {
         let started = std::time::Instant::now();

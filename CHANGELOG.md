@@ -270,8 +270,9 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
   ATTLIST defaults (attributes and namespace declarations, also on elements an entity
   spells; #261) and the `xmlns` attributes of entity-expanded elements stay on their own
   elements. A default inserts each entity's replacement text once, verbatim (as Chrome
-  does), within an expansion budget of 10x the source plus 1 MB ("Entity too big" past
-  it), so defaults cannot amplify.
+  does), as a specified value does (#268); specified and defaulted values share an
+  expansion budget of 10x the source plus 1 MB ("Entity too big" past it), so attribute
+  values cannot amplify.
 - HTML processing instructions in every installed or parsed document (#135).
 - `CSSAnimation` / `CSSTransition` in `getAnimations()` (#187), `transition-property:
   all`, no CSS animations under `display: none` ancestors; `getKeyframes()` property order
