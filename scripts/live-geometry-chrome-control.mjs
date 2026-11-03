@@ -180,6 +180,22 @@ const VERTICAL_CASES = [
     `<div data-cid="v" class="rl" style="height:400px"><svg data-cid="s" style="display:block"></svg><svg data-cid="w" width="40" style="display:block"></svg><iframe data-cid="f" style="display:block"></iframe><svg data-cid="h" height="30" style="display:block"></svg></div>`,
   ],
   [
+    "orthogonal-flex-item",
+    `<div data-cid="f" style="display:flex;width:300px"><div data-cid="fi" class="rl">aaaa bbbb</div><div data-cid="fj" style="width:10px;height:5px"></div></div>`,
+  ],
+  [
+    "orthogonal-grid-item",
+    `<div data-cid="g" style="display:grid;grid-template-columns:100px 50px"><div data-cid="gi" class="lr" style="padding-left:3px">ab cd</div><div data-cid="gj">x</div></div>`,
+  ],
+  [
+    "orthogonal-table-cell",
+    `<table data-cid="t"><tr><td data-cid="td" class="rl">ab cd</td><td data-cid="te">x</td></tr></table>`,
+  ],
+  [
+    "orthogonal-inline",
+    `<div data-cid="p" style="width:300px">a<span data-cid="s" class="rl">bcd</span>e</div>`,
+  ],
+  [
     "rl-rtl",
     `<div data-cid="v" class="rl" dir="rtl" style="height:100px"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="width:10px">ab</div></div>`,
   ],
