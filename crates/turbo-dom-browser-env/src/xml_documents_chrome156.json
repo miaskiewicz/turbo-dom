@@ -1,8 +1,8 @@
 {
   "browser": "Chrome/156.0.8078.47",
-  "recordedAt": "2026-11-03T18:08:07.062Z",
+  "recordedAt": "2026-11-03T18:30:46.849Z",
   "fixture": "xml_documents_probe.js",
-  "probeSha256": "8bcf3f8e1bbc581184a3e2506d1245edff900fb516bb3b5b7903d25b89c2ee19",
+  "probeSha256": "70ed0cfaf17d89f89d271b6a758340301cacc7781fb8684fb0449c05f08fe5cf",
   "result": {
     "nested": {
       "tag": "[object XMLDocument]",
@@ -4710,6 +4710,230 @@
         ]
       ],
       "xml": "<!DOCTYPE r><r a=\"&amp;e0;|AB&amp;lt;x&amp;amp;y&#9;z&amp;zz;|a&#9;b&#10;c| \"/>"
+    },
+    "attlistDefaultBadCharacterReference": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 31: Invalid numeric entity: xZ"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 31: Invalid numeric entity: xZ</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "attlistNamespaceDefaultBadCharacterReference": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 31: Invalid numeric entity: xZ"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 31: Invalid numeric entity: xZ</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
     },
     "mismatch": {
       "tag": "[object XMLDocument]",

@@ -104,6 +104,8 @@
     ["attlistNamespaceDefaultLaughs", '<!DOCTYPE r [<!ENTITY l0 "lol">' + Array.from({ length: 9 }, (_, i) => `<!ENTITY l${i + 1} "${`&l${i};`.repeat(10)}">`).join("") + '<!ATTLIST r xmlns:p CDATA "&l9;">]><r/>'],
     ["attlistNamespaceDefaultSelfReference", '<!DOCTYPE r [<!ENTITY e "&e;&e;"><!ATTLIST r xmlns:p CDATA "&e;">]><r><p:c/></r>'],
     ["attlistDefaultReplacementText", '<!DOCTYPE r [<!ENTITY e0 "x"><!ENTITY e1 "&e0;"><!ENTITY c "&#65;&#x42;&lt;x&amp;y&#9;z&zz;"><!ENTITY w "a\tb\nc"><!ATTLIST r a CDATA "&e1;|&c;|&w;|\t">]><r/>'],
+    ["attlistDefaultBadCharacterReference", '<!DOCTYPE r [<!ENTITY c "a&#xZ;b&#"><!ATTLIST r a CDATA "&c;">]><r/>'],
+    ["attlistNamespaceDefaultBadCharacterReference", '<!DOCTYPE r [<!ENTITY c "a&#xZ;b&#"><!ATTLIST r xmlns:p CDATA "&c;">]><r/>'],
     // well-formedness errors
     ["mismatch", "<a><b></a>"],
     ["empty", ""],
