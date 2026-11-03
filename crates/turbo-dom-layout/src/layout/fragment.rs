@@ -583,6 +583,11 @@ impl Fragment {
     pub fn translate(&mut self, dx: f32, dy: f32) {
         self.x += dx;
         self.y += dy;
+        // A tile pattern's origin is absolute too (miaskiewicz/turbo-dom#274).
+        if let FragmentContent::Tiles(pattern) = &mut self.content {
+            pattern.x += dx;
+            pattern.y += dy;
+        }
         for child in &mut self.children {
             child.translate(dx, dy);
         }

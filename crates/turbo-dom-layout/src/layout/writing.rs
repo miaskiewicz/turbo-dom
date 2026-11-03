@@ -368,6 +368,12 @@ fn rect(f: &Fragment) -> Rect {
 
 /// Move `f` to `r`; a step through a vertical space turns its glyph runs a quarter.
 fn set_rect(f: &mut Fragment, r: Rect, mode: WritingMode) {
+    // A tile pattern is laid out physically about its area's top-left, which moves
+    // (miaskiewicz/turbo-dom#274).
+    if let FragmentContent::Tiles(pattern) = &mut f.content {
+        pattern.x += r.0 - f.x;
+        pattern.y += r.1 - f.y;
+    }
     (f.x, f.y, f.width, f.height) = r;
     if let (true, FragmentContent::TextLine { vertical, .. }) = (mode.vertical(), &mut f.content) {
         *vertical = !*vertical;
