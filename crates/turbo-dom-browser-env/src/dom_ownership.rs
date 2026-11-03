@@ -187,6 +187,8 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
 pub(super) struct Work {
     pub(super) wrappers_visited: std::cell::Cell<usize>,
     pub(super) sweeps: std::cell::Cell<usize>,
+    /// Wrappers (re)placed in an ownership component or re-retained by their document.
+    pub(super) placements: std::cell::Cell<usize>,
 }
 #[cfg(test)]
 thread_local! {

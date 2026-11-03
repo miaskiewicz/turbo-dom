@@ -216,6 +216,8 @@ impl DocumentGraph {
                 });
             let refs = v8::Map::new(scope);
             for (node, wrapper) in members {
+                #[cfg(test)]
+                super::WORK.with(|work| work.placements.set(work.placements.get() + 1));
                 let index = v8::Integer::new_from_unsigned(scope, node);
                 refs.set(scope, index.into(), wrapper.into())?;
                 if wrapper.set_private(scope, owner_key, component.into()) != Some(true) {
@@ -230,6 +232,8 @@ impl DocumentGraph {
         // component anchors are reachable only through their member wrappers.
         for id in &self.connected {
             if let Some(wrapper) = self.wrappers.get(id).and_then(|weak| weak.to_local(scope)) {
+                #[cfg(test)]
+                super::WORK.with(|work| work.placements.set(work.placements.get() + 1));
                 retain(scope, document, *id, wrapper.into())?;
             }
         }
