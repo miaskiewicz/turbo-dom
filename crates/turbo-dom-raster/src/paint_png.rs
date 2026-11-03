@@ -1778,6 +1778,30 @@ mod tests {
     }
 
     #[test]
+    fn translated_tile_patterns_paint_in_phase() {
+        // miaskiewicz/turbo-dom#274: a 100x50 box of 20px tiles every 25px (the shader
+        // path) or every 25.5px across (walked one by one), moved by `Fragment::translate`,
+        // paints its 8 tiles where the same pattern laid out at the new spot does.
+        for step in [(25.0, 25.0), (25.5, 25.0)] {
+            let mut moved = tiles((0.0, 0.0, 100.0, 50.0), RED, (0.0, 0.0), (20.0, 20.0), step);
+            moved.translate(10.0, 20.0);
+            let placed = tiles(
+                (10.0, 20.0, 100.0, 50.0),
+                RED,
+                (10.0, 20.0),
+                (20.0, 20.0),
+                step,
+            );
+            let (got, want) = (
+                red_mask(&render(&moved, 120, 80, &HashMap::new())),
+                red_mask(&render(&placed, 120, 80, &HashMap::new())),
+            );
+            assert_eq!(got.iter().filter(|&&r| r).count(), 8 * 20 * 20, "{step:?}");
+            assert!(got == want, "{step:?}");
+        }
+    }
+
+    #[test]
     fn tile_patterns_paint_every_tile_by_shader_or_one_by_one() {
         // 0.7.0 round-2 review, finding 1. A 1px grid every 2px over the whole canvas:
         // the shader path; the last tile too.
