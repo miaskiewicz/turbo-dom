@@ -70,7 +70,19 @@ fn differences(paint: fn(&str) -> Pixels) -> Vec<String> {
                 let i = ((y * width + x) * 4) as usize;
                 let got = class(&rgba[i..i + 4]);
                 compared += 1;
-                if got != want {
+                // Our anti-aliased pixel against Chrome's solid one is an edge pixel only
+                // when a 1px neighbour of ours is solidly Chrome's class (measured: the pill's
+                // (194,58), whose centre is 0.35px outside the 25px arc; Chrome rounds it
+                // white, tiny-skia / resvg cover it a little).
+                let at_edge = got == '-'
+                    && [(-1i32, 0i32), (1, 0), (0, -1), (0, 1)]
+                        .iter()
+                        .any(|(dx, dy)| {
+                            let n = (((y as i32 + dy) as u32 * width + (x as i32 + dx) as u32) * 4)
+                                as usize;
+                            class(&rgba[n..n + 4]) == want
+                        });
+                if got != want && !at_edge {
                     failures.push(format!("{id} ({x},{y}): {got}, Chrome {want}"));
                 }
             }

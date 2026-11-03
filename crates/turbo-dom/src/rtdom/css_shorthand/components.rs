@@ -251,13 +251,18 @@ fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
                     kind: Kind::Percentage(percent),
                 }
             }
-            Token::Dimension { value, unit, .. } => Comp {
-                text: dimension_text(value, &unit),
-                kind: Kind::Dimension {
-                    value,
-                    unit: unit.to_ascii_lowercase(),
-                },
-            },
+            Token::Dimension { value, unit, .. } => {
+                // A length past `f32`'s range (`1e39px`) is the largest float, as Chrome
+                // clamps it (`3.40282e+38px`), never infinite (which would read `0px`).
+                let value = value.clamp(-f32::MAX, f32::MAX);
+                Comp {
+                    text: dimension_text(value, &unit),
+                    kind: Kind::Dimension {
+                        value,
+                        unit: unit.to_ascii_lowercase(),
+                    },
+                }
+            }
             Token::Hash(value) | Token::IDHash(value) => Comp {
                 text: format!("#{value}"),
                 kind: Kind::Hash(value.to_string()),

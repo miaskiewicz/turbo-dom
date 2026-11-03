@@ -223,9 +223,19 @@ fn unit_factor(unit: &str) -> Option<f32> {
 }
 
 fn split_unit(s: &str) -> (&str, &str) {
+    let bytes = s.as_bytes();
+    // An exponent (`3.40282e+38px`, how a huge length serializes) is part of the number:
+    // `e`, an optional sign, then a digit.
+    let exponent = |i: usize| {
+        let digits = match bytes.get(i + 1) {
+            Some(b'+' | b'-') => i + 2,
+            _ => i + 1,
+        };
+        i > 0 && bytes.get(digits).is_some_and(u8::is_ascii_digit)
+    };
     let end = s
         .char_indices()
-        .find(|(_, c)| c.is_ascii_alphabetic() || *c == '%')
+        .find(|&(i, c)| (c.is_ascii_alphabetic() && !(c == 'e' && exponent(i))) || c == '%')
         .map_or(s.len(), |(i, _)| i);
     (&s[..end], &s[end..])
 }
@@ -1174,12 +1184,20 @@ impl CornerRadius {
     /// rule); a negative or unresolvable radius is zero.
     #[must_use]
     pub fn resolve(&self, width: f32, height: f32) -> super::fragment::CornerRadii {
+        // A huge length (`1e39px`, an infinite `1e400px`) is clamped to Chrome's
+        // LayoutUnit max (its computed `3.35544e+07px`), so the overlap rule scales it to
+        // the box (a pill) instead of `inf * 0 = NaN`.
+        let finite = |r: Option<f32>| r.unwrap_or(0.0).clamp(0.0, LAYOUT_UNIT_MAX);
         super::fragment::CornerRadii {
-            h: self.h.resolve(width).unwrap_or(0.0).max(0.0),
-            v: self.v.resolve(height).unwrap_or(0.0).max(0.0),
+            h: finite(self.h.resolve(width)),
+            v: finite(self.v.resolve(height)),
         }
     }
 }
+
+/// Blink's largest `LayoutUnit` in px (`(2^31 - 1) / 64`): a computed `border-radius`
+/// never exceeds it (Chrome 156 reads `1e39px` back as `3.35544e+07px`).
+const LAYOUT_UNIT_MAX: f32 = 33_554_431.0;
 
 /// The used radii of a `width` x `height` border box with specified corners `spec`
 /// (CSS order): percentages resolved per axis, then the overlap rule.
@@ -2128,6 +2146,32 @@ pub(crate) fn quantize_html_box_style(style: &mut BoxStyle, scale: Option<f32>) 
 #[cfg(test)]
 mod calc_aspect_tests {
     use super::*;
+
+    #[test]
+    fn exponent_lengths_keep_their_exponent() {
+        // How a huge length serializes (`3.40282e+38px`); `e` without digits is a unit.
+        assert_eq!(parse_raw("1e+3px"), Some(RawLength::Abs(1000.0)));
+        assert_eq!(parse_raw("2e-1px"), Some(RawLength::Abs(0.2)));
+        assert_eq!(parse_raw("1e2px"), Some(RawLength::Abs(100.0)));
+        assert_eq!(parse_raw("2em"), Some(RawLength::Em(2.0)));
+        assert_eq!(parse_raw("2e+px"), None);
+        assert_eq!(parse_raw("em"), None);
+    }
+
+    #[test]
+    fn an_infinite_radius_fits_the_box_as_a_pill() {
+        // R2 #5: `inf * 0` used to make NaN radii; Chrome clamps it to a LayoutUnit.
+        let inf = CornerRadius {
+            h: LengthPct::Px(f32::INFINITY),
+            v: LengthPct::Px(f32::INFINITY),
+        };
+        let radii = resolve_radii(&[inf; 4], 200.0, 50.0);
+        assert_eq!(
+            radii.top_left,
+            super::super::fragment::CornerRadii { h: 25.0, v: 25.0 }
+        );
+        assert_eq!(radii.as_uniform(), Some(25.0));
+    }
 
     #[test]
     fn calc_mixing_percent_and_px_becomes_calc_and_resolves() {
