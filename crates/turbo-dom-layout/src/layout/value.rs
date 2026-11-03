@@ -811,8 +811,10 @@ pub struct BoxStyle {
     /// a padding-boxed media tile (Nike's square editorial cards) is sized by ratio
     /// instead of collapsing to a `min-height` fallback.
     pub aspect_ratio: Option<f32>,
-    /// `border-radius` (first value; `%` against the box size at layout).
-    pub border_radius: LengthPct,
+    /// The `border-*-radius` of each corner in CSS order (top-left, top-right,
+    /// bottom-right, bottom-left), logical corners mapped to physical ones; `%` resolve
+    /// against the border box at layout (miaskiewicz/turbo-dom#253; it was one value).
+    pub border_radius: [CornerRadius; 4],
     pub box_sizing: BoxSizing,
     pub font_families: Vec<String>,
     pub font_size: f32,
@@ -1009,7 +1011,7 @@ pub(crate) fn clip_region(
         y: top,
         width: (right - left).max(0.0),
         height: (bottom - top).max(0.0),
-        radius: 0.0,
+        radii: super::fragment::BorderRadii::ZERO,
     })
 }
 
@@ -1093,9 +1095,19 @@ fn side_value(s: &ComputedStyle, prop: &str, fs: f32, basis: f32) -> Option<f32>
     s.get(prop).map(|v| edge_px(v, fs, basis))
 }
 
+/// The UA sheet's flow-relative padding of the text fields and buttons (Chrome 156's
+/// `padding-block` / `padding-inline`, miaskiewicz/turbo-dom#239): `<block> <inline>`
+/// in the box's own writing mode, under any `padding` the author sets. It names
+/// logical sides, so a vertical layout's relabelling leaves it in place.
+pub(crate) const UA_LOGICAL_PADDING: &str = "-internal-ua-padding";
+
 fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges {
-    let mut e = s
-        .get(prefix)
+    let base = s.get(prefix).or_else(|| {
+        (prefix == "padding" && !has_padding_longhand(s))
+            .then(|| s.get(UA_LOGICAL_PADDING))
+            .flatten()
+    });
+    let mut e = base
         .map(|v| parse_edge_shorthand(v, fs, basis))
         .unwrap_or_default();
     apply_side(s, prefix, "top", fs, basis, &mut e.top);
@@ -1113,6 +1125,23 @@ fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges 
     e
 }
 
+/// Whether a `padding-*` longhand is set (an author `padding` shorthand arrives as
+/// longhands): the UA's logical padding then gives way, as a shorthand would.
+fn has_padding_longhand(s: &ComputedStyle) -> bool {
+    [
+        "top",
+        "right",
+        "bottom",
+        "left",
+        "block-start",
+        "block-end",
+        "inline-start",
+        "inline-end",
+    ]
+    .iter()
+    .any(|side| s.get(&format!("padding-{side}")).is_some())
+}
+
 /// Overwrite one edge slot from `{prefix}-{name}` when that longhand is set.
 fn apply_side(s: &ComputedStyle, prefix: &str, name: &str, fs: f32, basis: f32, slot: &mut f32) {
     if let Some(v) = side_value(s, &format!("{prefix}-{name}"), fs, basis) {
@@ -1126,14 +1155,144 @@ fn length_prop(s: &ComputedStyle, prop: &str, fs: f32, default: LengthPct) -> Le
         .unwrap_or(default)
 }
 
-/// `border-radius`: the first radius (horizontal, first corner). Elliptical `/`
-/// and per-corner values collapse to that single radius — enough for the common
-/// uniform-radius / pill / circle (`50%`) cases.
-fn border_radius_of(s: &ComputedStyle, fs: f32) -> LengthPct {
-    s.get("border-radius")
-        .and_then(|v| v.split(['/', ' ']).find(|t| !t.trim().is_empty()))
-        .and_then(|t| parse_length_pct(t.trim(), fs))
-        .unwrap_or(LengthPct::Px(0.0))
+/// One corner's specified `border-*-radius`: its horizontal and vertical radius (a
+/// percentage against the border box's width and height respectively).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CornerRadius {
+    pub h: LengthPct,
+    pub v: LengthPct,
+}
+
+impl CornerRadius {
+    /// A square corner.
+    pub const ZERO: CornerRadius = CornerRadius {
+        h: LengthPct::Px(0.0),
+        v: LengthPct::Px(0.0),
+    };
+
+    /// The used radii against a `width` x `height` border box (before the overlap
+    /// rule); a negative or unresolvable radius is zero.
+    #[must_use]
+    pub fn resolve(&self, width: f32, height: f32) -> super::fragment::CornerRadii {
+        super::fragment::CornerRadii {
+            h: self.h.resolve(width).unwrap_or(0.0).max(0.0),
+            v: self.v.resolve(height).unwrap_or(0.0).max(0.0),
+        }
+    }
+}
+
+/// The used radii of a `width` x `height` border box with specified corners `spec`
+/// (CSS order): percentages resolved per axis, then the overlap rule.
+#[must_use]
+pub fn resolve_radii(
+    spec: &[CornerRadius; 4],
+    width: f32,
+    height: f32,
+) -> super::fragment::BorderRadii {
+    super::fragment::BorderRadii::from_corners(spec.map(|c| c.resolve(width, height)))
+        .fit(width, height)
+}
+
+/// The physical corner longhands in CSS order.
+pub(crate) const CORNER_RADIUS_LONGHANDS: [&str; 4] = [
+    "border-top-left-radius",
+    "border-top-right-radius",
+    "border-bottom-right-radius",
+    "border-bottom-left-radius",
+];
+
+/// The flow-relative corner longhands: `border-{block}-{inline}-radius`.
+pub(crate) const LOGICAL_RADIUS_LONGHANDS: [&str; 4] = [
+    "border-start-start-radius",
+    "border-start-end-radius",
+    "border-end-end-radius",
+    "border-end-start-radius",
+];
+
+/// The physical corner (CSS order) at physical sides `a` and `b` (`top` 0, `right` 1,
+/// `bottom` 2, `left` 3; one of them `top` / `bottom`, the other `left` / `right`).
+pub(crate) fn corner_at(a: usize, b: usize) -> usize {
+    let (edge, side) = if matches!(a, 0 | 2) { (a, b) } else { (b, a) };
+    match (edge, side) {
+        (0, 3) => 0,
+        (0, _) => 1,
+        (_, 1) => 2,
+        _ => 3,
+    }
+}
+
+/// For each flow-relative corner ([`LOGICAL_RADIUS_LONGHANDS`] order), the physical
+/// corner it names in a box of `style`'s writing mode and direction (CSS Logical 1 §4.5).
+fn logical_corners(style: &ComputedStyle) -> [usize; 4] {
+    use super::writing::WritingMode;
+    let mode = WritingMode::of(style);
+    let rtl = style.get("direction").map(str::trim) == Some("rtl");
+    let block_start = match mode {
+        WritingMode::HorizontalTb => 0,
+        WritingMode::VerticalRl => 1,
+        WritingMode::VerticalLr => 3,
+    };
+    let inline_start = match (mode.vertical(), rtl) {
+        (false, false) => 3,
+        (false, true) => 1,
+        (true, false) => 0,
+        (true, true) => 2,
+    };
+    let (block_end, inline_end) = ((block_start + 2) % 4, (inline_start + 2) % 4);
+    [
+        corner_at(block_start, inline_start),
+        corner_at(block_start, inline_end),
+        corner_at(block_end, inline_end),
+        corner_at(block_end, inline_start),
+    ]
+}
+
+/// Each physical corner's specified radius text (CSS order): a flow-relative longhand
+/// mapped through `style`'s writing mode and direction, else the physical longhand,
+/// else the `border-radius` shorthand's part (flow-relative longhands win as they do for
+/// the side properties). `None`: the initial `0`.
+pub(crate) fn corner_radius_values(style: &ComputedStyle) -> [Option<String>; 4] {
+    let shorthand = style
+        .get("border-radius")
+        .and_then(|v| turbo_dom::rtdom::css_shorthand::expand("border-radius", v))
+        .unwrap_or_default();
+    let mut out: [Option<String>; 4] = std::array::from_fn(|i| {
+        style
+            .get(CORNER_RADIUS_LONGHANDS[i])
+            .map(str::to_string)
+            .or_else(|| {
+                shorthand
+                    .iter()
+                    .find(|l| l.name == CORNER_RADIUS_LONGHANDS[i])
+                    .map(|l| l.value.clone())
+            })
+    });
+    for (name, corner) in LOGICAL_RADIUS_LONGHANDS.iter().zip(logical_corners(style)) {
+        if let Some(v) = style.get(name) {
+            out[corner] = Some(v.to_string());
+        }
+    }
+    out
+}
+
+/// One `border-*-radius` longhand value, `<h> [<v>]` (an invalid or negative value is
+/// the initial square corner).
+fn corner_radius(value: &str, fs: f32) -> CornerRadius {
+    let parts: Vec<LengthPct> = css_value_tokens(value)
+        .iter()
+        .map(|t| parse_length_pct(t, fs).filter(|l| *l != LengthPct::Auto))
+        .collect::<Option<_>>()
+        .unwrap_or_default();
+    match parts.as_slice() {
+        [r] => CornerRadius { h: *r, v: *r },
+        [h, v] => CornerRadius { h: *h, v: *v },
+        _ => CornerRadius::ZERO,
+    }
+}
+
+/// The four corners' `border-*-radius` (CSS order; miaskiewicz/turbo-dom#253).
+fn border_radius_of(s: &ComputedStyle, fs: f32) -> [CornerRadius; 4] {
+    corner_radius_values(s).map(|v| v.map_or(CornerRadius::ZERO, |v| corner_radius(&v, fs)))
 }
 
 fn border_width_token(token: &str, fs: f32) -> Option<u16> {
@@ -2440,7 +2599,7 @@ mod clip_tests {
                 y,
                 width,
                 height,
-                radius: 0.0,
+                radii: crate::layout::fragment::BorderRadii::ZERO,
             })
         };
         assert_eq!(

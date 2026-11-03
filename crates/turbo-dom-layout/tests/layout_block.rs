@@ -651,10 +651,11 @@ fn inline_block_flows_within_the_line_next_to_text() {
     );
 }
 
-/// The `border-radius` (px) of a box fragment, or `None` for a non-box.
+/// The uniform `border-radius` (px) of a box fragment, or `None` for a non-box (or one
+/// whose corners differ).
 fn box_radius(f: &Fragment) -> Option<f32> {
     match &f.content {
-        FragmentContent::Box { border_radius, .. } => Some(*border_radius),
+        FragmentContent::Box { border_radius, .. } => border_radius.as_uniform(),
         _ => None,
     }
 }
@@ -979,7 +980,7 @@ fn mask_image_without_resolver_skips_tint() {
 
 #[test]
 fn percent_border_radius_resolves_against_box() {
-    // `border-radius:50%` resolves against the shorter box side and clamps to half
+    // `border-radius:50%` resolves against each axis of the box (miaskiewicz/turbo-dom#253)
     // (a 40px square → a 20px radius circle).
     let root = lay(
         &[el(

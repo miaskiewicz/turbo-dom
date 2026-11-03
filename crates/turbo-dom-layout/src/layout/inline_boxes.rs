@@ -58,9 +58,7 @@ fn element_unsupported<'a>(
     }
     let ordinary = ordinary_inline(element, display);
     let mode = WritingMode::of(&element.style);
-    match validate_rendered_element(element, display, inside, ordinary)
-        .and_then(|()| validate_writing(element, display))
-    {
+    match validate_rendered_element(element, display, inside, ordinary) {
         Err(error) => out.push((element, error)),
         Ok(()) => collect_unsupported(
             &element.children,
@@ -68,34 +66,6 @@ fn element_unsupported<'a>(
             out,
         ),
     }
-}
-/// What the vertical writing-mode layer does not lay out (miaskiewicz/turbo-dom#234,
-/// #239): the replaced elements of [`physical_default_size`]. Everything else lays out
-/// in the logical space (an inline whose writing mode differs from its parent's lays
-/// out as an atomic inline, `boxgen::classify`).
-fn validate_writing(
-    element: &crate::StyledElement,
-    display: Display,
-) -> Result<(), crate::layout_snapshot::SnapshotError> {
-    use crate::layout_snapshot::SnapshotError;
-    if !WritingMode::of(&element.style).vertical() {
-        return Ok(());
-    }
-    if physical_default_size(element, display) {
-        return Err(SnapshotError::UnsupportedVerticalWriting);
-    }
-    Ok(())
-}
-/// A replaced element the logical layer does not size like Chrome in a vertical mode:
-/// the form controls (Chrome 156 lays them out vertically, with metrics this crate's
-/// horizontal UA approximation does not have either). `<img>`, `<svg>`, `<iframe>`
-/// and the media elements (`<canvas>`, `<video>`, `<audio>`, `<object>`, `<embed>`,
-/// miaskiewicz/turbo-dom#252) turn their physical intrinsic / default size.
-fn physical_default_size(element: &crate::StyledElement, display: Display) -> bool {
-    display != Display::None
-        && atomic_element(element)
-        && super::boxgen::media_element(element).is_none()
-        && !matches!(&element.tag, crate::Tag::Html(name) if matches!(name.as_str(), "img" | "svg" | "iframe"))
 }
 /// A character `text-orientation: mixed` sets upright (Unicode
 /// `Vertical_Orientation` U / Tu, the CJK and related blocks).
@@ -554,7 +524,7 @@ fn empty_fragment(
         FragmentContent::Box {
             background: None,
             border: BorderEdges::default(),
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: None,
             gradient: None,
             transform: None,
@@ -800,7 +770,12 @@ fn background_layers(
         {
             let mut layers = Vec::new();
             if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
-                layers.push(color_layer(id, color, paint, 0.0));
+                layers.push(color_layer(
+                    id,
+                    color,
+                    paint,
+                    super::fragment::BorderRadii::ZERO,
+                ));
             }
             let sources = gradient
                 .take()
@@ -808,12 +783,22 @@ fn background_layers(
                 .into_iter()
                 .chain(image.clone().map(Source::Image));
             for source in sources {
-                layers.extend(layer(id, &props, &source, (strip, paint, 0.0)));
+                layers.extend(layer(
+                    id,
+                    &props,
+                    &source,
+                    (strip, paint, super::fragment::BorderRadii::ZERO),
+                ));
             }
             if !layers.is_empty() {
                 // The border paints over the background layers.
                 let rect = (frag.x, frag.y, frag.width, frag.height);
-                layers.push(border_overlay(id, rect, std::mem::take(border), 0.0));
+                layers.push(border_overlay(
+                    id,
+                    rect,
+                    std::mem::take(border),
+                    super::fragment::BorderRadii::ZERO,
+                ));
             }
             frag.children.extend(layers);
         }
@@ -853,7 +838,7 @@ fn append_part(
         inherited.content = FragmentContent::Box {
             background: None,
             border: BorderEdges::default(),
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: None,
             gradient: None,
             transform: None,
@@ -934,7 +919,7 @@ fn fragment(
         FragmentContent::Box {
             background: used.background,
             border,
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: used.box_shadow,
             gradient: used.background_gradient.clone(),
             transform: None,

@@ -156,7 +156,11 @@ fn colour_layers(body: &str) -> Vec<(f32, f32, f32)> {
             } = &child.content
             {
                 if child.node_id == frag.node_id {
-                    out.push((child.x, child.width, *border_radius));
+                    out.push((
+                        child.x,
+                        child.width,
+                        border_radius.as_uniform().unwrap_or(f32::NAN),
+                    ));
                 }
             }
         }

@@ -29,8 +29,8 @@ match. Origin: turbo-html2pdf-core 0.3.9's layout half plus turbo-surf's CSSOM-V
 ## Install
 
 ```toml
-turbo-dom-layout = "0.6"                                            # bundled fonts on
-turbo-dom-layout = { version = "0.6", default-features = false }   # caller fonts only
+turbo-dom-layout = "0.7"                                            # bundled fonts on
+turbo-dom-layout = { version = "0.7", default-features = false }   # caller fonts only
 ```
 
 MSRV 1.89.
@@ -73,17 +73,31 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
 - **Layout** (`layout`): `layout`, `layout_with_options`, `layout_with_images`,
   `layout_in_viewport`, `layout_recorded` / `layout_recorded_in_viewport` (`LaidOut` +
   `NodeSources`: box → source node, for PDF/UA tagging and links). Options are in
-  `LayoutOptions`. The galley types are `Fragment`, `FragmentContent`, `ImagePlacement`,
+  `LayoutOptions` (`flatten_inline_elements: true` keeps the pre-0.7 flattened inline
+  model on the PDF path; off, inline elements are inline boxes like Chrome). The galley types are `Fragment`, `FragmentContent`, `ImagePlacement`,
   `ClipRect`, `BoxShadow`, `LinearGradient`, `Transform2D` and `BreakMeta`.
   `display: list-item` boxes get their `::marker` as Chrome 156 generates it: `list-item`
   counters (`<ol start reversed>`, `<li value>`, the `type` attribute), the `list-style-type`
   counter styles / strings / `disc` `circle` `square` shapes, and `list-style-position`
   (an outside marker beside the first line box). A marker is sourceless: in the galley it
-  is a `Box` / `TextLine` fragment under its list item (no `NodeSources` entry), in a
-  snapshot `LayoutSnapshot::list_marker_owner` names its item, which it hits.
+  is a `Box` / `TextLine` fragment under its list item (`NodeSources::list_markers` maps it
+  to the item's box; html2pdf tags it `Lbl`), in a snapshot `LayoutSnapshot::list_marker_owner` names its item, which it hits.
+- **Writing modes and bidi.** `vertical-rl` / `vertical-lr` lay out through a logical
+  layer (block, inline, flex, grid, table, floats, absolute boxes, orthogonal items, upright
+  text, the central baseline; `TextLine::vertical` / `upright`); form controls in a vertical
+  mode fail per element with `SnapshotError::UnsupportedVerticalWriting` (turbo-dom#239).
+  Inline layout is UAX #9 bidi (`layout::inline::bidi`) with Blink's caret adjustment; RTL
+  boxes and viewports scroll from the right (`ScrollMetrics::min_x`).
+- **Painting inputs.** `BorderRadii` (per-corner elliptical radii, `as_uniform()` for a
+  single-radius consumer), `Fragment::overflow_clip`, background layers with
+  size / position / repeat / origin / clip (`ClipRect::radii`), inline-box fragments with
+  `box-decoration-break`.
 - **Text** (`text`): `FontRegistry` (`new`, `FontRegistry::system(SystemFontPolicy)` for the
   process-wide installed fonts), `FontFace`, `layout_text`, `TextStyle`, `LineBox`, `Align`,
-  `WhiteSpace`. `cmap` provides the reverse cmap for text extraction.
+  `WhiteSpace`. `FontFace::from_web_font_bytes` loads an `@font-face` face like Chrome
+  (ignoring the legacy `kern` tables Chrome ignores); `FontFace::canvas_text_metrics[_with]`
+  is canvas `measureText`; text advances are Blink's 1/64px LayoutUnit advances
+  (`blink_advances`). `cmap` provides the reverse cmap for text extraction.
 - **Images** (`image`): `ImageResolver` / `NoImages`, `probe` (header size and EXIF
   orientation for PNG / JPEG / GIF / WebP / BMP / ICO / AVIF / JPEG XL, and SVG under
   `svg`), `probe_natural` (`naturalWidth/Height`), `PngFrame` (the one PNG decode),

@@ -130,7 +130,7 @@ fn painted(html: &str) -> Vec<(f32, f32, f32, f32)> {
         for child in &frag.children {
             let shape = matches!(
                 child.content,
-                FragmentContent::Box { background: Some(_), border_radius, .. } if border_radius > 0.0
+                FragmentContent::Box { background: Some(_), border_radius, .. } if border_radius.is_rounded()
             );
             let digit =
                 matches!(&child.content, FragmentContent::TextLine { text, .. } if text == "1. ");

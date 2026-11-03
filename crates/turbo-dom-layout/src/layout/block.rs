@@ -18,7 +18,10 @@ use crate::text::{Align, FontRegistry};
 use std::collections::{HashMap, HashSet};
 
 use super::boxgen::{memo_key, BoxKind, ImageSource, InlineItem, LayoutBox};
-use super::fragment::{BreakMeta, Fragment, FragmentContent, ImagePlacement, NodeId, Transform2D};
+use super::fragment::{
+    BorderRadii, BreakMeta, Fragment, FragmentContent, ImagePlacement, NodeId, OverflowClip,
+    Transform2D,
+};
 use super::imgsize::{size_replaced, SizeCtx, SizedImage};
 use super::inline::{self, InlineRun};
 use super::value::{
@@ -1333,6 +1336,9 @@ fn out_of_flow_atom(id: usize) -> inline::InlineAtom {
 /// aligns instead). `central` (the device scale) reads the last line's central
 /// baseline instead of its alphabetic one (miaskiewicz/turbo-dom#239).
 fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f32> {
+    if let Some(baseline) = form_baseline(b, f, central.is_some()) {
+        return Some(baseline);
+    }
     if b.is_replaced() || !(inline_block(b) || b.shows_alt_text()) {
         return None;
     }
@@ -1350,6 +1356,42 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f3
     let mut last: Option<(f32, f32)> = None;
     last_line(f, &floats, central, &mut last);
     last.map(|(_, baseline)| baseline - f.y)
+}
+
+/// A form control's baseline below its border-box top, where Chrome 156's differs from an
+/// inline-block's (miaskiewicz/turbo-dom#239): a checkbox / radio / range at its
+/// border-box bottom (on a vertical line's central baseline: its border-box middle), an
+/// empty button at its content-box top, a textarea at its bottom margin edge.
+fn form_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> Option<f32> {
+    use super::form_controls::Control;
+    match b.form_control()? {
+        Control::Toggle if central => Some(f.height / 2.0),
+        Control::Toggle => Some(f.height),
+        _ if central => None,
+        // A textarea scrolls: it sits on its bottom margin edge, text or not.
+        Control::TextArea => Some(
+            f.height
+                + b.resolved(ResolveCtx {
+                    parent_font_size: super::value::DEFAULT_FONT_SIZE,
+                    cb_width: 0.0,
+                })
+                .margin
+                .bottom,
+        ),
+        Control::Button if !has_text(f) => {
+            let style = b.resolved(ResolveCtx {
+                parent_font_size: super::value::DEFAULT_FONT_SIZE,
+                cb_width: 0.0,
+            });
+            Some(style.border.widths().top + style.padding.top)
+        }
+        _ => None,
+    }
+}
+
+/// Whether a fragment subtree holds a line of text.
+fn has_text(f: &Fragment) -> bool {
+    matches!(f.content, FragmentContent::TextLine { .. }) || f.children.iter().any(has_text)
 }
 
 /// The central baseline an atom without a baseline of its own synthesizes on a line
@@ -2590,7 +2632,7 @@ fn content_kind(lb: &LayoutBox, bs: &BoxStyle, bbw: f32, bbh: f32) -> FragmentCo
                 .background
                 .filter(|_| lb.mask.is_none() && bs.background_gradient.is_none()),
             border: bs.border,
-            border_radius: resolve_radius(bs.border_radius, bbw, bbh),
+            border_radius: super::value::resolve_radii(&bs.border_radius, bbw, bbh),
             shadow: bs.box_shadow,
             gradient: bs.background_gradient.clone(),
             // Resolve a `%` translate against the box size and the `transform-origin`
@@ -2670,11 +2712,62 @@ fn record_dropped_end_margin(
     }
 }
 
-/// Resolve `border-radius` to px against the border box, clamped to half the
-/// shorter side (so `50%` on a square is a circle, and no corner over-rounds).
-fn resolve_radius(r: LengthPct, bbw: f32, bbh: f32) -> f32 {
-    let px = r.resolve(bbw.min(bbh)).unwrap_or(0.0);
-    px.clamp(0.0, (bbw.min(bbh) / 2.0).max(0.0))
+/// How far an axis whose `overflow` is `visible` (beside `clip`) reaches past the box
+/// in an [`OverflowClip`]: unbounded for painting purposes.
+const UNCLIPPED: f32 = 1.0e6;
+
+/// The used `overflow-x` and `overflow-y` keywords of `style` (the `overflow` shorthand's
+/// one or two values, longhands winning).
+fn overflow_axes(style: &crate::ComputedStyle) -> (String, String) {
+    let shorthand: Vec<String> = style
+        .get("overflow")
+        .map(|v| v.split_whitespace().map(str::to_ascii_lowercase).collect())
+        .unwrap_or_default();
+    let axis = |longhand: &str, i: usize| {
+        style
+            .get(longhand)
+            .map(|v| v.trim().to_ascii_lowercase())
+            .or_else(|| shorthand.get(i).or(shorthand.first()).cloned())
+            .unwrap_or_default()
+    };
+    (axis("overflow-x", 0), axis("overflow-y", 1))
+}
+
+/// The region a box's `overflow` clips its descendants to (miaskiewicz/turbo-dom#253): its
+/// padding box with the inner corner radii, when either axis is not `visible`. A
+/// `visible` axis beside a `hidden` / `auto` / `scroll` one computes to `auto` and clips;
+/// beside `clip` it stays unclipped (CSS Overflow 3 §3.1).
+fn overflow_clip_of(
+    style: &crate::ComputedStyle,
+    bs: &BoxStyle,
+    bbw: f32,
+    bbh: f32,
+) -> Option<OverflowClip> {
+    let (x, y) = overflow_axes(style);
+    let scrolls = |v: &str| matches!(v, "hidden" | "auto" | "scroll");
+    let any_scrolls = scrolls(&x) || scrolls(&y);
+    let (clip_x, clip_y) = (x == "clip" || any_scrolls, y == "clip" || any_scrolls);
+    if !clip_x && !clip_y {
+        return None;
+    }
+    let b = bs.border.widths();
+    let (mut rx, mut rw) = (b.left, (bbw - b.horizontal()).max(0.0));
+    let (mut ry, mut rh) = (b.top, (bbh - b.vertical()).max(0.0));
+    let mut radii = super::value::resolve_radii(&bs.border_radius, bbw, bbh)
+        .inset(b.top, b.right, b.bottom, b.left);
+    if !clip_x {
+        (rx, rw, radii) = (-UNCLIPPED, bbw + 2.0 * UNCLIPPED, BorderRadii::ZERO);
+    }
+    if !clip_y {
+        (ry, rh, radii) = (-UNCLIPPED, bbh + 2.0 * UNCLIPPED, BorderRadii::ZERO);
+    }
+    Some(OverflowClip {
+        x: rx,
+        y: ry,
+        width: rw,
+        height: rh,
+        radii,
+    })
 }
 
 /// Lay out a box whose border-box width is already decided (`bbw`), at border-box
@@ -2828,6 +2921,7 @@ fn layout_box_sized_impl(
         &mut children,
     );
     record_metrics(lb, bs, content_w, fill_h, ctx);
+    let overflow_clip = overflow_clip_of(&lb.style, bs, bbw, bbh);
     Fragment {
         node_id: lb.node_id,
         x: bx,
@@ -2840,6 +2934,7 @@ fn layout_box_sized_impl(
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
         clip: super::value::clip_region(&lb.style, bbw, bbh, 1.0),
+        overflow_clip,
         opacity: bs.opacity,
     }
 }
@@ -3002,24 +3097,36 @@ fn aspect_auto_height(bs: &BoxStyle, content_w: f32) -> Option<f32> {
 /// entry has the resolver), but the resolver-less `natural_width`/`min_content_width`
 /// sizers run deep in the flex/table passes — so without a stamped width a `<div>`
 /// wrapping an `<img>` (a logo) measured 0 and its flex item collapsed / mis-aligned.
-pub(crate) fn stamp_intrinsic_widths(lb: &LayoutBox, images: &ImageCtx) {
-    stamp_replaced_intrinsic(lb, images);
+pub(crate) fn stamp_intrinsic_widths(lb: &LayoutBox, images: &ImageCtx, fonts: &FontRegistry) {
+    stamp_replaced_intrinsic(lb, images, fonts);
     match &lb.kind {
         BoxKind::Block(k) | BoxKind::Flex(k) | BoxKind::Grid(k) | BoxKind::Table(k) => {
             for c in k {
-                stamp_intrinsic_widths(c, images);
+                stamp_intrinsic_widths(c, images, fonts);
             }
         }
         BoxKind::Lines(items) => items
             .iter()
             .filter_map(inline_atomic)
-            .for_each(|c| stamp_intrinsic_widths(c, images)),
+            .for_each(|c| stamp_intrinsic_widths(c, images, fonts)),
         BoxKind::Marker(_) => {}
     }
 }
 
 /// Stamp one box's `intrinsic_w` if it is a resolvable replaced image.
-fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
+fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx, fonts: &FontRegistry) {
+    if let Some(control) = lb.form_control() {
+        let style = lb.resolved_base(ResolveCtx {
+            parent_font_size: super::value::DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        });
+        if let Some((width, height)) =
+            super::form_controls::intrinsic_size(control, &lb.attrs, &style, fonts)
+        {
+            lb.set_intrinsic(width, Some(height));
+        }
+        return;
+    }
     if lb.native_iframe() {
         lb.set_intrinsic(300.0, Some(150.0));
         return;
@@ -3249,6 +3356,7 @@ fn image_fragment(lb: &LayoutBox, bx: f32, by: f32, sized: &SizedImage, bs: &Box
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
         clip: super::value::clip_region(&lb.style, sized.width, sized.height, 1.0),
+        overflow_clip: None,
         opacity: bs.opacity,
     }
 }
@@ -3464,7 +3572,7 @@ fn layout_tree_policy(
     };
     root.set_html_layout_policy((ctx.html_font_metrics, ctx.html_font_scale));
     root.set_original_units(original_units.as_ref());
-    stamp_intrinsic_widths(root, images);
+    stamp_intrinsic_widths(root, images, ctx.fonts);
     let mut frag = layout_box(root, 0.0, 0.0, cb_width, DEFAULT_FONT_SIZE, &mut ctx);
     if !live_geometry {
         super::invisible::scrub(&mut frag, &super::invisible::hidden_ids(root));

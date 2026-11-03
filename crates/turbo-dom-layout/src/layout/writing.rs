@@ -19,8 +19,11 @@
 use std::collections::HashMap;
 
 use super::block::Ctx;
-use super::fragment::{Fragment, FragmentContent, NodeId};
-use super::value::Edges;
+use super::fragment::{BorderRadii, CornerRadii, Fragment, FragmentContent, NodeId};
+use super::value::{
+    corner_at, corner_radius_values, css_value_tokens, BorderEdges, Edges, CORNER_RADIUS_LONGHANDS,
+    LOGICAL_RADIUS_LONGHANDS,
+};
 use crate::layout_snapshot::UsedBoxMetrics;
 use crate::ComputedStyle;
 
@@ -138,6 +141,7 @@ impl Relabel {
                 }
             }
         }
+        self.relabel_radii(style, &mut out);
         if self.swap {
             for (a, b) in AXIS_PAIRS {
                 let (va, vb) = (out.remove(a), out.remove(b));
@@ -152,6 +156,66 @@ impl Relabel {
         out
     }
 }
+
+impl Relabel {
+    /// Move `style`'s corner radii (shorthand, physical and flow-relative longhands, the
+    /// latter mapped through `style`'s own writing mode and direction) into `out` as the
+    /// physical longhands of the target space, their two radii trading places when the
+    /// axes swap (miaskiewicz/turbo-dom#253).
+    fn relabel_radii(self, style: &ComputedStyle, out: &mut ComputedStyle) {
+        let corners = corner_radius_values(style);
+        out.remove("border-radius");
+        for name in CORNER_RADIUS_LONGHANDS
+            .iter()
+            .chain(&LOGICAL_RADIUS_LONGHANDS)
+        {
+            out.remove(name);
+        }
+        for (target, (edge, side)) in CORNER_SIDES.into_iter().enumerate() {
+            let source = corner_at(self.sides[edge], self.sides[side]);
+            if let Some(value) = &corners[source] {
+                out.set(CORNER_RADIUS_LONGHANDS[target], self.axes(value));
+            }
+        }
+    }
+
+    /// A `<h> [<v>]` corner radius in the target space's axes.
+    fn axes(self, value: &str) -> String {
+        match css_value_tokens(value).as_slice() {
+            [h, v] if self.swap => format!("{v} {h}"),
+            _ => value.to_string(),
+        }
+    }
+
+    /// `radii` (physical corners of the source space) in the target space.
+    fn radii(self, radii: BorderRadii) -> BorderRadii {
+        let corners = radii.corners();
+        BorderRadii::from_corners(std::array::from_fn(|target| {
+            let (edge, side) = CORNER_SIDES[target];
+            let c = corners[corner_at(self.sides[edge], self.sides[side])];
+            if self.swap {
+                CornerRadii { h: c.v, v: c.h }
+            } else {
+                c
+            }
+        }))
+    }
+
+    /// `border` (sides of the source space) in the target space.
+    fn border(self, border: BorderEdges) -> BorderEdges {
+        let source = [border.top, border.right, border.bottom, border.left];
+        BorderEdges {
+            top: source[self.sides[0]],
+            right: source[self.sides[1]],
+            bottom: source[self.sides[2]],
+            left: source[self.sides[3]],
+        }
+    }
+}
+
+/// The sides (`top` / `bottom`, `left` / `right` in [`SIDES`] order) at each corner, in
+/// CSS corner order.
+const CORNER_SIDES: [(usize, usize); 4] = [(0, 3), (0, 1), (2, 1), (2, 3)];
 
 /// Side groups: the multi-value shorthand (if any) and the longhand pattern.
 const SIDE_GROUPS: [(&str, &str); 7] = [
@@ -225,12 +289,44 @@ fn from_physical(mode: WritingMode, (x, y, w, h): Rect, width: f32) -> Rect {
 fn map_tree(frag: &mut Fragment, mode: WritingMode, parent: WritingMode) {
     let block = frag.height;
     walk(frag, &mut |f| {
+        let clip = overflow_rect(f);
         set_rect(f, to_physical(mode, rect(f), block), mode);
+        set_overflow_rect(f, clip.map(|c| to_physical(mode, c, block)));
     });
     let width = frag.width;
     walk(frag, &mut |f| {
+        let clip = overflow_rect(f);
         set_rect(f, from_physical(parent, rect(f), width), parent);
+        set_overflow_rect(f, clip.map(|c| from_physical(parent, c, width)));
     });
+    let relabel = Relabel::between(mode, parent);
+    walk(frag, &mut |f| {
+        if let FragmentContent::Box {
+            border,
+            border_radius,
+            ..
+        } = &mut f.content
+        {
+            *border = relabel.border(*border);
+            *border_radius = relabel.radii(*border_radius);
+        }
+        if let Some(clip) = &mut f.overflow_clip {
+            clip.radii = relabel.radii(clip.radii);
+        }
+    });
+}
+
+/// `f`'s overflow clip region as an absolute rectangle.
+fn overflow_rect(f: &Fragment) -> Option<Rect> {
+    f.overflow_clip
+        .map(|c| (f.x + c.x, f.y + c.y, c.width, c.height))
+}
+
+/// Set `f`'s overflow clip region from an absolute rectangle (`f` already moved).
+fn set_overflow_rect(f: &mut Fragment, r: Option<Rect>) {
+    if let (Some(clip), Some((x, y, w, h))) = (&mut f.overflow_clip, r) {
+        (clip.x, clip.y, clip.width, clip.height) = (x - f.x, y - f.y, w, h);
+    }
 }
 
 fn rect(f: &Fragment) -> Rect {
@@ -662,11 +758,10 @@ mod tests {
         assert_eq!(markers(&turned), 1);
     }
 
-    /// What the vertical layer does not lay out fails that element's reads only:
-    /// form controls (upright text, img / svg / iframe and canvas, #252, lay out).
+    /// Every box of a vertical layout lays out: upright text, img / svg / iframe, canvas
+    /// (#252) and form controls (#239) included.
     #[test]
-    fn unsupported_vertical_boxes_fail_per_element() {
-        use crate::layout_snapshot::SnapshotError;
+    fn vertical_boxes_lay_out_without_per_element_failures() {
         let (tree, snapshot, _) = crate::live::testing::layout(
             "<body><div id=v style='writing-mode:vertical-rl'>ok <span id=s>span</span>\
              <div id=f style='display:flex'>f</div><img id=i><b id=ib style='display:inline-block'>b</b>\
@@ -681,7 +776,7 @@ mod tests {
         );
         let id = |selector| crate::live::testing::id(&tree, selector);
         for supported in [
-            "#v", "#s", "#e", "#h", "#f", "#i", "#ib", "#sv", "#ss", "#n", "#cv",
+            "#v", "#s", "#e", "#h", "#f", "#i", "#ib", "#sv", "#ss", "#n", "#cv", "#in",
         ] {
             assert_eq!(
                 snapshot.unsupported_inline_geometry(id(supported)),
@@ -689,10 +784,6 @@ mod tests {
                 "{supported}"
             );
         }
-        assert_eq!(
-            snapshot.unsupported_inline_geometry(id("#in")),
-            Some(&SnapshotError::UnsupportedVerticalWriting)
-        );
     }
 
     /// Upright clusters advance once (a combining mark adds nothing), a horizontal flex

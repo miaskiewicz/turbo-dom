@@ -45,7 +45,10 @@ pub use token::{StyleToken, TokenSet};
 /// Chrome 156's `html.css` makes `button`, `select`, `meter`, `progress` and the
 /// button-like / checkable / color / search inputs `box-sizing: border-box`
 /// (miaskiewicz/turbo-dom#193); text inputs, `input[type=file]` and `textarea` stay
-/// content-box.
+/// content-box. Form controls take Chrome 156's `html.css` defaults (the 13.333px
+/// control font, 2px inset / outset borders, paddings, checkbox / radio / range / color
+/// sizes and margins; miaskiewicz/turbo-dom#239); their font-dependent intrinsic sizes are
+/// `layout::form_controls`.
 const UA_CSS: &str = "
 body { font-family: sans-serif }
 code, kbd, samp, pre { font-family: monospace }
@@ -87,10 +90,16 @@ ol ol ul, ol ul ul, ul ol ul, ul ul ul { list-style-type: square }
 ul ul, ul ol, ol ul, ol ol { margin-top: 0; margin-bottom: 0 }
 center { display: block; text-align: -webkit-center }
 hr { display: block; height: 1px; background-color: #cccccc }
-input { display: inline-block; width: 150px; height: 1.4em; border: 1px solid #a9a9a9; background-color: #ffffff }
+input, textarea, select, button { display: inline-block; margin: 0; font-family: Arial; font-size: 13.333333px; font-weight: normal; font-style: normal; line-height: normal; letter-spacing: normal; word-spacing: normal; text-transform: none; text-indent: 0; text-align: start; color: #000000 }
+input { -internal-ua-padding: 1px 2px; border: 2px inset #767676; background-color: #ffffff }
 input[type=hidden] { display: none }
-textarea { display: inline-block; width: 200px; height: 3em; border: 1px solid #a9a9a9; background-color: #ffffff }
-select, button { display: inline-block; border: 1px solid #a9a9a9; background-color: #efefef }
+textarea { font-family: monospace; padding: 2px; border: 1px solid #767676; background-color: #ffffff; white-space: pre-wrap }
+select { border: 1px solid #767676; background-color: #ffffff; white-space: pre }
+button, input[type=button], input[type=submit], input[type=reset] { -internal-ua-padding: 1px 6px; border: 2px outset #767676; background-color: #efefef; text-align: center }
+input[type=checkbox] { margin: 3px 3px 3px 4px; padding: 0; border: 0; width: 13px; height: 13px }
+input[type=radio] { margin: 3px 3px 0 5px; padding: 0; border: 0; width: 13px; height: 13px }
+input[type=range] { margin: 2px; padding: 0; border: 0; -internal-ua-size: 129px 16px }
+input[type=color] { -internal-ua-size: 50px 27px; padding: 1px 2px; border: 1px solid #767676; background-color: #efefef }
 button, select, meter, progress, input[type=button], input[type=submit], input[type=reset], input[type=color], input[type=checkbox], input[type=radio], input[type=search] { box-sizing: border-box }
 template { display: none }
 canvas, video, audio, object, embed { display: inline }

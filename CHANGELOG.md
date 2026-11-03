@@ -7,48 +7,256 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Performance
+Still landing for 0.7.0 (other agents add their entries below as they merge): form
+controls in vertical writing modes (#239) and the V8 startup snapshot install (#249 phase C).
 
-- turbo-dom-browser-env keeps a process-wide V8 bytecode cache of its engine scripts: every
-  page install (turbo-test installs one per test file) compiled each engine script from source,
-  ~8-9% of a real app suite's CPU. The cache is produced after the script ran (so it holds the
-  lazily compiled functions) and is replaced when V8 rejects it.
-- `matches()` / `closest()` classify the form-state pseudo-classes (`:disabled`, `:checked`,
-  `:invalid`, ...) only for the elements their answer can read: the subject's inclusive
-  ancestors (with their preceding siblings for `+` / `~`) and, for the validity classes, each
-  form / fieldset ancestor's controls. They classified every element of the tree in JS on each
-  call; user-event asks `matches(':disabled')` on every pointer step and MUI's rules ask
-  `:invalid` per input, so large forms were quadratic (turbo-test 0.7.0 perf work).
-  `:has()`, `:indeterminate` and `querySelector[All]` still classify the whole tree.
-- `getComputedStyle` reuses a computed style whose rules read live form / popover / dialog
-  state (`:invalid`, `:checked`, `:placeholder-shown`, `:popover-open`, `:modal`, `:open`, ...).
-  Such a style was never reused before. It is now keyed on a native live-state epoch, which every
-  change the tree version misses bumps: control values, option selectedness, custom and user
-  validity, `indeterminate`, ElementInternals validity, file selections, the popover stack,
-  modal dialogs and an opened picker. View-transition and interest state stay unreused.
-- The CSS animation / transition model (`animations.js` `cssUpdate`) runs once per style change
-  of an element, not on every computed-style read. A running animation recomputes the style on
-  each read, and the update (with `rendered()`'s ancestor walk) was 54% of the CPU of a
-  React/MUI modal test file. Its result is unchanged, and the `css_animations` Chrome controls
-  are unchanged. Gates: deterministic fresh-cascade and update-pass counters
-  (`computed_style_state_rules_reuse_gate`, `css_animation_update_runs_once_per_style_change_gate`).
-- turbo-dom-browser-env's selector-taking DOM methods (`querySelector[All]`, `matches`,
-  `closest`, ...) parse each selector string's grammar once (a bounded per-thread memo).
-  A selector without a `:` skips the five node-dependent pseudo-class rewrite passes, and
-  the SyntaxError message is built only when a selector is rejected (same exact message as
-  before). On form-heavy files this took ~9% of CPU.
-- Node wrappers carry their owner tag (DOM id + tree generation) as a small integer that
-  indexes a per-thread table, instead of a two-word BigInt that was allocated per wrapper and
-  decoded on every native call (`handle_of`, `tagged_owner` and the ownership reconcile were
-  3-5% each). Table entries are never reused, so wrappers from a discarded tree are still
-  refused (turbo-test#204).
-- The mutation fanout builds a V8 record object only when something reads it: a
-  MutationObserver, a custom element definition or the host's trusted document consumer.
-  A page that is recording mutations for script preparation, with nothing observing them,
-  no longer allocates one per mutation (4-5% on React-heavy files).
+## [0.7.0] — <date TBD at tag>
+
+| crate | version |
+|---|---|
+| `turbo-dom` (+ npm `@miaskiewicz/turbo-dom`, `turbo-dom-parser`) | 0.7.0 |
+| `turbo-dom-layout` | 0.7.0 |
+| `turbo-dom-raster` | 0.7.0 |
+| `turbo-dom-browser-env` | 0.7.0 |
+| `turbo-dom-v8` | 150.4.0 (unchanged) |
+
+### Highlights
+
+- **Writing modes and bidi in layout.** `vertical-rl` / `vertical-lr` lay out through a
+  logical-coordinate layer (block, inline, flex, grid, table, floats, absolute boxes,
+  upright CJK, orthogonal items; #234, #239), and inline layout is full UAX #9 bidi with
+  Blink's caret adjustment, `bdo` / `bdi`, `dir=auto` and RTL scrolling (#190, #238).
+- **Chrome's line box model everywhere.** The PDF metric path (`layout_html` /
+  `layout_boxes`) aligns lines on one baseline with the block strut and treats inline
+  elements as inline boxes (#245); `line-height` below the font's content area is honoured
+  (#178); text advances are 1/64px LayoutUnits on every path (#241, #246); `hyphens: auto`
+  for English (#213); list markers (#128).
+- **Painting.** Full `border-radius` model and `overflow` clipping (#253), background
+  size / position / repeat / origin / clip (#248), inline-box decorations in static
+  screenshots (#244), inset box shadows (#192); `<img>` is inline (#242), unloaded images
+  are replaced boxes (#243), media elements are replaced boxes (#252).
+- **browser-env.** XML documents, CDATA sections and `XMLSerializer` (#186); HTML
+  processing instructions like Chrome (#135); CSS animations / transitions in
+  `getAnimations()` (#187, #233); XPath in fragments / shadow roots (#185); real canvas
+  `measureText` (#237); CSSOM grouping / condition rule interfaces (#254).
+- **Performance.** Two rounds of browser-env work on a React/MUI payroll suite (bytecode
+  cache, subject-local form pseudo-classes, state-keyed computed-style reuse, once-per-change
+  CSS animation update, selector memo, Smi owner tags, observer-less flush): one modal test
+  file went from 444 s to 263 s of CPU.
+- **CI.** Linux binaries build on ubuntu-22.04 with a glibc 2.35 ceiling guard: 0.6.0's
+  Linux addons were linked against glibc 2.43 and failed to load on Ubuntu 24.04.
+
+### Breaking changes
+
+Rust API changes, per crate. The npm package's JS API is unchanged.
+
+**turbo-dom**
+
+- `NodeType` has a new variant `CDataSection` (= 4, #186). An exhaustive `match` on
+  `NodeType` needs an arm; treat it like `Text` for character data (it is character data
+  for `nodeValue`, `textContent`, `CharacterData` edits and `:empty`, and serializes as
+  escaped text in HTML serialization).
+- `SelectorError` has a new variant `UnknownPseudoClass(String)`, which names the
+  rejected pseudo-class as written (a functional one ends in `()`). The cascade grammar
+  (`parse_for_cascade`) used to return `Invalid("unknown pseudo-class")` and now returns
+  this, so its message reads e.g. `unknown pseudo-class ':-webkit-bogus'`
+  (turbo-surf#117). An exhaustive `match` needs an arm. Chrome-visible `querySelector`
+  `SyntaxError` text is unchanged.
+
+**turbo-dom-layout**
+
+- `FragmentContent::TextLine` gains `vertical: bool` (#234) and `upright: bool` (#239):
+  a vertical run's glyphs are in the line's own frame, turned a quarter clockwise into the
+  fragment; upright glyphs paint turned back about their pen. Patterns that list every
+  field need `..`; painters that ignore them paint vertical text horizontally.
+- `GlyphRun` gains `upright: bool` (#239).
+- `InlineEdge` gains `clone_advance: Option<f32>` (`box-decoration-break: clone`, #244);
+  `PlacedInlineEdge` gains `decorated: bool` (#238); `GlyphSourceCluster` and
+  `layout_snapshot::SourceClusterBox` gain `bidi_level: u8` and `paragraph_level: u8`
+  (#238), and `SourceClusterBox` / `SnapshotTextRun` gain `vertical: bool` (#239).
+  Struct literals must set them (`None` / `true` / `0` reproduce the old LTR,
+  horizontal behaviour).
+- `WordBreaking` gains `auto: Option<AutoHyphens>` (#213); build it with
+  `WordBreaking::with_auto_hyphens` or set `auto: None`.
+- `cssom_view::scroll::ScrollMetrics` gains `min_x: f64` (#190): `0` for an LTR box,
+  `-(scrollWidth - clientWidth)` for an RTL one, whose offsets run `min_x..=0`.
+- `SnapshotError::UnsupportedVerticalWriting` (#234) is a new variant (a box in a vertical
+  writing mode the native layout cannot lay out yet: form controls, #239 remainder).
+  `UnsupportedInlineWriting` is no longer raised (the variant stays): a direction change
+  lays out with bidi (#238) and an inline in another writing mode is an atomic inline (#239).
+- `LayoutOptions` and `HtmlOptions` gain a required `flatten_inline_elements: bool`
+  (#245). `false` (Chrome's model: inline elements are inline boxes) is the `Default`; `true` keeps the pre-0.7 flattened inline model on the
+  PDF path (lines still take the baseline / strut model) for consumers whose output
+  contracts assume no inline-box fragments (turbo-html2pdf's link annotations and PDF/UA
+  tags). Struct literals must add the field.
+- `border-radius` follows Chrome 156's full model (#253):
+  - `FragmentContent::Box::border_radius` is a `BorderRadii` (four physical corners, each
+    an elliptical `CornerRadii { h, v }` in px, already scaled by the overlap rule) instead
+    of one `f32`. `BorderRadii::as_uniform()` returns the old scalar when every corner is
+    the same circle, `BorderRadii::from(f32)` / `uniform(r)` build one, and `inset` gives
+    the padding / content edge radii. A consumer that paints one radius (html2pdf's PDF
+    emitter) can keep its path for `as_uniform()` and must draw the corners otherwise.
+  - `BoxStyle::border_radius` is `[CornerRadius; 4]` (specified `h` / `v` per corner)
+    instead of one `LengthPct`; `layout::value::resolve_radii` resolves it.
+  - `Fragment` has a new `overflow_clip: Option<OverflowClip>` field: the padding box (with
+    the inner radii) that a box's `overflow` other than `visible` clips its descendants
+    to. `Fragment::new` sets it to `None`; struct literals must add it.
+  - `ClipRect` gains `radii: BorderRadii` (#248, #253; it was `radius: f32` during
+    development): background layers clip to the painting area's per-corner inner radii.
+    Struct literals must add it (`BorderRadii::default()` for square corners).
+- `NodeSources` (from `layout_recorded`) gains `list_markers` (#128); struct literals must
+  add it.
+
+**turbo-dom-browser-env**
+
+- Node wrappers' owner tag (internal field 1) is a Smi indexing a per-thread
+  (DOM id, tree generation) table instead of a two-word BigInt (a08365a). Only code that
+  reads wrapper internal fields directly (`host-internals` embedders) can observe it;
+  stale wrappers from a discarded tree are still refused (turbo-test#204).
+- The crate now depends on `turbo-dom-layout` (bundled fonts) for canvas text
+  measurement (#237).
+
+### Behaviour changes
+
+Chrome 156-matching changes that move layout, screenshot or PDF output. Every corpus
+output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
+
+- **Line boxes on the PDF path (#245):** `layout_html` / `layout_boxes` stack lines on one
+  baseline with the block strut and every font box and atom, at unscaled metrics, and
+  BackCompat documents get the quirks-mode line strut. The standards control line height
+  goes from 36.92px to Chrome's 39px.
+- **No line-height floor (#178):** a `line-height` smaller than the font's ascent +
+  descent is honoured (lines overlap, as in Chrome); only lines holding an atom keep the
+  floor their baseline placement needs.
+- **1/64px text advances (#241, #246):** max-/min-content and the static (PDF /
+  screenshot) path add text advances in LayoutUnits with Blink's device-scale advances
+  (`FontFace::blink_advances`); shrink-to-fit boxes and glyph positions move by up to
+  1/64px. Blink font-cache sizes (`unsigned(size*100)/100`), split legacy-kern pairs and
+  kerning across spaces (#191, #236).
+- **`<img>` is inline by default (#242)** (the UA sheet has `img { display: inline }`), an
+  atomic replaced box on every path.
+- **Unloaded / broken `<img>` (#243):** an undecodable source is a replaced box with the
+  broken-image icon's 16x16 intrinsic size (0x0 with `alt=""`); with alt text it shows the
+  text in a shrink-to-fit box; a 0x0 `<img>` has no aspect ratio.
+- **Replaced media (#252):** `<canvas>`, `<video>`, `<audio controls>`, `<object>` and
+  `<embed src>` are inline replaced boxes with Chrome's default sizes (300x150, audio
+  300x54); `<audio>` without controls is `display: none`.
+- **Tiled backgrounds (#248):** a background image tiles at its `background-size` from the
+  padding box instead of stretching over the content box.
+- **Overflow clipping (#253):** screenshots clip the descendants of every box whose
+  `overflow` is not `visible` (rounded by the inner radii); they were never clipped.
+- **Borders:** each side paints in its own width and colour (it was one stroke in the
+  widest side's colour), and a box in a vertical writing mode paints its borders on the
+  physical sides (#253).
+- **`dir` / `direction` (#190, #238):** `dir=rtl|ltr` maps to `direction`, which inherits;
+  RTL block containers place children from the right; `text-align: start|end` follow the
+  direction; inline content is bidi-reordered; RTL viewports and scrollers scroll from
+  the right.
+- **Inline boxes in static screenshots (#244):** decorated inlines keep their box and
+  paint per line fragment.
+- **`hyphens: auto` (#213):** English content now hyphenates (new default feature
+  `hyphenation`); build with `default-features = false` (and `bundled-fonts` as needed)
+  to keep `auto` acting as `manual`.
+- **List markers (#128):** `display: list-item` boxes now generate `::marker` boxes.
+- **HTML processing instructions in browser-env (#135):** documents installed or parsed
+  by browser-env make `<?target data?>` a ProcessingInstruction, not a bogus comment.
+
+### Added
+
+**turbo-dom**
+
+- `NodeType::CDataSection` and `Tree::create_cdata_section_utf16` (#186).
+- Chrome-mode processing instructions (#135): `Tree::set_processing_instructions`,
+  `Tree::processing_instructions`, `Tree::parse_with_processing_instructions`,
+  `Tree::parse_utf16_with_processing_instructions`,
+  `Tree::parse_utf16_with_source_positions_and_processing_instructions`. The default mode
+  and the html5lib-tests gates keep the bogus comment.
+- `css_shorthand::LENGTH_UNITS` is public (#237).
+
+**turbo-dom-layout**
+
+- Vertical writing modes (#234, #239): a logical-coordinate layer for writing-mode roots;
+  vertical flex / grid / table, atoms, `<img>`, floats, absolute boxes and `direction: rtl`
+  inside vertical roots; orthogonal flex / grid items and table cells; upright text
+  (`text-orientation: mixed` CJK and `upright`); the ideographic central baseline;
+  `<svg>` / `<iframe>` / media default sizes; Range rects and carets in vertical text.
+  Form controls in vertical modes still fail per element (#239, in progress).
+- UAX #9 bidi inline layout (#238): `layout::inline::bidi` (`UnicodeBidi`,
+  `first_strong_rtl`, `is_formatting`), `FontFace::shape_in` / `measure_in`, Blink's caret
+  adjustment at run boundaries, `bdo` / `bdi` / `[dir]` UA rules, `dir=auto`,
+  `unicode-bidi: plaintext`; RTL root viewport scrolling and RTL static positions;
+  `scroll::inline_alignment`.
+- The quirks-mode line height quirk on the live, static and PDF paths (#190, #238, #245).
+- List markers (#128): counters, counter styles, `disc` / `circle` / `square`,
+  `list-style-position`; `LayoutSnapshot::list_marker_owner`; `NodeSources::list_markers`
+  (html2pdf tags a marker as the PDF/UA `Lbl`).
+- `hyphens: auto` for `en` / `en-*` (not en-GB) behind the default `hyphenation` feature
+  (#213): `AutoHyphens`, `WordBreaking::with_auto_hyphens`.
+- `border-radius` (#253): `BorderRadii`, `CornerRadii`, `CornerRadius`, `OverflowClip`,
+  `layout::value::resolve_radii`.
+- Backgrounds (#248): `background-size` / `-position` / `-repeat` (incl. `space` /
+  `round`) / `-origin` / `-clip` from longhands or the shorthand, on block and inline
+  boxes; `ClipRect`.
+- Inline boxes on the static path (#244): decorated inlines, `box-decoration-break:
+  slice | clone`, per-fragment inline background images / gradients.
+- `LayoutOptions::flatten_inline_elements` / `HtmlOptions::flatten_inline_elements` (#245).
+- Canvas text (#191, #236, #237): `FontFace::canvas_text_metrics[_with]`,
+  `CanvasTextMetrics`, `CanvasTextOptions`, `CanvasShaping`, `measure_canvas`,
+  `measure_canvas_text`, `x_height_px`, `cap_height_px`, `ideographic_advance_px`,
+  `blink_advances`, `blink_glyph_advance`, `blink_device_glyph_advance`,
+  `blink_font_size`, `guessed_rtl`.
+- `FontFace::from_web_font_bytes` (#240): loads an `@font-face` web font and hides the
+  legacy `kern` tables Chrome ignores in web fonts (CFF outlines, Apple version 1.0).
+- Replaced `<canvas>` / `<video>` / `<audio>` / `<object>` / `<embed>` (#252).
+- A stretched table cell's used content box takes its row height (#251).
+- `test_support::ic_fixture_face` and the Noto Hebrew / Arabic and U+6C34 fixture faces
+  (`assets/fonts/NOTICE.md`).
+
+**turbo-dom-raster**
+
+- Inset `box-shadow` (#192); per-corner elliptical radii for backgrounds, gradients,
+  borders, shadows and `overflow` clipping (#253); background layers with tiling and
+  clipping, reusing one scaled image (PNG) or one `<image>` via `<use>` (SVG) per run of
+  tiles, without the old 4096-tile cap (#248); inline-box decorations per line fragment
+  (#244); vertical and upright text (#234, #239); bidi-reordered runs (#238); list
+  markers (#128); the `coretext` canvas painter selects the bold / italic face (#236).
+
+**turbo-dom-browser-env**
+
+- XML documents (#186): `parse_xml_document_units` (DOMParser's `application/xml`,
+  `text/xml`, `image/svg+xml`, `application/xhtml+xml`, with Chrome's `<parsererror>`
+  document and error positions, via the `xml` crate), `XMLSerializer`,
+  `createCDATASection`, XML `innerHTML` / `outerHTML`.
+- HTML processing instructions in every installed or parsed document (#135).
+- `CSSAnimation` / `CSSTransition` in `getAnimations()` (#187), `transition-property:
+  all`, no CSS animations under `display: none` ancestors; `getKeyframes()` property order
+  as Blink's hash-map buckets (#233).
+- XPath in DocumentFragment / shadow-root contexts and the (empty) namespace axis (#185).
+- Canvas text (#237): `measureText` returns a real `TextMetrics` (it was a `len*6` stub),
+  measured with turbo-dom-layout against the host's `FontRegistry` (`set_canvas_fonts`;
+  bundled faces otherwise); `letterSpacing`, `wordSpacing` (every CSS length unit),
+  `fontKerning`, `fontStretch`, `textRendering`; the `TextMetrics` interface.
+- CSSOM rule interfaces (#254): `CSSGroupingRule`, `CSSConditionRule`, `CSSContainerRule`
+  (`containerName`, `containerQuery`), `CSSMediaRule`, `CSSSupportsRule`,
+  `CSSLayerBlockRule`, `CSSLayerStatementRule`, `CSSScopeRule`, `CSSStartingStyleRule`.
 
 ### Fixed
 
+Detail per fix (each backed by a Chrome 156 control):
+
+- turbo-dom-layout and turbo-dom-raster implement `border-radius` like Chrome 156 (#253):
+  per-corner longhands and the `border-radius` shorthand's 1-4 values with `h / v`
+  elliptical radii (expanded in cascade order), percentages against the border box's own
+  width / height (`50%` on a non-square box is an ellipse, it was a pill), the overlap
+  scale-down, the flow-relative `border-{start,end}-{start,end}-radius` corners under
+  `direction: rtl` and vertical writing modes, and inner radii at the padding / content
+  edges. The PNG and SVG screenshots use them for backgrounds and gradients, borders (the
+  ring between the outer and inner outlines, each side in its own width and colour, sides
+  meeting on the corner diagonals; it was one stroke in the widest side's colour), outer
+  and inset shadows, #248's background layers (clipped to the rounded painting area) and
+  `overflow` clipping, which the screenshots now apply to every box whose `overflow` is not
+  `visible` (descendants were never clipped). A box laid out in a vertical writing mode
+  also paints its borders on the right physical sides (they were the logical ones).
 - turbo-dom-layout places background images and gradients like Chrome 156 (#248):
   `background-size` (lengths, `%`, `auto`, `cover`, `contain`), `-position` (1-4 values),
   `-repeat` (`repeat-x` / `-y`, two values; `space` / `round` tile like `repeat`),
@@ -56,8 +264,8 @@ at the time); this file reconstructs them from history.
   shorthand, on block and inline boxes, in PNG, SVG and PDF. A background image was
   stretched over the content box; it now tiles at its size from the padding box, which
   changes the tools/parity image pages' `.bg` boxes (declared in
-  `tools/parity/expected/turbo-dom-248-background-layers.json`). Layers ignore
-  `border-radius`.
+  `tools/parity/expected/turbo-dom-248-background-layers.json`). Layers clip to the
+  rounded painting area, per corner since #253.
 - turbo-dom-raster's static screenshots (PNG and SVG) paint inline boxes like Chrome 156
   (#244): an inline with a background, box shadow, padding, border or horizontal margin
   keeps its box through turbo-dom-layout's static line layout and paints per line fragment
@@ -102,6 +310,106 @@ at the time); this file reconstructs them from history.
   setHTML[Unsafe] / Document.parseHTML[Unsafe] match Chrome; a safe `setHTML` dictionary without
   processing-instruction lists drops them and the sanitizer keeps Document-level ones, like
   Chrome. The default mode and the conformance gates keep html5lib-tests' bogus comment.
+- Text: Blink font-cache sizes, device-size advances, legacy kern-table pairs split across
+  both glyphs, kerning across collapsible spaces, canvas `fillText` pen advances and canvas
+  weight / style face matching (#191, #236; host-font Times control on macOS).
+- Web fonts: a CFF web font's legacy `kern` table (and an Apple version 1.0 table) is no
+  longer applied, via `FontFace::from_web_font_bytes` (#240).
+- browser-env `innerHTML` / `outerHTML` of XML documents serialize and parse XML (#186).
+- An empty inline box in a bidi-reordered line goes with the item after it (1e34d4c).
+- The orthogonal table width (#250) already matched Chrome once #241 landed; its test mask
+  is gone.
+
+### Performance
+
+turbo-dom-browser-env, measured on a React/MUI payroll suite (turbo-test 0.7.0 work).
+Every item is gated by a deterministic counter test, not wall-clock.
+
+- turbo-dom-browser-env keeps a process-wide V8 bytecode cache of its engine scripts: every
+  page install (turbo-test installs one per test file) compiled each engine script from source,
+  ~8-9% of a real app suite's CPU. The cache is produced after the script ran (so it holds the
+  lazily compiled functions) and is replaced when V8 rejects it.
+- `matches()` / `closest()` classify the form-state pseudo-classes (`:disabled`, `:checked`,
+  `:invalid`, ...) only for the elements their answer can read: the subject's inclusive
+  ancestors (with their preceding siblings for `+` / `~`) and, for the validity classes, each
+  form / fieldset ancestor's controls. They classified every element of the tree in JS on each
+  call; user-event asks `matches(':disabled')` on every pointer step and MUI's rules ask
+  `:invalid` per input, so large forms were quadratic (turbo-test 0.7.0 perf work).
+  `:has()`, `:indeterminate` and `querySelector[All]` still classify the whole tree.
+- `getComputedStyle` reuses a computed style whose rules read live form / popover / dialog
+  state (`:invalid`, `:checked`, `:placeholder-shown`, `:popover-open`, `:modal`, `:open`, ...).
+  Such a style was never reused before. It is now keyed on a native live-state epoch, which every
+  change the tree version misses bumps: control values, option selectedness, custom and user
+  validity, `indeterminate`, ElementInternals validity, file selections, the popover stack,
+  modal dialogs and an opened picker. View-transition and interest state stay unreused.
+- The CSS animation / transition model (`animations.js` `cssUpdate`) runs once per style change
+  of an element, not on every computed-style read. A running animation recomputes the style on
+  each read, and the update (with `rendered()`'s ancestor walk) was 54% of the CPU of a
+  React/MUI modal test file. Its result is unchanged, and the `css_animations` Chrome controls
+  are unchanged. Gates: deterministic fresh-cascade and update-pass counters
+  (`computed_style_state_rules_reuse_gate`, `css_animation_update_runs_once_per_style_change_gate`).
+- turbo-dom-browser-env's selector-taking DOM methods (`querySelector[All]`, `matches`,
+  `closest`, ...) parse each selector string's grammar once (a bounded per-thread memo).
+  A selector without a `:` skips the five node-dependent pseudo-class rewrite passes, and
+  the SyntaxError message is built only when a selector is rejected (same exact message as
+  before). On form-heavy files this took ~9% of CPU.
+- Node wrappers carry their owner tag (DOM id + tree generation) as a small integer that
+  indexes a per-thread table, instead of a two-word BigInt that was allocated per wrapper and
+  decoded on every native call (`handle_of`, `tagged_owner` and the ownership reconcile were
+  3-5% each). Table entries are never reused, so wrappers from a discarded tree are still
+  refused (turbo-test#204).
+- The mutation fanout builds a V8 record object only when something reads it: a
+  MutationObserver, a custom element definition or the host's trusted document consumer.
+  A page that is recording mutations for script preparation, with nothing observing them,
+  no longer allocates one per mutation (4-5% on React-heavy files).
+
+- Loaded pages without `<?` keep the scalar html5ever parse (2b62721, #135).
+- Measured: 9731a05 took the payroll `EditExpenseModal` test file from 444 s to 263 s of
+  CPU; 3c979fe alone took 147 payroll files from 37.1 to 33.3 CPU-s.
+- In progress (#249): a V8 startup snapshot of the installed window. Landed so far:
+  `install_with_tree` split into `bootstrap_engine` + `attach_document` (e9304e7;
+  `TURBO_DOM_ATTACH_PATH=1` routes installs through it and CI runs the suite on both
+  paths), the external-reference registry and snapshot build (1a505f6), and the rehydrate
+  registry for function-holding context slots (e199b56). The default install is
+  unchanged; the snapshot-backed install is not wired in yet.
+
+### CI
+
+- Linux napi binaries and the publish jobs build on `ubuntu-22.04` / `ubuntu-22.04-arm`
+  (glibc 2.35) instead of `ubuntu-latest` (26.04, glibc 2.43), and
+  `scripts/check-glibc-ceiling.sh` fails any `linux-gnu` `.node` that needs a `GLIBC_`
+  symbol above 2.35 (d548cae).
+- The browser-env coverage job's tarpaulin `--timeout` is sized for the whole test binary
+  (it bounds a binary run, not one test; #235).
+- Superseded `pull_request` CI runs are cancelled (concurrency group); `workflow_call`
+  (publish), tag and `main` runs never are (5f8407b).
+- Every in-repo Chrome control launches the frozen Chrome 156 shell with
+  `--use-mock-keychain --password-store=basic`.
+
+### Downstream notes
+
+**turbo-surf**
+
+- `DOMParser` / XHR XML responses should call `turbo_dom_browser_env::parse_xml_document_units`
+  (they threw for XML types), and the sanitizer's XML `KNOWN_GAP` can be removed (#186).
+- Call `set_canvas_fonts(context, registry)` with the live layout's `FontRegistry` (system
+  fonts plus fetched `@font-face` faces) so `measureText` matches the page (#237).
+- Load `@font-face` faces with `FontFace::from_web_font_bytes` (#240).
+- Handle `TextLine::vertical` / `upright` and `SnapshotError::UnsupportedVerticalWriting`;
+  re-check static corpora for #243 / #248 (declared in `tools/parity/expected/`).
+
+**turbo-html2pdf**
+
+- Compile breaks: `FragmentContent::Box::border_radius` (use `BorderRadii::as_uniform()`
+  for the single-radius PDF path, draw corners otherwise), `ClipRect::radii`,
+  `Fragment::overflow_clip`, `BoxStyle::border_radius`, `TextLine { vertical, upright }`,
+  `InlineEdge::clone_advance`, `PlacedInlineEdge::decorated`,
+  `GlyphSourceCluster::{bidi_level, paragraph_level}`, `WordBreaking::auto`,
+  `NodeSources::list_markers`, `LayoutOptions` / `HtmlOptions::flatten_inline_elements`.
+- Set `flatten_inline_elements: true` to keep link annotations and PDF/UA tags on the
+  pre-0.7 inline model; line boxes still change (#245, declared in `b-0.7.0`).
+- Tag list markers via `NodeSources::list_markers` as PDF/UA `Lbl` (#128).
+- Use `FontFace::from_web_font_bytes` for `@font-face` faces (#240).
 
 ## [0.6.0] — turbo-dom consolidation
 

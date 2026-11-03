@@ -106,9 +106,8 @@ pub enum SnapshotError {
     /// embedding, lays out since miaskiewicz/turbo-dom#238.)
     #[error("native ordinary inline vertical writing is unsupported")]
     UnsupportedInlineWriting,
-    /// A box in a vertical writing mode the native layout cannot lay out yet: a
-    /// `<canvas>`, `<video>`, `<object>` / `<embed>`, `<audio>` or form control
-    /// (miaskiewicz/turbo-dom#234, #239).
+    /// No longer produced: media elements (miaskiewicz/turbo-dom#252) and form controls
+    /// (#239) lay out in vertical writing modes. Kept for API stability.
     #[error("native vertical writing-mode layout of this box is unsupported")]
     UnsupportedVerticalWriting,
     /// No longer produced: absolute/fixed inlines blockify and inline sticky boxes
