@@ -211,10 +211,21 @@ const VERTICAL_CASES = [
   ],
   [
     "orthogonal-table-cell",
-    `<table data-cid="t"><tr><td data-cid="td" class="rl">ab cd</td><td>x</td></tr></table>`,
-    // The `x` column's max-content is 1/64 px short in any mode (#241).
-    // (A stretched cell keeps its unstretched clientHeight in any mode; not read here.)
-    { measure: { t: "xyh" } },
+    `<table data-cid="t"><tr><td data-cid="td" class="rl">ab cd</td><td data-cid="x">x</td></tr></table>`,
+  ],
+  // miaskiewicz/turbo-dom#251: a cell stretched to its row height reports the row height
+  // in client* / scroll* / offset* and its rect, with padding and border, in both modes.
+  [
+    "stretched-table-cells",
+    `<table data-cid="t"><tr><td data-cid="a">${BOX(10, 50)}</td><td data-cid="b">x</td><td data-cid="c" style="padding:3px 4px;border:2px solid">x</td></tr></table>`,
+  ],
+  [
+    "rl-stretched-table-cells",
+    `<div class="rl" style="height:200px"><table data-cid="t"><tr><td data-cid="a">${BOX(50, 10)}</td><td data-cid="b">x</td><td data-cid="c" style="padding:3px 4px;border:2px solid">x</td></tr></table></div>`,
+  ],
+  [
+    "lr-stretched-table-cells",
+    `<div class="lr" style="height:200px"><table data-cid="t"><tr><td data-cid="a">${BOX(50, 10)}</td><td data-cid="b" style="padding:1px 5px 2px 3px;border-left:4px solid">x</td></tr></table></div>`,
   ],
   [
     "orthogonal-inline",
