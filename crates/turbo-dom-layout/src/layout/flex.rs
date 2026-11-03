@@ -978,7 +978,7 @@ fn measure_item(
     let (cw, ch) = if item.relabel_memo.is_copy() {
         let mut inputs = super::boxgen::measure_inputs(item, fonts);
         inputs.extend([
-            u64::from(w.round().clamp(0.0, u32::MAX as f32) as u32),
+            u64::from(w.to_bits()),
             u64::from(fs.to_bits()),
             std::ptr::from_ref(images.resolver).cast::<()>() as usize as u64,
             u64::from(images.body_height.unwrap_or(-1.0).to_bits()),
@@ -1081,11 +1081,26 @@ fn place_one(
     if column || !matches!(bs.height, LengthPct::Px(_)) {
         let inset_v = bs.padding.vertical() + bs.border.widths().vertical();
         bs.height = LengthPct::Px((layout.size.height - inset_v).max(0.0));
+        if bs.box_sizing == BoxSizing::BorderBox {
+            // The item's own border-box `min-height` / `max-height` become content-box
+            // lengths with it, so they don't add the frame twice (0.7.0 review R3 #2).
+            bs.min_height = content_height(bs.min_height, inset_v);
+            bs.max_height = content_height(bs.max_height, inset_v);
+        }
         bs.box_sizing = BoxSizing::ContentBox;
     }
     let mut frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, layout.size.width, ctx);
     frag.translate(cx + layout.location.x, cy + layout.location.y);
     frag
+}
+
+/// A border-box `px` length as a content-box one (`inset`: padding and border on that
+/// axis); percentages and `auto` / `none` are left as they are.
+fn content_height(lp: LengthPct, inset: f32) -> LengthPct {
+    match lp {
+        LengthPct::Px(v) => LengthPct::Px((v - inset).max(0.0)),
+        other => other,
+    }
 }
 
 fn place_items(
@@ -1451,6 +1466,19 @@ fn build_grid_leaves(
                 parent_font_size: fs,
                 cb_width: 0.0,
             }));
+            // taffy sizes border boxes: content-box lengths grow by the padding and
+            // border (0.7.0 review R3 #2).
+            let mut style = border_box_sizes(style, it, fs, false);
+            // taffy's track sizing reads the preferred size unclamped: a `px` size
+            // reaches it already within its `px` min / max, like Chrome's used size.
+            style.size = Size {
+                width: clamp_len(style.size.width, style.min_size.width, style.max_size.width),
+                height: clamp_len(
+                    style.size.height,
+                    style.min_size.height,
+                    style.max_size.height,
+                ),
+            };
             // Grid items carry their own `justify-self` (flex has none). Its default
             // is `stretch` via the container's `justify-items`; a `center`/`start`/
             // `end` value here instead sizes the item to its own width and aligns it
@@ -1475,6 +1503,22 @@ fn build_grid_leaves(
             tree.new_leaf_with_context(style, i).expect("grid leaf")
         })
         .collect()
+}
+
+/// A `px` taffy length clamped by `px` `min` / `max` lengths (`min` wins, as in CSS);
+/// any other length or bound is left to taffy.
+fn clamp_len(d: Dimension, min: Dimension, max: Dimension) -> Dimension {
+    let px = |d: Dimension| (d.tag() == taffy::CompactLength::LENGTH_TAG).then(|| d.value());
+    let Some(mut v) = px(d) else {
+        return d;
+    };
+    if let Some(hi) = px(max) {
+        v = v.min(hi);
+    }
+    if let Some(lo) = px(min) {
+        v = v.max(lo);
+    }
+    Dimension::length(v)
 }
 
 /// A CSS `grid-column`/`grid-row` value → taffy line placement. Handles `span N`,

@@ -475,9 +475,9 @@ impl LayoutBox {
     }
 
     /// The memoized measured content size at proposed width `w`, computing it once
-    /// per distinct (rounded) width via `f`.
+    /// per distinct exact width via `f` (a rounded key shared probes that wrap differently, 0.7.0 review R3 #6).
     pub(crate) fn measure_cached(&self, w: f32, f: impl FnOnce() -> (f32, f32)) -> (f32, f32) {
-        let key = w.round().clamp(0.0, u32::MAX as f32) as u32;
+        let key = w.to_bits();
         // Scope the immutable borrow to this `let` so it is dropped before `f()` (a
         // recursive sub-layout) or the `borrow_mut` below can run.
         let hit = self.measure_cache.borrow().as_ref().and_then(|cache| {
