@@ -2698,6 +2698,10 @@ fn layout_box_sized_impl(
     ctx: &mut Ctx,
     force_bfc: bool,
 ) -> Fragment {
+    // A flex / grid item or table cell that is a writing-mode root (#239).
+    if let Some(frag) = super::writing::layout_root_sized(lb, (bx, by), bbw, bs.font_size, ctx) {
+        return frag;
+    }
     lb.begin_layout();
     // A replaced `<img>` sizes from its intrinsic dimensions + caps rather than
     // flowing content — the same as the normal-flow `layout_box` path. Flex/grid

@@ -291,10 +291,6 @@ fn unsupported_ordinary_inline_contexts_fail_only_their_own_reads() {
             "<span id=u style='direction:rtl'>rtl</span>",
             SnapshotError::UnsupportedInlineWriting,
         ),
-        (
-            "<span id=u style='writing-mode:vertical-rl'>vertical</span>",
-            SnapshotError::UnsupportedInlineWriting,
-        ),
     ];
     for (markup, expected) in cases {
         let html = format!("<div id=box>{markup}</div><p id=ok>ok</p>");
@@ -338,6 +334,12 @@ fn unsupported_ordinary_inline_contexts_fail_only_their_own_reads() {
         snapshot.unsupported_inline_geometry(names["u"]),
         Some(&SnapshotError::UnsupportedInlineWriting)
     );
+    // miaskiewicz/turbo-dom#239: an inline with its own writing mode lays out as an
+    // atomic inline (an orthogonal flow root), like Chrome.
+    let (snapshot, names) =
+        capture("<div id=box><span id=v style='writing-mode:vertical-rl'>vertical</span></div>");
+    assert_eq!(snapshot.unsupported_inline_geometry(names["v"]), None);
+    assert!(element_geometry(&snapshot, names["v"]).is_ok());
     // position:absolute blockifies (CSS 2.1 §9.7): a supported out-of-flow block box.
     let (snapshot, names) = capture("<span id=a style='position:absolute'>absolute</span>");
     assert_eq!(snapshot.unsupported_inline_geometry(names["a"]), None);

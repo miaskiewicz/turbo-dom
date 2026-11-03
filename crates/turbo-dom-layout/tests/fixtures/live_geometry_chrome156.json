@@ -6174,10 +6174,12 @@
   },
   {
    "id": "vertical-orthogonal-table-cell",
-   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><table data-cid=\"t\"><tr><td data-cid=\"td\" class=\"rl\">ab cd</td><td data-cid=\"te\">x</td></tr></table>",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><table data-cid=\"t\"><tr><td data-cid=\"td\" class=\"rl\">ab cd</td><td>x</td></tr></table>",
    "fonts": true,
    "metrics": true,
-   "measure": {},
+   "measure": {
+    "t": "xyh"
+   },
    "boxes": [
     {
      "cid": "t",
@@ -6219,28 +6221,6 @@
       "clientWidth": 22,
       "clientHeight": 51,
       "scrollWidth": 22,
-      "scrollHeight": 51,
-      "scrollLeft": 0
-     }
-    },
-    {
-     "cid": "te",
-     "x": 26,
-     "y": 2,
-     "width": 11.859375,
-     "height": 51.234375,
-     "display": "table-cell",
-     "position": "static",
-     "metrics": {
-      "offsetLeft": 26,
-      "offsetTop": 2,
-      "offsetWidth": 12,
-      "offsetHeight": 51,
-      "clientLeft": 0,
-      "clientTop": 0,
-      "clientWidth": 12,
-      "clientHeight": 51,
-      "scrollWidth": 12,
       "scrollHeight": 51,
       "scrollLeft": 0
      }

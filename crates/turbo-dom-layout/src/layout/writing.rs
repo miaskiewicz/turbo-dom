@@ -277,8 +277,31 @@ struct Saved {
 /// current containing block's inline size. `None` for any other box.
 pub(crate) fn layout_root(
     lb: &super::boxgen::LayoutBox,
-    (bx, by): (f32, f32),
+    origin: (f32, f32),
     cb_width: f32,
+    parent_fs: f32,
+    ctx: &mut Ctx,
+) -> Option<Fragment> {
+    layout_root_in(lb, origin, (cb_width, None), parent_fs, ctx)
+}
+
+/// [`layout_root`] for a root whose border-box width (in the current space) is
+/// already decided: a flex or grid item or a table cell (`layout_box_sized`). The
+/// width is the root's block size when it is orthogonal, else its inline size.
+pub(crate) fn layout_root_sized(
+    lb: &super::boxgen::LayoutBox,
+    origin: (f32, f32),
+    bbw: f32,
+    parent_fs: f32,
+    ctx: &mut Ctx,
+) -> Option<Fragment> {
+    layout_root_in(lb, origin, (bbw, Some(bbw)), parent_fs, ctx)
+}
+
+fn layout_root_in(
+    lb: &super::boxgen::LayoutBox,
+    (bx, by): (f32, f32),
+    (cb_width, sized): (f32, Option<f32>),
     parent_fs: f32,
     ctx: &mut Ctx,
 ) -> Option<Fragment> {
@@ -288,7 +311,18 @@ pub(crate) fn layout_root(
         return None;
     }
     let relabel = Relabel::between(parent, mode);
-    let root = lb.relabelled(relabel);
+    let mut root = lb.relabelled(relabel);
+    // In its own space the root is no orthogonal flow (its intrinsic widths measure
+    // its content there, not through [`orthogonal_extent`]).
+    root.orthogonal_root = false;
+    if let Some(bbw) = sized {
+        let axis = if relabel.swap { "height" } else { "width" };
+        root.style.set(axis, format!("{bbw}px"));
+        root.style.set("box-sizing", "border-box".to_string());
+        for limit in ["min-", "max-"] {
+            root.style.remove(&format!("{limit}{axis}"));
+        }
+    }
     let orthogonal = relabel.swap;
     let available = if orthogonal {
         orthogonal_available(parent, ctx)
@@ -319,6 +353,62 @@ pub(crate) fn layout_root(
     map_tree(&mut frag, mode, parent);
     frag.translate(bx, by);
     Some(frag)
+}
+
+/// An orthogonal root's border-box width in its parent's space when its size is not
+/// given: laid out on its own (a scratch layout at the viewport's available size), its
+/// block size fits its content. The max- and min-content width a flex / grid / table
+/// container sizes it by (CSS Writing Modes 4 §7.3; miaskiewicz/turbo-dom#239).
+pub(crate) fn orthogonal_extent(lb: &super::boxgen::LayoutBox, fonts: &crate::FontRegistry) -> f32 {
+    let images = crate::ImageCtx {
+        resolver: &crate::NoImages,
+        body_height: None,
+    };
+    let mut diags = crate::Diagnostics::default();
+    let (width, height) = crate::style::viewport_px();
+    let parent = if WritingMode::of(&lb.style).vertical() {
+        WritingMode::HorizontalTb
+    } else {
+        WritingMode::VerticalRl
+    };
+    let (html_font_metrics, html_font_scale) = lb.html_layout_policy_pair();
+    let mut ctx = Ctx {
+        fonts,
+        images: &images,
+        diags: &mut diags,
+        abs_cb_x: 0.0,
+        abs_cb_y: 0.0,
+        abs_cb_w: width,
+        abs_cb_h: 0.0,
+        abs_cb_h_known: false,
+        cb_h: 0.0,
+        cb_h_known: false,
+        root_w: width,
+        root_h: height,
+        icb_h: height,
+        abs_cb_icb: false,
+        live_geometry: html_font_metrics,
+        used_metrics: None,
+        text_capture: None,
+        html_font_metrics,
+        html_font_scale,
+        original_units: None,
+        native_transforms: None,
+        floats: Vec::new(),
+        table_rows: None,
+        dropped_end_margins: std::collections::HashSet::new(),
+        sticky_pending: Vec::new(),
+        writing: parent,
+    };
+    let available = if parent.vertical() { height } else { width };
+    layout_root(
+        lb,
+        (0.0, 0.0),
+        available,
+        super::value::DEFAULT_FONT_SIZE,
+        &mut ctx,
+    )
+    .map_or(0.0, |frag| frag.width)
 }
 
 /// The space available to an orthogonal root's inline size: the containing block's

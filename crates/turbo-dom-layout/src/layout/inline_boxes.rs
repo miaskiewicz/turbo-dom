@@ -68,7 +68,7 @@ fn element_unsupported<'a>(
     }
     let mode = WritingMode::of(&element.style);
     match validate_rendered_element(element, display, inside, ordinary)
-        .and_then(|()| validate_writing(element, display, (ordinary, mode != parent)))
+        .and_then(|()| validate_writing(element, display))
     {
         Err(error) => out.push((element, error)),
         Ok(()) => collect_unsupported(
@@ -79,19 +79,14 @@ fn element_unsupported<'a>(
     }
 }
 /// What the vertical writing-mode layer does not lay out (miaskiewicz/turbo-dom#234,
-/// #239): an ordinary inline whose writing mode differs from its parent's, upright text
-/// (CJK under `text-orientation: mixed`, or `upright`), and a replaced element whose
-/// size falls back to a physical default (see [`physical_default_size`]). Block, flex,
-/// grid and table boxes, inline-level atoms and `<img>` lay out in the logical space.
+/// #239): the replaced elements of [`physical_default_size`]. Everything else lays out
+/// in the logical space (an inline whose writing mode differs from its parent's lays
+/// out as an atomic inline, `boxgen::classify`).
 fn validate_writing(
     element: &crate::StyledElement,
     display: Display,
-    (ordinary, own_mode): (bool, bool),
 ) -> Result<(), crate::layout_snapshot::SnapshotError> {
     use crate::layout_snapshot::SnapshotError;
-    if ordinary && own_mode {
-        return Err(SnapshotError::UnsupportedInlineWriting);
-    }
     if !WritingMode::of(&element.style).vertical() {
         return Ok(());
     }

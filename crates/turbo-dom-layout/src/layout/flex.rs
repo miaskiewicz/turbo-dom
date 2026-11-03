@@ -695,6 +695,9 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         if let LengthPct::Px(w) = bs.width {
             return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
+        if lb.orthogonal_root && lb.writing_root {
+            return super::writing::orthogonal_extent(lb, fonts);
+        }
         // A replaced `<img>`: its intrinsic width (stamped from the resolver before
         // layout) â so a `<div>` wrapping a logo measures the image, not 0.
         if let Some(iw) = lb.intrinsic_w.get() {
@@ -762,8 +765,10 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         if let LengthPct::Px(w) = bs.width {
             return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
-        if lb.is_replaced() {
-            return natural_width(lb, fonts); // replaced image: intrinsic/declared size
+        if lb.is_replaced() || (lb.orthogonal_root && lb.writing_root) {
+            // A replaced image: its intrinsic / declared size; an orthogonal root: its
+            // laid-out block size.
+            return natural_width(lb, fonts);
         }
         let inner = match &lb.kind {
             BoxKind::Lines(items) => lines_min(
