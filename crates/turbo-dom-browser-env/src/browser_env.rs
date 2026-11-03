@@ -7743,6 +7743,36 @@ pub fn snapshot_blob_with(prelude: fn(&mut v8::PinScope)) -> Option<SnapshotBlob
     .flatten()
 }
 
+/// The external reference table a [`snapshot_blob_with`] blob is built with, and its
+/// fingerprint: a hash of each callback's offset from this crate's code, the same in every
+/// process of one binary (whatever its load address) as long as the table is. An embedder that
+/// keeps a blob across processes keys it on the fingerprint and deserializes it with this table
+/// (a rebuilt blob is not byte-identical, and V8 rejects bytecode caches made against another
+/// blob). Recorded on a thread of its own (one throwaway bootstrap; no caller's DOM is touched).
+/// Call it before any install in the process, as a build would be: installs record callbacks
+/// too, which would change the table.
+pub fn snapshot_references() -> (&'static [v8::ExternalReference], u64) {
+    let (start, len) = std::thread::spawn(|| {
+        let references = crate_surface::startup_snapshot::references();
+        (references.as_ptr() as usize, references.len())
+    })
+    .join()
+    .expect("the reference recording does not panic");
+    // SAFETY: a leaked, never-mutated slice (`startup_snapshot::references`).
+    let references: &'static [v8::ExternalReference] =
+        unsafe { std::slice::from_raw_parts(start as *const v8::ExternalReference, len) };
+    let anchor = snapshot_references as usize;
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for reference in references {
+        // SAFETY: every table entry is a function pointer (`external_refs::table`).
+        let offset = (unsafe { reference.pointer } as usize).wrapping_sub(anchor) as u64;
+        for byte in offset.to_le_bytes() {
+            hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    (references, hash)
+}
+
 /// A startup blob and its external reference table ([`snapshot_blob`]).
 pub struct SnapshotBlob {
     /// The serialized heap.

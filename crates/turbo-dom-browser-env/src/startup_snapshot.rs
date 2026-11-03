@@ -76,6 +76,14 @@ fn record_references() {
     reset();
 }
 
+/// The external reference table a [`build_with`] blob is made with: one throwaway bootstrap
+/// records it (as a build does first). With nothing recorded before, its order is the
+/// bootstrap's, the same in every process of one binary.
+pub(crate) fn references() -> &'static [v8::ExternalReference] {
+    record_references();
+    Box::leak(external_refs::table().into_boxed_slice())
+}
+
 /// Build a startup blob whose default context is a bootstrapped shell window. `None` (and a
 /// log line; installs then run the engine scripts) when the build fails before `create_blob`:
 /// the bootstrap in the snapshot isolate handed V8 a callback the recording pass did not (the
