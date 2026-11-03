@@ -115,3 +115,22 @@ fn upright_text_paints_like_chrome_156_svg() {
     let failures = differences(svg);
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// An upright run paints one path per inked glyph (a space has no outline) and nothing
+/// when transparent.
+#[test]
+fn upright_svg_paths_skip_blank_glyphs_and_transparent_runs() {
+    let fonts = fonts();
+    let svg = |color: &str| {
+        let html = format!(
+            "<body style='font:16px/20px \"Ic Fixture\";color:{color}'>\
+             <div style='writing-mode:vertical-rl;height:100px;text-orientation:upright;white-space:pre'>a b</div>"
+        );
+        let mut diags = Diagnostics::default();
+        let galley = layout_html(&html, "", 800.0, &fonts, &mut diags).unwrap();
+        let assets = crate::image_paint::decode_all(&HashMap::new());
+        crate::paint_svg::paint(&galley, 800, 600, WHITE, &assets)
+    };
+    assert_eq!(svg("red").matches("transform=\"matrix(").count(), 2);
+    assert_eq!(svg("transparent").matches("transform=\"matrix(").count(), 0);
+}

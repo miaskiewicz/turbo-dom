@@ -615,11 +615,51 @@ mod tests {
     #[test]
     fn subtrees_of_every_kind_relabel() {
         let html = "<body style='margin:0'><div data-cid=v style='writing-mode:vertical-lr;height:200px'>\
-            <ul><li>item</li></ul><div style='display:flex'><i>f</i></div><div style='display:grid'><i>g</i></div>\
+            <ul><li>item</li></ul><ul style='list-style-position:inside'><li>in</li></ul><div style='display:flex'><i>f</i></div><div style='display:grid'><i>g</i></div>\
             <table><tr><td>t</td></tr></table><p>a<br><span style='padding:1px'>b</span><b style='display:inline-block'>c</b></p></div>";
         let laid = boxes(html, (800.0, 600.0));
         assert_eq!(rect(&laid, "v").3, 200.0);
         assert!(rect(&laid, "v").2 > 0.0);
+    }
+
+    /// A consumer marker element (html2pdf's directives) relabels as an opaque box.
+    #[test]
+    fn consumer_markers_relabel() {
+        use crate::{StyledElement, StyledNode, Tag};
+        let element = |tag, children| StyledElement {
+            tag,
+            attrs: Vec::new(),
+            style: ComputedStyle::default(),
+            children,
+            source: None,
+        };
+        let marker = element(
+            Tag::Marker(crate::MarkerKind {
+                id: 7,
+                inline: false,
+            }),
+            Vec::new(),
+        );
+        let root = super::super::boxgen::build_box_tree(&[StyledNode::Element(element(
+            Tag::Html("div".into()),
+            vec![StyledNode::Element(marker)],
+        ))]);
+        let turned = root.relabelled(Relabel::between(
+            WritingMode::HorizontalTb,
+            WritingMode::VerticalRl,
+        ));
+        fn markers(b: &super::super::boxgen::LayoutBox) -> usize {
+            use super::super::boxgen::BoxKind;
+            match &b.kind {
+                BoxKind::Marker(kind) => usize::from(kind.id == 7),
+                BoxKind::Block(kids)
+                | BoxKind::Flex(kids)
+                | BoxKind::Grid(kids)
+                | BoxKind::Table(kids) => kids.iter().map(markers).sum(),
+                BoxKind::Lines(_) => 0,
+            }
+        }
+        assert_eq!(markers(&turned), 1);
     }
 
     /// What the vertical layer does not lay out fails that element's reads only:
@@ -655,6 +695,64 @@ mod tests {
                 Some(&SnapshotError::UnsupportedVerticalWriting),
                 "{unsupported}"
             );
+        }
+    }
+
+    /// Upright clusters advance once (a combining mark adds nothing), a horizontal flex
+    /// item in a vertical flex container sizes by its laid-out width, and an inside list
+    /// marker relabels with its line.
+    #[test]
+    fn upright_clusters_orthogonal_items_and_inside_markers() {
+        let mut fonts = crate::test_support::fixture_fonts();
+        fonts.add(crate::test_support::ic_fixture_face());
+        let (tree, snapshot, _) = crate::live::testing::layout_with_fonts(
+            "<!doctype html><body style='margin:0;font:16px/20px \"Ic Fixture\"'>\
+             <div style='writing-mode:vertical-rl;height:100px'><span id=c>\u{6c34}\u{301}\u{6c34}</span>\
+             <div style='display:flex'><div id=h style='writing-mode:horizontal-tb'>ab</div></div>\
+             <ul style='list-style-position:inside;margin:0'><li id=li>x</li></ul></div>",
+            "",
+            (800.0, 600.0),
+            Some(1.0),
+            |_| {},
+            &fonts,
+        );
+        let bounds = |selector| {
+            crate::cssom_view::metrics::element_geometry(
+                &snapshot,
+                crate::live::testing::id(&tree, selector),
+            )
+            .unwrap()
+            .bounds
+        };
+        assert_eq!(bounds("#c").height, 32.0);
+        let h = bounds("#h");
+        assert!(h.width > 15.0 && h.width < 18.0, "{h:?}");
+        assert_eq!(h.height, 20.0);
+        assert!(bounds("#li").height > 0.0);
+        // A cluster of two glyphs in one face (a base and its combining mark) stands
+        // upright once: one vertical advance, its mark's glyph none.
+        let html = "<!doctype html><body style='margin:0;font:16px/20px monospace'>\
+             <div style='writing-mode:vertical-rl;height:100px;text-orientation:upright'>\
+             <span id=m>q\u{301}q</span><span id=n>qq</span></div>";
+        for scale in [Some(1.0), Some(2.0)] {
+            let (tree, snapshot, _) = crate::live::testing::layout_with_fonts(
+                html,
+                "",
+                (800.0, 600.0),
+                scale,
+                |_| {},
+                &crate::test_support::fixture_fonts(),
+            );
+            let height = |selector| {
+                crate::cssom_view::metrics::element_geometry(
+                    &snapshot,
+                    crate::live::testing::id(&tree, selector),
+                )
+                .unwrap()
+                .bounds
+                .height
+            };
+            assert_eq!(height("#m"), height("#n"), "{scale:?}");
         }
     }
 
