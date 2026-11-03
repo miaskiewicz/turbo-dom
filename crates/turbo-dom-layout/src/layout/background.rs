@@ -909,6 +909,46 @@ mod tests {
     }
 
     #[test]
+    fn translating_a_layer_moves_its_tile_origin() {
+        // miaskiewicz/turbo-dom#274: a 100x50 box tiled with a 25px image, moved by an
+        // embedder (html2pdf's pagination) or a parent layout, keeps its 4x2 tiles in
+        // phase: the pattern origin moves with the box.
+        let props = props_of(&[("background-size", "25px 25px")]);
+        let area = (0.0, 0.0, 100.0, 50.0);
+        let container = layer(
+            NodeId(1),
+            &props,
+            &sprite(),
+            (area, area, BorderRadii::ZERO),
+        )
+        .pop()
+        .unwrap();
+        let before = expand(&container);
+        assert_eq!(before.len(), 8);
+        let snapped = |v: f32| (v + 0.5).floor();
+        for (dx, dy) in [(12.5, 37.25), (-25.0, 100.0), (1.0, 2.0)] {
+            let mut moved = container.clone();
+            moved.translate(dx, dy);
+            let (was, now) = (pattern(&container), pattern(&moved));
+            assert_eq!((now.x, now.y), (was.x + dx, was.y + dy));
+            let after = expand(&moved);
+            assert_eq!(after.len(), 8, "({dx}, {dy})");
+            for (a, b) in before.iter().zip(&after) {
+                let (x, y) = (a.x + dx, a.y + dy);
+                assert_eq!(
+                    (b.x, b.y, b.width, b.height),
+                    (
+                        snapped(x),
+                        snapped(y),
+                        snapped(x + 25.0) - snapped(x),
+                        snapped(y + 25.0) - snapped(y)
+                    )
+                );
+            }
+        }
+    }
+
+    #[test]
     fn hostile_tiles_stay_bounded() {
         let gradient = Source::Gradient(test_gradient(90.0));
         let big = (0.0, 0.0, 1.0e6, 1.0e6);

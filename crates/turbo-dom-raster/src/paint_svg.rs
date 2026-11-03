@@ -740,6 +740,34 @@ mod tests {
     }
 
     #[test]
+    fn translated_tile_patterns_are_written_in_phase() {
+        // miaskiewicz/turbo-dom#274: the 10x10 pattern box moved by `Fragment::translate`
+        // writes the pattern (or the walked tiles) where the same pattern laid out at the
+        // new spot does.
+        for (tile, step) in [((2.0, 2.0), (4.0, 4.0)), ((2.0, 10.0), (4.5, 0.0))] {
+            let mut moved = tiles((0.0, 0.0), tile, step);
+            moved.translate(3.0, 5.0);
+            let mut placed = tiles((3.0, 5.0), tile, step);
+            (placed.x, placed.y) = (3.0, 5.0);
+            let (got, want) = (
+                body(&moved, &HashMap::new()),
+                body(&placed, &HashMap::new()),
+            );
+            assert_eq!(got, want);
+            if step.1 == 0.0 {
+                // Walked: tiles at 3, 7.5 (8), 12 — the box's 3 tiles, not 4 out of phase.
+                assert_eq!(got.matches("<rect").count(), 3, "{got}");
+                assert!(got.contains("<rect x=\"8.00\""), "{got}");
+            } else {
+                assert!(
+                    got.contains("x=\"3\" y=\"5\" width=\"4\" height=\"4\">"),
+                    "{got}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn tile_patterns_are_one_pattern_or_their_few_tiles() {
         // 0.7.0 round-2 review, finding 1: a whole-pixel period is one `<pattern>` of the
         // snapped tile, filling the box (a lone axis: the tile's own row).
