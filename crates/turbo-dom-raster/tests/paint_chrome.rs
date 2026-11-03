@@ -55,6 +55,9 @@ const ANTIALIASED_EDGES: &[(&str, u32, u32, u8)] = &[
     ("form-native-radio", 32, 26, 36),
     ("form-native-radio", 26, 32, 36),
     ("form-native-radio-checked", 26, 20, 45),
+    // The 90% thumb's (centre 67.6, 28; radius 7) top arc crosses this pixel: measured
+    // rgb(0,126,255) against Chrome's rgb(0,117,255), PNG and SVG (round-2 review #9).
+    ("form-native-range-step-max", 66, 21, 9),
 ];
 
 /// `?` probes whose colour still differs from Chrome's by more than an anti-aliased
