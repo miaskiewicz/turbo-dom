@@ -268,7 +268,7 @@ impl LayoutBox {
         use super::value::LengthPct::Auto;
         self.unloaded_image()
             .is_some_and(|source| match source.fallback {
-                None => true,
+                None => source.media != Media::ImageInput,
                 Some(size) => {
                     source.media == Media::None
                         && size == BROKEN_ICON
@@ -680,6 +680,9 @@ pub(crate) enum Media {
     None,
     Canvas,
     Viewport,
+    /// An `<input type=image>` (miaskiewicz/turbo-dom#258): an `<img>` whose alt text
+    /// box takes its `width` / `height` (Chrome 156).
+    ImageInput,
 }
 
 /// What a box contains, by formatting context.
@@ -1004,7 +1007,15 @@ fn tiny_clipped(style: &ComputedStyle) -> bool {
 /// Whether the element is a `<br>` — an inline forced line break, handled by the
 /// inline layout, not a box (it has no `display`/`height` of its own).
 fn is_img(el: &StyledElement) -> bool {
-    matches!(&el.tag, Tag::Html(name) if name == "img")
+    matches!(&el.tag, Tag::Html(name) if name == "img") || is_image_input(el)
+}
+
+/// Whether `el` is an `<input type=image>`: a replaced image control that lays out and
+/// paints like an `<img>` (its `src`, its alt text), without a control frame
+/// (miaskiewicz/turbo-dom#258).
+fn is_image_input(el: &StyledElement) -> bool {
+    matches!(&el.tag, Tag::Html(name) if name == "input")
+        && attr_value(&el.attrs, "type").is_some_and(|t| t.eq_ignore_ascii_case("image"))
 }
 
 fn is_br(el: &StyledElement) -> bool {
@@ -1677,23 +1688,29 @@ fn image_of(el: &StyledElement) -> Option<ImageSource> {
     if let Some(source) = media_source(el) {
         return Some(source);
     }
+    let media = if is_image_input(el) {
+        Media::ImageInput
+    } else {
+        Media::None
+    };
     if let Some(src) = img_src(el) {
         return Some(ImageSource {
             name: src.to_string(),
             replaced: true,
             fallback: broken_image_size(el),
             unloaded: std::cell::Cell::new(false),
-            media: Media::None,
+            media,
         });
     }
-    if img_alt_text(el).is_some() {
-        // No source to load: the alt text shows.
+    if img_alt_text(el).is_some() || is_image_input(el) {
+        // No source to load: the alt text shows (an image input without any is an
+        // empty replaced box, [`broken_image_size`]).
         return Some(ImageSource {
             name: String::new(),
             replaced: true,
-            fallback: None,
+            fallback: broken_image_size(el),
             unloaded: std::cell::Cell::new(false),
-            media: Media::None,
+            media,
         });
     }
     background_image(&el.style).map(|name| ImageSource {
@@ -1772,6 +1789,10 @@ const BROKEN_ICON: (u32, u32) = (16, 16);
 /// [`ImageSource::fallback`] of an `<img>` with a source: the broken-image icon's
 /// 16x16 without `alt`, 0x0 with `alt=""`, `None` with alt text.
 fn broken_image_size(el: &StyledElement) -> Option<(u32, u32)> {
+    if is_image_input(el) {
+        // No box at all when it shows no alt text (see [`image_input_alt`]).
+        return image_input_alt(el).is_none().then_some((0, 0));
+    }
     match attr_value(&el.attrs, "alt") {
         None => Some(BROKEN_ICON),
         Some("") => Some((0, 0)),
@@ -1782,10 +1803,28 @@ fn broken_image_size(el: &StyledElement) -> Option<(u32, u32)> {
 /// The alt text an `<img>` shows when its image does not load (or it has no source):
 /// a non-empty `alt` attribute.
 fn img_alt_text(el: &StyledElement) -> Option<&str> {
+    if is_image_input(el) {
+        return image_input_alt(el);
+    }
     is_img(el)
         .then(|| attr_value(&el.attrs, "alt"))
         .flatten()
         .filter(|alt| !alt.is_empty())
+}
+
+/// The alt text an `<input type=image>` shows when its image does not load (Chrome
+/// 156, miaskiewicz/turbo-dom#258): its `alt`, else its `value`, else "Submit"; none
+/// when that is empty, nor without an `alt` attribute when both its `width` and
+/// `height` are set (a sized replaced box then, aligned on its bottom edge).
+fn image_input_alt(el: &StyledElement) -> Option<&str> {
+    let alt = attr_value(&el.attrs, "alt");
+    let sized = ["width", "height"]
+        .iter()
+        .all(|p| el.style.get(p).is_some_and(|v| v.trim() != "auto"));
+    let text = alt
+        .or_else(|| attr_value(&el.attrs, "value"))
+        .unwrap_or("Submit");
+    (!text.is_empty() && (alt.is_some() || !sized)).then_some(text)
 }
 
 /// Chrome 156's alt-text content of an `<img>` (`HTMLImageFallbackHelper`): the
@@ -1818,6 +1857,7 @@ fn alt_fallback(el: &StyledElement, alt: &str) -> Vec<StyledNode> {
 fn img_src(el: &StyledElement) -> Option<&str> {
     match &el.tag {
         Tag::Html(name) if name == "img" => img_url_attr(&el.attrs),
+        _ if is_image_input(el) => attr_value(&el.attrs, "src").filter(|v| !v.trim().is_empty()),
         _ => None,
     }
 }

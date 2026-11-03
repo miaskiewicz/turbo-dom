@@ -93,6 +93,7 @@ hr { display: block; height: 1px; background-color: #cccccc }
 input, textarea, select, button { display: inline-block; margin: 0; font-family: Arial; font-size: 13.333333px; font-weight: normal; font-style: normal; line-height: normal; letter-spacing: normal; word-spacing: normal; text-transform: none; text-indent: 0; text-align: start; color: #000000 }
 input { -internal-ua-padding: 1px 2px; border: 2px inset #767676; background-color: #ffffff }
 input[type=hidden] { display: none }
+input[type=image] { padding: 0; border: 0; background-color: transparent }
 textarea { font-family: monospace; padding: 2px; border: 1px solid #767676; background-color: #ffffff; white-space: pre-wrap }
 select { border: 1px solid #767676; background-color: #ffffff; white-space: pre }
 button, input[type=button], input[type=submit], input[type=reset] { -internal-ua-padding: 1px 6px; border: 2px outset #767676; background-color: #efefef; text-align: center }
