@@ -431,6 +431,14 @@ const CASES = [
     probes: [[21, 21], [25, 21], [613, 317], [617, 317], [21, 317], [617, 21]],
   },
   {
+    // 0.7.0 round-2 review, finding 1: 640 x 400 = 256000 two-pixel gradient tiles (red
+    // top row) fill the whole viewport-sized box, down to its bottom-right tile.
+    id: "bg-tiles-fill-a-big-box",
+    html: DOC(`<div style="${at(0, 0)};width:1280px;height:800px;background:#00ff00 linear-gradient(#ff0000 50%,transparent 50%) 0 0/2px 2px"></div>`),
+    assets: [],
+    probes: [[1, 0], [1, 1], [640, 400], [640, 401], [5, 600], [5, 601], [1279, 796], [1279, 798], [1279, 799]],
+  },
+  {
     // An inline `content-box` origin: the first fragment's content starts after its
     // left padding, the last ends before its right padding; the 20px image sits at the
     // strip's content end.
