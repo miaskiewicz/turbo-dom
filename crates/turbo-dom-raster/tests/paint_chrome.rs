@@ -13,6 +13,7 @@
 //! - `clip-*`: miaskiewicz/turbo-dom#52, an absolutely positioned box's `clip: rect()`
 //!   clips it and its descendants (it keeps its border box); a zero-area clip paints
 //!   nothing (its box still has its border box, #75); `clip` does not apply to other boxes.
+//! - `radius-*`: miaskiewicz/turbo-dom#253, the full `border-radius` model.
 use std::collections::HashMap;
 
 use turbo_dom_layout::image::decode_data_url;
@@ -392,5 +393,17 @@ fn svg_screenshot_clips_with_a_clip_path() {
 fn inset_box_shadows_paint_inside_the_padding_box_like_chrome_156() {
     let mut failures = differences(|id| id.starts_with("inset-"));
     failures.extend(svg_differences(|id| id.starts_with("inset-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// Chrome 156's full `border-radius` model (miaskiewicz/turbo-dom#253: it was one scalar):
+/// per-corner, elliptical and percentage radii, the overlap scale-down, inner radii,
+/// logical corners under RTL and vertical writing modes, and the radius clipping
+/// backgrounds (with #248's layers), borders with per-side widths and colours, shadows
+/// and `overflow` — in both painters.
+#[test]
+fn border_radii_paint_like_chrome_156() {
+    let mut failures = differences(|id| id.starts_with("radius-"));
+    failures.extend(svg_differences(|id| id.starts_with("radius-")));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

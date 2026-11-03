@@ -3981,6 +3981,1352 @@
      ]
     }
    ]
+  },
+  {
+   "id": "radius-per-corner",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;height:100px;background:#ff0000;border-radius:0 10px 30px 50px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 21,
+     "y": 21,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 118,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 115,
+     "y": 115,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 100,
+     "y": 100,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 110,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 100,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 70,
+     "y": 70,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 112,
+     "y": 28,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-longhands",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;height:60px;background:#00ff00;border-top-left-radius:40px;border-bottom-right-radius:40px 10px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 25,
+     "y": 25,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 45,
+     "y": 30,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 119,
+     "y": 21,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 79,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 115,
+     "y": 77,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 100,
+     "y": 76,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 110,
+     "y": 74,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 70,
+     "y": 50,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-elliptical",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:200px;height:100px;background:#0000ff;border-radius:50px / 20px\"></div><div style=\"position:absolute;left:300px;top:20px;width:200px;height:100px;background:#ff0000;border-radius:10px 60px / 40px 10px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 25,
+     "y": 25,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 30,
+     "y": 45,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 28,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 22,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 215,
+     "y": 115,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 120,
+     "y": 70,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 302,
+     "y": 24,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 325,
+     "y": 25,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 496,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 470,
+     "y": 22,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 302,
+     "y": 116,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 498,
+     "y": 117,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 400,
+     "y": 70,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-percent",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:200px;height:100px;background:#ff0000;border-radius:50%\"></div><div style=\"position:absolute;left:300px;top:20px;width:100px;height:100px;background:#00ff00;border-radius:20% 0 0 0 / 40% 0 0 0\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 70,
+     "y": 25,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 120,
+     "y": 23,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 120,
+     "y": 70,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 70,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 45,
+     "y": 40,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 302,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 302,
+     "y": 60,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 319,
+     "y": 30,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 330,
+     "y": 60,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 398,
+     "y": 22,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-overlap",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;height:200px;background:#ff0000;border-top-left-radius:150px;border-top-right-radius:50px\"></div><div style=\"position:absolute;left:200px;top:20px;width:100px;height:100px;background:#0000ff;border-radius:100px 100px 100px 100px / 50px 150px 50px 150px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 23,
+     "y": 65,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 112,
+     "y": 28,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 117,
+     "y": 25,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 70,
+     "y": 120,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 210,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 298,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 250,
+     "y": 70,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 202,
+     "y": 70,
+     "class": "T",
+     "rgb": [
+      0,
+      247,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-border-sides",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;height:100px;background:#00ff00;border-style:solid;border-width:4px 20px 4px 20px;border-color:#ff0000 #0000ff #ff0000 #0000ff;border-radius:30px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 90,
+     "y": 22,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 74,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 150,
+     "y": 74,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 90,
+     "y": 126,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 90,
+     "y": 74,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 42,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 22,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 45,
+     "y": 26,
+     "class": "B",
+     "rgb": [
+      0,
+      54,
+      201
+     ]
+    },
+    {
+     "x": 41,
+     "y": 40,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 158,
+     "y": 118,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-border-uniform",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:60px;height:60px;background:#00ff00;border:10px solid #0000ff;border-radius:40px\"></div><div style=\"position:absolute;left:200px;top:20px;width:60px;height:60px;background:#00ff00;border:20px solid #0000ff;border-radius:15px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 22,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 30,
+     "y": 30,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 25,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 60,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 42,
+     "y": 42,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 36,
+     "y": 36,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 201,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 203,
+     "y": 38,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 202,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 221,
+     "y": 41,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 241,
+     "y": 41,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 290,
+     "y": 22,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-rtl",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;height:60px;background:#ff0000;direction:rtl;border-start-start-radius:40px;border-end-end-radius:40px\"></div><div style=\"position:absolute;left:200px;top:20px;width:100px;height:60px;background:#ff0000;direction:rtl;border-top-left-radius:40px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 22,
+     "y": 22,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 118,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 22,
+     "y": 78,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 118,
+     "y": 78,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 70,
+     "y": 50,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 202,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 298,
+     "y": 22,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 202,
+     "y": 78,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-vertical",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;height:60px;background:#00ff00;writing-mode:vertical-rl;border-start-start-radius:40px;border-start-end-radius:20px;border-top-left-radius:30px 10px;border-right:10px solid #0000ff\"></div><div style=\"position:absolute;left:200px;top:20px;width:100px;height:60px;background:#00ff00;writing-mode:vertical-lr;border-start-end-radius:40px;border-end-start-radius:40px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 128,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 128,
+     "y": 78,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 29,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 124,
+     "y": 50,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 50,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 22,
+     "y": 78,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 202,
+     "y": 22,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 202,
+     "y": 78,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 298,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 298,
+     "y": 78,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 298,
+     "y": 50,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      71
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-overflow",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;height:100px;overflow:hidden;border-radius:50px\"><div style=\"width:100px;height:100px;background:#ff0000\"></div></div><div style=\"position:absolute;left:200px;top:20px;width:50px;height:50px;overflow:hidden\"><div style=\"width:100px;height:100px;background:#00ff00\"></div></div><div style=\"position:absolute;left:400px;top:20px;width:80px;height:80px;overflow:hidden;border:10px solid #0000ff;border-radius:40px\"><div style=\"width:200px;height:200px;background:#ff0000\"></div></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 25,
+     "y": 25,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 70,
+     "y": 70,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 115,
+     "y": 115,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 70,
+     "y": 22,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 240,
+     "y": 40,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 260,
+     "y": 40,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 240,
+     "y": 90,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 440,
+     "y": 60,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 402,
+     "y": 60,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 413,
+     "y": 60,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 418,
+     "y": 33,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 470,
+     "y": 112,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 460,
+     "y": 170,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-background-layers",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;height:100px;border-radius:50px;background:linear-gradient(#ff0000,#ff0000) 0 0 / 50px 50px repeat\"></div><div style=\"position:absolute;left:200px;top:20px;width:80px;height:80px;padding:10px;border-radius:40px;background:#0000ff;background-clip:content-box\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 25,
+     "y": 25,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 70,
+     "y": 70,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 45,
+     "y": 25,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 115,
+     "y": 115,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 70,
+     "y": 22,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 212,
+     "y": 32,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 221,
+     "y": 41,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 205,
+     "y": 60,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 250,
+     "y": 25,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 250,
+     "y": 60,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "radius-shadows",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:100px;top:100px;width:60px;height:60px;background:#00ff00;border-radius:30px 0 0 0;box-shadow:0 0 0 10px #ff0000\"></div><div style=\"position:absolute;left:300px;top:100px;width:100px;height:60px;background:#00ff00;border-radius:50px / 30px;box-shadow:inset 0 0 0 8px #ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 92,
+     "y": 92,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 167,
+     "y": 92,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 95,
+     "y": 130,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 167,
+     "y": 167,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 130,
+     "y": 95,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 130,
+     "y": 130,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 302,
+     "y": 102,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 304,
+     "y": 130,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 350,
+     "y": 104,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 350,
+     "y": 130,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 312,
+     "y": 112,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
   }
  ]
 }
