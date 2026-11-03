@@ -331,6 +331,21 @@ const CASES = [
     probes: [[22, 50], [27, 50], [100, 50], [113, 50], [118, 50], [122, 50], [22, 80], [27, 80], [113, 80], [118, 80], [122, 80], [60, 65]],
   },
   {
+    // The line keeps room for the cloned end edge: two atoms (90px with the start edge)
+    // fit a 95px line, but not with the 10px end edge, so each line holds one atom
+    // (mutation audit 0.7.0: Placer::clone_reserve).
+    id: "inline-clone-reserve",
+    html: DOC(`<div style="${at(20, 20)};width:95px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 50], [78, 50], [90, 50], [22, 80], [78, 80], [90, 80], [78, 140], [78, 170]],
+  },
+  {
+    // The same with text: "xx xx" (55px with the start edge, Liberation Serif 20px) stays
+    // on a 60px line although the end edge then overflows it.
+    id: "inline-clone-reserve-text",
+    html: DOC(`<div style="${at(20, 20)};width:60px;font:20px/30px 'Liberation Serif'"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">xx xx xx xx</span></div>`),
+    probes: [[22, 35], [92, 35], [22, 65], [92, 65], [22, 95]],
+  },
+  {
     // A forced break inside a cloned box: both lines' fragments repeat both edges.
     id: "inline-clone-br",
     html: DOC(`<div style="${at(20, 20)};width:200px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}<br>${ATOM(40, 30)}</span></div>`),
