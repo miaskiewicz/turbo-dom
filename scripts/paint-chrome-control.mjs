@@ -619,6 +619,37 @@ const CASES = [
     html: DOC(html),
     probes: probes.map(([dx, dy]) => [20 + dx, 20 + dy]),
   })),
+  // miaskiewicz/turbo-dom#256 (`cascade-bg-*`): the `background` shorthand sets every
+  // background longhand at its own cascade position, so it and the longhands cascade by
+  // origin, `!important`, specificity and order like any declarations: an author shorthand
+  // beats the UA button's `background-color`, the later of a shorthand and a longhand wins,
+  // and a shorthand resets the image / size / position / repeat / origin / clip longhands
+  // an earlier rule set. Each case is one 100x40 box at (20, 20); probes are box-relative.
+  ...[
+    ["ua-button", "", `<button data-cid="m" style="${at(20, 20)};width:100px;height:40px;padding:0;border:0;background:#ffff00"></button>`, [[10, 10], [50, 20], [90, 30]]],
+    ["shorthand-then-longhand", ".x{background:#ff0000}.x{background-color:#00ff00}", "", [[10, 10], [90, 30]]],
+    ["longhand-then-shorthand", ".x{background-color:#00ff00}.x{background:#0000ff}", "", [[10, 10], [90, 30]]],
+    ["important-shorthand", ".x{background:#0000ff!important}.x{background-color:#ff0000}", "", [[10, 10], [90, 30]]],
+    ["important-longhand-over-inline", ".x{background-color:#00ff00!important}", "background:#ff0000", [[10, 10], [90, 30]]],
+    ["inline-shorthand-over-rule", ".x{background-color:#ff0000}", "background:#00ff00", [[10, 10], [90, 30]]],
+    ["inline-longhand-then-shorthand", "", "background-color:#ff0000;background:#0000ff", [[10, 10], [90, 30]]],
+    ["inline-shorthand-then-longhand", "", "background:#ff0000;background-color:#00ff00", [[10, 10], [90, 30]]],
+    ["specificity", "#k.x{background-color:#00ff00}div.x{background:#ff0000}", "", [[10, 10], [90, 30]]],
+    ["shorthand-resets-position-repeat", `.x{background-position:50px 0;background-repeat:no-repeat}.x{background:url(${SPRITE}) #00ff00}`, "", [[10, 10], [25, 20], [45, 30], [55, 10], [75, 20], [95, 30]]],
+    ["longhand-size-after-shorthand", `.x{background:url(${SPRITE}) no-repeat #00ff00}.x{background-size:50px 20px}`, "", [[10, 5], [40, 15], [10, 30], [75, 10], [75, 30]]],
+    ["shorthand-resets-clip", ".x{padding:10px;width:80px!important;height:20px!important;background-clip:content-box}.x{background:#ff0000}", "", [[3, 3], [50, 3], [50, 20]]],
+    ["longhand-clip-after-shorthand", ".x{background:#ff0000}.x{padding:10px;width:80px!important;height:20px!important;background-clip:content-box}", "", [[3, 3], [50, 3], [50, 20]]],
+    ["longhand-origin-after-shorthand", `.x{background:url(${SPRITE}) no-repeat 0 0 / 50px 20px #00ff00}.x{padding:10px;width:80px!important;height:20px!important;background-origin:content-box}`, "", [[5, 5], [20, 20], [45, 20], [70, 32]]],
+  ].map(([kind, css, inline, probes]) => ({
+    id: `cascade-bg-${kind}`,
+    assets: css.includes(SPRITE) ? [SPRITE] : [],
+    html: DOC(
+      kind === "ua-button"
+        ? inline
+        : `<style>${css}</style><div data-cid="m" id="k" class="x" style="${at(20, 20)};width:100px;height:40px;${inline}"></div>`,
+    ),
+    probes: probes.map(([dx, dy]) => [20 + dx, 20 + dy]),
+  })),
   {
     id: "media-video-poster",
     html: DOC(`<video data-cid="m" poster="${SPRITE}" style="${at(20, 20)};width:100px;height:40px"></video>`),
