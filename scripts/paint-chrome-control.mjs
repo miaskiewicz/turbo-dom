@@ -494,11 +494,10 @@ const CASES = [
   },
   // Round-1 review of 0.7.0, finding 7: `overflow: hidden` clips glyph ink past the line
   // box (a 40px "gy" in a 10px-high line); unclipped, the same ink reaches below the box.
-  // The probes avoid the glyphs' anti-aliased edges.
   ...["hidden", "visible"].map((overflow) => ({
     id: `overflow-glyph-ink-${overflow}`,
     html: DOC(`<div data-cid="m" style="${at(20, 20)};width:100px;height:10px;line-height:10px;font-size:40px;overflow:${overflow};font-family:'Liberation Serif';color:#0000ff">gy</div>`),
-    probes: [[22, 12], [28, 12], [34, 12], [40, 12], [46, 12], [52, 12], [28, 25], [34, 25], [40, 25], [46, 25], [52, 25], [22, 36], [28, 36], [34, 36], [40, 36], [46, 36], [52, 36], [34, 44], [40, 44], [46, 44], [52, 44]],
+    probes: [[22, 12], [28, 12], [34, 12], [40, 12], [46, 12], [52, 12], [22, 25], [28, 25], [34, 25], [40, 25], [46, 25], [52, 25], [22, 36], [28, 36], [34, 36], [40, 36], [46, 36], [52, 36], [22, 44], [28, 44], [34, 44], [40, 44], [46, 44], [52, 44]],
   })),
   // miaskiewicz/turbo-dom#253: Chrome 156's full border-radius model. Per-corner and
   // elliptical radii, percentages against the border box's own axes, the overlap scale-down,
