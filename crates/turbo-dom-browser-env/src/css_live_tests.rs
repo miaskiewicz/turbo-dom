@@ -1476,3 +1476,29 @@ fn rendered_check_of_a_transition_read_is_linear_in_depth() {
     assert!(max > 0, "the hook counts lookups");
     assert!(max <= 8 * (depth + 2), "{max} style lookups for one read at depth {depth}");
 }
+
+/// One computed-style read after a DOM change cascades the element and each ancestor afresh;
+/// they all read the same document sheet list, so the list is read once per tree version and
+/// CSSOM epoch, not once per element.
+#[test]
+fn a_cascade_reads_the_document_sheet_list_once_per_version() {
+    let value = run(
+        "<style>.t{color:red}</style><body></body>",
+        r#"(()=>{
+      let parent=document.body;
+      for(let i=0;i<20;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const el=document.createElement('div');el.className='t';parent.appendChild(el);
+      const read=__cssTestHost.readSheets;let reads=0;
+      __cssTestHost.readSheets=function(){reads++;return read.apply(this,arguments);};
+      document.body.setAttribute('data-x','1');
+      const color=getComputedStyle(el).color;
+      const first=reads;
+      const s=document.createElement('style');s.textContent='.t{color:blue}';document.head.appendChild(s);
+      const after=getComputedStyle(el).color;
+      return JSON.stringify({color,first,after});
+    })()"#,
+    );
+    assert_eq!(value["color"], "rgb(255, 0, 0)");
+    assert_eq!(value["after"], "rgb(0, 0, 255)", "a new sheet is seen");
+    assert!(value["first"].as_u64().unwrap() <= 2, "{value}");
+}
