@@ -207,6 +207,10 @@ pub struct InlineEdge {
     pub rtl: bool,
     /// The box's `unicode-bidi` (its explicit embedding, isolate or override).
     pub bidi: UnicodeBidi,
+    /// Under `box-decoration-break: clone`, the advance of the box's OTHER side: every
+    /// line fragment repeats both edges, so a line the box is open across reserves its
+    /// end edge and the next line starts with its start edge (miaskiewicz/turbo-dom#244).
+    pub clone_advance: Option<f32>,
 }
 #[derive(Debug, Clone)]
 pub struct PlacedInlineEdge {
@@ -1773,7 +1777,38 @@ impl<'a> Placer<'a> {
             }
         }
         word.leading_spaces = self.wrapped_leading_spaces(word);
+        let cloned = self.cloned_open(None);
+        if let Some(last) = self.cur.last_mut() {
+            close_clones(last, &cloned);
+        }
         self.flush();
+        reopen_clones(word, &cloned);
+    }
+
+    /// The `box-decoration-break: clone` boxes open after the current line's words
+    /// (and `next`, when given), outermost first (miaskiewicz/turbo-dom#244).
+    fn cloned_open(&self, next: Option<&Word>) -> Vec<InlineEdge> {
+        let mut open = self.open_edges.clone();
+        for word in self.cur.iter().chain(next) {
+            for (_, edge) in &word.edges {
+                if edge.start {
+                    open.push(edge.clone());
+                } else {
+                    open.retain(|value| value.node_id != edge.node_id);
+                }
+            }
+        }
+        open.retain(|edge| edge.clone_advance.is_some());
+        open
+    }
+
+    /// The end edges a line must keep room for after `word`: the cloned boxes still
+    /// open there repeat their end edge on this line.
+    fn clone_reserve(&self, word: &Word) -> f32 {
+        self.cloned_open(Some(word))
+            .iter()
+            .filter_map(|edge| edge.clone_advance)
+            .sum()
     }
 
     /// A word with `overflow-wrap` opportunities: placed whole when it fits a line
@@ -1854,15 +1889,17 @@ impl<'a> Placer<'a> {
         true
     }
     fn needs_wrap(&self, word: &Word) -> bool {
+        let reserve = self.clone_reserve(word);
         if !self.html_font_metrics {
-            return !self.cur.is_empty() && self.x + word.width > self.lw;
+            return !self.cur.is_empty() && self.x + word.width + reserve > self.lw;
         }
-        let width = self
-            .advances
-            .as_ref()
-            .map_or(self.x + word.width, |advances| {
-                advances.candidate_width(word)
-            });
+        let width = reserve
+            + self
+                .advances
+                .as_ref()
+                .map_or(self.x + word.width, |advances| {
+                    advances.candidate_width(word)
+                });
         word.width > 0.0
             && width > self.lw
             && self
@@ -2573,7 +2610,15 @@ impl LinePlacement {
             record.push((self.pen, self.pen), level, leading..self.runs.len(), None);
         }
         if let Some(atom) = word.atom {
+            // A cloned box closed or reopened around an atom at a line break
+            // (`close_clones` / `reopen_clones`).
+            for (_, edge) in word.edges.iter().filter(|(_, edge)| edge.start) {
+                self.edge(edge);
+            }
             self.atom(&atom, word.atom_shift, word.atom_level);
+            for (_, edge) in word.edges.iter().filter(|(_, edge)| !edge.start) {
+                self.edge(edge);
+            }
         } else {
             self.text(word);
         }
@@ -2697,6 +2742,29 @@ impl LinePlacement {
                 pen += advance;
             }
         }
+    }
+}
+/// End each cloned box (`open`, outermost first) on the line `last` ends: its fragment
+/// there draws its end edge, which takes its own advance.
+fn close_clones(last: &mut Word, open: &[InlineEdge]) {
+    for edge in open.iter().rev() {
+        let advance = edge.clone_advance.unwrap_or_default();
+        let end = InlineEdge {
+            start: false,
+            advance,
+            clone_advance: Some(edge.advance),
+            ..edge.clone()
+        };
+        last.edges.push((last.segs.len(), end));
+        last.width += advance;
+    }
+}
+/// Reopen each cloned box (`open`, outermost first) at the start of the line `word`
+/// begins: its fragment there draws its start edge again.
+fn reopen_clones(word: &mut Word, open: &[InlineEdge]) {
+    for (index, edge) in open.iter().enumerate() {
+        word.edges.insert(index, (0, edge.clone()));
+        word.width += edge.advance;
     }
 }
 /// `space` follows the word's closing inline-box edge, in a source of its own.
@@ -3218,6 +3286,7 @@ mod tests {
             valign: VAlign::Baseline,
             rtl: false,
             bidi: UnicodeBidi::Normal,
+            clone_advance: None,
         })
     }
 
