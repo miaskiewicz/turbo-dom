@@ -29,17 +29,35 @@ fn numbers(v: &Value) -> Vec<f32> {
 }
 
 /// The page's one tile layer: its box and the starts along `axis` of the tiles whose
-/// 2px stripe lies wholly inside it.
+/// 2px stripe lies wholly inside it. The layer's container clips to exactly that box
+/// (in px from its top-left), mapped out of a vertical space with it.
 fn layout_stripes(html: &str, axis: &str) -> (Vec<f32>, Vec<f32>) {
-    fn find(f: &Fragment) -> Option<&Fragment> {
-        if matches!(f.content, FragmentContent::Tiles(_)) {
-            return Some(f);
+    fn find(f: &Fragment) -> Option<(&Fragment, &Fragment)> {
+        if let Some(tiles) = f
+            .children
+            .iter()
+            .find(|c| matches!(c.content, FragmentContent::Tiles(_)))
+        {
+            return Some((f, tiles));
         }
         f.children.iter().find_map(find)
     }
     let fonts = turbo_dom_layout::test_support::fixture_fonts();
     let root = layout_html(html, "", 800.0, &fonts, &mut Diagnostics::default()).unwrap();
-    let f = find(&root).expect("a tile layer");
+    let (container, f) = find(&root).expect("a tile layer");
+    let clip = container.clip.expect("a clipped layer");
+    assert_eq!(
+        (
+            container.x,
+            container.y,
+            clip.x,
+            clip.y,
+            clip.width,
+            clip.height
+        ),
+        (f.x, f.y, 0.0, 0.0, f.width, f.height),
+        "{html}"
+    );
     let FragmentContent::Tiles(p) = &f.content else {
         unreachable!()
     };
