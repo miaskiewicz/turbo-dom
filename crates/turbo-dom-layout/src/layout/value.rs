@@ -2543,6 +2543,25 @@ mod gradient_tests {
     /// A painted stop: `(pos, r, g, b, a)`.
     type Painted = (f32, u8, u8, u8, u8);
 
+    #[test]
+    fn a_too_fine_repeating_gradient_paints_its_length_weighted_average() {
+        // Mutation audit 0.7.0: 2000 periods x 4 stops over the 100px line exceed
+        // MAX_REPEATED_STOPS, so the line is the average colour, each segment weighted by
+        // its length (red 0.01px, blue 0.04px). No Chrome oracle: Chrome samples one
+        // colour per pixel at such periods (it aliases), so this pins the documented
+        // memory-capped fallback.
+        let g = grad(
+            "repeating-linear-gradient(90deg,#ff0000 0,#ff0000 0.01px,#0000ff 0.01px,#0000ff 0.05px)",
+        )
+        .unwrap();
+        let painted: Vec<Painted> = g
+            .stops
+            .iter()
+            .map(|s| (s.pos, s.color.r, s.color.g, s.color.b, s.color.a))
+            .collect();
+        assert_eq!(painted, [(0.0, 51, 0, 204, 255), (1.0, 51, 0, 204, 255)]);
+    }
+
     /// Each stop of `value` painted over `w x h`.
     fn painted(value: &str, (w, h): (f32, f32)) -> Option<Vec<Painted>> {
         let spec = linear_gradient_of(
