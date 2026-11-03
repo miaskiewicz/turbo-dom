@@ -86,6 +86,106 @@ pub struct LayoutBox {
     /// A writing-mode root whose block axis is its parent's inline axis (an orthogonal
     /// flow, miaskiewicz/turbo-dom#239).
     pub(crate) orthogonal_root: bool,
+    /// Orthogonal extents shared with this box's relabelled copies ([`RelabelMemo`]).
+    pub(crate) relabel_memo: RelabelMemo,
+}
+
+/// A memoized measurement of a relabelled copy: the relabel from the generated box to the
+/// copy (the composition of every relabel on the way; `None` for the generated box),
+/// which measurement ([`MemoKind`]) and everything else it depends on.
+type MemoKey = (Option<u16>, MemoKind, Vec<u64>);
+
+/// The memoized measurements a [`RelabelMemo`] shares.
+type MemoEntries = Vec<(MemoKey, (f32, f32))>;
+
+/// The measurements [`RelabelMemo`] shares.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MemoKind {
+    /// [`super::writing::orthogonal_extent`].
+    OrthogonalExtent,
+    /// A flex item's measured content size ([`LayoutBox::measure_cached`]).
+    FlexMeasure,
+}
+
+/// The measurements of a box and of every relabelled copy of it, shared between them
+/// (R2 review #4). A writing-mode root lays out a relabelled copy of its subtree, whose
+/// measurement caches start empty; so a nested orthogonal root was measured and laid
+/// out again on each copy, and alternating writing modes cost a constant factor more
+/// per level (about 25 levels hung). A copy reached by the same relabels from the same
+/// generated box has the same styles, as does one reached by relabels composing to the
+/// same relabel (its side and axis properties name the same sides); so a measurement
+/// is looked up by that composed relabel and its inputs. A plain `clone` starts a new memo (the clone may be changed); only
+/// [`LayoutBox::relabelled`] shares it.
+#[derive(Debug, Default)]
+pub(crate) struct RelabelMemo {
+    /// The composed relabel ([`super::writing::Relabel::code`]).
+    path: Option<u16>,
+    entries: std::sync::Arc<std::sync::Mutex<MemoEntries>>,
+}
+
+impl Clone for RelabelMemo {
+    fn clone(&self) -> Self {
+        RelabelMemo::default()
+    }
+}
+
+impl RelabelMemo {
+    /// The memo of a copy relabelled by `relabel`: the same entries, one relabel further.
+    fn relabelled(&self, relabel: super::writing::Relabel) -> RelabelMemo {
+        RelabelMemo {
+            path: Some(
+                self.path
+                    .map_or(relabel, |path| {
+                        super::writing::Relabel::decode(path).then(relabel)
+                    })
+                    .code(),
+            ),
+            entries: std::sync::Arc::clone(&self.entries),
+        }
+    }
+
+    /// Whether this box is a relabelled copy (its own caches started empty).
+    pub(crate) fn is_copy(&self) -> bool {
+        self.path.is_some()
+    }
+
+    /// The `kind` measurement under `inputs`, computing it once per path and inputs.
+    pub(crate) fn get_or(
+        &self,
+        kind: MemoKind,
+        inputs: Vec<u64>,
+        compute: impl FnOnce() -> (f32, f32),
+    ) -> (f32, f32) {
+        let key = (self.path, kind, inputs);
+        let found = self.lock().iter().find(|(k, _)| *k == key).map(|e| e.1);
+        if let Some(value) = found {
+            return value;
+        }
+        let value = compute();
+        self.lock().push((key, value));
+        value
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, MemoEntries> {
+        self.entries
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
+
+/// The layout inputs a measurement reads besides its box: the viewport and root font
+/// size (thread-local), the font registry and the box's HTML layout policy.
+pub(crate) fn measure_inputs(lb: &LayoutBox, fonts: &crate::FontRegistry) -> Vec<u64> {
+    let (width, height) = crate::style::viewport_px();
+    let (metrics, scale) = lb.html_layout_policy_pair();
+    vec![
+        u64::from(width.to_bits()),
+        u64::from(height.to_bits()),
+        u64::from(crate::style::root_font_px().to_bits()),
+        std::ptr::from_ref(fonts) as usize as u64,
+        u64::from(metrics),
+        u64::from(scale.unwrap_or(0.0).to_bits()),
+    ]
 }
 
 fn same_original_inputs(
@@ -559,6 +659,7 @@ impl LayoutBox {
             natural_cache: std::cell::Cell::new(None),
             min_content_cache: std::cell::Cell::new(None),
             margin_memo: MarginMemoSlot::default(),
+            relabel_memo: self.relabel_memo.relabelled(relabel),
             svg_viewport: self
                 .svg_viewport
                 .as_ref()
@@ -622,6 +723,7 @@ impl LayoutBox {
             intrinsic: self.intrinsic.clone(),
             measure_cache: RefCell::new(self.measure_cache.borrow().clone()),
             margin_memo: MarginMemoSlot::default(),
+            relabel_memo: RelabelMemo::default(),
             writing_root: self.writing_root,
             orthogonal_root: self.orthogonal_root,
             list_marker: None,
@@ -742,6 +844,9 @@ impl InlineItem {
 }
 
 /// One inline-level item inside a [`BoxKind::Lines`] context.
+// `Atomic` holds a whole `LayoutBox` (264 bytes with its relabel memo, R2 review #4);
+// boxing it would change this public variant's type, a breaking API change.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum InlineItem {
     SourceBreak {
@@ -1392,6 +1497,7 @@ fn table_kind(el: &StyledElement, ids: &mut Ids) -> BoxKind {
         intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        relabel_memo: RelabelMemo::default(),
         writing_root: false,
         orthogonal_root: false,
         list_marker: None,
@@ -1583,6 +1689,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             intrinsic: std::cell::Cell::new([f32::NAN; 2]),
             measure_cache: RefCell::new(None),
             margin_memo: MarginMemoSlot::default(),
+            relabel_memo: RelabelMemo::default(),
             writing_root: false,
             orthogonal_root: false,
             list_marker: None,
@@ -1630,6 +1737,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        relabel_memo: RelabelMemo::default(),
         writing_root: false,
         orthogonal_root: false,
         list_marker,
@@ -2044,6 +2152,7 @@ fn anon_lines_box(
         intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        relabel_memo: RelabelMemo::default(),
         writing_root: false,
         orthogonal_root: false,
         list_marker: None,
@@ -2313,6 +2422,7 @@ pub(crate) fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind
         intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        relabel_memo: RelabelMemo::default(),
         writing_root: false,
         orthogonal_root: false,
         list_marker: None,

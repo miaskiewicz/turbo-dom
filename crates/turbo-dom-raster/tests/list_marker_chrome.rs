@@ -129,7 +129,7 @@ fn differences(paint: fn(&str) -> Pixels) -> Vec<String> {
             }
         }
     }
-    assert_eq!(compared, 78);
+    assert_eq!(compared, 84);
     failures
 }
 

@@ -282,11 +282,15 @@ fn range(attrs: &[Attr], frag: &Fragment) -> Vec<Fragment> {
     let number = |name| attr(attrs, name).and_then(html_float);
     let min = number("min").unwrap_or(0.0);
     let max = number("max").unwrap_or(100.0).max(min);
+    let value = number("value").unwrap_or(min / 2.0 + max / 2.0);
+    let step = step_of(attr(attrs, "step"));
+    // The step base: the `min` attribute, else the `value` attribute, else 0 (HTML).
+    let base = number("min").or(number("value")).unwrap_or(0.0);
+    // The track still spans min..max: `step=3 max=10 value=10` sits at 90% (Chrome 156,
+    // paint fixture `form-native-range-step-max`).
+    let value = step_align(min, max, value.clamp(min, max), step, base);
     // Halved first, so `max - min` cannot overflow to infinity.
     let (half_min, half_max) = (min / 2.0, max / 2.0);
-    let value = number("value")
-        .unwrap_or(half_min + half_max)
-        .clamp(min, max);
     let span = half_max - half_min;
     let ratio = if span > 0.0 {
         (value / 2.0 - half_min) / span
@@ -328,6 +332,40 @@ fn range(attrs: &[Attr], frag: &Fragment) -> Vec<Fragment> {
 /// HTML's valid floating-point number (`-`? digits with an optional fraction, or a bare
 /// fraction, then an optional exponent; no whitespace, `+` or trailing text), when it is
 /// finite as a double.
+/// A range's `step`: `None` for `any`; a missing, invalid or non-positive step is the
+/// default 1 (HTML's allowed value step).
+fn step_of(text: Option<&str>) -> Option<f64> {
+    match text {
+        Some(t) if t.eq_ignore_ascii_case("any") => None,
+        t => Some(t.and_then(html_float).filter(|s| *s > 0.0).unwrap_or(1.0)),
+    }
+}
+
+/// The (clamped) `value` aligned to `step` from `base`, as Chrome's `StepRange`: snapped to
+/// the nearest step value, at most the last step value at or below the max (the max
+/// lowered to it), at least the min. No step (`any`), or a step finer than an `f64` can
+/// count across the range, leaves it as it is.
+fn step_align(min: f64, max: f64, value: f64, step: Option<f64>, base: f64) -> f64 {
+    let Some(step) = step else {
+        return value;
+    };
+    // Halved, so `max - base` cannot overflow to infinity.
+    let steps = (max / 2.0 - base / 2.0) / (step / 2.0);
+    if steps.is_nan() || steps.abs() >= 9_007_199_254_740_992.0 {
+        return value;
+    }
+    let aligned = base + steps.floor() * step;
+    let max = if aligned >= min { aligned } else { max };
+    let snapped = base + ((value - base) / step).round() * step;
+    // Rounded up past the (lowered) max: one step back.
+    let value = if snapped > max {
+        snapped - step
+    } else {
+        snapped
+    };
+    value.max(min)
+}
+
 fn html_float(text: &str) -> Option<f64> {
     let digits = |s: &str| s.bytes().take_while(u8::is_ascii_digit).count();
     let rest = text.strip_prefix('-').unwrap_or(text);
@@ -380,7 +418,7 @@ fn attr<'a>(attrs: &'a [Attr], name: &str) -> Option<&'a str> {
 mod tests {
     use super::super::fragment::{Fragment, FragmentContent};
     use super::super::value::Rgba;
-    use super::{ACCENT, FACE, FRAME, SWATCH, TRACK, WHITE};
+    use super::{step_align, step_of, ACCENT, FACE, FRAME, SWATCH, TRACK, WHITE};
 
     /// Every box fragment of `body` laid out at 400px: `(x, y, w, h, background,
     /// right border colour and width, top-left radius, turned)`.
@@ -547,6 +585,46 @@ mod tests {
             &at(""),
             (23.0, 1.0, 14.0, 14.0, Some(ACCENT), None, 0, 7.0, false)
         ));
+    }
+
+    #[test]
+    fn range_values_snap_to_the_step() {
+        // R2 #9 (paint fixtures `form-native-range-step*`): the nearest min + n * step,
+        // the default step 1; `any` does not snap.
+        let snap = |min, max, value, step| step_align(min, max, value, step, min);
+        assert_eq!(step_of(None), Some(1.0));
+        assert_eq!(step_of(Some("ANY")), None);
+        for invalid in ["0", "-2", "x"] {
+            assert_eq!(step_of(Some(invalid)), Some(1.0), "{invalid}");
+        }
+        assert_eq!(step_of(Some("0.5")), Some(0.5));
+        assert_eq!(snap(0.0, 10.0, 4.6, Some(1.0)), 5.0);
+        assert_eq!(snap(0.0, 10.0, 7.0, Some(5.0)), 5.0);
+        assert_eq!(snap(0.0, 10.0, 4.6, None), 4.6);
+        // The max is lowered to the last step value (9): 10 and 9.6 are 9.
+        assert_eq!(snap(0.0, 10.0, 10.0, Some(3.0)), 9.0);
+        assert_eq!(snap(0.0, 10.0, 8.0, Some(3.0)), 9.0);
+        // A step larger than the range keeps the max (no step value but the min fits).
+        assert_eq!(snap(0.0, 10.0, 10.0, Some(20.0)), 0.0);
+        // From another base (the `value` attribute): 2 + 3n.
+        assert_eq!(step_align(0.0, 10.0, 4.0, Some(3.0), 2.0), 5.0);
+        // A base above the min: a snap below the min is the min.
+        assert_eq!(step_align(1.0, 10.0, 1.0, Some(3.0), 2.5), 1.0);
+        // Steps an f64 cannot count leave the value (Chrome's Decimal snaps 0.5 to 0 here,
+        // `input.value`, a difference no thumb position across 2e308 can show).
+        assert_eq!(snap(-1e308, 1e308, 0.5, Some(1.0)), 0.5);
+        // A step-less range whose base is the value attribute: no `min`.
+        let parts = parts(&format!(
+            "<input type=range max=10 step=4 value=7 style='{ABS};width:60px'>"
+        ));
+        // Base 7: 7 + 4n within 0..10 is 7 (lowered max 7 + 0 = 7, the max stays 10).
+        let thumb = 1.0 + 44.0 * 0.7;
+        assert!(
+            parts
+                .iter()
+                .any(|p| (p.0 - thumb).abs() < 0.01 && p.2 == 14.0),
+            "{parts:?}"
+        );
     }
 
     #[test]

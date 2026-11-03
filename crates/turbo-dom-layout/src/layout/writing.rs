@@ -114,6 +114,33 @@ impl Relabel {
         }
     }
 
+    /// This relabel followed by `next` (from this one's target space to another): one
+    /// relabel from this one's source space to `next`'s target space.
+    pub(crate) fn then(self, next: Relabel) -> Relabel {
+        Relabel {
+            sides: next.sides.map(|side| self.sides[side]),
+            swap: self.swap != next.swap,
+        }
+    }
+
+    /// A compact code (two bits per side, then the swap) for memo keys.
+    pub(crate) fn code(self) -> u16 {
+        let sides = self
+            .sides
+            .iter()
+            .enumerate()
+            .fold(0, |code, (i, &side)| code | ((side as u16) << (2 * i)));
+        sides | (u16::from(self.swap) << 8)
+    }
+
+    /// The relabel [`Relabel::code`] encoded.
+    pub(crate) fn decode(code: u16) -> Relabel {
+        Relabel {
+            sides: std::array::from_fn(|i| usize::from((code >> (2 * i)) & 3)),
+            swap: code >> 8 == 1,
+        }
+    }
+
     /// Whether the inline and block axes swap.
     pub(crate) fn swaps(self) -> bool {
         self.swap
@@ -412,6 +439,7 @@ fn layout_root_in(
     if !lb.writing_root || mode == parent {
         return None;
     }
+    crate::hot!("layout.writing.root");
     let relabel = Relabel::between(parent, mode);
     let mut root = lb.relabelled(relabel);
     // In its own space the root is no orthogonal flow (its intrinsic widths measure
@@ -462,6 +490,16 @@ fn layout_root_in(
 /// block size fits its content. The max- and min-content width a flex / grid / table
 /// container sizes it by (CSS Writing Modes 4 §7.3; miaskiewicz/turbo-dom#239).
 pub(crate) fn orthogonal_extent(lb: &super::boxgen::LayoutBox, fonts: &crate::FontRegistry) -> f32 {
+    let inputs = super::boxgen::measure_inputs(lb, fonts);
+    let kind = super::boxgen::MemoKind::OrthogonalExtent;
+    lb.relabel_memo
+        .get_or(kind, inputs, || (measure_orthogonal_extent(lb, fonts), 0.0))
+        .0
+}
+
+/// [`orthogonal_extent`], uncached.
+fn measure_orthogonal_extent(lb: &super::boxgen::LayoutBox, fonts: &crate::FontRegistry) -> f32 {
+    crate::hot!("layout.writing.extent");
     let images = crate::ImageCtx {
         resolver: &crate::NoImages,
         body_height: None,

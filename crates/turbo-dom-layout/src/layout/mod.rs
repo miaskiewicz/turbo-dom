@@ -20,6 +20,7 @@ mod svg_numbers;
 pub(crate) mod svg_viewport;
 pub mod table;
 pub mod value;
+mod vertical_orientation;
 pub(crate) mod writing;
 
 use crate::error::Diagnostics;
