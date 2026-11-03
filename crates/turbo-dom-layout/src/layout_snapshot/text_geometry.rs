@@ -13,6 +13,9 @@ pub struct SourceClusterBox {
     pub right_to_left: bool,
     /// Actual CSS-collapse provenance; a rendered first space can still advance.
     pub collapsed_whitespace: bool,
+    /// The cluster's bidi embedding level and its paragraph's (miaskiewicz/turbo-dom#238).
+    pub bidi_level: u8,
+    pub paragraph_level: u8,
     pub utf16_start: usize,
     pub utf16_end: usize,
     /// The advance/font box in the line's own frame: physical, unless `vertical`.
@@ -78,7 +81,7 @@ fn collect_boxes<'a>(
     for run in runs {
         let fragment = &snapshot.fragments()[run.fragment_index];
         let ancestry: Arc<[SourceId]> = run.source_ancestors.clone().into();
-        let mut groups = BTreeMap::<(usize, usize), (f32, f32, bool, bool)>::new();
+        let mut groups = BTreeMap::<(usize, usize), (f32, f32, bool, bool, [u8; 2])>::new();
         for glyph in &run.glyphs {
             let source = glyph.source;
             let begin = source.pen_x.min(source.pen_x + source.advance);
@@ -90,12 +93,13 @@ fn collect_boxes<'a>(
                     end,
                     source.right_to_left,
                     source.collapsed_whitespace,
+                    [source.bidi_level, source.paragraph_level],
                 ));
             edges.0 = edges.0.min(begin);
             edges.1 = edges.1.max(end);
             edges.3 &= source.collapsed_whitespace;
         }
-        for ((start, end), (left, right, right_to_left, collapsed_whitespace)) in groups {
+        for ((start, end), (left, right, right_to_left, collapsed_whitespace, levels)) in groups {
             let font = run.font_box;
             let rect = Rect {
                 x: fragment.rect.x + left,
@@ -114,6 +118,8 @@ fn collect_boxes<'a>(
             boxes.push(SourceClusterBox {
                 right_to_left,
                 collapsed_whitespace,
+                bidi_level: levels[0],
+                paragraph_level: levels[1],
                 fragment_index: fragment.index,
                 source_id: run.source_id,
                 source_ancestors: Arc::clone(&ancestry),

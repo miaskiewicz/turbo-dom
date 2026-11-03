@@ -9,15 +9,18 @@
 
 use crate::text::FontFace;
 
+/// The advance of `text` shaped in direction `rtl` (its bidi level's,
+/// miaskiewicz/turbo-dom#238), or of its `original` UTF-16 units.
 pub(super) fn measure(
     face: &FontFace,
     size: (f32, f32),
     letter_spacing: f32,
     text: &str,
+    rtl: bool,
     original: Option<&[u16]>,
 ) -> f64 {
     let glyphs = original.map_or_else(
-        || face.shape(text),
+        || face.shape_in(text, rtl),
         |units| face.shape_original_utf16(units),
     );
     advances(face, size, &glyphs, letter_spacing).iter().sum()
@@ -63,23 +66,23 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            measure(&ibm, (16.0, 1.0), 0.0, "a", None),
+            measure(&ibm, (16.0, 1.0), 0.0, "a", false, None),
             9.599_990_844_726_562
         );
         assert_eq!(
-            measure(&fira, (16.0, 1.0), 0.0, "a", None),
+            measure(&fira, (16.0, 1.0), 0.0, "a", false, None),
             9.846_145_629_882_812
         );
         assert_eq!(
-            measure(&ibm, (16.0, 1.0), 0.0, "aaaaa", None),
+            measure(&ibm, (16.0, 1.0), 0.0, "aaaaa", false, None),
             47.999_954_223_632_81
         );
         assert_eq!(
-            measure(&ibm, (16.0, 1.0), 0.0, "abc", None),
+            measure(&ibm, (16.0, 1.0), 0.0, "abc", false, None),
             28.799_972_534_179_688
         );
         assert_ne!(
-            measure(&ibm, (16.0, 1.0), 0.0, "abc", None),
+            measure(&ibm, (16.0, 1.0), 0.0, "abc", false, None),
             3.0 * (9.6_f64 * 128.0).ceil() / 128.0
         );
     }
@@ -99,13 +102,13 @@ mod tests {
         );
         let original = [0x61, 0x62, 0x63];
         assert_eq!(
-            measure(&face, (16.0, 1.0), 0.0, "ignored", Some(&original)),
-            measure(&face, (16.0, 1.0), 0.0, "abc", None)
+            measure(&face, (16.0, 1.0), 0.0, "ignored", false, Some(&original)),
+            measure(&face, (16.0, 1.0), 0.0, "abc", false, None)
         );
         assert_eq!(
-            measure(&face, (16.0, 1.0), 0.25, "abc", None),
-            measure(&face, (16.0, 1.0), 0.0, "abc", None) + 0.75
+            measure(&face, (16.0, 1.0), 0.25, "abc", false, None),
+            measure(&face, (16.0, 1.0), 0.0, "abc", false, None) + 0.75
         );
-        assert_eq!(measure(&face, (16.0, 1.0), 0.0, "", None), 0.0);
+        assert_eq!(measure(&face, (16.0, 1.0), 0.0, "", false, None), 0.0);
     }
 }

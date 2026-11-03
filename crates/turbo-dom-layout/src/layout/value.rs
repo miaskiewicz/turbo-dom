@@ -1234,8 +1234,13 @@ fn line_height(s: &ComputedStyle, fs: f32) -> Option<f32> {
 }
 
 fn align_of(s: &ComputedStyle) -> crate::text::Align {
+    align_in(s, s.get("direction").map(str::trim) == Some("rtl"))
+}
+
+/// `text-align` of `s` in a paragraph of direction `rtl` (a `unicode-bidi: plaintext`
+/// paragraph's own, miaskiewicz/turbo-dom#238).
+pub(crate) fn align_in(s: &ComputedStyle, rtl: bool) -> crate::text::Align {
     use crate::text::Align;
-    let rtl = s.get("direction").map(str::trim) == Some("rtl");
     let value = s.get("text-align").unwrap_or("start").trim();
     match value.strip_prefix("-webkit-").unwrap_or(value) {
         "right" => Align::Right,

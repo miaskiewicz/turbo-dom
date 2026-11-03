@@ -14,7 +14,7 @@ pub(crate) fn atomic_element(element: &crate::StyledElement) -> bool {
     matches!(&element.tag,crate::Tag::Html(name) if matches!(name.as_str(),"img"|"canvas"|"iframe"|"object"|"embed"|"input"|"select"|"textarea"|"button"|"video"|"audio"|"svg"))
 }
 /// The elements whose ordinary inline layout the native inline producer does not
-/// support (top/bottom/middle alignment, vertical/RTL writing, a displaced
+/// support (top/bottom/middle alignment, vertical writing, a displaced
 /// inline split around a block, a displaced block split out of an inline), each
 /// with its reason. The rest of the document lays out as usual: the snapshot fails
 /// these elements' geometry reads only (miaskiewicz/turbo-surf#31), not the whole
@@ -57,15 +57,6 @@ fn element_unsupported<'a>(
         return collect_unsupported(&element.children, (inside, parent_rtl, parent), out);
     }
     let ordinary = ordinary_inline(element, display);
-    // An inline that only inherits its container's direction lays out in logical
-    // order, aligned by the container (approximate: no UAX #9 reordering, #238); one
-    // that changes direction opens a bidi embedding, which is unsupported.
-    if ordinary && rtl != parent_rtl {
-        return out.push((
-            element,
-            crate::layout_snapshot::SnapshotError::UnsupportedInlineWriting,
-        ));
-    }
     let mode = WritingMode::of(&element.style);
     match validate_rendered_element(element, display, inside, ordinary)
         .and_then(|()| validate_writing(element, display))
@@ -101,12 +92,9 @@ fn validate_writing(
 /// metrics this crate's horizontal UA approximation does not have either). `<img>`,
 /// `<svg>` and `<iframe>` turn their physical intrinsic / default size.
 fn physical_default_size(element: &crate::StyledElement, display: Display) -> bool {
-    let crate::Tag::Html(name) = &element.tag else {
-        return false;
-    };
     display != Display::None
         && atomic_element(element)
-        && !matches!(name.as_str(), "img" | "svg" | "iframe")
+        && !matches!(&element.tag, crate::Tag::Html(name) if matches!(name.as_str(), "img" | "svg" | "iframe"))
 }
 /// A character `text-orientation: mixed` sets upright (Unicode
 /// `Vertical_Orientation` U / Tu, the CJK and related blocks).
@@ -253,11 +241,11 @@ pub(super) fn edge(
         .select(&families, used.font_weight, used.italic)?
         .clone();
     let border = used.border.widths();
-    let advance = if start {
-        used.margin.left + border.left + used.padding.left
-    } else {
-        used.padding.right + border.right + used.margin.right
-    };
+    let left = used.margin.left + border.left + used.padding.left;
+    let right = used.padding.right + border.right + used.margin.right;
+    // An RTL box starts at its right side (miaskiewicz/turbo-dom#238).
+    let rtl = is_rtl(source);
+    let advance = if start == rtl { right } else { left };
     Some(InlineEdge {
         node_id,
         start,
@@ -268,6 +256,8 @@ pub(super) fn edge(
         contributes_metrics: true,
         valign: used.vertical_align,
         baseline_shift: 0.0,
+        rtl,
+        bidi: super::inline::UnicodeBidi::parse(source.get("unicode-bidi")),
     })
 }
 
@@ -612,7 +602,7 @@ impl InlineFragments<'_, '_> {
         self.open.push(Open {
             edge: placed.edge.clone(),
             x: placed.x,
-            first: true,
+            first: placed.decorated,
             paused: false,
         });
     }
@@ -626,7 +616,7 @@ impl InlineFragments<'_, '_> {
         };
         let value = self.open.remove(index);
         if !value.paused {
-            self.flush(&value, placed.x + placed.edge.advance, true);
+            self.flush(&value, placed.x + placed.edge.advance, placed.decorated);
         }
         if let Some(parent) = self.open.last_mut().filter(|parent| parent.paused) {
             parent.x = placed.x + placed.edge.advance;
@@ -885,8 +875,11 @@ mod defensive_contract_tests {
                 baseline_shift: 0.0,
                 contributes_metrics: true,
                 valign: super::super::value::VAlign::Baseline,
+                rtl: false,
+                bidi: super::super::inline::UnicodeBidi::Normal,
             },
             x: 20.0,
+            decorated: true,
         };
         let offsets = HashMap::new();
         let mut projection = InlineFragments {

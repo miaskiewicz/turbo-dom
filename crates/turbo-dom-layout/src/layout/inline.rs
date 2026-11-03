@@ -7,21 +7,25 @@
 //! Words break at white space, inside words per `word-break: break-all` /
 //! `overflow-wrap`, at soft hyphens and, under `hyphens: auto`, at English
 //! dictionary hyphenation points ([`WordBreaking`], [`AutoHyphens`],
-//! turbo-dom#212, #213). Deferred (per §2): justified spacing (`Align::Justify`
-//! lays out left), hyphenation dictionaries for languages other than English,
-//! bidi/RTL, and CJK (UAX #14) break opportunities.
+//! turbo-dom#212, #213). Lines break in logical order and are then reordered
+//! per UAX #9 ([`bidi`], miaskiewicz/turbo-dom#238). Deferred (per §2): justified
+//! spacing (`Align::Justify` lays out left), hyphenation dictionaries for languages
+//! other than English, and CJK (UAX #14) break opportunities.
 
 use crate::error::{Diagnostics, LintCode, Span};
 use crate::text::{Align, FontFace, FontRegistry};
 
 use super::fragment::{NodeId, PositionedGlyph};
 use super::value::{Rgba, VAlign};
+#[path = "bidi.rs"]
+pub(crate) mod bidi;
 #[path = "hyphenate.rs"]
 mod hyphenate;
 #[path = "inline_advances.rs"]
 mod inline_advances;
 #[path = "native_text_advance.rs"]
 mod native_text_advance;
+pub use bidi::UnicodeBidi;
 pub use hyphenate::AutoHyphens;
 
 /// One styled run of text entering inline layout. `face` is the run's primary
@@ -249,11 +253,18 @@ pub struct InlineEdge {
     pub baseline_shift: f32,
     pub contributes_metrics: bool,
     pub valign: VAlign,
+    /// The box is `direction: rtl`: its start edge is its right side.
+    pub rtl: bool,
+    /// The box's `unicode-bidi` (its explicit embedding, isolate or override).
+    pub bidi: UnicodeBidi,
 }
 #[derive(Debug, Clone)]
 pub struct PlacedInlineEdge {
     pub edge: InlineEdge,
     pub x: f32,
+    /// The edge draws its box side's decoration (border, padding, margin): a box
+    /// fragment that bidi reordering left without that side has none.
+    pub decorated: bool,
 }
 
 /// Where an atom landed: its `id` and top-left relative to the line's top-left.
@@ -320,6 +331,11 @@ pub struct GlyphSourceCluster {
     /// True for source cells created by CSS whitespace collapse, including the
     /// first rendered space. Pre/nowrap glyph spaces retain ordinary provenance.
     pub collapsed_whitespace: bool,
+    /// The cluster's bidi embedding level and its paragraph's (UAX #9,
+    /// miaskiewicz/turbo-dom#238): caret hit testing prefers the lower level at a run
+    /// boundary, as Blink does.
+    pub bidi_level: u8,
+    pub paragraph_level: u8,
 }
 
 /// Native output and parallel per-line, per-run, per-glyph source records.
@@ -366,6 +382,10 @@ struct CharInfo {
     invalid_unit: Option<u16>,
     /// Stands upright in a vertical line ([`UprightText::sets`]).
     upright: bool,
+    /// The resolved bidi embedding level ([`bidi::paragraph_levels`]) and its
+    /// paragraph's.
+    level: u8,
+    paragraph: u8,
 }
 
 fn resolve_face(ch: char, run: &InlineRun, reg: &FontRegistry) -> (FontFace, bool) {
@@ -521,6 +541,10 @@ fn flatten_chars(
             source_end,
         } in chars.iter(&run.text)
         {
+            if bidi::is_formatting(ch) {
+                // Bidi formatting characters only steer the levels; never drawn.
+                continue;
+            }
             let invalid_unit = invalid_source_unit(original, utf16_offset, ch);
             let (face, notdef) = select_character_face(
                 CharacterSelection {
@@ -545,6 +569,8 @@ fn flatten_chars(
                 original: original.is_some(),
                 invalid_unit,
                 upright: run.upright.sets(ch),
+                level: 0,
+                paragraph: 0,
             });
         }
         if missing {
@@ -688,6 +714,9 @@ struct Seg {
     /// this segment's logically last glyph against a following space
     /// (`inline_advances::prepare`; included in `native_width`).
     trailing_kern: f64,
+    /// The segment's bidi embedding level (every character's) and its paragraph's.
+    level: u8,
+    paragraph: u8,
     /// Native HTML only: the second half of a split `kern`-table pair across the space
     /// before this segment, on its logically first glyph (`inline_advances::prepare`;
     /// included in `native_width`).
@@ -725,15 +754,20 @@ struct Word {
     /// hyphenation points: the whole word's width. Like Chrome, that word is not
     /// hyphenated on a line holding earlier content; it moves to the next line.
     last_word_width: Option<f32>,
+    /// The bidi level of the white space after the word (`None`: no such space).
+    space_level: Option<u8>,
+    /// The bidi level of the atom (U+FFFC is a neutral).
+    atom_level: u8,
 }
 
-fn seg_key(c: &CharInfo) -> (usize, String, u16, bool, bool) {
+fn seg_key(c: &CharInfo) -> (usize, String, u16, bool, bool, u8) {
     (
         c.run,
         c.face.family().to_string(),
         c.face.weight(),
         c.face.is_italic(),
         c.upright,
+        c.level,
     )
 }
 
@@ -743,11 +777,17 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
     let face = chars[0].face.clone();
     let original_units = segment_original_units(chars);
     let upright = chars[0].upright;
+    let rtl = chars[0].level % 2 == 1;
     let width = if upright {
-        chars.len() as f32 * (upright_advance(&face, run.font_size) + run.letter_spacing)
+        // One vertical advance per cluster: a combining mark joins its base.
+        let clusters = chars
+            .iter()
+            .filter(|c| !crate::text::transform::is_mark(c.ch))
+            .count();
+        clusters as f32 * (upright_advance(&face, run.font_size) + run.letter_spacing)
     } else {
         original_units.as_deref().map_or_else(
-            || face.measure(&text, run.font_size, run.letter_spacing),
+            || face.measure_in(&text, run.font_size, run.letter_spacing, rtl),
             |units| face.measure_original_utf16(units, run.font_size, run.letter_spacing),
         )
     };
@@ -769,6 +809,8 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
         width,
         native_width: f64::from(width),
         trailing_kern: 0.0,
+        level: chars[0].level,
+        paragraph: chars[0].paragraph,
         leading_kern: 0.0,
         upright,
     }
@@ -859,6 +901,8 @@ fn break_word() -> Word {
         hyphen: None,
         dictionary_break: false,
         last_word_width: None,
+        space_level: None,
+        atom_level: 0,
     }
 }
 
@@ -945,7 +989,9 @@ fn build_words(
             .collect();
         words.extend(breakable_words(items, runs, space_after));
         let spaces = native_word_spaces(&chars[i..], runs, native_advances);
-        words.last_mut().expect("a word was pushed").spaces = spaces;
+        let last = words.last_mut().expect("a word was pushed");
+        last.spaces = spaces;
+        last.space_level = chars.get(i).map(|c| c.level);
     }
     words
 }
@@ -969,58 +1015,72 @@ struct SourcePolicy {
 
 /// Build words in document order; adjacent runs share a word, while each atom
 /// remains unbreakable. Native advance metadata is kept out of PDF callers.
+/// A paragraph's words and whether its lines reorder
+/// ([`bidi::ParagraphLevels::active`]).
+struct ParagraphWords {
+    words: Vec<Word>,
+    bidi: bool,
+}
+
 fn build_pieces(
     pieces: &[Piece],
     reg: &FontRegistry,
     diags: &mut Diagnostics,
     policy: SourcePolicy,
     original_units: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-) -> Vec<Word> {
+) -> ParagraphWords {
+    let levels = bidi::paragraph_levels(pieces);
     let mut words = Vec::new();
     let mut group: Vec<InlineRun> = Vec::new();
     let mut edges: Vec<(usize, InlineEdge)> = Vec::new();
+    let mut runs_seen = 0;
+    let mut atoms_seen = 0;
+    let flush = |group: &mut Vec<InlineRun>,
+                 edges: &mut Vec<(usize, InlineEdge)>,
+                 diags: &mut Diagnostics,
+                 words: &mut Vec<Word>,
+                 runs_seen: usize| {
+        let first = runs_seen - group.len();
+        flush_run_group(
+            group,
+            edges,
+            (reg, diags),
+            (
+                words,
+                &levels.runs[first..runs_seen],
+                &levels.paragraph[first..runs_seen],
+            ),
+            policy,
+            original_units,
+        );
+    };
     for piece in pieces {
         match piece {
-            Piece::Run(run) => group.push(run.clone()),
+            Piece::Run(run) => {
+                group.push(run.clone());
+                runs_seen += 1;
+            }
             Piece::Edge(edge) => edges.push((group.len(), edge.clone())),
             Piece::Atom(atom) => {
-                flush_run_group(
-                    &mut group,
-                    &mut edges,
-                    reg,
-                    diags,
-                    &mut words,
-                    policy,
-                    original_units,
-                );
-                words.push(atom_word(*atom, 0.0));
+                flush(&mut group, &mut edges, diags, &mut words, runs_seen);
+                let mut word = atom_word(*atom, 0.0);
+                word.atom_level = levels.atoms[atoms_seen];
+                atoms_seen += 1;
+                words.push(word);
             }
             Piece::NativeAtom(atom, shift) => {
-                flush_run_group(
-                    &mut group,
-                    &mut edges,
-                    reg,
-                    diags,
-                    &mut words,
-                    policy,
-                    original_units,
-                );
+                flush(&mut group, &mut edges, diags, &mut words, runs_seen);
                 let mut atom = *atom;
                 if matches!(atom.valign, VAlign::Super | VAlign::Sub) {
                     atom.valign = VAlign::Baseline;
                 }
-                words.push(atom_word(atom, *shift));
+                let mut word = atom_word(atom, *shift);
+                word.atom_level = levels.atoms[atoms_seen];
+                atoms_seen += 1;
+                words.push(word);
             }
             Piece::SourceBreak(edge) => {
-                flush_run_group(
-                    &mut group,
-                    &mut edges,
-                    reg,
-                    diags,
-                    &mut words,
-                    policy,
-                    original_units,
-                );
+                flush(&mut group, &mut edges, diags, &mut words, runs_seen);
                 let mut word = break_word();
                 let mut end = edge.clone();
                 end.start = false;
@@ -1028,29 +1088,16 @@ fn build_pieces(
                 words.push(word);
             }
             Piece::Break => {
-                flush_run_group(
-                    &mut group,
-                    &mut edges,
-                    reg,
-                    diags,
-                    &mut words,
-                    policy,
-                    original_units,
-                );
+                flush(&mut group, &mut edges, diags, &mut words, runs_seen);
                 words.push(break_word());
             }
         }
     }
-    flush_run_group(
-        &mut group,
-        &mut edges,
-        reg,
-        diags,
-        &mut words,
-        policy,
-        original_units,
-    );
-    words
+    flush(&mut group, &mut edges, diags, &mut words, runs_seen);
+    ParagraphWords {
+        words,
+        bidi: levels.active,
+    }
 }
 
 fn atom_word(atom: InlineAtom, shift: f32) -> Word {
@@ -1070,6 +1117,8 @@ fn atom_word(atom: InlineAtom, shift: f32) -> Word {
         hyphen: None,
         dictionary_break: false,
         last_word_width: None,
+        space_level: None,
+        atom_level: 0,
     }
 }
 /// Flush a run of consecutive text pieces into words (itemize + word-break),
@@ -1077,15 +1126,18 @@ fn atom_word(atom: InlineAtom, shift: f32) -> Word {
 fn flush_run_group(
     group: &mut Vec<InlineRun>,
     edges: &mut Vec<(usize, InlineEdge)>,
-    reg: &FontRegistry,
-    diags: &mut Diagnostics,
-    out: &mut Vec<Word>,
+    (reg, diags): (&FontRegistry, &mut Diagnostics),
+    (out, levels, paragraphs): (&mut Vec<Word>, &[Vec<u8>], &[u8]),
     policy: SourcePolicy,
     original_units: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
 ) {
     if !group.is_empty() || !edges.is_empty() {
         let native = policy.capture || original_units.is_some();
-        let chars = flatten_chars(group, reg, diags, native, original_units);
+        let mut chars = flatten_chars(group, reg, diags, native, original_units);
+        for c in &mut chars {
+            c.level = levels[c.run].get(c.byte_offset).copied().unwrap_or(0);
+            c.paragraph = paragraphs[c.run];
+        }
         let continue_space = group_leading_space(&chars, group, edges, out, native, policy);
         if edges.is_empty() {
             out.extend(build_words(&chars, group, native, policy.advances));
@@ -1236,6 +1288,7 @@ impl MarkedWords<'_> {
             previous
                 .spaces
                 .push(make_seg(std::slice::from_ref(&c), self.runs));
+            previous.space_level.get_or_insert(c.level);
         }
         self.in_space = true;
     }
@@ -1558,6 +1611,8 @@ fn marked_word(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> 
         hyphen: None,
         dictionary_break: false,
         last_word_width: None,
+        space_level: None,
+        atom_level: 0,
     }
 }
 
@@ -1580,6 +1635,7 @@ fn hand_off_leading_space(
         separating_space(first, group, capture_sources) && !forced_newline(first, group);
     if breakable && last.space_after == 0.0 {
         last.space_after = space_width(first, group);
+        last.space_level = Some(first.level);
         if native_advances {
             last.advance_space = Some(make_seg(std::slice::from_ref(first), group));
             last.spaces.extend(
@@ -1655,6 +1711,8 @@ struct Placer<'a> {
     central: bool,
     /// Quirks mode (see [`NativeLineOptions::quirk_roots`]).
     quirk_roots: Option<&'a std::collections::HashSet<NodeId>>,
+    /// The paragraph's lines reorder (UAX #9).
+    bidi: bool,
     first_indent: f32,
     clearance: Option<&'a dyn Fn(f32, f32) -> f32>,
     out: Vec<SourceLine>,
@@ -1686,6 +1744,7 @@ impl<'a> Placer<'a> {
             strut_metrics: None,
             central: false,
             quirk_roots: None,
+            bidi: false,
             first_indent: 0.0,
             clearance: None,
             out: Vec::new(),
@@ -1743,7 +1802,10 @@ impl<'a> Placer<'a> {
             self.align,
             self.strut,
             &self.open_edges,
-            strut_metrics.map(|metrics| (metrics, self.central)),
+            (
+                strut_metrics.map(|metrics| (metrics, self.central)),
+                self.bidi,
+            ),
             (
                 self.capture_sources,
                 self.html_font_metrics,
@@ -1818,6 +1880,7 @@ impl<'a> Placer<'a> {
         last.advance_space = word.advance_space.take();
         last.native_space = word.native_space.take();
         last.space_after = word.space_after;
+        last.space_level = word.space_level;
         last.break_after = word.break_after;
         for part in parts {
             self.add(part);
@@ -1864,6 +1927,7 @@ impl<'a> Placer<'a> {
             last.line.inline_edges.push(PlacedInlineEdge {
                 edge: edge.clone(),
                 x,
+                decorated: true,
             });
             x += edge.advance;
             self.open_edges.retain(|open| open.node_id != edge.node_id);
@@ -1936,13 +2000,15 @@ fn mark_last_word(words: &mut [Word]) {
 
 /// Break `words` into placed lines via a [`Placer`].
 fn wrap_and_place(
-    mut words: Vec<Word>,
+    paragraph: ParagraphWords,
     align: Align,
     region: LineRegion,
     strut: f32,
     policy: (bool, bool, Option<f32>),
 ) -> Vec<SourceLine> {
+    let ParagraphWords { mut words, bidi } = paragraph;
     let mut placer = Placer::new(align, region, strut, policy);
+    placer.bidi = bidi;
     mark_last_word(&mut words);
     for word in words {
         placer.add(word);
@@ -2233,15 +2299,16 @@ fn line_used_width(words: &[Word]) -> f32 {
     w
 }
 
-fn source_shaper_is_rtl(text: &str, enabled: bool) -> bool {
+/// The direction the segment was shaped in: its bidi level's, or (original UTF-16
+/// units) the shaper's own guess.
+fn source_shaper_is_rtl(seg: &Seg, enabled: bool) -> bool {
     if !enabled {
         return false;
     }
-    let mut buffer = rustybuzz::UnicodeBuffer::new();
-    buffer.push_str(text);
-    // rustybuzz::shape applies this same native property selection before shaping.
-    buffer.guess_segment_properties();
-    buffer.direction() == rustybuzz::Direction::RightToLeft
+    if seg.original_units.is_none() {
+        return seg.level % 2 == 1;
+    }
+    crate::text::guessed_rtl(&seg.text)
 }
 
 /// A native HTML segment's glyph advances (`native_text_advance::advances`), with the
@@ -2298,10 +2365,10 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
     let mut x = pen_x;
     let mut native_x = f64::from(pen_x);
     let shaped = seg.original_units.as_deref().map_or_else(
-        || seg.face.shape(&seg.text),
+        || seg.face.shape_in(&seg.text, seg.level % 2 == 1),
         |units| seg.face.shape_original_utf16(units),
     );
-    let right_to_left = source_shaper_is_rtl(&seg.text, capture_sources);
+    let right_to_left = source_shaper_is_rtl(seg, capture_sources);
     let mut text_ranges = ClusterTexts::new(&shaped);
     let (boundaries, utf16) = if capture_sources {
         let mut boundaries: Vec<_> = shaped.iter().map(|glyph| glyph.cluster as usize).collect();
@@ -2366,6 +2433,8 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
             clusters.push(GlyphSourceCluster {
                 collapsed_whitespace: false,
                 right_to_left,
+                bidi_level: seg.level,
+                paragraph_level: seg.paragraph,
                 byte_start,
                 byte_end,
                 utf16_start,
@@ -2552,7 +2621,67 @@ struct LinePlacement {
     atoms: Vec<PlacedAtom>,
     inline_edges: Vec<PlacedInlineEdge>,
     advances: Option<inline_advances::Cursor>,
+    record: Option<Recorder>,
 }
+/// A bidi line's placed items in logical order ([`bidi::reorder_line`]) and the
+/// inline boxes open at the pen.
+struct Recorder {
+    items: Vec<bidi::LineItem>,
+    stack: Vec<NodeId>,
+    /// Each open box and the item count at its start (an empty box gets a place).
+    marks: Vec<(NodeId, usize)>,
+    level: u8,
+}
+
+impl Recorder {
+    fn new(open: &[InlineEdge]) -> Self {
+        Recorder {
+            items: Vec::new(),
+            stack: open.iter().map(|edge| edge.node_id).collect(),
+            marks: Vec::new(),
+            level: 0,
+        }
+    }
+    fn push(
+        &mut self,
+        (x0, x1): (f32, f32),
+        level: u8,
+        runs: std::ops::Range<usize>,
+        atom: Option<usize>,
+    ) {
+        self.level = level;
+        self.items.push(bidi::LineItem {
+            x0,
+            x1,
+            level,
+            boxes: self.stack.clone(),
+            runs,
+            atom,
+            space: false,
+        });
+    }
+    fn edge(&mut self, edge: &InlineEdge, x: f32) {
+        if edge.start {
+            self.stack.push(edge.node_id);
+            self.marks.push((edge.node_id, self.items.len()));
+            return;
+        }
+        let empty = self
+            .marks
+            .iter()
+            .rev()
+            .find(|(node, _)| *node == edge.node_id)
+            .is_some_and(|(_, count)| *count == self.items.len());
+        if empty {
+            let level = self.level;
+            self.push((x, x), level, 0..0, None);
+        }
+        if let Some(at) = self.stack.iter().rposition(|node| *node == edge.node_id) {
+            self.stack.remove(at);
+        }
+    }
+}
+
 impl LinePlacement {
     /// The alphabetic baseline `seg`'s glyphs sit on. On a central line the font's box
     /// centres on the line's baseline, so its alphabetic baseline lies its ascent below
@@ -2573,21 +2702,43 @@ impl LinePlacement {
         }
     }
     fn word(&mut self, word: &Word, has_next: bool) {
+        let leading = self.runs.len();
         for space in &word.leading_spaces {
             let baseline = self.seg_baseline(space);
             self.runs
                 .push(shape_space(space, self.pen, baseline, self.policy, 0.0));
         }
+        if let Some(record) = self.record.as_mut().filter(|_| leading < self.runs.len()) {
+            let level = word.segs.first().map_or(word.atom_level, |seg| seg.level);
+            record.push((self.pen, self.pen), level, leading..self.runs.len(), None);
+        }
         if let Some(atom) = word.atom {
-            self.atom(&atom, word.atom_shift);
+            self.atom(&atom, word.atom_shift, word.atom_level);
         } else {
             self.text(word);
         }
+        let (x0, runs) = (self.pen, self.runs.len());
         self.begin_space(word, has_next);
         self.spaces(word, has_next);
         self.advance_space(word, has_next);
+        if let Some(record) = self.record.as_mut() {
+            if self.pen > x0 || self.runs.len() > runs {
+                let level = word.space_level.unwrap_or(record.level);
+                record.push((x0, self.pen), level, runs..self.runs.len(), None);
+                if let Some(item) = record.items.last_mut() {
+                    item.space = true;
+                }
+            }
+        }
     }
-    fn atom(&mut self, atom: &InlineAtom, shift: f32) {
+    fn atom(&mut self, atom: &InlineAtom, shift: f32, level: u8) {
+        let x0 = self.pen;
+        self.atom_placed(atom, shift);
+        if let Some(record) = self.record.as_mut() {
+            record.push((x0, self.pen), level, 0..0, Some(self.atoms.len() - 1));
+        }
+    }
+    fn atom_placed(&mut self, atom: &InlineAtom, shift: f32) {
         self.native_barrier(0.0);
         let margin_top = atom_margin_top(atom, self.height, self.baseline) - shift;
         self.atoms.push(PlacedAtom {
@@ -2604,7 +2755,7 @@ impl LinePlacement {
             return;
         }
         if let (Some(advances), Some((source, _))) = (&mut self.advances, word.native_space) {
-            advances.begin(source);
+            advances.begin((source, word.space_level.unwrap_or(0)));
             self.pen = advances.position();
         }
     }
@@ -2626,26 +2777,35 @@ impl LinePlacement {
     }
     fn edge(&mut self, edge: &InlineEdge) {
         self.native_barrier(0.0);
+        if let Some(record) = self.record.as_mut() {
+            record.edge(edge, self.pen);
+        }
         self.inline_edges.push(PlacedInlineEdge {
             edge: edge.clone(),
             x: self.pen,
+            decorated: true,
         });
         self.pen += edge.advance;
         self.native_barrier(edge.advance);
     }
     fn segment(&mut self, seg: &Seg) {
+        let x0 = self.pen;
         if let Some(advances) = &mut self.advances {
-            advances.begin(seg.node_id);
+            advances.begin((seg.node_id, seg.level));
             self.pen = advances.position();
         }
         let baseline = self.seg_baseline(seg);
         self.runs
             .push(shape_seg(seg, self.pen, baseline, self.policy));
         if let Some(advances) = &mut self.advances {
-            advances.text(seg.node_id, seg.native_width);
+            advances.text((seg.node_id, seg.level), seg.native_width);
             self.pen = advances.position();
         } else {
             self.pen += seg.width;
+        }
+        if let Some(record) = self.record.as_mut() {
+            let run = self.runs.len() - 1;
+            record.push((x0, self.pen), seg.level, run..run + 1, None);
         }
     }
     fn text(&mut self, word: &Word) {
@@ -2664,6 +2824,11 @@ impl LinePlacement {
         }
         let mut pen = self.pen;
         for (index, space) in word.spaces.iter().enumerate() {
+            if !has_next && after_closed_box(word, space) {
+                // Chrome wraps a space that opens the text after an inline box's end
+                // to the next line only (miaskiewicz/turbo-dom#238).
+                continue;
+            }
             let advance = visible_space_advance(word, index, has_next);
             let baseline = self.seg_baseline(space);
             self.runs
@@ -2673,6 +2838,18 @@ impl LinePlacement {
             }
         }
     }
+}
+/// `space` follows the word's closing inline-box edge, in a source of its own.
+fn after_closed_box(word: &Word, space: &Seg) -> bool {
+    let closes = word
+        .edges
+        .iter()
+        .any(|(at, edge)| *at == word.segs.len() && !edge.start);
+    closes
+        && word
+            .segs
+            .last()
+            .is_some_and(|seg| seg.node_id != space.node_id)
 }
 fn visible_space_advance(word: &Word, index: usize, has_next: bool) -> f32 {
     if index == 0 && has_next {
@@ -2737,7 +2914,7 @@ fn place_line(
     align: Align,
     strut: f32,
     open_edges: &[InlineEdge],
-    strut_metrics: Option<NativeStrut>,
+    (strut_metrics, bidi): (Option<NativeStrut>, bool),
     policy: (bool, bool, Option<f32>),
 ) -> SourceLine {
     let m = line_box_metrics(&words, open_edges, (strut, strut_metrics), policy);
@@ -2770,20 +2947,35 @@ fn place_line(
         advances: policy
             .2
             .map(|scale| inline_advances::Cursor::new(scale, pen)),
+        record: bidi.then(|| Recorder::new(open_edges)),
     };
     for (index, word) in words.iter().enumerate() {
         placement.word(word, index + 1 < words.len());
     }
     let LinePlacement {
-        runs,
-        atoms,
-        inline_edges,
+        mut runs,
+        mut atoms,
+        mut inline_edges,
+        record,
         ..
     } = placement;
+    if let Some(record) = record {
+        bidi::reorder_line(
+            record.items,
+            pen,
+            open_edges,
+            (&mut runs, &mut atoms, &mut inline_edges),
+        );
+    }
+    let runs = if bidi {
+        runs
+    } else {
+        merge_runs(runs, policy.0)
+    };
     let mut output_runs = Vec::new();
     let mut clusters = Vec::new();
     let mut font_boxes = Vec::new();
-    for value in merge_runs(runs, policy.0) {
+    for value in runs {
         output_runs.push(value.run);
         clusters.push(value.clusters);
         font_boxes.push(value.font_box);
@@ -2948,7 +3140,7 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
     strut: f32,
     options: NativeLineOptions<'_>,
 ) -> ParagraphSourceLayout {
-    let mut words = build_pieces(
+    let ParagraphWords { mut words, bidi } = build_pieces(
         pieces,
         reg,
         diags,
@@ -2966,6 +3158,7 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
     placer.strut_metrics = options.strut_metrics;
     placer.central = options.central;
     placer.quirk_roots = options.quirk_roots;
+    placer.bidi = bidi;
     placer.first_indent = options.first_indent;
     placer.clearance = Some(options.clearance);
     mark_last_word(&mut words);
@@ -2999,25 +3192,31 @@ pub(crate) fn layout_runs_with_units(
     width: f32,
     diags: &mut Diagnostics,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-    html_metrics: bool,
+    (html_metrics, scale): (bool, Option<f32>),
 ) -> ParagraphLayout {
     let pieces: Vec<_> = runs.iter().cloned().map(Piece::Run).collect();
-    let words = build_pieces(
+    // A native HTML box measures with the device-scale advances its lines are placed
+    // with (miaskiewicz/turbo-dom#241), so a shrink-to-fit width holds its own text.
+    let scale = scale.filter(|_| html_metrics);
+    let mut words = build_pieces(
         &pieces,
         fonts,
         diags,
         SourcePolicy {
             capture: html_metrics,
-            advances: false,
+            advances: scale.is_some(),
         },
         original,
     );
+    if let Some(scale) = scale {
+        inline_advances::prepare(&mut words.words, scale);
+    }
     finalize(wrap_and_place(
         words,
         Align::Left,
         &|_| (0.0, width),
         0.0,
-        (html_metrics, html_metrics, None),
+        (html_metrics, html_metrics, scale),
     ))
     .layout
 }
@@ -3165,6 +3364,8 @@ mod tests {
             baseline_shift: 0.0,
             contributes_metrics: true,
             valign: VAlign::Baseline,
+            rtl: false,
+            bidi: UnicodeBidi::Normal,
         })
     }
 

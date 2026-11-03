@@ -5489,9 +5489,7 @@
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\" class=\"lr\" style=\"height:100px\">a<span data-cid=\"i\" style=\"display:inline-block;padding:2px\">bc</span></div>",
    "fonts": true,
    "metrics": true,
-   "measure": {
-    "i": "xyw"
-   },
+   "measure": {},
    "boxes": [
     {
      "cid": "v",
@@ -6599,6 +6597,613 @@
       "scrollHeight": 100,
       "scrollLeft": 0
      }
+    }
+   ]
+  },
+  {
+   "id": "shrink-to-fit-native-advances",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"v\">a<span data-cid=\"i\" style=\"display:inline-block;padding:2px\">bc</span></div><div data-cid=\"f\" style=\"float:left\">abc</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 24,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 23.703125,
+     "height": 24,
+     "display": "inline-block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 24,
+     "width": 29.546875,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-inline-default",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 9,
+     "width": 8,
+     "height": 6,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-no-src",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" >b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 15,
+     "width": 0,
+     "height": 0,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-no-src-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" width=\"40\" height=\"30\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 35,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 40,
+     "height": 30,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-no-src-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" width=\"40\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 15,
+     "width": 40,
+     "height": 0,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-empty-src",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 15,
+     "width": 0,
+     "height": 0,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-empty-src-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"\" width=\"40\" height=\"30\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 35,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 40,
+     "height": 30,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" width=\"40\" height=\"30\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 35,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 40,
+     "height": 30,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-no-src-alt",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" alt=\"hi there\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 94.78125,
+     "height": 20,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-no-src-alt-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" alt=\"hi there\" width=\"40\" height=\"30\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 94.78125,
+     "height": 20,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-no-src-empty-alt-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" alt=\"\" width=\"40\" height=\"30\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 35,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 40,
+     "height": 30,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-alt",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" alt=\"hi there\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 94.78125,
+     "height": 20,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-alt-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" alt=\"hi there\" width=\"40\" height=\"30\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 94.78125,
+     "height": 20,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-empty-alt",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" alt=\"\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 15,
+     "width": 0,
+     "height": 0,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-css-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" style=\"width:40px;height:30px\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 35,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 40,
+     "height": 30,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-no-src-alt-big-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" alt=\"hi there\" width=\"200\" height=\"50\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 94.78125,
+     "height": 20,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-alt-big-size",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" alt=\"hi there\" width=\"200\" height=\"50\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 94.78125,
+     "height": 20,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-alt-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" alt=\"hi there\" width=\"200\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 94.78125,
+     "height": 20,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" width=\"40\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-height",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" height=\"40\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-empty-alt-pct-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" alt=\"\" style=\"display:block;width:50%\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 0,
+     "y": 20,
+     "width": 640,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-no-src-pct-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" style=\"display:block;width:50%\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 0,
+     "y": 20,
+     "width": 640,
+     "height": 0,
+     "display": "block",
+     "position": "static"
     }
    ]
   }

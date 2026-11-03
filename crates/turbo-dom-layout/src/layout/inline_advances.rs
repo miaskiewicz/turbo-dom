@@ -1,10 +1,12 @@
 //! Native source items retain unsnapped glyph positions but admit their aggregate
-//! advance to the physical `LayoutUnit` grid before wrapping and placement.
+//! advance to the physical `LayoutUnit` grid before wrapping and placement. An item
+//! is a run of one source at one bidi level (Chrome splits its items at level changes,
+//! miaskiewicz/turbo-dom#238).
 use super::{native_text_advance, NodeId, Seg, Word};
 
 #[derive(Clone)]
 pub(super) struct Cursor {
-    source: Option<NodeId>,
+    source: Option<(NodeId, u8)>,
     origin: f64,
     advance: f64,
     units: f64,
@@ -24,13 +26,13 @@ impl Cursor {
     pub(super) fn snapped(&self) -> f32 {
         (self.origin + (self.advance * self.units).ceil() / self.units) as f32
     }
-    pub(super) fn begin(&mut self, source: NodeId) {
+    pub(super) fn begin(&mut self, source: (NodeId, u8)) {
         if self.source != Some(source) {
             self.barrier(0.0);
             self.source = Some(source);
         }
     }
-    pub(super) fn text(&mut self, source: NodeId, advance: f64) {
+    pub(super) fn text(&mut self, source: (NodeId, u8), advance: f64) {
         self.begin(source);
         self.advance += advance;
     }
@@ -49,13 +51,13 @@ impl Cursor {
                 self.barrier(edge.advance);
             }
             if let Some(seg) = word.segs.get(index) {
-                self.text(seg.node_id, seg.native_width);
+                self.text((seg.node_id, seg.level), seg.native_width);
             }
         }
     }
     pub(super) fn space(&mut self, word: &Word) {
         if let Some((source, advance)) = word.native_space {
-            self.text(source, advance);
+            self.text((source, word.space_level.unwrap_or(0)), advance);
         } else if word.space_after != 0.0 {
             self.barrier(word.space_after);
         }
@@ -77,6 +79,7 @@ fn prepare_segment(seg: &mut Seg, scale: f32) {
         (seg.font_size, scale),
         seg.letter_spacing,
         &seg.text,
+        seg.level % 2 == 1,
         seg.original_units.as_deref(),
     );
 }
@@ -93,6 +96,7 @@ fn prepare_word(word: &mut Word, scale: f32) {
                 (source.font_size, scale),
                 source.letter_spacing,
                 " ",
+                false,
                 None,
             ),
         ));
@@ -213,7 +217,7 @@ mod tests {
             Align::Left,
             24.0,
             &[],
-            None,
+            (None, false),
             (true, true, Some(2.0)),
         );
         assert_eq!(placed.line.atoms.len(), 1);
