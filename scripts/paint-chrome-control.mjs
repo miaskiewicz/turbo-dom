@@ -337,6 +337,72 @@ const CASES = [
     html: DOC(`<div style="${at(20, 20)};width:200px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}<br>${ATOM(40, 30)}</span></div>`),
     probes: [[22, 50], [113, 50], [118, 50], [122, 50], [22, 80], [27, 80], [73, 80], [78, 80], [82, 80]],
   },
+  // miaskiewicz/turbo-dom#248: background-size / -position / -repeat / -origin / -clip.
+  // SPRITE is 100x40, left half red, right half blue; the boxes' colour is green.
+  {
+    id: "bg-size-position-no-repeat",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#00ff00 url(${SPRITE}) no-repeat;background-size:50px 20px;background-position:30px 10px"></div>`),
+    assets: [SPRITE],
+    probes: [[60, 40], [90, 40], [110, 40], [40, 25], [60, 55], [52, 32], [98, 48]],
+  },
+  {
+    id: "bg-default-repeat",
+    html: DOC(`<div style="${at(20, 20)};width:250px;height:90px;background:#00ff00 url(${SPRITE})"></div>`),
+    assets: [SPRITE],
+    probes: [[40, 40], [100, 40], [140, 40], [200, 40], [240, 40], [260, 40], [40, 80], [100, 80], [240, 105]],
+  },
+  {
+    id: "bg-repeat-x",
+    html: DOC(`<div style="${at(20, 20)};width:300px;height:100px;background:#00ff00 url(${SPRITE}) repeat-x 0 50%/40px 16px"></div>`),
+    assets: [SPRITE],
+    probes: [[30, 70], [50, 70], [70, 70], [90, 70], [310, 70], [30, 50], [30, 90]],
+  },
+  {
+    id: "bg-repeat-y",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:200px;background:#00ff00 url(${SPRITE}) repeat-y right top/40px 16px"></div>`),
+    assets: [SPRITE],
+    probes: [[190, 28], [210, 28], [190, 44], [210, 200], [100, 28], [170, 28]],
+  },
+  {
+    id: "bg-contain",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#00ff00 url(${SPRITE}) no-repeat;background-size:contain"></div>`),
+    assets: [SPRITE],
+    probes: [[60, 60], [160, 60], [100, 110], [100, 98]],
+  },
+  {
+    id: "bg-cover-center",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#00ff00 url(${SPRITE}) no-repeat center/cover"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 70], [110, 70], [130, 70], [215, 70], [120, 22], [120, 118]],
+  },
+  {
+    id: "bg-position-keywords",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#00ff00 url(${SPRITE}) no-repeat right 25% bottom 10px/40px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[145, 100], [165, 100], [175, 100], [125, 100], [155, 85], [155, 112]],
+  },
+  {
+    // A transparent border and padding: the image's origin is the content box, the
+    // painting area (colour included) the padding box.
+    id: "bg-origin-clip",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:60px;padding:10px;border:10px solid transparent;background:#00ff00 url(${SPRITE}) no-repeat content-box padding-box;background-size:20px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 50], [35, 50], [45, 45], [55, 45], [65, 45], [75, 75], [145, 50]],
+  },
+  {
+    id: "bg-gradient-tiles",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:60px;background:#00ff00 linear-gradient(to right,#ff0000,#0000ff) 0 0/40px 30px"></div>`),
+    assets: [],
+    probes: [[22, 30], [58, 30], [62, 30], [98, 30], [22, 65], [58, 65]],
+  },
+  {
+    // An inline box: the positioning area is its fragments' strip (160px over two
+    // lines); a right-aligned 40px no-repeat image lands at the end of the last one.
+    id: "inline-bg-position",
+    html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:#00ff00 url(${SPRITE}) no-repeat right 0/40px 100%;padding:5px 0">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[25, 52], [95, 52], [25, 82], [65, 82], [95, 82]],
+  },
   // An inline box's background image / gradient (stretched over its padding box here):
   // sliced, the fragments show consecutive pieces of one image laid over their strip;
   // cloned, each fragment shows the whole image.
