@@ -1786,10 +1786,6 @@ struct Placer<'a> {
     reopen: Vec<InlineEdge>,
     /// Whether any placed word carried a `box-decoration-break: clone` edge.
     any_clone: bool,
-    /// The cloned boxes open after `cur[..clones_len]`, outermost first (`None`:
-    /// rebuild from `open_edges`); see [`Placer::sync_clones`].
-    clones: Vec<InlineEdge>,
-    clones_len: Option<usize>,
     y: f32,
     indent: f32,
     lw: f32,
@@ -1827,8 +1823,6 @@ impl<'a> Placer<'a> {
             open_edges: Vec::new(),
             reopen: Vec::new(),
             any_clone: false,
-            clones: Vec::new(),
-            clones_len: None,
             y: 0.0,
             indent,
             lw,
@@ -1895,7 +1889,6 @@ impl<'a> Placer<'a> {
             ),
         );
         self.open_edges = next_open;
-        self.clones_len = None;
         line.line.top = self.y;
         line.line.indent = self.indent;
         self.y += line.line.height;
@@ -1937,7 +1930,6 @@ impl<'a> Placer<'a> {
         if let Some(last) = self.cur.last_mut() {
             if let Some(hyphen) = last.hyphen.take() {
                 *last = *hyphen;
-                self.clones_len = None;
             }
         }
         word.leading_spaces = self.wrapped_leading_spaces(word);
@@ -1949,37 +1941,23 @@ impl<'a> Placer<'a> {
         reopen_clones(word, &cloned);
     }
 
-    /// The `box-decoration-break: clone` boxes open after the current line's words
-    /// outermost first (miaskiewicz/turbo-dom#244).
-    fn cloned_open(&mut self) -> Vec<InlineEdge> {
-        self.sync_clones();
-        self.clones.clone()
-    }
-
-    /// Bring [`Placer::clones`] up to the current line: only the words placed since the
-    /// last call are scanned (rebuilt from `open_edges` after a flush or a rewrite), so
-    /// a line costs linear work, not a rescan per word (R2 review #6). Until a cloned
-    /// edge is seen there is nothing to track.
-    fn sync_clones(&mut self) {
-        let start = match self.clones_len {
-            Some(len) if len <= self.cur.len() => len,
-            _ => {
-                self.clones.clear();
-                self.clones.extend(
-                    self.open_edges
-                        .iter()
-                        .filter(|edge| edge.clone_advance.is_some())
-                        .cloned(),
-                );
-                0
-            }
-        };
+    /// The `box-decoration-break: clone` boxes open after the current line's words,
+    /// outermost first (miaskiewicz/turbo-dom#244). Read only where a line ends (a wrap
+    /// or a forced break), so a line's words are scanned once (R2 review #6). Until a
+    /// cloned edge is seen there is nothing to track.
+    fn cloned_open(&self) -> Vec<InlineEdge> {
+        let mut open: Vec<InlineEdge> = self
+            .open_edges
+            .iter()
+            .filter(|edge| edge.clone_advance.is_some())
+            .cloned()
+            .collect();
         if self.any_clone {
-            for word in &self.cur[start..] {
-                apply_clone_edges(&mut self.clones, word);
+            for word in &self.cur {
+                apply_clone_edges(&mut open, word);
             }
         }
-        self.clones_len = Some(self.cur.len());
+        open
     }
 
     /// A word with `overflow-wrap` opportunities: placed whole when it fits a line
@@ -2064,7 +2042,6 @@ impl<'a> Placer<'a> {
             x += edge.advance;
             self.open_edges.retain(|open| open.node_id != edge.node_id);
         }
-        self.clones_len = None;
         last.line.width = x - last.line.inline_origin;
         true
     }
