@@ -279,7 +279,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 16] = [
+    let groups: [fn(&str) -> bool; 17] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -296,6 +296,7 @@ fn held_out(id: &str) -> bool {
         vertical_case,
         media_case,
         |id| id.starts_with("form-"),
+        input_image_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -588,4 +589,15 @@ fn form_controls_are_sized_like_chrome_156() {
 #[test]
 fn vertical_form_controls_lay_out_like_chrome_156() {
     assert_matches_chrome(compare_cases(|id| id.starts_with("form-rl-")));
+}
+
+/// miaskiewicz/turbo-dom#258: `<input type=image>` is a replaced image control: html.css
+/// resets its padding, border and background, so the #239 input frame does not apply.
+fn input_image_case(id: &str) -> bool {
+    id.starts_with("input-image-")
+}
+
+#[test]
+fn image_inputs_have_no_control_frame_like_chrome_156() {
+    assert_matches_chrome(compare_cases(input_image_case));
 }
