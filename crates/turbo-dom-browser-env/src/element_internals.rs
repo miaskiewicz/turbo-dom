@@ -1,6 +1,7 @@
 //! Native CustomStateSet storage and closed shadow ownership for ElementInternals.
 use super::*;
 struct Updates(v8::Weak<v8::Function>);
+fn_slots!([Updates]);
 pub(super) fn attribute_changed(scope: &mut v8::PinScope, host: v8::Local<v8::Object>, name: &str) {
     let Some(context) = host.get_creation_context(scope) else {
         return;
@@ -85,11 +86,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(callback) = dom_ownership::helper_function(scope, callback) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(Updates(callback)));
-        }
+        context_rehydrate::capture::<Updates>(scope, callback);
     }
     global.delete(scope, key.into());
 }

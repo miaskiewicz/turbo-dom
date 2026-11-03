@@ -12,6 +12,7 @@
 use super::*;
 
 struct Classifier(v8::Weak<v8::Function>);
+fn_slots!([Classifier]);
 
 const NAMES: [&str; 16] = [
     "checked",
@@ -364,11 +365,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(callback) = dom_ownership::helper_function(scope, callback) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(Classifier(callback)));
-        }
+        context_rehydrate::capture::<Classifier>(scope, callback);
     }
     global.delete(scope, key.into());
 }

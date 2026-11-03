@@ -8,6 +8,7 @@
 use super::*;
 
 struct Indexed(v8::Weak<v8::Function>);
+fn_slots!([Indexed]);
 
 fn is_select(scope: &mut v8::PinScope, holder: v8::Local<v8::Object>) -> bool {
     let _dom = DomScope::for_object(scope, holder);
@@ -207,11 +208,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(callback) = dom_ownership::helper_function(scope, callback) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(Indexed(callback)));
-        }
+        context_rehydrate::capture::<Indexed>(scope, callback);
     }
     global.delete(scope, key.into());
 }

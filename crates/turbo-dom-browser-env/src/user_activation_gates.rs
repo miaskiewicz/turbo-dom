@@ -29,6 +29,7 @@ pub enum ActivationQuery {
 pub type ActivationHost = fn(&mut v8::PinScope, v8::Local<v8::Object>, ActivationQuery) -> bool;
 struct HostSlot(ActivationHost);
 struct Hook(v8::Weak<v8::Function>);
+fn_slots!([Hook]);
 
 /// Register the embedder's activation authority for a realm, before guest code runs.
 pub fn set_activation_host(context: v8::Local<v8::Context>, host: ActivationHost) {
@@ -841,11 +842,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(function) = dom_ownership::helper_function(scope, function) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(Hook(function)));
-        }
+        context_rehydrate::capture::<Hook>(scope, function);
     }
     global.delete(scope, key.into());
 }

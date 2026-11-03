@@ -11,6 +11,10 @@
 //! removeChild, get/setAttribute, id/className/tagName/textContent, querySelector(All)/getElementById.
 //! Events, cssom/style, classList, forms etc. grew in P3.3 and later. Always on (`enabled()`).
 
+#[macro_use]
+#[path = "context_rehydrate.rs"]
+mod context_rehydrate;
+pub(crate) use context_rehydrate::rehydrate_context;
 #[path = "animations.rs"]
 mod animations;
 #[path = "css_selector_syntax.rs"]
@@ -608,6 +612,15 @@ struct FormSubmissionDispatcher(v8::Weak<v8::Function>);
 struct FormValueReader(v8::Weak<v8::Function>);
 struct FormEntryListReader(v8::Weak<v8::Function>);
 struct FormDataEventDispatcher(v8::Weak<v8::Function>);
+fn_slots!([
+    FormSubmissionDispatcher,
+    FormValueReader,
+    FormEntryListReader,
+    FormDataEventDispatcher,
+    EventRecordAccessor,
+    HostEventDispatcher,
+    InlineHandlerSetter,
+]);
 
 #[derive(Default)]
 struct SavedDom {
@@ -2110,13 +2123,7 @@ pub fn install_form_value_reader(
         .get_slot::<DomContextId>()
         .map_or(0, |id| id.0);
     let _dom = DomScope::enter(id);
-    let Some(callback) = dom_ownership::helper_function(scope, callback) else {
-        return false;
-    };
-    scope
-        .get_current_context()
-        .set_slot(std::rc::Rc::new(FormValueReader(callback)));
-    true
+    context_rehydrate::capture::<FormValueReader>(scope, callback).is_some()
 }
 
 /// Register a host-only submission admission/queue callback for this native document.
@@ -7821,11 +7828,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(callback) = dom_ownership::helper_function(scope, callback) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(FormDataEventDispatcher(callback)));
-        }
+        context_rehydrate::capture::<FormDataEventDispatcher>(scope, callback);
     }
     global.delete(scope, key.into());
     let entries = v8::String::new(scope, "__captureFormEntries").unwrap();
@@ -7833,11 +7836,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         .get(scope, entries.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(callback) = dom_ownership::helper_function(scope, callback) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(FormEntryListReader(callback)));
-        }
+        context_rehydrate::capture::<FormEntryListReader>(scope, callback);
     }
     global.delete(scope, entries.into());
     let name = v8::String::new(scope, "__captureFormSubmission").unwrap();
@@ -7845,11 +7844,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         .get(scope, name.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(function) = dom_ownership::helper_function(scope, function) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(FormSubmissionDispatcher(function)));
-        }
+        context_rehydrate::capture::<FormSubmissionDispatcher>(scope, function);
     }
     global.delete(scope, name.into());
 
@@ -7858,12 +7853,9 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        let Some(accessor) = dom_ownership::helper_function(scope, accessor) else {
+        if context_rehydrate::capture::<EventRecordAccessor>(scope, accessor).is_none() {
             return;
-        };
-        scope
-            .get_current_context()
-            .set_slot(std::rc::Rc::new(EventRecordAccessor(accessor)));
+        }
         global.delete(scope, key.into());
     }
     let key = v8::String::new(scope, "__captureHostEventDispatch").unwrap();
@@ -7871,12 +7863,9 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        let Some(dispatcher) = dom_ownership::helper_function(scope, dispatcher) else {
+        if context_rehydrate::capture::<HostEventDispatcher>(scope, dispatcher).is_none() {
             return;
-        };
-        scope
-            .get_current_context()
-            .set_slot(std::rc::Rc::new(HostEventDispatcher(dispatcher)));
+        }
         global.delete(scope, key.into());
     }
     event_handlers::install(scope, None, "about:blank");
@@ -7893,11 +7882,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(setter) = dom_ownership::helper_function(scope, setter) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(InlineHandlerSetter(setter)));
-        }
+        context_rehydrate::capture::<InlineHandlerSetter>(scope, setter);
         global.delete(scope, key.into());
     }
     // Chrome's document owns only `location`: bootstrap shims set on the instance move to

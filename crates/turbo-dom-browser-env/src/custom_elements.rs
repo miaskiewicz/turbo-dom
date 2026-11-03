@@ -314,6 +314,7 @@ fn defining(
 struct MutationHook(v8::Weak<v8::Function>);
 struct CloneHook(v8::Weak<v8::Function>);
 struct ParsedHook(v8::Weak<v8::Function>);
+fn_slots!([ErrorHook, MutationHook, CloneHook, ParsedHook]);
 
 fn mutation_hook<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -798,23 +799,14 @@ pub(super) fn install(scope: &mut v8::PinScope) {
             .get(scope, key.into())
             .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
         {
-            let Some(function) = dom_ownership::helper_function(scope, function) else {
-                return;
+            let captured = match family {
+                0 => context_rehydrate::capture::<MutationHook>(scope, function),
+                1 => context_rehydrate::capture::<CloneHook>(scope, function),
+                2 => context_rehydrate::capture::<ErrorHook>(scope, function),
+                _ => context_rehydrate::capture::<ParsedHook>(scope, function),
             };
-            let context = scope.get_current_context();
-            match family {
-                0 => {
-                    context.set_slot(Rc::new(MutationHook(function)));
-                }
-                1 => {
-                    context.set_slot(Rc::new(CloneHook(function)));
-                }
-                2 => {
-                    context.set_slot(Rc::new(ErrorHook(function)));
-                }
-                _ => {
-                    context.set_slot(Rc::new(ParsedHook(function)));
-                }
+            if captured.is_none() {
+                return;
             }
         }
         global.delete(scope, key.into());

@@ -106,6 +106,10 @@ mod install_split_tests;
 mod startup_snapshot_tests;
 
 #[cfg(test)]
+#[path = "context_rehydrate_tests.rs"]
+mod context_rehydrate_tests;
+
+#[cfg(test)]
 #[path = "engine_namespace_tests.rs"]
 mod engine_namespace_tests;
 

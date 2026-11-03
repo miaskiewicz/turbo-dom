@@ -2,6 +2,7 @@
 
 struct RangeAccessor(v8::Weak<v8::Function>);
 struct RangeExceptionUpdater(v8::Weak<v8::Function>);
+fn_slots!([RangeAccessor, RangeExceptionUpdater]);
 
 fn contextual_fragment<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -89,12 +90,7 @@ pub(super) fn capture(scope: &mut v8::PinScope) {
     else {
         return;
     };
-    let Some(accessor) = super::dom_ownership::helper_function(scope, function) else {
-        return;
-    };
-    scope
-        .get_current_context()
-        .set_slot(std::rc::Rc::new(RangeAccessor(accessor)));
+    super::context_rehydrate::capture::<RangeAccessor>(scope, function);
 }
 
 pub(super) fn install(scope: &mut v8::PinScope) {
@@ -140,12 +136,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
             )
             .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
         {
-            let Some(updater) = super::dom_ownership::helper_function(scope, updater) else {
-                return;
-            };
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(RangeExceptionUpdater(updater)));
+            super::context_rehydrate::capture::<RangeExceptionUpdater>(scope, updater);
         }
     }
 }
