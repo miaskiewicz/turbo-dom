@@ -102,6 +102,10 @@ const IMG_CASES = [
   ["no-src-alt-big-size", `alt="hi there" width="200" height="50"`],
   ["broken-alt-big-size", `src="${BROKEN_PNG}" alt="hi there" width="200" height="50"`],
   ["broken-alt-width", `src="${BROKEN_PNG}" alt="hi there" width="200"`],
+  ["broken-width", `src="${BROKEN_PNG}" width="40"`],
+  ["broken-height", `src="${BROKEN_PNG}" height="40"`],
+  ["broken-empty-alt-pct-width", `src="${BROKEN_PNG}" alt="" style="display:block;width:50%"`],
+  ["no-src-pct-width", `style="display:block;width:50%"`],
 ];
 const VERTICAL_CSS = 'body{margin:0;font:16px/20px "Fira Code"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}';
 const VERTICAL_CASES = [

@@ -6543,6 +6543,110 @@
      "position": "static"
     }
    ]
+  },
+  {
+   "id": "img-broken-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" width=\"40\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-height",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" height=\"40\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 21,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 9.859375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-broken-empty-alt-pct-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" src=\"data:image/png;base64,AAAA\" alt=\"\" style=\"display:block;width:50%\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 0,
+     "y": 20,
+     "width": 640,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "img-no-src-pct-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<img data-cid=\"i\" style=\"display:block;width:50%\">b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "i",
+     "x": 0,
+     "y": 20,
+     "width": 640,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    }
+   ]
   }
  ]
 }
