@@ -4961,6 +4961,462 @@
    ]
   },
   {
+   "id": "img-scaled-4x",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:0px;transform:scale(4);transform-origin:0 0\"><img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=\" style=\"display:block;width:100px;height:40px\"></div></body></html>",
+   "assets": [
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII="
+   ],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 190,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 196,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 197,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 198,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      223,
+      0,
+      31
+     ]
+    },
+    {
+     "x": 199,
+     "y": 80,
+     "class": "?",
+     "rgb": [
+      159,
+      0,
+      95
+     ]
+    },
+    {
+     "x": 200,
+     "y": 80,
+     "class": "?",
+     "rgb": [
+      95,
+      0,
+      159
+     ]
+    },
+    {
+     "x": 201,
+     "y": 80,
+     "class": "B",
+     "rgb": [
+      31,
+      0,
+      223
+     ]
+    },
+    {
+     "x": 202,
+     "y": 80,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 203,
+     "y": 80,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 210,
+     "y": 80,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bg-image-tiles-scaled-4x",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:300px;width:100px;height:20px;transform:scale(4);transform-origin:0 0;background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=) 0 0/50px 20px\"></div></body></html>",
+   "assets": [
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII="
+   ],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 97,
+     "y": 340,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 98,
+     "y": 340,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 99,
+     "y": 340,
+     "class": "R",
+     "rgb": [
+      191,
+      0,
+      64
+     ]
+    },
+    {
+     "x": 100,
+     "y": 340,
+     "class": "B",
+     "rgb": [
+      64,
+      0,
+      191
+     ]
+    },
+    {
+     "x": 101,
+     "y": 340,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 102,
+     "y": 340,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 197,
+     "y": 340,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 198,
+     "y": 340,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 199,
+     "y": 340,
+     "class": "B",
+     "rgb": [
+      64,
+      0,
+      191
+     ]
+    },
+    {
+     "x": 200,
+     "y": 340,
+     "class": "R",
+     "rgb": [
+      191,
+      0,
+      64
+     ]
+    },
+    {
+     "x": 201,
+     "y": 340,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 202,
+     "y": 340,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bg-tiles-fractional-blend",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:0px;width:200px;height:200px;background:#00ff00 linear-gradient(to right,#ff0000 40%,#0000ff 40%) 0 0/2.5px 2.5px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 0,
+     "y": 0,
+     "class": "R",
+     "rgb": [
+      230,
+      0,
+      26
+     ]
+    },
+    {
+     "x": 1,
+     "y": 0,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 2,
+     "y": 0,
+     "class": "?",
+     "rgb": [
+      128,
+      0,
+      128
+     ]
+    },
+    {
+     "x": 3,
+     "y": 0,
+     "class": "B",
+     "rgb": [
+      76,
+      0,
+      179
+     ]
+    },
+    {
+     "x": 4,
+     "y": 0,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 5,
+     "y": 0,
+     "class": "R",
+     "rgb": [
+      229,
+      0,
+      26
+     ]
+    },
+    {
+     "x": 7,
+     "y": 0,
+     "class": "?",
+     "rgb": [
+      128,
+      0,
+      128
+     ]
+    },
+    {
+     "x": 8,
+     "y": 0,
+     "class": "B",
+     "rgb": [
+      76,
+      0,
+      179
+     ]
+    },
+    {
+     "x": 102,
+     "y": 50,
+     "class": "?",
+     "rgb": [
+      128,
+      0,
+      127
+     ]
+    },
+    {
+     "x": 103,
+     "y": 50,
+     "class": "B",
+     "rgb": [
+      76,
+      0,
+      179
+     ]
+    },
+    {
+     "x": 197,
+     "y": 199,
+     "class": "?",
+     "rgb": [
+      128,
+      0,
+      127
+     ]
+    },
+    {
+     "x": 198,
+     "y": 199,
+     "class": "B",
+     "rgb": [
+      76,
+      0,
+      179
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bg-tiles-fractional-blend-few",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:0px;width:30px;height:30px;background:#00ff00 linear-gradient(to right,#ff0000 50%,#0000ff 50%) 0 0/1.5px 1.5px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 0,
+     "y": 5,
+     "class": "R",
+     "rgb": [
+      212,
+      0,
+      43
+     ]
+    },
+    {
+     "x": 1,
+     "y": 5,
+     "class": "?",
+     "rgb": [
+      128,
+      0,
+      128
+     ]
+    },
+    {
+     "x": 2,
+     "y": 5,
+     "class": "B",
+     "rgb": [
+      42,
+      0,
+      213
+     ]
+    },
+    {
+     "x": 3,
+     "y": 5,
+     "class": "R",
+     "rgb": [
+      212,
+      0,
+      43
+     ]
+    },
+    {
+     "x": 4,
+     "y": 5,
+     "class": "?",
+     "rgb": [
+      128,
+      0,
+      128
+     ]
+    },
+    {
+     "x": 5,
+     "y": 5,
+     "class": "B",
+     "rgb": [
+      42,
+      0,
+      213
+     ]
+    },
+    {
+     "x": 28,
+     "y": 29,
+     "class": "?",
+     "rgb": [
+      128,
+      0,
+      128
+     ]
+    },
+    {
+     "x": 29,
+     "y": 29,
+     "class": "B",
+     "rgb": [
+      42,
+      0,
+      213
+     ]
+    }
+   ]
+  },
+  {
    "id": "bg-tiles-shrunk-fractional",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:0px;width:5120px;height:3200px;transform:scale(0.25);transform-origin:0 0;background:#00ff00 linear-gradient(#ff0000,#ff0000) 0 0/1.5px 1.5px\"></div></body></html>",
    "assets": [],
