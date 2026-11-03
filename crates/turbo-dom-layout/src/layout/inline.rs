@@ -69,8 +69,9 @@ pub struct InlineRun {
 
 /// The characters of a run that stand upright in a vertical line instead of turning a
 /// quarter (CSS Writing Modes 4 §7.1): none in horizontal flow or under
-/// `text-orientation: sideways`, the CJK and related blocks (`Vertical_Orientation`
-/// U / Tu) under `mixed`, every character under `upright`. An upright character
+/// `text-orientation: sideways`, the characters whose Unicode `Vertical_Orientation`
+/// is U / Tu under `mixed` (a mark, selector or ZWJ follows the character before it),
+/// every character under `upright`. An upright character
 /// advances by the font's vertical advance (its ascent + descent: the fixture faces
 /// have no `vmtx`) and stands centred on the line.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -104,6 +105,21 @@ impl UprightText {
             UprightText::None => false,
             UprightText::Mixed => super::inline_boxes::sets_upright(c),
             UprightText::All => true,
+        }
+    }
+
+    /// Whether `c` stands upright after a character that did (`Some(true)`) or did not
+    /// (`Some(false)`), or at the start of a run (`None`): under `mixed` a mark, variation
+    /// selector or ZWJ follows the previous character (UAX #50; R2 review #8).
+    #[must_use]
+    pub fn sets_after(self, c: char, previous: Option<bool>) -> bool {
+        match previous {
+            Some(previous)
+                if self == UprightText::Mixed && super::inline_boxes::inherits_orientation(c) =>
+            {
+                previous
+            }
+            _ => self.sets(c),
         }
     }
 }
@@ -537,6 +553,7 @@ fn flatten_chars(
             ),
         };
         let mut native_faces = NativeFallbacks::default();
+        let mut previous_upright = None;
         for TransformedChar {
             ch,
             byte,
@@ -563,6 +580,8 @@ fn flatten_chars(
                 &mut native_faces,
             );
             missing |= notdef;
+            let upright = run.upright.sets_after(ch, previous_upright);
+            previous_upright = Some(upright);
             out.push(CharInfo {
                 byte_offset,
                 utf16_offset,
@@ -572,7 +591,7 @@ fn flatten_chars(
                 face,
                 original: original.is_some(),
                 invalid_unit,
-                upright: run.upright.sets(ch),
+                upright,
                 level: 0,
                 paragraph: 0,
             });
@@ -783,10 +802,11 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
     let upright = chars[0].upright;
     let rtl = chars[0].level % 2 == 1;
     let width = if upright {
-        // One vertical advance per cluster: a combining mark joins its base.
+        // One vertical advance per cluster: a combining mark, variation selector or ZWJ
+        // joins the character before it.
         let clusters = chars
             .iter()
-            .filter(|c| !crate::text::transform::is_mark(c.ch))
+            .filter(|c| !super::inline_boxes::inherits_orientation(c.ch))
             .count();
         clusters as f32 * (upright_advance(&face, run.font_size) + run.letter_spacing)
     } else {

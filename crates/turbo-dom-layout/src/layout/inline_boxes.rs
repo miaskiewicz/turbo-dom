@@ -69,13 +69,24 @@ fn element_unsupported<'a>(
         ),
     }
 }
-/// A character `text-orientation: mixed` sets upright (Unicode
-/// `Vertical_Orientation` U / Tu, the CJK and related blocks).
+/// A character `text-orientation: mixed` sets upright: its Unicode
+/// `Vertical_Orientation` (UAX #50) is U or Tu (the generated
+/// [`super::vertical_orientation::UPRIGHT`] table).
 pub(super) fn sets_upright(c: char) -> bool {
-    matches!(u32::from(c),
-        0x1100..=0x11FF | 0x2E80..=0xA4CF | 0xA960..=0xA97F | 0xAC00..=0xD7FF
-        | 0xF900..=0xFAFF | 0xFE10..=0xFE1F | 0xFE30..=0xFE4F | 0xFF00..=0xFFEF
-        | 0x1F000..=0x1FAFF | 0x20000..=0x3FFFD)
+    in_ranges(super::vertical_orientation::UPRIGHT, c)
+}
+
+/// A character that takes the previous character's orientation instead of its own: a
+/// combining mark, variation selector, ZWJ, emoji modifier or tag (its
+/// `Grapheme_Cluster_Break` is Extend, ZWJ or SpacingMark), so a sequence is not split.
+pub(super) fn inherits_orientation(c: char) -> bool {
+    in_ranges(super::vertical_orientation::INHERIT, c)
+}
+
+fn in_ranges(ranges: &[(u32, u32)], c: char) -> bool {
+    let c = u32::from(c);
+    let i = ranges.partition_point(|&(_, last)| last < c);
+    ranges.get(i).is_some_and(|&(first, _)| first <= c)
 }
 fn validate_rendered_element(
     element: &crate::StyledElement,
@@ -953,6 +964,33 @@ mod defensive_contract_tests {
         for r in [0x2768, 0x2794, 0x27BF, 0x61, 0x2010, 0xFE0F, 0x200D] {
             assert!(!cp(r), "{r:04X} is R");
         }
+    }
+
+    #[test]
+    fn marks_selectors_and_zwj_take_the_previous_orientation() {
+        use super::super::inline::UprightText;
+        let inherits = |c: u32| inherits_orientation(char::from_u32(c).unwrap());
+        // ZWJ, variation selectors (and the supplement), combining marks (U+20DD is U on
+        // its own), a spacing mark, emoji modifiers and tags.
+        for c in [
+            0x200D, 0xFE0E, 0xFE0F, 0xE0100, 0x0301, 0x20DD, 0x0903, 0x1F3FB, 0xE0020,
+        ] {
+            assert!(inherits(c), "{c:04X} inherits");
+        }
+        for c in [0x61, 0xA9, 0x1F468, 0x200C - 1] {
+            assert!(!inherits(c), "{c:04X} has its own");
+        }
+        let mixed = UprightText::Mixed;
+        // After a turned `a`, U+20DD (U alone) turns; after an upright `©`, a variation
+        // selector (R alone) stands; at a run's start a character has its own.
+        assert!(!mixed.sets_after('\u{20DD}', Some(false)));
+        assert!(mixed.sets_after('\u{FE0F}', Some(true)));
+        assert!(mixed.sets_after('\u{20DD}', None));
+        // The character after a ZWJ keeps its own (Chrome: `© ZWJ a` turns the `a`).
+        assert!(!mixed.sets_after('a', Some(true)));
+        // `upright` and `sideways` ignore the sequence.
+        assert!(UprightText::All.sets_after('a', Some(false)));
+        assert!(!UprightText::None.sets_after('\u{FE0F}', Some(true)));
     }
 
     #[test]
