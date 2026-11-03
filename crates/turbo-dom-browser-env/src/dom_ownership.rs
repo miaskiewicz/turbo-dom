@@ -149,20 +149,36 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
             work.wrappers_visited
                 .set(work.wrappers_visited.get() + state.cache.len())
         });
+        // Every node walked on the way up shares the root found: memoized for this pass
+        // (cached wrappers and their uncached ancestors), each edge is walked once.
+        let mut found: std::collections::HashMap<u32, u32> = std::collections::HashMap::new();
+        let mut path = Vec::new();
         for handle in state.cache.keys() {
-            let mut root = *handle;
-            while let Some(parent) = state
-                .tree
-                .parent(root)
-                .or_else(|| state.tree.attribute_owner(root))
-                .or_else(|| state.tree.shadow_host(root))
-            {
-                #[cfg(test)]
-                WORK.with(|work| work.root_steps.set(work.root_steps.get() + 1));
-                root = parent;
+            let mut node = *handle;
+            let root = loop {
+                if let Some(root) = found.get(&node.raw()) {
+                    break *root;
+                }
+                path.push(node.raw());
+                match state
+                    .tree
+                    .parent(node)
+                    .or_else(|| state.tree.attribute_owner(node))
+                    .or_else(|| state.tree.shadow_host(node))
+                {
+                    Some(parent) => {
+                        #[cfg(test)]
+                        WORK.with(|work| work.root_steps.set(work.root_steps.get() + 1));
+                        node = parent;
+                    }
+                    None => break node.raw(),
+                }
+            };
+            for walked in path.drain(..) {
+                found.insert(walked, root);
             }
-            roots.insert(handle.raw(), root.raw());
-            if root == state.tree.root() {
+            roots.insert(handle.raw(), root);
+            if root == state.tree.root().raw() {
                 connected.insert(handle.raw());
             }
         }
