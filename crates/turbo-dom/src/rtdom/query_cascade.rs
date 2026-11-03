@@ -1395,6 +1395,11 @@ mod tests {
             parse_for_cascade("a:bogus").unwrap_err(),
             SelectorError::UnknownPseudoClass("bogus".into())
         );
+        // every other rejection keeps its fixed reason
+        assert_eq!(
+            parse_for_cascade(":is(::before)").unwrap_err().to_string(),
+            "invalid selector: pseudo-element inside a pseudo-class argument"
+        );
         let list = parse_for_cascade(" a , b.c ").unwrap();
         let texts: Vec<&str> = list.selectors().iter().map(CascadeSelector::text).collect();
         assert_eq!(texts, ["a", "b.c"]);
