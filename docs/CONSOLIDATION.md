@@ -103,9 +103,9 @@ and jobs are added only when `publish.yml` calls it with `darwin: true` for a re
 Every job that builds a shipped Linux binary (the napi matrix and publish.yml's `crates`)
 runs on `ubuntu-22.04` / `ubuntu-22.04-arm` (glibc 2.35). publish.yml's `npm` job builds no
 addon: it ships the napi matrix's `.node` artifacts and builds only the WASM targets. The
-napi matrix and the npm job run `scripts/check-glibc-ceiling.sh` (`objdump -T`) on the
-linux-gnu addons, named explicitly. It fails above GLIBC_2.35, on a missing file, on an
-objdump failure and on a binary with no GLIBC_ symbols (self-test
+napi matrix and the npm job run `scripts/check-glibc-ceiling.sh` (`readelf -W --dyn-syms -V`, which reads any ELF machine) on the
+linux-gnu addons, named explicitly. It fails above GLIBC_2.35, on a missing file, on a
+readelf failure and on a binary with no GLIBC_ symbols (self-test
 `scripts/test_check_glibc_ceiling.py`, run by `guards`). Test-only jobs stay on
 `ubuntu-latest`. A newer push to a pull request cancels the PR's superseded run: the
 `concurrency` group is per PR, with `cancel-in-progress` for `pull_request` only. `main`
