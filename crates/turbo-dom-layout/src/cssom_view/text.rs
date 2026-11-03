@@ -98,10 +98,13 @@ pub fn caret(
         // A line wholly above the point ranks after every line at or below it: Chrome
         // takes the first block whose end is past the point (a point in the gap below
         // a block lands on the next block's first line, miaskiewicz/turbo-dom#127).
+        // A vertical line's block axis is horizontal: lines rank by their horizontal
+        // distance first (miaskiewicz/turbo-dom#239).
+        let gap = distance(point, rect);
         let candidate = Candidate {
             source,
-            above: f64::from(rect.y + rect.height) < point[1],
-            gap: distance(point, rect),
+            above: !run.vertical && f64::from(rect.y + rect.height) < point[1],
+            gap: if run.vertical { [gap[1], gap[0]] } else { gap },
             translation,
             matrix: run_matrix,
         };
@@ -229,11 +232,16 @@ pub fn run_rect(
     }
     let fragment = &snapshot.fragments()[run.fragment_index];
     let font = run.font_box;
-    Some(Rect {
+    let rect = Rect {
         x: fragment.rect.x + left,
         y: fragment.rect.y + font.baseline - font.ascent,
         width: right - left,
         height: font.ascent + font.descent,
+    };
+    Some(if run.vertical {
+        crate::layout_snapshot::text_geometry::turn(rect, fragment.rect)
+    } else {
+        rect
     })
 }
 
@@ -297,6 +305,7 @@ mod tests {
                     if (source, offset) == expected
                         && close(r.x, chrome[0])
                         && close(r.y, chrome[1])
+                        && close(r.width, chrome[2])
                         && close(r.height, chrome[3]) => {}
                 got => failures.push(format!("{point:?}: {got:?}, Chrome {want}")),
             }
@@ -309,6 +318,13 @@ mod tests {
     fn caret_positions_from_points_match_chrome_156() {
         let mut failures = caret_failures("caret-from-point", |point| !GAPS.contains(&point));
         failures.extend(caret_failures("caret-wrap-and-markers", |_| true));
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    /// miaskiewicz/turbo-dom#239: carets in vertical text are horizontal, across the line.
+    #[test]
+    fn carets_in_vertical_text_match_chrome_156() {
+        let failures = caret_failures("vertical-range-and-carets", |_| true);
         assert!(failures.is_empty(), "{}", failures.join("\n"));
     }
 
@@ -395,6 +411,52 @@ mod tests {
     fn carets_beside_transformed_lines_and_in_empty_elements_match_chrome_156() {
         let failures = caret_failures("caret-from-point", |point| GAPS.contains(&point));
         assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    /// `unicode-bidi: isolate` / `embed` around text of the paragraph's own direction
+    /// reorders nothing (UAX #9 X5a-X5c, X10), so Chrome 156 hits and places carets in
+    /// that text exactly as without the isolate (the `span-*` rows of
+    /// `tests/fixtures/bidi/chrome156.json` keep LTR content in place). The generic box
+    /// snapshot carries the span's formatting characters as glyph-less runs of no source
+    /// of their own, which hit testing and carets pass over.
+    #[test]
+    fn same_direction_isolates_leave_hits_and_carets_unchanged() {
+        let layout = |style: &str| {
+            crate::live::testing::layout(
+                &format!(
+                    "<body style='margin:0;font:16px \"Liberation Serif\"'><div>ab <span id=s \
+                     style='{style}'>cd ef</span> gh</div></body>"
+                ),
+                "",
+                (400.0, 300.0),
+                None,
+            )
+        };
+        let (_, plain, plain_styles) = layout("");
+        let offsets = BTreeMap::new();
+        let mut carets = 0;
+        for style in ["unicode-bidi:isolate", "unicode-bidi:embed"] {
+            let (_, bidi, bidi_styles) = layout(style);
+            for x in 0..90 {
+                let point = [f64::from(x), 9.0];
+                let hit = |snapshot, styles| {
+                    super::super::hit::elements_at_point(snapshot, styles, &offsets, point)
+                };
+                assert_eq!(
+                    hit(&bidi, &bidi_styles),
+                    hit(&plain, &plain_styles),
+                    "{style} {x}"
+                );
+                let got = caret(&bidi, &bidi_styles, &offsets, point).unwrap();
+                assert_eq!(
+                    got,
+                    caret(&plain, &plain_styles, &offsets, point).unwrap(),
+                    "{style} {x}"
+                );
+                carets += usize::from(got.is_some());
+            }
+        }
+        assert_eq!(carets, 180, "every point of the line takes a caret");
     }
 
     #[test]

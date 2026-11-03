@@ -13,11 +13,47 @@ pub struct SourceClusterBox {
     pub right_to_left: bool,
     /// Actual CSS-collapse provenance; a rendered first space can still advance.
     pub collapsed_whitespace: bool,
+    /// The cluster's bidi embedding level and its paragraph's (miaskiewicz/turbo-dom#238).
+    pub bidi_level: u8,
+    pub paragraph_level: u8,
     pub utf16_start: usize,
     pub utf16_end: usize,
+    /// The advance/font box in the line's own frame: physical, unless `vertical`.
     pub rect: Rect,
+    /// The run lies in a vertical line: `rect` is in its frame, which [`turn`]s into
+    /// the fragment; `quad` and `transformed_bounds` are physical.
+    pub vertical: bool,
     pub quad: [Point; 4],
     pub transformed_bounds: Rect,
+}
+
+/// A rect in a vertical line's own frame (anchored at its fragment's top-left `frame`,
+/// `x` along the line, `y` down from its line-over edge) in physical coordinates: the
+/// frame turns a quarter clockwise into the fragment, like its glyphs paint
+/// (miaskiewicz/turbo-dom#239).
+pub(crate) fn turn(rect: Rect, frame: Rect) -> Rect {
+    Rect {
+        x: frame.x + frame.width - (rect.y - frame.y) - rect.height,
+        y: frame.y + (rect.x - frame.x),
+        width: rect.height,
+        height: rect.width,
+    }
+}
+
+/// The inverse of [`turn`] for a point.
+pub(crate) fn unturn(point: Point, frame: Rect) -> Point {
+    Point {
+        x: frame.x + (point.y - frame.y),
+        y: frame.y + frame.width - (point.x - frame.x),
+    }
+}
+
+/// Whether fragment `index` holds a vertical text run.
+pub(crate) fn vertical_fragment(snapshot: &LayoutSnapshot, index: usize) -> bool {
+    snapshot
+        .text_runs()
+        .iter()
+        .any(|run| run.vertical && run.fragment_index == index)
 }
 
 pub(crate) fn cluster_boxes(snapshot: &LayoutSnapshot) -> Vec<SourceClusterBox> {
@@ -45,7 +81,7 @@ fn collect_boxes<'a>(
     for run in runs {
         let fragment = &snapshot.fragments()[run.fragment_index];
         let ancestry: Arc<[SourceId]> = run.source_ancestors.clone().into();
-        let mut groups = BTreeMap::<(usize, usize), (f32, f32, bool, bool)>::new();
+        let mut groups = BTreeMap::<(usize, usize), (f32, f32, bool, bool, [u8; 2])>::new();
         for glyph in &run.glyphs {
             let source = glyph.source;
             let begin = source.pen_x.min(source.pen_x + source.advance);
@@ -57,12 +93,13 @@ fn collect_boxes<'a>(
                     end,
                     source.right_to_left,
                     source.collapsed_whitespace,
+                    [source.bidi_level, source.paragraph_level],
                 ));
             edges.0 = edges.0.min(begin);
             edges.1 = edges.1.max(end);
             edges.3 &= source.collapsed_whitespace;
         }
-        for ((start, end), (left, right, right_to_left, collapsed_whitespace)) in groups {
+        for ((start, end), (left, right, right_to_left, collapsed_whitespace, levels)) in groups {
             let font = run.font_box;
             let rect = Rect {
                 x: fragment.rect.x + left,
@@ -70,18 +107,26 @@ fn collect_boxes<'a>(
                 width: right - left,
                 height: font.ascent + font.descent,
             };
-            let quad = geometry::rect_quad(rect).map(|point| {
+            let physical = if run.vertical {
+                turn(rect, fragment.rect)
+            } else {
+                rect
+            };
+            let quad = geometry::rect_quad(physical).map(|point| {
                 geometry::transform(point, snapshot.native_transforms[fragment.index])
             });
             boxes.push(SourceClusterBox {
                 right_to_left,
                 collapsed_whitespace,
+                bidi_level: levels[0],
+                paragraph_level: levels[1],
                 fragment_index: fragment.index,
                 source_id: run.source_id,
                 source_ancestors: Arc::clone(&ancestry),
                 utf16_start: start,
                 utf16_end: end,
                 rect,
+                vertical: run.vertical,
                 quad,
                 transformed_bounds: geometry::bounds(quad),
             });

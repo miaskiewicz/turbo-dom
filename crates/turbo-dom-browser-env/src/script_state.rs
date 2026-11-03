@@ -528,7 +528,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let mut functions = Vec::new();
     for setter in [false, true] {
         let data = v8::Boolean::new(scope, setter);
-        let template = v8::FunctionTemplate::builder(async_access)
+        let template = v8::FunctionTemplate::builder(ext!(FunctionCallback, async_access))
             .data(data.into())
             .length(i32::from(setter))
             .constructor_behavior(v8::ConstructorBehavior::Throw)
@@ -665,7 +665,7 @@ mod tests {
         if load {
             let root = with_tree(Tree::root).unwrap();
             let document = wrap(scope, root);
-            let consumer = v8::Function::new(scope, consumer).unwrap();
+            let consumer = v8::Function::new(scope, ext!(FunctionCallback, consumer)).unwrap();
             assert!(install_mutation_consumer(scope, document, consumer));
             // Initial parser scripts are executed by the embedder's parser lifecycle.
             for handle in subtree(root) {

@@ -36,6 +36,8 @@ pub(crate) struct TextLayoutPolicy {
 }
 
 pub(crate) struct Ctx<'a> {
+    /// The writing mode of the logical space being laid out (see [`super::writing`]).
+    pub(crate) writing: super::writing::WritingMode,
     pub(crate) fonts: &'a FontRegistry,
     pub(crate) images: &'a ImageCtx<'a>,
     pub(crate) diags: &'a mut Diagnostics,
@@ -207,6 +209,23 @@ fn auto_margins(lb: &LayoutBox, start: &str, end: &str) -> bool {
 /// join that run; [`out_of_flow_origin`] adds them (Chrome 156).
 fn block_static_position(cx: f32, flow: &FlowRun) -> (f32, f32) {
     (cx, flow.cursor + flow.pending)
+}
+
+/// The right content edge an out-of-flow box's static position starts from in an RTL
+/// flow (`None` in an LTR one): its inline start (CSS Position 3 §4.1; Chrome 156,
+/// miaskiewicz/turbo-dom#238).
+fn rtl_static_right(cx: f32, cw: f32, flow: &FlowRun) -> Option<f32> {
+    flow.rtl.then_some(cx + cw)
+}
+
+/// Move an out-of-flow box with both horizontal insets `auto` to its RTL static
+/// position: its right margin edge on the flow's right content edge `right`.
+fn place_rtl_static(frag: &mut Fragment, kbs: &BoxStyle, right: Option<f32>) {
+    if let Some(right) = right {
+        if kbs.inset_left == LengthPct::Auto && kbs.inset_right == LengthPct::Auto {
+            frag.translate(right - kbs.margin.right - frag.width - frag.x, 0.0);
+        }
+    }
 }
 
 /// The `(dx, dy)` a `position:relative` box is visually shifted by (it still
@@ -669,7 +688,13 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
                 .get("overflow-wrap")
                 .or_else(|| style.get("word-wrap")),
             style.get("hyphens"),
+        )
+        .with_auto_hyphens(
+            style.get("hyphens"),
+            style.get("-webkit-locale"),
+            style.get("hyphenate-limit-chars"),
         ),
+        upright: super::inline::UprightText::of(style),
     })
 }
 
@@ -724,6 +749,8 @@ fn lines_to_fragments(
                 face: gr.face.clone(),
                 font_size: gr.font_size,
                 color: gr.color,
+                vertical: false,
+                upright: gr.upright,
             };
             out.push(Fragment::new(
                 node_id,
@@ -749,6 +776,9 @@ fn marker_frag(node_id: NodeId, kind: MarkerKind, x: f32, y: f32) -> Fragment {
 /// vertical margins stay inside it (miaskiewicz/turbo-dom#80).
 fn lay_atomic(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
     let bs = resolve(b, cw, fs);
+    if let Some(marker) = super::list_marker::inside_symbol_fragment(b, &bs, ctx) {
+        return marker;
+    }
     let replaced = b.is_replaced();
     let root = inline_block(b);
     if !replaced && bs.width.resolve(cw).is_none() {
@@ -771,6 +801,28 @@ fn lay_atomic(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
     } else {
         layout_box(b, 0.0, 0.0, cw, fs, ctx)
     }
+}
+
+/// A `::marker` style resolved (its `font-size` is already absolute).
+pub(crate) fn resolve_marker_style(style: &crate::style::ComputedStyle, cw: f32) -> BoxStyle {
+    resolve_box_style(
+        style,
+        ResolveCtx {
+            parent_font_size: 16.0,
+            cb_width: cw,
+        },
+    )
+}
+
+/// An outside text marker's box laid out at the origin, and its baseline: as wide as its
+/// text, rounded up to a layout unit (1/64 device px) as Blink sizes the marker.
+pub(crate) fn lay_marker_text(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> (Fragment, f32) {
+    let bs = resolve(b, cw, fs);
+    let units = ctx.html_font_scale.unwrap_or(1.0) * 64.0;
+    let width = (super::flex::natural_width(b, ctx.fonts) * units).ceil() / units;
+    let frag = layout_box_sized_impl(b, &bs, 0.0, 0.0, width, ctx, true);
+    let baseline = atom_baseline(b, &frag, None).unwrap_or(frag.height);
+    (frag, baseline)
 }
 
 /// Whether an atomic inline is an `inline-block` (as specified: it lays out as a block
@@ -811,13 +863,11 @@ fn layout_nonempty_lines(
     placement: super::inline_boxes::SourcePlacement,
 ) -> (Vec<Fragment>, f32) {
     let (cx, cy) = origin;
-    let (mut pieces, atom_frags, directives) = build_inline_pieces(items, bs, cx, cy, cw, ctx);
-    super::inline_boxes::native_atoms(
-        &mut pieces,
-        &atom_frags,
-        &placement.baselines,
-        ctx.html_font_metrics,
-    );
+    let central = super::writing::central_baseline(ctx.writing, &lb.style);
+    let (mut pieces, atom_frags, directives) =
+        build_inline_pieces(items, bs, (cx, cy, central), cw, ctx);
+    let quirk_roots = quirks_line_height(lb).then(|| quirk_line_roots(items, &mut pieces));
+    super::inline_boxes::native_atoms(&mut pieces, &atom_frags, &placement.baselines);
     // Per-line float wrapping: each line's `(indent, width)` is the free inline
     // region the BFC's floats leave at that line's own y (absolute `cy + top`), so
     // text flows beside a `float:right` infobox and widens once below its bottom.
@@ -827,13 +877,17 @@ fn layout_nonempty_lines(
         .and_then(|value| super::value::parse_length_pct(value, bs.font_size))
         .and_then(|value| value.resolve(cw))
         .unwrap_or(0.0);
+    let (base, align) = paragraph_direction(lb, bs, items);
+    let _bidi = super::inline::bidi::base_scope(base);
     let inputs = ParagraphInputs {
         origin: (cx, cy),
         cw,
         text_indent: super::value::html_used_value(text_indent, ctx.html_font_scale),
         strut: line_strut(bs, ctx.fonts),
-        strut_metrics: super::inline_boxes::strut(bs, ctx),
-        align: bs.text_align,
+        strut_metrics: super::inline_boxes::strut(bs, ctx, central),
+        central,
+        quirk_roots: quirk_roots.as_ref(),
+        align,
         font_size: bs.font_size,
         baselines: &placement.baselines,
     };
@@ -1033,6 +1087,8 @@ struct ParagraphInputs<'a> {
     text_indent: f32,
     strut: f32,
     strut_metrics: Option<(f32, f32)>,
+    central: bool,
+    quirk_roots: Option<&'a HashSet<NodeId>>,
     align: Align,
     font_size: f32,
     baselines: &'a HashMap<NodeId, f32>,
@@ -1128,30 +1184,30 @@ fn paragraph(
                 original_units: ctx.original_units,
                 baselines: inputs.baselines,
                 strut_metrics: inputs.strut_metrics,
+                central: inputs.central,
+                quirk_roots: inputs.quirk_roots,
             },
         )
-    } else if ctx.text_capture.is_some() {
-        inline::layout_paragraph_in_with_sources(
+    } else {
+        let lines = inline::NativeLineOptions {
+            scale: None,
+            first_indent: text_indent,
+            clearance: &clearance,
+            original_units: None,
+            baselines: inputs.baselines,
+            strut_metrics: inputs.strut_metrics,
+            central: inputs.central,
+            quirk_roots: inputs.quirk_roots,
+        };
+        inline::layout_paragraph_in_chrome_lines(
             pieces,
             ctx.fonts,
-            inputs.align,
+            (inputs.align, ctx.text_capture.is_some()),
             diags,
             &region,
             inputs.strut,
+            &lines,
         )
-    } else {
-        inline::ParagraphSourceLayout {
-            layout: inline::layout_paragraph_in(
-                pieces,
-                ctx.fonts,
-                inputs.align,
-                diags,
-                &region,
-                inputs.strut,
-            ),
-            clusters: Vec::new(),
-            font_boxes: Vec::new(),
-        }
     }
 }
 
@@ -1274,9 +1330,10 @@ fn out_of_flow_atom(id: usize) -> inline::InlineAtom {
 /// miaskiewicz/turbo-dom#142): an `inline-block` with `overflow: visible` sits on
 /// its last in-flow line box's baseline; a replaced box, a box without line boxes,
 /// or one establishing a scroll container has none (its bottom margin edge
-/// aligns instead).
-fn atom_baseline(b: &LayoutBox, f: &Fragment) -> Option<f32> {
-    if b.is_replaced() || !inline_block(b) {
+/// aligns instead). `central` (the device scale) reads the last line's central
+/// baseline instead of its alphabetic one (miaskiewicz/turbo-dom#239).
+fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f32> {
+    if b.is_replaced() || !(inline_block(b) || b.shows_alt_text()) {
         return None;
     }
     let scrolls = ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {
@@ -1291,8 +1348,18 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment) -> Option<f32> {
     let mut floats = std::collections::HashSet::new();
     float_ids(b, &mut floats);
     let mut last: Option<(f32, f32)> = None;
-    last_line(f, &floats, &mut last);
+    last_line(f, &floats, central, &mut last);
     last.map(|(_, baseline)| baseline - f.y)
+}
+
+/// The central baseline an atom without a baseline of its own synthesizes on a line
+/// aligned on the central baseline, below its border-box top: the middle of its
+/// margin box, in layout units (Blink's synthesized ideographic baseline,
+/// miaskiewicz/turbo-dom#239).
+fn central_atom_baseline(f: &Fragment, margin: super::value::Edges, ctx: &Ctx) -> f32 {
+    let units = ctx.html_font_scale.unwrap_or(1.0) * 64.0;
+    let outer = ((f.height + margin.top + margin.bottom) * units).round();
+    (outer - (outer / 2.0).floor()) / units - margin.top
 }
 
 /// The node ids of the floats in `b`'s subtree (their lines are out of flow).
@@ -1323,19 +1390,34 @@ fn float_ids(b: &LayoutBox, out: &mut std::collections::HashSet<NodeId>) {
 fn last_line(
     f: &Fragment,
     floats: &std::collections::HashSet<NodeId>,
+    central: Option<f32>,
     last: &mut Option<(f32, f32)>,
 ) {
     let in_flow = |child: &&Fragment| !child.is_positioned && !floats.contains(&child.node_id);
     for child in f.children.iter().filter(in_flow) {
-        if let FragmentContent::TextLine { glyphs, .. } = &child.content {
+        if let FragmentContent::TextLine {
+            glyphs,
+            face,
+            font_size,
+            ..
+        } = &child.content
+        {
             if let Some(glyph) = glyphs.first() {
                 if last.is_none_or(|(top, _)| child.y >= top) {
-                    *last = Some((child.y, child.y + glyph.y));
+                    let lift = central.map_or(0.0, |scale| central_lift(face, *font_size, scale));
+                    *last = Some((child.y, child.y + glyph.y - lift));
                 }
             }
         }
-        last_line(child, floats, last);
+        last_line(child, floats, central, last);
     }
+}
+
+/// How far a font's alphabetic baseline lies below its central one on a central line.
+fn central_lift(face: &crate::FontFace, font_size: f32, scale: f32) -> f32 {
+    let font = face.html_metrics(font_size * scale);
+    let (ascent, descent) = (font.ascent / scale, font.descent / scale);
+    ascent - inline::central_metrics(ascent, descent, scale).0
 }
 
 /// Lay out an absolutely positioned box from an inline run at its static position
@@ -1371,17 +1453,108 @@ fn append_source_break(
     ctx: &Ctx,
     pieces: &mut Vec<inline::Piece>,
 ) {
-    if let Some(mut edge) = super::inline_boxes::edge(node_id, style, true, font, width, ctx) {
-        edge.advance = 0.0;
-        edge.contributes_metrics = false;
-        pieces.push(inline::Piece::SourceBreak(edge));
-    }
+    // With no face to measure (an empty font registry) the `<br>` is a bare break.
+    pieces.push(
+        match super::inline_boxes::edge(node_id, style, true, font, width, ctx) {
+            Some(mut edge) => {
+                edge.advance = 0.0;
+                edge.contributes_metrics = false;
+                inline::Piece::SourceBreak(edge)
+            }
+            None => inline::Piece::Break,
+        },
+    );
 }
+/// The paragraph's bidi base direction (`None`: `unicode-bidi: plaintext`, each
+/// paragraph's first strong character) and its `text-align`, which a plaintext
+/// paragraph resolves against its own direction (Chrome 156, miaskiewicz/turbo-dom#238).
+fn paragraph_direction(
+    lb: &LayoutBox,
+    bs: &BoxStyle,
+    items: &[InlineItem],
+) -> (Option<bool>, crate::text::Align) {
+    let plaintext = super::inline::UnicodeBidi::parse(lb.style.get("unicode-bidi"))
+        == super::inline::UnicodeBidi::Plaintext;
+    if !plaintext {
+        return (Some(bs.rtl), bs.text_align);
+    }
+    let rtl = items
+        .iter()
+        .find_map(|item| match item {
+            InlineItem::Text { text, .. } => super::inline::bidi::first_strong_rtl(text),
+            _ => None,
+        })
+        .unwrap_or(false);
+    (None, super::value::align_in(&lb.style, rtl))
+}
+
+/// Whether the block's document is in quirks mode, as the live style pass marks every
+/// element of one ([`crate::style::QUIRKS_LINE_HEIGHT`]).
+fn quirks_line_height(lb: &LayoutBox) -> bool {
+    lb.style.get(crate::style::QUIRKS_LINE_HEIGHT).is_some()
+}
+
+/// The quirks-mode line height quirk (Chrome 156, miaskiewicz/turbo-dom#190): the text
+/// and `<br>` sources directly in the block, whose lines alone take its strut; and an
+/// inline box contributes its own font metrics only through its text (and `<br>`s) or
+/// when it has an inline border or padding (not for a margin).
+fn quirk_line_roots(items: &[InlineItem], pieces: &mut [inline::Piece]) -> HashSet<NodeId> {
+    let mut roots = HashSet::new();
+    let mut decorated = HashSet::new();
+    let mut depth = 0usize;
+    for item in items {
+        match item {
+            InlineItem::Boundary {
+                node_id,
+                style,
+                start,
+            } => {
+                if *start {
+                    depth += 1;
+                    if inline_decorated(style) {
+                        decorated.insert(*node_id);
+                    }
+                } else {
+                    depth = depth.saturating_sub(1);
+                }
+            }
+            InlineItem::Text { node_id, .. } | InlineItem::SourceBreak { node_id, .. }
+                if depth == 0 =>
+            {
+                roots.insert(*node_id);
+            }
+            _ => {}
+        }
+    }
+    for piece in pieces {
+        match piece {
+            inline::Piece::Edge(edge) => {
+                edge.contributes_metrics &= decorated.contains(&edge.node_id);
+            }
+            inline::Piece::SourceBreak(edge) => edge.contributes_metrics = true,
+            _ => {}
+        }
+    }
+    roots
+}
+
+/// Whether an inline box has a non-zero inline-axis border or padding.
+fn inline_decorated(style: &crate::ComputedStyle) -> bool {
+    let used = super::value::resolve_box_style(
+        style,
+        super::value::ResolveCtx {
+            parent_font_size: DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        },
+    );
+    let border = used.border.widths();
+    border.left + border.right + used.padding.left + used.padding.right > 0.0
+}
+
 fn build_inline_pieces(
     items: &[InlineItem],
     bs: &BoxStyle,
-    cx: f32,
-    cy: f32,
+    (cx, cy, central): (f32, f32, bool),
     cw: f32,
     ctx: &mut Ctx,
 ) -> (Vec<inline::Piece>, Vec<Fragment>, Vec<Fragment>) {
@@ -1431,6 +1604,7 @@ fn build_inline_pieces(
             }
             InlineItem::Atomic(b) => {
                 let f = lay_atomic(b, cw, bs.font_size, ctx);
+                let scale = ctx.html_font_scale.unwrap_or(1.0);
                 // Cheap re-resolve (style cache memoizes) to read the box's own
                 // `vertical-align` + margins for line-box placement.
                 let abs = resolve(b, cw, bs.font_size);
@@ -1445,7 +1619,8 @@ fn build_inline_pieces(
                     margin_left: abs.margin.left,
                     margin_right: abs.margin.right,
                     placeholder: false,
-                    baseline: atom_baseline(b, &f),
+                    baseline: atom_baseline(b, &f, central.then_some(scale))
+                        .or_else(|| central.then(|| central_atom_baseline(&f, abs.margin, ctx))),
                 }));
                 atom_frags.push(f);
             }
@@ -1468,6 +1643,8 @@ struct FlowRun {
     cursor: f32,
     pending: f32,
     align: Align,
+    /// The container is `direction: rtl` (miaskiewicz/turbo-dom#190).
+    rtl: bool,
 }
 
 /// How a block container aligns its block-level children: by its `text-align` only
@@ -1694,8 +1871,9 @@ fn layout_block_flow(
         cursor: cy,
         pending: 0.0,
         align: block_align(bs),
+        rtl: bs.rtl && !(bs.legacy_align && bs.text_align == Align::Left),
     };
-    let mut deferred: Vec<(&LayoutBox, (f32, f32))> = Vec::new();
+    let mut deferred: Vec<(&LayoutBox, (f32, f32), Option<f32>)> = Vec::new();
     // Whether the margins of the next in-flow child were hoisted out this box's top by
     // its caller: the first in-flow child's, and past it each following child's while
     // the earlier ones are empty (self-collapsing; miaskiewicz/turbo-dom#76).
@@ -1713,7 +1891,11 @@ fn layout_block_flow(
         // resolve it against the measured content height, so a `bottom:0; height:33%`
         // overlay lands inside its card instead of collapsing and dropping below it.
         if defer_this_kid(bs, &kbs, ctx) {
-            deferred.push((kid, block_static_position(cx, &flow)));
+            deferred.push((
+                kid,
+                block_static_position(cx, &flow),
+                rtl_static_right(cx, cw, &flow),
+            ));
             continue;
         }
         // `absolute`/`fixed`/`float`: taken out of normal flow, placed on the side
@@ -1790,7 +1972,7 @@ fn defer_this_kid(parent: &BoxStyle, kbs: &BoxStyle, ctx: &Ctx) -> bool {
 /// inset — is known. Exposes `content_h` as the CB height for the duration; the
 /// enclosing box's frame restores `abs_cb_h` afterwards.
 fn place_deferred_abs(
-    deferred: &[(&LayoutBox, (f32, f32))],
+    deferred: &[(&LayoutBox, (f32, f32), Option<f32>)],
     cw: f32,
     fs: f32,
     content_h: f32,
@@ -1802,10 +1984,11 @@ fn place_deferred_abs(
     }
     ctx.abs_cb_h = content_h;
     ctx.abs_cb_h_known = true;
-    for (kid, static_pos) in deferred {
+    for (kid, static_pos, rtl_right) in deferred {
         let kbs = positioned_style(kid, cw, fs, ctx);
         let (bx, by) = out_of_flow_origin(kid, &kbs, cw, ctx, *static_pos);
         let mut frag = layout_positioned(kid, (bx, by), cw, fs, ctx);
+        place_rtl_static(&mut frag, &kbs, *rtl_right);
         anchor_bottom(&mut frag, &kbs, content_h, ctx);
         frags.push(frag);
     }
@@ -1850,6 +2033,7 @@ fn place_special_kid(
         let kbs = &positioned_style(kid, cw, fs, ctx);
         let (bx, by) = out_of_flow_origin(kid, kbs, cw, ctx, static_pos);
         let mut frag = layout_positioned(kid, (bx, by), cw, fs, ctx);
+        place_rtl_static(&mut frag, kbs, rtl_static_right(cx, cw, flow));
         // A `bottom`-anchored (auto `top`) box left at its static y by
         // `out_of_flow_origin` — because its height wasn't known there — is pulled
         // to the CB bottom now, when the CB height is DEFINITE. (An indefinite-height
@@ -1923,7 +2107,7 @@ fn layout_in_flow_kid(
     // `margin: … auto` centers it, and a legacy `text-align: -webkit-center` /
     // `-webkit-right` container (`<center>`, `align=center`) centers / right-aligns
     // block children (`block_align`).
-    let hx = block_h_offset(flow.align, kbs, kid, frag.width, region_w);
+    let hx = block_h_offset((flow.align, flow.rtl), kbs, kid, frag.width, region_w);
     if hx != 0.0 {
         frag.translate(hx, 0.0);
     }
@@ -2052,19 +2236,39 @@ fn flow_region(
 /// centers; otherwise the container's block alignment (`block_align`: a legacy
 /// `-webkit-*` `text-align`, as `<center>` and `align="center"` give) centers /
 /// right-aligns block children.
-fn block_h_offset(align: Align, kbs: &BoxStyle, kid: &LayoutBox, frag_w: f32, cw: f32) -> f32 {
+///
+/// An RTL container (`rtl`) places a box from its right content edge: an over-
+/// constrained box drops its left margin and overflows to the left (CSS 2.2 §10.3.3,
+/// Chrome 156; miaskiewicz/turbo-dom#190).
+fn block_h_offset(
+    (align, rtl): (Align, bool),
+    kbs: &BoxStyle,
+    kid: &LayoutBox,
+    frag_w: f32,
+    cw: f32,
+) -> f32 {
     let avail = (cw - kbs.margin.horizontal()).max(0.0);
+    let from_right = cw - frag_w - kbs.margin.right - kbs.margin.left;
     if frag_w >= avail - 0.5 {
-        return 0.0;
+        return if rtl { from_right } else { 0.0 };
     }
     if auto_x_margins(&kid.style) || align == Align::Center {
         return (cw - frag_w) / 2.0 - kbs.margin.left;
     }
     // A lone `margin-left: auto` absorbs the free space (CSS 2.2 §10.3.3).
     if align == Align::Right || auto_left_margin(&kid.style) {
-        return cw - frag_w - kbs.margin.right - kbs.margin.left;
+        return from_right;
+    }
+    // In RTL a lone `margin-right: auto` keeps the box at its left (start-free) side.
+    if rtl && !auto_right_margin(&kid.style) {
+        return from_right;
     }
     0.0
+}
+
+/// Whether `margin-right` is `auto`.
+fn auto_right_margin(s: &crate::style::ComputedStyle) -> bool {
+    s.get("margin-right").map(str::trim) == Some("auto")
 }
 
 /// Whether `margin-left` is `auto` (with `margin-right` definite: see [`auto_x_margins`]).
@@ -2109,7 +2313,7 @@ pub(crate) fn avoids_floats(lb: &LayoutBox) -> bool {
 }
 
 fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
-    if intrinsic_formatting_root(lb, bs) {
+    if lb.writing_root || intrinsic_formatting_root(lb, bs) {
         return true;
     }
     if matches!(
@@ -2428,6 +2632,9 @@ fn prepend_mask_image(
     let src = ImageSource {
         name: name.clone(),
         replaced: false,
+        fallback: None,
+        unloaded: std::cell::Cell::new(false),
+        media: super::boxgen::Media::None,
     };
     let Some(intrinsic) = probe_source(lb, &src, ctx) else {
         return;
@@ -2518,6 +2725,10 @@ fn layout_box_sized_impl(
     ctx: &mut Ctx,
     force_bfc: bool,
 ) -> Fragment {
+    // A flex / grid item or table cell that is a writing-mode root (#239).
+    if let Some(frag) = super::writing::layout_root_sized(lb, (bx, by), bbw, bs.font_size, ctx) {
+        return frag;
+    }
     lb.begin_layout();
     // A replaced `<img>` sizes from its intrinsic dimensions + caps rather than
     // flowing content — the same as the normal-flow `layout_box` path. Flex/grid
@@ -2559,6 +2770,16 @@ fn layout_box_sized_impl(
     let sticky_mark = ctx.sticky_pending.len();
     let (mut children, mut content_h) =
         layout_content(lb, bs, (content_x, content_y, content_w), bfc, ctx);
+    if lb.display == super::value::Display::ListItem {
+        super::list_marker::place_outside(
+            lb,
+            (bx, content_y),
+            content_w,
+            &mut children,
+            &mut content_h,
+            ctx,
+        );
+    }
     if let Some(outer) = saved_floats {
         let inner_bottom = ctx
             .floats
@@ -2597,13 +2818,13 @@ fn layout_box_sized_impl(
         &*ctx,
         &mut children,
     );
-    prepend_background_image(
+    let mut content = content_kind(lb, bs, bbw, bbh);
+    prepend_background_layers(
         lb,
-        content_x,
-        content_y,
-        content_w,
-        fill_h,
+        bs,
+        (bx, by, bbw, bbh),
         &*ctx,
+        &mut content,
         &mut children,
     );
     record_metrics(lb, bs, content_w, fill_h, ctx);
@@ -2613,7 +2834,7 @@ fn layout_box_sized_impl(
         y: by,
         width: bbw,
         height: bbh,
-        content: content_kind(lb, bs, bbw, bbh),
+        content,
         break_meta: break_meta_of(bs),
         children,
         z_index: bs.z_index,
@@ -2623,30 +2844,63 @@ fn layout_box_sized_impl(
     }
 }
 
-/// If the box carries a resolvable `background-image`, insert an `Image`
-/// fragment filling its content box *behind* the box's children (index 0, so it
-/// paints first). A `background-image` does not resize the box.
-fn prepend_background_image(
+/// Insert the box's background layers *behind* its children (miaskiewicz/turbo-dom#248):
+/// its resolvable `background-image` tiled per `background-size` / `-position` /
+/// `-repeat` / `-origin` / `-clip`, and its gradient too unless those are all initial
+/// (then the box paints it itself). A colour clipped to the padding or content box
+/// moves to a layer as well. A background does not resize the box.
+fn prepend_background_layers(
     lb: &LayoutBox,
-    cx: f32,
-    cy: f32,
-    cw: f32,
-    ch: f32,
+    bs: &BoxStyle,
+    border_box: super::background::Rect,
     ctx: &Ctx,
+    content: &mut FragmentContent,
     children: &mut Vec<Fragment>,
 ) {
-    let Some(placement) = background_placement(lb, ctx) else {
-        return;
+    use super::background::{
+        area_radius, area_rect, border_overlay, color_layer, layer, props, Area, Source,
     };
-    let frag = Fragment::new(
-        lb.node_id,
-        cx,
-        cy,
-        cw,
-        ch,
-        FragmentContent::Image(placement),
-    );
-    children.insert(0, frag);
+    if let FragmentContent::Box {
+        background,
+        gradient,
+        border,
+        border_radius,
+        ..
+    } = content
+    {
+        let image = background_placement(lb, ctx);
+        let props = props(&lb.style, bs.font_size);
+        let origin = area_rect(border_box, &bs.border, &bs.padding, props.origin);
+        let paint = area_rect(border_box, &bs.border, &bs.padding, props.clip);
+        let radius = area_radius(*border_radius, &bs.border, &bs.padding, props.clip);
+        let mut layers = Vec::new();
+        let tiled_gradient = gradient.take_if(|_| !props.is_initial());
+        if tiled_gradient.is_some() && lb.mask.is_none() {
+            // The gradient no longer covers the box: its colour shows around the tiles.
+            *background = bs.background;
+        }
+        if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
+            layers.push(color_layer(lb.node_id, color, paint, radius));
+        }
+        let sources = tiled_gradient
+            .map(Source::Gradient)
+            .into_iter()
+            .chain(image.map(Source::Image));
+        for source in sources {
+            layers.extend(layer(lb.node_id, &props, &source, (origin, paint, radius)));
+        }
+        if layers.is_empty() {
+            return;
+        }
+        // The border paints over the background layers.
+        layers.push(border_overlay(
+            lb.node_id,
+            border_box,
+            std::mem::take(border),
+            *border_radius,
+        ));
+        children.splice(0..0, layers);
+    }
 }
 
 /// The placement for a box's `background-image`, if it has one the resolver can
@@ -2668,6 +2922,9 @@ fn layout_box(
     parent_fs: f32,
     ctx: &mut Ctx,
 ) -> Fragment {
+    if let Some(frag) = super::writing::layout_root(lb, (bx, by), cb_width, parent_fs, ctx) {
+        return frag;
+    }
     lb.begin_layout();
     let bs = resolve(lb, cb_width, parent_fs);
     if let Some(frag) = replaced_image_box(lb, &bs, bx, by, cb_width, ctx) {
@@ -2684,6 +2941,30 @@ fn layout_box(
         bbw = bbw.max(super::table::min_content_width(items, &lb.style, ctx.fonts) + frame);
     }
     layout_box_sized(lb, &bs, bx, by, bbw, ctx)
+}
+
+/// Lay out a writing-mode root (already relabelled into its own space, which `ctx` is
+/// in) at the origin, `available` being its containing block's inline size. An
+/// `auto` inline size of an orthogonal root fits its content within `available`
+/// (CSS Writing Modes 4 §7.3), as a float's does.
+pub(crate) fn layout_root_box(
+    lb: &LayoutBox,
+    available: f32,
+    parent_fs: f32,
+    orthogonal: bool,
+    ctx: &mut Ctx,
+) -> Fragment {
+    let bs = resolve(lb, available, parent_fs);
+    if orthogonal && !lb.is_replaced() && bs.width.resolve(available).is_none() {
+        let (w, _) = float_width(lb, &bs, available, ctx.fonts, false);
+        // Chrome's max-content is a ceiled LayoutUnit (1/64 px at the device scale).
+        let w = ctx
+            .html_font_scale
+            .map_or(w, |scale| (w * 64.0 * scale).ceil() / (64.0 * scale));
+        lb.begin_layout();
+        return layout_box_sized(lb, &bs, 0.0, 0.0, w, ctx);
+    }
+    layout_box(lb, 0.0, 0.0, available, parent_fs, ctx)
 }
 
 /// A `width: auto` table is shrink-to-fit: no wider than its columns' max-content
@@ -2740,7 +3021,7 @@ pub(crate) fn stamp_intrinsic_widths(lb: &LayoutBox, images: &ImageCtx) {
 /// Stamp one box's `intrinsic_w` if it is a resolvable replaced image.
 fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
     if lb.native_iframe() {
-        lb.intrinsic_w.set(Some(300.0));
+        lb.set_intrinsic(300.0, Some(150.0));
         return;
     }
     if let Some(viewport) = &lb.svg_viewport {
@@ -2748,15 +3029,16 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
             parent_font_size: super::value::DEFAULT_FONT_SIZE,
             cb_width: 0.0,
         });
-        lb.intrinsic_w
-            .set(Some(viewport.natural_width(style.font_size)));
+        lb.set_intrinsic(viewport.natural_width(style.font_size), None);
         return;
     }
     let Some(src) = lb.image.as_ref().filter(|s| s.replaced) else {
         return;
     };
-    if let Some(i) = super::imgsize::box_intrinsic(images.resolver, &src.name, &lb.style) {
-        lb.intrinsic_w.set(Some(i.width as f32));
+    let probed = super::imgsize::replaced_intrinsic(images.resolver, src, &lb.style);
+    src.unloaded.set(probed.is_none_or(|(_, loaded)| !loaded));
+    if let Some((i, _)) = probed {
+        lb.set_intrinsic(i.width as f32, Some(i.height as f32));
     }
 }
 
@@ -2783,15 +3065,65 @@ fn replaced_image_box(
         return Some(fragment);
     }
     let src = lb.image.as_ref().filter(|s| s.replaced)?;
-    let intrinsic = probe_source(lb, src, ctx)?;
+    let (intrinsic, loaded) =
+        super::imgsize::replaced_intrinsic(ctx.images.resolver, src, &lb.style)?;
+    if !loaded && src.media == super::boxgen::Media::Viewport {
+        // A media default box: no aspect ratio, like an iframe's (#252).
+        let natural = (intrinsic.width as f32, intrinsic.height as f32);
+        return Some(embedded_viewport_fragment(
+            lb,
+            bs,
+            (bx, by),
+            cb_width,
+            natural,
+            ctx,
+        ));
+    }
+    let intrinsic = logical_intrinsic(intrinsic, ctx);
     let sizing = size_ctx(bs, cb_width, ctx);
     if ctx.live_geometry {
-        let sized = super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing);
+        let mut sized = super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing);
         record_metrics(lb, bs, sized.width, sized.height, ctx);
-        return Some(live_image_fragment(lb, bx, by, &sized, bs));
+        physical_placement(&mut sized.placement, ctx);
+        let mut fragment = live_image_fragment(lb, bx, by, &sized, bs);
+        if !loaded {
+            fragment.children.clear();
+        }
+        return Some(fragment);
     }
-    let sized = size_replaced(src.name.clone(), intrinsic, &sizing);
-    Some(image_fragment(lb, bx, by, &sized, bs))
+    if !loaded && src.media == super::boxgen::Media::Canvas {
+        // A canvas is sized like Chrome's replaced boxes (`box-sizing`, min / max) on
+        // this path too: a content box inside its padding and border (#252).
+        let sized = super::imgsize::size_replaced_live(String::new(), intrinsic, &sizing);
+        let content = (sized.width, sized.height);
+        return Some(viewport_fragment(lb, bs, bx, by, content, ctx));
+    }
+    let mut sized = size_replaced(src.name.clone(), intrinsic, &sizing);
+    physical_placement(&mut sized.placement, ctx);
+    let mut fragment = image_fragment(lb, bx, by, &sized, bs);
+    if !loaded {
+        // A broken image's box paints its own background and border, no image.
+        fragment.content = content_kind(lb, bs, fragment.width, fragment.height);
+    }
+    Some(fragment)
+}
+
+/// An image's intrinsic size in the logical space being laid out: a vertical space's
+/// inline (`width`) axis is the physical height, so the dimensions trade places
+/// (miaskiewicz/turbo-dom#239).
+fn logical_intrinsic(mut intrinsic: crate::image::Intrinsic, ctx: &Ctx) -> crate::image::Intrinsic {
+    if ctx.writing.vertical() {
+        std::mem::swap(&mut intrinsic.width, &mut intrinsic.height);
+    }
+    intrinsic
+}
+
+/// The painted placement keeps the image's physical intrinsic size (the fragment maps
+/// back to physical space; see [`logical_intrinsic`]).
+fn physical_placement(placement: &mut crate::ImagePlacement, ctx: &Ctx) {
+    if ctx.writing.vertical() {
+        std::mem::swap(&mut placement.intrinsic_w, &mut placement.intrinsic_h);
+    }
 }
 
 fn replaced_viewport_box(
@@ -2803,23 +3135,37 @@ fn replaced_viewport_box(
     ctx: &mut Ctx,
 ) -> Option<Fragment> {
     if lb.native_iframe() {
-        return Some(embedded_viewport_fragment(lb, style, x, y, width, ctx));
+        return Some(embedded_viewport_fragment(
+            lb,
+            style,
+            (x, y),
+            width,
+            (300.0, 150.0),
+            ctx,
+        ));
     }
     let viewport = lb.svg_viewport.as_ref()?;
     Some(svg_viewport_fragment(lb, viewport, style, x, y, width, ctx))
 }
 
+/// An iframe's or a media element's default box (`natural`: its physical default
+/// size, with no aspect ratio), turned in a vertical space.
 fn embedded_viewport_fragment(
     lb: &LayoutBox,
     style: &BoxStyle,
-    x: f32,
-    y: f32,
+    (x, y): (f32, f32),
     width: f32,
+    natural: (f32, f32),
     ctx: &mut Ctx,
 ) -> Fragment {
+    let (natural_width, natural_height) = if ctx.writing.vertical() {
+        (Some(natural.1), Some(natural.0))
+    } else {
+        (Some(natural.0), Some(natural.1))
+    };
     let dimensions = super::imgsize::size_viewport_live(
-        Some(300.0),
-        None,
+        natural_width,
+        natural_height,
         style.aspect_ratio,
         ctx.html_font_scale.unwrap_or(1.0),
         &size_ctx(style, width, ctx),
@@ -3114,6 +3460,7 @@ fn layout_tree_policy(
         table_rows: record_rows.then(std::collections::HashSet::new),
         dropped_end_margins: HashSet::new(),
         sticky_pending: Vec::new(),
+        writing: super::writing::WritingMode::default(),
     };
     root.set_html_layout_policy((ctx.html_font_metrics, ctx.html_font_scale));
     root.set_original_units(original_units.as_ref());

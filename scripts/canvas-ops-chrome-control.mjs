@@ -267,7 +267,7 @@ const CASES = [
   },
 ];
 
-const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
 const page = await browser.newPage();
 const cases = [];

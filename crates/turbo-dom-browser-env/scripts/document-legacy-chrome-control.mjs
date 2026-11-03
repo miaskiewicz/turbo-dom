@@ -62,6 +62,8 @@ try {
     tlsPort = tlsServer.address().port;
   const flags = [
     "--remote-debugging-port=0",
+    "--use-mock-keychain",
+    "--password-store=basic",
     `--user-data-dir=${profile}`,
     "--no-first-run",
     "--no-default-browser-check",

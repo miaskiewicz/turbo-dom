@@ -488,12 +488,41 @@ fn atomics_natural(items: &[InlineItem], fonts: &FontRegistry) -> f32 {
         .sum()
 }
 
+/// The inline boxes' own horizontal margins, borders and padding in a run laid on one
+/// line (miaskiewicz/turbo-dom#244): each start boundary carries the edges its fragment
+/// keeps ([`crate::ComputedStyle::inline_fragment_style`] zeroes a split side).
+fn inline_edges_natural(items: &[InlineItem], fs: f32) -> f32 {
+    items
+        .iter()
+        .filter_map(|it| match it {
+            InlineItem::Boundary {
+                style, start: true, ..
+            } => {
+                let used = super::value::resolve_box_style(
+                    style,
+                    ResolveCtx {
+                        parent_font_size: fs,
+                        cb_width: 0.0,
+                    },
+                );
+                Some(
+                    used.margin.left
+                        + used.margin.right
+                        + used.padding.horizontal()
+                        + used.border.widths().horizontal(),
+                )
+            }
+            _ => None,
+        })
+        .sum()
+}
+
 fn lines_natural(
     items: &[InlineItem],
     fs: f32,
     fonts: &FontRegistry,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-    html_metrics: bool,
+    (html_metrics, scale): (bool, Option<f32>),
 ) -> f32 {
     let runs = block::build_runs(items, fs, 0.0, fonts);
     let mut scratch = Diagnostics::default();
@@ -508,11 +537,11 @@ fn lines_natural(
         f32::MAX,
         &mut scratch,
         original,
-        html_metrics,
+        (html_metrics, scale),
     )
     .width;
     let text = if html_metrics { text } else { text.ceil() };
-    text + atomics_natural(items, fonts)
+    text + atomics_natural(items, fonts) + inline_edges_natural(items, fs)
 }
 
 /// The widest in-flow child's max-content contribution: its margin box
@@ -695,10 +724,13 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         if let LengthPct::Px(w) = bs.width {
             return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
+        if lb.orthogonal_root && lb.writing_root {
+            return super::writing::orthogonal_extent(lb, fonts);
+        }
         // A replaced `<img>`: its intrinsic width (stamped from the resolver before
         // layout) â so a `<div>` wrapping a logo measures the image, not 0.
-        if let Some(iw) = lb.intrinsic_w.get() {
-            return iw + frame;
+        if let Some(iw) = lb.intrinsic_w() {
+            return replaced_natural(lb, &bs, iw) + frame;
         }
         let inner = match &lb.kind {
             BoxKind::Lines(items) => lines_natural(
@@ -706,7 +738,7 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 bs.font_size,
                 fonts,
                 lb.original_units().as_deref(),
-                lb.uses_html_font_metrics(),
+                (lb.uses_html_font_metrics(), lb.native_scale()),
             ),
             BoxKind::Flex(k) => flex_natural(k, &lb.style, fonts),
             // A table's max-content: its columns side by side plus border-spacing
@@ -720,6 +752,28 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
     })
 }
 
+/// A replaced box's max-content (content-box) width from its intrinsic width `iw`: a
+/// fixed `height` transfers through the intrinsic aspect ratio when the box has one
+/// (an image, a canvas, a loaded poster; not an iframe or a media default box). In a vertical space
+/// this is how a fixed physical `width` sizes the line (miaskiewicz/turbo-dom#252).
+fn replaced_natural(lb: &LayoutBox, bs: &super::value::BoxStyle, iw: f32) -> f32 {
+    let ratio = lb.image.as_ref().is_some_and(|source| {
+        source.media != super::boxgen::Media::Viewport || !source.unloaded.get()
+    }) && !lb.native_iframe();
+    match (bs.height, lb.intrinsic_h()) {
+        (LengthPct::Px(h), Some(ih)) if ratio && ih > 0.0 => {
+            let h = match bs.box_sizing {
+                super::value::BoxSizing::BorderBox => {
+                    (h - bs.padding.vertical() - bs.border.widths().vertical()).max(0.0)
+                }
+                super::value::BoxSizing::ContentBox => h,
+            };
+            h * iw / ih
+        }
+        _ => iw,
+    }
+}
+
 /// The widest single unbreakable piece (max word / longest line at zero available
 /// width) of an inline run â the text's min-content width.
 fn lines_min(
@@ -727,13 +781,19 @@ fn lines_min(
     fs: f32,
     fonts: &FontRegistry,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-    html_metrics: bool,
+    (html_metrics, scale): (bool, Option<f32>),
 ) -> f32 {
     let runs = block::build_runs(items, fs, 0.0, fonts);
     let mut scratch = Diagnostics::default();
-    let text =
-        inline::layout_runs_with_units(&runs, fonts, 0.0, &mut scratch, original, html_metrics)
-            .width;
+    let text = inline::layout_runs_with_units(
+        &runs,
+        fonts,
+        0.0,
+        &mut scratch,
+        original,
+        (html_metrics, scale),
+    )
+    .width;
     // An atomic doesn't break, so it contributes its own min-content; the line can
     // wrap between pieces, so its min-content is the widest single piece.
     let atom = items
@@ -762,8 +822,10 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         if let LengthPct::Px(w) = bs.width {
             return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
-        if lb.is_replaced() {
-            return natural_width(lb, fonts); // replaced image: intrinsic/declared size
+        if lb.is_replaced() || (lb.orthogonal_root && lb.writing_root) {
+            // A replaced image: its intrinsic / declared size; an orthogonal root: its
+            // laid-out block size.
+            return natural_width(lb, fonts);
         }
         let inner = match &lb.kind {
             BoxKind::Lines(items) => lines_min(
@@ -771,7 +833,7 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 bs.font_size,
                 fonts,
                 lb.original_units().as_deref(),
-                lb.uses_html_font_metrics(),
+                (lb.uses_html_font_metrics(), lb.native_scale()),
             ),
             BoxKind::Table(k) => super::table::min_content_width(k, &lb.style, fonts),
             BoxKind::Flex(k) | BoxKind::Block(k) | BoxKind::Grid(k) => in_flow(k)
@@ -818,7 +880,7 @@ fn replaced_probe_width(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<
     if let LengthPct::Px(w) = bs.width {
         return Some(w + frame);
     }
-    let intrinsic = super::imgsize::box_intrinsic(images.resolver, &src.name, &item.style)?;
+    let (intrinsic, _) = super::imgsize::replaced_intrinsic(images.resolver, src, &item.style)?;
     Some(intrinsic.width as f32 + frame)
 }
 
@@ -896,6 +958,7 @@ fn measure_item(
             table_rows: None,
             dropped_end_margins: std::collections::HashSet::new(),
             sticky_pending: Vec::new(),
+            writing: crate::layout::writing::WritingMode::default(),
         };
         let frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, w, &mut mctx);
         (frag.width, frag.height)

@@ -1,6 +1,6 @@
 # turbo-dom
 
-Release **0.6.0**. turbo-dom is the shared browser-engine base of three projects:
+Release **0.7.0**. turbo-dom is the shared browser-engine base of three projects:
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
@@ -167,9 +167,8 @@ upstream rusty_v8's features (for example `simdutf`).
   - CSS animations in `getAnimations` (#187)
   - focus / dialog details (#188)
   - FileList and selector error text (#189)
-  - RTL scroll and vertical writing (#190)
+  - RTL scroll (#190) and vertical writing residuals: form controls in vertical modes (#239)
   - shaping and font metrics (#191)
-  - inset `box-shadow` (#192)
   - block and table layout residuals (#53–#102, #128, #178)
 - **The npm runtime has no layout:** `getBoundingClientRect()` returns zeros, and
   `getComputedStyle` is a partial cascade. It resolves real `<style>` rules and inline

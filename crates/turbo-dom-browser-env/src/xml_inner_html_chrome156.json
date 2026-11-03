@@ -1,0 +1,531 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "recordedAt": "2026-11-02T22:15:11.970Z",
+  "fixture": "xml_inner_html_probe.js",
+  "probeSha256": "d33425941a891c7db98744570cfcc0e6c9d1ccbac6840b231d076e6436ecf294",
+  "result": {
+    "getters": {
+      "rootInner": "<p:a xmlns:p=\"urn:p\" x=\"1\"><![CDATA[c<]]><e xmlns=\"urn:d\"/>t&amp;</p:a><h xmlns=\"http://www.w3.org/1999/xhtml\"><br /><i></i></h>",
+      "rootOuter": "<r xmlns=\"urn:d\" xmlns:p=\"urn:p\"><p:a x=\"1\"><![CDATA[c<]]><e/>t&amp;</p:a><h xmlns=\"http://www.w3.org/1999/xhtml\"><br /><i></i></h></r>",
+      "childOuter": "<p:a xmlns:p=\"urn:p\" x=\"1\"><![CDATA[c<]]><e xmlns=\"urn:d\"/>t&amp;</p:a>",
+      "childInner": "<![CDATA[c<]]><e xmlns=\"urn:d\"/>t&amp;",
+      "html": "<h xmlns=\"http://www.w3.org/1999/xhtml\"><br /><i></i></h>"
+    },
+    "innerSet": {
+      "plain": {
+        "error": null,
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              "b",
+              "urn:d",
+              null,
+              [],
+              [
+                [
+                  3,
+                  "t"
+                ]
+              ]
+            ]
+          ]
+        ],
+        "inner": "<b xmlns=\"urn:d\">t</b>"
+      },
+      "prefixFromScope": {
+        "error": null,
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              "p:c",
+              "urn:p",
+              "p",
+              [
+                [
+                  "p:y",
+                  "urn:p",
+                  "2"
+                ]
+              ],
+              []
+            ]
+          ]
+        ],
+        "inner": "<p:c xmlns:p=\"urn:p\" p:y=\"2\"/>"
+      },
+      "declares": {
+        "error": null,
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              "q:d",
+              "urn:q",
+              "q",
+              [
+                [
+                  "xmlns:q",
+                  "http://www.w3.org/2000/xmlns/",
+                  "urn:q"
+                ]
+              ],
+              []
+            ],
+            [
+              3,
+              "text"
+            ]
+          ]
+        ],
+        "inner": "<q:d xmlns:q=\"urn:q\"/>text"
+      },
+      "multipleRoots": {
+        "error": null,
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              "a",
+              "urn:d",
+              null,
+              [],
+              []
+            ],
+            [
+              "b",
+              "urn:d",
+              null,
+              [],
+              []
+            ]
+          ]
+        ],
+        "inner": "<a xmlns=\"urn:d\"/><b xmlns=\"urn:d\"/>"
+      },
+      "textOnly": {
+        "error": null,
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              3,
+              "a & b <"
+            ]
+          ]
+        ],
+        "inner": "a &amp; b &lt;"
+      },
+      "cdataCommentPi": {
+        "error": null,
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              4,
+              "x"
+            ],
+            [
+              8,
+              "c"
+            ],
+            [
+              7,
+              "d"
+            ]
+          ]
+        ],
+        "inner": "<![CDATA[x]]><!--c--><?t d?>"
+      },
+      "empty": {
+        "error": null,
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          []
+        ],
+        "inner": ""
+      },
+      "unclosed": {
+        "error": [
+          "SyntaxError",
+          "Failed to set the 'innerHTML' property on 'Element': The provided markup is invalid XML, and therefore cannot be inserted into an XML document."
+        ],
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              4,
+              "c<"
+            ],
+            [
+              "e",
+              "urn:d",
+              null,
+              [],
+              []
+            ],
+            [
+              3,
+              "t&"
+            ]
+          ]
+        ],
+        "inner": "<![CDATA[c<]]><e xmlns=\"urn:d\"/>t&amp;"
+      },
+      "mismatch": {
+        "error": [
+          "SyntaxError",
+          "Failed to set the 'innerHTML' property on 'Element': The provided markup is invalid XML, and therefore cannot be inserted into an XML document."
+        ],
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              4,
+              "c<"
+            ],
+            [
+              "e",
+              "urn:d",
+              null,
+              [],
+              []
+            ],
+            [
+              3,
+              "t&"
+            ]
+          ]
+        ],
+        "inner": "<![CDATA[c<]]><e xmlns=\"urn:d\"/>t&amp;"
+      },
+      "unboundPrefix": {
+        "error": null,
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              "z:a",
+              null,
+              null,
+              [],
+              []
+            ]
+          ]
+        ],
+        "inner": "<z:a/>"
+      },
+      "undefinedEntity": {
+        "error": [
+          "SyntaxError",
+          "Failed to set the 'innerHTML' property on 'Element': The provided markup is invalid XML, and therefore cannot be inserted into an XML document."
+        ],
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              4,
+              "c<"
+            ],
+            [
+              "e",
+              "urn:d",
+              null,
+              [],
+              []
+            ],
+            [
+              3,
+              "t&"
+            ]
+          ]
+        ],
+        "inner": "<![CDATA[c<]]><e xmlns=\"urn:d\"/>t&amp;"
+      },
+      "doctype": {
+        "error": [
+          "SyntaxError",
+          "Failed to set the 'innerHTML' property on 'Element': The provided markup is invalid XML, and therefore cannot be inserted into an XML document."
+        ],
+        "tree": [
+          "p:a",
+          "urn:p",
+          "p",
+          [
+            [
+              "x",
+              null,
+              "1"
+            ]
+          ],
+          [
+            [
+              4,
+              "c<"
+            ],
+            [
+              "e",
+              "urn:d",
+              null,
+              [],
+              []
+            ],
+            [
+              3,
+              "t&"
+            ]
+          ]
+        ],
+        "inner": "<![CDATA[c<]]><e xmlns=\"urn:d\"/>t&amp;"
+      }
+    },
+    "outerSet": {
+      "plain": {
+        "error": null,
+        "tree": [
+          "r",
+          "urn:d",
+          null,
+          [
+            [
+              "xmlns",
+              "http://www.w3.org/2000/xmlns/",
+              "urn:d"
+            ],
+            [
+              "xmlns:p",
+              "http://www.w3.org/2000/xmlns/",
+              "urn:p"
+            ]
+          ],
+          [
+            [
+              "b",
+              "urn:d",
+              null,
+              [],
+              []
+            ],
+            [
+              "c",
+              "urn:d",
+              null,
+              [],
+              []
+            ],
+            [
+              "h",
+              "http://www.w3.org/1999/xhtml",
+              null,
+              [
+                [
+                  "xmlns",
+                  "http://www.w3.org/2000/xmlns/",
+                  "http://www.w3.org/1999/xhtml"
+                ]
+              ],
+              [
+                [
+                  "br",
+                  "http://www.w3.org/1999/xhtml",
+                  null,
+                  [],
+                  []
+                ],
+                [
+                  "i",
+                  "http://www.w3.org/1999/xhtml",
+                  null,
+                  [],
+                  []
+                ]
+              ]
+            ]
+          ]
+        ]
+      },
+      "mismatch": {
+        "error": [
+          "SyntaxError",
+          "Failed to set the 'outerHTML' property on 'Element': The provided markup is invalid XML, and therefore cannot be inserted into an XML document."
+        ],
+        "tree": [
+          "r",
+          "urn:d",
+          null,
+          [
+            [
+              "xmlns",
+              "http://www.w3.org/2000/xmlns/",
+              "urn:d"
+            ],
+            [
+              "xmlns:p",
+              "http://www.w3.org/2000/xmlns/",
+              "urn:p"
+            ]
+          ],
+          [
+            [
+              "p:a",
+              "urn:p",
+              "p",
+              [
+                [
+                  "x",
+                  null,
+                  "1"
+                ]
+              ],
+              [
+                [
+                  4,
+                  "c<"
+                ],
+                [
+                  "e",
+                  "urn:d",
+                  null,
+                  [],
+                  []
+                ],
+                [
+                  3,
+                  "t&"
+                ]
+              ]
+            ],
+            [
+              "h",
+              "http://www.w3.org/1999/xhtml",
+              null,
+              [
+                [
+                  "xmlns",
+                  "http://www.w3.org/2000/xmlns/",
+                  "http://www.w3.org/1999/xhtml"
+                ]
+              ],
+              [
+                [
+                  "br",
+                  "http://www.w3.org/1999/xhtml",
+                  null,
+                  [],
+                  []
+                ],
+                [
+                  "i",
+                  "http://www.w3.org/1999/xhtml",
+                  null,
+                  [],
+                  []
+                ]
+              ]
+            ]
+          ]
+        ]
+      }
+    }
+  }
+}

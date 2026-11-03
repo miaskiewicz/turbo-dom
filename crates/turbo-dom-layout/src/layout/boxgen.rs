@@ -62,7 +62,11 @@ pub struct LayoutBox {
     /// resolver), but `natural_width`/`min_content_width` — which run deep in the
     /// flex/table sizers without a resolver — must see it so a `<div>` wrapping an
     /// `<img>` (a logo) measures the image's width instead of collapsing to 0.
-    pub(crate) intrinsic_w: std::cell::Cell<Option<f32>>,
+    /// With it the intrinsic height (not for an inline `<svg>`): a vertical space's
+    /// relabelled copy trades the two, its inline axis being the physical height
+    /// (miaskiewicz/turbo-dom#252). `NaN` is unset; two plain `f32`s keep the box (an
+    /// inline item) small. Read through [`LayoutBox::intrinsic_w`] / [`LayoutBox::intrinsic_h`].
+    intrinsic: std::cell::Cell<[f32; 2]>,
     /// Memoized flex/grid measurement: the content `(width, height)` this box lays
     /// out to at a given proposed width. taffy probes each item's size several times
     /// per solve (min/max-content, then the resolved width) and each probe does a
@@ -71,6 +75,17 @@ pub struct LayoutBox {
     measure_cache: RefCell<Option<Box<MeasuredSizes>>>,
     /// Memoized margin-collapsing walks ([`MarginMemo`], miaskiewicz/turbo-dom#202).
     margin_memo: MarginMemoSlot,
+    /// A list item's `::marker` (miaskiewicz/turbo-dom#128): on the list item for an
+    /// outside marker, placed beside its first line box at layout; on the inline-block
+    /// symbol box an inside marker inserts into the first line.
+    pub(crate) list_marker: Option<Box<super::list_marker::ListMarker>>,
+    /// Whether this box's writing mode differs from its parent's: it lays out in its own
+    /// logical space and establishes an independent formatting context
+    /// ([`super::writing`]).
+    pub(crate) writing_root: bool,
+    /// A writing-mode root whose block axis is its parent's inline axis (an orthogonal
+    /// flow, miaskiewicz/turbo-dom#239).
+    pub(crate) orthogonal_root: bool,
 }
 
 fn same_original_inputs(
@@ -207,10 +222,57 @@ impl LayoutBox {
         self.out_of_flow() || self.floated()
     }
 
+    /// The stamped intrinsic width ([`LayoutBox::intrinsic`]).
+    pub(crate) fn intrinsic_w(&self) -> Option<f32> {
+        Some(self.intrinsic.get()[0]).filter(|w| !w.is_nan())
+    }
+
+    /// The stamped intrinsic height ([`LayoutBox::intrinsic`]).
+    pub(crate) fn intrinsic_h(&self) -> Option<f32> {
+        Some(self.intrinsic.get()[1]).filter(|h| !h.is_nan())
+    }
+
+    /// Stamp the intrinsic width and, when known, height.
+    pub(crate) fn set_intrinsic(&self, width: f32, height: Option<f32>) {
+        self.intrinsic.set([width, height.unwrap_or(f32::NAN)]);
+    }
+
     pub(crate) fn is_replaced(&self) -> bool {
         self.native_iframe()
             || self.svg_viewport.is_some()
-            || self.image.as_ref().is_some_and(|source| source.replaced)
+            || (self.image.as_ref().is_some_and(|source| source.replaced) && !self.shows_alt_text())
+    }
+
+    /// An `<img>` showing its alt text (miaskiewicz/turbo-dom#243): it has alt text
+    /// (no [`ImageSource::fallback`]) and its image did not load. It lays out that
+    /// text like an inline-block, ignoring `width` / `height`, as Chrome 156 does.
+    pub(crate) fn shows_alt_text(&self) -> bool {
+        self.unloaded_image()
+            .is_some_and(|source| source.fallback.is_none())
+    }
+
+    /// The replaced image source of an `<img>` whose image did not load.
+    fn unloaded_image(&self) -> Option<&ImageSource> {
+        self.image
+            .as_ref()
+            .filter(|source| source.replaced && source.unloaded.get())
+            .filter(|_| self.svg_viewport.is_none())
+    }
+
+    /// Whether `width` / `height` do not apply: an `<img>` showing its alt text, or
+    /// its broken-image icon with only one of the two set (Chrome 156 keeps the icon's
+    /// 16x16 then, miaskiewicz/turbo-dom#243).
+    fn ignores_size(&self, style: &BoxStyle) -> bool {
+        use super::value::LengthPct::Auto;
+        self.unloaded_image()
+            .is_some_and(|source| match source.fallback {
+                None => true,
+                Some(size) => {
+                    source.media == Media::None
+                        && size == BROKEN_ICON
+                        && ((style.width == Auto) != (style.height == Auto))
+                }
+            })
     }
 
     /// This box's margin memo, allocated on first use (boxed so inline items stay small).
@@ -300,12 +362,20 @@ impl LayoutBox {
             None => style,
         };
         super::value::quantize_html_box_style(&mut style, self.native_scale());
+        if self.ignores_size(&style) {
+            style.width = super::value::LengthPct::Auto;
+            style.height = super::value::LengthPct::Auto;
+        }
         style
     }
 
-    fn native_scale(&self) -> Option<f32> {
+    pub(crate) fn native_scale(&self) -> Option<f32> {
         let scale = self.html_layout_policy.get().1;
         (scale != 0.0).then_some(scale)
+    }
+    /// The HTML font-metrics policy and device scale this box lays out with.
+    pub(crate) fn html_layout_policy_pair(&self) -> (bool, Option<f32>) {
+        (self.uses_html_font_metrics(), self.native_scale())
     }
     pub(crate) fn uses_html_font_metrics(&self) -> bool {
         self.html_layout_policy.get().0
@@ -355,6 +425,13 @@ impl LayoutBox {
         }
         self.set_child_original_units(units);
     }
+    /// An outside text marker's inline-block box (laid out with this list item).
+    fn marker_text_box(&self) -> Option<&LayoutBox> {
+        match &self.list_marker.as_deref()?.content {
+            super::list_marker::MarkerContent::Text(text) => Some(text),
+            super::list_marker::MarkerContent::Symbol(_) => None,
+        }
+    }
     fn clear_measured_values(&self) {
         let mut storage = self.measure_cache.borrow_mut();
         if storage
@@ -370,6 +447,9 @@ impl LayoutBox {
         &self,
         units: Option<&std::sync::Arc<crate::layout_snapshot::text_units::NativeUnitMap>>,
     ) {
+        if let Some(text) = self.marker_text_box() {
+            text.set_original_units(units);
+        }
         match &self.kind {
             BoxKind::Block(children)
             | BoxKind::Flex(children)
@@ -391,6 +471,9 @@ impl LayoutBox {
     }
 
     fn set_child_html_layout_policy(&self, policy: (bool, Option<f32>)) {
+        if let Some(text) = self.marker_text_box() {
+            text.set_html_layout_policy(policy);
+        }
         match &self.kind {
             BoxKind::Block(children)
             | BoxKind::Flex(children)
@@ -408,6 +491,106 @@ impl LayoutBox {
                 }
             }
             BoxKind::Marker(_) => {}
+        }
+    }
+
+    /// A copy of this subtree with every style relabelled into another writing mode's
+    /// logical space ([`super::writing`]), its memoized measurements dropped.
+    pub(crate) fn relabelled(&self, relabel: super::writing::Relabel) -> LayoutBox {
+        let kind = match &self.kind {
+            BoxKind::Block(kids) => BoxKind::Block(relabel_all(kids, relabel)),
+            BoxKind::Flex(kids) => BoxKind::Flex(relabel_all(kids, relabel)),
+            BoxKind::Grid(kids) => BoxKind::Grid(relabel_all(kids, relabel)),
+            BoxKind::Table(kids) => BoxKind::Table(relabel_all(kids, relabel)),
+            BoxKind::Lines(items) => {
+                BoxKind::Lines(items.iter().map(|item| item.relabelled(relabel)).collect())
+            }
+            BoxKind::Marker(kind) => BoxKind::Marker(*kind),
+        };
+        let list_marker = self.list_marker.as_ref().map(|marker| {
+            Box::new(super::list_marker::ListMarker {
+                node_id: marker.node_id,
+                style: relabel.style(&marker.style),
+                content: match &marker.content {
+                    super::list_marker::MarkerContent::Text(text) => {
+                        super::list_marker::MarkerContent::Text(Box::new(text.relabelled(relabel)))
+                    }
+                    super::list_marker::MarkerContent::Symbol(symbol) => {
+                        super::list_marker::MarkerContent::Symbol(*symbol)
+                    }
+                },
+            })
+        });
+        let copy = LayoutBox {
+            style: relabel.style(&self.style),
+            kind,
+            list_marker,
+            style_cache: RefCell::new(StyleCache::Unknown),
+            natural_cache: std::cell::Cell::new(None),
+            min_content_cache: std::cell::Cell::new(None),
+            margin_memo: MarginMemoSlot::default(),
+            svg_viewport: self
+                .svg_viewport
+                .as_ref()
+                .map(|viewport| Box::new(viewport.relabelled(relabel.swaps()))),
+            ..self.clone_shallow()
+        };
+        copy.clear_measured_values();
+        if let (true, Some(width), Some(height)) =
+            (relabel.swaps(), self.intrinsic_w(), self.intrinsic_h())
+        {
+            copy.set_intrinsic(height, Some(width));
+        }
+        copy
+    }
+
+    /// Flag the boxes whose writing mode differs from their parent's (`parent`).
+    fn mark_writing_roots(&mut self, parent: super::writing::WritingMode) {
+        let mode = super::writing::WritingMode::of(&self.style);
+        self.writing_root = mode != parent;
+        self.orthogonal_root = mode.vertical() != parent.vertical();
+        match &mut self.kind {
+            BoxKind::Block(kids)
+            | BoxKind::Flex(kids)
+            | BoxKind::Grid(kids)
+            | BoxKind::Table(kids) => {
+                for kid in kids {
+                    kid.mark_writing_roots(mode);
+                }
+            }
+            BoxKind::Lines(items) => {
+                for item in items {
+                    if let InlineItem::Atomic(kid) = item {
+                        kid.mark_writing_roots(mode);
+                    }
+                }
+            }
+            BoxKind::Marker(_) => {}
+        }
+    }
+
+    /// This box without its children (the caller supplies them).
+    fn clone_shallow(&self) -> LayoutBox {
+        LayoutBox {
+            node_id: self.node_id,
+            source_role: self.source_role,
+            style: ComputedStyle::default(),
+            attrs: self.attrs.clone(),
+            display: self.display,
+            kind: BoxKind::Block(Vec::new()),
+            image: self.image.clone(),
+            svg_viewport: self.svg_viewport.clone(),
+            mask: self.mask.clone(),
+            style_cache: RefCell::new(StyleCache::Unknown),
+            html_layout_policy: self.html_layout_policy.clone(),
+            natural_cache: std::cell::Cell::new(None),
+            min_content_cache: std::cell::Cell::new(None),
+            intrinsic: self.intrinsic.clone(),
+            measure_cache: RefCell::new(self.measure_cache.borrow().clone()),
+            margin_memo: MarginMemoSlot::default(),
+            writing_root: self.writing_root,
+            orthogonal_root: self.orthogonal_root,
+            list_marker: None,
         }
     }
 
@@ -440,6 +623,29 @@ impl LayoutBox {
 pub struct ImageSource {
     pub name: String,
     pub replaced: bool,
+    /// The intrinsic size of an `<img>` whose source does not load (Chrome 156,
+    /// miaskiewicz/turbo-dom#243): the 16x16 broken-image icon without an `alt`
+    /// attribute, nothing (0x0) with an empty one. `None` for a background image and
+    /// for an `<img>` with alt text, which shows that text instead (the box's own
+    /// content, see [`img_alt_text`]).
+    pub fallback: Option<(u32, u32)>,
+    /// Set before layout when the resolver could not load this `<img>`'s image
+    /// (`crate::layout::stamp_intrinsic_widths`).
+    pub(crate) unloaded: std::cell::Cell<bool>,
+    /// The replaced media element this is the default box of (miaskiewicz/turbo-dom#252).
+    pub(crate) media: Media,
+}
+
+/// Which replaced media element an [`ImageSource`] sizes (miaskiewicz/turbo-dom#252):
+/// none (an `<img>` or a background), a `<canvas>` (its default size, from its
+/// `width` / `height` attributes, has an aspect ratio) or a `<video>` without a
+/// loaded poster, `<audio controls>`, `<object>` or `<embed>` (a default size with
+/// no aspect ratio, like an `<iframe>`'s, Chrome 156).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Media {
+    None,
+    Canvas,
+    Viewport,
 }
 
 /// What a box contains, by formatting context.
@@ -461,6 +667,41 @@ pub enum BoxKind {
     Table(Vec<LayoutBox>),
     /// An opaque block-level marker element (see [`MarkerKind`]).
     Marker(MarkerKind),
+}
+
+fn relabel_all(kids: &[LayoutBox], relabel: super::writing::Relabel) -> Vec<LayoutBox> {
+    kids.iter().map(|kid| kid.relabelled(relabel)).collect()
+}
+
+impl InlineItem {
+    fn relabelled(&self, relabel: super::writing::Relabel) -> InlineItem {
+        match self {
+            InlineItem::SourceBreak { node_id, style } => InlineItem::SourceBreak {
+                node_id: *node_id,
+                style: relabel.style(style),
+            },
+            InlineItem::Boundary {
+                node_id,
+                style,
+                start,
+            } => InlineItem::Boundary {
+                node_id: *node_id,
+                style: relabel.style(style),
+                start: *start,
+            },
+            InlineItem::Text {
+                node_id,
+                style,
+                text,
+            } => InlineItem::Text {
+                node_id: *node_id,
+                style: relabel.style(style),
+                text: text.clone(),
+            },
+            InlineItem::Atomic(kid) => InlineItem::Atomic(kid.relabelled(relabel)),
+            other => other.clone(),
+        }
+    }
 }
 
 /// One inline-level item inside a [`BoxKind::Lines`] context.
@@ -516,6 +757,8 @@ pub(crate) struct BuildOptions {
     /// Lay an inline `<a>` with an internal (`#name`) or absolute-URL href out as an
     /// atomic inline box (its own fragment); block-level links keep their block box.
     pub(crate) atomic_internal_links: bool,
+    /// See [`super::LayoutOptions::flatten_inline_elements`].
+    pub(crate) flatten_inline_elements: bool,
     /// Record each box's source [`turbo_dom::Handle`] (see [`super::NodeSources`]).
     pub(crate) record_sources: bool,
     /// Keep an absolutely positioned box whose `clip: rect()` keeps nothing (the
@@ -533,6 +776,8 @@ pub(crate) struct Recorded {
     pub(crate) texts: std::collections::HashMap<NodeId, turbo_dom::Handle>,
     /// The anonymous table grid boxes ([`LayoutBox::table_grid`]).
     pub(crate) table_grids: std::collections::HashSet<NodeId>,
+    /// `::marker` box / text ids -> their list item's box id.
+    pub(crate) list_markers: std::collections::HashMap<NodeId, NodeId>,
 }
 
 /// A monotonic source of pre-order node ids.
@@ -547,13 +792,28 @@ struct Ids {
     /// [`StyledElement::source`]/text sources per allocated id.
     recorded: Option<Recorded>,
     atomic_internal_links: bool,
+    flatten_inline_elements: bool,
     keep_zero_area_clips: bool,
     /// Whether a box in the top layer (the fullscreen element, miaskiewicz/turbo-dom#82)
     /// was built: [`build_root`] then hoists it.
     top_layer: bool,
+    /// The `list-item` counters of the lists being built (miaskiewicz/turbo-dom#128).
+    lists: super::list_marker::ListCounters,
 }
 
 impl Ids {
+    /// Inline elements are inline boxes (their edges, inline fragments and `<br>`
+    /// sources): Chrome's inline model, on the layout path and the native HTML
+    /// snapshot. A non-native snapshot and a layout with
+    /// [`super::LayoutOptions::flatten_inline_elements`] flatten them into their text
+    /// runs (miaskiewicz/turbo-dom#245).
+    fn inline_boxes(&self) -> bool {
+        self.sources
+            .as_ref()
+            .map_or(!self.flatten_inline_elements, |sources| {
+                sources.inline_borders
+            })
+    }
     fn new(sources: Option<BuildSources>, options: BuildOptions) -> Ids {
         Ids {
             next: 0,
@@ -561,8 +821,10 @@ impl Ids {
             document_roots: std::collections::HashSet::default(),
             recorded: options.record_sources.then(Recorded::default),
             atomic_internal_links: options.atomic_internal_links,
+            flatten_inline_elements: options.flatten_inline_elements,
             keep_zero_area_clips: options.keep_zero_area_clips,
             top_layer: false,
+            lists: super::list_marker::ListCounters::default(),
         }
     }
 
@@ -576,6 +838,18 @@ impl Ids {
         let id = self.alloc();
         if let Some(sources) = &mut self.sources {
             sources.record(id, key);
+        }
+        id
+    }
+
+    /// An id for a `::marker` box or text of the list item box `owner`.
+    fn marker(&mut self, owner: NodeId) -> NodeId {
+        let id = self.alloc();
+        if let Some(sources) = &mut self.sources {
+            sources.list_marker(id, owner);
+        }
+        if let Some(recorded) = &mut self.recorded {
+            recorded.list_markers.insert(id, owner);
         }
         id
     }
@@ -695,16 +969,16 @@ fn tiny_clipped(style: &ComputedStyle) -> bool {
 
 /// Whether the element is a `<br>` — an inline forced line break, handled by the
 /// inline layout, not a box (it has no `display`/`height` of its own).
+fn is_img(el: &StyledElement) -> bool {
+    matches!(&el.tag, Tag::Html(name) if name == "img")
+}
+
 fn is_br(el: &StyledElement) -> bool {
     matches!(&el.tag, Tag::Html(n) if n == "br")
 }
 
 fn line_break(el: &StyledElement, ids: &mut Ids) -> InlineItem {
-    if ids
-        .sources
-        .as_ref()
-        .is_some_and(|sources| sources.inline_borders)
-    {
+    if ids.inline_boxes() {
         InlineItem::SourceBreak {
             node_id: ids.element(el),
             style: el.style.clone(),
@@ -714,7 +988,7 @@ fn line_break(el: &StyledElement, ids: &mut Ids) -> InlineItem {
     }
 }
 fn classify_html(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
-    if ids.hidden(&el.style) {
+    if ids.hidden(&el.style) || unrendered_embed(el) {
         return None;
     }
     if is_br(el) {
@@ -788,17 +1062,53 @@ fn native_out_of_flow(element: &StyledElement, ids: &Ids) -> bool {
 }
 
 fn native_inline_items(el: &StyledElement, ids: &mut Ids) -> Level {
-    let native = ids
-        .sources
-        .as_ref()
-        .is_some_and(|sources| sources.inline_borders);
-    if native && super::inline_boxes::atomic_element(el) {
+    let native = ids.inline_boxes();
+    // An inline `<img>` (its UA default, miaskiewicz/turbo-dom#242) is an atomic
+    // replaced box on every path, not flattened away like a text inline.
+    if is_img(el)
+        || media_element(el).is_some()
+        || (native && super::inline_boxes::atomic_element(el))
+    {
         Level::Inline(vec![InlineItem::Atomic(build_block_box(el, ids))])
-    } else if native {
+    } else if native || decorated_inline(el) {
         native_inline_flow(el, ids)
     } else {
         flatten_inline(el, ids)
     }
+}
+
+/// Whether the static path keeps `el`'s inline box (miaskiewicz/turbo-dom#244): an
+/// inline with a background, a box shadow, or a horizontal margin, border or padding
+/// paints per line fragment and pushes its neighbours, so its boundaries survive
+/// flattening; any other inline flattens into its parent's run as before.
+fn decorated_inline(el: &StyledElement) -> bool {
+    if super::inline_boxes::atomic_element(el) {
+        return false;
+    }
+    let used = super::value::resolve_box_style(
+        &el.style,
+        super::value::ResolveCtx {
+            parent_font_size: super::value::DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        },
+    );
+    let border = used.border.widths();
+    super::value::has_background(&el.style)
+        || used.box_shadow.is_some()
+        || [
+            used.margin.left,
+            used.margin.right,
+            used.padding.left,
+            used.padding.right,
+            used.padding.top,
+            used.padding.bottom,
+            border.left,
+            border.right,
+            border.top,
+            border.bottom,
+        ]
+        .iter()
+        .any(|value| *value != 0.0)
 }
 
 fn append_level(out: &mut Vec<FlowLevel>, level: Level) {
@@ -901,6 +1211,19 @@ fn classify(node: &StyledNode, parent_style: &ComputedStyle, ids: &mut Ids) -> O
     if ids.is_svg_viewport(el) {
         return Some(classify_svg_viewport(el, ids));
     }
+    // An inline whose writing mode differs from its parent's is an orthogonal (or
+    // reversed) flow root: it lays out as an atomic inline, like an inline-block
+    // (Chrome 156; miaskiewicz/turbo-dom#239).
+    if display_of(&el.style) == Display::Inline
+        && super::writing::WritingMode::of(&el.style)
+            != super::writing::WritingMode::of(parent_style)
+        && !ids.hidden(&el.style)
+        && matches!(el.tag, Tag::Html(_))
+    {
+        return Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
+            el, ids,
+        ))]));
+    }
     classify_element(el, ids)
 }
 
@@ -926,7 +1249,8 @@ fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Level {
     // Without a block the split is a single run (the same as `Level::Inline` to every
     // consumer, `append_level`).
     let mut out = Vec::new();
-    let mut run = Vec::new();
+    let (open, close) = bidi_controls(el, ids);
+    let mut run: Vec<InlineItem> = open.into_iter().collect();
     for level in levels {
         match level {
             FlowLevel::Block(block) if !block.line_placeholder() => {
@@ -936,8 +1260,27 @@ fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Level {
             other => run.extend(inline_items_of(vec![other])),
         }
     }
+    run.extend(close);
     out.push(FlowLevel::Inline(run));
     Level::Split(out)
+}
+
+/// A flattened inline element's `unicode-bidi` as zero-width text items holding the
+/// formatting characters that open and close its content: the static path has no
+/// inline-box edges to carry it (miaskiewicz/turbo-dom#238).
+fn bidi_controls(el: &StyledElement, ids: &mut Ids) -> (Option<InlineItem>, Option<InlineItem>) {
+    let bidi = super::inline::UnicodeBidi::parse(el.style.get("unicode-bidi"));
+    let rtl = el.style.get("direction").map(str::trim) == Some("rtl");
+    let (open, close) = bidi.controls(rtl);
+    if open.is_empty() {
+        return (None, None);
+    }
+    let mut item = |text: &str| InlineItem::Text {
+        node_id: ids.alloc(),
+        style: el.style.clone(),
+        text: text.to_string(),
+    };
+    (Some(item(open)), Some(item(close)))
 }
 
 // --------------------------------------------------------------------------
@@ -951,6 +1294,13 @@ fn box_kind_for(display: Display, el: &StyledElement, ids: &mut Ids) -> BoxKind 
     if let Some(label) = input_button_text(el) {
         let text = vec![StyledNode::Text(label.into())];
         return build_flow(&text, &el.style, ids);
+    }
+    if let Some(alt) = img_alt_text(el) {
+        return build_flow(&alt_fallback(el, alt), &el.style, ids);
+    }
+    if media_element(el).is_some() {
+        // A replaced media box: its fallback content does not render (#252).
+        return BoxKind::Lines(Vec::new());
     }
     match display {
         Display::Flex | Display::InlineFlex => BoxKind::Flex(flex_grid_children(el, ids)),
@@ -991,9 +1341,12 @@ fn table_kind(el: &StyledElement, ids: &mut Ids) -> BoxKind {
         html_layout_policy: std::cell::Cell::new((false, 0.0)),
         natural_cache: std::cell::Cell::new(None),
         min_content_cache: std::cell::Cell::new(None),
-        intrinsic_w: std::cell::Cell::new(None),
+        intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        writing_root: false,
+        orthogonal_root: false,
+        list_marker: None,
     });
     BoxKind::Table(captions)
 }
@@ -1080,9 +1433,12 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             html_layout_policy: std::cell::Cell::new((false, 0.0)),
             natural_cache: std::cell::Cell::new(None),
             min_content_cache: std::cell::Cell::new(None),
-            intrinsic_w: std::cell::Cell::new(None),
+            intrinsic: std::cell::Cell::new([f32::NAN; 2]),
             measure_cache: RefCell::new(None),
             margin_memo: MarginMemoSlot::default(),
+            writing_root: false,
+            orthogonal_root: false,
+            list_marker: None,
         };
     }
     let svg_viewport = ids.is_svg_viewport(el).then(|| {
@@ -1091,11 +1447,21 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             ids.sources.as_ref().unwrap().svg_layout_scale,
         ))
     });
+    let mut list_marker = None;
     let (display, kind) = if svg_viewport.is_some() {
         (super::svg_viewport::display(el), BoxKind::Lines(Vec::new()))
     } else {
         let display = display_of(&el.style);
-        (display, box_kind_for(display, el, ids))
+        let ordinal = (display == Display::ListItem).then(|| ids.lists.ordinal(el));
+        let list = ids.lists.enter(el);
+        let mut kind = box_kind_for(display, el, ids);
+        if list {
+            ids.lists.leave();
+        }
+        if let Some(ordinal) = ordinal {
+            list_marker = marker_of(el, node_id, ordinal, &mut kind, ids);
+        }
+        (display, kind)
     };
     // A table wrapper box paints nothing of its own: its grid box has the images.
     let wrapper = is_table_wrapper(&kind);
@@ -1114,26 +1480,201 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         html_layout_policy: std::cell::Cell::new((false, 0.0)),
         natural_cache: std::cell::Cell::new(None),
         min_content_cache: std::cell::Cell::new(None),
-        intrinsic_w: std::cell::Cell::new(None),
+        intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        writing_root: false,
+        orthogonal_root: false,
+        list_marker,
     }
+}
+
+/// The `::marker` of the list item `el` (box `owner`) at counter value `ordinal`
+/// (miaskiewicz/turbo-dom#128): an outside marker is returned for layout to place beside
+/// the first line; an inside one goes into `kind`'s first line now.
+fn marker_of(
+    el: &StyledElement,
+    owner: NodeId,
+    ordinal: i64,
+    kind: &mut BoxKind,
+    ids: &mut Ids,
+) -> Option<Box<super::list_marker::ListMarker>> {
+    use super::list_marker::{self as marker, Content, ListMarker, MarkerContent};
+    let content = marker::content(el.style.get("list-style-type"), ordinal)?;
+    let style = marker::marker_style(&el.style);
+    let node_id = ids.marker(owner);
+    let inside = marker::inside(&el.style);
+    let item = match content {
+        Content::Text(text) if inside => InlineItem::Text {
+            node_id,
+            style,
+            text,
+        },
+        Content::Text(text) => {
+            let text_box = marker::text_box(node_id, ids.marker(owner), &style, text);
+            return Some(Box::new(ListMarker {
+                node_id,
+                style,
+                content: MarkerContent::Text(Box::new(text_box)),
+            }));
+        }
+        Content::Symbol(symbol) => {
+            let marker = ListMarker {
+                node_id,
+                style,
+                content: MarkerContent::Symbol(symbol),
+            };
+            if !inside {
+                return Some(Box::new(marker));
+            }
+            InlineItem::Atomic(marker::symbol_box(marker))
+        }
+    };
+    marker::insert_inside(kind, item, |items| anon_lines_box(items, &el.style, ids));
+    None
 }
 
 /// The raster image a styled element references: an `<img src>` is replaced
 /// content; a `background-image: url(...)` paints behind the box. The `<img>`
 /// source wins when both are present.
 fn image_of(el: &StyledElement) -> Option<ImageSource> {
+    if let Some(source) = media_source(el) {
+        return Some(source);
+    }
     if let Some(src) = img_src(el) {
         return Some(ImageSource {
             name: src.to_string(),
             replaced: true,
+            fallback: broken_image_size(el),
+            unloaded: std::cell::Cell::new(false),
+            media: Media::None,
+        });
+    }
+    if img_alt_text(el).is_some() {
+        // No source to load: the alt text shows.
+        return Some(ImageSource {
+            name: String::new(),
+            replaced: true,
+            fallback: None,
+            unloaded: std::cell::Cell::new(false),
+            media: Media::None,
         });
     }
     background_image(&el.style).map(|name| ImageSource {
         name,
         replaced: false,
+        fallback: None,
+        unloaded: std::cell::Cell::new(false),
+        media: Media::None,
     })
+}
+
+/// The replaced content of a media element (miaskiewicz/turbo-dom#252), with Chrome
+/// 156's default sizes: a `<canvas>` its `width` / `height` attributes (300 x 150 when
+/// missing or invalid), a `<video>` its poster image (when the resolver loads it) else
+/// 300 x 150, `<audio controls>` 300 x 54, `<object>` / `<embed>` 300 x 150. Nothing
+/// loads into the box but a poster: its background and border paint, its fallback
+/// content does not render.
+fn media_source(el: &StyledElement) -> Option<ImageSource> {
+    let (name, fallback, media) = match media_element(el)? {
+        "canvas" => (
+            String::new(),
+            (
+                canvas_dimension(attr_value(&el.attrs, "width"), 300),
+                canvas_dimension(attr_value(&el.attrs, "height"), 150),
+            ),
+            Media::Canvas,
+        ),
+        "video" => (
+            attr_value(&el.attrs, "poster")
+                .unwrap_or_default()
+                .to_string(),
+            (300, 150),
+            Media::Viewport,
+        ),
+        "audio" => (String::new(), (300, 54), Media::Viewport),
+        _ => (String::new(), (300, 150), Media::Viewport),
+    };
+    Some(ImageSource {
+        name,
+        replaced: true,
+        fallback: Some(fallback),
+        unloaded: std::cell::Cell::new(false),
+        media,
+    })
+}
+
+/// The media element `el` is (`canvas`, `video`, `audio`, `object`, `embed`), if any.
+pub(crate) fn media_element(el: &StyledElement) -> Option<&'static str> {
+    let Tag::Html(name) = &el.tag else {
+        return None;
+    };
+    ["canvas", "video", "audio", "object", "embed"]
+        .into_iter()
+        .find(|media| name == media)
+}
+
+/// Whether `el` is an `<embed>` without a source, which Chrome 156 renders no box for.
+pub(crate) fn unrendered_embed(el: &StyledElement) -> bool {
+    media_element(el) == Some("embed") && attr_value(&el.attrs, "src").is_none_or(str::is_empty)
+}
+
+/// A canvas `width` / `height` attribute: a valid non-negative integer (HTML's rules:
+/// leading whitespace, an optional `+`, the leading digits), else `default`.
+fn canvas_dimension(value: Option<&str>, default: u32) -> u32 {
+    let value = value
+        .unwrap_or_default()
+        .trim_start_matches([' ', '\t', '\n', '\x0c', '\r']);
+    let value = value.strip_prefix('+').unwrap_or(value);
+    let digits = value.len() - value.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+    value[..digits].parse().unwrap_or(default)
+}
+
+/// The intrinsic size of Chrome's broken-image icon.
+const BROKEN_ICON: (u32, u32) = (16, 16);
+
+/// [`ImageSource::fallback`] of an `<img>` with a source: the broken-image icon's
+/// 16x16 without `alt`, 0x0 with `alt=""`, `None` with alt text.
+fn broken_image_size(el: &StyledElement) -> Option<(u32, u32)> {
+    match attr_value(&el.attrs, "alt") {
+        None => Some(BROKEN_ICON),
+        Some("") => Some((0, 0)),
+        Some(_) => None,
+    }
+}
+
+/// The alt text an `<img>` shows when its image does not load (or it has no source):
+/// a non-empty `alt` attribute.
+fn img_alt_text(el: &StyledElement) -> Option<&str> {
+    is_img(el)
+        .then(|| attr_value(&el.attrs, "alt"))
+        .flatten()
+        .filter(|alt| !alt.is_empty())
+}
+
+/// Chrome 156's alt-text content of an `<img>` (`HTMLImageFallbackHelper`): the
+/// 16x16 broken-image icon at the line's start, then the alt text, in a box that
+/// shrinks to fit them (an `<img>` keeps this content whatever its `width` /
+/// `height`). Chrome floats the icon, so it never makes the line taller; here it is
+/// a 16px-wide inline-block of no height, which takes the same place and paints
+/// nothing.
+fn alt_fallback(el: &StyledElement, alt: &str) -> Vec<StyledNode> {
+    let mut style = el.style.inherited_only();
+    for (property, value) in [
+        ("display", "inline-block"),
+        ("width", "16px"),
+        ("height", "0px"),
+    ] {
+        style.set(property, value.to_string());
+    }
+    let icon = StyledElement {
+        tag: Tag::Html("span".into()),
+        attrs: Vec::new(),
+        style,
+        children: Vec::new(),
+        source: None,
+    };
+    vec![StyledNode::Element(icon), StyledNode::Text(alt.into())]
 }
 
 /// The image URL an `<img>` paints, or `None` for any other tag. Prefers a plain
@@ -1186,7 +1727,7 @@ fn attr_value<'a>(attrs: &'a [Attr], name: &str) -> Option<&'a str> {
 /// The url of a `background-image: url(...)` longhand, or of a `url(...)` in the
 /// `background` shorthand (real stylesheets set images via the shorthand). A
 /// `none`/gradient/unparsable value yields `None`.
-fn background_image(style: &ComputedStyle) -> Option<String> {
+pub(super) fn background_image(style: &ComputedStyle) -> Option<String> {
     if let Some(url) = style.get("background-image").and_then(url_token) {
         return Some(url);
     }
@@ -1269,7 +1810,7 @@ fn flush_flex_text(
 
 fn block_child(node: &StyledNode, ids: &mut Ids) -> Option<LayoutBox> {
     let el = node.as_element()?;
-    if !is_marker(el) && ids.hidden(&el.style) {
+    if !is_marker(el) && (ids.hidden(&el.style) || unrendered_embed(el)) {
         return None;
     }
     Some(build_block_box(el, ids))
@@ -1327,9 +1868,12 @@ fn anon_lines_box(
         html_layout_policy: std::cell::Cell::new((false, 0.0)),
         natural_cache: std::cell::Cell::new(None),
         min_content_cache: std::cell::Cell::new(None),
-        intrinsic_w: std::cell::Cell::new(None),
+        intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        writing_root: false,
+        orthogonal_root: false,
+        list_marker: None,
     }
 }
 
@@ -1472,7 +2016,9 @@ fn build_root(styled: &[StyledNode], ids: &mut Ids) -> LayoutBox {
     if ids.top_layer {
         hoist_top_layer(&mut kind, ids);
     }
-    anonymous_box(node_id, style, kind)
+    let mut root = anonymous_box(node_id, style, kind);
+    root.mark_writing_roots(super::writing::WritingMode::HorizontalTb);
+    root
 }
 
 /// The internal property the fullscreen UA rule sets on the fullscreen element
@@ -1494,13 +2040,12 @@ fn hoist_top_layer(root: &mut BoxKind, ids: &mut Ids) {
         element.style.set("z-index", TOP_LAYER_Z.to_string());
         let backdrop = backdrop_box(ids.alloc());
         for b in [backdrop, element] {
-            match root {
-                BoxKind::Lines(items) => items.push(InlineItem::Atomic(b)),
-                BoxKind::Block(kids)
-                | BoxKind::Flex(kids)
-                | BoxKind::Grid(kids)
-                | BoxKind::Table(kids) => kids.push(b),
-                BoxKind::Marker(_) => {}
+            // `root` is `build_flow`'s result (`build_root`, the only caller), which is
+            // always `Lines` or `Block`.
+            if let BoxKind::Lines(items) = root {
+                items.push(InlineItem::Atomic(b));
+            } else if let BoxKind::Block(kids) = root {
+                kids.push(b);
             }
         }
     }
@@ -1577,7 +2122,7 @@ fn backdrop_box(node_id: NodeId) -> LayoutBox {
 }
 
 /// A sourceless block box.
-fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind) -> LayoutBox {
+pub(crate) fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind) -> LayoutBox {
     LayoutBox {
         node_id,
         source_role: SourceRole::Ordinary,
@@ -1592,9 +2137,12 @@ fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind) -> Layout
         html_layout_policy: std::cell::Cell::new((false, 0.0)),
         natural_cache: std::cell::Cell::new(None),
         min_content_cache: std::cell::Cell::new(None),
-        intrinsic_w: std::cell::Cell::new(None),
+        intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
+        writing_root: false,
+        orthogonal_root: false,
+        list_marker: None,
     }
 }
 
@@ -1618,6 +2166,52 @@ mod tests {
     }
 
     const FULLSCREEN: &[(&str, &str)] = &[("position", "fixed"), (TOP_LAYER, "fullscreen")];
+
+    fn element(tag: &str, pairs: &[(&str, &str)]) -> StyledElement {
+        let mut style = ComputedStyle::default();
+        for (property, value) in pairs {
+            style.set(property, (*value).to_string());
+        }
+        StyledElement {
+            tag: Tag::Html(tag.into()),
+            attrs: vec![],
+            style,
+            children: vec![],
+            source: None,
+        }
+    }
+
+    /// miaskiewicz/turbo-dom#244: the static path keeps an inline box that paints or
+    /// takes inline space (each decoration on its own), and flattens a plain inline and
+    /// every replaced element.
+    #[test]
+    fn decorated_inlines_keep_their_box_on_the_static_path() {
+        for pairs in [
+            &[("background-color", "#f00")][..],
+            &[("box-shadow", "1px 1px #000")],
+            &[("margin-left", "3px")],
+            &[("margin-right", "3px")],
+            &[("padding-left", "3px")],
+            &[("padding-right", "3px")],
+            &[("padding-top", "3px")],
+            &[("padding-bottom", "3px")],
+            &[("border-left", "1px solid #000")],
+            &[("border-right", "1px solid #000")],
+            &[("border-top", "1px solid #000")],
+            &[("border-bottom", "1px solid #000")],
+        ] {
+            assert!(decorated_inline(&element("span", pairs)), "{pairs:?}");
+        }
+        assert!(!decorated_inline(&element("span", &[("color", "#f00")])));
+        assert!(!decorated_inline(&element(
+            "span",
+            &[("background-color", "transparent")]
+        )));
+        assert!(!decorated_inline(&element(
+            "img",
+            &[("background-color", "#f00")]
+        )));
+    }
 
     fn kids(b: &LayoutBox) -> &[LayoutBox] {
         match &b.kind {
@@ -1925,24 +2519,40 @@ mod tests {
     #[test]
     fn br_becomes_an_inline_line_break() {
         // `<div>a<br>b</div>`: the <br> is an inline forced break within the div's
-        // inline formatting context (a `LineBreak` item), not a block box.
-        let tree = build_box_tree(&[html_el(
+        // inline formatting context, not a block box: a `SourceBreak` carrying its
+        // style (its font's metrics count in the line, miaskiewicz/turbo-dom#245), or a
+        // bare `LineBreak` when inline elements are flattened.
+        let div = [html_el(
             "div",
             vec![
                 StyledNode::Text("a".into()),
                 html_el("br", vec![]),
                 StyledNode::Text("b".into()),
             ],
-        )]);
-        let BoxKind::Block(kids) = &tree.kind else {
-            panic!("root is a block");
-        };
-        let BoxKind::Lines(items) = &kids[0].kind else {
-            panic!("div establishes an inline (lines) context");
+        )];
+        let items = |options| {
+            let (tree, _, _) = build_box_tree_with(&div, options);
+            let BoxKind::Block(kids) = &tree.kind else {
+                panic!("root is a block");
+            };
+            let BoxKind::Lines(items) = &kids[0].kind else {
+                panic!("div establishes an inline (lines) context");
+            };
+            items.clone()
         };
         assert!(
-            items.iter().any(|i| matches!(i, InlineItem::LineBreak)),
-            "the <br> produced a LineBreak item"
+            items(BuildOptions::default())
+                .iter()
+                .any(|i| matches!(i, InlineItem::SourceBreak { .. })),
+            "the <br> produced a SourceBreak item"
+        );
+        let flat = items(BuildOptions {
+            flatten_inline_elements: true,
+            ..BuildOptions::default()
+        });
+        assert!(
+            flat.iter().any(|i| matches!(i, InlineItem::LineBreak)),
+            "the flattened <br> produced a LineBreak item"
         );
     }
 }

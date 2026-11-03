@@ -5,20 +5,28 @@
 //! mixed font sizes, and applies `vertical-align`.
 //!
 //! Words break at white space, inside words per `word-break: break-all` /
-//! `overflow-wrap` and at soft hyphens ([`WordBreaking`], turbo-dom#212, #213).
-//! Deferred (per §2): justified spacing (`Align::Justify` lays out left), Knuth-
-//! Liang hyphenation (`hyphens: auto` acts as `manual`), bidi/RTL, and CJK
-//! (UAX #14) break opportunities.
+//! `overflow-wrap`, at soft hyphens and, under `hyphens: auto`, at English
+//! dictionary hyphenation points ([`WordBreaking`], [`AutoHyphens`],
+//! turbo-dom#212, #213). Lines break in logical order and are then reordered
+//! per UAX #9 ([`bidi`], miaskiewicz/turbo-dom#238). Deferred (per §2): justified
+//! spacing (`Align::Justify` lays out left), hyphenation dictionaries for languages
+//! other than English, and CJK (UAX #14) break opportunities.
 
 use crate::error::{Diagnostics, LintCode, Span};
 use crate::text::{Align, FontFace, FontRegistry};
 
 use super::fragment::{NodeId, PositionedGlyph};
 use super::value::{Rgba, VAlign};
+#[path = "bidi.rs"]
+pub(crate) mod bidi;
+#[path = "hyphenate.rs"]
+mod hyphenate;
 #[path = "inline_advances.rs"]
 mod inline_advances;
 #[path = "native_text_advance.rs"]
 mod native_text_advance;
+pub use bidi::UnicodeBidi;
+pub use hyphenate::AutoHyphens;
 
 /// One styled run of text entering inline layout. `face` is the run's primary
 /// face (already selected); `families`/`weight`/`italic` drive per-glyph fallback.
@@ -55,6 +63,56 @@ pub struct InlineRun {
     /// The run's break opportunities inside words: `word-break`, `overflow-wrap`
     /// and `hyphens` (miaskiewicz/turbo-dom#212, #213).
     pub word_breaking: WordBreaking,
+    /// Which characters stand upright in a vertical line (miaskiewicz/turbo-dom#239).
+    pub upright: UprightText,
+}
+
+/// The characters of a run that stand upright in a vertical line instead of turning a
+/// quarter (CSS Writing Modes 4 §7.1): none in horizontal flow or under
+/// `text-orientation: sideways`, the CJK and related blocks (`Vertical_Orientation`
+/// U / Tu) under `mixed`, every character under `upright`. An upright character
+/// advances by the font's vertical advance (its ascent + descent: the fixture faces
+/// have no `vmtx`) and stands centred on the line.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum UprightText {
+    #[default]
+    None,
+    Mixed,
+    All,
+}
+
+impl UprightText {
+    /// The orientation of text styled `style` (its inherited `writing-mode` and
+    /// `text-orientation`).
+    #[must_use]
+    pub fn of(style: &crate::ComputedStyle) -> UprightText {
+        let mode = super::writing::WritingMode::of(style);
+        if !super::writing::central_baseline(mode, style) {
+            return UprightText::None;
+        }
+        if style.get("text-orientation").map(str::trim) == Some("upright") {
+            UprightText::All
+        } else {
+            UprightText::Mixed
+        }
+    }
+
+    /// Whether `c` stands upright.
+    #[must_use]
+    pub fn sets(self, c: char) -> bool {
+        match self {
+            UprightText::None => false,
+            UprightText::Mixed => super::inline_boxes::sets_upright(c),
+            UprightText::All => true,
+        }
+    }
+}
+
+/// The vertical advance of an upright glyph of `face` at `font_size`: its ascent +
+/// descent.
+fn upright_advance(face: &FontFace, font_size: f32) -> f32 {
+    let metrics = face.html_metrics(font_size);
+    metrics.ascent + metrics.descent
 }
 
 /// Where a run may break inside a word (CSS Text 3 §5): `word-break: break-all`
@@ -62,7 +120,8 @@ pub struct InlineRun {
 /// `overflow-wrap: break-word | anywhere` (and the legacy `word-break: break-word`)
 /// adds them only when the word cannot fit a line on its own, and a soft hyphen
 /// (U+00AD) is an opportunity that draws a hyphen when taken unless
-/// `hyphens: none`. `hyphens: auto` (dictionary hyphenation) acts as `manual`.
+/// `hyphens: none`. Under `hyphens: auto` in a supported language ([`AutoHyphens`])
+/// the dictionary hyphenation points are opportunities that draw a hyphen too.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct WordBreaking {
     /// `word-break: break-all`.
@@ -71,6 +130,8 @@ pub struct WordBreaking {
     pub emergency: bool,
     /// `hyphens: none`: soft hyphens are no break opportunity.
     pub hyphens_none: bool,
+    /// `hyphens: auto` in a supported language: dictionary hyphenation.
+    pub auto: Option<AutoHyphens>,
 }
 
 impl WordBreaking {
@@ -91,6 +152,22 @@ impl WordBreaking {
                     Some("break-word" | "anywhere")
                 ),
             hyphens_none: hyphens.map(str::trim) == Some("none"),
+            auto: None,
+        }
+    }
+
+    /// With dictionary hyphenation from the computed `hyphens`, content language
+    /// (`-webkit-locale`) and `hyphenate-limit-chars` ([`AutoHyphens::from_computed`]).
+    #[must_use]
+    pub fn with_auto_hyphens(
+        self,
+        hyphens: Option<&str>,
+        locale: Option<&str>,
+        limit_chars: Option<&str>,
+    ) -> Self {
+        Self {
+            auto: AutoHyphens::from_computed(hyphens, locale, limit_chars),
+            ..self
         }
     }
 }
@@ -176,11 +253,22 @@ pub struct InlineEdge {
     pub baseline_shift: f32,
     pub contributes_metrics: bool,
     pub valign: VAlign,
+    /// The box is `direction: rtl`: its start edge is its right side.
+    pub rtl: bool,
+    /// The box's `unicode-bidi` (its explicit embedding, isolate or override).
+    pub bidi: UnicodeBidi,
+    /// Under `box-decoration-break: clone`, the advance of the box's OTHER side: every
+    /// line fragment repeats both edges, so a line the box is open across reserves its
+    /// end edge and the next line starts with its start edge (miaskiewicz/turbo-dom#244).
+    pub clone_advance: Option<f32>,
 }
 #[derive(Debug, Clone)]
 pub struct PlacedInlineEdge {
     pub edge: InlineEdge,
     pub x: f32,
+    /// The edge draws its box side's decoration (border, padding, margin): a box
+    /// fragment that bidi reordering left without that side has none.
+    pub decorated: bool,
 }
 
 /// Where an atom landed: its `id` and top-left relative to the line's top-left.
@@ -202,6 +290,8 @@ pub struct GlyphRun {
     pub face: FontFace,
     pub font_size: f32,
     pub color: Rgba,
+    /// The glyphs stand upright in a vertical line (see [`UprightText`]).
+    pub upright: bool,
 }
 
 /// One laid-out line: its glyph runs, atom placements, used width, top offset,
@@ -245,6 +335,11 @@ pub struct GlyphSourceCluster {
     /// True for source cells created by CSS whitespace collapse, including the
     /// first rendered space. Pre/nowrap glyph spaces retain ordinary provenance.
     pub collapsed_whitespace: bool,
+    /// The cluster's bidi embedding level and its paragraph's (UAX #9,
+    /// miaskiewicz/turbo-dom#238): caret hit testing prefers the lower level at a run
+    /// boundary, as Blink does.
+    pub bidi_level: u8,
+    pub paragraph_level: u8,
 }
 
 /// Native output and parallel per-line, per-run, per-glyph source records.
@@ -289,6 +384,12 @@ struct CharInfo {
     face: FontFace,
     original: bool,
     invalid_unit: Option<u16>,
+    /// Stands upright in a vertical line ([`UprightText::sets`]).
+    upright: bool,
+    /// The resolved bidi embedding level ([`bidi::paragraph_levels`]) and its
+    /// paragraph's.
+    level: u8,
+    paragraph: u8,
 }
 
 fn resolve_face(ch: char, run: &InlineRun, reg: &FontRegistry) -> (FontFace, bool) {
@@ -444,6 +545,10 @@ fn flatten_chars(
             source_end,
         } in chars.iter(&run.text)
         {
+            if bidi::is_formatting(ch) {
+                // Bidi formatting characters only steer the levels; never drawn.
+                continue;
+            }
             let invalid_unit = invalid_source_unit(original, utf16_offset, ch);
             let (face, notdef) = select_character_face(
                 CharacterSelection {
@@ -467,6 +572,9 @@ fn flatten_chars(
                 face,
                 original: original.is_some(),
                 invalid_unit,
+                upright: run.upright.sets(ch),
+                level: 0,
+                paragraph: 0,
             });
         }
         if missing {
@@ -606,6 +714,19 @@ struct Seg {
     node_id: NodeId,
     width: f32,
     native_width: f64,
+    /// Native HTML only: the kerning pair adjustment Chrome's whole-item shaping puts on
+    /// this segment's logically last glyph against a following space
+    /// (`inline_advances::prepare`; included in `native_width`).
+    trailing_kern: f64,
+    /// The segment's bidi embedding level (every character's) and its paragraph's.
+    level: u8,
+    paragraph: u8,
+    /// Native HTML only: the second half of a split `kern`-table pair across the space
+    /// before this segment, on its logically first glyph (`inline_advances::prepare`;
+    /// included in `native_width`).
+    leading_kern: f64,
+    /// Upright glyphs ([`UprightText`]): each advances by [`upright_advance`].
+    upright: bool,
 }
 
 struct Word {
@@ -627,16 +748,30 @@ struct Word {
     /// whole word cannot fit a line (miaskiewicz/turbo-dom#212).
     emergency: Option<Vec<Word>>,
     /// The word as it is drawn when a line ends after it at its trailing soft
-    /// hyphen: the U+00AD replaced by a hyphen (miaskiewicz/turbo-dom#213).
+    /// hyphen: the U+00AD replaced by a hyphen (miaskiewicz/turbo-dom#213), or
+    /// with a hyphen after it at a dictionary hyphenation point.
     hyphen: Option<Box<Word>>,
+    /// The word ends at a dictionary hyphenation point: the next word goes on with
+    /// the same source word.
+    dictionary_break: bool,
+    /// On the first part of a paragraph's last source word that has dictionary
+    /// hyphenation points: the whole word's width. Like Chrome, that word is not
+    /// hyphenated on a line holding earlier content; it moves to the next line.
+    last_word_width: Option<f32>,
+    /// The bidi level of the white space after the word (`None`: no such space).
+    space_level: Option<u8>,
+    /// The bidi level of the atom (U+FFFC is a neutral).
+    atom_level: u8,
 }
 
-fn seg_key(c: &CharInfo) -> (usize, String, u16, bool) {
+fn seg_key(c: &CharInfo) -> (usize, String, u16, bool, bool, u8) {
     (
         c.run,
         c.face.family().to_string(),
         c.face.weight(),
         c.face.is_italic(),
+        c.upright,
+        c.level,
     )
 }
 
@@ -645,10 +780,21 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
     let run = &runs[chars[0].run];
     let face = chars[0].face.clone();
     let original_units = segment_original_units(chars);
-    let width = original_units.as_deref().map_or_else(
-        || face.measure(&text, run.font_size, run.letter_spacing),
-        |units| face.measure_original_utf16(units, run.font_size, run.letter_spacing),
-    );
+    let upright = chars[0].upright;
+    let rtl = chars[0].level % 2 == 1;
+    let width = if upright {
+        // One vertical advance per cluster: a combining mark joins its base.
+        let clusters = chars
+            .iter()
+            .filter(|c| !crate::text::transform::is_mark(c.ch))
+            .count();
+        clusters as f32 * (upright_advance(&face, run.font_size) + run.letter_spacing)
+    } else {
+        original_units.as_deref().map_or_else(
+            || face.measure_in(&text, run.font_size, run.letter_spacing, rtl),
+            |units| face.measure_original_utf16(units, run.font_size, run.letter_spacing),
+        )
+    };
     Seg {
         baseline_shift: None,
         source_bytes: chars[0].byte_offset,
@@ -666,6 +812,11 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
         node_id: run.node_id,
         width,
         native_width: f64::from(width),
+        trailing_kern: 0.0,
+        level: chars[0].level,
+        paragraph: chars[0].paragraph,
+        leading_kern: 0.0,
+        upright,
     }
 }
 
@@ -752,6 +903,10 @@ fn break_word() -> Word {
         break_after: true,
         emergency: None,
         hyphen: None,
+        dictionary_break: false,
+        last_word_width: None,
+        space_level: None,
+        atom_level: 0,
     }
 }
 
@@ -838,7 +993,9 @@ fn build_words(
             .collect();
         words.extend(breakable_words(items, runs, space_after));
         let spaces = native_word_spaces(&chars[i..], runs, native_advances);
-        words.last_mut().expect("a word was pushed").spaces = spaces;
+        let last = words.last_mut().expect("a word was pushed");
+        last.spaces = spaces;
+        last.space_level = chars.get(i).map(|c| c.level);
     }
     words
 }
@@ -862,58 +1019,72 @@ struct SourcePolicy {
 
 /// Build words in document order; adjacent runs share a word, while each atom
 /// remains unbreakable. Native advance metadata is kept out of PDF callers.
+/// A paragraph's words and whether its lines reorder
+/// ([`bidi::ParagraphLevels::active`]).
+struct ParagraphWords {
+    words: Vec<Word>,
+    bidi: bool,
+}
+
 fn build_pieces(
     pieces: &[Piece],
     reg: &FontRegistry,
     diags: &mut Diagnostics,
     policy: SourcePolicy,
     original_units: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-) -> Vec<Word> {
+) -> ParagraphWords {
+    let levels = bidi::paragraph_levels(pieces);
     let mut words = Vec::new();
     let mut group: Vec<InlineRun> = Vec::new();
     let mut edges: Vec<(usize, InlineEdge)> = Vec::new();
+    let mut runs_seen = 0;
+    let mut atoms_seen = 0;
+    let flush = |group: &mut Vec<InlineRun>,
+                 edges: &mut Vec<(usize, InlineEdge)>,
+                 diags: &mut Diagnostics,
+                 words: &mut Vec<Word>,
+                 runs_seen: usize| {
+        let first = runs_seen - group.len();
+        flush_run_group(
+            group,
+            edges,
+            (reg, diags),
+            (
+                words,
+                &levels.runs[first..runs_seen],
+                &levels.paragraph[first..runs_seen],
+            ),
+            policy,
+            original_units,
+        );
+    };
     for piece in pieces {
         match piece {
-            Piece::Run(run) => group.push(run.clone()),
+            Piece::Run(run) => {
+                group.push(run.clone());
+                runs_seen += 1;
+            }
             Piece::Edge(edge) => edges.push((group.len(), edge.clone())),
             Piece::Atom(atom) => {
-                flush_run_group(
-                    &mut group,
-                    &mut edges,
-                    reg,
-                    diags,
-                    &mut words,
-                    policy,
-                    original_units,
-                );
-                words.push(atom_word(*atom, 0.0));
+                flush(&mut group, &mut edges, diags, &mut words, runs_seen);
+                let mut word = atom_word(*atom, 0.0);
+                word.atom_level = levels.atoms[atoms_seen];
+                atoms_seen += 1;
+                words.push(word);
             }
             Piece::NativeAtom(atom, shift) => {
-                flush_run_group(
-                    &mut group,
-                    &mut edges,
-                    reg,
-                    diags,
-                    &mut words,
-                    policy,
-                    original_units,
-                );
+                flush(&mut group, &mut edges, diags, &mut words, runs_seen);
                 let mut atom = *atom;
                 if matches!(atom.valign, VAlign::Super | VAlign::Sub) {
                     atom.valign = VAlign::Baseline;
                 }
-                words.push(atom_word(atom, *shift));
+                let mut word = atom_word(atom, *shift);
+                word.atom_level = levels.atoms[atoms_seen];
+                atoms_seen += 1;
+                words.push(word);
             }
             Piece::SourceBreak(edge) => {
-                flush_run_group(
-                    &mut group,
-                    &mut edges,
-                    reg,
-                    diags,
-                    &mut words,
-                    policy,
-                    original_units,
-                );
+                flush(&mut group, &mut edges, diags, &mut words, runs_seen);
                 let mut word = break_word();
                 let mut end = edge.clone();
                 end.start = false;
@@ -921,29 +1092,16 @@ fn build_pieces(
                 words.push(word);
             }
             Piece::Break => {
-                flush_run_group(
-                    &mut group,
-                    &mut edges,
-                    reg,
-                    diags,
-                    &mut words,
-                    policy,
-                    original_units,
-                );
+                flush(&mut group, &mut edges, diags, &mut words, runs_seen);
                 words.push(break_word());
             }
         }
     }
-    flush_run_group(
-        &mut group,
-        &mut edges,
-        reg,
-        diags,
-        &mut words,
-        policy,
-        original_units,
-    );
-    words
+    flush(&mut group, &mut edges, diags, &mut words, runs_seen);
+    ParagraphWords {
+        words,
+        bidi: levels.active,
+    }
 }
 
 fn atom_word(atom: InlineAtom, shift: f32) -> Word {
@@ -961,6 +1119,10 @@ fn atom_word(atom: InlineAtom, shift: f32) -> Word {
         break_after: false,
         emergency: None,
         hyphen: None,
+        dictionary_break: false,
+        last_word_width: None,
+        space_level: None,
+        atom_level: 0,
     }
 }
 /// Flush a run of consecutive text pieces into words (itemize + word-break),
@@ -968,15 +1130,18 @@ fn atom_word(atom: InlineAtom, shift: f32) -> Word {
 fn flush_run_group(
     group: &mut Vec<InlineRun>,
     edges: &mut Vec<(usize, InlineEdge)>,
-    reg: &FontRegistry,
-    diags: &mut Diagnostics,
-    out: &mut Vec<Word>,
+    (reg, diags): (&FontRegistry, &mut Diagnostics),
+    (out, levels, paragraphs): (&mut Vec<Word>, &[Vec<u8>], &[u8]),
     policy: SourcePolicy,
     original_units: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
 ) {
     if !group.is_empty() || !edges.is_empty() {
         let native = policy.capture || original_units.is_some();
-        let chars = flatten_chars(group, reg, diags, native, original_units);
+        let mut chars = flatten_chars(group, reg, diags, native, original_units);
+        for c in &mut chars {
+            c.level = levels[c.run].get(c.byte_offset).copied().unwrap_or(0);
+            c.paragraph = paragraphs[c.run];
+        }
         let continue_space = group_leading_space(&chars, group, edges, out, native, policy);
         if edges.is_empty() {
             out.extend(build_words(&chars, group, native, policy.advances));
@@ -1127,6 +1292,7 @@ impl MarkedWords<'_> {
             previous
                 .spaces
                 .push(make_seg(std::slice::from_ref(&c), self.runs));
+            previous.space_level.get_or_insert(c.level);
         }
         self.in_space = true;
     }
@@ -1184,7 +1350,7 @@ fn opportunity(previous: &CharInfo, next: &CharInfo, runs: &[InlineRun]) -> Opti
         return Some(Opportunity::Normal);
     }
     let breaking = runs[next.run].word_breaking;
-    if breaking.break_all {
+    if breaking.break_all || ideographic_break(previous.ch, next.ch) {
         Some(Opportunity::Normal)
     } else if breaking.emergency {
         Some(Opportunity::Emergency)
@@ -1193,23 +1359,40 @@ fn opportunity(previous: &CharInfo, next: &CharInfo, runs: &[InlineRun]) -> Opti
     }
 }
 
+/// A UAX #14 break opportunity between `previous` and `next` beside an ideograph (class
+/// ID: CJK breaks between its characters and against Latin, miaskiewicz/turbo-dom#239).
+fn ideographic_break(previous: char, next: char) -> bool {
+    use unicode_linebreak::{break_property, linebreaks, BreakClass};
+    let ideograph = |c: char| break_property(u32::from(c)) == BreakClass::Ideographic;
+    if !ideograph(previous) && !ideograph(next) {
+        return false;
+    }
+    let pair: String = [previous, next].iter().collect();
+    let found = linebreaks(&pair).any(|(at, _)| at == previous.len_utf8());
+    found
+}
+
 /// Split `items` (one word's characters and inline edges) at its `kind`
-/// opportunities. A split point sits before the next character, after the edges
-/// closing the previous one.
+/// opportunities, and for `Normal` also before each character `auto` flags (its
+/// dictionary hyphenation points, by character index). A split point sits before
+/// the next character, after the edges closing the previous one.
 fn split_items(
     items: Vec<SourceItem>,
     runs: &[InlineRun],
     kind: Opportunity,
+    auto: &[bool],
 ) -> Vec<Vec<SourceItem>> {
     let mut parts = vec![Vec::new()];
     let mut previous: Option<CharInfo> = None;
     let mut pending: Vec<SourceItem> = Vec::new();
+    let mut index = 0;
     for item in items {
         match item {
             SourceItem::Character(c) => {
-                let split = previous
-                    .as_ref()
-                    .is_some_and(|p| opportunity(p, &c, runs) == Some(kind));
+                let split = previous.as_ref().is_some_and(|p| {
+                    opportunity(p, &c, runs) == Some(kind)
+                        || (kind == Opportunity::Normal && auto.get(index) == Some(&true))
+                });
                 if split {
                     parts.push(Vec::new());
                 }
@@ -1217,6 +1400,7 @@ fn split_items(
                 part.append(&mut pending);
                 previous = Some(c.clone());
                 part.push(SourceItem::Character(c));
+                index += 1;
             }
             SourceItem::Edge(edge) if !edge.start => {
                 let part = parts.last_mut().expect("parts is never empty");
@@ -1233,33 +1417,97 @@ fn split_items(
     parts
 }
 
-/// The hyphen a taken soft hyphen draws: U+2010 when the face has it, else `-`.
+/// The dictionary hyphenation points of one source word, by character index (a
+/// flag per character: a break may precede it): each maximal run of letters of
+/// one inline run (text node) hyphenates on its own under that run's settings, so
+/// a break never falls at an inline edge. A word with a soft hyphen breaks only at
+/// its soft hyphens (as in Blink).
+fn auto_breaks(items: &[SourceItem], runs: &[InlineRun]) -> Vec<bool> {
+    let chars: Vec<&CharInfo> = items
+        .iter()
+        .filter_map(|item| match item {
+            SourceItem::Character(c) => Some(c),
+            SourceItem::Edge(_) => None,
+        })
+        .collect();
+    let mut out = vec![false; chars.len()];
+    if chars.iter().any(|c| c.ch == '\u{ad}') {
+        return out;
+    }
+    let mut start = 0;
+    while start < chars.len() {
+        let run = chars[start].run;
+        let letters: Vec<char> = chars[start..]
+            .iter()
+            .take_while(|c| c.ch.is_alphabetic() && c.run == run)
+            .map(|c| c.ch)
+            .collect();
+        if let Some(limits) = runs[run].word_breaking.auto {
+            for at in hyphenate::word_breaks(&letters, limits) {
+                out[start + at] = true;
+            }
+        }
+        start += letters.len().max(1);
+    }
+    out
+}
+
+/// The hyphen a taken break draws after `c`, in the run's own face when it has
+/// one (a face without U+00AD, Inter Bold, leaves a soft hyphen itself on a
+/// fallback face): U+2010 when the face has it, else `-`.
+fn hyphen_glyph(c: &CharInfo, runs: &[InlineRun]) -> (FontFace, char) {
+    let primary = &runs[c.run].face;
+    let face = [primary, &c.face]
+        .into_iter()
+        .find(|face| face.has_glyph('\u{2010}') || face.has_glyph('-'))
+        .unwrap_or(primary)
+        .clone();
+    let ch = ['\u{2010}', '-']
+        .into_iter()
+        .find(|h| face.has_glyph(*h))
+        .unwrap_or('-');
+    (face, ch)
+}
+
+fn source_end(c: &CharInfo) -> (usize, usize) {
+    c.source_end.unwrap_or((
+        c.byte_offset + c.ch.len_utf8(),
+        c.utf16_offset + c.ch.len_utf16(),
+    ))
+}
+
+/// The hyphen a taken soft hyphen draws, in place of the U+00AD.
 fn hyphenated(mut items: Vec<SourceItem>, runs: &[InlineRun]) -> Vec<SourceItem> {
     if let Some(SourceItem::Character(c)) = items
         .iter_mut()
         .rev()
         .find(|item| matches!(item, SourceItem::Character(_)))
     {
-        let end = c.source_end.unwrap_or((
-            c.byte_offset + c.ch.len_utf8(),
-            c.utf16_offset + c.ch.len_utf16(),
-        ));
-        c.source_end = Some(end);
-        // The hyphen is drawn in the run's own face when it has one: a face without
-        // U+00AD (Inter Bold) leaves the soft hyphen itself on a fallback face.
-        let primary = &runs[c.run].face;
-        let face = [primary, &c.face]
-            .into_iter()
-            .find(|face| face.has_glyph('\u{2010}') || face.has_glyph('-'))
-            .unwrap_or(primary)
-            .clone();
-        let ch = ['\u{2010}', '-']
-            .into_iter()
-            .find(|h| face.has_glyph(*h))
-            .unwrap_or('-');
-        c.face = face;
-        c.ch = ch;
+        c.source_end = Some(source_end(c));
+        (c.face, c.ch) = hyphen_glyph(c, runs);
         c.invalid_unit = None;
+    }
+    items
+}
+
+/// The hyphen a taken dictionary break draws: a glyph after the last character,
+/// mapped to the empty source range at its end.
+/// A dictionary break falls between two letters of one inline run, so the part
+/// before it ends with a character.
+fn with_drawn_hyphen(mut items: Vec<SourceItem>, runs: &[InlineRun]) -> Vec<SourceItem> {
+    if let Some(SourceItem::Character(last)) = items.last() {
+        let end = source_end(last);
+        let (face, ch) = hyphen_glyph(last, runs);
+        let hyphen = CharInfo {
+            byte_offset: end.0,
+            utf16_offset: end.1,
+            source_end: Some(end),
+            ch,
+            face,
+            invalid_unit: None,
+            ..last.clone()
+        };
+        items.push(SourceItem::Character(hyphen));
     }
     items
 }
@@ -1271,33 +1519,53 @@ fn ends_with_soft_hyphen(items: &[SourceItem], runs: &[InlineRun]) -> bool {
     )
 }
 
+fn char_count(items: &[SourceItem]) -> usize {
+    items
+        .iter()
+        .filter(|item| matches!(item, SourceItem::Character(_)))
+        .count()
+}
+
 /// One source word as placeable words: split at its normal opportunities
-/// (`break-all`, soft hyphens), each part carrying its `overflow-wrap` split and,
-/// before a soft hyphen break, its hyphenated form. The last part takes
-/// `space_after`.
+/// (`break-all`, soft hyphens, dictionary hyphenation points), each part carrying
+/// its `overflow-wrap` split and, before a hyphenating break, its hyphenated form.
+/// The last part takes `space_after`.
 fn breakable_words(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> Vec<Word> {
-    let parts = split_items(items, runs, Opportunity::Normal);
+    let auto = auto_breaks(&items, runs);
+    let parts = split_items(items, runs, Opportunity::Normal, &auto);
     let count = parts.len();
     let mut words = Vec::with_capacity(count);
+    let mut next_char = 0;
     for (index, part) in parts.into_iter().enumerate() {
         let last = index + 1 == count;
-        let hyphenates = !last && ends_with_soft_hyphen(&part, runs);
-        let hyphen =
-            hyphenates.then(|| Box::new(marked_word(hyphenated(part.clone(), runs), runs, 0.0)));
-        let emergency = split_items(part.clone(), runs, Opportunity::Emergency);
+        next_char += char_count(&part);
+        let soft = !last && ends_with_soft_hyphen(&part, runs);
+        let dictionary = !last && auto.get(next_char) == Some(&true);
+        let draw = |items: Vec<SourceItem>| {
+            let items = if soft {
+                hyphenated(items, runs)
+            } else {
+                with_drawn_hyphen(items, runs)
+            };
+            Box::new(marked_word(items, runs, 0.0))
+        };
+        let hyphenates = soft || dictionary;
+        let hyphen = hyphenates.then(|| draw(part.clone()));
+        let emergency = split_items(part.clone(), runs, Opportunity::Emergency, &[]);
         let mut word = marked_word(part, runs, if last { space_after } else { 0.0 });
         word.hyphen = hyphen;
+        word.dictionary_break = dictionary;
         if emergency.len() > 1 {
             // Broken at its `overflow-wrap` opportunities, only the last fragment
-            // ends at the soft hyphen, so only it may draw the hyphen (#229).
+            // ends at the hyphenating break, so only it may draw the hyphen (#229).
+            let fragments = emergency.len();
             word.emergency = Some(
                 emergency
                     .into_iter()
-                    .map(|items| {
+                    .enumerate()
+                    .map(|(at, items)| {
                         let hyphen =
-                            (hyphenates && ends_with_soft_hyphen(&items, runs)).then(|| {
-                                Box::new(marked_word(hyphenated(items.clone(), runs), runs, 0.0))
-                            });
+                            (hyphenates && at + 1 == fragments).then(|| draw(items.clone()));
                         let mut fragment = marked_word(items, runs, 0.0);
                         fragment.hyphen = hyphen;
                         fragment
@@ -1345,6 +1613,10 @@ fn marked_word(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> 
         break_after: false,
         emergency: None,
         hyphen: None,
+        dictionary_break: false,
+        last_word_width: None,
+        space_level: None,
+        atom_level: 0,
     }
 }
 
@@ -1367,6 +1639,7 @@ fn hand_off_leading_space(
         separating_space(first, group, capture_sources) && !forced_newline(first, group);
     if breakable && last.space_after == 0.0 {
         last.space_after = space_width(first, group);
+        last.space_level = Some(first.level);
         if native_advances {
             last.advance_space = Some(make_seg(std::slice::from_ref(first), group));
             last.spaces.extend(
@@ -1427,6 +1700,38 @@ fn wrapped_extra_spaces(previous: &Word, next: &Word) -> bool {
 /// top-down so each line's available width is queried from `region` at its own
 /// vertical position — text wraps in the narrow column beside a float, then widens
 /// once past its bottom — and flushes eagerly at a forced break (`<br>`).
+/// The device scales of a line policy (miaskiewicz/turbo-dom#246): `advances` adds
+/// text advances in Chrome's 1/64px `LayoutUnit`s ([`inline_advances`]), `metrics`
+/// rounds font metrics and baselines natively. The native HTML path sets both; the
+/// static (PDF / screenshot) path sets only the advances, so its glyphs land where
+/// Chrome's do while its line box model keeps its own metrics.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct NativeScale {
+    pub metrics: Option<f32>,
+    pub advances: Option<f32>,
+}
+
+impl NativeScale {
+    const NONE: NativeScale = NativeScale {
+        metrics: None,
+        advances: None,
+    };
+
+    /// Both scales (the native HTML path).
+    pub(crate) fn both(scale: Option<f32>) -> NativeScale {
+        NativeScale {
+            metrics: scale,
+            advances: scale,
+        }
+    }
+
+    /// 1/64px advances at device scale 1 with the legacy metrics (the static path).
+    const STATIC: NativeScale = NativeScale {
+        metrics: None,
+        advances: Some(1.0),
+    };
+}
+
 struct Placer<'a> {
     align: Align,
     region: LineRegion<'a>,
@@ -1436,13 +1741,22 @@ struct Placer<'a> {
     capture_sources: bool,
     html_font_metrics: bool,
     html_font_scale: Option<f32>,
+    advance_scale: Option<f32>,
     advances: Option<inline_advances::Cursor>,
     strut_metrics: Option<(f32, f32)>,
+    /// Lines align on the central baseline (see [`NativeLineOptions::central`]).
+    central: bool,
+    /// Quirks mode (see [`NativeLineOptions::quirk_roots`]).
+    quirk_roots: Option<&'a std::collections::HashSet<NodeId>>,
+    /// The paragraph's lines reorder (UAX #9).
+    bidi: bool,
     first_indent: f32,
     clearance: Option<&'a dyn Fn(f32, f32) -> f32>,
     out: Vec<SourceLine>,
     cur: Vec<Word>,
     open_edges: Vec<InlineEdge>,
+    /// The cloned boxes a forced break closed, reopened by the next word.
+    reopen: Vec<InlineEdge>,
     y: f32,
     indent: f32,
     lw: f32,
@@ -1454,9 +1768,9 @@ impl<'a> Placer<'a> {
         align: Align,
         region: LineRegion<'a>,
         strut: f32,
-        policy: (bool, bool, Option<f32>),
+        policy: (bool, bool, NativeScale),
     ) -> Self {
-        let (capture_sources, html_font_metrics, html_font_scale) = policy;
+        let (capture_sources, html_font_metrics, scales) = policy;
         let (indent, lw) = region(0.0);
         Placer {
             align,
@@ -1464,18 +1778,46 @@ impl<'a> Placer<'a> {
             strut,
             capture_sources,
             html_font_metrics,
-            html_font_scale,
-            advances: html_font_scale.map(|scale| inline_advances::Cursor::new(scale, 0.0)),
+            html_font_scale: scales.metrics,
+            advance_scale: scales.advances,
+            advances: scales
+                .advances
+                .map(|scale| inline_advances::Cursor::new(scale, 0.0)),
             strut_metrics: None,
+            central: false,
+            quirk_roots: None,
+            bidi: false,
             first_indent: 0.0,
             clearance: None,
             out: Vec::new(),
             cur: Vec::new(),
             open_edges: Vec::new(),
+            reopen: Vec::new(),
             y: 0.0,
             indent,
             lw,
             x: 0.0,
+        }
+    }
+
+    /// The strut a line of `words` takes: in quirks mode only a line holding text or a
+    /// `<br>` directly in the block gets it, any other line starts from nothing (the
+    /// line height quirk; Chrome 156, miaskiewicz/turbo-dom#190).
+    fn line_strut(&self, words: &[Word]) -> Option<(f32, f32)> {
+        let Some(roots) = self.quirk_roots else {
+            return self.strut_metrics;
+        };
+        let rooted = words.iter().any(|word| {
+            word.segs.iter().any(|seg| roots.contains(&seg.node_id))
+                || word
+                    .edges
+                    .iter()
+                    .any(|(_, edge)| roots.contains(&edge.node_id))
+        });
+        if rooted {
+            self.strut_metrics
+        } else {
+            self.strut_metrics.map(|_| (0.0, 0.0))
         }
     }
 
@@ -1486,6 +1828,7 @@ impl<'a> Placer<'a> {
             return;
         }
         let current = std::mem::take(&mut self.cur);
+        let strut_metrics = self.line_strut(&current);
         let mut next_open = self.open_edges.clone();
         for word in &current {
             for (_, edge) in &word.edges {
@@ -1502,11 +1845,17 @@ impl<'a> Placer<'a> {
             self.align,
             self.strut,
             &self.open_edges,
-            self.strut_metrics,
+            (
+                strut_metrics.map(|metrics| (metrics, self.central)),
+                self.bidi,
+            ),
             (
                 self.capture_sources,
                 self.html_font_metrics,
-                self.html_font_scale,
+                NativeScale {
+                    metrics: self.html_font_scale,
+                    advances: self.advance_scale,
+                },
             ),
         );
         self.open_edges = next_open;
@@ -1517,15 +1866,23 @@ impl<'a> Placer<'a> {
         (self.indent, self.lw) = (self.region)(self.y);
         self.x = 0.0;
         self.advances = self
-            .html_font_scale
+            .advance_scale
             .map(|scale| inline_advances::Cursor::new(scale, 0.0));
     }
 
     /// Add one word: wrap first if it no longer fits, then flush after it if it is
     /// a forced break (so a `<br>` ends its line and the next word starts below).
     fn add(&mut self, mut word: Word) {
+        let reopen = std::mem::take(&mut self.reopen);
+        reopen_clones(&mut word, &reopen);
         if self.attach_trailing_close(&word) {
             return;
+        }
+        if word
+            .last_word_width
+            .is_some_and(|width| !self.cur.is_empty() && self.x + width > self.lw)
+        {
+            self.wrap_before(&mut word);
         }
         if let Some(parts) = word.emergency.take() {
             return self.add_breakable(word, parts);
@@ -1546,16 +1903,52 @@ impl<'a> Placer<'a> {
             }
         }
         word.leading_spaces = self.wrapped_leading_spaces(word);
+        let cloned = self.cloned_open(None);
+        if let Some(last) = self.cur.last_mut() {
+            close_clones(last, &cloned);
+        }
         self.flush();
+        reopen_clones(word, &cloned);
+    }
+
+    /// The `box-decoration-break: clone` boxes open after the current line's words
+    /// (and `next`, when given), outermost first (miaskiewicz/turbo-dom#244).
+    fn cloned_open(&self, next: Option<&Word>) -> Vec<InlineEdge> {
+        let mut open = self.open_edges.clone();
+        for word in self.cur.iter().chain(next) {
+            for (_, edge) in &word.edges {
+                if edge.start {
+                    open.push(edge.clone());
+                } else {
+                    open.retain(|value| value.node_id != edge.node_id);
+                }
+            }
+        }
+        open.retain(|edge| edge.clone_advance.is_some());
+        open
+    }
+
+    /// The end edges a line must keep room for after `word`: the cloned boxes still
+    /// open there repeat their end edge on this line.
+    fn clone_reserve(&self, word: &Word) -> f32 {
+        self.cloned_open(Some(word))
+            .iter()
+            .filter_map(|edge| edge.clone_advance)
+            .sum()
     }
 
     /// A word with `overflow-wrap` opportunities: placed whole when it fits a line
     /// (after wrapping, if need be), else broken at them (miaskiewicz/turbo-dom#212).
     fn add_breakable(&mut self, mut word: Word, mut parts: Vec<Word>) {
-        if self.needs_wrap(&word) {
+        // A word ending at a hyphenating break fits only with the hyphen it may draw.
+        if self.needs_wrap(word.hyphen.as_deref().unwrap_or(&word)) {
             self.wrap_before(&mut word);
         }
-        if self.x + word.width <= self.lw || parts.len() < 2 {
+        let width = word
+            .hyphen
+            .as_deref()
+            .map_or(word.width, |hyphen| hyphen.width);
+        if self.x + width <= self.lw || parts.len() < 2 {
             return self.place(word);
         }
         let first = parts.first_mut().expect("at least two parts");
@@ -1566,6 +1959,7 @@ impl<'a> Placer<'a> {
         last.advance_space = word.advance_space.take();
         last.native_space = word.native_space.take();
         last.space_after = word.space_after;
+        last.space_level = word.space_level;
         last.break_after = word.break_after;
         for part in parts {
             self.add(part);
@@ -1573,7 +1967,7 @@ impl<'a> Placer<'a> {
     }
 
     fn place(&mut self, word: Word) {
-        let width = self.html_font_scale.map_or(word.width, |scale| {
+        let width = self.advance_scale.map_or(word.width, |scale| {
             inline_advances::Cursor::new(scale, 0.0).candidate_width(&word)
         });
         self.avoid_floats(width);
@@ -1585,7 +1979,13 @@ impl<'a> Placer<'a> {
         }
         self.cur.push(word);
         if forced {
+            // A forced break ends a cloned box's fragment like a soft wrap does.
+            let cloned = self.cloned_open(None);
+            if let Some(last) = self.cur.last_mut() {
+                close_clones(last, &cloned);
+            }
             self.flush();
+            self.reopen = cloned;
         }
     }
 
@@ -1612,6 +2012,7 @@ impl<'a> Placer<'a> {
             last.line.inline_edges.push(PlacedInlineEdge {
                 edge: edge.clone(),
                 x,
+                decorated: true,
             });
             x += edge.advance;
             self.open_edges.retain(|open| open.node_id != edge.node_id);
@@ -1620,15 +2021,17 @@ impl<'a> Placer<'a> {
         true
     }
     fn needs_wrap(&self, word: &Word) -> bool {
+        let reserve = self.clone_reserve(word);
         if !self.html_font_metrics {
-            return !self.cur.is_empty() && self.x + word.width > self.lw;
+            return !self.cur.is_empty() && self.x + word.width + reserve > self.lw;
         }
-        let width = self
-            .advances
-            .as_ref()
-            .map_or(self.x + word.width, |advances| {
-                advances.candidate_width(word)
-            });
+        let width = reserve
+            + self
+                .advances
+                .as_ref()
+                .map_or(self.x + word.width, |advances| {
+                    advances.candidate_width(word)
+                });
         word.width > 0.0
             && width > self.lw
             && self
@@ -1666,15 +2069,34 @@ fn closing_only(word: &Word) -> bool {
         && word.spaces.is_empty()
         && word.edges.iter().all(|(_, edge)| !edge.start)
 }
+/// Mark the paragraph's last source word when it has dictionary hyphenation
+/// points: its first part carries the whole word's width
+/// ([`Word::last_word_width`]).
+fn mark_last_word(words: &mut [Word]) {
+    let Some(end) = words.iter().rposition(contains_inline_content) else {
+        return;
+    };
+    let start = words[..end]
+        .iter()
+        .rposition(|word| !word.dictionary_break)
+        .map_or(0, |at| at + 1);
+    if start < end {
+        words[start].last_word_width = Some(words[start..=end].iter().map(|w| w.width).sum());
+    }
+}
+
 /// Break `words` into placed lines via a [`Placer`].
 fn wrap_and_place(
-    words: Vec<Word>,
+    paragraph: ParagraphWords,
     align: Align,
     region: LineRegion,
     strut: f32,
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
 ) -> Vec<SourceLine> {
+    let ParagraphWords { mut words, bidi } = paragraph;
     let mut placer = Placer::new(align, region, strut, policy);
+    placer.bidi = bidi;
+    mark_last_word(&mut words);
     for word in words {
         placer.add(word);
     }
@@ -1761,8 +2183,8 @@ fn fold_atom_metrics(atom: &InlineAtom, m: &mut Metrics) {
 
 /// The line-box metrics: the block `strut` seeds the height (so an empty line — a
 /// `<br><br>` gap — is exactly one strut tall), then each word's text segments and
-/// atoms grow it. The PDF policy floors the height at the font box; explicit
-/// HTML line-height permits negative leading and overlapping glyph font boxes.
+/// atoms grow it. An explicit line-height permits negative leading and overlapping
+/// glyph font boxes.
 pub(super) fn native_font_height(
     ascent: f32,
     descent: f32,
@@ -1776,11 +2198,33 @@ pub(super) fn native_font_height(
     let above = (units / 2).div_euclid(64) as f32 / scale;
     (ascent + above + shift, descent + extra - above - shift)
 }
+/// A native line's strut metrics and whether it aligns on the central baseline.
+type NativeStrut = ((f32, f32), bool);
+
+/// A font's `(ascent, descent)` about the ideographic central baseline: the height
+/// splits in half in layout units (Blink's `FontMetrics::FixedAscent/FixedDescent`
+/// for `kIdeographicBaseline`: descent `height / 2`, ascent the rest).
+pub(super) fn central_metrics(ascent: f32, descent: f32, scale: f32) -> (f32, f32) {
+    let units = scale * 64.0;
+    let height = ((ascent + descent) * units).round();
+    let below = (height / 2.0).floor();
+    ((height - below) / units, below / units)
+}
+
+/// `(ascent, descent)` about the line's baseline: central when `central`.
+fn baseline_metrics(ascent: f32, descent: f32, central: bool, scale: f32) -> (f32, f32) {
+    if central {
+        central_metrics(ascent, descent, scale)
+    } else {
+        (ascent, descent)
+    }
+}
+
 fn native_line_metrics(
     words: &[Word],
     open: &[InlineEdge],
     strut: (f32, f32),
-    scale: Option<f32>,
+    scale: (Option<f32>, bool),
 ) -> Metrics {
     let mut metrics = Metrics {
         ascent: strut.0,
@@ -1796,20 +2240,22 @@ fn native_line_metrics(
     metrics.height = metrics.height.max(metrics.ascent + metrics.descent);
     metrics
 }
-fn fold_native_word(word: &Word, metrics: &mut Metrics, scale: Option<f32>) {
+fn fold_native_word(word: &Word, metrics: &mut Metrics, (scale, central): (Option<f32>, bool)) {
     for (_, edge) in &word.edges {
-        fold_native_edge(edge, metrics, scale);
+        fold_native_edge(edge, metrics, (scale, central));
     }
     for seg in &word.segs {
         let font = source_font_metrics(seg, scale);
         let lh = seg
             .line_height
             .unwrap_or(font.ascent + font.descent + font.line_gap);
+        let (ascent, descent) =
+            baseline_metrics(font.ascent, font.descent, central, scale.unwrap_or(1.0));
         unite_native(
             metrics,
             native_font_height(
-                font.ascent,
-                font.descent,
+                ascent,
+                descent,
                 lh,
                 seg.baseline_shift.unwrap_or_default(),
                 scale.unwrap_or(1.0),
@@ -1830,7 +2276,11 @@ fn fold_native_atom(atom: &InlineAtom, shift: f32, metrics: &mut Metrics) {
         .descent
         .max(atom.outer_height() - atom.ascent() - shift);
 }
-fn fold_native_edge(edge: &InlineEdge, metrics: &mut Metrics, scale: Option<f32>) {
+fn fold_native_edge(
+    edge: &InlineEdge,
+    metrics: &mut Metrics,
+    (scale, central): (Option<f32>, bool),
+) {
     if !edge.contributes_metrics {
         return;
     }
@@ -1839,15 +2289,11 @@ fn fold_native_edge(edge: &InlineEdge, metrics: &mut Metrics, scale: Option<f32>
     let lh = edge
         .line_height
         .unwrap_or((font.ascent + font.descent + font.line_gap) / scale);
+    let (ascent, descent) =
+        baseline_metrics(font.ascent / scale, font.descent / scale, central, scale);
     unite_native(
         metrics,
-        native_font_height(
-            font.ascent / scale,
-            font.descent / scale,
-            lh,
-            edge.baseline_shift,
-            scale,
-        ),
+        native_font_height(ascent, descent, lh, edge.baseline_shift, scale),
     );
 }
 fn unite_native(metrics: &mut Metrics, height: (f32, f32)) {
@@ -1890,7 +2336,7 @@ fn line_metrics(
     for word in words {
         fold_word_metrics(word, &mut m, capture_sources, scale);
     }
-    finish_line_height(&mut m, words, capture_sources);
+    finish_line_height(&mut m, words);
     m
 }
 
@@ -1920,9 +2366,11 @@ fn fold_edge_metrics(edge: &InlineEdge, m: &mut Metrics, scale: Option<f32>) {
     );
 }
 
-fn finish_line_height(metrics: &mut Metrics, words: &[Word], html_font_metrics: bool) {
-    // Atomic baseline placement still uses the existing ascent/descent policy.
-    if !html_font_metrics || words.iter().any(|word| word.atom.is_some()) {
+/// A line of text is exactly its used `line-height` tall, even below the font's content
+/// area (negative leading: adjacent lines' glyphs overlap, like Chrome; #178). Only a line
+/// holding an atom keeps the ascent/descent floor its baseline placement relies on.
+fn finish_line_height(metrics: &mut Metrics, words: &[Word]) {
+    if words.iter().any(|word| word.atom.is_some()) {
         metrics.height = metrics.height.max(metrics.ascent + metrics.descent);
     }
 }
@@ -1938,19 +2386,63 @@ fn line_used_width(words: &[Word]) -> f32 {
     w
 }
 
-fn source_shaper_is_rtl(text: &str, enabled: bool) -> bool {
+/// The direction the segment was shaped in: its bidi level's, or (original UTF-16
+/// units) the shaper's own guess.
+fn source_shaper_is_rtl(seg: &Seg, enabled: bool) -> bool {
     if !enabled {
         return false;
     }
-    let mut buffer = rustybuzz::UnicodeBuffer::new();
-    buffer.push_str(text);
-    // rustybuzz::shape applies this same native property selection before shaping.
-    buffer.guess_segment_properties();
-    buffer.direction() == rustybuzz::Direction::RightToLeft
+    if seg.original_units.is_none() {
+        return seg.level % 2 == 1;
+    }
+    crate::text::guessed_rtl(&seg.text)
 }
 
-fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f32>)) -> SourceRun {
-    let (capture_sources, html_font_metrics, html_font_scale) = policy;
+/// A native HTML segment's glyph advances (`native_text_advance::advances`), with the
+/// kerning Chrome's whole-item shaping puts across the spaces around it on its logically
+/// last and first glyphs (`inline_advances::prepare`).
+fn native_seg_advances(seg: &Seg, shaped: &[crate::text::ShapedGlyph], device: f32) -> Vec<f64> {
+    if seg.upright {
+        let ends: Vec<bool> = crate::text::cluster_ends(shaped).collect();
+        let advance = upright_advance(&seg.face, seg.font_size);
+        return ends
+            .into_iter()
+            .map(|end| {
+                if end {
+                    f64::from(advance + seg.letter_spacing)
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+    }
+    let mut advances = native_text_advance::advances(
+        &seg.face,
+        (seg.font_size, device),
+        shaped,
+        seg.letter_spacing,
+    );
+    let logical = |pick: fn(u32, u32) -> bool| {
+        (0..shaped.len()).reduce(|best, i| {
+            if pick(shaped[i].cluster, shaped[best].cluster) {
+                i
+            } else {
+                best
+            }
+        })
+    };
+    if let Some(last) = logical(|a, b| a >= b) {
+        advances[last] += seg.trailing_kern;
+    }
+    if let Some(first) = logical(|a, b| a < b) {
+        advances[first] += seg.leading_kern;
+    }
+    advances
+}
+
+fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, NativeScale)) -> SourceRun {
+    let (capture_sources, html_font_metrics, scales) = policy;
+    let (html_font_scale, advance_scale) = (scales.metrics, scales.advances);
     let scale = seg.face.scale(seg.font_size);
     let shift = seg
         .baseline_shift
@@ -1961,10 +2453,10 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
     let mut x = pen_x;
     let mut native_x = f64::from(pen_x);
     let shaped = seg.original_units.as_deref().map_or_else(
-        || seg.face.shape(&seg.text),
+        || seg.face.shape_in(&seg.text, seg.level % 2 == 1),
         |units| seg.face.shape_original_utf16(units),
     );
-    let right_to_left = source_shaper_is_rtl(&seg.text, capture_sources);
+    let right_to_left = source_shaper_is_rtl(seg, capture_sources);
     let mut text_ranges = ClusterTexts::new(&shaped);
     let (boundaries, utf16) = if capture_sources {
         let mut boundaries: Vec<_> = shaped.iter().map(|glyph| glyph.cluster as usize).collect();
@@ -1987,19 +2479,23 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
         (Vec::new(), Vec::new())
     };
     let ends: Vec<bool> = crate::text::cluster_ends(&shaped).collect();
-    for (g, cluster_end) in shaped.into_iter().zip(ends) {
+    let native = advance_scale.map(|device| native_seg_advances(seg, &shaped, device));
+    for (index, (g, cluster_end)) in shaped.into_iter().zip(ends).enumerate() {
         let letter_spacing = if cluster_end { seg.letter_spacing } else { 0.0 };
-        let ordinary_advance = scale * g.x_advance as f32 + letter_spacing;
-        let native_advance = html_font_scale.map_or(f64::from(ordinary_advance), |_| {
-            native_text_advance::glyph_advance(
-                &seg.face,
-                seg.font_size,
-                g.x_advance,
-                letter_spacing,
-            )
-        });
-        let advance = html_font_scale.map_or(ordinary_advance, |_| native_advance as f32);
-        let position = html_font_scale.map_or(x, |_| native_x as f32);
+        let ordinary_advance = if seg.upright {
+            if cluster_end {
+                upright_advance(&seg.face, seg.font_size) + letter_spacing
+            } else {
+                0.0
+            }
+        } else {
+            scale * g.x_advance as f32 + letter_spacing
+        };
+        let native_advance = native
+            .as_ref()
+            .map_or(f64::from(ordinary_advance), |advances| advances[index]);
+        let advance = advance_scale.map_or(ordinary_advance, |_| native_advance as f32);
+        let position = advance_scale.map_or(x, |_| native_x as f32);
         if capture_sources {
             let start = g.cluster as usize;
             let end = boundaries[boundaries
@@ -2025,6 +2521,8 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
             clusters.push(GlyphSourceCluster {
                 collapsed_whitespace: false,
                 right_to_left,
+                bidi_level: seg.level,
+                paragraph_level: seg.paragraph,
                 byte_start,
                 byte_end,
                 utf16_start,
@@ -2034,10 +2532,18 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
             });
         }
         let (text_start, text_end) = glyph_text_range(&mut text_ranges, &seg.text, g.cluster);
+        let (gx, gy) = if seg.upright {
+            upright_pen(seg, (position, seg_baseline), scale * g.x_advance as f32)
+        } else {
+            (
+                position + scale * g.x_offset as f32,
+                seg_baseline - scale * g.y_offset as f32,
+            )
+        };
         glyphs.push(PositionedGlyph {
             glyph_id: g.glyph_id,
-            x: position + scale * g.x_offset as f32,
-            y: seg_baseline - scale * g.y_offset as f32,
+            x: gx,
+            y: gy,
             text_start,
             text_end,
         });
@@ -2046,7 +2552,16 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
     }
     let (ascent, descent) = if html_font_metrics {
         let metrics = source_font_metrics(seg, html_font_scale);
-        (metrics.ascent, metrics.descent)
+        if seg.upright {
+            // An upright run's box centres on the central baseline it sits on.
+            central_metrics(
+                metrics.ascent,
+                metrics.descent,
+                html_font_scale.unwrap_or(1.0),
+            )
+        } else {
+            (metrics.ascent, metrics.descent)
+        }
     } else {
         (
             seg.face.ascent_px(seg.font_size),
@@ -2067,8 +2582,18 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
             face: seg.face.clone(),
             font_size: seg.font_size,
             color: seg.color,
+            upright: seg.upright,
         },
     }
+}
+
+/// An upright glyph's pen in the line's frame, for a run the painter turns a quarter
+/// clockwise and turns each upright glyph back about its pen: the glyph's em box starts
+/// at `cell` along the line, its alphabetic baseline the font's ascent below that, and
+/// it stands centred (by its horizontal `advance`) on the line's central `baseline`.
+fn upright_pen(seg: &Seg, (cell, baseline): (f32, f32), advance: f32) -> (f32, f32) {
+    let ascent = seg.face.html_metrics(seg.font_size).ascent;
+    (cell + ascent, baseline + advance / 2.0)
 }
 
 /// The shaper's cluster starts, sorted, for each glyph's cluster byte range
@@ -2120,7 +2645,9 @@ fn can_merge(a: &GlyphRun, b: &GlyphRun) -> bool {
 }
 
 fn can_merge_source(a: &SourceRun, b: &SourceRun, capture_sources: bool) -> bool {
-    can_merge(&a.run, &b.run) && source_metadata_compatible(a, b, capture_sources)
+    can_merge(&a.run, &b.run)
+        && a.run.upright == b.run.upright
+        && source_metadata_compatible(a, b, capture_sources)
 }
 fn source_metadata_compatible(a: &SourceRun, b: &SourceRun, enabled: bool) -> bool {
     if !enabled {
@@ -2175,33 +2702,163 @@ struct LinePlacement {
     pen: f32,
     baseline: f32,
     height: f32,
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
+    /// The line aligns on the central baseline (see [`NativeLineOptions::central`]).
+    central: bool,
     runs: Vec<SourceRun>,
     atoms: Vec<PlacedAtom>,
     inline_edges: Vec<PlacedInlineEdge>,
     advances: Option<inline_advances::Cursor>,
+    record: Option<Recorder>,
 }
+/// A bidi line's placed items in logical order ([`bidi::reorder_line`]) and the
+/// inline boxes open at the pen.
+struct Recorder {
+    items: Vec<bidi::LineItem>,
+    stack: Vec<NodeId>,
+    /// Each open box and the item count at its start (an empty box gets a place).
+    marks: Vec<(NodeId, usize)>,
+    level: u8,
+    /// The empty boxes placed since the last item: Chrome 156 orders an empty inline
+    /// box with the item after it, so they take its level (the previous one's at the
+    /// line end).
+    empty: Vec<usize>,
+}
+
+impl Recorder {
+    fn new(open: &[InlineEdge]) -> Self {
+        Recorder {
+            items: Vec::new(),
+            stack: open.iter().map(|edge| edge.node_id).collect(),
+            marks: Vec::new(),
+            level: 0,
+            empty: Vec::new(),
+        }
+    }
+    fn push(
+        &mut self,
+        (x0, x1): (f32, f32),
+        level: u8,
+        runs: std::ops::Range<usize>,
+        atom: Option<usize>,
+    ) {
+        self.level = level;
+        for index in self.empty.drain(..) {
+            self.items[index].level = level;
+        }
+        self.items.push(bidi::LineItem {
+            x0,
+            x1,
+            level,
+            boxes: self.stack.clone(),
+            runs,
+            atom,
+            space: false,
+        });
+    }
+    fn edge(&mut self, edge: &InlineEdge, x: f32) {
+        if edge.start {
+            self.stack.push(edge.node_id);
+            self.marks.push((edge.node_id, self.items.len()));
+            return;
+        }
+        let empty = self
+            .marks
+            .iter()
+            .rev()
+            .find(|(node, _)| *node == edge.node_id)
+            .is_some_and(|(_, count)| *count == self.items.len());
+        if empty {
+            let level = self.level;
+            self.push((x, x), level, 0..0, None);
+            self.empty.push(self.items.len() - 1);
+        }
+        if let Some(at) = self.stack.iter().rposition(|node| *node == edge.node_id) {
+            self.stack.remove(at);
+        }
+    }
+}
+
 impl LinePlacement {
+    /// The alphabetic baseline `seg`'s glyphs sit on. On a central line the font's box
+    /// centres on the line's baseline, so its alphabetic baseline lies its ascent below
+    /// the box's top (Blink's sideways glyphs in vertical text).
+    ///
+    /// An upright run sits on the central baseline: on a line laid out on the alphabetic
+    /// one (the approximate policies) it lies the same distance above it.
+    fn seg_baseline(&self, seg: &Seg) -> f32 {
+        if self.central == seg.upright {
+            return self.baseline;
+        }
+        let font = source_font_metrics(seg, self.policy.2.metrics);
+        let (ascent, _) = central_metrics(
+            font.ascent,
+            font.descent,
+            self.policy.2.metrics.unwrap_or(1.0),
+        );
+        if seg.upright {
+            self.baseline + ascent - font.ascent
+        } else {
+            self.baseline - ascent + font.ascent
+        }
+    }
     fn word(&mut self, word: &Word, has_next: bool) {
+        let leading = self.runs.len();
         for space in &word.leading_spaces {
-            self.runs.push(shape_space(
-                space,
-                self.pen,
-                self.baseline,
-                self.policy,
-                0.0,
-            ));
+            let baseline = self.seg_baseline(space);
+            self.runs
+                .push(shape_space(space, self.pen, baseline, self.policy, 0.0));
+        }
+        if let Some(record) = self.record.as_mut().filter(|_| leading < self.runs.len()) {
+            let level = word.segs.first().map_or(word.atom_level, |seg| seg.level);
+            record.push((self.pen, self.pen), level, leading..self.runs.len(), None);
         }
         if let Some(atom) = word.atom {
-            self.atom(&atom, word.atom_shift);
+            // A cloned box closed or reopened around an atom at a line break
+            // (`close_clones` / `reopen_clones`).
+            for (_, edge) in word.edges.iter().filter(|(_, edge)| edge.start) {
+                self.edge(edge);
+            }
+            self.atom(&atom, word.atom_shift, word.atom_level);
+            for (_, edge) in word.edges.iter().filter(|(_, edge)| !edge.start) {
+                self.edge(edge);
+            }
         } else {
             self.text(word);
         }
+        let (x0, runs) = (self.pen, self.runs.len());
         self.begin_space(word, has_next);
         self.spaces(word, has_next);
         self.advance_space(word, has_next);
+        if let Some(record) = self.record.as_mut() {
+            if self.pen > x0 || self.runs.len() > runs {
+                let level = word.space_level.unwrap_or(record.level);
+                // A space collapsed away after an empty box goes with it, to the item
+                // after them (Chrome 156).
+                let pending = if self.pen > x0 {
+                    Vec::new()
+                } else {
+                    std::mem::take(&mut record.empty)
+                };
+                record.push((x0, self.pen), level, runs..self.runs.len(), None);
+                if let Some(item) = record.items.last_mut() {
+                    item.space = true;
+                }
+                if !pending.is_empty() {
+                    record.empty = pending;
+                    record.empty.push(record.items.len() - 1);
+                }
+            }
+        }
     }
-    fn atom(&mut self, atom: &InlineAtom, shift: f32) {
+    fn atom(&mut self, atom: &InlineAtom, shift: f32, level: u8) {
+        let x0 = self.pen;
+        self.atom_placed(atom, shift);
+        if let Some(record) = self.record.as_mut() {
+            record.push((x0, self.pen), level, 0..0, Some(self.atoms.len() - 1));
+        }
+    }
+    fn atom_placed(&mut self, atom: &InlineAtom, shift: f32) {
         self.native_barrier(0.0);
         let margin_top = atom_margin_top(atom, self.height, self.baseline) - shift;
         self.atoms.push(PlacedAtom {
@@ -2218,7 +2875,7 @@ impl LinePlacement {
             return;
         }
         if let (Some(advances), Some((source, _))) = (&mut self.advances, word.native_space) {
-            advances.begin(source);
+            advances.begin((source, word.space_level.unwrap_or(0)));
             self.pen = advances.position();
         }
     }
@@ -2240,25 +2897,35 @@ impl LinePlacement {
     }
     fn edge(&mut self, edge: &InlineEdge) {
         self.native_barrier(0.0);
+        if let Some(record) = self.record.as_mut() {
+            record.edge(edge, self.pen);
+        }
         self.inline_edges.push(PlacedInlineEdge {
             edge: edge.clone(),
             x: self.pen,
+            decorated: true,
         });
         self.pen += edge.advance;
         self.native_barrier(edge.advance);
     }
     fn segment(&mut self, seg: &Seg) {
+        let x0 = self.pen;
         if let Some(advances) = &mut self.advances {
-            advances.begin(seg.node_id);
+            advances.begin((seg.node_id, seg.level));
             self.pen = advances.position();
         }
+        let baseline = self.seg_baseline(seg);
         self.runs
-            .push(shape_seg(seg, self.pen, self.baseline, self.policy));
+            .push(shape_seg(seg, self.pen, baseline, self.policy));
         if let Some(advances) = &mut self.advances {
-            advances.text(seg.node_id, seg.native_width);
+            advances.text((seg.node_id, seg.level), seg.native_width);
             self.pen = advances.position();
         } else {
             self.pen += seg.width;
+        }
+        if let Some(record) = self.record.as_mut() {
+            let run = self.runs.len() - 1;
+            record.push((x0, self.pen), seg.level, run..run + 1, None);
         }
     }
     fn text(&mut self, word: &Word) {
@@ -2277,14 +2944,55 @@ impl LinePlacement {
         }
         let mut pen = self.pen;
         for (index, space) in word.spaces.iter().enumerate() {
+            if !has_next && after_closed_box(word, space) {
+                // Chrome wraps a space that opens the text after an inline box's end
+                // to the next line only (miaskiewicz/turbo-dom#238).
+                continue;
+            }
             let advance = visible_space_advance(word, index, has_next);
+            let baseline = self.seg_baseline(space);
             self.runs
-                .push(shape_space(space, pen, self.baseline, self.policy, advance));
-            if self.policy.2.is_some() {
+                .push(shape_space(space, pen, baseline, self.policy, advance));
+            if self.policy.2.advances.is_some() {
                 pen += advance;
             }
         }
     }
+}
+/// End each cloned box (`open`, outermost first) on the line `last` ends: its fragment
+/// there draws its end edge, which takes its own advance.
+fn close_clones(last: &mut Word, open: &[InlineEdge]) {
+    for edge in open.iter().rev() {
+        let advance = edge.clone_advance.unwrap_or_default();
+        let end = InlineEdge {
+            start: false,
+            advance,
+            clone_advance: Some(edge.advance),
+            ..edge.clone()
+        };
+        last.edges.push((last.segs.len(), end));
+        last.width += advance;
+    }
+}
+/// Reopen each cloned box (`open`, outermost first) at the start of the line `word`
+/// begins: its fragment there draws its start edge again.
+fn reopen_clones(word: &mut Word, open: &[InlineEdge]) {
+    for (index, edge) in open.iter().enumerate() {
+        word.edges.insert(index, (0, edge.clone()));
+        word.width += edge.advance;
+    }
+}
+/// `space` follows the word's closing inline-box edge, in a source of its own.
+fn after_closed_box(word: &Word, space: &Seg) -> bool {
+    let closes = word
+        .edges
+        .iter()
+        .any(|(at, edge)| *at == word.segs.len() && !edge.start);
+    closes
+        && word
+            .segs
+            .last()
+            .is_some_and(|seg| seg.node_id != space.node_id)
 }
 fn visible_space_advance(word: &Word, index: usize, has_next: bool) -> f32 {
     if index == 0 && has_next {
@@ -2298,7 +3006,7 @@ fn shape_space(
     space: &Seg,
     pen: f32,
     baseline: f32,
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
     advance: f32,
 ) -> SourceRun {
     let mut run = shape_seg(space, pen, baseline, policy);
@@ -2324,8 +3032,8 @@ fn phantom_word(word: &Word) -> bool {
 fn line_box_metrics(
     words: &[Word],
     open_edges: &[InlineEdge],
-    (strut, strut_metrics): (f32, Option<(f32, f32)>),
-    policy: (bool, bool, Option<f32>),
+    (strut, strut_metrics): (f32, Option<NativeStrut>),
+    policy: (bool, bool, NativeScale),
 ) -> Metrics {
     if words.iter().all(phantom_word) {
         return Metrics {
@@ -2335,8 +3043,10 @@ fn line_box_metrics(
         };
     }
     match strut_metrics {
-        Some(strut) => native_line_metrics(words, open_edges, strut, policy.2),
-        None => line_metrics(words, strut, policy.1, policy.2, open_edges),
+        Some((strut, central)) => {
+            native_line_metrics(words, open_edges, strut, (policy.2.metrics, central))
+        }
+        None => line_metrics(words, strut, policy.1, policy.2.metrics, open_edges),
     }
 }
 
@@ -2347,23 +3057,24 @@ fn place_line(
     align: Align,
     strut: f32,
     open_edges: &[InlineEdge],
-    strut_metrics: Option<(f32, f32)>,
-    policy: (bool, bool, Option<f32>),
+    (strut_metrics, bidi): (Option<NativeStrut>, bool),
+    policy: (bool, bool, NativeScale),
 ) -> SourceLine {
     let m = line_box_metrics(&words, open_edges, (strut, strut_metrics), policy);
     let half_leading = (m.height - m.ascent - m.descent) / 2.0;
     let leading = policy
         .2
+        .metrics
         .map_or(half_leading, |scale| (half_leading * scale).floor() / scale);
     // The approximate (non-native) policy measures fractional font metrics; Blink's
     // are whole pixels there, so its line baselines are too (#219). The native
     // policies keep their own sub-pixel baselines.
-    let baseline = match (strut_metrics, policy.2) {
+    let baseline = match (strut_metrics.map(|(metrics, _)| metrics), policy.2.metrics) {
         (Some(_), _) => m.ascent,
         (None, Some(_)) => m.ascent + leading,
         (None, None) => (m.ascent + leading).round(),
     };
-    let width = policy.2.map_or_else(
+    let width = policy.2.advances.map_or_else(
         || line_used_width(&words),
         |scale| inline_advances::line_width(&words, scale),
     );
@@ -2376,23 +3087,40 @@ fn place_line(
         baseline,
         height: m.height,
         policy,
+        central: strut_metrics.is_some_and(|(_, central)| central),
         advances: policy
             .2
+            .advances
             .map(|scale| inline_advances::Cursor::new(scale, pen)),
+        record: bidi.then(|| Recorder::new(open_edges)),
     };
     for (index, word) in words.iter().enumerate() {
         placement.word(word, index + 1 < words.len());
     }
     let LinePlacement {
-        runs,
-        atoms,
-        inline_edges,
+        mut runs,
+        mut atoms,
+        mut inline_edges,
+        record,
         ..
     } = placement;
+    if let Some(record) = record {
+        bidi::reorder_line(
+            record.items,
+            pen,
+            open_edges,
+            (&mut runs, &mut atoms, &mut inline_edges),
+        );
+    }
+    let runs = if bidi {
+        runs
+    } else {
+        merge_runs(runs, policy.0)
+    };
     let mut output_runs = Vec::new();
     let mut clusters = Vec::new();
     let mut font_boxes = Vec::new();
-    for value in merge_runs(runs, policy.0) {
+    for value in runs {
         output_runs.push(value.run);
         clusters.push(value.clusters);
         font_boxes.push(value.font_box);
@@ -2483,7 +3211,7 @@ pub fn layout_paragraph_in(
         align,
         region,
         strut,
-        (false, false, None),
+        (false, false, NativeScale::NONE),
     ))
     .layout
 }
@@ -2514,7 +3242,7 @@ pub fn layout_paragraph_in_with_sources(
         align,
         region,
         strut,
-        (true, false, None),
+        (true, false, NativeScale::NONE),
     ))
 }
 
@@ -2543,7 +3271,7 @@ pub fn layout_html_paragraph_in_with_sources(
         align,
         region,
         strut,
-        (true, true, None),
+        (true, true, NativeScale::NONE),
     ))
 }
 
@@ -2557,7 +3285,7 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
     strut: f32,
     options: NativeLineOptions<'_>,
 ) -> ParagraphSourceLayout {
-    let mut words = build_pieces(
+    let ParagraphWords { mut words, bidi } = build_pieces(
         pieces,
         reg,
         diags,
@@ -2568,13 +3296,60 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
         options.original_units,
     );
     apply_baselines(&mut words, options.baselines);
-    if options.scale.is_some() {
-        inline_advances::prepare(&mut words);
+    if let Some(scale) = options.scale {
+        inline_advances::prepare(&mut words, scale);
     }
-    let mut placer = Placer::new(align, region, strut, (true, true, options.scale));
+    let mut placer = Placer::new(
+        align,
+        region,
+        strut,
+        (true, true, NativeScale::both(options.scale)),
+    );
     placer.strut_metrics = options.strut_metrics;
+    placer.central = options.central;
+    placer.quirk_roots = options.quirk_roots;
+    placer.bidi = bidi;
     placer.first_indent = options.first_indent;
     placer.clearance = Some(options.clearance);
+    mark_last_word(&mut words);
+    for word in words {
+        placer.add(word);
+    }
+    finalize(placer.finish())
+}
+
+/// Chrome's line box model for the PDF metric policy (miaskiewicz/turbo-dom#245): the
+/// lines of [`layout_paragraph_in`] (or, with `capture`, of
+/// [`layout_paragraph_in_with_sources`]) aligned on a shared baseline — the block's
+/// strut and every font box and atom united about it, `vertical-align` shifts from
+/// `baselines`, and the quirks-mode strut — instead of stacked line heights.
+pub(crate) fn layout_paragraph_in_chrome_lines(
+    pieces: &[Piece],
+    reg: &FontRegistry,
+    (align, capture): (Align, bool),
+    diags: &mut Diagnostics,
+    region: LineRegion,
+    strut: f32,
+    lines: &NativeLineOptions<'_>,
+) -> ParagraphSourceLayout {
+    let ParagraphWords { mut words, bidi } = build_pieces(
+        pieces,
+        reg,
+        diags,
+        SourcePolicy {
+            capture,
+            advances: true,
+        },
+        None,
+    );
+    apply_baselines(&mut words, lines.baselines);
+    inline_advances::prepare(&mut words, 1.0);
+    let mut placer = Placer::new(align, region, strut, (capture, false, NativeScale::STATIC));
+    placer.strut_metrics = lines.strut_metrics;
+    placer.central = lines.central;
+    placer.quirk_roots = lines.quirk_roots;
+    placer.bidi = bidi;
+    mark_last_word(&mut words);
     for word in words {
         placer.add(word);
     }
@@ -2584,6 +3359,15 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
 pub(crate) struct NativeLineOptions<'a> {
     pub baselines: &'a std::collections::HashMap<NodeId, f32>,
     pub strut_metrics: Option<(f32, f32)>,
+    /// Quirks mode: the text and `<br>` sources directly in the block (not in an
+    /// inline box), whose lines alone take the block's strut. `None` in no-quirks mode.
+    pub quirk_roots: Option<&'a std::collections::HashSet<NodeId>>,
+    /// The lines align on the ideographic central baseline (a vertical writing mode
+    /// but `text-orientation: sideways`; Blink's `kIdeographicBaseline`,
+    /// miaskiewicz/turbo-dom#239): each font's box splits its height evenly about the
+    /// baseline, and an atom without a baseline of its own centres on it. The block's
+    /// `strut_metrics` are already central.
+    pub central: bool,
     pub scale: Option<f32>,
     pub first_indent: f32,
     pub clearance: &'a dyn Fn(f32, f32) -> f32,
@@ -2596,25 +3380,36 @@ pub(crate) fn layout_runs_with_units(
     width: f32,
     diags: &mut Diagnostics,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-    html_metrics: bool,
+    (html_metrics, scale): (bool, Option<f32>),
 ) -> ParagraphLayout {
     let pieces: Vec<_> = runs.iter().cloned().map(Piece::Run).collect();
-    let words = build_pieces(
+    // A box measures with the advances its lines are placed with: the native HTML
+    // path's device-scale ones (miaskiewicz/turbo-dom#241), the static path's 1/64px
+    // ones at scale 1 (#246), so a shrink-to-fit width holds its own text.
+    let scales = if html_metrics {
+        NativeScale::both(scale)
+    } else {
+        NativeScale::STATIC
+    };
+    let mut words = build_pieces(
         &pieces,
         fonts,
         diags,
         SourcePolicy {
             capture: html_metrics,
-            advances: false,
+            advances: scales.advances.is_some(),
         },
         original,
     );
+    if let Some(scale) = scales.advances {
+        inline_advances::prepare(&mut words.words, scale);
+    }
     finalize(wrap_and_place(
         words,
         Align::Left,
         &|_| (0.0, width),
         0.0,
-        (html_metrics, html_metrics, None),
+        (html_metrics, html_metrics, scales),
     ))
     .layout
 }
@@ -2650,6 +3445,7 @@ mod tests {
                 text: "A".into(),
                 face,
                 font_size: 16.0,
+                upright: false,
                 color: Rgba {
                     r: 0,
                     g: 0,
@@ -2719,6 +3515,7 @@ mod tests {
             forced_newlines: false,
             text_transform: crate::text::TextTransform::default(),
             word_breaking: WordBreaking::default(),
+            upright: UprightText::None,
         })
     }
 
@@ -2760,6 +3557,9 @@ mod tests {
             baseline_shift: 0.0,
             contributes_metrics: true,
             valign: VAlign::Baseline,
+            rtl: false,
+            bidi: UnicodeBidi::Normal,
+            clone_advance: None,
         })
     }
 

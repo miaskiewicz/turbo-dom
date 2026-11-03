@@ -38,7 +38,8 @@ pub(super) struct Comp {
     pub(super) text: String,
 }
 
-const LENGTH_UNITS: &[&str] = &[
+/// Every CSS <length> unit Chrome 156 parses (lowercase).
+pub const LENGTH_UNITS: &[&str] = &[
     "px", "em", "rem", "ex", "rex", "ch", "rch", "ic", "ric", "cap", "rcap", "lh", "rlh", "vw",
     "vh", "vi", "vb", "vmin", "vmax", "svw", "svh", "svi", "svb", "svmin", "svmax", "lvw", "lvh",
     "lvi", "lvb", "lvmin", "lvmax", "dvw", "dvh", "dvi", "dvb", "dvmin", "dvmax", "cqw", "cqh",

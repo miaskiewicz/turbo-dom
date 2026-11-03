@@ -127,15 +127,47 @@ pub fn fixture_fonts() -> FontRegistry {
             700,
             false,
         ),
+        // Hebrew and Arabic glyphs for the bidi controls (miaskiewicz/turbo-dom#238),
+        // named explicitly in a `font-family` list (no generic).
+        (
+            "Noto Sans Hebrew",
+            "",
+            "noto-sans-hebrew/NotoSansHebrew-Regular.ttf",
+            400,
+            false,
+        ),
+        (
+            "Noto Sans Arabic",
+            "",
+            "noto-sans-arabic/NotoSansArabic-Regular.ttf",
+            400,
+            false,
+        ),
     ];
     let mut registry = FontRegistry::new();
     for &(family, generic, file, weight, italic) in FACES {
         let face = FontFace::from_bytes(font_bytes(file), family, weight, italic)
             .unwrap_or_else(|| panic!("{file} parses"));
-        registry.add(face.with_family(generic));
+        if !generic.is_empty() {
+            registry.add(face.with_family(generic));
+        }
         registry.add(face);
     }
     registry
+}
+
+/// `Ic Fixture` (`ic-fixture/IcFixture.ttf`, written by `scripts/make-ic-fixture-font.py`):
+/// a box-glyph face mapping U+6C34 to a 0.9em advance, for the CSS `ic` unit (the fixture
+/// faces above have no CJK glyph). Chrome loads the same file through `@font-face`.
+#[must_use]
+pub fn ic_fixture_face() -> FontFace {
+    FontFace::from_bytes(
+        font_bytes("ic-fixture/IcFixture.ttf"),
+        "Ic Fixture",
+        400,
+        false,
+    )
+    .expect("IcFixture.ttf parses")
 }
 
 /// Build a [`ComputedStyle`] from `(property, value)` pairs.

@@ -259,6 +259,11 @@ fn coalesce_native_runs(snapshot: &LayoutSnapshot, boxes: &mut Vec<SourceRangeBo
 fn transform_boxes(snapshot: &LayoutSnapshot, boxes: &mut [SourceRangeBox]) {
     boxes.sort_by_key(|box_| box_.fragment_index);
     for box_ in boxes {
+        // A vertical line's boxes were built in its own frame.
+        if super::text_geometry::vertical_fragment(snapshot, box_.fragment_index) {
+            let frame = snapshot.fragments()[box_.fragment_index].rect;
+            box_.rect = super::text_geometry::turn(box_.rect, frame);
+        }
         let matrix = snapshot.native_transforms[box_.fragment_index];
         box_.transformed_bounds = if snapshot.html_layout_scale.is_some() {
             super::range_projection::project(snapshot, box_.fragment_index, box_.rect)

@@ -64,6 +64,20 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
         let key = v8::String::new(scope, "__cssTestCascadeRuns").unwrap();
         global.set(scope, key.into(), getter.into());
     }
+    if code.contains("__cssTestCssUpdates") {
+        // The CSS animation / transition update passes behind the test-only
+        // `__noteCssUpdatePass` hook (never page-visible).
+        fn css_updates(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::css_update_passes() as f64).into());
+        }
+        let getter = v8::Function::new(scope, css_updates).unwrap();
+        let key = v8::String::new(scope, "__cssTestCssUpdates").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
     if code.contains("__fontInertDoc") {
         let document = parse_html_document(scope, "<!doctype html><body><b>inert</b>", false);
         let key = v8::String::new(scope, "__fontInertDoc").unwrap();
@@ -1170,6 +1184,134 @@ fn computed_style_reuse_follows_import_media_changes() {
             ["", "", "17px"],
             ["33px", "33px", "17px"]
         ])
+    );
+}
+
+// A reused computed style that read live form / popover / dialog state is keyed on the binding's
+// state epoch: every state change that can flip :placeholder-shown, :valid / :invalid,
+// :indeterminate, :checked (options), :out-of-range, :user-invalid, a form-associated custom
+// element's validity, :popover-open or :modal drops it, also when
+// the state is read through :has() or a sibling combinator. Each target is read (and so cached)
+// before every flip; a retained declaration re-reads live.
+#[test]
+fn computed_style_reuse_follows_form_popover_and_dialog_state() {
+    let value = run(
+        "<!doctype html><head><style>#v:placeholder-shown {color:rgb(1, 0, 0)} #f:has(:invalid) #fl {color:rgb(2, 0, 0)} #v:invalid + #vl {color:rgb(3, 0, 0)} #cv:invalid {color:rgb(4, 0, 0)} #ind:indeterminate + #indl {color:rgb(5, 0, 0)} #o2:checked {color:rgb(6, 0, 0)} #s:has(#o2:checked) + #sl {color:rgb(7, 0, 0)} #n:out-of-range {color:rgb(8, 0, 0)} #f2 :user-invalid {color:rgb(9, 0, 0)} #fc:invalid {color:rgb(10, 0, 0)} body:has(:popover-open) #pl {color:rgb(12, 0, 0)} body:has(:modal) #ml {color:rgb(13, 0, 0)}</style></head><body><form id=f><input id=v required placeholder=p><span id=vl>vl</span><span id=fl>fl</span></form><input id=cv><input type=checkbox id=ind><span id=indl>i</span><select id=s><option id=o1>a</option><option id=o2>b</option></select><span id=sl>s</span><input id=n type=number min=0 max=5><form id=f2><input id=u required></form><x-fc id=fc></x-fc><div popover=manual id=p>p</div><span id=pl>pl</span><dialog id=d>d</dialog><span id=ml>ml</span></body>",
+        r#"(()=>{
+          const $=id=>document.getElementById(id),retained={},rows=[];
+          customElements.define('x-fc',class extends HTMLElement{static formAssociated=true;constructor(){super();this.i=this.attachInternals();}});
+          const ids=['v','vl','fl','cv','indl','o2','sl','n','u','fc','pl','ml'];
+          for(const id of ids){retained[id]=getComputedStyle($(id));retained[id].color;getComputedStyle($(id)).color;}
+          const read=()=>{const row=[];for(const id of ids){const fresh=getComputedStyle($(id)).color,again=getComputedStyle($(id)).color,live=retained[id].color;row.push(fresh===again&&again===live?+fresh.slice(4).split(",")[0]:[fresh,again,live]);}return row;};
+          rows.push(['initial'].concat(read()));
+          const step=(name,flip)=>{read();flip();rows.push([name].concat(read()));};
+          step('value',()=>{$('v').value='x';});step('value-cleared',()=>{$('v').value='';});
+          step('custom-validity',()=>$('cv').setCustomValidity('bad'));step('custom-validity-cleared',()=>$('cv').setCustomValidity(''));
+          step('indeterminate',()=>{$('ind').indeterminate=true;});step('indeterminate-cleared',()=>{$('ind').indeterminate=false;});
+          step('option-selected',()=>{$('o2').selected=true;});step('selected-index',()=>{$('s').selectedIndex=0;});step('select-value',()=>{$('s').value='b';});
+          step('out-of-range',()=>{$('n').value='9';});step('in-range',()=>{$('n').value='3';});
+          step('user-validity',()=>$('f2').requestSubmit());step('user-validity-reset',()=>$('f2').reset());
+          step('internals-invalid',()=>$('fc').i.setValidity({customError:true},'bad'));step('internals-valid',()=>$('fc').i.setValidity({}));
+          step('popover-open',()=>$('p').showPopover());step('popover-closed',()=>$('p').hidePopover());
+          step('modal',()=>$('d').showModal());step('modal-closed',()=>$('d').close());
+          return JSON.stringify(rows);
+        })()"#,
+    );
+    // Each row: the step, then the red channel of each target's color (rgb(N, 0, 0) is the Nth
+    // rule; 0 = no state rule applies), in the order v vl fl cv indl o2 sl n u fc pl ml.
+    assert_eq!(
+        value,
+        serde_json::json!([
+            ["initial", 1, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["value", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["value-cleared", 1, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["custom-validity", 1, 3, 2, 4, 0, 0, 0, 0, 0, 0, 0, 0],
+            [
+                "custom-validity-cleared",
+                1,
+                3,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            ["indeterminate", 1, 3, 2, 0, 5, 0, 0, 0, 0, 0, 0, 0],
+            ["indeterminate-cleared", 1, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["option-selected", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["selected-index", 1, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["select-value", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["out-of-range", 1, 3, 2, 0, 0, 6, 7, 8, 0, 0, 0, 0],
+            ["in-range", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["user-validity", 1, 3, 2, 0, 0, 6, 7, 0, 9, 0, 0, 0],
+            ["user-validity-reset", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["internals-invalid", 1, 3, 2, 0, 0, 6, 7, 0, 0, 10, 0, 0],
+            ["internals-valid", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["popover-open", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 12, 0],
+            ["popover-closed", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["modal", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 13],
+            ["modal-closed", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0]
+        ])
+    );
+}
+
+// Perf gate: getComputedStyle reuses a computed style that read live form / popover / dialog
+// state until that state (or anything else in the key) changes. Rows of controls styled by
+// :disabled / :invalid / :has(:checked) rules re-read 5 times cost no fresh cascade after the
+// first pass; a state flip recomputes, then reads settle again. Deterministic (a count of fresh
+// computed-style calculations, not wall-clock).
+#[test]
+fn computed_style_state_rules_reuse_gate() {
+    let value = run(
+        "<!doctype html><head><style>button:disabled {opacity:0.5} input:invalid {color:rgb(1, 0, 0)} .row:has(:checked) {color:rgb(2, 0, 0)} .row:has(:popover-open) span {color:rgb(3, 0, 0)} dialog:modal + span {color:rgb(4, 0, 0)}</style></head><body></body>",
+        r#"(()=>{
+          const runs=__cssTestCascadeRuns;
+          for(let i=0;i<20;i++){const row=document.createElement('div');row.className='row';row.innerHTML='<input required><input type=checkbox><button disabled>b</button><span>t</span><dialog>d</dialog><span>m</span>';document.body.appendChild(row);}
+          const all=[...document.querySelectorAll('.row, .row *')];
+          const pass=()=>{const out=[];for(const el of all){const style=getComputedStyle(el);out.push(style.color+'/'+style.opacity);}return out.join();};
+          let mark=runs();const first=pass(),warm=runs()-mark;
+          mark=runs();let same=true;for(let i=0;i<5;i++)same=pass()===first&&same;const repeated=runs()-mark;
+          all[2].checked=true;mark=runs();const flipped=pass();const recomputed=runs()-mark;
+          mark=runs();pass();pass();const settled=runs()-mark;
+          return JSON.stringify({warm:warm>0,same,repeated,changed:flipped!==first,recomputed:recomputed>0,settled});
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"warm": true, "same": true, "repeated": 0, "changed": true, "recomputed": true, "settled": 0})
+    );
+}
+
+// Perf gate (turbo-test#187 follow-up): the CSS animation / transition update runs once per
+// style change of an element, not once per computed-style read. An element with a running
+// animation recomputes its style on every read (the timeline moves), but its CSS animation /
+// transition update reads only the cascade, so 50 reads of an unchanged element run no update
+// pass; a style change runs one and starts its transition exactly as before.
+#[test]
+fn css_animation_update_runs_once_per_style_change_gate() {
+    let value = run(
+        "<!doctype html><head><style>#t {transition:opacity 100s linear, color 100s linear;opacity:1} #t.dim {opacity:0.5} @keyframes spin {from {width:10px} to {width:20px}} #a {animation:spin 100s linear}</style></head><body><div id=p><div id=t>t</div><div id=a>a</div></div></body>",
+        r#"(()=>{
+          const passes=__cssTestCssUpdates,t=document.getElementById('t'),a=document.getElementById('a');
+          t.animate([{height:'1px'},{height:'2px'}],{duration:100000});
+          const read=()=>[getComputedStyle(t).opacity,getComputedStyle(t).height!=='',getComputedStyle(a).width!==''];
+          const first=read();let mark=passes();
+          for(let i=0;i<50;i++)read();const repeated=passes()-mark;
+          t.className='dim';mark=passes();read();const changed=passes()-mark;
+          const kinds=t.getAnimations().map(animation=>animation.constructor.name+':'+(animation.transitionProperty||''));
+          mark=passes();for(let i=0;i<50;i++)read();const settled=passes()-mark;
+          const animations=a.getAnimations().map(animation=>animation.constructor.name+':'+animation.animationName);
+          return JSON.stringify({first,repeated,changed:changed>0,kinds,settled,animations});
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"first": ["1", true, true], "repeated": 0, "changed": true, "kinds": ["CSSTransition:opacity", "Animation:"], "settled": 0, "animations": ["CSSAnimation:spin"]})
     );
 }
 

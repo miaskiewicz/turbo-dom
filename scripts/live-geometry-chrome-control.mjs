@@ -31,7 +31,7 @@
 //   --out    defaults to crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json.
 // Needs playwright-core: PLAYWRIGHT_CORE=/path/to/node_modules/playwright-core (default: a
 // sibling turbo-surf checkout's node_modules/playwright-core).
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -58,6 +58,238 @@ const DOC = (css, body) => `<!doctype html><style>${css}</style>${body}`;
 // A text-free cell content box of a known size.
 const BOX = (w, h, cid = "") => `<div${cid ? ` data-cid="${cid}"` : ""} style="width:${w}px;height:${h}px"></div>`;
 const CELL = (w, h, cid) => `<td data-cid="${cid}">${BOX(w, h)}</td>`;
+// The repo's Fira Code, for the cases marked `fonts`.
+const fira = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/fira-code/FiraCode-Regular.ttf")).toString("base64");
+// The generated Ic Fixture face (scripts/make-ic-fixture-font.py), for the upright-text
+// cases (U+6C34 and `a` / `b` boxes; 1em vertical advance).
+const ic = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/ic-fixture/IcFixture.ttf")).toString("base64");
+const FACE =
+  `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}` +
+  `@font-face{font-family:"Ic Fixture";src:url(data:font/ttf;base64,${ic})}`;
+// miaskiewicz/turbo-dom#190 quirks-mode line strut cases: [id suffix, body].
+const QUIRKS_CSS = 'body{margin:0;font-family:"Fira Code";font-size:16px}div{font-size:30px}';
+const IB = (h) => `<span style="display:inline-block;width:10px;height:${h}px"></span>`;
+const QUIRKS_CASES = [
+  ["atom-only", `<div data-cid="d">${IB(30)}</div><div data-cid="e">${IB(10)}</div>`],
+  ["text-line", `<div data-cid="d">${IB(10)}x</div><div data-cid="e"> ${IB(10)} </div>`],
+  ["span-text", `<div data-cid="d"><span style="font-size:10px">x</span></div><div data-cid="e" style="line-height:50px"><span style="font-size:10px">x</span></div>`],
+  [
+    "span-decorations",
+    `<div data-cid="p"><span style="padding-left:5px">${IB(10)}</span></div>` +
+      `<div data-cid="b"><span style="border:1px solid">${IB(10)}</span></div>` +
+      `<div data-cid="m"><span style="margin-left:4px;font-size:10px">${IB(10)}</span></div>` +
+      `<div data-cid="v"><span style="padding-top:3px">${IB(10)}</span></div>`,
+  ],
+  ["br", `<div data-cid="d">a<br><br>b</div><div data-cid="s"><span style="font-size:10px">a<br><br>b</span></div>`],
+];
+
+// An 8x6 PNG (the live test harness resolves every PNG `data:` URI to it).
+const PNG8X6 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=";
+// miaskiewicz/turbo-dom#234 vertical writing-mode cases: [id suffix, body, extra fields].
+const BROKEN_PNG = "data:image/png;base64,AAAA";
+const IMG_CASES = [
+  ["inline-default", `src="${PNG8X6}"`],
+  ["no-src", ``],
+  ["no-src-size", `width="40" height="30"`],
+  ["no-src-width", `width="40"`],
+  ["empty-src", `src=""`],
+  ["empty-src-size", `src="" width="40" height="30"`],
+  ["broken", `src="${BROKEN_PNG}"`],
+  ["broken-size", `src="${BROKEN_PNG}" width="40" height="30"`],
+  ["no-src-alt", `alt="hi there"`],
+  ["no-src-alt-size", `alt="hi there" width="40" height="30"`],
+  ["no-src-empty-alt-size", `alt="" width="40" height="30"`],
+  ["broken-alt", `src="${BROKEN_PNG}" alt="hi there"`],
+  ["broken-alt-size", `src="${BROKEN_PNG}" alt="hi there" width="40" height="30"`],
+  ["broken-empty-alt", `src="${BROKEN_PNG}" alt=""`],
+  ["broken-css-size", `src="${BROKEN_PNG}" style="width:40px;height:30px"`],
+  ["no-src-alt-big-size", `alt="hi there" width="200" height="50"`],
+  ["broken-alt-big-size", `src="${BROKEN_PNG}" alt="hi there" width="200" height="50"`],
+  ["broken-alt-width", `src="${BROKEN_PNG}" alt="hi there" width="200"`],
+  ["broken-width", `src="${BROKEN_PNG}" width="40"`],
+  ["broken-height", `src="${BROKEN_PNG}" height="40"`],
+  ["broken-empty-alt-pct-width", `src="${BROKEN_PNG}" alt="" style="display:block;width:50%"`],
+  ["no-src-pct-width", `style="display:block;width:50%"`],
+];
+// miaskiewicz/turbo-dom#252: <canvas>, <video>, <audio controls>, <object> and <embed> are
+// inline replaced boxes (300x150 by default; canvas sizes from its width / height
+// attributes, video from its presentational width / height or its poster, audio controls
+// from the UA, object / embed from their presentational width / height), with their own
+// frame and background, in horizontal and vertical writing modes. [id suffix, element].
+const MEDIA_FRAME = "border:3px solid #00f;padding:2px 5px;background:#0f0";
+const MEDIA_CASES = [
+  ["canvas-default", `<canvas data-cid="m"></canvas>`],
+  ["canvas-attrs", `<canvas data-cid="m" width="200" height="100"></canvas>`],
+  ["canvas-width-attr", `<canvas data-cid="m" width="60"></canvas>`],
+  ["canvas-zero", `<canvas data-cid="m" width="0" height="0"></canvas>`],
+  ["canvas-css-width", `<canvas data-cid="m" style="width:100px"></canvas>`],
+  ["canvas-css-height-attrs", `<canvas data-cid="m" width="40" height="80" style="height:20px"></canvas>`],
+  ["canvas-frame", `<canvas data-cid="m" width="40" height="20" style="${MEDIA_FRAME}"></canvas>`],
+  ["canvas-fallback", `<canvas data-cid="m" width="40" height="20"><span data-cid="f">fallback text</span></canvas>`],
+  ["canvas-block", `<canvas data-cid="m" width="40" height="20" style="display:block"></canvas>`],
+  ["canvas-pct-width", `<canvas data-cid="m" width="40" height="20" style="display:block;width:50%"></canvas>`],
+  ["canvas-attr-syntax", `<canvas data-cid="m" width=" +50px" height="x9"></canvas>`],
+  ["canvas-border-box-height", `<canvas data-cid="m" width="40" height="20" style="box-sizing:border-box;height:30px;padding:5px"></canvas>`],
+  ["canvas-border-box-width", `<canvas data-cid="m" width="40" height="20" style="box-sizing:border-box;width:30px;padding:5px"></canvas>`],
+  ["canvas-zero-height-css-height", `<canvas data-cid="m" width="40" height="0" style="height:30px"></canvas>`],
+  ["video-default", `<video data-cid="m"></video>`],
+  ["video-attrs", `<video data-cid="m" width="200" height="100"></video>`],
+  ["video-width-attr", `<video data-cid="m" width="60"></video>`],
+  ["video-poster", `<video data-cid="m" poster="${PNG8X6}"></video>`],
+  ["video-poster-width", `<video data-cid="m" poster="${PNG8X6}" style="width:80px"></video>`],
+  ["video-frame", `<video data-cid="m" width="40" height="20" style="${MEDIA_FRAME}"></video>`],
+  ["video-controls", `<video data-cid="m" controls width="200" height="100"></video>`],
+  ["audio", `<audio data-cid="m"></audio>`],
+  ["audio-controls", `<audio data-cid="m" controls></audio>`],
+  ["audio-controls-width-attr", `<audio data-cid="m" controls width="100"></audio>`],
+  ["audio-controls-css", `<audio data-cid="m" controls style="width:100px;height:20px"></audio>`],
+  ["audio-controls-frame", `<audio data-cid="m" controls style="${MEDIA_FRAME}"></audio>`],
+  ["object-default", `<object data-cid="m"></object>`],
+  ["object-attrs", `<object data-cid="m" width="200" height="100"></object>`],
+  ["object-frame", `<object data-cid="m" width="40" height="20" style="${MEDIA_FRAME}"></object>`],
+  ["embed-default", `<embed data-cid="m">`],
+  ["embed-attrs", `<embed data-cid="m" width="200" height="100">`],
+  ["embed-frame", `<embed data-cid="m" width="40" height="20" style="${MEDIA_FRAME}">`],
+  ["embed-src", `<embed data-cid="m" src="${PNG8X6}" width="40" height="20">`],
+  ["embed-src-default", `<embed data-cid="m" src="about:blank">`],
+];
+const VERTICAL_CSS = 'body{margin:0;font:16px/20px "Fira Code"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}';
+const VERTICAL_CASES = [
+  ["issue-monospace", `<div data-cid="v" style="writing-mode:vertical-rl;height:100px;font:16px/20px monospace">ab</div>`],
+  ["rl-one-line", `<div data-cid="v" class="rl" style="height:100px">ab</div><div data-cid="after" style="height:10px"></div>`],
+  ["rl-lines", `<div data-cid="v" class="rl" style="height:50px">aaaa bbbb cccc</div>`],
+  ["lr-lines", `<div data-cid="v" class="lr" style="height:50px">aaaa bbbb cccc</div>`],
+  ["rl-auto-height", `<div data-cid="v" class="rl">ab cd</div><div data-cid="after" style="height:10px"></div>`],
+  [
+    "rl-frame",
+    `<div data-cid="v" class="rl" style="height:80px;padding:1px 2px 3px 4px;border:solid #000;border-width:5px 6px 7px 8px;margin:9px 10px 11px 12px">` +
+      `<div data-cid="a" style="width:30px;margin-left:4px"></div><div data-cid="b">ab</div><div data-cid="c" style="width:7px;height:20px;margin:3px 5px 2px 6px;padding:1px"></div></div>`,
+  ],
+  [
+    "lr-nested",
+    `<div data-cid="v" class="lr" style="height:60px;margin-left:5px"><div data-cid="a" style="margin-right:8px;margin-left:3px"><div data-cid="aa" style="width:10px;margin-left:6px"></div></div><div data-cid="b" style="margin-left:4px;padding:2px">ab cd</div></div>`,
+  ],
+  [
+    "rl-nested-rl",
+    `<div data-cid="v" class="rl" style="height:60px"><div data-cid="a" style="width:10px"></div><div data-cid="b" class="rl" style="padding-right:3px">ab</div><div data-cid="c" style="width:5px;height:20px"></div></div>`,
+  ],
+  [
+    "orthogonal-horizontal-in-rl",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="h" style="writing-mode:horizontal-tb">abc def</div><div data-cid="k" style="width:10px"></div></div>`,
+  ],
+  [
+    "orthogonal-horizontal-in-lr-width",
+    `<div data-cid="v" class="lr" style="height:100px"><div data-cid="h" style="writing-mode:horizontal-tb;width:40px">abc def</div></div>`,
+  ],
+  [
+    "orthogonal-rl-in-horizontal-width",
+    `<div style="width:300px"><div data-cid="v" class="rl" style="width:50px">abc def</div><div data-cid="w" class="rl" style="height:30px;margin:0 auto">ab</div></div>`,
+  ],
+  [
+    "rl-scroller",
+    `<div data-cid="v" class="rl" style="width:50px;height:40px;overflow:auto"><div data-cid="a" style="width:120px;height:20px"></div></div>`,
+    { scroll: { v: -30 } },
+  ],
+  [
+    "lr-scroller",
+    `<div data-cid="v" class="lr" style="width:50px;height:40px;overflow:auto"><div data-cid="a" style="width:120px;height:20px"></div></div>`,
+    { scroll: { v: 30 } },
+  ],
+  // miaskiewicz/turbo-dom#239: the residuals. Flex / grid / table boxes and their items in a
+  // vertical root (their inline axis is vertical), inline-level atoms, replaced elements,
+  // direction:rtl (inline axis bottom-to-top), floats and absolute boxes.
+  [
+    "rl-flex-row",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="f" style="display:flex"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="flex:1;width:20px"></div></div></div>`,
+  ],
+  [
+    "lr-flex-column",
+    `<div data-cid="v" class="lr" style="height:100px"><div data-cid="f" style="display:flex;flex-direction:column;padding-left:2px"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="height:5px;width:20px"></div></div></div>`,
+  ],
+  [
+    "rl-grid",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="g" style="display:grid;grid-template-columns:30px 1fr;gap:4px"><div data-cid="a" style="width:10px"></div><div data-cid="b" style="width:15px"></div><div data-cid="c" style="width:6px"></div></div></div>`,
+  ],
+  [
+    "rl-table",
+    `<div data-cid="v" class="rl" style="height:200px"><table data-cid="t" style="border-spacing:2px"><tr data-cid="r"><td data-cid="a" style="padding:1px">${BOX(10, 30)}</td><td data-cid="b" style="padding:0">${BOX(12, 20)}</td></tr><tr><td data-cid="c">${BOX(5, 5)}</td><td></td></tr></table></div>`,
+  ],
+  [
+    "rl-inline-block",
+    `<div data-cid="v" class="rl" style="height:100px">ab<span data-cid="i" style="display:inline-block;width:12px;height:30px;margin-top:3px"></span>cd</div>`,
+  ],
+  [
+    "lr-inline-block-text",
+    `<div data-cid="v" class="lr" style="height:100px">a<span data-cid="i" style="display:inline-block;padding:2px">bc</span></div>`,
+  ],
+  [
+    "rl-svg",
+    `<div data-cid="v" class="rl" style="height:100px"><svg data-cid="i" width="20" height="30" style="display:block"></svg><svg data-cid="j" style="width:8px;height:9px"></svg>a<svg data-cid="k" width="6" height="7" style="margin-left:2px"></svg></div>`,
+  ],
+  [
+    "rl-img",
+    `<div data-cid="v" class="rl" style="height:100px"><img data-cid="i" src="${PNG8X6}" style="display:block"><img data-cid="j" src="${PNG8X6}" style="display:inline;height:12px">a<img data-cid="k" src="${PNG8X6}" style="display:inline;width:4px"></div>`,
+  ],
+  [
+    "rl-upright-cjk",
+    `<div data-cid="v" class="rl" style="height:100px;font-family:'Ic Fixture'"><span data-cid="c">\u6c34\u6c34</span><span data-cid="a">ab</span><span data-cid="u" style="text-orientation:upright">ab</span><span data-cid="m">a\u6c34b</span></div>`,
+  ],
+  [
+    "lr-upright-lines",
+    `<div data-cid="v" class="lr" style="height:40px;font-family:'Ic Fixture'"><span data-cid="c">\u6c34\u6c34\u6c34 \u6c34\u6c34\u6c34</span></div><div data-cid="w" class="rl" style="height:40px;font-family:'Ic Fixture';text-orientation:upright">aaa bb</div>`,
+  ],
+  [
+    "rl-replaced-defaults",
+    `<div data-cid="v" class="rl" style="height:400px"><svg data-cid="s" style="display:block"></svg><svg data-cid="w" width="40" style="display:block"></svg><iframe data-cid="f" style="display:block"></iframe><svg data-cid="h" height="30" style="display:block"></svg></div>`,
+  ],
+  [
+    "orthogonal-flex-item",
+    `<div data-cid="f" style="display:flex;width:300px"><div data-cid="fi" class="rl">aaaa bbbb</div><div data-cid="fj" style="width:10px;height:5px"></div></div>`,
+  ],
+  [
+    "orthogonal-grid-item",
+    `<div data-cid="g" style="display:grid;grid-template-columns:100px 50px"><div data-cid="gi" class="lr" style="padding-left:3px">ab cd</div><div data-cid="gj">x</div></div>`,
+  ],
+  [
+    "orthogonal-table-cell",
+    `<table data-cid="t"><tr><td data-cid="td" class="rl">ab cd</td><td data-cid="x">x</td></tr></table>`,
+  ],
+  // miaskiewicz/turbo-dom#251: a cell stretched to its row height reports the row height
+  // in client* / scroll* / offset* and its rect, with padding and border, in both modes.
+  [
+    "stretched-table-cells",
+    `<table data-cid="t"><tr><td data-cid="a">${BOX(10, 50)}</td><td data-cid="b">x</td><td data-cid="c" style="padding:3px 4px;border:2px solid">x</td></tr></table>`,
+  ],
+  [
+    "rl-stretched-table-cells",
+    `<div class="rl" style="height:200px"><table data-cid="t"><tr><td data-cid="a">${BOX(50, 10)}</td><td data-cid="b">x</td><td data-cid="c" style="padding:3px 4px;border:2px solid">x</td></tr></table></div>`,
+  ],
+  [
+    "lr-stretched-table-cells",
+    `<div class="lr" style="height:200px"><table data-cid="t"><tr><td data-cid="a">${BOX(50, 10)}</td><td data-cid="b" style="padding:1px 5px 2px 3px;border-left:4px solid">x</td></tr></table></div>`,
+  ],
+  [
+    "orthogonal-inline",
+    `<div data-cid="p" style="width:300px">a<span data-cid="s" class="rl">bcd</span>e</div>`,
+  ],
+  [
+    "rl-rtl",
+    `<div data-cid="v" class="rl" dir="rtl" style="height:100px"><div data-cid="a" style="height:30px;width:10px"></div><div data-cid="b" style="width:10px">ab</div></div>`,
+  ],
+  [
+    "lr-rtl",
+    `<div data-cid="v" class="lr" style="direction:rtl;height:100px"><div data-cid="a" style="height:30px;width:10px;margin-bottom:5px"></div></div>`,
+  ],
+  [
+    "rl-float",
+    `<div data-cid="v" class="rl" style="height:100px"><div data-cid="f" style="float:left;width:10px;height:20px"></div><div data-cid="g" style="float:right;width:12px;height:20px"></div><div data-cid="a" style="width:5px"></div></div>`,
+  ],
+  [
+    "rl-absolute",
+    `<div data-cid="v" class="rl" style="height:100px;width:200px;position:relative"><div data-cid="a" style="position:absolute;top:5px;right:7px;width:10px;height:20px"></div><div data-cid="b" style="position:absolute;width:10px;height:20px"></div><div data-cid="s" style="width:6px"></div></div>`,
+  ],
+];
 
 const CASES = [
   // turbo-surf#31 C: position:absolute/fixed blockify an inline (display computes to
@@ -321,13 +553,86 @@ const CASES = [
     html: DOC("body{margin:0;line-height:20px}p{margin:0}", `<p data-cid="a">a</p><span style="white-space:nowrap"> </span><p data-cid="b">b</p><div data-cid="d"><span style="white-space:nowrap"> </span></div><div data-cid="e" style="white-space:nowrap">  </div><p data-cid="f">f</p>`),
     measure: { a: "xyh", b: "xyh", f: "xyh" },
   },
+  // miaskiewicz/turbo-dom#190: the quirks-mode line height quirk (no doctype: BackCompat).
+  // A line box takes the block's strut only for text (or a <br>) directly in the block,
+  // and an inline box its own metrics only for its text or an inline border / padding
+  // (not a margin); atoms always count. `fonts`: the case is laid out with the repo's
+  // Fira Code (an @font-face added after load, as the CSSOM-View control does).
+  ...QUIRKS_CASES.map(([id, body]) => ({
+    id: `quirks-strut-${id}`,
+    html: `<style>${QUIRKS_CSS}</style>${body}`,
+    fonts: true,
+  })),
+  {
+    id: "quirks-strut-standards-control",
+    html: DOC(QUIRKS_CSS, QUIRKS_CASES[0][1]),
+    fonts: true,
+  },
+  // miaskiewicz/turbo-dom#190: block boxes in an RTL block container sit at its right
+  // content edge (an over-constrained box drops its left margin), `margin-right:auto`
+  // pushes one left, `margin:0 auto` centers, and a wider box overflows to the left.
+  {
+    id: "rtl-block-placement",
+    html: DOC(
+      "body{margin:0}",
+      `<div data-cid="r" dir="rtl" style="width:100px;padding:0 4px 0 6px;margin-left:200px">` +
+        `<div data-cid="n" style="width:40px;height:10px;margin-right:5px"></div>` +
+        `<div data-cid="l" style="width:40px;height:10px;margin-right:auto"></div>` +
+        `<div data-cid="c" style="width:40px;height:10px;margin:0 auto"></div>` +
+        `<div data-cid="w" style="width:300px;height:10px"></div>` +
+        `<div data-cid="a" style="height:10px;margin-left:7px"></div>` +
+        `<div data-cid="d" dir="ltr" style="width:40px;height:10px"></div>` +
+        `<div data-cid="x" dir="ltr"><div data-cid="xk" style="width:40px;height:10px"></div></div>` +
+        `</div>`,
+    ),
+  },
+  // miaskiewicz/turbo-dom#234: vertical writing modes. Block flow runs right to left
+  // (vertical-rl) or left to right (vertical-lr), lines stack along the block axis and the
+  // inline axis is vertical (`height` is the inline size); padding / border / margins map
+  // physically; an orthogonal child sizes against the available space. `metrics`: the
+  // case also records offset* / client* / scroll* (`scrollLeft` set to `scroll` first).
+  ...VERTICAL_CASES.map(([id, body, extra]) => ({
+    id: `vertical-${id}`,
+    html: DOC(VERTICAL_CSS, body),
+    fonts: true,
+    metrics: true,
+    ...(extra || {}),
+  })),
+  // miaskiewicz/turbo-dom#241: shrink-to-fit of text uses the native (device-scale)
+  // advances line layout places it with, in horizontal flow too.
+  {
+    id: "shrink-to-fit-native-advances",
+    html: DOC(VERTICAL_CSS, `<div data-cid="v">a<span data-cid="i" style="display:inline-block;padding:2px">bc</span></div><div data-cid="f" style="float:left">abc</div>`),
+    fonts: true,
+  },
+  // miaskiewicz/turbo-dom#242 / #243: <img> is inline by default (html.css has no display
+  // rule for it) and a replaced box whether or not its source loads: no src, an empty
+  // src or an undecodable one, with and without width / height and alt text.
+  ...IMG_CASES.map(([id, img]) => ({
+    id: `img-${id}`,
+    html: DOC(VERTICAL_CSS, `<div data-cid="p">a<img data-cid="i" ${img}>b</div>`),
+    fonts: true,
+  })),
+  ...["", "rl", "lr"].flatMap((mode) =>
+    MEDIA_CASES.map(([id, element]) => ({
+      id: `media-${mode ? `${mode}-` : ""}${id}`,
+      html: DOC(VERTICAL_CSS, `<div data-cid="p"${mode ? ` class="${mode}"` : ""}>a${element}b</div>`),
+      fonts: true,
+    })),
+  ),
 ];
-const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 const result = [];
 for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
+  if (testCase.fonts) {
+    await page.addStyleTag({ content: FACE });
+    await page.evaluate(() =>
+      Promise.all([document.fonts.load('16px "Fira Code"'), document.fonts.load('16px "Ic Fixture"')]).then(() => document.fonts.ready),
+    );
+  }
   if (testCase.fullscreen) {
     const target = `[data-cid="${testCase.fullscreen}"]`;
     await page.evaluate((sel) => {
@@ -336,18 +641,22 @@ for (const testCase of CASES) {
     await page.click(target, { position: { x: 1, y: 1 } });
     await page.waitForFunction((sel) => document.fullscreenElement === document.querySelector(sel), target);
   }
-  const { boxes, hits } = await page.evaluate((points) => {
+  const { boxes, hits } = await page.evaluate(([points, metrics, scroll]) => {
+    for (const [cid, left] of Object.entries(scroll)) document.querySelector(`[data-cid="${cid}"]`).scrollLeft = left;
     const boxes = [...document.querySelectorAll("[data-cid]")].map((el) => {
       const b = el.getBoundingClientRect();
       const s = getComputedStyle(el);
-      return { cid: el.dataset.cid, x: b.x, y: b.y, width: b.width, height: b.height, display: s.display, position: s.position };
+      const box = { cid: el.dataset.cid, x: b.x, y: b.y, width: b.width, height: b.height, display: s.display, position: s.position };
+      if (!metrics) return box;
+      const keys = ["offsetLeft", "offsetTop", "offsetWidth", "offsetHeight", "clientLeft", "clientTop", "clientWidth", "clientHeight", "scrollWidth", "scrollHeight", "scrollLeft"];
+      return { ...box, metrics: Object.fromEntries(keys.map((k) => [k, el[k]])) };
     });
     const hits = points.map(([x, y]) => {
       const el = document.elementFromPoint(x, y);
       return { x, y, hit: el ? el.dataset.cid || el.localName : null };
     });
     return { boxes, hits };
-  }, testCase.hits || []);
+  }, [testCase.hits || [], !!testCase.metrics, testCase.scroll || {}]);
   const { hits: _points, ...rest } = testCase;
   result.push({ ...rest, measure: testCase.measure || {}, boxes, ...(hits.length ? { hits } : {}) });
 }

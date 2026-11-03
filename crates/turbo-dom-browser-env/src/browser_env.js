@@ -97,11 +97,18 @@
   var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
+  var canvasMeasureTextNative=g.__canvasMeasureTextNative;delete g.__canvasMeasureTextNative;
+  var canvasLengthUnitNative=g.__canvasLengthUnitNative;delete g.__canvasLengthUnitNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
+  // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
+  if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
+  // The native live-state epoch (form / popover / dialog state the tree version misses); the
+  // engine's JS state stores report their changes through __tsNs.bumpStyleState.
+  var styleStateEpoch=g.__styleStateEpoch,bumpStyleState=g.__bumpStyleState;delete g.__styleStateEpoch;delete g.__bumpStyleState;__tsNs.bumpStyleState=bumpStyleState;
   var cssFontNumber=Number,cssFontString=String,cssFontFinite=Number.isFinite,cssFontPrecision=Number.prototype.toPrecision,cssFontLower=String.prototype.toLowerCase;
   var prepareInlineHandler=g.__prepareInlineHandler,noteInlineHandler=g.__noteInlineHandler;delete g.__prepareInlineHandler;delete g.__noteInlineHandler;
   var collectionGet=g.__getCollectionRecord,collectionSet=g.__setCollectionRecord;
@@ -609,12 +616,23 @@
   // bumps it; native and shared by every realm, since a realm reads other realms' elements and
   // an edit runs in the realm owning the sheet — turbo-dom#113), the element's owner document,
   // its top-layer state (popover / modal / fullscreen), its font context (host defaults, composed parent) and, recursively, every ancestor snapshot
-  // it read. A computation that read something outside the key is volatile and never reused:
-  // a rule whose selector depends on live form / popover / dialog state and could match, an
-  // animated element, the fullscreen element (viewport-sized), an @import's media query.
-  var computedStyleCache=new computedSnapshotMap(),computedVolatile=false;
+  // it read. A computation whose rules read live form / popover / dialog state (a selector with
+  // :invalid, :checked, :popover-open, :modal, ... that matches or could match) is also keyed on
+  // the native live-state epoch, which every such state change bumps. A computation that read
+  // something outside the key is volatile and never reused: a rule over view-transition or
+  // interest state that could match, an animated element, the fullscreen element
+  // (viewport-sized), an @import's media query.
+  var computedStyleCache=new computedSnapshotMap(),computedVolatile=false,computedStateRead=false;
   function invalidateComputedStyles(){bumpCssomEpoch();}
   __ns.invalidateComputedStyles=invalidateComputedStyles;
+  // What a CSS animation / transition update reads beyond the element's own values
+  // (animations.js cssUpdate): null when the element has no stamp (it is then never skipped).
+  // An animation starting or ending on a target also drops reuse (the targets' values change)
+  // without changing any cascaded value; the stamp discounts this realm's such bumps (another
+  // realm's only cause an extra update, never a missed one).
+  var animatedStyleBumps=0;
+  __ns.invalidateAnimatedStyles=function(){animatedStyleBumps++;bumpCssomEpoch();};
+  __ns.computedStyleStamp=function(el){var key=computedCacheKey(el);return key?[key.version,key.epoch-animatedStyleBumps,styleStateEpoch(),key.owner]:null;};
   function computedCacheKey(el){
     var version;try{version=computedStyleVersion(el);}catch(e){return null;}
     if(typeof version!=='number')return null;
@@ -632,6 +650,7 @@
   function computedCacheHit(el,key,snapshots){
     var entry=computedSnapshotGet(computedStyleCache,el);
     if(!entry||entry.epoch!==key.epoch||entry.version!==key.version||entry.owner!==key.owner)return null;
+    if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
     if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
     for(var index=0;index<entry.deps.length;index+=2)if(computeStyleSnapshot(entry.deps[index],snapshots)!==entry.deps[index+1])return null;
     return entry.snapshot;
@@ -641,19 +660,20 @@
     var local=computedSnapshotGet(snapshots,el);if(local)return local;
     var key=computedCacheKey(el);
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
-    var deps=[],outer=computedVolatile,snapshot,volatile;computedVolatile=false;
-    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;}finally{computedVolatile=outer;}
+    var deps=[],outer=computedVolatile,outerState=computedStateRead,snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;
+    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;}
     if(key){
       var after=computedCacheKey(el);
-      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.owner!==key.owner)computedSnapshotSet(computedStyleCache,el,null);
-      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,owner:key.owner,probe:computedCacheProbe(el),deps:deps});
+      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.owner!==key.owner||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
+      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,owner:key.owner,state:stateRead?state:null,probe:computedCacheProbe(el),deps:deps});
     }
     return snapshot;
   }
-  // Selector-dependent volatility: the pseudo-classes whose truth is live binding state (form
+  // Selector-dependent state: the pseudo-classes whose truth is live binding state (form
   // control state, open popovers, modal dialogs, active view transitions, interest invokers)
-  // rather than the tree. A rule using one makes
-  // the computation volatile when it matches, or when it could match in another state: its
+  // rather than the tree. A rule using one makes the computation state-dependent (keyed on the
+  // live-state epoch; volatile for view-transition and interest state, which bump no epoch)
+  // when it matches, or when it could match in another state: its
   // selector with every such pseudo-class (and every non-matching-list function containing one)
   // relaxed to `:is(*)` matches. Relaxing only widens a selector, so a rule that cannot match
   // even relaxed cannot match in any state.
@@ -680,13 +700,19 @@
     }
     return out;
   }
+  var computedUnkeyedState=/:(?:active-view-transition|active-view-transition-type|interest-source|interest-target)(?![\w-])/i;
   function computedStateVolatile(el,selector,matched){
     if(computedVolatile||!cssApply(cssZoomExec,computedStatePattern,[selector]))return;
-    if(matched){computedVolatile=true;return;}
-    var relaxed=computedRelaxed[selector];
-    if(relaxed===undefined){if(computedRelaxedCount>=4096){computedRelaxed={__proto__:null};computedRelaxedCount=0;}relaxed=computedRelaxed[selector]=computedRelaxSelector(selector);computedRelaxedCount++;}
-    var could=true;try{could=!!cssApply(computedStyleNativeMatches,el,[relaxed]);}catch(e){}
-    if(could)computedVolatile=true;
+    var unkeyed=!!cssApply(cssZoomExec,computedUnkeyedState,[selector]);
+    if(!unkeyed&&computedStateRead)return;
+    var could=matched;
+    if(!could){
+      var relaxed=computedRelaxed[selector];
+      if(relaxed===undefined){if(computedRelaxedCount>=4096){computedRelaxed={__proto__:null};computedRelaxedCount=0;}relaxed=computedRelaxed[selector]=computedRelaxSelector(selector);computedRelaxedCount++;}
+      could=true;try{could=!!cssApply(computedStyleNativeMatches,el,[relaxed]);}catch(e){}
+    }
+    if(!could)return;
+    if(unkeyed)computedVolatile=true;else computedStateRead=true;
   }
   function computeStyleFresh(el,snapshots,sink,pseudo,deps){
     var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
@@ -1747,7 +1773,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var fileControls = null;
     __ns.registerFileControls = function(hooks){ fileControls = hooks; delete __ns.registerFileControls; };
     var fileValueDelete = WeakMap.prototype.delete, fileValueApply = Reflect.apply;
-    __ns.resetControlValue = function(element){ fileValueApply(fileValueDelete, controlValues, [element]); };
+    __ns.resetControlValue = function(element){ bumpStyleState(); fileValueApply(fileValueDelete, controlValues, [element]); };
     // Captured natives: the value paths never reach a page-replaced builtin (turbo-dom#199).
     // The binding's own native accessors, captured at install.
     var valueLocalName, valueNamespace, valueTextContent, valueTextContentSet;
@@ -1772,7 +1798,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         var oldValue=selectionApply(valDesc.get,this,[]);
         v = v == null ? '' : String(v);
         if (reflectedValue(this)) $setAttr(this, 'value', v);
-        else $c.set(controlValues,this, validForType(this, v));
+        else { bumpStyleState(); $c.set(controlValues,this, validForType(this, v)); }
         selectionValueChanged(this,oldValue,selectionApply(valDesc.get,this,[]));
       }
     };
@@ -1988,7 +2014,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.defineProperty(op, 'selected', { configurable: true, get: function(){
         var sel = ownerSelect(this); return sel ? $c.indexOf(selectionOf(sel), this) >= 0 : isSelected(this);
       }, set: function(v){
-        v = !!v; $c.set(optionStates,this, v);
+        bumpStyleState(); v = !!v; $c.set(optionStates,this, v);
         var sel = ownerSelect(this);
         if (sel && v) {
           $c.delete(emptySelects,sel);
@@ -2011,14 +2037,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.defineProperty(sp, 'selectedOptions', { configurable: true, get: function(){ var list = selection.selectionOf(this); list.item = function(i){ return this[i] || null; }; return list; } });
       Object.defineProperty(sp, 'selectedIndex', { configurable: true,
         get: function(){ var chosen = selection.selectionOf(this); return chosen.length ? opts(this).indexOf(chosen[0]) : -1; },
-        set: function(idx){ var o = opts(this), index = Number(idx) >> 0;
+        set: function(idx){ var o = opts(this), index = Number(idx) >> 0; bumpStyleState();
           $c.add(selection.emptySelects,this);
           for (var i=0;i<o.length;i++) { $c.set(selection.optionStates,o[i], i === index); }
           if (index >= 0 && index < o.length) $c.delete(selection.emptySelects,this);
         } });
       Object.defineProperty(sp, 'value', { configurable: true,
         get: function(){ var chosen = selection.selectionOf(this); return chosen.length ? chosen[0].value : ''; },
-        set: function(v){ var o = opts(this), s = String(v), hit = false;
+        set: function(v){ var o = opts(this), s = String(v), hit = false; bumpStyleState();
           $c.add(selection.emptySelects,this);
           for (var i=0;i<o.length;i++){ var m = !hit && o[i].value === s; $c.set(selection.optionStates,o[i], m); if (m) hit = true; }
           if (hit) $c.delete(selection.emptySelects,this);
@@ -2036,6 +2062,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var resetControlDelete=WeakMap.prototype.delete,resetSelectDelete=WeakSet.prototype.delete;
     __ns.formSelectedOptions=function(element){return selection.selectionOf(element);};
     __ns.formResetControl=function(element){
+      bumpStyleState();
       formValueApply(resetControlDelete,controlValues,[element]);
       if(fileControls)fileControls.reset(element);
       if(formValueApply(sheetTagName,element,[])==='INPUT')checkedNative(2,element);
@@ -2197,6 +2224,63 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           } });
       });
     };
+    // TextMetrics (turbo-dom#237, canvas_text_metrics_interface_chrome156.json): a global,
+    // non-constructible interface whose fields are enumerable prototype getters over the
+    // instance's measured values; they throw "Illegal invocation" on any other receiver.
+    var __tmFields = ['width','actualBoundingBoxLeft','actualBoundingBoxRight','fontBoundingBoxAscent',
+      'fontBoundingBoxDescent','actualBoundingBoxAscent','actualBoundingBoxDescent','hangingBaseline',
+      'alphabeticBaseline','ideographicBaseline'];
+    var __tmValues = new WeakMap();
+    var TextMetrics = function TextMetrics(){
+      throw new TypeError(new.target ? "Failed to construct 'TextMetrics': Illegal constructor" : 'Illegal constructor');
+    };
+    var __tmProto = TextMetrics.prototype;
+    __tmFields.forEach(function(name, index){
+      var holder = {};
+      Object.defineProperty(holder, name, { get: function(){
+        var values = __tmValues.get(this);
+        if (!values) throw new TypeError('Illegal invocation');
+        return values[index];
+      } });
+      var get = Object.getOwnPropertyDescriptor(holder, name).get;
+      Object.defineProperty(get, 'name', { value: 'get ' + name });
+      Object.defineProperty(__tmProto, name, { get: get, enumerable: true, configurable: true });
+    });
+    Object.defineProperty(__tmProto, 'constructor', { value: TextMetrics, writable: true, configurable: true });
+    Object.defineProperty(__tmProto, Symbol.toStringTag, { value: 'TextMetrics', configurable: true });
+    Object.defineProperty(TextMetrics, 'prototype', { writable: false, enumerable: false, configurable: false });
+    Object.defineProperty(g, 'TextMetrics', { value: TextMetrics, writable: true, enumerable: false, configurable: true });
+    var __textMetrics = function(values){
+      var metrics = Object.create(__tmProto);
+      __tmValues.set(metrics, values);
+      return metrics;
+    };
+    // Text attributes (turbo-dom#237, canvas_text_attributes_chrome156.json): letterSpacing /
+    // wordSpacing take a CSS length (any <length> unit Chrome parses; no percentage, unitless
+    // number, calc() or padding) and
+    // read back lowercased with the number reserialized; the enum attributes accept only
+    // their exact values. An invalid assignment is ignored. measureText passes them on.
+    var __cvLength = /^([+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?)([a-z]+)$/i;
+    var __cvEnums = {
+      fontKerning: ['auto', 'normal', 'none'],
+      fontStretch: ['ultra-condensed', 'extra-condensed', 'condensed', 'semi-condensed', 'normal',
+        'semi-expanded', 'expanded', 'extra-expanded', 'ultra-expanded'],
+      textRendering: ['auto', 'optimizeSpeed', 'optimizeLegibility', 'geometricPrecision']
+    };
+    var __cvText = function(ctx){
+      var state = { letterSpacing: '0px', wordSpacing: '0px', fontKerning: 'auto', fontStretch: 'normal', textRendering: 'auto' };
+      Object.keys(state).forEach(function(name){
+        var allowed = __cvEnums[name];
+        Object.defineProperty(ctx, name, { configurable: true, enumerable: true,
+          get: function(){ return state[name]; },
+          set: function(value){
+            var text = String(value);
+            if (allowed) { if (allowed.indexOf(text) >= 0) state[name] = text; return; }
+            var length = __cvLength.exec(text);
+            if (length && canvasLengthUnitNative(length[2])) state[name] = String(Number(length[1])) + length[2].toLowerCase();
+          } });
+      });
+    };
     var mkCanvasCtx = function(canvas){
       var noop = function(){};
       var paint = function(){ var p = { addColorStop: noop }; __cvPaints.add(p); return p; };
@@ -2226,7 +2310,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           return { data: data, width: w, height: h, colorSpace: 'srgb' };
         },
         createImageData: function(w,h){ if (w && w.width != null) { h = w.height; w = w.width; } return { data: new Uint8ClampedArray(Math.max(0,(w||0)*(h||0)*4)), width: w||0, height: h||0, colorSpace: 'srgb' }; },
-        measureText: function(s){ this._ops.push(['measureText', String(s||''), this.font]); var wdt = (String(s||'').length)*6; return { width: wdt, actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2, actualBoundingBoxLeft: 0, actualBoundingBoxRight: wdt, fontBoundingBoxAscent: 8, fontBoundingBoxDescent: 2 }; },
+        // measureText (turbo-dom#237, canvas_measure_text_chrome156.json): turbo-dom-layout
+        // measures the run in the host's fonts like Chrome 156; Chrome 156 leaves the
+        // emHeight* fields undefined.
+        measureText: function(s){
+          var text = String(s);
+          this._ops.push(['measureText', text, this.font]);
+          var m = canvasMeasureTextNative(text, String(this.font), String(this.textAlign), String(this.textBaseline), String(this.direction),
+            this.letterSpacing, this.wordSpacing, this.fontKerning, this.textRendering);
+          // Native order -> the TextMetrics field order.
+          return __textMetrics([m[0], m[1], m[2], m[5], m[6], m[3], m[4], m[7], m[8], m[9]]);
+        },
         isPointInPath: function(){ return false; }, isPointInStroke: function(){ return false; },
         lineWidth: 1, lineCap: 'butt', lineJoin: 'miter',
         miterLimit: 10, lineDashOffset: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0,
@@ -2234,6 +2328,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         globalAlpha: 1, globalCompositeOperation: 'source-over', imageSmoothingEnabled: true, imageSmoothingQuality: 'low'
       };
       __cvStyles(ctx, canvas);
+      __cvText(ctx);
       // Record-only paint/path methods: log the call (args + relevant paint state) so the
       // readback hash reflects what was drawn, but perform no rasterization.
       var recorded = ['fillRect','clearRect','strokeRect','beginPath','closePath','moveTo','lineTo',
@@ -2251,7 +2346,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       // still log their call first, so the raster replay keeps its own matching stack.
       var drawingState = ['fillStyle','strokeStyle','shadowColor','globalAlpha','globalCompositeOperation',
         'lineWidth','lineCap','lineJoin','miterLimit','lineDashOffset','shadowBlur','shadowOffsetX',
-        'shadowOffsetY','font','textAlign','textBaseline','direction','imageSmoothingEnabled','imageSmoothingQuality'];
+        'shadowOffsetY','font','textAlign','textBaseline','direction','imageSmoothingEnabled','imageSmoothingQuality',
+        'letterSpacing','wordSpacing','fontKerning','fontStretch','textRendering'];
       var recordSave = ctx.save, recordRestore = ctx.restore;
       ctx.save = function(){
         recordSave.apply(this, arguments);
@@ -2434,6 +2530,12 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var documentSheetsQuery=d.querySelectorAll,documentSheetOf=function(element){var owner=$gopd($O.getPrototypeOf(element),'sheet');return owner&&owner.get?$apply(owner.get,element,[]):element.sheet;};
     var documentSheets=cssList('StyleSheetList',function(){var list=[],els=$apply(documentSheetsQuery,d,['style,link']);for(var i=0;i<els.length;i++){var sheet=documentSheetOf(els[i]);if(sheet)$c.push(list,sheet);}return list;});
     documentCSSRecord.cssHost.readSheets=function(){return cssRecord(documentSheets).items;};
+    // Private @keyframes export for CSS animations (turbo-dom#187): name -> [{selector, values:[[longhand, text]]}],
+    // read from the rule records (never page-visible properties); a later rule of a name wins.
+    __ns.cssKeyframes=function(){var out={__proto__:null},sheets=cssRecord(documentSheets).items;
+      function frames(record){var list=[],kids=cssItems(record.cssRules);for(var k=0;k<kids.length;k++){var kid=cssRuleRecord(kids[k]);if(kid.type!==1)continue;var decl=declarationRecord(kid.style),values=[];for(var n=0;n<decl.names.length;n++)$c.push(values,[decl.names[n],cssMapGet(decl.values,decl.names[n]).text]);$c.push(list,{selector:kid.selectorText,values:values});}return list;}
+      function visit(rules){var items=cssItems(rules);for(var i=0;i<items.length;i++){var record=cssRuleRecord(items[i]),name;if(record.type===7&&record.cssRules&&(name=$c.exec(/^@(?:-webkit-)?keyframes\s+["']?([^"']+?)["']?\s*$/i,record.prelude)))out[name[1]]=frames(record);}}
+      for(var s=0;s<sheets.length;s++){var sheet=sheetRecord(sheets[s]);if(!sheet.disabled)visit(sheet.rules);}return out;};
     __ns.styleSheetList=function(refresh){return cssList('StyleSheetList',refresh);};
     try { Object.defineProperty(d, 'styleSheets', { configurable: true, get: function(){return documentSheets;} }); } catch(e){}
 

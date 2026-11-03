@@ -19,7 +19,11 @@ pub(crate) fn offset(
     for (index, cell) in cells.iter().enumerate() {
         let fragment = &snapshot.fragments()[cell.fragment_index];
         let matrix = snapshot.native_hit_transforms[fragment.index];
-        let local = local_point(point, matrix, snapshot.html_layout_scale)?;
+        let mut local = local_point(point, matrix, snapshot.html_layout_scale)?;
+        if cell.vertical {
+            // Measured in the vertical line's own frame, like its cells.
+            local = super::text_geometry::unturn(local, fragment.rect);
+        }
         let distance = vertical_distance(local.y, cell.rect) * matrix[2].hypot(matrix[3]) as f32;
         let mut edge = nearest_edge(local.x, cell);
         edge.0 *= matrix[0].hypot(matrix[1]) as f32;
@@ -33,9 +37,71 @@ pub(crate) fn offset(
         );
     }
     best.map(|(_, _, _, (_, offset), index)| {
-        super::text_caret_edges::canonicalize(snapshot, &cells, index, offset)
+        bidi_adjusted(&cells, index, offset).unwrap_or_else(|| {
+            super::text_caret_edges::canonicalize(snapshot, &cells, index, offset)
+        })
     })
     .ok_or(TextGeometryError::UnresolvedSource)
+}
+
+/// Blink's bidi hit-test adjustment (Chrome 156, miaskiewicz/turbo-dom#238) for a caret
+/// at an edge of a cell above its paragraph's level: next to a deeper cell it takes
+/// that cell's offset at the edge; a cell one level above the paragraph next to a
+/// paragraph-level cell (or nothing on this line) moves to the other logical end of its
+/// run (the visually contiguous cells at its level or deeper). `None` leaves the caret
+/// as hit.
+fn bidi_adjusted(cells: &[SourceClusterBox], index: usize, offset: usize) -> Option<usize> {
+    let cell = &cells[index];
+    if cell.bidi_level <= cell.paragraph_level {
+        return None;
+    }
+    let line: Vec<&SourceClusterBox> = cells
+        .iter()
+        .filter(|other| other.rect.y == cell.rect.y && other.rect.width > 0.0)
+        .collect();
+    let at_left = offset == edge_offset(cell, true);
+    let touching = |from: &SourceClusterBox, left: bool| {
+        let edge = if left {
+            from.rect.x
+        } else {
+            from.rect.x + from.rect.width
+        };
+        line.iter().copied().find(|other| {
+            let near = if left {
+                other.rect.x + other.rect.width
+            } else {
+                other.rect.x
+            };
+            (near - edge).abs() < 0.01 && !std::ptr::eq(*other, from)
+        })
+    };
+    let neighbour = touching(cell, at_left);
+    if let Some(deeper) = neighbour.filter(|n| n.bidi_level > cell.bidi_level) {
+        return Some(edge_offset(deeper, !at_left));
+    }
+    let shallow = neighbour.is_none_or(|n| n.bidi_level <= cell.paragraph_level);
+    if !shallow || cell.bidi_level != cell.paragraph_level + 1 {
+        return None;
+    }
+    let (mut start, mut end) = (cell.utf16_start, cell.utf16_end);
+    for left in [true, false] {
+        let mut far = cell;
+        while let Some(next) = touching(far, left).filter(|n| n.bidi_level >= cell.bidi_level) {
+            start = start.min(next.utf16_start);
+            end = end.max(next.utf16_end);
+            far = next;
+        }
+    }
+    Some(if offset == start { end } else { start })
+}
+
+/// The caret offset at a cell's left (`left`) or right edge.
+fn edge_offset(cell: &SourceClusterBox, left: bool) -> usize {
+    if left == cell.right_to_left {
+        cell.utf16_end
+    } else {
+        cell.utf16_start
+    }
 }
 
 fn validate_point(point: Point) -> Result<(), TextGeometryError> {
@@ -94,10 +160,21 @@ fn nearest_edge(x: f32, cell: &SourceClusterBox) -> (f32, usize) {
     } else {
         (cell.utf16_start, cell.utf16_end)
     };
-    if left <= right {
-        (left, start)
+    // At a shared edge the cell holding the point wins (a bidi boundary's two cells
+    // name different offsets; miaskiewicz/turbo-dom#238).
+    // A collapsed (zero-width) cell never beats a real cell at the same edge: Chrome
+    // hits the glyph there (a space collapsed after an empty inline box, Chrome 156).
+    let outside = if cell.rect.width == 0.0 {
+        2e-4
+    } else if (cell.rect.x..=cell.rect.x + cell.rect.width).contains(&x) {
+        0.0
     } else {
-        (right, end)
+        1e-4
+    };
+    if left <= right {
+        (left + outside, start)
+    } else {
+        (right + outside, end)
     }
 }
 

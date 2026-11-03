@@ -348,15 +348,24 @@ impl Tree {
     /// Parse original DOM-string units and retain token-end source positions.
     #[must_use]
     pub fn parse_utf16_with_source_positions(units: &[u16]) -> Self {
-        Self::positioned_units(units, false)
+        Self::positioned_units(units, false, false)
+    }
+    /// [`Tree::parse_utf16_with_source_positions`] in Chrome 156's processing-instruction
+    /// mode (see [`Tree::set_processing_instructions`]): a loaded page's `<?target data?>`
+    /// is a processing instruction, and the tree keeps the mode for its fragment parsing.
+    #[must_use]
+    pub fn parse_utf16_with_source_positions_and_processing_instructions(units: &[u16]) -> Self {
+        let mut tree = Self::positioned_units(units, false, true);
+        tree.set_processing_instructions(true);
+        tree
     }
     /// [`Tree::parse_utf16_with_source_positions`] for an iframe srcdoc document,
     /// which the HTML parser never puts in quirks mode.
     #[must_use]
     pub fn parse_srcdoc_utf16_with_source_positions(units: &[u16]) -> Self {
-        Self::positioned_units(units, true)
+        Self::positioned_units(units, true, false)
     }
-    fn positioned_units(units: &[u16], iframe_srcdoc: bool) -> Self {
+    fn positioned_units(units: &[u16], iframe_srcdoc: bool, processing_instructions: bool) -> Self {
         let queue = Rc::new(BufferQueue::default());
         let input = SourceInput::new(units);
         queue.push_back(input.encoded.as_str().into());
@@ -381,7 +390,13 @@ impl Tree {
             queue: queue.clone(),
             input,
         };
-        let tokenizer = Tokenizer::new(sink, TokenizerOpts::default());
+        let tokenizer = Tokenizer::new(
+            sink,
+            TokenizerOpts {
+                processing_instructions,
+                ..TokenizerOpts::default()
+            },
+        );
         while !matches!(tokenizer.feed(&queue), html5ever::TokenizerResult::Done) {}
         tokenizer.end();
         let dom = tokenizer.sink.builder.sink.finish();

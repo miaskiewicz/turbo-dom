@@ -7,6 +7,102 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Performance
+
+- turbo-dom-browser-env keeps a process-wide V8 bytecode cache of its engine scripts: every
+  page install (turbo-test installs one per test file) compiled each engine script from source,
+  ~8-9% of a real app suite's CPU. The cache is produced after the script ran (so it holds the
+  lazily compiled functions) and is replaced when V8 rejects it.
+- `matches()` / `closest()` classify the form-state pseudo-classes (`:disabled`, `:checked`,
+  `:invalid`, ...) only for the elements their answer can read: the subject's inclusive
+  ancestors (with their preceding siblings for `+` / `~`) and, for the validity classes, each
+  form / fieldset ancestor's controls. They classified every element of the tree in JS on each
+  call; user-event asks `matches(':disabled')` on every pointer step and MUI's rules ask
+  `:invalid` per input, so large forms were quadratic (turbo-test 0.7.0 perf work).
+  `:has()`, `:indeterminate` and `querySelector[All]` still classify the whole tree.
+- `getComputedStyle` reuses a computed style whose rules read live form / popover / dialog
+  state (`:invalid`, `:checked`, `:placeholder-shown`, `:popover-open`, `:modal`, `:open`, ...).
+  Such a style was never reused before. It is now keyed on a native live-state epoch, which every
+  change the tree version misses bumps: control values, option selectedness, custom and user
+  validity, `indeterminate`, ElementInternals validity, file selections, the popover stack,
+  modal dialogs and an opened picker. View-transition and interest state stay unreused.
+- The CSS animation / transition model (`animations.js` `cssUpdate`) runs once per style change
+  of an element, not on every computed-style read. A running animation recomputes the style on
+  each read, and the update (with `rendered()`'s ancestor walk) was 54% of the CPU of a
+  React/MUI modal test file. Its result is unchanged, and the `css_animations` Chrome controls
+  are unchanged. Gates: deterministic fresh-cascade and update-pass counters
+  (`computed_style_state_rules_reuse_gate`, `css_animation_update_runs_once_per_style_change_gate`).
+- turbo-dom-browser-env's selector-taking DOM methods (`querySelector[All]`, `matches`,
+  `closest`, ...) parse each selector string's grammar once (a bounded per-thread memo).
+  A selector without a `:` skips the five node-dependent pseudo-class rewrite passes, and
+  the SyntaxError message is built only when a selector is rejected (same exact message as
+  before). On form-heavy files this took ~9% of CPU.
+- Node wrappers carry their owner tag (DOM id + tree generation) as a small integer that
+  indexes a per-thread table, instead of a two-word BigInt that was allocated per wrapper and
+  decoded on every native call (`handle_of`, `tagged_owner` and the ownership reconcile were
+  3-5% each). Table entries are never reused, so wrappers from a discarded tree are still
+  refused (turbo-test#204).
+- The mutation fanout builds a V8 record object only when something reads it: a
+  MutationObserver, a custom element definition or the host's trusted document consumer.
+  A page that is recording mutations for script preparation, with nothing observing them,
+  no longer allocates one per mutation (4-5% on React-heavy files).
+
+### Fixed
+
+- turbo-dom-layout places background images and gradients like Chrome 156 (#248):
+  `background-size` (lengths, `%`, `auto`, `cover`, `contain`), `-position` (1-4 values),
+  `-repeat` (`repeat-x` / `-y`, two values; `space` / `round` tile like `repeat`),
+  `-origin` and `-clip` (the colour too), from the longhands or the `background`
+  shorthand, on block and inline boxes, in PNG, SVG and PDF. A background image was
+  stretched over the content box; it now tiles at its size from the padding box, which
+  changes the tools/parity image pages' `.bg` boxes (declared in
+  `tools/parity/expected/turbo-dom-248-background-layers.json`). Layers ignore
+  `border-radius`.
+- turbo-dom-raster's static screenshots (PNG and SVG) paint inline boxes like Chrome 156
+  (#244): an inline with a background, box shadow, padding, border or horizontal margin
+  keeps its box through turbo-dom-layout's static line layout and paints per line fragment
+  (`box-decoration-break: slice`: the start edge on the first fragment, the end edge on the
+  last, also across bidi-split fragments), its edges push its neighbours and count toward a
+  shrink-to-fit container's max-content width, and `layout_boxes` reports the union of its
+  fragments. `box-decoration-break: clone` repeats both edges on every fragment (they take
+  line space), and an inline box's background image / gradient spans its fragments' strip
+  (sliced) or each fragment (cloned), stretched like a block's. Plain inlines still flatten into their parent's run; the tools/parity corpora
+  hold no such inline in a static render, so no checkpoint output changes.
+- turbo-dom-layout implements `hyphens: auto` for English (`lang=en` / `en-US` / other `en-*`
+  regions; not en-GB): words break at the en-US Knuth-Liang points (the `hyphenation`
+  crate's embedded TeX `hyph-en-us` patterns, behind the new default-on `hyphenation`
+  feature, ~90 KB) under `hyphenate-limit-chars` (default 5 / 2 / 2), and a taken break
+  draws a hyphen. Like Chrome 156, each text node's letters hyphenate on their own, a
+  capitalized word, a word with a soft hyphen, `hyphens: manual | none` and unset or
+  unsupported languages are left alone, and a paragraph's last word is not hyphenated on a line with earlier
+  content. A word ending at a soft hyphen now also counts its hyphen when it has
+  `overflow-wrap` opportunities. `WordBreaking` gains `auto: Option<AutoHyphens>` and
+  `with_auto_hyphens`. Chrome on macOS hyphenates with the system dictionary, whose points
+  differ for some words. Control: `tests/fixtures/hyphens`
+  (`scripts/fixture-font-chrome-controls.mjs`) (#213).
+- turbo-dom-layout generates list markers (`::marker`) like Chrome 156: `list-item` counters
+  (`<ol start reversed>`, `<li value>`, `<ol|ul|li type>`), the `list-style-type` counter
+  styles (decimal, decimal-leading-zero, lower/upper-alpha/-latin, lower/upper-roman,
+  lower-greek, strings, none) and the `disc` / `circle` / `square` shapes,
+  `list-style-position` (and the `list-style` shorthand), the outside marker box beside the
+  item's first line box. turbo-dom-raster paints them (PNG and SVG), and
+  `cssom_view::hit::elements_at_point` hits a marker's list item (#128;
+  `scripts/list-marker-chrome-control.mjs`). The UA sheet gains Chrome's list-style-type
+  defaults and zero block margins for nested lists. `layout_recorded`'s `NodeSources` gains
+  `list_markers` (marker box / text id -> its list item's box), since a marker has no source
+  element (html2pdf tags it as the PDF/UA `Lbl`).
+- turbo-dom-raster paints inset `box-shadow`s (PNG and SVG) inside the padding box, over the
+  background and under the border, with offset, spread and blur, like Chrome 156 (#192).
+- HTML processing instructions like Chrome 156 (turbo-dom#135): `Tree::parse_utf16_with_processing_instructions`
+  and `Tree::set_processing_instructions` make the UTF-16 tokenizer parse `<?target data?>` as a
+  ProcessingInstruction (ASCII-name target other than `xml`; nothing when the input ends inside
+  one; otherwise the standard's bogus comment). turbo-dom-browser-env turns it on for every
+  document it installs or parses (loaded pages included; `parse_utf16_with_source_positions_and_processing_instructions`
+  for the source-position parse), so innerHTML / insertAdjacentHTML / createContextualFragment /
+  setHTML[Unsafe] / Document.parseHTML[Unsafe] match Chrome; a safe `setHTML` dictionary without
+  processing-instruction lists drops them and the sanitizer keeps Document-level ones, like
+  Chrome. The default mode and the conformance gates keep html5lib-tests' bogus comment.
+
 ## [0.6.0] — turbo-dom consolidation
 
 turbo-dom becomes the home of the shared browser engine of turbo-html2pdf, turbo-test

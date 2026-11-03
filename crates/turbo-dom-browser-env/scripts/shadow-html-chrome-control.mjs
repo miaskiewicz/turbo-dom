@@ -40,6 +40,8 @@ const chrome = spawn(
   executable,
   [
     "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
     "--remote-debugging-port=0",
     `--user-data-dir=${profile}`,
     "--no-first-run",
@@ -112,7 +114,7 @@ try {
     ...(values.page
       ? { page: basename(values.page), pageSha256: createHash("sha256").update(page).digest("hex") }
       : {}),
-    flags: ["--headless=new", "--disable-extensions"],
+    flags: ["--headless=new", "--use-mock-keychain", "--password-store=basic", "--disable-extensions"],
     result: JSON.parse(evaluated.result.value),
   };
   writeFileSync(resolve(values.out), `${JSON.stringify(oracle, null, 2)}\n`);

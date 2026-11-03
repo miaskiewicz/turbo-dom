@@ -63,9 +63,9 @@ return.
 | seeding documents | `install_with_html`, `try_install_with_html` (`Err(SetupTerminated)` when a watchdog terminated setup), `install_html`, `install_with_html_source_positions`, `install_with_utf16_source_positions`, `install_independent_html`, `install_independent_html_units`, `install_independent_utf16_source_positions`, `install_independent_srcdoc_units` (never quirks) |
 | serializing | `document_html()` |
 | event loop | `flush_ownership(scope)` between tasks (wrapper ownership is reconciled in batches, so building n nodes is O(n)) |
-| realms and frames | `register_dom_exception`, `capture_window_event_interfaces`, `retire_custom_element_context`, `set_computed_font_defaults` |
+| realms and frames | `register_dom_exception`, `capture_window_event_interfaces`, `retire_custom_element_context`, `set_computed_font_defaults`, `set_canvas_fonts` (canvas `measureText` fonts: the page's loaded `@font-face` faces + system fonts as a turbo-dom-layout `FontRegistry`; bundled faces otherwise) |
 | engine namespace | `engine_namespace(scope)` (the realm's internal state object, held in a V8 private: page script cannot reach it), `run_engine_script(scope, source)` (runs `source` as a function body whose `__tsNs` parameter is that namespace; `ENGINE_NAMESPACE_PARAM`) |
-| embedding hooks (turbo-surf) | the other `pub fn`s: form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import, node nonces |
+| embedding hooks (turbo-surf) | the other `pub fn`s: form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import (`parse_xml_document_units` parses `DOMParser`'s XML types into an `XMLDocument`, `<parsererror>` documents included), node nonces |
 
 Also in the crate:
 - `css_snapshot::{SheetSnapshot, RuleSnapshot}` is the JSON contract of the private
@@ -81,6 +81,16 @@ Also in the crate:
 - `test_support` has 95 constants named after their files (for example
   `KEY_ORDER_PROBE_JS`), plus `FILES` and `frame_read_should_throw`. The files ship in
   the package; consumers reference the constants and never copy the files.
+
+**Install phases (turbo-dom#249).** Inside, an install has two parts. The engine bootstrap
+(`bootstrap_engine`) does the tree-independent work: templates, natives and the engine
+scripts (about 50 `run_engine_script` calls). The document attach (`attach_document`) does
+the per-document work: parser scripts, declarative shadow roots, nonces, checkedness,
+template contents and inline handlers. The attach runs no engine script. By default every
+`install_*` call still runs the original interleaved install. Setting
+`TURBO_DOM_ATTACH_PATH=1` makes each install bootstrap the empty shell and then attach the
+parsed document. CI runs the whole suite on both paths. A V8 startup snapshot of the
+bootstrapped shell (next phase) will leave the attach as the only per-install work.
 
 `tests/public_api.rs`, `tests/host_internals_api.rs` and `tests/test_support_api.rs` pin
 every item that turbo-test and turbo-surf call, from outside the crate.
@@ -108,6 +118,7 @@ every item that turbo-test and turbo-surf call, from outside the crate.
 export RUSTY_V8_ARCHIVE=/path/to/librusty_v8_release_<target>.a   # v150.4.0
 cargo test -p turbo-dom-browser-env
 cargo test -p turbo-dom-browser-env --features host-internals,test-support
+TURBO_DOM_ATTACH_PATH=1 cargo test -p turbo-dom-browser-env --features host-internals,test-support   # split install path
 ```
 
 **Chrome controls.** Every `src/*_chrome15x.json` file is Chrome's own result for the
@@ -127,6 +138,7 @@ directory:
 | `scripts/view-transitions-chrome-control.mjs`, `scripts/shadow-html-chrome-control.mjs` | `view_transitions_chrome156.json`; shadow-root / HTML serialization / sanitizer controls |
 | `scripts/invokers-chrome-control.mjs`, `scripts/editing-input-chrome-control.mjs`, `scripts/trusted-input-chrome-control.mjs` | invokers/popover, editing, pointer and other trusted-input controls; `canvas_style_chrome156.json` (2D context `fillStyle` / `strokeStyle` / `shadowColor`, `currentcolor`), `canvas_state_chrome156.json` (2D context `save()` / `restore()` drawing-state stack); the edge probes of `edge_probes_tests.rs` (`shadow_slots_edges`, `dom_mutation_validity`, `selector_edges`, `sanitizer_edges`, `document_edges`, `receivers_edges`) |
 | `scripts/image-srcset-chrome-control.mjs` | `html_image_srcset_chrome156.json` (Playwright, DPR 1 / 2, local image server; cases from `scripts/make-image-srcset-cases.py`) |
+| `scripts/xml-documents-chrome-control.mjs` | `xml_documents_chrome156.json` (XML documents, `<parsererror>`, CDATA sections, `XMLSerializer`; Playwright with `--chrome` the frozen headless shell) |
 | `scripts/document-legacy-chrome-control.mjs` | `document_legacy_chrome156.json` (loopback HTTP/HTTPS cases) |
 | `scripts/trusted-types-control/` | Trusted Types controls (`trusted_types*_chrome155.json`); `cdp-connection.mjs` is shared with the document-legacy collector |
 

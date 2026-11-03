@@ -90,6 +90,20 @@ mod termination_tests;
 #[cfg(test)]
 #[path = "trusted_controls_tests.rs"]
 mod trusted_controls_tests;
+#[cfg(test)]
+#[path = "xpath_contexts_tests.rs"]
+mod xpath_contexts_tests;
+
+#[path = "startup_snapshot.rs"]
+pub(crate) mod startup_snapshot;
+
+#[cfg(test)]
+#[path = "install_split_tests.rs"]
+mod install_split_tests;
+
+#[cfg(test)]
+#[path = "startup_snapshot_tests.rs"]
+mod startup_snapshot_tests;
 
 #[cfg(test)]
 #[path = "engine_namespace_tests.rs"]
@@ -153,13 +167,93 @@ pub fn run_engine_script<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     source: &str,
 ) -> Option<v8::Local<'s, v8::Value>> {
+    #[cfg(test)]
+    ENGINE_SCRIPTS_RUN.with(|n| n.set(n.get() + 1));
     let namespace = engine_namespace(scope)?;
     let wrapped = format!("(function({ENGINE_NAMESPACE_PARAM}){{{source}\n}})");
     let code = v8::String::new(scope, &wrapped)?;
-    let function = v8::Script::compile(scope, code, None)?.run(scope)?;
+    let (script, produce) = compile_engine_script(scope, code, &wrapped)?;
+    let function = script.run(scope)?;
     let function = v8::Local::<v8::Function>::try_from(function).ok()?;
     let receiver = scope.get_current_context().global(scope);
-    function.call(scope, receiver.into(), &[namespace.into()])
+    let result = function.call(scope, receiver.into(), &[namespace.into()]);
+    // Produced after the call, the cache also holds the functions the install compiled lazily.
+    // V8 cannot produce a code cache while it builds a startup snapshot (turbo-dom#249).
+    if let Some(key) = produce.filter(|_| !startup_snapshot::building()) {
+        engine_code_cache::store(key, &script.get_unbound_script(scope));
+    }
+    result
+}
+
+/// Compile an engine script, consuming this process's bytecode cache for the same source.
+/// Every page (each test file's window) runs the same engine scripts; without the cache
+/// each install re-parses and re-compiles them from source. Returns the script and, when
+/// the cache missed or V8 rejected it, the key to store a fresh cache under.
+fn compile_engine_script<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    code: v8::Local<'s, v8::String>,
+    wrapped: &str,
+) -> Option<(v8::Local<'s, v8::Script>, Option<u64>)> {
+    use v8::script_compiler as sc;
+    let key = engine_code_cache::key(wrapped);
+    if let Some(bytes) = engine_code_cache::get(key) {
+        let mut source = sc::Source::new_with_cached_data(code, None, v8::CachedData::new(&bytes));
+        let script = sc::compile(
+            scope,
+            &mut source,
+            sc::CompileOptions::ConsumeCodeCache,
+            sc::NoCacheReason::NoReason,
+        )?;
+        let rejected = source.get_cached_data().is_none_or(|data| data.rejected());
+        #[cfg(test)]
+        engine_code_cache::CONSUMED.with(|consumed| consumed.borrow_mut().push(!rejected));
+        return Some((script, rejected.then_some(key)));
+    }
+    Some((v8::Script::compile(scope, code, None)?, Some(key)))
+}
+
+/// The process-wide bytecode cache of engine scripts, keyed by a hash of the wrapped source.
+/// V8 validates cached data (version, flags, source hash) and rejects a mismatch, so a stale
+/// or colliding entry only costs a normal compile.
+pub(crate) mod engine_code_cache {
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex, OnceLock};
+
+    fn entries() -> &'static Mutex<HashMap<u64, Arc<Vec<u8>>>> {
+        static ENTRIES: OnceLock<Mutex<HashMap<u64, Arc<Vec<u8>>>>> = OnceLock::new();
+        ENTRIES.get_or_init(Default::default)
+    }
+
+    pub(crate) fn key(source: &str) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        source.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    pub(crate) fn get(key: u64) -> Option<Arc<Vec<u8>>> {
+        entries().lock().unwrap().get(&key).cloned()
+    }
+
+    pub(crate) fn store(key: u64, script: &v8::Local<v8::UnboundScript>) {
+        if let Some(data) = script.create_code_cache() {
+            entries()
+                .lock()
+                .unwrap()
+                .insert(key, Arc::new(data.to_vec()));
+        }
+    }
+
+    #[cfg(test)]
+    thread_local! {
+        /// Test hook: each cache consume on this thread, `true` when V8 accepted the data.
+        pub(crate) static CONSUMED: std::cell::RefCell<Vec<bool>> = const { std::cell::RefCell::new(Vec::new()) };
+    }
+
+    #[cfg(test)]
+    pub(crate) fn insert(key: u64, data: Vec<u8>) {
+        entries().lock().unwrap().insert(key, Arc::new(data));
+    }
 }
 
 /// [`run_engine_script`] for a source that is one expression (an engine module's

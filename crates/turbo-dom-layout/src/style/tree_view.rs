@@ -292,10 +292,10 @@ impl<'v, 't> Navigator<'v, 't> {
     #[must_use]
     pub fn new(view: &'v TreeView<'t>, roots: Roots) -> Self {
         let (roots, document) = match roots {
-            Roots::Detached(roots) => (
-                roots.iter().copied().filter(|&h| view.is_kept(h)).collect(),
-                false,
-            ),
+            Roots::Detached(roots) => {
+                let kept = roots.iter().copied().filter(|&h| view.is_kept(h)).collect();
+                (kept, false)
+            }
             Roots::Document => (view.children(view.tree().root()), true),
         };
         Navigator {

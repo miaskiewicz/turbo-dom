@@ -32,8 +32,9 @@ turbo-dom-v8 ──────────────────────�
                                                  ▲          ▲
 turbo-dom ───────────────────────────────────────┘          │
   └──► turbo-dom-layout ──► turbo-dom-raster                 │
-          ▲     ▲                 ▲                          │
-          │     └── turbo-html2pdf-core                      │
+          ▲  │  ▲                 ▲                          │
+          │  │  └── turbo-html2pdf-core                      │
+          │  └──────────────────────────────────────────────►┘ (canvas measureText)
 turbo-dom-v8 ──► turbo-surf-deno-v8 0.4.1 ──► deno family ──► turbo-surf
 turbo-dom, -layout, -raster, -browser-env ─────────────────► turbo-surf
 ```
@@ -54,7 +55,7 @@ One annotated `v0.6.0` tag on the merge commit runs `.github/workflows/publish.y
 2. `turbo-dom` 0.6.0;
 3. `turbo-dom-layout` 0.6.0 (needs turbo-dom);
 4. `turbo-dom-raster` 0.6.0 (needs turbo-dom-layout);
-5. `turbo-dom-browser-env` 0.6.0 (needs turbo-dom-v8 + turbo-dom; the root manifest's
+5. `turbo-dom-browser-env` 0.6.0 (needs turbo-dom-v8 + turbo-dom + turbo-dom-layout; the root manifest's
    pre-publish `[patch]` is dropped first so it verifies against the published fork);
 6. npm `@miaskiewicz/turbo-dom` 0.6.0.
 
@@ -98,13 +99,17 @@ Manifests always name the registry version (`turbo-dom = "0.6"`,
 `.github/workflows/ci.yml` (toolchain 1.98.0). Pull requests and pushes to `main` run it on
 Linux runners plus Windows x64 (the napi build and the v8 matrix); the macOS arm64 builds
 and jobs are added only when `publish.yml` calls it with `darwin: true` for a release.
+Every job that builds a shipped Linux binary (the napi matrix, publish.yml's `crates` and
+`npm`) runs on `ubuntu-22.04` / `ubuntu-22.04-arm` (glibc 2.35), and the napi matrix and
+the npm job run `scripts/check-glibc-ceiling.sh` (`objdump -T`, fails above GLIBC_2.35);
+test-only jobs stay on `ubuntu-latest`.
 
 | job | what |
 |---|---|
 | base | napi addon matrix (linux x64 glibc/musl, linux arm64, windows x64; + macOS arm64 in release), WASM build, `cargo test -p turbo-dom-parser --lib`, `cargo test -p turbo-dom` + churn allocation gate, clippy `-p turbo-dom -p turbo-dom-parser` (+ wasm front-ends), JS / vitest / jest / html5lib conformance |
 | layout (linux; + macOS in release) | clippy (default / `svg,perf,serde,test-support` / no-default); tests default, `--no-default-features` (exact red list via `scripts/check-baseline-red.py`), `svg`, `perf`, `serde,test-support`; wasm32 check (no default features); musl check |
 | raster (linux; + macOS in release) | clippy + tests, default, `--features avif` and `--features jxl`; `coretext` / `gpu-metal` clippy and checks on macOS (release run), `gpu-metal` check on Linux |
-| v8 + browser-env | linux x64/arm64, windows x64 (+ macOS arm64 in release) × default/simdutf: generate turbo-dom-v8, prebuilt rusty_v8 150.4.0 archive (cached) as `RUSTY_V8_ARCHIVE`, fork tests (no ignored interceptor tests), browser-env tests default and `host-internals,test-support`, separate target dirs per crate × variant |
+| v8 + browser-env | linux x64/arm64, windows x64 (+ macOS arm64 in release) × default/simdutf: generate turbo-dom-v8, prebuilt rusty_v8 150.4.0 archive (cached) as `RUSTY_V8_ARCHIVE`, fork tests (no ignored interceptor tests), browser-env tests default and `host-internals,test-support`, and the latter again with `TURBO_DOM_ATTACH_PATH=1` (the split bootstrap + attach install, turbo-dom#249), separate target dirs per crate × variant |
 | msrv | `cargo +1.89 check --all-targets` for turbo-dom, -layout, -raster |
 | guards | `check-versions.py`, `check-no-selector-dual.sh`, turbo-dom-v8 generator/release self-tests + `generate.py --check`, `scripts/` and `tools/parity` self-tests, `verify-copied.sh` (verbatim + current), `verify-copied-collectors.sh`, `verify-copied-layout.sh` |
 | coverage | tarpaulin 0.37.5 (LLVM, ubuntu) per crate with `--fail-under` floors (blocking) |

@@ -63,7 +63,7 @@
     if (count < 1) throw new ErrorType(name + " requires 1 argument");
   };
   const single = (select) => !apply(hasAttribute, select, ["multiple"]);
-  const state = (option, value) => apply(mapSet, optionStates, [option, value]);
+  const state = (option, value) => { ns.bumpStyleState(); apply(mapSet, optionStates, [option, value]); };
   const deselectOthers = (select, keep) => {
     const options = optionsOf(select);
     for (let index = 0; index < options.length; index++)
@@ -91,6 +91,7 @@
       bits = [];
     for (let index = 0; index < moved.length; index++) bits[index] = selectedness(moved[index]);
     apply(insertBefore, container, [node, reference]);
+    ns.bumpStyleState();
     apply(setDelete, emptySelects, [select]);
     let claimed = null;
     for (let index = 0; index < moved.length; index++)
@@ -107,6 +108,7 @@
       deselectOthers(select, option);
     }
     apply(removeChild, apply(parentOf, option, []), [option]);
+    ns.bumpStyleState();
     apply(setDelete, emptySelects, [select]);
   }
   // Batched form of insert/remove above: the list can grow to 100000 options, so the selection is
@@ -125,6 +127,7 @@
       const parent = apply(parentOf, options[index], []);
       if (parent) apply(removeChild, parent, [options[index]]);
     }
+    ns.bumpStyleState();
     apply(setDelete, emptySelects, [select]);
   }
   // `before` is null, an HTMLElement (which must be a child of the select) or a converted long,

@@ -81,6 +81,14 @@ pub enum FragmentContent {
         face: FontFace,
         font_size: f32,
         color: Rgba,
+        /// Laid out in a vertical writing mode (miaskiewicz/turbo-dom#234): the glyph
+        /// positions stay in the line's own frame (`x` along the inline axis, `y` down
+        /// from the line-over edge) and the run paints turned a quarter clockwise, a
+        /// glyph at `(x, y)` landing at `(frag.x + frag.width - y, frag.y + x)`.
+        vertical: bool,
+        /// The glyphs stand upright (miaskiewicz/turbo-dom#239): in a `vertical` run
+        /// each glyph turns back a quarter about its pen, so it paints unturned there.
+        upright: bool,
     },
     /// A classified marker element ([`MarkerKind`]) kept opaque for the consumer
     /// (html2pdf's paged-media directives: the fragmenter/emitter read it).
@@ -172,6 +180,9 @@ pub struct ClipRect {
     pub y: f32,
     pub width: f32,
     pub height: f32,
+    /// The region's corner radius (0 = square): a background layer clipped to a
+    /// rounded box's clip area (miaskiewicz/turbo-dom#248).
+    pub radius: f32,
 }
 
 /// Break hints attached to a fragment, consumed by the fragmenter.

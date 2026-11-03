@@ -1075,7 +1075,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let Some((record, static_record)) = range_contents::accessors(scope) else {
         return;
     };
-    let Some(native) = v8::Function::new(scope, dispatch) else {
+    let Some(native) = v8::Function::new(scope, ext!(FunctionCallback, dispatch)) else {
         return;
     };
     let Some(initializer) = super::engine_expression(scope, include_str!("selection.js"))

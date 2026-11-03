@@ -33,6 +33,8 @@ mod paint_canvas_gpu;
 mod paint_png;
 mod paint_svg;
 mod style_extract;
+#[cfg(test)]
+mod vertical_upright_tests;
 #[cfg(feature = "gpu-metal")]
 mod webgl;
 
@@ -317,6 +319,18 @@ pub fn measure_text(text: &str, family_css: &str, size_px: f32, system_fonts: bo
         .select(&refs, 400, false)
         .expect("the bundled faces are registered");
     (face.measure(text, size_px, 0.0), size_px * 1.2)
+}
+
+/// Canvas `measureText(text).width` under a canvas `font` shorthand (`"italic bold 16px
+/// Inter, serif"`), as Chrome 156 measures it: the shorthand's size, weight, style and
+/// family list resolve a face from the bundled set the canvas painter draws with (700 and
+/// 400 are distinct faces), and the text is measured word by word with Blink's 16.16 glyph
+/// advances ([`FontFace::measure_canvas`](turbo_dom_layout::FontFace::measure_canvas)).
+#[must_use]
+pub fn measure_canvas_text(text: &str, font: &str) -> f64 {
+    let (size_px, families) = canvas_ops::parse_font(font);
+    let (weight, italic) = canvas_ops::parse_font_style(font);
+    canvas_ops::resolve_face(&families, weight, italic).measure_canvas(text, size_px)
 }
 
 /// The colour to fill the whole image with before painting: the canvas background

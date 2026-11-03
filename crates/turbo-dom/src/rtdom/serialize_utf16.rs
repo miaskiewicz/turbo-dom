@@ -66,7 +66,8 @@ fn node<'a>(tree: &'a Tree, handle: Handle, parent: Option<&'a str>, out: &mut V
                     pending.push(Task::Node(child, Some(raw_key)));
                 }
             }
-            NodeType::Text => {
+            // Chrome's HTML serialization writes a CDATA section as escaped text.
+            NodeType::Text | NodeType::CDataSection => {
                 let units = tree.node_value_utf16(handle).unwrap_or_default();
                 if parent.is_some_and(is_raw_text) {
                     out.extend(units);

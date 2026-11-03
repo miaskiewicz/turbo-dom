@@ -544,6 +544,23 @@ fn degenerate_zero_dimension_falls_back_to_given() {
 }
 
 #[test]
+fn zero_by_zero_intrinsic_keeps_its_zero_width() {
+    // A 0x0 image (one that represents nothing, miaskiewicz/turbo-dom#243) has no
+    // aspect ratio: an explicit height leaves its width at 0.
+    use turbo_dom_layout::image::Intrinsic;
+    let style = ComputedStyle::from_pairs([("height", "50px")]);
+    let bs = box_style(&style);
+    let ctx = SizeCtx {
+        style: &bs,
+        cb_width: 1000.0,
+        cb_height: None,
+        body_height: None,
+    };
+    let sized = size_replaced("x".into(), Intrinsic::new(0, 0, false), &ctx);
+    assert_eq!((sized.width, sized.height), (0.0, 50.0));
+}
+
+#[test]
 fn height_cap_inactive_without_body_height() {
     let style = empty_style();
     let bs = box_style(&style);
@@ -597,13 +614,21 @@ fn box_kids(
     }
 }
 
-/// Whether any box in the tree records a replaced image named `name`.
+/// Whether any box in the tree records a replaced image named `name`. An `<img>` is
+/// inline by default (miaskiewicz/turbo-dom#242), so it is an atomic item of a line box.
 fn tree_has_replaced_image(b: &turbo_dom_layout::layout::boxgen::LayoutBox, name: &str) -> bool {
+    use turbo_dom_layout::layout::boxgen::{BoxKind, InlineItem};
     let here = b
         .image
         .as_ref()
         .is_some_and(|s| s.replaced && s.name == name);
-    here || box_kids(b).iter().any(|k| tree_has_replaced_image(k, name))
+    let atoms = match &b.kind {
+        BoxKind::Lines(items) => items
+            .iter()
+            .any(|it| matches!(it, InlineItem::Atomic(k) if tree_has_replaced_image(k, name))),
+        _ => false,
+    };
+    here || atoms || box_kids(b).iter().any(|k| tree_has_replaced_image(k, name))
 }
 
 #[test]

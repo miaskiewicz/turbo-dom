@@ -24,6 +24,8 @@ pub enum NodeType {
     Element = 1,
     Attribute = 2,
     Text = 3,
+    /// An XML document's CDATA section (only XML parsing and `createCDATASection` make one).
+    CDataSection = 4,
     ProcessingInstruction = 7,
     Comment = 8,
     Document = 9,
@@ -130,6 +132,7 @@ enum NewNode {
         owner: Option<Handle>,
     },
     Text(DomString),
+    CData(DomString),
     Comment(DomString),
     ProcessingInstruction(Box<ProcessingInstructionData>),
     Doctype(Box<DoctypeData>),
@@ -155,6 +158,7 @@ impl NewNode {
             NewNode::Element { .. } => NodeType::Element,
             NewNode::Attribute { .. } => NodeType::Attribute,
             NewNode::Text(_) => NodeType::Text,
+            NewNode::CData(_) => NodeType::CDataSection,
             NewNode::Comment(_) => NodeType::Comment,
             NewNode::ProcessingInstruction(_) => NodeType::ProcessingInstruction,
             NewNode::Doctype(_) => NodeType::Doctype,
@@ -180,7 +184,7 @@ impl NewNode {
     fn char_data(&self) -> &str {
         match self {
             NewNode::ProcessingInstruction(value) => &value.data,
-            NewNode::Text(s) | NewNode::Comment(s) => s,
+            NewNode::Text(s) | NewNode::CData(s) | NewNode::Comment(s) => s,
             _ => unreachable!("char_data of a non-character node"),
         }
     }
@@ -532,6 +536,9 @@ impl NodeArena {
 mod parser_positions;
 #[path = "parser_units.rs"]
 mod parser_units;
+#[cfg(test)]
+#[path = "processing_instructions_tests.rs"]
+mod processing_instructions_tests;
 pub use parser_positions::SourcePosition;
 #[allow(clippy::pedantic)]
 #[path = "unit_tokenizer/mod.rs"]
@@ -574,6 +581,8 @@ pub struct Tree {
     source_positions: FxHashMap<Handle, SourcePosition>,
     source_attribute_positions: FxHashMap<Handle, FxHashMap<Box<[u16]>, SourcePosition>>,
     compat_mode: &'static str,
+    /// Chrome-mode processing instructions in fragment parsing (`parser_units.rs`).
+    processing_instructions: bool,
     buf_len: u32,
     new_nodes: NodeArena,
     next_handle: u32,
@@ -655,6 +664,7 @@ impl Tree {
             source_positions: FxHashMap::default(),
             source_attribute_positions: FxHashMap::default(),
             compat_mode,
+            processing_instructions: false,
             buf_len,
             new_nodes: NodeArena::Dense(Vec::new()),
             next_handle: buf_len,
@@ -1387,7 +1397,10 @@ impl Tree {
         }
         if !matches!(
             nt,
-            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction
+            NodeType::Text
+                | NodeType::CDataSection
+                | NodeType::Comment
+                | NodeType::ProcessingInstruction
         ) {
             return None;
         }
@@ -1416,6 +1429,7 @@ impl Tree {
             nt,
             NodeType::Attribute
                 | NodeType::Text
+                | NodeType::CDataSection
                 | NodeType::Comment
                 | NodeType::ProcessingInstruction
         ) {
@@ -1433,7 +1447,9 @@ impl Tree {
             // separately-documented reasons — keep them as separate, commented arms.
             #[allow(clippy::match_same_arms)]
             match self.node_type(c) {
-                NodeType::Text => out.push_str(&self.node_value(c).unwrap_or_default()),
+                NodeType::Text | NodeType::CDataSection => {
+                    out.push_str(&self.node_value(c).unwrap_or_default());
+                }
                 NodeType::Comment => {}
                 // A <template>'s content is stored as a synthetic `content` fragment
                 // child, but in the DOM it lives in `template.content`, NOT among the
@@ -1805,7 +1821,10 @@ impl Tree {
         }
         if matches!(
             nt,
-            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction
+            NodeType::Text
+                | NodeType::CDataSection
+                | NodeType::Comment
+                | NodeType::ProcessingInstruction
         ) {
             let old = if self.is_recording() {
                 self.node_value(h)
@@ -1861,7 +1880,10 @@ impl Tree {
             self.set_attribute_value(h, text);
             return;
         }
-        if nt != NodeType::Text && nt != NodeType::Comment {
+        if !matches!(
+            nt,
+            NodeType::Text | NodeType::CDataSection | NodeType::Comment
+        ) {
             return;
         }
         let old = if self.is_recording() {

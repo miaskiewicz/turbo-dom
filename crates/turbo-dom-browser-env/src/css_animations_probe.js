@@ -1,0 +1,88 @@
+(async () => {
+  // Declarative CSS animations and transitions in getAnimations() (turbo-dom#187), captured with
+  // the document timeline frozen (CDP Animation.setPlaybackRate 0).
+  const out = {};
+  const $ = (id) => document.getElementById(id);
+  const num = (value) => (typeof value === "number" && Number.isFinite(value) ? +value.toPrecision(12) : typeof value === "number" ? String(value) : value);
+  const timing = (effect) => {
+    const t = effect.getTiming();
+    return [t.delay, t.endDelay, num(t.iterations), t.direction, t.fill, t.easing, num(t.duration), t.iterationStart];
+  };
+  const row = (animation) => [
+    Object.prototype.toString.call(animation),
+    animation.constructor.name,
+    animation instanceof Animation,
+    "animationName" in animation ? animation.animationName : null,
+    "transitionProperty" in animation ? animation.transitionProperty : null,
+    animation.playState,
+    // CSS animations start on the frame before the freeze in Chrome, so only the sign is stable.
+    animation.currentTime === null ? null : animation.currentTime >= 0,
+    animation.effect.constructor.name,
+    animation.effect.target === null ? null : animation.effect.target.id,
+    timing(animation.effect),
+  ];
+  // Blink lists a keyframe's properties in its property hash map's bucket order (turbo-dom#233).
+  const keyframes = (animation) => animation.effect.getKeyframes().map((frame) => Object.keys(frame).map((key) => [key, num(frame[key])]));
+  for (const id of ["a", "m", "n", "p"]) getComputedStyle($(id)).opacity;
+  out.a = $("a").getAnimations().map(row);
+  out.aKeyframes = $("a").getAnimations().map(keyframes);
+  out.m = $("m").getAnimations().map(row);
+  out.mKeyframes = $("m").getAnimations().map(keyframes);
+  out.n = $("n").getAnimations().map(row);
+  out.p = $("p").getAnimations().map(row);
+  // Transitions: a computed-value change of a transitioned property after a style flush.
+  getComputedStyle($("t")).opacity;
+  getComputedStyle($("u")).opacity;
+  $("t").style.opacity = "0";
+  $("u").style.opacity = "0.5";
+  $("u").style.color = "green";
+  out.t = $("t").getAnimations().map(row);
+  out.tKeyframes = $("t").getAnimations().map(keyframes);
+  out.u = $("u").getAnimations().map(row);
+  // transition-property: all transitions every changed animatable property.
+  getComputedStyle($("w")).opacity;
+  $("w").style.opacity = "0";
+  $("w").style.marginLeft = "5px";
+  out.w = $("w").getAnimations().map(row);
+  out.wKeyframes = $("w").getAnimations().map(keyframes);
+  // No CSS animation runs under a display:none ancestor; it starts once the ancestor renders.
+  out.h = $("h").getAnimations().map(row);
+  $("hp").style.display = "block";
+  out.hShown = $("h").getAnimations().map(row);
+  $("hp").style.display = "none";
+  out.hHidden = $("h").getAnimations().length;
+  // Keyframe property order (turbo-dom#233): WTF hash map bucket order over CSSPropertyID, for
+  // script keyframes (inserted in code-unit order) and @keyframes (inserted in declaration order).
+  const vals = { color: "red", opacity: "0", transform: "none", marginLeft: "1px", width: "1px", backgroundColor: "red", left: "1px", top: "1px", zIndex: "1", height: "2px", fontSize: "3px", paddingTop: "1px", borderTopColor: "red", filter: "none", lineHeight: "2", translate: "1px", rotate: "1deg", scale: "2", visibility: "hidden", outlineColor: "red", letterSpacing: "1px", margin: "2px", right: "1px", bottom: "1px", maskImage: "none", maskComposite: "add", wordSpacing: "1px", fontWeight: "700" };
+  const scriptOrder = (names) => { const frame = {}; for (const name of names) frame[name] = vals[name]; return Object.keys($("p").animate([frame, frame], 1000).effect.getKeyframes()[0]); };
+  out.order = {
+    small: scriptOrder(["opacity", "color", "transform"]),
+    pair: scriptOrder(["outlineColor", "fontSize"]),
+    collide: scriptOrder(["right", "bottom", "outlineColor", "fontSize"]),
+    shorthand: scriptOrder(["marginLeft", "margin", "color", "opacity"]),
+    big: scriptOrder(Object.keys(vals)),
+    css: $("x").getAnimations().map((animation) => animation.effect.getKeyframes().map((frame) => Object.keys(frame))),
+  };
+  out.document = document.getAnimations().map((animation) => [animation.constructor.name, animation.effect.target.id, animation.animationName ?? animation.transitionProperty]);
+  // Script animations sort after CSS ones in document.getAnimations().
+  $("p").animate({ opacity: [0, 1] }, 1000);
+  out.documentWithScript = document.getAnimations().map((animation) => animation.constructor.name);
+  // Interfaces.
+  out.shape = ["CSSAnimation", "CSSTransition"].map((name) => [
+    typeof globalThis[name],
+    Object.getPrototypeOf(globalThis[name]) === Animation,
+    Reflect.ownKeys(globalThis[name].prototype).map(String),
+    (() => { try { new globalThis[name](); return "constructed"; } catch (error) { return [error.name, error.message]; } })(),
+  ]);
+  // playState basics: pause/cancel a CSS animation.
+  const [first] = $("a").getAnimations();
+  first.pause();
+  out.paused = [first.playState, first.currentTime >= 0];
+  first.cancel();
+  out.cancelled = [first.playState, first.currentTime, $("a").getAnimations().length];
+  // Removing the declaration cancels the animation.
+  const [mFirst] = $("m").getAnimations();
+  $("m").style.animation = "none";
+  out.removed = [mFirst.playState, $("m").getAnimations().length];
+  return out;
+})()

@@ -145,7 +145,10 @@ impl Styler<'_, '_> {
                     .map(|declaration| author(declaration, depth, true, usize::MAX)),
             );
         }
-        let style = resolve_matched_style(parent, &declarations);
+        let mut style = resolve_matched_style(parent, &declarations);
+        if self.capture.quirks {
+            style.set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
+        }
         let children = self.children(node, &style)?;
         Ok(StyledElement {
             tag: Tag::Html(local.to_string()),

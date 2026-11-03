@@ -38,8 +38,34 @@ pub fn paint(
     let mut pm =
         Pixmap::new(width, height).ok_or_else(|| format!("bad canvas {width}x{height}"))?;
     pm.fill(tiny_skia::Color::from_rgba8(bg.r, bg.g, bg.b, bg.a));
+    SCALED.with(|memo| memo.borrow_mut().take());
     paint_fragment(&mut pm, galley, images, Transform::identity());
     pm.encode_png().map_err(|e| format!("png encode: {e}"))
+}
+
+/// The image scaled to `size` px, memoized for the render's next tile of the same image
+/// (a background layer draws one image many times; miaskiewicz/turbo-dom#248).
+type ScaledKey = (usize, turbo_dom_layout::image::Orientation, (u32, u32));
+thread_local! {
+    static SCALED: std::cell::RefCell<Option<(ScaledKey, Option<Pixmap>)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+fn scaled(
+    image: &crate::image_paint::DecodedImage,
+    orientation: turbo_dom_layout::image::Orientation,
+    size: (u32, u32),
+) -> Option<Pixmap> {
+    let key = (std::ptr::from_ref(image) as usize, orientation, size);
+    SCALED.with(|memo| {
+        let mut memo = memo.borrow_mut();
+        if let Some((_, pixmap)) = memo.as_ref().filter(|(seen, _)| *seen == key) {
+            return pixmap.clone();
+        }
+        let pixmap = image.oriented(orientation).scaled_pixmap(size.0, size.1);
+        *memo = Some((key, pixmap.clone()));
+        pixmap
+    })
 }
 
 /// Compose a box's CSS `transform` about its absolute origin onto the inherited
@@ -116,12 +142,18 @@ fn ink_bounds(f: &Fragment, xf: Transform) -> Option<Rect> {
             b = b.max(b + dy + reach);
         }
         FragmentContent::TextLine {
-            glyphs, font_size, ..
+            glyphs,
+            font_size,
+            vertical,
+            ..
         } => {
             // Glyph outlines sit around their pens, within a couple of ems.
             let m = 2.0 * font_size;
+            let frame = glyph_frame(f, *vertical);
             for g in glyphs {
-                let (px, py) = (f.x + g.x, f.y + g.y);
+                let mut pen = [tiny_skia::Point::from_xy(f.x + g.x, f.y + g.y)];
+                frame.map_points(&mut pen);
+                let (px, py) = (pen[0].x, pen[0].y);
                 l = l.min(px - m);
                 t = t.min(py - m);
                 r = r.max(px + m);
@@ -176,7 +208,19 @@ fn paint_clipped(
     let Some(region) = Rect::from_xywh(f.x + clip.x, f.y + clip.y, clip.width, clip.height) else {
         return;
     };
-    let path = PathBuilder::from_rect(region);
+    let path = if clip.radius > 0.0 {
+        // `region` is a valid rect (positive size), so its rounded outline always builds.
+        round_rect_path(
+            region.x(),
+            region.y(),
+            region.width(),
+            region.height(),
+            clip.radius,
+        )
+        .expect("a rounded rect of a valid region")
+    } else {
+        PathBuilder::from_rect(region)
+    };
     let Some(bounds) = path.clone().transform(xf).map(|p| p.bounds()) else {
         return;
     };
@@ -218,7 +262,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
             ..
         } => {
             // An outer shadow paints behind the box (before its fill/border) so the
-            // card sits on it; inset shadows are v1-unsupported.
+            // card sits on it; an inset one paints over the background, under the border.
             if let Some(sh) = shadow.filter(|s| !s.inset && s.color.a > 0) {
                 paint_box_shadow(pm, f, *border_radius, &sh, xf);
             }
@@ -229,6 +273,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
                 if let Some(g) = gradient {
                     paint_gradient(pm, f, *border_radius, g, xf);
                 }
+                paint_inset_shadow(pm, f, border, *border_radius, shadow.as_ref(), xf);
                 paint_round_border(pm, f, border, *border_radius, xf);
             } else {
                 if let Some(bg) = background {
@@ -237,6 +282,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
                 if let Some(g) = gradient {
                     paint_gradient(pm, f, 0.0, g, xf);
                 }
+                paint_inset_shadow(pm, f, border, 0.0, shadow.as_ref(), xf);
                 paint_border(pm, f, border, xf);
             }
         }
@@ -245,8 +291,17 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
             face,
             font_size,
             color,
+            vertical,
+            upright,
             ..
-        } => paint_text(pm, f, glyphs, face, *font_size, *color, xf),
+        } => paint_text(
+            pm,
+            (f, *vertical && *upright),
+            glyphs,
+            face,
+            (*font_size, *color),
+            xf.pre_concat(glyph_frame(f, *vertical)),
+        ),
         FragmentContent::Image(placement) => paint_image(pm, f, placement, images, xf),
         FragmentContent::Marker(_) => {}
     }
@@ -272,7 +327,7 @@ fn paint_image(
 ) {
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
     let decoded = images.get(&placement.name);
-    let img = decoded.and_then(|d| d.oriented(placement.orientation).scaled_pixmap(w, h));
+    let img = decoded.and_then(|d| scaled(d, placement.orientation, (w, h)));
     // Fold the box's top-left into the transform so a transformed image (a rotated
     // thumbnail, a translated slide) maps correctly; draw the pixmap at (0,0).
     let place = xf.pre_concat(Transform::from_translate(f.x.round(), f.y.round()));
@@ -445,6 +500,85 @@ fn paint_box_shadow(
         color: sh.color,
     };
     blurred_shadow(pm, &silhouette, blur, xf, SHADOW_TILE, MAX_SHADOW_SCRATCH);
+}
+
+/// The padding box of `f` (its border box less the border widths) as `(x, y, w, h, r)`,
+/// `r` the corner radius less the widest border side (exact for a uniform border).
+pub(crate) fn padding_box(f: &Fragment, b: &BorderEdges, radius: f32) -> (f32, f32, f32, f32, f32) {
+    let (t, r, bo, l) = (
+        f32::from(b.top.width),
+        f32::from(b.right.width),
+        f32::from(b.bottom.width),
+        f32::from(b.left.width),
+    );
+    (
+        f.x + l,
+        f.y + t,
+        f.width - l - r,
+        f.height - t - bo,
+        (radius - t.max(r).max(bo).max(l)).max(0.0),
+    )
+}
+
+/// Paint an inset `box-shadow` (miaskiewicz/turbo-dom#192): the padding box in the shadow
+/// colour with a hole cut out of it — the padding box offset by `(offset_x, offset_y)`,
+/// shrunk by `spread` (its radius shrunk with it) and blurred by `blur`. Like Chrome it
+/// paints over the background and under the border, never outside the padding box.
+fn paint_inset_shadow(
+    pm: &mut Pixmap,
+    f: &Fragment,
+    border: &BorderEdges,
+    border_radius: f32,
+    shadow: Option<&BoxShadow>,
+    xf: Transform,
+) {
+    let Some(sh) = shadow.filter(|s| s.inset && s.color.a > 0) else {
+        return;
+    };
+    let (px, py, pw, ph, pr) = padding_box(f, border, border_radius);
+    // The scratch layers have the canvas's size, which tiny-skia already allocated.
+    let mut layer = Pixmap::new(pm.width(), pm.height()).expect("a canvas-sized layer");
+    fill_round_rect(&mut layer, px, py, pw, ph, pr, sh.color, xf);
+    let spread = sh.spread as f32;
+    let hole = Silhouette {
+        x: px + sh.offset_x as f32 + spread,
+        y: py + sh.offset_y as f32 + spread,
+        width: pw - 2.0 * spread,
+        height: ph - 2.0 * spread,
+        radius: (pr - spread).max(0.0),
+        color: Rgba { a: 255, ..sh.color },
+    };
+    if hole.width >= 0.5 && hole.height >= 0.5 {
+        let mut cut = Pixmap::new(pm.width(), pm.height()).expect("a canvas-sized layer");
+        let blur = shadow_blur(sh);
+        if blur < 0.5 {
+            fill_round_rect(
+                &mut cut,
+                hole.x,
+                hole.y,
+                hole.width,
+                hole.height,
+                hole.radius,
+                hole.color,
+                xf,
+            );
+        } else {
+            blurred_shadow(&mut cut, &hole, blur, xf, SHADOW_TILE, MAX_SHADOW_SCRATCH);
+        }
+        let out = PixmapPaint {
+            blend_mode: tiny_skia::BlendMode::DestinationOut,
+            ..PixmapPaint::default()
+        };
+        layer.draw_pixmap(0, 0, cut.as_ref(), &out, Transform::identity(), None);
+    }
+    pm.draw_pixmap(
+        0,
+        0,
+        layer.as_ref(),
+        &PixmapPaint::default(),
+        Transform::identity(),
+        None,
+    );
 }
 
 /// An outer shadow's corner radius for a box radius `r` and a `spread` (CSS Backgrounds 3
@@ -766,13 +900,33 @@ impl Tracer for PathSink {
 
 /// Fill a line's glyph outlines in `color` (a transparent colour paints nothing). The
 /// face's `units_per_em` is non-zero: `ttf-parser` rejects a `head` outside 16..=16384.
+/// Where a line's glyph pens land: as positioned, or for a line laid out in a vertical
+/// writing mode turned a quarter clockwise about the fragment, a pen at `(f.x + x,
+/// f.y + y)` landing at `(f.x + f.width - y, f.y + x)` (miaskiewicz/turbo-dom#234).
+pub(crate) fn glyph_frame(f: &Fragment, vertical: bool) -> Transform {
+    if vertical {
+        Transform::from_row(0.0, 1.0, -1.0, 0.0, f.x + f.width + f.y, f.y - f.x)
+    } else {
+        Transform::identity()
+    }
+}
+
+/// An upright glyph of a turned (vertical) run turns back a quarter about its pen
+/// `(x, y)`, so it paints unturned (miaskiewicz/turbo-dom#239).
+pub(crate) fn upright_turn(upright: bool, (x, y): (f32, f32)) -> Transform {
+    if upright {
+        Transform::from_rotate_at(-90.0, x, y)
+    } else {
+        Transform::identity()
+    }
+}
+
 fn paint_text(
     pm: &mut Pixmap,
-    f: &Fragment,
+    (f, upright): (&Fragment, bool),
     glyphs: &[PositionedGlyph],
     face: &FontFace,
-    font_size: f32,
-    color: Rgba,
+    (font_size, color): (f32, Rgba),
     xf: Transform,
 ) {
     if color.a == 0 {
@@ -790,7 +944,8 @@ fn paint_text(
         let mut sink = PathSink(PathBuilder::new());
         glyph::trace_glyph(&face, g.glyph_id, pen, &mut sink);
         if let Some(path) = sink.0.finish() {
-            pm.fill_path(&path, &paint, FillRule::Winding, xf, None);
+            let turn = upright_turn(upright, (pen.origin_x, pen.baseline_y));
+            pm.fill_path(&path, &paint, FillRule::Winding, xf.pre_concat(turn), None);
         }
     }
 }
@@ -1032,6 +1187,8 @@ mod tests {
                 face,
                 font_size: 30.0,
                 color: RED,
+                vertical: false,
+                upright: false,
             },
         );
         let shadowed = with_box(plain(30.0, 30.0, 20.0, 20.0, Some(RED)), |_, s, _, _| {
@@ -1065,8 +1222,16 @@ mod tests {
                 placeholder: false,
             },
         );
+        // A vertical writing-mode line paints its glyphs turned a quarter clockwise
+        // about the line box (miaskiewicz/turbo-dom#234): its ink is where they land.
+        let mut vertical_line = line.clone();
+        vertical_line.x = 60.0;
+        if let FragmentContent::TextLine { vertical, .. } = &mut vertical_line.content {
+            *vertical = true;
+        }
         // Each group alone, so one feature's margin cannot hide another's.
-        for (i, mut group) in [shadowed, line, rotated, pic].into_iter().enumerate() {
+        let groups = [shadowed, line, rotated, pic, vertical_line];
+        for (i, mut group) in groups.into_iter().enumerate() {
             group.opacity = 0.5;
             let got = render(&group, 120, 120, &images);
             let want = full_layer_reference(&group, 120, 120, &images);
@@ -1166,6 +1331,7 @@ mod tests {
             y: 0.0,
             width: -5.0,
             height: 10.0,
+            radius: 0.0,
         });
         assert!(all_white(&render(&negative, 10, 10, &HashMap::new())));
         let mut overflow = with_box(plain(0.0, 0.0, 10.0, 10.0, Some(RED)), |_, _, _, t| {
@@ -1180,6 +1346,7 @@ mod tests {
             y: 1.0,
             width: 5.0,
             height: 5.0,
+            radius: 0.0,
         });
         assert!(all_white(&render(&overflow, 10, 10, &HashMap::new())));
     }
@@ -1441,8 +1608,9 @@ mod tests {
 
     #[test]
     fn inset_and_transparent_shadows_paint_nothing_around_the_box() {
-        // Inset shadows are not painted (a known gap: Chrome paints them inside the box), and
-        // a transparent one is nothing; an opaque outer one shows below the box.
+        // An inset shadow paints only inside the box (here its hole is offset wholly out of
+        // it, so the box is the shadow colour), and a transparent one is nothing; an opaque
+        // outer one shows below the box.
         let with_shadow = |inset: bool, a: u8| {
             with_box(plain(10.0, 10.0, 20.0, 10.0, Some(RED)), |_, sh, _, _| {
                 *sh = Some(BoxShadow {
@@ -1460,14 +1628,18 @@ mod tests {
             rgb(&render(&with_shadow(false, 255), 40, 40, &images), 20, 25),
             [0, 0, 255]
         );
-        for (inset, a) in [(true, 255), (false, 0), (true, 0)] {
+        for (inset, a, inside) in [
+            (true, 255, [0, 0, 255]),
+            (false, 0, [255, 0, 0]),
+            (true, 0, [255, 0, 0]),
+        ] {
             let pm = render(&with_shadow(inset, a), 40, 40, &images);
             assert_eq!(
                 rgb(&pm, 20, 25),
                 [255, 255, 255],
                 "inset {inset}, alpha {a}"
             );
-            assert_eq!(rgb(&pm, 20, 15), [255, 0, 0], "the box");
+            assert_eq!(rgb(&pm, 20, 15), inside, "the box");
         }
     }
 
@@ -2024,6 +2196,8 @@ mod exact_tests {
                     face: face.clone(),
                     font_size: size,
                     color: BLUE,
+                    vertical: false,
+                    upright: false,
                 },
             );
             let got = drawn(&line, 90, 45);

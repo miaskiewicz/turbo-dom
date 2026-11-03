@@ -199,6 +199,9 @@ const INHERITED: &[&str] = &[
     "font-style",
     "line-height",
     "text-align",
+    "direction",
+    "writing-mode",
+    "text-orientation",
     "text-indent",
     "letter-spacing",
     "word-spacing",
@@ -208,6 +211,7 @@ const INHERITED: &[&str] = &[
     // language `text-transform` maps with (miaskiewicz/turbo-dom#208).
     "-webkit-locale",
     "hyphens",
+    "hyphenate-limit-chars",
     "word-break",
     "overflow-wrap",
     "word-wrap",
@@ -364,19 +368,13 @@ fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
     // present only when its attribute is set and usable.
     let decls: Vec<Declaration> = [
         bgcolor_decl(element),
-        element
-            .attrs
-            .get("width")
-            .and_then(attr_length)
-            .map(width_decl),
-        element
-            .attrs
-            .get("height")
-            .and_then(attr_length)
-            .map(height_decl),
+        dimension_attr(element, "width").map(width_decl),
+        dimension_attr(element, "height").map(height_decl),
         font_color_decl(element),
         align_decl(element),
         lang_decl(element),
+        list_type_decl(element),
+        dir_auto_decl(element),
     ]
     .into_iter()
     .flatten()
@@ -384,6 +382,16 @@ fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
     if !decls.is_empty() {
         push_decls(&decls, 1, (0, 0, 0), 0, out);
     }
+}
+
+/// A `width` / `height` attribute as a presentational length, except on `<canvas>`
+/// (its attributes are its natural size) and `<audio>` (Chrome 156 maps neither;
+/// miaskiewicz/turbo-dom#252).
+fn dimension_attr(element: Subject, name: &str) -> Option<String> {
+    if is_tag(element, "canvas") || is_tag(element, "audio") {
+        return None;
+    }
+    element.attrs.get(name).and_then(attr_length)
 }
 
 /// A presentational-hint declaration (level 1, never `important`).
@@ -439,8 +447,45 @@ fn align_decl(element: Subject) -> Option<Declaration> {
     Some(pres_decl("text-align", value.to_string()))
 }
 
+/// A list's or list item's `type` attribute → `list-style-type` (HTML §15.3.8): `<ol>` /
+/// `<li>` take `1` `a` `A` `i` `I` (case-sensitive), `<ul>` / `<li>` `disc` `circle` `square`
+/// (miaskiewicz/turbo-dom#128).
+fn list_type_decl(element: Subject) -> Option<Declaration> {
+    let ordered = is_tag(element, "ol") || is_tag(element, "li");
+    let unordered = is_tag(element, "ul") || is_tag(element, "li");
+    if !ordered && !unordered {
+        return None;
+    }
+    let value = element.attrs.get_ignore_case("type")?.trim();
+    let ordered_type = match value {
+        "1" => Some("decimal"),
+        "a" => Some("lower-alpha"),
+        "A" => Some("upper-alpha"),
+        "i" => Some("lower-roman"),
+        "I" => Some("upper-roman"),
+        _ => None,
+    }
+    .filter(|_| ordered);
+    let lower = value.to_ascii_lowercase();
+    let unordered_type = ["disc", "circle", "square"]
+        .into_iter()
+        .find(|t| *t == lower)
+        .filter(|_| unordered);
+    let value = ordered_type.or(unordered_type)?;
+    Some(pres_decl("list-style-type", value.to_string()))
+}
+
 /// `lang="..."` → `-webkit-locale` (Blink maps the attribute the same way), which
 /// inherits so a descendant's `text-transform` maps with the content language.
+/// `dir=auto` → the `direction` of the element's first strong character (HTML's auto
+/// directionality, miaskiewicz/turbo-dom#238); only a tree-backed element has content.
+fn dir_auto_decl(element: Subject) -> Option<Declaration> {
+    let Attrs::Tree(tree, h) = element.attrs else {
+        return None;
+    };
+    matched::dir_auto_declaration(tree, h)
+}
+
 fn lang_decl(element: Subject) -> Option<Declaration> {
     let lang = element.attrs.get("lang")?.trim();
     Some(pres_decl("-webkit-locale", lang.to_string()))
@@ -640,6 +685,7 @@ const INITIAL: &[(&str, &str)] = &[
     ("white-space", "normal"),
     ("text-transform", "none"),
     ("hyphens", "manual"),
+    ("hyphenate-limit-chars", "auto"),
     ("word-break", "normal"),
     ("overflow-wrap", "normal"),
     ("word-wrap", "normal"),
@@ -814,10 +860,10 @@ fn quad_variable_context(cands: &[Cand], parent: &ComputedStyle) -> BTreeMap<Str
 }
 
 fn expand_quad_candidates(cands: Vec<Cand>, parent: &ComputedStyle) -> Vec<Cand> {
-    if !cands
-        .iter()
-        .any(|cand| super::quad_shorthand::is_quad(&cand.property) || cand.property == "font")
-    {
+    if !cands.iter().any(|cand| {
+        super::quad_shorthand::is_quad(&cand.property)
+            || matches!(cand.property.as_str(), "font" | "list-style")
+    }) {
         return cands;
     }
     let variables = quad_variable_context(&cands, parent);
@@ -830,22 +876,23 @@ fn expand_quad_candidates(cands: Vec<Cand>, parent: &ComputedStyle) -> Vec<Cand>
     expanded
 }
 
-/// The `font` shorthand's longhands (miaskiewicz/turbo-dom#176), parsed by turbo-dom's
+/// The `font` (miaskiewicz/turbo-dom#176) and `list-style` (#128) shorthands' longhands, parsed by turbo-dom's
 /// shorthand grammar, at the shorthand's cascade position. An invalid value (or a
 /// system-font keyword, which has no longhand values here) contributes nothing; one
 /// whose `var()` fails is invalid at computed-value time and unsets every longhand.
 fn expanded_font(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec<Cand> {
-    if cand.property != "font" {
+    let name = cand.property.as_str();
+    if !matches!(name, "font" | "list-style") {
         return Vec::new();
     }
     let value = substitute_vars(&cand.value, variables, 0, &[]);
-    turbo_dom::rtdom::css_shorthand::expand("font", &value)
+    turbo_dom::rtdom::css_shorthand::expand(name, &value)
         .or_else(|| {
             // Invalid at computed-value time: a failed `var()` unsets every longhand,
             // and every `font` longhand is inherited, so `unset` is `inherit`.
             cand.value
                 .contains("var(")
-                .then(|| turbo_dom::rtdom::css_shorthand::expand("font", "inherit"))
+                .then(|| turbo_dom::rtdom::css_shorthand::expand(name, "inherit"))
                 .flatten()
         })
         .unwrap_or_default()

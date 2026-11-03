@@ -20,10 +20,10 @@
 // crates/turbo-dom-layout/tests/html_document_chrome.rs (boxes, through `layout_boxes`).
 //
 // Usage: node scripts/paint-chrome-control.mjs [--chrome PATH] [--out PATH]
-//   --chrome defaults to the Playwright-cached Chrome for Testing 156;
+//   --chrome defaults to the frozen Chrome 156 headless shell (~/.cache/turbo-consolidation);
 //   --out    defaults to crates/turbo-dom-raster/tests/fixtures/paint_chrome156.json.
 // Needs playwright-core: PLAYWRIGHT_CORE (default: ../turbo-surf/node_modules/playwright-core).
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -38,7 +38,7 @@ const chromePath =
   values.chrome ||
   join(
     homedir(),
-    "Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+    ".cache/turbo-consolidation/chrome156/chrome-headless-shell-mac-arm64/chrome-headless-shell",
   );
 const out = resolve(values.out || join(repo, "crates/turbo-dom-raster/tests/fixtures/paint_chrome156.json"));
 const playwrightCore =
@@ -59,6 +59,18 @@ const TABLE = (style, caption, cellStyle = "") =>
 // A 100x40 PNG sprite: left half red, right half blue.
 const SPRITE =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=";
+
+// The fixture Liberation Serif (the bundled face the screenshot's font registry resolves),
+// injected as an @font-face after load so the recorded `html` stays small.
+const FONT = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/liberation-serif/LiberationSerif-Regular.ttf")).toString("base64");
+const FACE = `@font-face{font-family:"Liberation Serif";src:url(data:font/ttf;base64,${FONT})}`;
+const SERIF = `font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent`;
+// A `w`x`h` inline-block, transparent unless `bg` is given.
+const ATOM = (w, h, bg = "", cid = "") => `<span${cid ? ` data-cid="${cid}"` : ""} style="display:inline-block;width:${w}px;height:${h}px${bg ? `;background:${bg}` : ""}"></span>`;
+const RTL_OVERRIDE = (inner) => `<span style="direction:rtl;unicode-bidi:bidi-override">${inner}</span>`;
+
+// A 40x40 inline-block of colour `bg`.
+const IB = (bg, cid) => `<span data-cid="${cid}" style="display:inline-block;width:40px;height:40px;background:${bg}"></span>`;
 
 const CASES = [
   // miaskiewicz/turbo-dom#51.
@@ -235,6 +247,253 @@ const CASES = [
     html: DOC(`<div style="${at(600, 300)};width:100px;height:100px;background:#0000ff;box-shadow:0 0 400px #000000"></div>`),
     probes: [[550, 350], [500, 350], [450, 350], [650, 250], [650, 150], [400, 600]],
   },
+  // miaskiewicz/turbo-dom#192: inset shadows paint inside the padding box, over the
+  // background and under the border, with offset / spread / blur.
+  {
+    // An offset hard inset shadow is a band along the top and left padding edges.
+    id: "inset-hard-offset",
+    html: DOC(`<div style="${at(20, 20)};width:60px;height:60px;background:#00ff00;box-shadow:inset 10px 10px 0 #ff0000"></div>`),
+    probes: [[25, 50], [50, 25], [25, 25], [50, 50], [77, 50], [50, 77], [15, 50], [85, 85]],
+  },
+  {
+    // A spread ring sits inside a 4px border, which paints over nothing of it.
+    id: "inset-spread-border",
+    html: DOC(`<div style="${at(120, 20)};width:60px;height:60px;background:#00ff00;border:4px solid #0000ff;box-shadow:inset 0 0 0 6px #ff0000"></div>`),
+    probes: [[122, 54], [127, 54], [133, 54], [137, 54], [154, 54], [154, 27], [154, 33], [181, 54], [154, 86], [154, 82]],
+  },
+  {
+    // A rounded box: the ring follows the padding-box radius; corners outside stay the backdrop.
+    id: "inset-spread-round",
+    html: DOC(`<div style="${at(220, 20)};width:60px;height:60px;background:#00ff00;border-radius:20px;box-shadow:inset 0 0 0 6px #ff0000"></div>`),
+    probes: [[221, 21], [223, 50], [250, 23], [250, 50], [278, 79], [229, 29], [235, 35], [250, 77]],
+  },
+  {
+    // A blurred inset shadow: dark at the padding edge, fading to the background inside.
+    id: "inset-blur",
+    html: DOC(`<div style="${at(320, 20)};width:80px;height:80px;background:#00ff00;box-shadow:inset 0 0 10px 4px #ff0000"></div>`),
+    probes: [[321, 60], [323, 60], [360, 21], [360, 60], [345, 60], [340, 40], [398, 98]],
+  },
+  {
+    // A spread larger than half the box fills the whole padding box.
+    id: "inset-full",
+    html: DOC(`<div style="${at(420, 20)};width:40px;height:40px;background:#00ff00;border:2px solid #0000ff;box-shadow:inset 0 0 0 30px #ff0000"></div>`),
+    probes: [[442, 42], [425, 25], [421, 42], [442, 63]],
+  },
+  // miaskiewicz/turbo-dom#238: the screenshot paints bidi-reordered runs. An override
+  // reverses its atoms (U+FFFC is a neutral, so `bidi-override` makes it R), an RTL
+  // paragraph places its neutral atoms right to left, and `<bdo>` overrides in line.
+  {
+    id: "bidi-override-atoms",
+    html: DOC(`<div style="${at(0, 0)};font-size:0"><span style="direction:rtl;unicode-bidi:bidi-override">${IB("#ff0000", "a")}${IB("#00ff00", "b")}${IB("#0000ff", "c")}</span></div>`),
+    probes: [[20, 20], [60, 20], [100, 20], [130, 20]],
+  },
+  {
+    id: "bidi-rtl-paragraph-atoms",
+    html: DOC(`<div dir="rtl" style="${at(0, 50)};width:200px;font-size:0">${IB("#ff0000", "d")}${IB("#0000ff", "e")}</div>`),
+    probes: [[180, 70], [140, 70], [100, 70], [20, 70]],
+  },
+  {
+    // `<bdo dir=rtl>` is an inline isolate-override: its atoms reverse in place.
+    id: "bidi-bdo-atoms",
+    html: DOC(`<div style="${at(0, 110)};font-size:0"><bdo dir="rtl">${IB("#ff0000", "f")}${IB("#00ff00", "g")}</bdo>${IB("#0000ff", "h")}</div>`),
+    probes: [[20, 130], [60, 130], [100, 130], [140, 130]],
+  },
+  // miaskiewicz/turbo-dom#244: an inline box paints its background, padding and border
+  // per line fragment (box-decoration-break: slice): the start edge on its first
+  // fragment, the end edge on its last; padding and border also push its neighbours.
+  // Text is transparent so the probes see the decoration only. The text cases' boxes
+  // follow the text advances in Chrome's 1/64px LayoutUnits (miaskiewicz/turbo-dom#246).
+  {
+    id: "inline-background-text",
+    html: DOC(`<div style="${at(20, 20)};${SERIF}">aaa <span data-cid="s" style="background:#ff0000">MMMM</span> bbb${ATOM(10, 10, "", "a")}</div>`),
+    probes: [[87, 35], [53, 35], [121, 35], [49, 35], [125, 35], [87, 25], [87, 22], [87, 45], [87, 48]],
+  },
+  {
+    id: "inline-edges-text",
+    html: DOC(`<div style="${at(20, 20)};${SERIF}">aa<span data-cid="s" style="background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px">MM</span>${ATOM(40, 40, "#00ff00", "a")}</div>`),
+    probes: [[49, 50], [52, 50], [104, 50], [87, 36], [87, 40], [87, 69], [87, 73], [45, 50], [110, 50], [135, 40]],
+  },
+  {
+    id: "inline-slice-atoms",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 50], [27, 50], [108, 50], [112, 50], [60, 40], [22, 80], [104, 80], [108, 80], [112, 80], [60, 65]],
+  },
+  {
+    id: "inline-bidi-split-atoms",
+    html: DOC(`<div style="${at(20, 20)};font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 0;border-left:4px solid #0000ff;border-right:4px solid #0000ff">${ATOM(40, 30)}${RTL_OVERRIDE(ATOM(40, 30))}</span>${RTL_OVERRIDE(ATOM(40, 30, "#00ff00"))}</div>`),
+    probes: [[22, 50], [40, 50], [62, 50], [84, 52], [84, 40], [106, 52], [142, 52], [146, 52], [150, 52]],
+  },
+  // `box-decoration-break: clone`: every fragment has both edges, which also take line
+  // space (two atoms still fit each 100px line with 10px edges on both sides).
+  {
+    id: "inline-clone-atoms",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 50], [27, 50], [100, 50], [113, 50], [118, 50], [122, 50], [22, 80], [27, 80], [113, 80], [118, 80], [122, 80], [60, 65]],
+  },
+  {
+    // A forced break inside a cloned box: both lines' fragments repeat both edges.
+    id: "inline-clone-br",
+    html: DOC(`<div style="${at(20, 20)};width:200px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}<br>${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 50], [113, 50], [118, 50], [122, 50], [22, 80], [27, 80], [73, 80], [78, 80], [82, 80]],
+  },
+  // miaskiewicz/turbo-dom#248: background-size / -position / -repeat / -origin / -clip.
+  // SPRITE is 100x40, left half red, right half blue; the boxes' colour is green.
+  {
+    id: "bg-size-position-no-repeat",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#00ff00 url(${SPRITE}) no-repeat;background-size:50px 20px;background-position:30px 10px"></div>`),
+    assets: [SPRITE],
+    probes: [[60, 40], [90, 40], [110, 40], [40, 25], [60, 55], [52, 32], [98, 48]],
+  },
+  {
+    id: "bg-default-repeat",
+    html: DOC(`<div style="${at(20, 20)};width:250px;height:90px;background:#00ff00 url(${SPRITE})"></div>`),
+    assets: [SPRITE],
+    probes: [[40, 40], [100, 40], [140, 40], [200, 40], [240, 40], [260, 40], [40, 80], [100, 80], [240, 105]],
+  },
+  {
+    id: "bg-repeat-x",
+    html: DOC(`<div style="${at(20, 20)};width:300px;height:100px;background:#00ff00 url(${SPRITE}) repeat-x 0 50%/40px 16px"></div>`),
+    assets: [SPRITE],
+    probes: [[30, 70], [50, 70], [70, 70], [90, 70], [310, 70], [30, 50], [30, 90]],
+  },
+  {
+    id: "bg-repeat-y",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:200px;background:#00ff00 url(${SPRITE}) repeat-y right top/40px 16px"></div>`),
+    assets: [SPRITE],
+    probes: [[190, 28], [210, 28], [190, 44], [210, 200], [100, 28], [170, 28]],
+  },
+  {
+    id: "bg-contain",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#00ff00 url(${SPRITE}) no-repeat;background-size:contain"></div>`),
+    assets: [SPRITE],
+    probes: [[60, 60], [160, 60], [100, 110], [100, 98]],
+  },
+  {
+    id: "bg-cover-center",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#00ff00 url(${SPRITE}) no-repeat center/cover"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 70], [110, 70], [130, 70], [215, 70], [120, 22], [120, 118]],
+  },
+  {
+    id: "bg-position-keywords",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#00ff00 url(${SPRITE}) no-repeat right 25% bottom 10px/40px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[145, 100], [165, 100], [175, 100], [125, 100], [155, 85], [155, 112]],
+  },
+  {
+    // A transparent border and padding: the image's origin is the content box, the
+    // painting area (colour included) the padding box.
+    id: "bg-origin-clip",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:60px;padding:10px;border:10px solid transparent;background:#00ff00 url(${SPRITE}) no-repeat content-box padding-box;background-size:20px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 50], [35, 50], [45, 45], [55, 45], [65, 45], [75, 75], [145, 50]],
+  },
+  {
+    id: "bg-gradient-tiles",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:60px;background:#00ff00 linear-gradient(to right,#ff0000,#0000ff) 0 0/40px 30px"></div>`),
+    assets: [],
+    probes: [[22, 30], [58, 30], [62, 30], [98, 30], [22, 65], [58, 65]],
+  },
+  {
+    // `space`: 5 whole 40px tiles over 220px, 5px apart, the first at the edge.
+    id: "bg-space",
+    html: DOC(`<div style="${at(20, 20)};width:220px;height:60px;background:#00ff00 url(${SPRITE}) space;background-size:40px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 30], [55, 30], [62, 30], [67, 30], [97, 30], [102, 30], [205, 30], [235, 30], [237, 30], [25, 70]],
+  },
+  {
+    // `round`: 230 / 40 rounds to 6 tiles of 38.33px (20 / 20 rows stay 20px).
+    id: "bg-round",
+    html: DOC(`<div style="${at(20, 20)};width:230px;height:60px;background:#00ff00 url(${SPRITE}) round;background-size:40px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 30], [56, 30], [60, 30], [76, 30], [96, 30], [98, 30], [138, 30], [244, 30], [248, 30], [25, 75]],
+  },
+  {
+    // A rounded box: the layer is clipped to the border box's outer radius, and the
+    // (opaque) border paints over it.
+    id: "bg-radius-border-box",
+    html: DOC(`<div style="${at(20, 20)};width:80px;height:80px;border:10px solid #ffff00;border-radius:30px;background:#00ff00 url(${SPRITE}) center/40px 40px"></div>`),
+    assets: [SPRITE],
+    probes: [[21, 21], [24, 24], [31, 31], [25, 70], [70, 70], [80, 70], [118, 118]],
+  },
+  {
+    // `background-clip: padding-box` clips to the inner radius (30 - 10px border).
+    id: "bg-radius-padding-box",
+    html: DOC(`<div style="${at(20, 20)};width:80px;height:80px;border:10px solid transparent;border-radius:30px;background:#00ff00 url(${SPRITE}) padding-box;background-size:40px 40px"></div>`),
+    assets: [SPRITE],
+    probes: [[25, 70], [31, 31], [33, 33], [40, 40], [70, 40], [109, 109], [106, 106]],
+  },
+  {
+    // 75 x 75 = 5625 tiles: every one paints (the far corner too).
+    id: "bg-many-tiles",
+    html: DOC(`<div style="${at(20, 20)};width:600px;height:300px;background:#00ff00 url(${SPRITE});background-size:8px 4px"></div>`),
+    assets: [SPRITE],
+    probes: [[21, 21], [25, 21], [613, 317], [617, 317], [21, 317], [617, 21]],
+  },
+  {
+    // An inline `content-box` origin: the first fragment's content starts after its
+    // left padding, the last ends before its right padding; the 20px image sits at the
+    // strip's content end.
+    id: "inline-bg-content-box",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span style="background:#00ff00 url(${SPRITE}) no-repeat content-box right center/20px 10px;background-clip:border-box;padding:5px 10px">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[85, 80], [95, 80], [105, 80], [75, 80], [25, 50]],
+  },
+  {
+    // An inline box: the positioning area is its fragments' strip (160px over two
+    // lines); a right-aligned 40px no-repeat image lands at the end of the last one.
+    id: "inline-bg-position",
+    html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:#00ff00 url(${SPRITE}) no-repeat right 0/40px 100%;padding:5px 0">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[25, 52], [95, 52], [25, 82], [65, 82], [95, 82]],
+  },
+  // An inline box's background image / gradient (stretched over its padding box here):
+  // sliced, the fragments show consecutive pieces of one image laid over their strip;
+  // cloned, each fragment shows the whole image.
+  {
+    id: "inline-image-slice",
+    html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:url(${SPRITE}) 0 0/100% 100% no-repeat;padding:5px 0">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[25, 52], [55, 52], [95, 52], [25, 82], [55, 82], [95, 82]],
+  },
+  {
+    id: "inline-image-clone",
+    html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:url(${SPRITE}) 0 0/100% 100% no-repeat;padding:5px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[25, 52], [95, 52], [25, 82], [95, 82]],
+  },
+  {
+    id: "inline-gradient-slice",
+    html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:linear-gradient(to right,#ff0000,#0000ff);padding:5px 0">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 52], [98, 52], [22, 82], [98, 82]],
+  },
+  {
+    id: "inline-gradient-clone",
+    html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:linear-gradient(to right,#ff0000,#0000ff);padding:5px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 52], [98, 52], [22, 82], [98, 82]],
+  },
+  // miaskiewicz/turbo-dom#252 (`media-*`): <canvas>, <video>, <audio controls> and <object>
+  // are replaced boxes that paint their own background and border (a 4px blue border, a
+  // 6px green padding and background, in horizontal and vertical-rl writing modes); a
+  // <video> paints its poster image. Chrome's 2D canvas content is the embedder's
+  // (`canvas_ops_png`), so an empty canvas shows its background.
+  ...["canvas width=40 height=20", "video width=40 height=20", "audio controls", "object width=40 height=20"].flatMap((element) => {
+    const tag = element.split(" ")[0];
+    // Chrome paints the audio controls' panel over the content box, which a screenshot
+    // here does not: only the frame is probed there.
+    const probes = tag === "audio" ? [[22, 22], [28, 28], [26, 40], [21, 60]] : [[22, 22], [28, 28], [26, 40], [34, 34], [21, 60], [90, 30]];
+    const media = `<${element} data-cid="m" style="background:#00ff00;border:4px solid #0000ff;padding:6px"></${tag}>`;
+    return [
+      { id: `media-${tag}-frame`, html: DOC(`<div data-cid="p" style="${at(20, 20)};font-size:0">${media}</div>`), probes },
+      { id: `media-${tag}-frame-rl`, html: DOC(`<div data-cid="p" style="${at(20, 20)};font-size:0;writing-mode:vertical-rl">${media}</div>`), probes },
+    ];
+  }),
+  {
+    id: "media-video-poster",
+    html: DOC(`<video data-cid="m" poster="${SPRITE}" style="${at(20, 20)};width:100px;height:40px"></video>`),
+    assets: [SPRITE],
+    probes: [[25, 40], [65, 40], [75, 40], [115, 40], [125, 40]],
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
@@ -293,12 +552,14 @@ function classOf([r, g, b]) {
   return "?";
 }
 
-const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 const cases = [];
 for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
+  await page.addStyleTag({ content: FACE });
+  await page.evaluate(() => document.fonts.ready);
   const boxes = await page.evaluate(async () => {
     for (const img of document.images) await img.decode().catch(() => {});
     const r = (n) => Math.round(n * 1000) / 1000;

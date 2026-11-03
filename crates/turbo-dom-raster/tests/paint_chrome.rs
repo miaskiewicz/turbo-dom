@@ -139,10 +139,48 @@ fn clip_rect_clips_the_box_and_its_descendants_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// miaskiewicz/turbo-dom#238: the screenshot paints bidi-reordered runs — an override's
+/// atoms reversed, an RTL paragraph's atoms right to left, reordered inline boxes with
+/// their backgrounds.
+#[test]
+fn bidi_reordered_runs_paint_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("bidi-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// miaskiewicz/turbo-dom#244: an inline box paints its background, padding and border per
+/// line fragment (`box-decoration-break: slice`): the start edge on its first fragment,
+/// the end edge on its last, also when bidi reordering splits it; its padding, border and
+/// margin push its neighbours. `layout_boxes` gives the union of its fragments. The SVG
+/// screenshot is checked by [`svg_screenshots_paint_like_chrome_156`].
+#[test]
+fn inline_box_decorations_paint_per_fragment_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("inline-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// miaskiewicz/turbo-dom#248: `background-size` / `-position` / `-repeat` / `-origin` /
+/// `-clip` place and tile a block's background image or gradient like Chrome (the inline
+/// case is `inline-bg-position`). SVG: [`svg_screenshots_paint_like_chrome_156`].
+#[test]
+fn background_layers_are_sized_positioned_and_tiled_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("bg-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// miaskiewicz/turbo-dom#81: the screenshot's initial containing block is its viewport.
 #[test]
 fn fixed_and_icb_boxes_anchor_to_the_viewport_like_chrome_156() {
     let failures = differences(|id| id.starts_with("icb-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// miaskiewicz/turbo-dom#252: `<canvas>`, `<video>`, `<audio controls>` and `<object>` are
+/// replaced boxes painting their own background and border, in horizontal and vertical
+/// writing modes, and a `<video>` its poster.
+#[test]
+fn media_boxes_paint_their_frame_and_poster_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("media-"));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
@@ -233,9 +271,9 @@ fn shadow_blur_is_capped_at_256px_like_chrome_156() {
 
 /// The SVG screenshot rasterized by resvg. This resvg build has no `raster-images` decoders
 /// (turning them on in the dev-dependency would also change turbo-dom-layout's rasterizer
-/// under test), so each embedded PNG `data:` image is first re-embedded as an SVG of its
-/// pixels (one rect per run of equal pixels, crisp edges) — the same image, drawn the same
-/// way into its `<image>` box.
+/// under test), so each embedded PNG `data:` image element is first replaced by an inline
+/// `<svg>` of its pixels (one rect per run of equal pixels, crisp edges) with the same box
+/// — the same image, drawn the same way; inline, so a `<use>`d image is parsed once.
 fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
     use resvg::{tiny_skia as rsk, usvg};
     use std::fmt::Write;
@@ -247,7 +285,7 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
         let png = decode_data_url(&svg[start..end]).unwrap().bytes;
         let img = image::load_from_memory(&png).unwrap().to_rgba8();
         let mut pixels = format!(
-            "<svg xmlns='http://www.w3.org/2000/svg' width='{0}' height='{1}' viewBox='0 0 {0} {1}' preserveAspectRatio='none' shape-rendering='crispEdges'>",
+            "viewBox='0 0 {0} {1}' shape-rendering='crispEdges'>",
             img.width(),
             img.height()
         );
@@ -270,8 +308,10 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
             }
         }
         pixels.push_str("</svg>");
-        let escaped = pixels.replace('<', "&lt;").replace('>', "&gt;");
-        svg.replace_range(start..end, &format!("data:image/svg+xml;utf8,{escaped}"));
+        let open = svg[..at].rfind("<image ").unwrap();
+        let close = end + svg[end..].find("/>").unwrap() + 2;
+        let attrs = svg[open + "<image ".len()..at].to_string();
+        svg.replace_range(open..close, &format!("<svg {attrs}{pixels}"));
     }
     let tree = usvg::Tree::from_str(&svg, &usvg::Options::default()).expect("valid svg");
     let mut pm = rsk::Pixmap::new(VIEWPORT.width, VIEWPORT.height).unwrap();
@@ -354,4 +394,14 @@ fn svg_screenshot_clips_with_a_clip_path() {
         !empty.contains("<clipPath") && !empty.contains(r##"fill="#ff0000""##),
         "{empty}"
     );
+}
+
+/// Inset shadows paint inside the padding box, over the background and under the border,
+/// with their offset, spread (following the padding-box radius) and blur, in both painters
+/// (miaskiewicz/turbo-dom#192: they were skipped).
+#[test]
+fn inset_box_shadows_paint_inside_the_padding_box_like_chrome_156() {
+    let mut failures = differences(|id| id.starts_with("inset-"));
+    failures.extend(svg_differences(|id| id.starts_with("inset-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

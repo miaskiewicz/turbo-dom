@@ -7,6 +7,15 @@
 mod cascade;
 mod parser;
 mod quad_shorthand;
+
+/// The four side longhands a `margin` / `padding` / `inset` / `border-{width,style,color}`
+/// value sets, in top-right-bottom-left order (`None` when it is not a valid one).
+pub(crate) fn expand_quad<'a>(
+    property: &str,
+    value: &'a str,
+) -> Option<[(&'static str, &'a str); 4]> {
+    quad_shorthand::expand(property, value)
+}
 mod token;
 
 pub(crate) use cascade::presentational_declarations_of;
@@ -56,9 +65,10 @@ p { margin: 1em 0 }
 ul, ol { margin: 1em 0; padding-left: 40px }
 small { font-size: 0.8em; display: inline }
 span { display: inline }
+img { display: inline }
 b, strong, i, em { display: inline }
 code, kbd, samp { display: inline }
-sub, sup, abbr, cite, q, mark, u, s, label, time { display: inline }
+sub, sup, abbr, cite, q, mark, u, s, label, time, bdi, bdo { display: inline }
 sub, sup { font-size: 0.83em }
 sub { vertical-align: sub }
 sup { vertical-align: super }
@@ -70,6 +80,11 @@ caption { display: table-caption; text-align: -webkit-center }
 td, th { display: table-cell; padding: 1px }
 th { font-weight: bold; text-align: center }
 li { display: list-item }
+ul, menu, dir { list-style-type: disc }
+ol { list-style-type: decimal }
+ul ul, ol ul { list-style-type: circle }
+ol ol ul, ol ul ul, ul ol ul, ul ul ul { list-style-type: square }
+ul ul, ul ol, ol ul, ol ol { margin-top: 0; margin-bottom: 0 }
 center { display: block; text-align: -webkit-center }
 hr { display: block; height: 1px; background-color: #cccccc }
 input { display: inline-block; width: 150px; height: 1.4em; border: 1px solid #a9a9a9; background-color: #ffffff }
@@ -78,6 +93,15 @@ textarea { display: inline-block; width: 200px; height: 3em; border: 1px solid #
 select, button { display: inline-block; border: 1px solid #a9a9a9; background-color: #efefef }
 button, select, meter, progress, input[type=button], input[type=submit], input[type=reset], input[type=color], input[type=checkbox], input[type=radio], input[type=search] { box-sizing: border-box }
 template { display: none }
+canvas, video, audio, object, embed { display: inline }
+audio:not([controls]) { display: none }
+video { object-fit: contain }
+[dir=rtl i] { direction: rtl }
+[dir=ltr i] { direction: ltr }
+[dir=rtl i], [dir=ltr i], [dir=auto i], bdi { unicode-bidi: isolate }
+bdo { unicode-bidi: bidi-override }
+bdo[dir=rtl i], bdo[dir=ltr i], bdo[dir=auto i] { unicode-bidi: isolate-override }
+textarea[dir=auto i], pre[dir=auto i] { unicode-bidi: plaintext }
 ";
 
 /// The user-agent rules a whole HTML document adds to [`UA_CSS`] when it is styled
@@ -108,6 +132,11 @@ box-sizing: border-box !important; min-width: 0 !important; max-width: none !imp
 min-height: 0 !important; max-height: none !important; width: 100% !important; \
 height: 100% !important; transform: none !important; \
 -internal-top-layer: fullscreen !important }";
+
+/// The internal property the live style pass sets on every element of a quirks-mode
+/// (`BackCompat`) document: its lines follow the line height quirk (a line takes the
+/// block's strut only for text directly in the block; miaskiewicz/turbo-dom#190).
+pub const QUIRKS_LINE_HEIGHT: &str = "-internal-quirks-line-height";
 
 static FULLSCREEN_UA_SHEET: std::sync::LazyLock<Stylesheet> =
     std::sync::LazyLock::new(|| parse_stylesheet(FULLSCREEN_UA_CSS));

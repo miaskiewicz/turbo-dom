@@ -47,7 +47,9 @@ npm run complexity:js     # oxlint `complexity` max 15 over src/ + crates/turbo-
 CI (`.github/workflows/ci.yml`) has one job family per crate (base / layout / raster / v8 +
 browser-env matrix / msrv 1.89 / guards / coverage floors / complexity). PRs and pushes run on
 Linux + Windows; `publish.yml` runs it on a `v*` tag with `darwin: true` (adds the macOS arm64
-builds and jobs) and then publishes every package in dependency order. See `docs/CONSOLIDATION.md`.
+builds and jobs) and then publishes every package in dependency order. Linux binaries (napi
+matrix, publish `crates`/`npm`) build on `ubuntu-22.04`(`-arm`), glibc 2.35, never `ubuntu-latest`;
+`scripts/check-glibc-ceiling.sh` fails any linux-gnu `.node` needing > GLIBC_2.35. See `docs/CONSOLIDATION.md`.
 
 **Two independent runtimes, one repo.** The JS runtime (`src/runtime/*.mjs`, the npm/vitest path)
 and the Rust runtime (`crates/turbo-dom`, the workspace-member crate published to crates.io as
@@ -153,7 +155,10 @@ package or publish workflow.
   depends on it and re-exports it at its old paths. Since S2 the cascade styles a turbo-dom
   `Tree` directly (`style::TreeView` + `Roots::{Detached, Document}`; since P5b the HTML
   drive styles the whole document like Chrome — head `<style>`s, real `<html>`/`<body>` boxes
-  with `body { margin: 8px }`, root-relative `rem`, canvas background; turbo-html2pdf#29); html2pdf's `t:` directives are opaque `MarkerKind` markers
+  with `body { margin: 8px }`, root-relative `rem`, canvas background; turbo-html2pdf#29;
+  since turbo-dom#245 its PDF metric path (`layout_html`/`layout_boxes`) also takes Chrome's
+  line box model — baseline-aligned lines with the block strut, inline elements as inline
+  boxes, the quirks-mode line height quirk — unless `LayoutOptions::flatten_inline_elements`); html2pdf's `t:` directives are opaque `MarkerKind` markers
   from a caller classifier, and its PDF switches are runtime `LayoutOptions`/`StyleOptions`
   (no PDF features here). Since S3b selectors parse and match with turbo-dom's engine
   (`style::RuleSelectors` = `parse_for_cascade`; the scope `style::Navigator` implements
@@ -171,7 +176,47 @@ package or publish workflow.
   (`LayoutSnapshot::unsupported_inline_geometry`; turbo-surf#31/#36, Chrome control
   `scripts/live-geometry-chrome-control.mjs` -> `src/live/chrome_tests.rs`; the scroll /
   visibility / caret / Range reads: `scripts/cssom-view-chrome-control.mjs` ->
-  `tests/fixtures/cssom_view_chrome156.json`, asserted in `cssom_view::{scroll, visibility, text, range}`). Since S5 the legacy owned `Node` input is gone (`node.rs`,
+  `tests/fixtures/cssom_view_chrome156.json`, asserted in `cssom_view::{scroll, visibility, text, range}`).
+  Since turbo-dom#190 an RTL block container places its block children from the right
+  (the UA maps `dir`; `direction` inherits), an RTL scroller overflows to the left with
+  offsets `ScrollMetrics::min_x..=0` (`scroll::inline_alignment` swaps start/end for
+  scrollIntoView), and a quirks-mode live document follows the line height quirk (the
+  style pass marks it with `style::QUIRKS_LINE_HEIGHT`; since turbo-dom#238 the static
+  `style_html_tree` marks a BackCompat document too). Since turbo-dom#234 `vertical-rl` /
+  `vertical-lr` lay out through a logical-coordinate layer (`layout::writing`): a box whose
+  writing mode differs from its parent's (`LayoutBox::writing_root`, an independent formatting
+  context) is laid out in its own inline/block space from a relabelled copy of its subtree
+  (`height` = inline size, physical sides renamed; orthogonal `auto` inline sizes fit the
+  available size, CSS Writing Modes 4 §7.3) and its fragments / used metrics map back, so lines
+  break at the vertical inline size like Chrome; `TextLine::vertical` runs paint turned a
+  quarter clockwise (raster PNG + SVG) and a vertical-rl scroller scrolls from the right. Chrome
+  controls: `live_geometry_chrome156.json` `vertical-*`, `scripts/vertical-text-chrome-control.mjs`
+  -> turbo-dom-raster `tests/vertical_text_chrome.rs`. Since turbo-dom#239 flex / grid /
+  table boxes, atoms, `<img>` / `<svg>` / `<iframe>` (physical intrinsic or default size turned),
+  `direction: rtl`, floats, absolute boxes, orthogonal flex/grid items, table cells and inlines
+  (atomic, `writing::layout_root_sized` / `orthogonal_extent`) lay out in the logical space; a
+  vertical line aligns on the central baseline (`writing::central_baseline`, Blink's
+  `kIdeographicBaseline`); upright text (`inline::UprightText`: CJK under `mixed`, all under
+  `upright`) advances by ascent + descent and paints turned back (`TextLine::upright`, raster
+  `vertical_upright_tests.rs` in the Ic Fixture face); vertical Range rects / carets turn the
+  line frame (`text_geometry::turn`). Since turbo-dom#252 `<canvas>` / `<video>` /
+  `<audio controls>` / `<object>` / `<embed src>` are inline replaced boxes on both paths and in
+  every writing mode (`boxgen::media_source`: Chrome's default sizes, canvas `width`/`height`
+  attributes as natural size, video poster; no fallback content; frame + background painted;
+  `live_geometry_chrome156.json` `media-*`, raster `paint_chrome156.json` `media-*`). Form controls
+  still fail per element (`SnapshotError::UnsupportedVerticalWriting`); border radii are one scalar,
+  so there are no corners to map. Since turbo-dom#238 inline layout is UAX #9 bidi
+  (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
+  `unicode-bidi`/`direction` as formatting characters (the static path, which flattens
+  inline boxes, emits them as zero-width text items), segments shaped in their level's
+  direction (`FontFace::shape_in`), lines broken in logical order then reordered (L2;
+  a line's hanging trailing space keeps the preceding character's level), inline-box
+  decorations on their physical sides with a box split per contiguous visual run
+  (and, for an embedding/isolate/override, per level), `dir=auto` first-strong
+  direction, `unicode-bidi: plaintext` paragraphs, Blink's caret hit-test adjustment at
+  run boundaries (`text_carets::bidi_adjusted`) and an RTL root (the body's direction)
+  scrolling the viewport `min_x..=0`. Chrome controls: `tests/fixtures/bidi/` (fixture
+  fonts incl. Noto Sans Hebrew / Arabic) and the paint control's `bidi-*` pixels. Since S5 the legacy owned `Node` input is gone (`node.rs`,
   `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
   `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the
   header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF
@@ -181,7 +226,10 @@ package or publish workflow.
   `Intrinsic::orientation`, laid out displayed unless `image-orientation: none`, painted via
   `ImagePlacement::orientation`; turbo-html2pdf#30); both probes follow Blink's size points for
   cut-short bodies and SVG images need an SVG-namespace root (turbo-dom#59,
-  `scripts/image-truncation-chrome-control.mjs`). `FontRegistry::system(policy)` is the process-wide system-font load. The
+  `scripts/image-truncation-chrome-control.mjs`). `layout::list_marker` generates `::marker`s
+  (counters, counter styles, symbol shapes, outside/inside placement; turbo-dom#128,
+  `scripts/list-marker-chrome-control.mjs`): a marker is a sourceless fragment under its list
+  item, `LayoutSnapshot::list_marker_owner` maps it to the item for hit testing. `FontRegistry::system(policy)` is the process-wide system-font load. The
   `test-support` feature (`test_support`) carries the font fixtures, `ComputedStyle` pairs
   and test-only tree literals for this crate's and turbo-html2pdf-core's tests (the crate's
   own integration tests enable it through a self dev-dependency).
@@ -253,6 +301,15 @@ package or publish workflow.
   `importNode` clones into the importing document (`__clone(doc, deep)`; turbo-dom#29 item 3).
 - **Foreign content:** elements carry `namespace` ("svg"/"math", else ""); foreign attrs carry
   `prefix` ("xlink" etc). The serializer renders `<svg svg>` and `xlink href="…"`.
+- **`<?…>` has two modes (turbo-dom#135).** html5lib-tests (every conformance gate, html5ever,
+  the default rtdom parse) make it a bogus comment; Chrome 156 parses `<?target data?>` as a
+  ProcessingInstruction. The Chrome mode lives only in the UTF-16 unit tokenizer
+  (`TokenizerOpts::processing_instructions`, a marker-prefixed comment token turned into a PI on
+  import), switched on per tree (`Tree::set_processing_instructions` /
+  `parse_utf16_with_processing_instructions` / `parse_utf16_with_source_positions_and_processing_instructions`)
+  — browser-env does so for all its documents, loaded pages included. Inputs
+  with `<?` then skip the scalar fast path. Chrome control: browser-env
+  `processing_instructions_chrome156.json`.
 - **Fragment context:** `parseFragment(html, context)` where context is `"td"` or namespaced
   `"svg path"` / `"math ms"`. Empty → body.
 - **Hot paths are allocation-free — keep them that way.** `querySelectorAll`/`querySelector`/
@@ -272,8 +329,13 @@ package or publish workflow.
   and iframe-sizing controls, at a real `--force-device-scale-factor=2`, since emulated DSF rounds
   font metrics in CSS pixels). Only tests of the host-font policy itself read installed fonts and
   stay `cfg(target_os = "macos")`: `native_serif_policy` (serif resolves to the physical Times
-  face) and `original_text_units`' script-fallback comparison (CoreText picks the fallback face);
-  what they test is the host lookup, so fixture fonts would test nothing.
+  face), `original_text_units`' script-fallback comparison (CoreText picks the fallback face)
+  and `host_font_advances_chrome` (system Times: AAT `morx` + legacy `kern` table, whose pairs
+  HarfBuzz splits across both glyphs; `scripts/host-font-chrome-control.mjs`, turbo-dom#236);
+  what they test is the host lookup, so fixture fonts would test nothing. Native advances follow
+  Blink's font cache (`text::blink_font_size`: a font is built at `unsigned(size*100)/100`, HTML
+  text at the device size) and `FontFace::blink_advances` (16.16 Skia advance + separately
+  scaled shaper adjustments).
 - **Rust selector engine = Chrome 156.** `rtdom/query.rs` (string API) and `query_utf16.rs` (UTF-16
   API; also parses any string selector containing `\`) are checked against
   `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json` (regenerate with

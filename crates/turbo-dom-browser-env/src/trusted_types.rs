@@ -522,7 +522,7 @@ mod tests {
                 ) {
                     result.set_bool(true);
                 }
-                let callback = v8::Function::new(scope, authorize).unwrap();
+                let callback = v8::Function::new(scope, ext!(FunctionCallback, authorize)).unwrap();
                 assert!(install_trusted_types_policy(scope, callback));
                 eval(scope, "(()=>{const doc=document;return trustedTypes.createPolicy('default',{createHTML:s=>doc===document?s:'wrong'})})()")
             };
@@ -584,7 +584,7 @@ mod tests {
             ) {
                 result.set_bool(true);
             }
-            let callback = v8::Function::new(scope, authorize).unwrap();
+            let callback = v8::Function::new(scope, ext!(FunctionCallback, authorize)).unwrap();
             assert!(install_trusted_types_policy(scope, callback));
             eval(scope, "(()=>{const doc=document;trustedTypes.createPolicy('default',{createHTML:s=>doc===document?s:'wrong'})})()");
             eval(scope, "globalThis.keep=trustedTypes.createPolicy('x',{createHTML:s=>s}).createHTML('foreign')");

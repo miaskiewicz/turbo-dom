@@ -39,6 +39,7 @@ pub fn paint(
          viewBox=\"0 0 {width} {height}\">\n<rect width=\"{width}\" height=\"{height}\" {}/>",
         fill_attrs(bg)
     );
+    SHARED.with(|memo| memo.borrow_mut().take());
     paint_fragment(&mut svg, galley, images);
     svg.push_str("</svg>\n");
     svg
@@ -100,11 +101,12 @@ fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &Decode
     let id = svg.len();
     let _ = write!(
         svg,
-        "<clipPath id=\"clip{id}\"><rect x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\"/></clipPath><g clip-path=\"url(#clip{id})\">",
+        "<clipPath id=\"clip{id}\"><rect x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\"{}/></clipPath><g clip-path=\"url(#clip{id})\">",
         f.x + clip.x,
         f.y + clip.y,
         clip.width,
-        clip.height
+        clip.height,
+        if clip.radius > 0.0 { format!(" rx=\"{:.2}\"", clip.radius) } else { String::new() }
     );
     paint_subtree(svg, f, images);
     svg.push_str("</g>");
@@ -130,6 +132,7 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             if let Some(g) = gradient {
                 paint_gradient(svg, f, *border_radius, g);
             }
+            paint_inset_shadow(svg, f, border, *border_radius, shadow.as_ref());
             if *border_radius > 0.5 {
                 paint_round_border(svg, f, border, *border_radius);
             } else {
@@ -141,8 +144,16 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             face,
             font_size,
             color,
+            vertical,
+            upright,
             ..
-        } => paint_text(svg, f, glyphs, face, *font_size, *color),
+        } => {
+            if *vertical && *upright {
+                paint_upright_text(svg, f, glyphs, face, (*font_size, *color));
+            } else {
+                paint_text(svg, (f, *vertical), glyphs, face, *font_size, *color);
+            }
+        }
         FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
         FragmentContent::Marker(_) => {}
     }
@@ -166,19 +177,68 @@ fn paint_image(
     images: &DecodedAssets,
 ) {
     let decoded = images.get(&placement.name);
+    let key = decoded.map(|img| {
+        let size = (f.width.to_bits(), f.height.to_bits());
+        (
+            std::ptr::from_ref(img) as usize,
+            placement.orientation,
+            size,
+        )
+    });
+    // The next tile of the same image at the same size reuses the first one's `<image>`
+    // through a `<use>` (miaskiewicz/turbo-dom#248: a background layer draws one image
+    // many times); the id is given to that `<image>` only once it is reused.
+    let reused = SHARED.with(|memo| {
+        let mut memo = memo.borrow_mut();
+        let shared = memo.as_mut().filter(|shared| Some(shared.key) == key)?;
+        if !shared.named {
+            svg.insert_str(
+                shared.at + "<image".len(),
+                &format!(" id=\"img{}\"", shared.at),
+            );
+            shared.named = true;
+        }
+        Some((shared.at, f.x - shared.x, f.y - shared.y))
+    });
+    if let Some((id, dx, dy)) = reused {
+        let _ = writeln!(svg, "<use href=\"#img{id}\" x=\"{dx:.2}\" y=\"{dy:.2}\"/>");
+        return;
+    }
     let uri = decoded.and_then(|img| image_paint::data_uri(&img.oriented(placement.orientation)));
-    match uri {
-        Some(uri) => {
+    match (uri, key) {
+        (Some(uri), Some(key)) => {
+            let at = svg.len();
             let _ = writeln!(
                 svg,
                 "<image x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\" \
                  preserveAspectRatio=\"none\" href=\"{uri}\"/>",
                 f.x, f.y, f.width, f.height
             );
+            let shared = Shared {
+                key,
+                at,
+                x: f.x,
+                y: f.y,
+                named: false,
+            };
+            SHARED.with(|memo| *memo.borrow_mut() = Some(shared));
         }
-        None if decoded.is_some_and(|d| !d.placeholder) => {}
-        None => rect(svg, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER),
+        _ if decoded.is_some_and(|d| !d.placeholder) => {}
+        _ => rect(svg, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER),
     }
+}
+
+/// The last `<image>` painted: its key, offset in the document (its id once reused)
+/// and position.
+struct Shared {
+    key: (usize, turbo_dom_layout::image::Orientation, (u32, u32)),
+    at: usize,
+    x: f32,
+    y: f32,
+    named: bool,
+}
+thread_local! {
+    static SHARED: std::cell::RefCell<Option<Shared>> = const { std::cell::RefCell::new(None) };
 }
 
 /// `rgba(...)`-free fill: an opaque `#rrggbb` plus a separate `fill-opacity`
@@ -242,6 +302,64 @@ fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: f32, sh: &Box
         "<rect x=\"{x:.2}\" y=\"{y:.2}\" width=\"{w:.2}\" height=\"{h:.2}\"{rr} {} filter=\"url(#{id})\"/>",
         fill_attrs(sh.color)
     );
+}
+
+/// Paint an inset `box-shadow` (miaskiewicz/turbo-dom#192) as the padding box in the
+/// shadow colour through a `<mask>` that cuts out the hole: the padding box offset, shrunk
+/// by the spread (radius with it) and blurred (`feGaussianBlur` inside the mask). The mask
+/// id is the document offset, unique.
+fn paint_inset_shadow(
+    svg: &mut String,
+    f: &Fragment,
+    border: &BorderEdges,
+    border_radius: f32,
+    shadow: Option<&BoxShadow>,
+) {
+    let Some(sh) = shadow.filter(|s| s.inset && s.color.a > 0) else {
+        return;
+    };
+    let (px, py, pw, ph, pr) = crate::paint_png::padding_box(f, border, border_radius);
+    if pw <= 0.0 || ph <= 0.0 {
+        return;
+    }
+    let spread = sh.spread as f32;
+    let (hx, hy) = (
+        px + sh.offset_x as f32 + spread,
+        py + sh.offset_y as f32 + spread,
+    );
+    let (hw, hh) = (pw - 2.0 * spread, ph - 2.0 * spread);
+    let id = svg.len();
+    let _ = write!(
+        svg,
+        "<mask id=\"inset{id}\" maskUnits=\"userSpaceOnUse\" x=\"{px:.2}\" y=\"{py:.2}\" width=\"{pw:.2}\" height=\"{ph:.2}\">\
+         <rect x=\"{px:.2}\" y=\"{py:.2}\" width=\"{pw:.2}\" height=\"{ph:.2}\" fill=\"#ffffff\"/>"
+    );
+    if hw >= 0.5 && hh >= 0.5 {
+        let blur = crate::paint_png::shadow_blur(sh);
+        let filter = if blur < 0.5 {
+            String::new()
+        } else {
+            let _ = write!(
+                svg,
+                "<filter id=\"insetblur{id}\" filterUnits=\"userSpaceOnUse\" x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\">\
+                 <feGaussianBlur stdDeviation=\"{:.2}\"/></filter>",
+                hx - 2.0 * blur,
+                hy - 2.0 * blur,
+                hw + 4.0 * blur,
+                hh + 4.0 * blur,
+                blur / 2.0
+            );
+            format!(" filter=\"url(#insetblur{id})\"")
+        };
+        let r = (pr - spread).max(0.0).min(hw / 2.0).min(hh / 2.0);
+        let _ = write!(
+            svg,
+            "<rect x=\"{hx:.2}\" y=\"{hy:.2}\" width=\"{hw:.2}\" height=\"{hh:.2}\" rx=\"{r:.2}\" ry=\"{r:.2}\" fill=\"#000000\"{filter}/>"
+        );
+    }
+    let _ = write!(svg, "</mask><g mask=\"url(#inset{id})\">");
+    rect_r(svg, px, py, pw, ph, sh.color, pr);
+    svg.push_str("</g>\n");
 }
 
 /// Paint a `linear-gradient(...)` background as a native SVG `<linearGradient>`
@@ -388,9 +506,54 @@ impl Tracer for PathSink {
 /// Emit a line's glyph outlines as one filled `<path>` (a transparent colour, or a run
 /// with no outlined glyph, emits nothing). The face's `units_per_em` is non-zero:
 /// `ttf-parser` rejects a `head` outside 16..=16384.
-fn paint_text(
+/// A turned (vertical) run of upright glyphs: each glyph its own path, turned back a
+/// quarter about its pen inside the run's turn (`paint_png::upright_turn`).
+fn paint_upright_text(
     svg: &mut String,
     f: &Fragment,
+    glyphs: &[PositionedGlyph],
+    face: &FontFace,
+    (font_size, color): (f32, Rgba),
+) {
+    if color.a == 0 {
+        return;
+    }
+    let scale = font_size / f32::from(face.units_per_em());
+    let outline = glyph::outline_face(face);
+    let frame = crate::paint_png::glyph_frame(f, true);
+    for g in glyphs {
+        let pen = Pen {
+            origin_x: f.x + g.x,
+            baseline_y: f.y + g.y,
+            scale,
+        };
+        let mut sink = PathSink::default();
+        glyph::trace_glyph(&outline, g.glyph_id, pen, &mut sink);
+        if sink.0.is_empty() {
+            continue;
+        }
+        let t = frame.pre_concat(crate::paint_png::upright_turn(
+            true,
+            (pen.origin_x, pen.baseline_y),
+        ));
+        let _ = writeln!(
+            svg,
+            "<path d=\"{}\" {} transform=\"matrix({:.4} {:.4} {:.4} {:.4} {:.2} {:.2})\"/>",
+            sink.0.trim_end(),
+            fill_attrs(color),
+            t.sx,
+            t.ky,
+            t.kx,
+            t.sy,
+            t.tx,
+            t.ty
+        );
+    }
+}
+
+fn paint_text(
+    svg: &mut String,
+    (f, vertical): (&Fragment, bool),
     glyphs: &[PositionedGlyph],
     face: &FontFace,
     font_size: f32,
@@ -411,9 +574,20 @@ fn paint_text(
         glyph::trace_glyph(&face, g.glyph_id, pen, &mut sink);
     }
     if !sink.0.is_empty() {
+        // A vertical line's run turns a quarter clockwise about the fragment
+        // (`crate::paint_png::glyph_frame`).
+        let frame = if vertical {
+            format!(
+                " transform=\"matrix(0 1 -1 0 {:.2} {:.2})\"",
+                f.x + f.width + f.y,
+                f.y - f.x
+            )
+        } else {
+            String::new()
+        };
         let _ = writeln!(
             svg,
-            "<path d=\"{}\" {}/>",
+            "<path d=\"{}\" {}{frame}/>",
             sink.0.trim_end(),
             fill_attrs(color)
         );
@@ -544,6 +718,21 @@ mod tests {
             ),
             "{embedded}"
         );
+        // The next tile of the same image and size reuses it through a `<use>`, naming
+        // it (miaskiewicz/turbo-dom#248); another size draws its own.
+        let mut tiles = image("red.png");
+        let mut second = image("red.png");
+        second.x = 5.0;
+        let mut third = image("red.png");
+        third.y = 7.0;
+        let mut wider = image("red.png");
+        wider.width = 8.0;
+        tiles.children = vec![second, third, wider];
+        let painted = body(&tiles, &images);
+        assert_eq!(painted.matches("<image").count(), 2, "{painted}");
+        assert_eq!(painted.matches(" id=\"img").count(), 1, "{painted}");
+        assert!(painted.contains(r#"" x="4.00" y="0.00"/>"#), "{painted}");
+        assert!(painted.contains(r#"" x="0.00" y="5.00"/>"#), "{painted}");
         // A size-only entry whose pixels did not decode paints nothing, as in Chrome
         // (turbo-dom#107); absent bytes, or a size-only entry this build has no decoder
         // for, are the placeholder.
@@ -763,8 +952,43 @@ mod tests {
         assert!(
             svg(0.0, Some(shadow(0, 0, 400, 0, blue, false))).contains("stdDeviation=\"128.00\"")
         );
-        // Inset and transparent shadows emit nothing; a half-pixel one still does.
-        assert_eq!(svg(0.0, Some(shadow(0, 5, 0, 0, blue, true))), "");
+        // An inset shadow is a masked padding box (below); a transparent one emits nothing;
+        // a half-pixel one still does.
+        assert_eq!(svg(0.0, Some(shadow(0, 5, 0, 0, blue, true))), "<mask id=\"inset130\" maskUnits=\"userSpaceOnUse\" x=\"10.00\" y=\"10.00\" width=\"20.00\" height=\"10.00\">\
+             <rect x=\"10.00\" y=\"10.00\" width=\"20.00\" height=\"10.00\" fill=\"#ffffff\"/>\
+             <rect x=\"10.00\" y=\"15.00\" width=\"20.00\" height=\"10.00\" rx=\"0.00\" ry=\"0.00\" fill=\"#000000\"/></mask>\
+             <g mask=\"url(#inset130)\"><rect x=\"10.00\" y=\"10.00\" width=\"20.00\" height=\"10.00\" fill=\"#0000ff\"/>\n</g>\n"
+        );
+        // A blurred inset hole is blurred inside the mask; its radius is the padding-box
+        // radius less the spread, clamped to half the hole.
+        let blurred = svg(9.0, Some(shadow(0, 0, 4, 2, blue, true)));
+        assert!(
+            blurred.contains(
+                "<filter id=\"insetblur130\" filterUnits=\"userSpaceOnUse\" x=\"4.00\" y=\"4.00\" width=\"32.00\" height=\"22.00\"><feGaussianBlur stdDeviation=\"2.00\"/></filter>\
+                 <rect x=\"12.00\" y=\"12.00\" width=\"16.00\" height=\"6.00\" rx=\"3.00\" ry=\"3.00\" fill=\"#000000\" filter=\"url(#insetblur130)\"/>"
+            ),
+            "{blurred}"
+        );
+        // A spread past half the box leaves no hole: the whole padding box is the colour.
+        let full = svg(0.0, Some(shadow(0, 0, 0, 6, blue, true)));
+        assert!(
+            full.contains("fill=\"#ffffff\"/></mask>") && !full.contains("#000000"),
+            "{full}"
+        );
+        // A box with no padding box (its borders fill it) paints no inset shadow.
+        assert_eq!(
+            body(
+                &decorated(1.0, 2.0, 0.0, 0.0, 0.0, |s, _, _| {
+                    *s = Some(shadow(0, 0, 0, 0, blue, true));
+                }),
+                &HashMap::new(),
+            ),
+            ""
+        );
+        assert_eq!(
+            svg(0.0, Some(shadow(0, 5, 0, 0, Rgba::new(0, 0, 255, 0), true))),
+            ""
+        );
         assert_eq!(
             svg(
                 0.0,
@@ -928,6 +1152,8 @@ mod tests {
                     face: face.clone(),
                     font_size: 24.0,
                     color: RED,
+                    vertical: false,
+                    upright: false,
                 },
             );
             let mut d = Data(String::new(), 0.0, 0.0, scale);
@@ -1038,6 +1264,8 @@ mod tests {
                     face: face.clone(),
                     font_size: 20.0,
                     color,
+                    vertical: false,
+                    upright: false,
                 },
             )
         };
