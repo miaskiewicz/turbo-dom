@@ -406,6 +406,7 @@ fn layout_root_in(
     if !lb.writing_root || mode == parent {
         return None;
     }
+    crate::hot!("layout.writing.root");
     let relabel = Relabel::between(parent, mode);
     let mut root = lb.relabelled(relabel);
     // In its own space the root is no orthogonal flow (its intrinsic widths measure
@@ -456,6 +457,7 @@ fn layout_root_in(
 /// block size fits its content. The max- and min-content width a flex / grid / table
 /// container sizes it by (CSS Writing Modes 4 §7.3; miaskiewicz/turbo-dom#239).
 pub(crate) fn orthogonal_extent(lb: &super::boxgen::LayoutBox, fonts: &crate::FontRegistry) -> f32 {
+    crate::hot!("layout.writing.extent");
     let images = crate::ImageCtx {
         resolver: &crate::NoImages,
         body_height: None,
