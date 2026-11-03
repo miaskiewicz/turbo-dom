@@ -422,6 +422,13 @@ Detail per fix (each backed by a Chrome 156 control):
   scopes to the owner's parent). `@container` and `@starting-style` children never apply.
   Before, a grouping rule's prelude was used as a selector and its children were skipped.
   Chrome control `css_grouping_cascade_chrome156.json`.
+- turbo-dom-browser-env `getComputedStyle` orders matched rules like Chrome 156 (#275,
+  #276): by Selectors 4 specificity (turbo-dom's cascade parser; a selector list counts its
+  most specific matching selector) within a cascade layer, then by `@scope` proximity (the
+  nearer scoping root wins), then document order. Before, rules applied in document order
+  only. Inside `@scope`, `:scope` binds to the scoping root (`:scope + i` no longer matches
+  outside the scope), `&` is `:where(:scope)`, and a selector without them adds no
+  specificity. Chrome control `css_cascade_specificity_chrome156.json`.
 
 ### Performance
 

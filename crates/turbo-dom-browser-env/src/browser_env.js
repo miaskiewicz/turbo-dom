@@ -5,7 +5,7 @@
   var $apply=Reflect.apply,$gopd=Object.getOwnPropertyDescriptor,$def=Object.defineProperty,$create=Object.create;
   var $wmGet=WeakMap.prototype.get,$wmSet=WeakMap.prototype.set,$lower=String.prototype.toLowerCase;
   var $jsonStringifyNative=JSON.stringify,$JSON=JSON,$jsonStringify=function(value){return $apply($jsonStringifyNative,$JSON,[value]);};
-  var $fromCodePoint=String.fromCodePoint,$imul=Math.imul,$Mround=Math.round;
+  var $fromCodePoint=String.fromCodePoint,$imul=Math.imul,$Mround=Math.round,$Mmin=Math.min;
   var $call=function(f,receiver,...rest){return $apply(f,receiver,rest);};
   // Element attribute natives for the reflected members (miaskiewicz/turbo-dom#199).
   // Captured once the Element interface is defined (below), before any page script runs.
@@ -94,7 +94,7 @@
     for(var i=0;i<names.length;i++)out[names[i]]=dispatch(names[i]);
     return out;
   })();
-  var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
+  var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot,computedStyleNativeQueryAll;
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
   var canvasMeasureTextNative=g.__canvasMeasureTextNative;delete g.__canvasMeasureTextNative;
@@ -772,13 +772,13 @@
       // Element-backed pseudo-elements the element does not have see no author rules.
       // Match the private selector list before touching declarations. Native parsing
       // preserves quoted delimiters that serialized text splitting loses.
-      var sheets = info && !info.authored ? [] : computedSheets(el),layers=cssLayerTree(),matchedEntries=[],layered=false;
+      var sheets = info && !info.authored ? [] : computedSheets(el),layers=cssLayerTree(),matched=[];
       for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
         var entries = appliedSheetEntries(sheets[si],el,layers);
-        for (var ri=0; ri<entries.length; ri++) if (appliedEntryMatches(el,entries[ri],pseudo)) { $c.push(matchedEntries,entries[ri]); if (entries[ri].layer!==layers) layered=true; }
+        for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
       }
-      cascadeEntries(matchedEntries,layered?layers:null,function(entry,only){applyDeclarations(declarationRecord(entry.rule.style),info&&info.accepts,only);});
+      cascadeEntries(matched,layers,function(entry,only){applyDeclarations(declarationRecord(entry.rule.style),info&&info.accepts,only);});
     } catch(e){}
     // overlay inline style (own props React/components set: background, height, display, ...)
     var st = !pseudo && el && __ns.makeInlineStyleDeclaration(el);
@@ -1652,52 +1652,83 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     }
   }
   function appliedSheetEntries(sheet,el,layers,out,seen){seen=seen||new Set();out=out||[];if($c.has(seen,sheet))return out;$c.add(seen,sheet);var record=sheetRecord(sheet);appliedGroupRules(record.rules,el,{__proto__:null,layers:layers,seen:seen,owner:record.ownerNode,layer:layers,media:0,scopes:null},out);return out;}
-  // @scope (turbo-dom#273). `mode`: 'self' — `el` is a scoping root (a `:scope` / `&`
-  // selector); 'desc' — a strict descendant of one (a selector without them is relative to
-  // the root); 'any' — either. The root is an inclusive ancestor matching <scope-start> (the
-  // owner node's parent for a prelude-less @scope), and no element from `el` up to the root
-  // (exclusive) may match <scope-end>.
+  // @scope (turbo-dom#273): is `el` in the scope of `frame` — an inclusive ancestor matches
+  // <scope-start> (the owner node's parent for a prelude-less @scope) and no element from `el`
+  // up to that root (exclusive) matches <scope-end>.
   var scopeParent=null;
   function cssParentElement(node){if(!scopeParent)scopeParent=__ns.domAccessor('parentElement',false,'Node');return cssApply(scopeParent,node,[]);}
   function cssScopeRootMatches(frame,node){return frame.root===null?!!frame.owner&&node===cssParentElement(frame.owner):computedNativeMatches(node,frame.root);}
   function cssScopeLimited(el,frame,root){if(frame.limit===null)return false;for(var node=el;node!==root;node=cssParentElement(node))if(computedNativeMatches(node,frame.limit))return true;return false;}
-  function cssInScope(el,frame,mode){
-    for(var root=el;root;root=cssParentElement(root)){
-      if(mode==='self'&&root!==el)return false;
-      if(mode==='desc'&&root===el||!cssScopeRootMatches(frame,root))continue;
-      if(!cssScopeLimited(el,frame,root))return true;
-    }
+  function cssInScope(el,frame){
+    for(var root=el;root;root=cssParentElement(root))if(cssScopeRootMatches(frame,root)&&!cssScopeLimited(el,frame,root))return true;
     return false;
   }
-  // `:scope` / `&` inside a longer selector stand for the root's <scope-start> selector.
-  function cssScopedMatches(el,entry,selector){
-    var scopes=entry.scopes,frame=scopes[scopes.length-1];
-    for(var index=0;index<scopes.length-1;index++)if(!cssInScope(el,scopes[index],'any'))return false;
-    if($c.test(/^\s*(:scope|&)\s*$/,selector))return cssInScope(el,frame,'self');
-    if($c.test(/:scope\b|&/,selector))return frame.root!==null&&computedNativeMatches(el,$c.replace(selector,/:scope\b|&/g,':is('+frame.root+')'))&&cssInScope(el,frame,'any');
-    return computedNativeMatches(el,selector)&&cssInScope(el,frame,'desc');
+  // A selector list's complex selectors with their Selectors 4 specificity (turbo-dom#275),
+  // from the native cascade parser: [text, a, b, c, ...], or null when the list is invalid.
+  // Memoized per selector text (DOM-independent), cleared when it grows past 4096 entries.
+  var cssSpecificityCache=$O.create(null),cssSpecificityCount=0;
+  function cssSelectorItems(text){
+    var items=cssSpecificityCache[text];
+    if(items===undefined){if(cssSpecificityCount>=4096){cssSpecificityCache=$O.create(null);cssSpecificityCount=0;}items=cssNativeParse(text,'specificity')||null;cssSpecificityCache[text]=items;cssSpecificityCount++;}
+    return items;
   }
-  // Does `entry`'s style rule select `el` (`pseudo`: that pseudo-element of it)? A rule under
-  // a conditional @media makes the computation volatile when its selector matches.
-  function appliedEntryMatches(el,entry,pseudo){
-    var selector=entry.rule.selectorText,matched=false;
-    if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}}
-    else if(entry.scopes)matched=cssScopedMatches(el,entry,selector);
-    else{try{matched=cssApply(computedStyleNativeMatches,el,[selector]);}catch(e){}computedStateVolatile(el,selector,matched);}
+  function cssSpecificityAt(items,index){return $Mmin(items[index+1],1023)*1048576+$Mmin(items[index+2],1023)*1024+$Mmin(items[index+3],1023);}
+  // The specificity of the most specific selector of `selector` that `test(itemText)` accepts
+  // (a one-selector list needs no test: the rule already matched), or -1.
+  function cssMatchedSpecificity(selector,test){
+    var items=cssSelectorItems(selector),best=-1;if(!items)return 0;
+    if(items.length===4)return cssSpecificityAt(items,0);
+    for(var index=0;index<items.length;index+=4){var value=cssSpecificityAt(items,index);if(value>best&&test(items[index]))best=value;}
+    return best;
+  }
+  // Does the scoping root `root` select `el` by `item`, a selector with :scope (the root)?
+  function cssScopeSelects(root,el,item){
+    if(root===el)return computedNativeMatches(el,item);
+    var list;try{list=cssApply(computedStyleNativeQueryAll,root,[item]);}catch(e){return false;}
+    for(var index=0;index<list.length;index++)if(list[index]===el)return true;
+    return false;
+  }
+  // The best [specificity, proximity] for which a selector of a scoped rule selects `el`
+  // (turbo-dom#276), or null. A selector with :scope binds it to the scoping root; & stands
+  // for :where(:scope); any other selector is relative to the root (its descendants, with no
+  // added specificity). Proximity counts the generations from the root to `el`.
+  function cssScopedMatch(el,entry){
+    var scopes=entry.scopes,frame=scopes[scopes.length-1],best=null;
+    for(var index=0;index<scopes.length-1;index++)if(!cssInScope(el,scopes[index]))return null;
+    var items=cssSelectorItems($c.replace(entry.rule.selectorText,/&/g,':where(:scope)'));if(!items)return null;
+    for(var root=el,hops=0;root;root=cssParentElement(root),hops++){
+      if(!cssScopeRootMatches(frame,root)||cssScopeLimited(el,frame,root))continue;
+      for(var at=0;at<items.length;at+=4){
+        var item=items[at],value=cssSpecificityAt(items,at);
+        if(best&&value<=best[0])continue;
+        if($c.test(/:scope\b/i,item)?cssScopeSelects(root,el,item):root!==el&&computedNativeMatches(el,item))best=[value,hops];
+      }
+    }
+    return best;
+  }
+  // The cascade record of `entry`'s style rule when it selects `el` (`pseudo`: that
+  // pseudo-element of it), or null. A rule under a conditional @media makes the computation
+  // volatile when its selector matches.
+  function appliedEntryMatch(el,entry,pseudo,order){
+    var selector=entry.rule.selectorText,matched=false,specificity=0,proximity=Infinity;
+    if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
+    else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
+    else{try{matched=cssApply(computedStyleNativeMatches,el,[selector]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,item);});}
     if(matched&&entry.media)computedVolatile=true;
-    return matched&&entry.media!==2;
+    return matched&&entry.media!==2?{__proto__:null,entry:entry,specificity:specificity,proximity:proximity,order:order}:null;
   }
-  // Apply matched entries in cascade order. Without cascade layers: document order (each
-  // declaration's own importance is kept by `apply`). With them: normal declarations by layer
-  // order, the unlayered ones last, then !important ones in reverse layer order, the unlayered
-  // ones first; document order within a layer.
-  function cascadeEntries(entries,layers,apply){
-    if(!layers){for(var index=0;index<entries.length;index++)apply(entries[index]);return;}
+  // Is `a` weaker than `b` once their layers tie: lower specificity, then farther from its
+  // scoping root, then earlier.
+  function cascadeWeaker(a,b){return a.specificity!==b.specificity?a.specificity<b.specificity:a.proximity!==b.proximity?a.proximity>b.proximity:a.order<b.order;}
+  // Apply matched records weakest first, so the winner is applied last: normal declarations by
+  // layer order (the unlayered ones last), then !important ones in reverse layer order (the
+  // unlayered ones first); within a layer by specificity, @scope proximity, then document order.
+  function cascadeEntries(records,layers,apply){
     cssLayerRanks(layers);
-    var sorted=layerSorted(entries,function(a,b){return a.layer.rank>b.layer.rank;});
-    for(var index=0;index<sorted.length;index++)apply(sorted[index],false);
-    sorted=layerSorted(entries,function(a,b){return a.layer.rank<b.layer.rank;});
-    for(var index=0;index<sorted.length;index++)apply(sorted[index],true);
+    var sorted=layerSorted(records,function(a,b){var x=a.entry.layer.rank,y=b.entry.layer.rank;return x!==y?x>y:!cascadeWeaker(a,b);});
+    for(var index=0;index<sorted.length;index++)apply(sorted[index].entry,false);
+    sorted=layerSorted(records,function(a,b){var x=a.entry.layer.rank,y=b.entry.layer.rank;return x!==y?x<y:!cascadeWeaker(a,b);});
+    for(var index=0;index<sorted.length;index++)apply(sorted[index].entry,true);
   }
   // A stable insertion sort (`after(a, b)`: a goes after b).
   function layerSorted(entries,after){var out=[];for(var index=0;index<entries.length;index++){var at=out.length;while(at>0&&after(out[at-1],entries[index]))at--;$c.splice(out,at,0,entries[index]);}return out;}
@@ -3206,6 +3237,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.keys(operations).forEach(function(name){Object.defineProperty(entry[1],name,{value:__ns.makeNativeFunction(operations[name],name,0),writable:true,configurable:true,enumerable:true});});
     });
     computedStyleNativeMatches=Object.getOwnPropertyDescriptor(prototypes.Element,'matches').value;
+    computedStyleNativeQueryAll=Object.getOwnPropertyDescriptor(prototypes.Element,'querySelectorAll').value;
     computedStyleNativeGetAttribute=Object.getOwnPropertyDescriptor(prototypes.Element,'getAttribute').value;
     computedStyleNativeRoot=Object.getOwnPropertyDescriptor(prototypes.Node,'getRootNode').value;
     ['querySelector','querySelectorAll','append','prepend','replaceChildren'].forEach(function(name){

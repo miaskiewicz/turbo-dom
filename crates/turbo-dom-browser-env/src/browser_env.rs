@@ -6543,6 +6543,22 @@ fn parse_css_native(
         rv.set_bool(cssom_parser::is_supported_property(&source));
         return;
     }
+    if args.get(1).is_string() && args.get(1).to_rust_string_lossy(scope) == "specificity" {
+        // turbo-dom#275: the selector list's complex selectors with their Selectors 4
+        // specificity, flat as [text, a, b, c, ...]; undefined for an invalid list.
+        if let Ok(list) = turbo_dom_parser::rtdom::query::parse_for_cascade(&source) {
+            let mut items: Vec<v8::Local<v8::Value>> = Vec::new();
+            for selector in list.selectors() {
+                let (a, b, c) = selector.specificity();
+                items.push(v8::String::new(scope, selector.text()).unwrap().into());
+                for part in [a, b, c] {
+                    items.push(v8::Number::new(scope, f64::from(part)).into());
+                }
+            }
+            rv.set(v8::Array::new_with_elements(scope, &items).into());
+        }
+        return;
+    }
     if args.get(1).is_string() && args.get(1).to_rust_string_lossy(scope) == "media" {
         if let Some(text) = v8::String::new(scope, &cssom_parser::parse_media(&source)) {
             rv.set(text.into());
