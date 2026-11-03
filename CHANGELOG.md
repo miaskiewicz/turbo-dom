@@ -412,6 +412,16 @@ Detail per fix (each backed by a Chrome 156 control):
   `border-radius` (on the fragment's own edges: every fragment's with
   `box-decoration-break: clone`); Chrome 156 controls `inline-clone-*` and
   `overflow-glyph-ink-*`. The paint control's `?` probes now compare Chrome's RGB.
+- turbo-dom-browser-env `getComputedStyle` applies style rules nested in grouping rules
+  like Chrome 156 (#273): `@supports` children when the condition holds (declarations,
+  `selector()`, `not` / `and` / `or`), `@layer` children in cascade-layer order (layer
+  statements, nested / dotted / anonymous layers; unlayered rules beat layered ones for
+  normal declarations and lose to them for `!important`), `@media` children when the query
+  matches (a matching rule under a conditional query is never reused from the snapshot
+  cache) and `@scope` children within the scoping root and limit (prelude-less `@scope`
+  scopes to the owner's parent). `@container` and `@starting-style` children never apply.
+  Before, a grouping rule's prelude was used as a selector and its children were skipped.
+  Chrome control `css_grouping_cascade_chrome156.json`.
 
 ### Performance
 

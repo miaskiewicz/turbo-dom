@@ -596,13 +596,8 @@
     var out=[],sheets=[];try{sheets=computedSheets(el);}catch(e){}
     for (var si=0; si<sheets.length; si++) {
       if(sheetRecord(sheets[si]).disabled)continue;
-      var rules = appliedSheetRuleRecords(sheets[si]);
-      for (var ri=0; ri<rules.length; ri++) {
-        var rule=rules[ri];
-        if(rule.type===1){$c.push(out, rule.selectorText);continue;}
-        var txt = String(cssRuleText(rule) || ''), br = $c.indexOf(txt, '{');
-        if (br >= 0) $c.push(out, $c.trim($c.slice(txt, 0, br)));
-      }
+      var entries = appliedSheetEntries(sheets[si],el,cssLayerTree());
+      for (var ri=0; ri<entries.length; ri++) if(entries[ri].media!==2) $c.push(out, entries[ri].rule.selectorText);
     }
     return out;
   }
@@ -763,7 +758,8 @@
     var setProp = function(name, val, important){ name = $c.trim(String(name)); if (!name) return; if(important!==undefined){if(priorities[name]&&!important)return;priorities[name]=important;} if(uaValues&&typeof val==='string'&&$c.test(/^revert$/i,$c.trim(val))&&uaValues[name]!==undefined)val=uaValues[name]; if (typeof val === 'string' && $c.slice(name,0, 2) !== '--'){ var t = $c.trim(val); if (t[0] === '#') val = normColor(t); else if (t === '0' && $c.test(LEN_PROP,name)) val = '0px'; else if ($c.indexOf(val,',') >= 0) val = cssPrelude(val,true); } decl[name] = val; decl[camel(name)] = val; $c.forEach(staleShorthands(name),function(shorthand){ if (shorthand !== expandingShorthand) { delete decl[shorthand]; delete decl[camel(shorthand)]; } }); if (sink) sink.order[name] = ++sink.count;
       if (typeof val === 'string') { var outer = expandingShorthand; expandingShorthand = name; try { expandShorthand(name, val, function(property,value){setProp(property,value,important);}); } finally { expandingShorthand = outer; } }
     };
-    function applyDeclarations(record,accepts){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;setProp(name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
+    // `only`: true applies just the !important declarations, false just the normal ones.
+    function applyDeclarations(record,accepts,only){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;if(only!==undefined&&only!==(value.priority==='important'))continue;setProp(name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
     var info=pseudo&&pseudo!=='backdrop'&&pseudo!=='before'&&pseudo!=='after'?computedPseudoInfo(el,pseudo,parentStyle):null;
     // Measured Chrome button defaults are UA declarations: every matching author
     // rule (including a universal selector) and inline value takes precedence.
@@ -774,29 +770,15 @@
     if(ua){$c.forEach($O.keys(ua), function(name){setProp(name,ua[name]);});uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
     try {
       // Element-backed pseudo-elements the element does not have see no author rules.
-      var sheets = info && !info.authored ? [] : computedSheets(el);
+      // Match the private selector list before touching declarations. Native parsing
+      // preserves quoted delimiters that serialized text splitting loses.
+      var sheets = info && !info.authored ? [] : computedSheets(el),layers=cssLayerTree(),matchedEntries=[],layered=false;
       for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
-        var rules = appliedSheetRuleRecords(sheets[si]);
-        for (var ri=0; ri<rules.length; ri++) {
-          var rule=rules[ri],matched=false;
-          if(pseudo&&rule.type===1){
-            try{matched=pseudoRuleMatches(el,rule.selectorText,pseudo);}catch(e){}
-          }else if(rule.type===1){
-            // Match the private selector list before touching declarations. Native
-            // parsing preserves quoted delimiters that serialized text splitting loses.
-            try{matched=cssApply(computedStyleNativeMatches,el,[rule.selectorText]);}catch(e){}
-            if(!pseudo)computedStateVolatile(el,rule.selectorText,matched);
-          }else{
-            var txt = String(cssRuleText(rule) || ''); var br = $c.indexOf(txt, '{'); if (br < 0) continue;
-            var sel = $c.trim($c.slice(txt, 0, br)),parts = $c.split(sel, ',');
-            if(pseudo){try{matched=pseudoRuleMatches(el,sel,pseudo);}catch(e){}parts=[];}
-            for (var pi=0; pi<parts.length; pi++){ var s = $c.trim(parts[pi]); if (!s) continue; try { if (cssApply(computedStyleNativeMatches,el,[s])) { matched = true; } } catch(e){} computedStateVolatile(el,s,matched); if (matched) break; }
-          }
-          if (!matched) continue;
-          applyDeclarations(declarationRecord(rule.style),info&&info.accepts);
-        }
+        var entries = appliedSheetEntries(sheets[si],el,layers);
+        for (var ri=0; ri<entries.length; ri++) if (appliedEntryMatches(el,entries[ri],pseudo)) { $c.push(matchedEntries,entries[ri]); if (entries[ri].layer!==layers) layered=true; }
       }
+      cascadeEntries(matchedEntries,layered?layers:null,function(entry,only){applyDeclarations(declarationRecord(entry.rule.style),info&&info.accepts,only);});
     } catch(e){}
     // overlay inline style (own props React/components set: background, height, display, ...)
     var st = !pseudo && el && __ns.makeInlineStyleDeclaration(el);
@@ -1620,7 +1602,105 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   cssMember(styleSheetConstructor.prototype,'media',function(){return sheetRecord(this).media;},function(value){mediaRecord(sheetRecord(this).media).items=mediaQueries(value);});
   cssMember(styleSheetConstructor.prototype,'disabled',function(){return sheetRecord(this).disabled;},function(value){sheetRecord(this).disabled=!!value;});
   cssMember(sheetConstructor.prototype,'ownerRule',function(){return sheetRecord(this).ownerRule;});
-  function appliedSheetRuleRecords(sheet,seen){seen=seen||new Set();if($c.has(seen,sheet))return [];$c.add(seen,sheet);var out=[];for(var $ruleList=cssItems(sheetRecord(sheet).rules),$ruleAt=0,rule;$ruleAt<$ruleList.length&&((rule=$ruleList[$ruleAt]),true);$ruleAt++){var record=cssRuleRecord(rule);if(record.type===3){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||g.matchMedia(record.media.mediaText).matches))$c.apply(out.push,out,appliedSheetRuleRecords(record.styleSheet,seen));}else $c.push(out,record);}return out;}
+  // The style rules of `sheet` (and its @import sheets) that apply, each with its grouping
+  // context (turbo-dom#273): children of @media (matching), @supports (true), @layer and
+  // @scope rules apply; @container (no size container is ever established here) and
+  // @starting-style (steady state) children never do. `layers` is the cascade-layer tree
+  // shared by every sheet of one computation; `el` checks @supports selector() conditions.
+  function cssLayerChild(node,name){var child=name===null?null:node.named[name];if(!child){child={__proto__:null,named:$O.create(null),children:[],rank:0};if(name!==null)node.named[name]=child;$c.push(node.children,child);}return child;}
+  function cssLayerPath(node,name){var parts=cssParts(name,'.');for(var index=0;index<parts.length;index++)node=cssLayerChild(node,$c.trim(parts[index]));return node;}
+  function cssLayerTree(){return {__proto__:null,named:$O.create(null),children:[],rank:0};}
+  // Sub-layers precede their layer's own rules; the root (unlayered rules) comes last.
+  function cssLayerRanks(root){var next=0;(function visit(node){for(var index=0;index<node.children.length;index++)visit(node.children[index]);node.rank=next++;})(root);}
+  var cssSupportsCache=$O.create(null);
+  function cssSupportsDeclaration(inner){var parts=cssParts(inner,':'),name=$c.trim(parts[0]),record={__proto__:null};if(parts.length<2||!name)return false;parseDeclaration(record,name+': '+$c.trim($c.slice(inner,parts[0].length+1)));return record.names.length>0;}
+  function cssSupportsTerm(term,el){
+    if(term[0]==='('&&term[term.length-1]===')'){var inner=$c.trim($c.slice(term,1,term.length-1));return inner[0]==='('||$c.test(/^not\s/i,inner)?cssSupportsCondition(inner,el):cssSupportsDeclaration(inner);}
+    var selector=$c.exec(/^selector\(([\s\S]*)\)$/i,term);if(!selector)return false;
+    try{cssApply(computedStyleNativeMatches,el,[selector[1]]);return true;}catch(e){return false;}
+  }
+  // A <supports-condition>: `not <term>`, or terms joined by one of `and` / `or`.
+  function cssSupportsCondition(text,el){
+    var tokens=$c.filter(cssParts($c.trim(text),' '),function(token){return token!=='';});
+    if(tokens.length===2&&$c.toLowerCase(tokens[0])==='not')return !cssSupportsTerm(tokens[1],el);
+    var value=cssSupportsTerm(tokens[0],el),operator=tokens.length>1?$c.toLowerCase(tokens[1]):'';
+    for(var index=1;index<tokens.length;index+=2){if($c.toLowerCase(tokens[index])!==operator||operator!=='and'&&operator!=='or'||index+1>=tokens.length)return false;var next=cssSupportsTerm(tokens[index+1],el);value=operator==='and'?value&&next:value||next;}
+    return value;
+  }
+  // A condition is fixed for the engine, so it is evaluated once per text.
+  function cssSupportsMatches(text,el){var cached=cssSupportsCache[text];if(cached===undefined)cached=cssSupportsCache[text]=cssSupportsCondition(text,el);return cached;}
+  // 0: unconditional; 1: under @media that matches now; 2: under @media that does not.
+  function cssMediaState(record,state){var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;return g.matchMedia(text).matches?1:2;}
+  function appliedImport(record,el,context,out){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||g.matchMedia(record.media.mediaText).matches))appliedSheetEntries(record.styleSheet,el,context.layers,out,context.seen);}
+  // The context of a grouping rule's children, or null when they never apply.
+  function groupContext(record,kind,el,context){
+    if(kind==='container'||kind==='starting-style'||kind==='supports'&&!cssSupportsMatches(preludeRest(record),el))return null;
+    var inner={__proto__:null,layers:context.layers,seen:context.seen,owner:context.owner,layer:context.layer,media:context.media,scopes:context.scopes};
+    if(kind==='layer'){var name=preludeRest(record);inner.layer=name?cssLayerPath(context.layer,name):cssLayerChild(context.layer,null);}
+    else if(kind==='media')inner.media=cssMediaState(record,context.media);
+    else if(kind==='scope'){var parts=scopeParts(record),frame={__proto__:null,root:parts[0],limit:parts[1],owner:context.owner};inner.scopes=context.scopes?$c.concat(context.scopes,[frame]):[frame];}
+    return inner;
+  }
+  function appliedGroupRules(list,el,context,out){
+    for(var $ruleList=cssItems(list),$ruleAt=0,rule;$ruleAt<$ruleList.length&&((rule=$ruleList[$ruleAt]),true);$ruleAt++){
+      var record=cssRuleRecord(rule),kind=record.kind;
+      if(record.type===3){appliedImport(record,el,context,out);continue;}
+      if(kind==='layer-statement'){var names=cssParts(preludeRest(record),',');for(var index=0;index<names.length;index++)cssLayerPath(context.layer,$c.trim(names[index]));continue;}
+      if(!kind){if(record.type===1)$c.push(out,{__proto__:null,rule:record,layer:context.layer,media:context.media,scopes:context.scopes});continue;}
+      var inner=groupContext(record,kind,el,context);
+      if(inner)appliedGroupRules(record.cssRules,el,inner,out);
+    }
+  }
+  function appliedSheetEntries(sheet,el,layers,out,seen){seen=seen||new Set();out=out||[];if($c.has(seen,sheet))return out;$c.add(seen,sheet);var record=sheetRecord(sheet);appliedGroupRules(record.rules,el,{__proto__:null,layers:layers,seen:seen,owner:record.ownerNode,layer:layers,media:0,scopes:null},out);return out;}
+  // @scope (turbo-dom#273). `mode`: 'self' — `el` is a scoping root (a `:scope` / `&`
+  // selector); 'desc' — a strict descendant of one (a selector without them is relative to
+  // the root); 'any' — either. The root is an inclusive ancestor matching <scope-start> (the
+  // owner node's parent for a prelude-less @scope), and no element from `el` up to the root
+  // (exclusive) may match <scope-end>.
+  var scopeParent=null;
+  function cssParentElement(node){if(!scopeParent)scopeParent=__ns.domAccessor('parentElement',false,'Node');return cssApply(scopeParent,node,[]);}
+  function cssScopeRootMatches(frame,node){return frame.root===null?!!frame.owner&&node===cssParentElement(frame.owner):computedNativeMatches(node,frame.root);}
+  function cssScopeLimited(el,frame,root){if(frame.limit===null)return false;for(var node=el;node!==root;node=cssParentElement(node))if(computedNativeMatches(node,frame.limit))return true;return false;}
+  function cssInScope(el,frame,mode){
+    for(var root=el;root;root=cssParentElement(root)){
+      if(mode==='self'&&root!==el)return false;
+      if(mode==='desc'&&root===el||!cssScopeRootMatches(frame,root))continue;
+      if(!cssScopeLimited(el,frame,root))return true;
+    }
+    return false;
+  }
+  // `:scope` / `&` inside a longer selector stand for the root's <scope-start> selector.
+  function cssScopedMatches(el,entry,selector){
+    var scopes=entry.scopes,frame=scopes[scopes.length-1];
+    for(var index=0;index<scopes.length-1;index++)if(!cssInScope(el,scopes[index],'any'))return false;
+    if($c.test(/^\s*(:scope|&)\s*$/,selector))return cssInScope(el,frame,'self');
+    if($c.test(/:scope\b|&/,selector))return frame.root!==null&&computedNativeMatches(el,$c.replace(selector,/:scope\b|&/g,':is('+frame.root+')'))&&cssInScope(el,frame,'any');
+    return computedNativeMatches(el,selector)&&cssInScope(el,frame,'desc');
+  }
+  // Does `entry`'s style rule select `el` (`pseudo`: that pseudo-element of it)? A rule under
+  // a conditional @media makes the computation volatile when its selector matches.
+  function appliedEntryMatches(el,entry,pseudo){
+    var selector=entry.rule.selectorText,matched=false;
+    if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}}
+    else if(entry.scopes)matched=cssScopedMatches(el,entry,selector);
+    else{try{matched=cssApply(computedStyleNativeMatches,el,[selector]);}catch(e){}computedStateVolatile(el,selector,matched);}
+    if(matched&&entry.media)computedVolatile=true;
+    return matched&&entry.media!==2;
+  }
+  // Apply matched entries in cascade order. Without cascade layers: document order (each
+  // declaration's own importance is kept by `apply`). With them: normal declarations by layer
+  // order, the unlayered ones last, then !important ones in reverse layer order, the unlayered
+  // ones first; document order within a layer.
+  function cascadeEntries(entries,layers,apply){
+    if(!layers){for(var index=0;index<entries.length;index++)apply(entries[index]);return;}
+    cssLayerRanks(layers);
+    var sorted=layerSorted(entries,function(a,b){return a.layer.rank>b.layer.rank;});
+    for(var index=0;index<sorted.length;index++)apply(sorted[index],false);
+    sorted=layerSorted(entries,function(a,b){return a.layer.rank<b.layer.rank;});
+    for(var index=0;index<sorted.length;index++)apply(sorted[index],true);
+  }
+  // A stable insertion sort (`after(a, b)`: a goes after b).
+  function layerSorted(entries,after){var out=[];for(var index=0;index<entries.length;index++){var at=out.length;while(at>0&&after(out[at-1],entries[index]))at--;$c.splice(out,at,0,entries[index]);}return out;}
   function readableSheet(sheet){var record=sheetRecord(sheet);if(!record.originClean)throw new __ns.DOMException('Cannot access rules of a cross-origin stylesheet','SecurityError');return record;}
   var cssStyleSheetRulesGetter=__ns.makeNativeFunction(function(){return readableSheet(this).rules;},'get cssRules',0);
   $O.defineProperty(sheetConstructor.prototype,'cssRules',{get:cssStyleSheetRulesGetter,enumerable:true,configurable:true});
