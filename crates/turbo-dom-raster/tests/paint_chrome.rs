@@ -55,7 +55,10 @@ const RGB_TOLERANCE: u8 = 8;
 ///   "g". Chrome's glyph rasterizer darkens stems (its ink is about half a pixel wider
 ///   on each side), ours draws the bare outline. Measured green channel, ours vs Chrome
 ///   (red and blue match): (22,25) 111 vs 46 (65), (22,44) 159 vs 118 (41), (28,44) 255
-///   vs 139 (116: the descender's lower-left curve, which Chrome's wider stem reaches).
+///   vs 139 (116: the descender's lower-left curve, which Chrome's wider stem reaches
+///   and ours misses). The descender's left part is also pinned by the solid-ink probes
+///   (23,42) and (24,44), compared by class; closing these edges needs Chrome-like stem
+///   darkening in the glyph rasterizer.
 const ANTIALIASED_EDGES: &[(&str, u32, u32, u8)] = &[
     ("form-native-radio", 26, 20, 36),
     ("form-native-radio", 20, 26, 36),
