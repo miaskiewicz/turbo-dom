@@ -3,6 +3,7 @@
 //! fragmenter (Stage 4) paginates. Block and table flow and inline/text layout
 //! are owned here; flex delegates to `taffy` (§5.3 decision).
 
+pub(crate) mod background;
 pub mod block;
 pub mod boxgen;
 pub(crate) mod contents;
@@ -44,6 +45,19 @@ pub struct LayoutOptions {
     /// A consumer laying several flows out into one document gives each a disjoint
     /// range (see [`NodeSources::next`]) so ids are unique per render.
     pub first_node_id: u32,
+    /// Flatten inline elements into their text runs instead of laying them out as
+    /// inline boxes. Off by default: inline elements are inline boxes, as in Chrome 156
+    /// (their border / padding / margin edges, inline-box fragments, their fonts'
+    /// metrics in the line box and the quirks-mode line height quirk;
+    /// miaskiewicz/turbo-dom#245). On, the lines keep Chrome's line box model
+    /// (baseline alignment and the block strut) but an inline element without
+    /// decoration (background, box shadow, padding, border, horizontal margin;
+    /// miaskiewicz/turbo-dom#244) contributes no edges, no fragment and no font
+    /// metrics of its own; it is the pre-0.7 PDF
+    /// inline model, for a consumer whose output contracts assume no inline-box
+    /// fragments (html2pdf's link annotations and PDF/UA tags, #210), and does not
+    /// match Chrome for inline boxes.
+    pub flatten_inline_elements: bool,
 }
 
 /// Where each box of a [`layout_recorded`] galley came from.
@@ -248,6 +262,7 @@ pub fn layout_recorded_in_viewport(
 fn build_options(options: &LayoutOptions, record_sources: bool) -> boxgen::BuildOptions {
     boxgen::BuildOptions {
         atomic_internal_links: options.atomic_internal_links,
+        flatten_inline_elements: options.flatten_inline_elements,
         record_sources,
         keep_zero_area_clips: false,
     }

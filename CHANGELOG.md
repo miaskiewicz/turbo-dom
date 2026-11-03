@@ -20,16 +20,41 @@ at the time); this file reconstructs them from history.
   call; user-event asks `matches(':disabled')` on every pointer step and MUI's rules ask
   `:invalid` per input, so large forms were quadratic (turbo-test 0.7.0 perf work).
   `:has()`, `:indeterminate` and `querySelector[All]` still classify the whole tree.
+- turbo-dom-browser-env's selector-taking DOM methods (`querySelector[All]`, `matches`,
+  `closest`, ...) parse each selector string's grammar once (a bounded per-thread memo).
+  A selector without a `:` skips the five node-dependent pseudo-class rewrite passes, and
+  the SyntaxError message is built only when a selector is rejected (same exact message as
+  before). On form-heavy files this took ~9% of CPU.
+- Node wrappers carry their owner tag (DOM id + tree generation) as a small integer that
+  indexes a per-thread table, instead of a two-word BigInt that was allocated per wrapper and
+  decoded on every native call (`handle_of`, `tagged_owner` and the ownership reconcile were
+  3-5% each). Table entries are never reused, so wrappers from a discarded tree are still
+  refused (turbo-test#204).
+- The mutation fanout builds a V8 record object only when something reads it: a
+  MutationObserver, a custom element definition or the host's trusted document consumer.
+  A page that is recording mutations for script preparation, with nothing observing them,
+  no longer allocates one per mutation (4-5% on React-heavy files).
 
 ### Fixed
 
+- turbo-dom-layout places background images and gradients like Chrome 156 (#248):
+  `background-size` (lengths, `%`, `auto`, `cover`, `contain`), `-position` (1-4 values),
+  `-repeat` (`repeat-x` / `-y`, two values; `space` / `round` tile like `repeat`),
+  `-origin` and `-clip` (the colour too), from the longhands or the `background`
+  shorthand, on block and inline boxes, in PNG, SVG and PDF. A background image was
+  stretched over the content box; it now tiles at its size from the padding box, which
+  changes the tools/parity image pages' `.bg` boxes (declared in
+  `tools/parity/expected/turbo-dom-248-background-layers.json`). Layers ignore
+  `border-radius`.
 - turbo-dom-raster's static screenshots (PNG and SVG) paint inline boxes like Chrome 156
   (#244): an inline with a background, box shadow, padding, border or horizontal margin
   keeps its box through turbo-dom-layout's static line layout and paints per line fragment
   (`box-decoration-break: slice`: the start edge on the first fragment, the end edge on the
   last, also across bidi-split fragments), its edges push its neighbours and count toward a
   shrink-to-fit container's max-content width, and `layout_boxes` reports the union of its
-  fragments. Plain inlines still flatten into their parent's run; the tools/parity corpora
+  fragments. `box-decoration-break: clone` repeats both edges on every fragment (they take
+  line space), and an inline box's background image / gradient spans its fragments' strip
+  (sliced) or each fragment (cloned), stretched like a block's. Plain inlines still flatten into their parent's run; the tools/parity corpora
   hold no such inline in a static render, so no checkpoint output changes.
 - turbo-dom-layout implements `hyphens: auto` for English (`lang=en` / `en-US` / other `en-*`
   regions; not en-GB): words break at the en-US Knuth-Liang points (the `hyphenation`

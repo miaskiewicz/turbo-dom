@@ -244,3 +244,110 @@ fn lines_break_in_logical_order_then_reorder_like_chrome_156() {
 fn plaintext_paragraphs_take_their_first_strong_direction_like_chrome_156() {
     compare_cases(|id| id.starts_with("block-plaintext-"));
 }
+
+/// The visual order of `case`'s characters on its first line from Chrome's per-code-unit
+/// Range rects: `(x, char)` sorted left to right, whitespace left out.
+fn chrome_visual_order(case: &Value) -> Vec<(f64, char)> {
+    let mut chars = Vec::new();
+    let mut first_y = None;
+    for text in case["texts"].as_array().unwrap() {
+        let units: Vec<u16> = text["text"].as_str().unwrap().encode_utf16().collect();
+        for (unit, rects) in units.iter().zip(text["chars"].as_array().unwrap()) {
+            let ch = char::from_u32(u32::from(*unit)).unwrap();
+            let Some(r) = rects.as_array().unwrap().first() else {
+                continue;
+            };
+            let r = rect(r);
+            if ch.is_whitespace() || *first_y.get_or_insert(r[1]) != r[1] {
+                continue;
+            }
+            chars.push((r[0], ch));
+        }
+    }
+    chars.sort_by(|a, b| a.0.total_cmp(&b.0));
+    chars
+}
+
+/// The static HTML drive's (`layout_html`) characters on the first line: every glyph's
+/// cluster text at its absolute pen x, sorted left to right, whitespace left out.
+fn static_visual_order(case: &Value) -> Vec<(f64, char)> {
+    use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
+    fn walk(f: &Fragment, x: f32, y: f32, top: &mut Option<f32>, out: &mut Vec<(f64, char)>) {
+        let (x, y) = (x + f.x, y + f.y);
+        if let FragmentContent::TextLine {
+            glyphs,
+            text,
+            face,
+            font_size,
+            ..
+        } = &f.content
+        {
+            if *top.get_or_insert(y) == y {
+                // A glyph paints at its pen position plus its GPOS x offset (Noto Sans
+                // Hebrew's right-to-left pair kerning moves the glyph's origin); Chrome's
+                // Range rect is the pen position, so take the offset back out. The run's
+                // shaping is the one direction whose glyphs are the drawn ones.
+                let ids: Vec<u16> = glyphs.iter().map(|g| g.glyph_id).collect();
+                let shaped = [false, true]
+                    .into_iter()
+                    .map(|rtl| face.shape_in(text, rtl))
+                    .find(|shaped| shaped.iter().map(|g| g.glyph_id).eq(ids.iter().copied()))
+                    .expect("the drawn glyphs are the run shaped in one direction");
+                let scale = face.scale(*font_size);
+                for (glyph, shaped) in glyphs.iter().zip(&shaped) {
+                    let cluster = &text[glyph.text_start as usize..glyph.text_end as usize];
+                    let pen = x + glyph.x - scale * shaped.x_offset as f32;
+                    for ch in cluster.chars().filter(|c| !c.is_whitespace()) {
+                        out.push((f64::from(pen), ch));
+                    }
+                }
+            }
+        }
+        for child in &f.children {
+            walk(child, x, y, top, out);
+        }
+    }
+    let html = format!(
+        "<html><body style=\"margin:0\"><div dir=\"{}\" style=\"{BOX};width:{}px\">{}</div></body></html>",
+        case["dir"].as_str().unwrap(),
+        case["width"].as_u64().unwrap(),
+        case["html"].as_str().unwrap()
+    );
+    let galley =
+        turbo_dom_layout::layout_html(&html, "", 800.0, fonts(), &mut Diagnostics::default())
+            .unwrap();
+    let mut out = Vec::new();
+    walk(&galley, 0.0, 0.0, &mut None, &mut out);
+    out.sort_by(|a, b| a.0.total_cmp(&b.0));
+    out
+}
+
+/// The static HTML drive (`layout_html`, the PDF path: inline `unicode-bidi` as
+/// formatting characters around the flattened span, never drawn) reorders every inline
+/// embed, isolate and override like Chrome 156: the same characters in the same visual
+/// order at Chrome's x (the static drive positions in floats, not `LayoutUnit`s).
+#[test]
+fn static_drive_reorders_inline_unicode_bidi_like_chrome_156() {
+    let mut compared = 0;
+    for case in fixture()["result"].as_array().unwrap() {
+        let id = case["id"].as_str().unwrap();
+        if !id.starts_with("span-") || id.starts_with("span-edges-") {
+            continue;
+        }
+        compared += 1;
+        let chrome = chrome_visual_order(case);
+        let got = static_visual_order(case);
+        let order = |chars: &[(f64, char)]| chars.iter().map(|c| c.1).collect::<String>();
+        assert_eq!(order(&got), order(&chrome), "{id}");
+        for (g, c) in got.iter().zip(&chrome) {
+            assert!(
+                (g.0 - c.0).abs() <= 0.05,
+                "{id}: {} at {}, Chrome {}",
+                g.1,
+                g.0,
+                c.0
+            );
+        }
+    }
+    assert!(compared >= 8);
+}

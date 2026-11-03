@@ -30,6 +30,7 @@ fn source_pieces(fonts: &FontRegistry, contributes: bool, line_height: Option<f3
         valign: VAlign::Super,
         rtl: false,
         bidi: turbo_dom_layout::layout::inline::UnicodeBidi::Normal,
+        clone_advance: None,
     };
     let mut end = edge.clone();
     end.start = false;

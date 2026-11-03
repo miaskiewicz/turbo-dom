@@ -70,12 +70,21 @@ fn internal_links_get_their_own_box_only_when_asked() {
             .filter(|name| name == "a")
             .count()
     };
-    assert_eq!(boxed(LayoutOptions::default()), 0);
-    let on = LayoutOptions {
-        atomic_internal_links: true,
+    // Inline elements flattened into their text runs (the PDF inline model), a link
+    // has no box of its own unless asked for.
+    let flat = LayoutOptions {
+        flatten_inline_elements: true,
         ..LayoutOptions::default()
     };
+    assert_eq!(boxed(flat), 0);
+    let on = LayoutOptions {
+        atomic_internal_links: true,
+        ..flat
+    };
     assert_eq!(boxed(on), 1, "only the non-empty #target link is atomic");
+    // As inline boxes (the default, Chrome's model; miaskiewicz/turbo-dom#245) each
+    // link has its inline box's fragment.
+    assert_eq!(boxed(LayoutOptions::default()), 2);
 }
 
 fn link_boxes(html: &str) -> Vec<(f32, f32)> {
@@ -85,6 +94,7 @@ fn link_boxes(html: &str) -> Vec<(f32, f32)> {
         "",
         LayoutOptions {
             atomic_internal_links: true,
+            flatten_inline_elements: true,
             ..LayoutOptions::default()
         },
     );
@@ -117,6 +127,63 @@ fn inline_external_links_get_their_own_box_but_relative_ones_do_not() {
         boxes.iter().all(|&(_, w)| w > 0.0 && w < 100.0),
         "{boxes:?}"
     );
+}
+
+/// A text line's `(text, glyph (source byte, x)s, y)`.
+type TextLine = (String, Vec<(u32, f32)>, f32);
+
+/// Each text line, in fragment order.
+fn text_lines(laid: &LaidOut) -> Vec<TextLine> {
+    fragments(&laid.galley)
+        .into_iter()
+        .filter_map(|f| match f.content {
+            FragmentContent::TextLine { text, glyphs, .. } => {
+                let glyphs = glyphs.iter().map(|g| (g.text_start, g.x)).collect();
+                Some((text, glyphs, f.y))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn flattened_inline_elements_keep_their_breaks_splits_and_bidi() {
+    // miaskiewicz/turbo-dom#245: with `flatten_inline_elements` an inline element is
+    // folded into its text runs (no inline box, no fragment), but a `<br>` still breaks
+    // the line, a block inside it still splits it, and its `unicode-bidi` still reorders
+    // its text (the formatting characters it carries are never drawn).
+    let flat = LayoutOptions {
+        flatten_inline_elements: true,
+        ..LayoutOptions::default()
+    };
+    let tree = parse_html_tree(
+        "<body><p>a<br>b</p><div>c<span>d<div>e</div>f</span></div>\
+         <p><span style=\"unicode-bidi:bidi-override;direction:rtl\">gh</span></p></body>",
+    );
+    let laid = lay(&tree, "", flat);
+    let lines = text_lines(&laid);
+    let texts: Vec<&str> = lines.iter().map(|(text, _, _)| text.as_str()).collect();
+    assert_eq!(texts, ["a", "b", "c", "d", "e", "f", "gh"], "{lines:?}");
+    // `a`, `b`, `cd`, `e`, `f` and `gh` each on a line of its own, top to bottom.
+    let tops: Vec<f32> = lines.iter().map(|line| line.2).collect();
+    assert_eq!(tops[2], tops[3], "c and d share a line");
+    let mut distinct = tops.clone();
+    distinct.dedup();
+    assert_eq!(distinct.len(), 6, "{tops:?}");
+    assert!(
+        distinct.windows(2).all(|pair| pair[1] > pair[0]),
+        "{tops:?}"
+    );
+    // The overridden RTL text is drawn right to left: `g` right of `h`.
+    let gh = &lines[6].1;
+    assert_eq!(gh.len(), 2, "no formatting character is drawn");
+    let x = |byte| gh.iter().find(|glyph| glyph.0 == byte).unwrap().1;
+    assert!(x(0) > x(1), "{gh:?}");
+    // No inline element has a box of its own.
+    assert!(fragments(&laid.galley)
+        .iter()
+        .filter_map(|f| source_name(&tree, &laid, f.node_id))
+        .all(|name| name != "span" && name != "br"));
 }
 
 /// Each recorded table row's `(id attribute, break hints)`, in layout order.
@@ -603,4 +670,47 @@ fn canvas_background_needs_an_html_root() {
         propagate_canvas_background(&mut fragment),
         Some(Rgba::new(1, 2, 3, 255))
     );
+}
+
+#[test]
+fn markers_in_vertical_roots_and_inline_blocks_take_no_space() {
+    // A block marker is a zero-size point wherever it sits: inside a vertical writing
+    // root (the logical layer turns it like any box, and it is no physically sized
+    // replaced element) and inside an inline-block (whose baseline still comes from its
+    // last line box), every box lays out exactly as without the markers.
+    let body = |marker: &str| {
+        format!(
+            "<body style='margin:0;font:16px monospace'>\
+             <div style='writing-mode:vertical-rl;height:100px'>{marker}<div data-cid=v \
+             style='inline-size:20px;block-size:10px'></div></div>\
+             <div>x<span data-cid=ib style='display:inline-block'>{marker}y</span>\
+             <span data-cid=a style='display:inline-block;width:5px;height:5px'></span></div></body>"
+        )
+    };
+    let boxes = |html: &str| {
+        let tree = parse_html_tree(html);
+        let mut boxes: Vec<_> = turbo_dom_layout::layout_boxes_tree(
+            &tree,
+            "",
+            400.0,
+            300.0,
+            &common::registry(),
+            &marker_options(),
+            &mut turbo_dom_layout::Diagnostics::default(),
+        )
+        .into_iter()
+        .map(|b| (b.cid, b.x, b.y, b.width, b.height))
+        .collect();
+        boxes.sort_by(|a, b| a.0.cmp(&b.0));
+        boxes
+    };
+    let marked = body("<x-marker-2-b></x-marker-2-b>");
+    let tree = parse_html_tree(&marked);
+    let styled = turbo_dom_layout::style_html_tree(&tree, "", 400.0, &marker_options());
+    let mut markers = 0;
+    count(&styled, &mut markers);
+    assert_eq!(markers, 2);
+    let without = boxes(&body(""));
+    assert_eq!(without.len(), 3);
+    assert_eq!(boxes(&marked), without);
 }

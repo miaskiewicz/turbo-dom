@@ -245,7 +245,11 @@ pub(super) fn edge(
     let right = used.padding.right + border.right + used.margin.right;
     // An RTL box starts at its right side (miaskiewicz/turbo-dom#238).
     let rtl = is_rtl(source);
-    let advance = if start == rtl { right } else { left };
+    let (advance, other) = if start == rtl {
+        (right, left)
+    } else {
+        (left, right)
+    };
     Some(InlineEdge {
         node_id,
         start,
@@ -258,7 +262,16 @@ pub(super) fn edge(
         baseline_shift: 0.0,
         rtl,
         bidi: super::inline::UnicodeBidi::parse(source.get("unicode-bidi")),
+        clone_advance: cloned(source).then_some(other),
     })
+}
+
+/// Whether the box's fragments each repeat its decoration
+/// (`box-decoration-break: clone`, or the `-webkit-` alias).
+pub(super) fn cloned(source: &ComputedStyle) -> bool {
+    ["box-decoration-break", "-webkit-box-decoration-break"]
+        .iter()
+        .any(|property| source.get(property).map(str::trim) == Some("clone"))
 }
 
 pub(super) struct SourcePlacement {
@@ -370,10 +383,8 @@ pub(super) fn positions(items: &[InlineItem], font: f32, width: f32, ctx: &Ctx) 
         },
         stack: Vec::new(),
     };
-    if ctx.html_font_metrics {
-        for item in items {
-            source.item(item, font, width, ctx);
-        }
+    for item in items {
+        source.item(item, font, width, ctx);
     }
     source.placement
 }
@@ -406,11 +417,7 @@ pub(super) fn native_atoms(
     pieces: &mut [super::inline::Piece],
     atoms: &[Fragment],
     baselines: &HashMap<NodeId, f32>,
-    native: bool,
 ) {
-    if !native {
-        return;
-    }
     for piece in pieces {
         if let super::inline::Piece::Atom(atom) = piece {
             let shift = baselines
@@ -697,7 +704,111 @@ pub(super) fn fragments(
     for line in &layout.lines {
         builder.line(line, origin.0, origin.1);
     }
-    builder.out
+    let InlineFragments {
+        mut out,
+        styles,
+        ctx,
+        ..
+    } = builder;
+    let sources = items
+        .iter()
+        .filter_map(|item| match item {
+            InlineItem::Boundary {
+                node_id,
+                style: source,
+                start: true,
+            } => Some((*node_id, source)),
+            _ => None,
+        })
+        .collect::<HashMap<_, _>>();
+    for (id, source) in sources {
+        background_layers(&mut out, (id, source, &styles[&id]), ctx);
+    }
+    out
+}
+
+/// Move an inline box's background image and gradient (and a colour clipped short of
+/// the border box) off its line fragments onto background layers
+/// (miaskiewicz/turbo-dom#244, #248). The positioning area is the box's strip: every
+/// fragment's origin box laid end to end in line order (`box-decoration-break: slice`),
+/// or the fragment's own (`clone`); each fragment paints its layers clipped to its own
+/// clip box. The fragments' vertical padding bounds a `content-box` area (their
+/// horizontal padding is not recorded per fragment).
+fn background_layers(
+    out: &mut [Fragment],
+    (id, source, used): (NodeId, &ComputedStyle, &BoxStyle),
+    ctx: &Ctx,
+) {
+    use super::background::{area_rect, color_layer, layer, props, Area, Source};
+    let image = super::boxgen::background_image(source).and_then(|name| {
+        let intrinsic = super::imgsize::box_intrinsic(ctx.images.resolver, &name, source)?;
+        Some(super::imgsize::placement_of(name, intrinsic))
+    });
+    let props = props(source, used.font_size);
+    let gradient = used.background_gradient.is_some();
+    let colour = used.background.is_some() && props.clip != Area::Border;
+    if image.is_none() && !gradient && !colour {
+        return;
+    }
+    let padding = super::value::Edges {
+        left: 0.0,
+        right: 0.0,
+        ..used.padding
+    };
+    let parts = out
+        .iter()
+        .enumerate()
+        .filter_map(|(index, frag)| match &frag.content {
+            FragmentContent::Box { border, .. } if frag.node_id == id => {
+                let rect = (frag.x, frag.y, frag.width, frag.height);
+                Some((
+                    index,
+                    area_rect(rect, border, &padding, props.origin),
+                    area_rect(rect, border, &padding, props.clip),
+                ))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let cloned = cloned(source);
+    let total: f32 = parts.iter().map(|(_, origin, _)| origin.2).sum();
+    let mut offset = 0.0;
+    for (index, origin, paint) in parts {
+        let strip = if cloned {
+            origin
+        } else {
+            (origin.0 - offset, origin.1, total, origin.3)
+        };
+        offset += origin.2;
+        let frag = &mut out[index];
+        let FragmentContent::Box {
+            background,
+            gradient,
+            ..
+        } = &mut frag.content
+        else {
+            continue;
+        };
+        let mut layers = Vec::new();
+        if props.clip != Area::Border {
+            if let Some(color) = background.take() {
+                layers.push(color_layer(id, color, paint));
+            }
+        }
+        if let Some(gradient) = gradient.take() {
+            layers.extend(layer(id, &props, &Source::Gradient(gradient), strip, paint));
+        }
+        if let Some(image) = &image {
+            layers.extend(layer(
+                id,
+                &props,
+                &Source::Image(image.clone()),
+                strip,
+                paint,
+            ));
+        }
+        frag.children.extend(layers);
+    }
 }
 
 fn skip_empty_part(part: &Fragment, value: &Open, last: bool, used: &BoxStyle) -> bool {
@@ -877,6 +988,7 @@ mod defensive_contract_tests {
                 valign: super::super::value::VAlign::Baseline,
                 rtl: false,
                 bidi: super::super::inline::UnicodeBidi::Normal,
+                clone_advance: None,
             },
             x: 20.0,
             decorated: true,

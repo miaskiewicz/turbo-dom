@@ -101,7 +101,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 42] = [
+    let groups: [fn(&str) -> bool; 41] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -143,7 +143,6 @@ fn held_out(id: &str) -> bool {
         nowrap_space_case,
         supports_general_enclosed_case,
         preserved_newline_case,
-        quirks_strut_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -643,6 +642,14 @@ fn quirks_strut_case(id: &str) -> bool {
     id.starts_with("quirks-strut-")
 }
 
+/// miaskiewicz/turbo-dom#245: the PDF metric policy (`layout_boxes`) aligns its lines on
+/// one baseline with the block strut (the standards control's 39px atom line, not a
+/// 36.92px stack of line heights) and applies the quirks-mode strut.
+#[test]
+fn pdf_metric_lines_take_the_strut_and_baseline_like_chrome_156() {
+    compare_cases(quirks_strut_case);
+}
+
 /// Each `data-cid` element of a styled forest as a snapshot identity (its styled path).
 fn cid_identities(
     nodes: &[turbo_dom_layout::StyledNode],
@@ -670,10 +677,10 @@ fn cid_identities(
 
 /// The static path styles a `BackCompat` document with the quirks-mode line strut marker
 /// (`style_html_tree`), so its Chrome-metric HTML text layout (the snapshot every native
-/// HTML read and screenshot uses) lays the lines out like Chrome. `layout_boxes` stays on
-/// the PDF metric policy, whose line boxes have no baseline alignment (unrounded
-/// line-height stacks: even the standards control's 39px atom line is 36.92 there), so
-/// the quirk is compared through the HTML-metric snapshot instead.
+/// HTML read and screenshot uses) lays the lines out like Chrome. The PDF metric policy
+/// (`layout_boxes`, html2pdf) takes the same line box model since
+/// miaskiewicz/turbo-dom#245, compared by
+/// [`pdf_metric_lines_take_the_strut_and_baseline_like_chrome_156`].
 #[test]
 fn quirks_mode_lines_take_the_strut_only_for_text_like_chrome_156() {
     use turbo_dom_layout::layout_snapshot::{snapshot_html_styled_tree_with_text, SnapshotInputs};
