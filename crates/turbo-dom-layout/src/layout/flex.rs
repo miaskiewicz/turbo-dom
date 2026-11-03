@@ -923,46 +923,67 @@ fn measure_item(
     // times per solve, and each probe recurses a full layout, so nested flex is
     // exponential without this. `fs` (the flex container's font size) is stable per
     // item, so width alone keys the cache.
-    let (cw, ch) = item.measure_cached(w, || {
-        let bs = item.resolved(ResolveCtx {
-            parent_font_size: fs,
-            cb_width: w,
-        });
-        let mut sd = Diagnostics::default();
-        let mut mctx = Ctx {
-            fonts,
-            // The real resolver, so a replaced `<img>` reaches its intrinsic size in
-            // the scratch layout (an empty resolver measured every image to 0).
-            images,
-            diags: &mut sd,
-            // Scratch measurement: the item is its own containing block at origin.
-            abs_cb_x: 0.0,
-            abs_cb_y: 0.0,
-            abs_cb_w: w,
-            abs_cb_h: 0.0,
-            abs_cb_h_known: false,
-            cb_h: 0.0,
-            cb_h_known: false,
-            root_w: w,
-            root_h: crate::style::viewport_px().1,
-            icb_h: 0.0,
-            abs_cb_icb: false,
-            live_geometry,
-            used_metrics: None,
-            text_capture: None,
-            html_font_metrics,
-            html_font_scale,
-            original_units,
-            native_transforms: None,
-            floats: Vec::new(),
-            table_rows: None,
-            dropped_end_margins: std::collections::HashSet::new(),
-            sticky_pending: Vec::new(),
-            writing: crate::layout::writing::WritingMode::default(),
-        };
-        let frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, w, &mut mctx);
-        (frag.width, frag.height)
-    });
+    let probe = || {
+        item.measure_cached(w, || {
+            let bs = item.resolved(ResolveCtx {
+                parent_font_size: fs,
+                cb_width: w,
+            });
+            let mut sd = Diagnostics::default();
+            let mut mctx = Ctx {
+                fonts,
+                // The real resolver, so a replaced `<img>` reaches its intrinsic size in
+                // the scratch layout (an empty resolver measured every image to 0).
+                images,
+                diags: &mut sd,
+                // Scratch measurement: the item is its own containing block at origin.
+                abs_cb_x: 0.0,
+                abs_cb_y: 0.0,
+                abs_cb_w: w,
+                abs_cb_h: 0.0,
+                abs_cb_h_known: false,
+                cb_h: 0.0,
+                cb_h_known: false,
+                root_w: w,
+                root_h: crate::style::viewport_px().1,
+                icb_h: 0.0,
+                abs_cb_icb: false,
+                live_geometry,
+                used_metrics: None,
+                text_capture: None,
+                html_font_metrics,
+                html_font_scale,
+                original_units,
+                native_transforms: None,
+                floats: Vec::new(),
+                table_rows: None,
+                dropped_end_margins: std::collections::HashSet::new(),
+                sticky_pending: Vec::new(),
+                writing: crate::layout::writing::WritingMode::default(),
+            };
+            let frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, w, &mut mctx);
+            (frag.width, frag.height)
+        })
+    };
+    // A relabelled copy's own cache starts empty: share the measurement with the copies
+    // made the same way (R2 review #4), keyed by everything the scratch layout reads.
+    let (cw, ch) = if item.relabel_memo.is_copy() {
+        let mut inputs = super::boxgen::measure_inputs(item, fonts);
+        inputs.extend([
+            u64::from(w.round().clamp(0.0, u32::MAX as f32) as u32),
+            u64::from(fs.to_bits()),
+            std::ptr::from_ref(images.resolver).cast::<()>() as usize as u64,
+            u64::from(images.body_height.unwrap_or(-1.0).to_bits()),
+            u64::from(live_geometry),
+            u64::from(html_font_metrics),
+            u64::from(html_font_scale.unwrap_or(0.0).to_bits()),
+            original_units.map_or(0, |units| std::ptr::from_ref(units) as usize as u64),
+        ]);
+        let kind = super::boxgen::MemoKind::FlexMeasure;
+        item.relabel_memo.get_or(kind, inputs, probe)
+    } else {
+        probe()
+    };
     Size {
         width: known.width.unwrap_or(cw),
         height: known.height.unwrap_or(ch),
