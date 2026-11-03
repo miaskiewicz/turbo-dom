@@ -162,7 +162,11 @@ fn nearest_edge(x: f32, cell: &SourceClusterBox) -> (f32, usize) {
     };
     // At a shared edge the cell holding the point wins (a bidi boundary's two cells
     // name different offsets; miaskiewicz/turbo-dom#238).
-    let outside = if (cell.rect.x..=cell.rect.x + cell.rect.width).contains(&x) {
+    // A collapsed (zero-width) cell never beats a real cell at the same edge: Chrome
+    // hits the glyph there (a space collapsed after an empty inline box, Chrome 156).
+    let outside = if cell.rect.width == 0.0 {
+        2e-4
+    } else if (cell.rect.x..=cell.rect.x + cell.rect.width).contains(&x) {
         0.0
     } else {
         1e-4

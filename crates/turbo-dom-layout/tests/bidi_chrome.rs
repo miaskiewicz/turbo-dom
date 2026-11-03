@@ -337,7 +337,13 @@ fn static_drive_reorders_inline_unicode_bidi_like_chrome_156() {
         compared += 1;
         let chrome = chrome_visual_order(case);
         let got = static_visual_order(case);
-        let order = |chars: &[(f64, char)]| chars.iter().map(|c| c.1).collect::<String>();
+        // Range rects name the source characters; the drawn glyphs are text-transformed.
+        let order = |chars: &[(f64, char)]| {
+            chars
+                .iter()
+                .flat_map(|c| c.1.to_lowercase())
+                .collect::<String>()
+        };
         assert_eq!(order(&got), order(&chrome), "{id}");
         for (g, c) in got.iter().zip(&chrome) {
             assert!(

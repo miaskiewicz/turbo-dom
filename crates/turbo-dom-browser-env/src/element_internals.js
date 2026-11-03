@@ -247,6 +247,7 @@
         for (let at = 0; at < event.removedNodes.length; at++) {
           const removed = event.removedNodes[at];
           if (apply(contains, removed, [host]) && !apply(contains, removed, [record.owner])) {
+            ns.bumpStyleState();
             record.owner = null;
             ce.callback(host, "formAssociatedCallback", [null]);
             break;
@@ -256,10 +257,12 @@
       const owner = forms.owner(host),
         disabled = forms.disabled(host);
       if (owner !== record.owner) {
+        ns.bumpStyleState();
         record.owner = owner;
         ce.callback(host, "formAssociatedCallback", [owner]);
       }
       if (disabled !== record.disabled) {
+        ns.bumpStyleState();
         record.disabled = disabled;
         ce.callback(host, "formDisabledCallback", [disabled]);
       }
@@ -330,6 +333,7 @@
     if (!next.valid && text === "") throw new ErrorType("A validation message is required.");
     if (anchor !== undefined && !apply(contains, record.host, [anchor]))
       throw new Exception("The anchor is not a descendant.", "NotFoundError");
+    ns.bumpStyleState();
     record.flags = next;
     record.message = next.valid ? "" : text;
     record.anchor = anchor || null;
