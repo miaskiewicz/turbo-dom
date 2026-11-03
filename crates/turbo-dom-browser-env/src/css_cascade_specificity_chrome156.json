@@ -1,0 +1,116 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "fixture": "css_cascade_specificity_probe.js",
+  "probeSha256": "2d162bdbc5a94cc3cc48c52b861392bc8d276812f7904768dda2c8f7869943fc",
+  "flags": [
+    "--headless",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": [
+    [
+      "sp1",
+      "rgb(0, 1, 0)"
+    ],
+    [
+      "sp2",
+      "rgb(0, 2, 0)"
+    ],
+    [
+      "sp3",
+      "rgb(0, 3, 0)"
+    ],
+    [
+      "sp4",
+      "rgb(0, 4, 0)"
+    ],
+    [
+      "sp5",
+      "rgb(0, 5, 0)"
+    ],
+    [
+      "sp6",
+      "rgb(0, 6, 0)"
+    ],
+    [
+      "sp7",
+      "rgb(0, 7, 0)"
+    ],
+    [
+      "sp8",
+      "rgb(0, 8, 0)"
+    ],
+    [
+      "sp9",
+      "rgb(0, 9, 0)"
+    ],
+    [
+      "sp10",
+      "rgb(10, 10, 10)"
+    ],
+    [
+      "sp11",
+      "rgb(0, 11, 0)"
+    ],
+    [
+      "sp12",
+      "rgb(12, 0, 0)"
+    ],
+    [
+      "sp13",
+      "rgb(13, 0, 0)"
+    ],
+    [
+      "sp14",
+      "rgb(0, 14, 0)"
+    ],
+    [
+      "p1",
+      "rgb(0, 0, 1)"
+    ],
+    [
+      "p2",
+      "rgb(0, 0, 4)"
+    ],
+    [
+      "p3",
+      "rgb(0, 0, 5)"
+    ],
+    [
+      "p4",
+      "rgb(0, 0, 8)"
+    ],
+    [
+      "p5",
+      "rgb(0, 0, 9)"
+    ],
+    [
+      "p6",
+      "rgb(0, 0, 12)"
+    ],
+    [
+      "p7",
+      "rgb(0, 0, 0)"
+    ],
+    [
+      "p8",
+      "rgb(0, 0, 14)"
+    ],
+    [
+      "p9",
+      "rgb(0, 0, 17)"
+    ],
+    [
+      "p10",
+      "rgb(0, 0, 18)"
+    ]
+  ]
+}

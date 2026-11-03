@@ -126,6 +126,28 @@ fn implicit_visibility_inheritance_reads_the_edited_rule() {
 }
 
 #[test]
+fn cascade_specificity_and_scope_proximity_like_chrome156() {
+    // turbo-dom#275: rules are ordered by Selectors 4 specificity (the most specific matching
+    // selector of a list) before order of appearance. turbo-dom#276: @scope proximity breaks
+    // specificity ties, and :scope / & bind to the scoping root (& with zero specificity).
+    let probe = include_str!("css_cascade_specificity_probe.js");
+    let expected = fixture(
+        include_str!("css_cascade_specificity_chrome156.json"),
+        probe,
+    );
+    let actual = evaluate(probe);
+    let (expected, actual) = (expected.as_array().unwrap(), actual.as_array().unwrap());
+    assert_eq!(expected.len(), actual.len());
+    let diverged: Vec<_> = expected
+        .iter()
+        .zip(actual)
+        .filter(|(expected, actual)| expected != actual)
+        .map(|(expected, actual)| format!("chrome {expected}\n  ours {actual}"))
+        .collect();
+    assert!(diverged.is_empty(), "{}", diverged.join("\n"));
+}
+
+#[test]
 fn style_rules_in_grouping_rules_cascade_like_chrome156() {
     // turbo-dom#273: getComputedStyle applies style rules nested in @supports (condition
     // evaluated), @layer (layer order; unlayered beats layered for normal declarations, the
