@@ -82,6 +82,16 @@ Also in the crate:
   `KEY_ORDER_PROBE_JS`), plus `FILES` and `frame_read_should_throw`. The files ship in
   the package; consumers reference the constants and never copy the files.
 
+**Install phases (turbo-dom#249).** Inside, an install has two parts. The engine bootstrap
+(`bootstrap_engine`) does the tree-independent work: templates, natives and the engine
+scripts (about 50 `run_engine_script` calls). The document attach (`attach_document`) does
+the per-document work: parser scripts, declarative shadow roots, nonces, checkedness,
+template contents and inline handlers. The attach runs no engine script. By default every
+`install_*` call still runs the original interleaved install. Setting
+`TURBO_DOM_ATTACH_PATH=1` makes each install bootstrap the empty shell and then attach the
+parsed document. CI runs the whole suite on both paths. A V8 startup snapshot of the
+bootstrapped shell (next phase) will leave the attach as the only per-install work.
+
 `tests/public_api.rs`, `tests/host_internals_api.rs` and `tests/test_support_api.rs` pin
 every item that turbo-test and turbo-surf call, from outside the crate.
 
@@ -108,6 +118,7 @@ every item that turbo-test and turbo-surf call, from outside the crate.
 export RUSTY_V8_ARCHIVE=/path/to/librusty_v8_release_<target>.a   # v150.4.0
 cargo test -p turbo-dom-browser-env
 cargo test -p turbo-dom-browser-env --features host-internals,test-support
+TURBO_DOM_ATTACH_PATH=1 cargo test -p turbo-dom-browser-env --features host-internals,test-support   # split install path
 ```
 
 **Chrome controls.** Every `src/*_chrome15x.json` file is Chrome's own result for the

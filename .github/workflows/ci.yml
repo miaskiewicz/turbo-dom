@@ -344,6 +344,11 @@ jobs:
         run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo test -p turbo-dom-browser-env --config "$V8_PATCH" --features "${ENV_V8_FEATURE}"
       - name: turbo-dom-browser-env tests (host-internals, test-support)
         run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo test -p turbo-dom-browser-env --config "$V8_PATCH" --features "${ENV_V8_FEATURE}host-internals,test-support"
+      - name: turbo-dom-browser-env tests (split install path, turbo-dom#249)
+        # The same suite with every install taken as bootstrap_engine + attach_document.
+        env:
+          TURBO_DOM_ATTACH_PATH: "1"
+        run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo test -p turbo-dom-browser-env --config "$V8_PATCH" --features "${ENV_V8_FEATURE}host-internals,test-support"
       - name: turbo-dom-browser-env clippy (crate is lint-exempt by design; deny new warnings)
         if: matrix.variant == 'default'
         run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo clippy -p turbo-dom-browser-env --config "$V8_PATCH" --all-targets --features host-internals,test-support -- -D warnings
