@@ -958,6 +958,15 @@ mod tests {
             (0.0, 0.0, 30.0, 20.0),
         );
         assert_eq!(fine.len(), 600);
+        // An empty painting area paints nothing, whatever the tile.
+        let empty = (0.0, 0.0, 0.0, 10.0);
+        assert!(layer(
+            NodeId(1),
+            &props_of(&[]),
+            &image,
+            (big, empty, BorderRadii::ZERO)
+        )
+        .is_empty());
     }
 
     #[test]
