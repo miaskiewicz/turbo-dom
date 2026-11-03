@@ -89,8 +89,8 @@ mod tests {
         TilePattern {
             tile: Box::new(FragmentContent::Box {
                 background: None,
-                border: Default::default(),
-                border_radius: Default::default(),
+                border: turbo_dom_layout::layout::value::BorderEdges::default(),
+                border_radius: turbo_dom_layout::BorderRadii::default(),
                 shadow: None,
                 gradient: Some(LinearGradient {
                     angle_deg: 180.0,
