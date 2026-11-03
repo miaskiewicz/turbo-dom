@@ -376,6 +376,7 @@ OWNED="$OWNED xml_documents.rs xml_documents.js xml_documents_tests.rs xml_docum
 OWNED="$OWNED css_grouping_rules_probe.js css_grouping_rules_chrome156.json"
 OWNED="$OWNED css_grouping_cascade_probe.js css_grouping_cascade_chrome156.json"
 OWNED="$OWNED css_cascade_specificity_probe.js css_cascade_specificity_chrome156.json"
+OWNED="$OWNED inline_style_reuse_probe.js inline_style_reuse_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}
