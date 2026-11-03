@@ -18,7 +18,7 @@ use std::ops::Range;
 
 use unicode_bidi::{bidi_class, BidiClass, BidiInfo, Level};
 
-use super::{InlineEdge, NodeId, PlacedAtom, PlacedInlineEdge, Piece, SourceRun};
+use super::{InlineEdge, NodeId, Piece, PlacedAtom, PlacedInlineEdge, SourceRun};
 
 /// The `unicode-bidi` of an inline box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -352,7 +352,11 @@ pub(super) fn reorder_line(
     mut items: Vec<LineItem>,
     pen: f32,
     open: &[InlineEdge],
-    placed: (&mut [SourceRun], &mut [PlacedAtom], &mut Vec<PlacedInlineEdge>),
+    placed: (
+        &mut [SourceRun],
+        &mut [PlacedAtom],
+        &mut Vec<PlacedInlineEdge>,
+    ),
 ) {
     let (runs, atoms, edges) = placed;
     // Not L1: Chrome hangs a line's trailing collapsible space next to the character
@@ -409,7 +413,13 @@ pub(super) fn reorder_line(
     *edges = visual;
 }
 
-fn visual_edge(line_box: &LineBox, start: bool, x: f32, advance: f32, decorated: bool) -> PlacedInlineEdge {
+fn visual_edge(
+    line_box: &LineBox,
+    start: bool,
+    x: f32,
+    advance: f32,
+    decorated: bool,
+) -> PlacedInlineEdge {
     let mut edge = line_box.edge.clone();
     edge.start = start;
     edge.advance = advance;
@@ -460,7 +470,10 @@ mod tests {
             UnicodeBidi::IsolateOverride.controls(true),
             ("\u{202e}", "\u{202c}")
         );
-        assert_eq!(UnicodeBidi::Plaintext.controls(true), ("\u{2068}", "\u{2069}"));
+        assert_eq!(
+            UnicodeBidi::Plaintext.controls(true),
+            ("\u{2068}", "\u{2069}")
+        );
     }
 
     #[test]

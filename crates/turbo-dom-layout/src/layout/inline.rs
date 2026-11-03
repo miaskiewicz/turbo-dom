@@ -967,10 +967,10 @@ fn build_pieces(
     let mut runs_seen = 0;
     let mut atoms_seen = 0;
     let flush = |group: &mut Vec<InlineRun>,
-                     edges: &mut Vec<(usize, InlineEdge)>,
-                     diags: &mut Diagnostics,
-                     words: &mut Vec<Word>,
-                     runs_seen: usize| {
+                 edges: &mut Vec<(usize, InlineEdge)>,
+                 diags: &mut Diagnostics,
+                 words: &mut Vec<Word>,
+                 runs_seen: usize| {
         let first = runs_seen - group.len();
         flush_run_group(
             group,
@@ -1720,7 +1720,10 @@ impl<'a> Placer<'a> {
             self.align,
             self.strut,
             &self.open_edges,
-            (strut_metrics.map(|metrics| (metrics, self.central)), self.bidi),
+            (
+                strut_metrics.map(|metrics| (metrics, self.central)),
+                self.bidi,
+            ),
             (
                 self.capture_sources,
                 self.html_font_metrics,
@@ -2702,7 +2705,11 @@ fn after_closed_box(word: &Word, space: &Seg) -> bool {
         .edges
         .iter()
         .any(|(at, edge)| *at == word.segs.len() && !edge.start);
-    closes && word.segs.last().is_some_and(|seg| seg.node_id != space.node_id)
+    closes
+        && word
+            .segs
+            .last()
+            .is_some_and(|seg| seg.node_id != space.node_id)
 }
 fn visible_space_advance(word: &Word, index: usize, has_next: bool) -> f32 {
     if index == 0 && has_next {
