@@ -722,6 +722,15 @@ const CASES = [
       probes: [[20, 1], [1, 14], [20, 26], [46, 14]].map(([dx, dy]) => [20 + dx, 20 + dy]),
     })),
   ),
+  // The shading names physical sides in vertical writing modes too.
+  ...[
+    ["inset", "vertical-rl"],
+    ["outset", "vertical-lr"],
+  ].map(([style, mode]) => ({
+    id: `border-${style}-${mode}`,
+    html: DOC(`<div data-cid="m" style="${at(20, 20)};writing-mode:${mode};width:20px;height:40px;border:4px ${style} #767676"></div>`),
+    probes: [[14, 1], [1, 24], [14, 46], [26, 24]].map(([dx, dy]) => [20 + dx, 20 + dy]),
+  })),
   // The `appearance: none` text field's UA `2px inset` border, bottom and right; a button
   // with an author background keeps the UA `2px outset` border in black.
   {

@@ -95,7 +95,7 @@ input { -internal-ua-padding: 1px 2px; border: 2px inset #767676; background-col
 input[type=hidden] { display: none }
 textarea { font-family: monospace; padding: 2px; border: 1px solid #767676; background-color: #ffffff; white-space: pre-wrap }
 select { border: 1px solid #767676; background-color: #ffffff; white-space: pre }
-button, input[type=button], input[type=submit], input[type=reset] { -internal-ua-padding: 1px 6px; border: 2px outset #767676; background-color: #efefef; text-align: center }
+button, input[type=button], input[type=submit], input[type=reset] { -internal-ua-padding: 1px 6px; border: 2px outset #000000; background-color: #efefef; text-align: center }
 input[type=checkbox] { margin: 3px 3px 3px 4px; padding: 0; border: 0; -internal-ua-size: 13px 13px }
 input[type=radio] { margin: 3px 3px 0 5px; padding: 0; border: 0; -internal-ua-size: 13px 13px }
 input[type=range] { margin: 2px; padding: 0; border: 0; -internal-ua-size: 129px 16px }

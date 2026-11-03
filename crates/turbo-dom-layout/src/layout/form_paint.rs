@@ -17,10 +17,12 @@
 //! Text fields, textareas, menu lists, buttons and colour wells fall back to their CSS
 //! painting when the author restyles their border or background (as Chrome does), and
 //! every control with `appearance: none` (and in vertical writing modes, whose rotated
-//! native look is not drawn).
+//! native look is not drawn). Those CSS borders are the UA sheet's: a text field's
+//! `2px inset #767676` and a button's `2px outset black`, shaded like Chrome's inset /
+//! outset sides (miaskiewicz/turbo-dom#257).
 //! Measured against the paint Chrome 156 control's `form-*` cases.
 use super::fragment::{BorderRadii, Fragment, FragmentContent, Transform2D};
-use super::value::{BorderEdges, BorderSide, BoxStyle, Rgba};
+use super::value::{border_style_colour, BorderEdges, BorderSide, BoxStyle, Rgba};
 use crate::Attr;
 
 use super::form_controls::Control;
@@ -98,23 +100,27 @@ fn native(control: Control, style: &crate::ComputedStyle, frag: &Fragment) -> bo
         // marker, so `content_kind` gave it a `Box`.
         unreachable!("a form control's fragment is a box");
     };
-    let (width, face) = match control {
+    // The UA border: (width, colour, inset / outset / solid) and background.
+    let (width, colour, shade, face) = match control {
         Control::Toggle => return true,
-        Control::TextField => (2, WHITE),
-        Control::Button => (2, FACE),
-        Control::TextArea | Control::Select => (1, WHITE),
-        Control::Color => (1, FACE),
+        Control::TextField => (2, FRAME, Some(true), WHITE),
+        Control::Button => (2, Rgba::BLACK, Some(false), FACE),
+        Control::TextArea | Control::Select => (1, FRAME, None, WHITE),
+        Control::Color => (1, FRAME, None, FACE),
     };
-    let side = BorderSide {
+    // An inset border's top and left are its dark sides, an outset one's bottom and right.
+    let side = |top_left: bool| BorderSide {
         width,
-        color: Some(FRAME),
+        color: Some(shade.map_or(colour, |inset| {
+            border_style_colour(colour, top_left == inset)
+        })),
     };
     *border
         == (BorderEdges {
-            top: side,
-            right: side,
-            bottom: side,
-            left: side,
+            top: side(true),
+            right: side(false),
+            bottom: side(false),
+            left: side(true),
         })
         && *background == Some(face)
         && gradient.is_none()
@@ -205,9 +211,10 @@ fn turned_l(
     )
 }
 
-/// A menu list's chevron: tip 7px from its right edge, 2px below its middle.
+/// A menu list's chevron: a 2px stroke, the turned L of a 7px square centred 7px from
+/// its right edge and 1.5px above its middle (its tip 2px below the middle; #257).
 fn chevron(frag: &Fragment) -> Fragment {
-    let side = 5.0;
+    let side = 7.0;
     turned_l(
         frag,
         (frag.x + frag.width - 7.0, frag.y + frag.height / 2.0 - 1.5),
@@ -601,7 +608,7 @@ mod tests {
         assert!(
             has(
                 &select,
-                (32.5, 7.0, 5.0, 5.0, None, Some(Rgba::BLACK), 2, 0.0, true)
+                (31.5, 6.0, 7.0, 7.0, None, Some(Rgba::BLACK), 2, 0.0, true)
             ),
             "{select:?}"
         );
@@ -609,10 +616,11 @@ mod tests {
 
     #[test]
     fn restyled_vertical_and_appearance_none_controls_keep_css_painting() {
+        // The UA `2px inset #767676` border's lightened right side (Chrome 156: 202).
         let css = Some(Rgba {
-            r: 0x76,
-            g: 0x76,
-            b: 0x76,
+            r: 202,
+            g: 202,
+            b: 202,
             a: 255,
         });
         for style in ["appearance:none", "writing-mode:vertical-rl"] {
