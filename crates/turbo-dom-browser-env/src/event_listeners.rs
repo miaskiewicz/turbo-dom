@@ -443,7 +443,7 @@ pub(super) fn attach(
     };
     let scope = &mut v8::ContextScope::new(scope, context);
     let data = v8::Integer::new_from_unsigned(scope, listener.id);
-    let Some(hook) = v8::Function::builder(abort_listener)
+    let Some(hook) = v8::Function::builder(ext!(FunctionCallback, abort_listener))
         .data(data.into())
         .build(scope)
     else {

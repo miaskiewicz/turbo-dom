@@ -204,7 +204,7 @@ fn queue<'s>(
         scope,
         &[owner.into(), handle.into(), task.into(), record.into()],
     );
-    let Some(function) = v8::FunctionTemplate::builder(flush)
+    let Some(function) = v8::FunctionTemplate::builder(ext!(FunctionCallback, flush))
         .data(data.into())
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .build(scope)

@@ -25,6 +25,8 @@ mod dom_ownership;
 mod element_internals;
 #[path = "element_members.rs"]
 mod element_members;
+#[path = "external_refs.rs"]
+pub(crate) mod external_refs;
 pub use dom_isolation::{activate_isolate, reset_isolate, NativeDomScope};
 #[path = "storage_ownership.rs"]
 mod storage_ownership;
@@ -4695,11 +4697,12 @@ pub fn dispatch_host_event(
     }
     if handle_of(scope, target).is_some() {
         let host = v8::Boolean::new(scope, true);
-        if let Some(function) = v8::FunctionTemplate::builder(el_dispatch_event)
-            .data(host.into())
-            .constructor_behavior(v8::ConstructorBehavior::Throw)
-            .build(scope)
-            .get_function(scope)
+        if let Some(function) =
+            v8::FunctionTemplate::builder(ext!(FunctionCallback, el_dispatch_event))
+                .data(host.into())
+                .constructor_behavior(v8::ConstructorBehavior::Throw)
+                .build(scope)
+                .get_function(scope)
         {
             function.call(scope, target.into(), &[event.into()]);
         }
@@ -5715,11 +5718,12 @@ fn dispatch_synthetic_with_trust(
         dispatch_host_event(scope, ev, node);
     } else {
         let flag = v8::Boolean::new(scope, false);
-        if let Some(function) = v8::FunctionTemplate::builder(el_dispatch_event)
-            .data(flag.into())
-            .constructor_behavior(v8::ConstructorBehavior::Throw)
-            .build(scope)
-            .get_function(scope)
+        if let Some(function) =
+            v8::FunctionTemplate::builder(ext!(FunctionCallback, el_dispatch_event))
+                .data(flag.into())
+                .constructor_behavior(v8::ConstructorBehavior::Throw)
+                .build(scope)
+                .get_function(scope)
         {
             function.call(scope, node.into(), &[ev.into()]);
         }
@@ -6208,7 +6212,7 @@ where
 {
     // DOM operations are callable methods, not constructors. Enforce that in
     // V8 itself rather than removing a property from a constructible function.
-    let template = v8::FunctionTemplate::builder(ownership_callback::<F>)
+    let template = v8::FunctionTemplate::builder(ext!(FunctionCallback, ownership_callback::<F>))
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .length(method_arity(name))
         .build(scope);
@@ -6257,11 +6261,11 @@ fn tmpl_getter(
     scope: &mut v8::PinScope,
     tmpl: v8::Local<v8::ObjectTemplate>,
     name: &str,
-    g: impl v8::MapFnTo<v8::AccessorNameGetterCallback>,
+    g: impl v8::MapFnTo<v8::AccessorNameGetterCallback> + Copy,
 ) {
     // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, name).unwrap();
-    tmpl.set_accessor(key.into(), g);
+    tmpl.set_accessor(key.into(), ext!(AccessorNameGetterCallback, g));
 }
 
 fn ownership_setter<'s, 'i, S>(
@@ -6329,7 +6333,7 @@ fn tmpl_accessor<S>(
     scope: &mut v8::PinScope,
     tmpl: v8::Local<v8::ObjectTemplate>,
     name: &str,
-    g: impl v8::MapFnTo<v8::AccessorNameGetterCallback>,
+    g: impl v8::MapFnTo<v8::AccessorNameGetterCallback> + Copy,
     _s: S,
 ) where
     S: v8::MapFnTo<v8::AccessorNameSetterCallback>
@@ -6343,7 +6347,11 @@ fn tmpl_accessor<S>(
 {
     // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, name).unwrap();
-    tmpl.set_accessor_with_setter(key.into(), g, ownership_setter::<S>);
+    tmpl.set_accessor_with_setter(
+        key.into(),
+        ext!(AccessorNameGetterCallback, g),
+        ext!(AccessorNameSetterCallback, ownership_setter::<S>),
+    );
 }
 
 /// Build the shared element template (methods + accessors).
@@ -6485,8 +6493,8 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     // Always-on graceful-degradation interceptor: unimplemented members read as undefined (no
     // crash); recording the access list is gated by log_enabled() (TURBO_RUST_DOM_LOG).
     let handler = v8::NamedPropertyHandlerConfiguration::new()
-        .getter(missing_getter)
-        .setter(passthrough_setter)
+        .getter(ext!(NamedPropertyGetterCallback, missing_getter))
+        .setter(ext!(NamedPropertySetterCallback, passthrough_setter))
         .flags(
             v8::PropertyHandlerFlags::NON_MASKING
                 | v8::PropertyHandlerFlags::ONLY_INTERCEPT_STRINGS,
@@ -6615,7 +6623,7 @@ fn make_dom_accessor(
     let operation = if setter { "set" } else { "get" };
     // invariant: engine-built name, far below V8's string length limit
     let data = v8::String::new(scope, &format!("{operation}\0{owner}\0{property}")).unwrap();
-    let template = v8::FunctionTemplate::builder(dom_accessor_dispatch)
+    let template = v8::FunctionTemplate::builder(ext!(FunctionCallback, dom_accessor_dispatch))
         .data(data.into())
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .length(i32::from(setter))
@@ -6792,15 +6800,16 @@ fn make_native_dom_function(
             call_message,
         ],
     );
-    let template = v8::FunctionTemplate::builder(native_dom_function_dispatch)
-        .data(data.into())
-        .constructor_behavior(if constructor {
-            v8::ConstructorBehavior::Allow
-        } else {
-            v8::ConstructorBehavior::Throw
-        })
-        .length(length)
-        .build(scope);
+    let template =
+        v8::FunctionTemplate::builder(ext!(FunctionCallback, native_dom_function_dispatch))
+            .data(data.into())
+            .constructor_behavior(if constructor {
+                v8::ConstructorBehavior::Allow
+            } else {
+                v8::ConstructorBehavior::Throw
+            })
+            .length(length)
+            .build(scope);
     // invariant: engine-built name, far below V8's string length limit
     let name = v8::String::new(scope, &name).unwrap();
     template.set_class_name(name);
@@ -7138,13 +7147,13 @@ fn make_native_named_object(
     let template = v8::ObjectTemplate::new(scope);
     template.set_named_property_handler(
         v8::NamedPropertyHandlerConfiguration::new()
-            .getter(named_getter)
-            .setter(named_setter)
-            .query(named_query)
-            .descriptor(named_descriptor)
-            .deleter(named_deleter)
-            .enumerator(named_enumerator)
-            .definer(named_definer)
+            .getter(ext!(NamedPropertyGetterCallback, named_getter))
+            .setter(ext!(NamedPropertySetterCallback, named_setter))
+            .query(ext!(NamedPropertyQueryCallback, named_query))
+            .descriptor(ext!(NamedPropertyDescriptorCallback, named_descriptor))
+            .deleter(ext!(NamedPropertyDeleterCallback, named_deleter))
+            .enumerator(ext!(NamedPropertyEnumeratorCallback, named_enumerator))
+            .definer(ext!(NamedPropertyDefinerCallback, named_definer))
             .data(args.get(1))
             .flags(if args.get(3).is_true() {
                 v8::PropertyHandlerFlags::ONLY_INTERCEPT_STRINGS
@@ -7156,13 +7165,13 @@ fn make_native_named_object(
     if args.get(2).is_true() {
         template.set_indexed_property_handler(
             v8::IndexedPropertyHandlerConfiguration::new()
-                .getter(indexed_getter)
-                .setter(indexed_setter)
-                .query(indexed_query)
-                .descriptor(indexed_descriptor)
-                .deleter(indexed_deleter)
-                .enumerator(indexed_enumerator)
-                .definer(indexed_definer)
+                .getter(ext!(IndexedPropertyGetterCallback, indexed_getter))
+                .setter(ext!(IndexedPropertySetterCallback, indexed_setter))
+                .query(ext!(IndexedPropertyQueryCallback, indexed_query))
+                .descriptor(ext!(IndexedPropertyDescriptorCallback, indexed_descriptor))
+                .deleter(ext!(IndexedPropertyDeleterCallback, indexed_deleter))
+                .enumerator(ext!(IndexedPropertyEnumeratorCallback, indexed_enumerator))
+                .definer(ext!(IndexedPropertyDefinerCallback, indexed_definer))
                 .data(args.get(1)),
         );
     }
@@ -7700,7 +7709,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     let reflect = v8::Local::<v8::Object>::try_from(reflect).unwrap();
     // invariant: install-time intrinsic lookup, before page script runs
     let construct = reflect.get(scope, construct_key.into()).unwrap();
-    let factory = v8::FunctionTemplate::builder(make_native_dom_function)
+    let factory = v8::FunctionTemplate::builder(ext!(FunctionCallback, make_native_dom_function))
         .data(construct)
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .build(scope)

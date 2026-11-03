@@ -166,7 +166,7 @@ fn constructor(
     let delegate = v8::Local::<v8::Function>::try_from(args.get(0))
         .expect("custom_elements.js passes its construction delegate");
     let name = args.get(1).to_rust_string_lossy(scope);
-    if let Some(function) = v8::Function::builder(construct)
+    if let Some(function) = v8::Function::builder(ext!(FunctionCallback, construct))
         .data(delegate.into())
         .length(0)
         .build(scope)
@@ -766,7 +766,7 @@ fn bind_native<F>(scope: &mut v8::PinScope, global: v8::Local<v8::Object>, name:
 where
     F: v8::MapFnTo<v8::FunctionCallback>,
 {
-    if let Some(function) = v8::FunctionTemplate::builder(callback)
+    if let Some(function) = v8::FunctionTemplate::builder(ext!(FunctionCallback, callback))
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .build(scope)
         .get_function(scope)
