@@ -1384,3 +1384,8 @@ mod tests {
         reset();
     }
 }
+
+/// Is a custom element definition active on this isolate (so mutations queue reactions)?
+pub(super) fn reactions_active(scope: &mut v8::PinScope) -> bool {
+    scope.get_slot::<DefinitionsActive>().is_some()
+}
