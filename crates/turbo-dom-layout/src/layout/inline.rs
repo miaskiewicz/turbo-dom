@@ -2546,6 +2546,10 @@ struct Recorder {
     /// Each open box and the item count at its start (an empty box gets a place).
     marks: Vec<(NodeId, usize)>,
     level: u8,
+    /// The empty boxes placed since the last item: Chrome 156 orders an empty inline
+    /// box with the item after it, so they take its level (the previous one's at the
+    /// line end).
+    empty: Vec<usize>,
 }
 
 impl Recorder {
@@ -2555,6 +2559,7 @@ impl Recorder {
             stack: open.iter().map(|edge| edge.node_id).collect(),
             marks: Vec::new(),
             level: 0,
+            empty: Vec::new(),
         }
     }
     fn push(
@@ -2565,6 +2570,9 @@ impl Recorder {
         atom: Option<usize>,
     ) {
         self.level = level;
+        for index in self.empty.drain(..) {
+            self.items[index].level = level;
+        }
         self.items.push(bidi::LineItem {
             x0,
             x1,
@@ -2590,6 +2598,7 @@ impl Recorder {
         if empty {
             let level = self.level;
             self.push((x, x), level, 0..0, None);
+            self.empty.push(self.items.len() - 1);
         }
         if let Some(at) = self.stack.iter().rposition(|node| *node == edge.node_id) {
             self.stack.remove(at);
@@ -2640,9 +2649,20 @@ impl LinePlacement {
         if let Some(record) = self.record.as_mut() {
             if self.pen > x0 || self.runs.len() > runs {
                 let level = word.space_level.unwrap_or(record.level);
+                // A space collapsed away after an empty box goes with it, to the item
+                // after them (Chrome 156).
+                let pending = if self.pen > x0 {
+                    Vec::new()
+                } else {
+                    std::mem::take(&mut record.empty)
+                };
                 record.push((x0, self.pen), level, runs..self.runs.len(), None);
                 if let Some(item) = record.items.last_mut() {
                     item.space = true;
+                }
+                if !pending.is_empty() {
+                    record.empty = pending;
+                    record.empty.push(record.items.len() - 1);
                 }
             }
         }
