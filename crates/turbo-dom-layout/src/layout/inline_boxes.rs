@@ -78,7 +78,7 @@ pub(super) fn sets_upright(c: char) -> bool {
 
 /// A character that takes the previous character's orientation instead of its own: a
 /// combining mark, variation selector, ZWJ, emoji modifier or tag (its
-/// `Grapheme_Cluster_Break` is Extend, ZWJ or SpacingMark), so a sequence is not split.
+/// `Grapheme_Cluster_Break` is `Extend`, `ZWJ` or `SpacingMark`), so a sequence is not split.
 pub(super) fn inherits_orientation(c: char) -> bool {
     in_ranges(super::vertical_orientation::INHERIT, c)
 }

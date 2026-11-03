@@ -60,7 +60,7 @@ fn size_attributes_past_i32_are_the_default_like_chrome_156() {
         // Text inputs: only the width carries `size`.
         let axis = |(w, h): (f32, f32)| if kind == "size" { (w, 0.0) } else { (w, h) };
         // The in-range value is not the default in Chrome.
-        assert!(axis(chrome(&format!("{kind}-0"))) != axis(chrome(&default)));
+        assert_ne!(axis(chrome(&format!("{kind}-0"))), axis(chrome(&default)));
         for i in 0..last {
             let cid = format!("{kind}-{i}");
             let ours_default = axis(ours(&cid)) == axis(ours(&default));

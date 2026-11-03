@@ -1,4 +1,4 @@
-//! `text-orientation: mixed` per character like Chrome 156 (UAX #50 Vertical_Orientation,
+//! `text-orientation: mixed` per character like Chrome 156 (UAX #50 `Vertical_Orientation`,
 //! R2 review #8): in a `vertical-rl` line of the fixture Liberation Serif, a character
 //! Chrome sets upright (©, ®, ±, ×, ÷, §, ■, ▲, ‰, №, ™: Vo=U) advances by the face's
 //! ascent + descent, one it turns (a, -, «, €, ‐: Vo=R) by its horizontal advance. In
@@ -38,8 +38,7 @@ fn characters_stand_upright_or_turn_like_chrome_156() {
         let ours = got
             .iter()
             .find(|b| b.cid == cid)
-            .map(|b| b.height)
-            .unwrap_or(f32::NAN);
+            .map_or(f32::NAN, |b| b.height);
         // The advance along the line; Chrome's upright advance rounds the face's
         // ascent + descent to whole pixels.
         let chrome = want["rect"][3].as_f64().unwrap() as f32;

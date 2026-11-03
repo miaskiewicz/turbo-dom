@@ -334,7 +334,7 @@ fn step_of(text: Option<&str>) -> Option<f64> {
     }
 }
 
-/// The (clamped) `value` aligned to `step` from `base`, as Chrome's StepRange: snapped to
+/// The (clamped) `value` aligned to `step` from `base`, as Chrome's `StepRange`: snapped to
 /// the nearest step value, at most the last step value at or below the max (the max
 /// lowered to it), at least the min. No step (`any`), or a step finer than an `f64` can
 /// count across the range, leaves it as it is.
@@ -344,7 +344,7 @@ fn step_align(min: f64, max: f64, value: f64, step: Option<f64>, base: f64) -> f
     };
     // Halved, so `max - base` cannot overflow to infinity.
     let steps = (max / 2.0 - base / 2.0) / (step / 2.0);
-    if !(steps.abs() < 9_007_199_254_740_992.0) {
+    if steps.is_nan() || steps.abs() >= 9_007_199_254_740_992.0 {
         return value;
     }
     let aligned = base + steps.floor() * step;

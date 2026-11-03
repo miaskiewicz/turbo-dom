@@ -117,6 +117,24 @@ impl Relabel {
         }
     }
 
+    /// A compact code (two bits per side, then the swap) for memo keys.
+    pub(crate) fn code(self) -> u16 {
+        let sides = self
+            .sides
+            .iter()
+            .enumerate()
+            .fold(0, |code, (i, &side)| code | ((side as u16) << (2 * i)));
+        sides | (u16::from(self.swap) << 8)
+    }
+
+    /// The relabel [`Relabel::code`] encoded.
+    pub(crate) fn decode(code: u16) -> Relabel {
+        Relabel {
+            sides: std::array::from_fn(|i| usize::from((code >> (2 * i)) & 3)),
+            swap: code >> 8 == 1,
+        }
+    }
+
     /// Whether the inline and block axes swap.
     pub(crate) fn swaps(self) -> bool {
         self.swap

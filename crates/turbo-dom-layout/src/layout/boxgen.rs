@@ -93,7 +93,10 @@ pub struct LayoutBox {
 /// A memoized measurement of a relabelled copy: the relabel from the generated box to the
 /// copy (the composition of every relabel on the way; `None` for the generated box),
 /// which measurement ([`MemoKind`]) and everything else it depends on.
-type MemoKey = (Option<super::writing::Relabel>, MemoKind, Vec<u64>);
+type MemoKey = (Option<u16>, MemoKind, Vec<u64>);
+
+/// The memoized measurements a [`RelabelMemo`] shares.
+type MemoEntries = Vec<(MemoKey, (f32, f32))>;
 
 /// The measurements [`RelabelMemo`] shares.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -115,8 +118,9 @@ pub(crate) enum MemoKind {
 /// [`LayoutBox::relabelled`] shares it.
 #[derive(Debug, Default)]
 pub(crate) struct RelabelMemo {
-    path: Option<super::writing::Relabel>,
-    entries: std::sync::Arc<std::sync::Mutex<Vec<(MemoKey, (f32, f32))>>>,
+    /// The composed relabel ([`super::writing::Relabel::code`]).
+    path: Option<u16>,
+    entries: std::sync::Arc<std::sync::Mutex<MemoEntries>>,
 }
 
 impl Clone for RelabelMemo {
@@ -129,7 +133,13 @@ impl RelabelMemo {
     /// The memo of a copy relabelled by `relabel`: the same entries, one relabel further.
     fn relabelled(&self, relabel: super::writing::Relabel) -> RelabelMemo {
         RelabelMemo {
-            path: Some(self.path.map_or(relabel, |path| path.then(relabel))),
+            path: Some(
+                self.path
+                    .map_or(relabel, |path| {
+                        super::writing::Relabel::decode(path).then(relabel)
+                    })
+                    .code(),
+            ),
             entries: std::sync::Arc::clone(&self.entries),
         }
     }
@@ -156,7 +166,7 @@ impl RelabelMemo {
         value
     }
 
-    fn lock(&self) -> std::sync::MutexGuard<'_, Vec<(MemoKey, (f32, f32))>> {
+    fn lock(&self) -> std::sync::MutexGuard<'_, MemoEntries> {
         self.entries
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -831,6 +841,9 @@ impl InlineItem {
 }
 
 /// One inline-level item inside a [`BoxKind::Lines`] context.
+// `Atomic` holds a whole `LayoutBox` (264 bytes with its relabel memo, R2 review #4);
+// boxing it would change this public variant's type, a breaking API change.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum InlineItem {
     SourceBreak {

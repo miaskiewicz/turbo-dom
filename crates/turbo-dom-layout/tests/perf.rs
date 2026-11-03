@@ -9,6 +9,8 @@
 
 mod common;
 
+use std::fmt::Write as _;
+
 use turbo_dom_layout::perf;
 
 #[test]
@@ -96,7 +98,7 @@ fn alternating_writing_modes(depth: usize) -> String {
         } else {
             "horizontal-tb"
         };
-        html.push_str(&format!("<div style='display:flex;writing-mode:{mode}'>"));
+        write!(html, "<div style='display:flex;writing-mode:{mode}'>").unwrap();
     }
     html.push_str("word");
     html.push_str(&"</div>".repeat(depth));
