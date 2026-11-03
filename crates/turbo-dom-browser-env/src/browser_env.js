@@ -628,6 +628,11 @@
   // realm's only cause an extra update, never a missed one).
   var animatedStyleBumps=0;
   __ns.invalidateAnimatedStyles=function(){animatedStyleBumps++;bumpCssomEpoch();};
+  // An element's computed `display` (animations.js `rendered`): resolved through `snapshots`,
+  // one map shared by a whole ancestor walk, so each ancestor resolves (or revalidates its
+  // reuse) once per walk instead of once per level, and no declaration object is made.
+  __ns.computedDisplay=function(el,snapshots){return computedSnapshotValue(computeStyleSnapshot(el,snapshots),'display');};
+  __ns.computedSnapshots=function(){return new computedSnapshotMap();};
   __ns.computedStyleStamp=function(el){var key=computedCacheKey(el);return key?[key.version,key.epoch-animatedStyleBumps,styleStateEpoch(),key.owner]:null;};
   function computedCacheKey(el){
     var version;try{version=computedStyleVersion(el);}catch(e){return null;}
