@@ -324,8 +324,8 @@ fn rect(svg: &mut String, x: f32, y: f32, w: f32, h: f32, c: Rgba) {
 
 /// Paint an outer `box-shadow` as a blurred rounded rect behind the box, using an
 /// inline SVG `feGaussianBlur` filter (native, so any viewer renders the soft
-/// edge). `blur` 0 emits an unfiltered offset rect. The filter id is derived from
-/// the box geometry to stay unique within the document.
+/// edge). `blur` 0 emits an unfiltered offset rect. The filter id is the document
+/// offset, unique (round-1 review of 0.7.0, finding 8: it was the box origin).
 fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, sh: &BoxShadow) {
     let spread = sh.spread as f32;
     let x = f.x + sh.offset_x as f32 - spread;
@@ -341,11 +341,8 @@ fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: &BorderRadii,
         return;
     }
     // Pad the filter region by the blur so the feathered edge isn't clipped.
-    let id = format!(
-        "sh{}_{}",
-        (f.x as i64) + 1_000_000,
-        (f.y as i64) + 1_000_000
-    );
+    // The document offset: unique, also for boxes at one origin.
+    let id = format!("sh{}", svg.len());
     // Capped like Chrome's (miaskiewicz/turbo-dom#95).
     let std = crate::paint_png::shadow_blur(sh) / 2.0;
     let _ = writeln!(
@@ -420,8 +417,8 @@ fn paint_inset_shadow(
 
 /// Paint a `linear-gradient(...)` background as a native SVG `<linearGradient>`
 /// (userSpaceOnUse, start/end points across the box per the CSS angle) filling the
-/// box rect (rounded by `border_radius`). The gradient id is derived from the box
-/// geometry to stay unique within the document.
+/// box rect (rounded by `border_radius`). The gradient id is the document offset,
+/// unique.
 fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, g: &CssGradient) {
     if f.width < 0.5 || f.height < 0.5 || g.stops.len() < 2 {
         return;
@@ -433,7 +430,7 @@ fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, g
     let (cx, cy) = (f.x + w / 2.0, f.y + h / 2.0);
     let (x1, y1) = (cx - dx * half, cy - dy * half);
     let (x2, y2) = (cx + dx * half, cy + dy * half);
-    let id = format!("g{}_{}", (f.x as i64) + 1_000_000, (f.y as i64) + 1_000_000);
+    let id = format!("g{}", svg.len());
     let _ = write!(
         svg,
         "<linearGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" \
@@ -1014,8 +1011,8 @@ mod tests {
         );
         assert_eq!(
             svg(4.0, Some(shadow(2, 3, 6, 0, blue, false))),
-            "<filter id=\"sh1000010_1000010\" x=\"-50%\" y=\"-50%\" width=\"200%\" height=\"200%\"><feGaussianBlur stdDeviation=\"3.00\"/></filter>\n\
-             <rect x=\"12.00\" y=\"13.00\" width=\"20.00\" height=\"10.00\" rx=\"4.00\" ry=\"4.00\" fill=\"#0000ff\" filter=\"url(#sh1000010_1000010)\"/>\n"
+            "<filter id=\"sh130\" x=\"-50%\" y=\"-50%\" width=\"200%\" height=\"200%\"><feGaussianBlur stdDeviation=\"3.00\"/></filter>\n\
+             <rect x=\"12.00\" y=\"13.00\" width=\"20.00\" height=\"10.00\" rx=\"4.00\" ry=\"4.00\" fill=\"#0000ff\" filter=\"url(#sh130)\"/>\n"
         );
         // A 0.5px radius is square; the spread scales below the radius (CSS); a 400px blur
         // is capped at 256 (stdDeviation 128).
@@ -1136,7 +1133,7 @@ mod tests {
                 "{angle}: {lo} {hi}"
             );
             assert!(out.ends_with(
-                "<rect x=\"10.00\" y=\"20.00\" width=\"60.00\" height=\"30.00\" fill=\"url(#g1000010_1000020)\"/>\n"
+                "<rect x=\"10.00\" y=\"20.00\" width=\"60.00\" height=\"30.00\" fill=\"url(#g130)\"/>\n"
             ), "{out}");
         }
         // Half a pixel wide or high still emits the gradient; rounded boxes round it.
@@ -1459,7 +1456,11 @@ mod tests {
         assert_eq!(unique.len(), 4, "{ids:?}");
         // Each box's fill and filter reference its own definitions.
         for id in &ids {
-            assert_eq!(svg.matches(&format!("url(#{id})")).count(), 1, "{id}: {svg}");
+            assert_eq!(
+                svg.matches(&format!("url(#{id})")).count(),
+                1,
+                "{id}: {svg}"
+            );
         }
     }
 }

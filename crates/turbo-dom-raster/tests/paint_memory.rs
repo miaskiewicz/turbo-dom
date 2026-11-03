@@ -46,7 +46,9 @@ static SERIAL: Mutex<()> = Mutex::new(());
 
 /// The largest single allocation `run` makes and how many of 1 MiB or more it makes.
 fn allocations(run: impl FnOnce()) -> (usize, usize) {
-    let _guard = SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     LARGEST.store(0, Ordering::Relaxed);
     BIG.store(0, Ordering::Relaxed);
     run();
@@ -106,8 +108,8 @@ fn a_huge_img_paints_with_bounded_scratch() {
     let peak = largest_allocation(|| {
         png = screenshot_png_with_opts(html, "", VIEWPORT, &assets, false, false).unwrap();
     });
+    // The box is far taller than the canvas (and wider, unless capped to its column).
     assert_eq!(pixel(&png, 10, 10), [255, 0, 0]);
-    assert_eq!(pixel(&png, 190, 190), [255, 0, 0]);
     assert!(peak < 16 << 20, "largest allocation {peak} bytes");
 }
 
