@@ -97,6 +97,19 @@
     ["nestedEntities30", '<!DOCTYPE r [<!ENTITY e0 "x"><!ENTITY e1 "&e0;"><!ENTITY e2 "&e1;"><!ENTITY e3 "&e2;"><!ENTITY e4 "&e3;"><!ENTITY e5 "&e4;"><!ENTITY e6 "&e5;"><!ENTITY e7 "&e6;"><!ENTITY e8 "&e7;"><!ENTITY e9 "&e8;"><!ENTITY e10 "&e9;"><!ENTITY e11 "&e10;"><!ENTITY e12 "&e11;"><!ENTITY e13 "&e12;"><!ENTITY e14 "&e13;"><!ENTITY e15 "&e14;"><!ENTITY e16 "&e15;"><!ENTITY e17 "&e16;"><!ENTITY e18 "&e17;"><!ENTITY e19 "&e18;"><!ENTITY e20 "&e19;"><!ENTITY e21 "&e20;"><!ENTITY e22 "&e21;"><!ENTITY e23 "&e22;"><!ENTITY e24 "&e23;"><!ENTITY e25 "&e24;"><!ENTITY e26 "&e25;"><!ENTITY e27 "&e26;"><!ENTITY e28 "&e27;"><!ENTITY e29 "&e28;"><!ENTITY e30 "&e29;">]><r>&e30;</r>'],
     ["fanOutEntities", '<!DOCTYPE r [<!ENTITY a "x"><!ENTITY b1 "&a;&a;"><!ENTITY b2 "&b1;&b1;"><!ENTITY b3 "&b2;&b2;">]><r>&b2;|&b3;</r>'],
     ["billionLaughs", '<!DOCTYPE r [<!ENTITY l0 "lol"><!ENTITY l1 "&l0;&l0;&l0;&l0;&l0;&l0;&l0;&l0;&l0;&l0;"><!ENTITY l2 "&l1;&l1;&l1;&l1;&l1;&l1;&l1;&l1;&l1;&l1;"><!ENTITY l3 "&l2;&l2;&l2;&l2;&l2;&l2;&l2;&l2;&l2;&l2;"><!ENTITY l4 "&l3;&l3;&l3;&l3;&l3;&l3;&l3;&l3;&l3;&l3;"><!ENTITY l5 "&l4;&l4;&l4;&l4;&l4;&l4;&l4;&l4;&l4;&l4;"><!ENTITY l6 "&l5;&l5;&l5;&l5;&l5;&l5;&l5;&l5;&l5;&l5;"><!ENTITY l7 "&l6;&l6;&l6;&l6;&l6;&l6;&l6;&l6;&l6;&l6;"><!ENTITY l8 "&l7;&l7;&l7;&l7;&l7;&l7;&l7;&l7;&l7;&l7;"><!ENTITY l9 "&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;">]><r>&l9;</r>'],
+    // an ATTLIST default inserts a declared entity's replacement text once, verbatim
+    // (character references decoded, nothing re-expanded): no amplification
+    ["attlistDefaultLaughs", '<!DOCTYPE r [<!ENTITY l0 "lol">' + Array.from({ length: 9 }, (_, i) => `<!ENTITY l${i + 1} "${`&l${i};`.repeat(10)}">`).join("") + '<!ATTLIST r a CDATA "&l9;">]><r/>'],
+    ["attlistDefaultSelfReference", '<!DOCTYPE r [<!ENTITY e "&e;&e;"><!ATTLIST r a CDATA "&e;">]><r/>'],
+    ["attlistNamespaceDefaultLaughs", '<!DOCTYPE r [<!ENTITY l0 "lol">' + Array.from({ length: 9 }, (_, i) => `<!ENTITY l${i + 1} "${`&l${i};`.repeat(10)}">`).join("") + '<!ATTLIST r xmlns:p CDATA "&l9;">]><r/>'],
+    ["attlistNamespaceDefaultSelfReference", '<!DOCTYPE r [<!ENTITY e "&e;&e;"><!ATTLIST r xmlns:p CDATA "&e;">]><r><p:c/></r>'],
+    ["attlistDefaultReplacementText", '<!DOCTYPE r [<!ENTITY e0 "x"><!ENTITY e1 "&e0;"><!ENTITY c "&#65;&#x42;&lt;x&amp;y&#9;z&zz;"><!ENTITY w "a\tb\nc"><!ATTLIST r a CDATA "&e1;|&c;|&w;|\t">]><r/>'],
+    ["attlistDefaultBadCharacterReference", '<!DOCTYPE r [<!ENTITY c "a&#xZ;b&#"><!ATTLIST r a CDATA "&c;">]><r/>'],
+    ["attlistNamespaceDefaultBadCharacterReference", '<!DOCTYPE r [<!ENTITY c "a&#xZ;b&#"><!ATTLIST r xmlns:p CDATA "&c;">]><r/>'],
+    // a specified attribute value inserts an entity's replacement text once, verbatim (#268)
+    ["attributeEntityLaughs", '<!DOCTYPE r [<!ENTITY l0 "lol">' + Array.from({ length: 9 }, (_, i) => `<!ENTITY l${i + 1} "${`&l${i};`.repeat(10)}">`).join("") + ']><r a="&l9;"/>'],
+    ["attributeEntitySelfReference", '<!DOCTYPE r [<!ENTITY e "&e;&e;">]><r a="&e;" b="x&e;y"/>'],
+    ["attributeEntityReplacementText", '<!DOCTYPE r [<!ENTITY e0 "x"><!ENTITY e1 "&e0;"><!ENTITY e2 "&e1;"><!ENTITY c "&#65;&#x42;&lt;x&amp;y&#9;z&zz;"><!ENTITY w "a\tb\nc">]><r a="&e2;|&c;|&w;|\t" xmlns:p="&e1;"><p:s/></r>'],
     // well-formedness errors
     ["mismatch", "<a><b></a>"],
     ["empty", ""],

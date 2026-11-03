@@ -495,6 +495,85 @@ const CASES = [
     probes: [[1, 0], [1, 1], [640, 400], [640, 401], [5, 600], [5, 601], [1279, 796], [1279, 798], [1279, 799]],
   },
   {
+    // 0.7.0 round-3 review, finding 3: a scaled box's gradient tiles are drawn at device
+    // resolution, smooth (a 4px red-to-blue tile under scale(2): eight shades per 8px
+    // period, not four 2px bands).
+    id: "bg-tiles-scaled-2x",
+    html: DOC(`<div style="${at(0, 0)};width:16px;height:8px;transform:scale(2);transform-origin:0 0;background:linear-gradient(to right,#ff0000,#0000ff) 0 0/4px 4px"></div>`),
+    assets: [],
+    probes: [[0, 4], [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4], [7, 4], [24, 12], [31, 12]],
+  },
+  {
+    // The same under scale(4): a 10px tile, 40 device px per period.
+    id: "bg-tiles-scaled-4x",
+    html: DOC(`<div style="${at(0, 100)};width:40px;height:20px;transform:scale(4);transform-origin:0 0;background:linear-gradient(to right,#ff0000,#0000ff) 0 0/10px 10px"></div>`),
+    assets: [],
+    probes: [[0, 110], [4, 110], [8, 110], [12, 110], [16, 110], [20, 110], [24, 110], [28, 110], [32, 110], [36, 110], [156, 170]],
+  },
+  {
+    // A rotated box's tiles: the hard red/blue stop inside each 20px tile is
+    // anti-aliased along the rotated edge, not stair-stepped.
+    id: "bg-tiles-rotated",
+    html: DOC(`<div style="${at(300, 300)};width:80px;height:80px;transform:rotate(30deg);background:#00ff00 linear-gradient(to right,#ff0000 50%,#0000ff 50%) 0 0/20px 20px"></div>`),
+    assets: [],
+    probes: [
+      [332, 292], [332, 293], [331, 294], [330, 296], [341, 297], [329, 298],
+      [340, 298], [328, 299], [340, 299], [328, 300], [339, 300], [327, 301], [339, 301],
+      [340, 340], [325, 320],
+    ],
+  },
+  {
+    // miaskiewicz/turbo-dom#269: an `<img>` in a scale(4) box is sampled at device
+    // resolution: its red/blue edge (sprite x=50) blends over a few device px. (The
+    // transform is on a wrapper: a transform on the `<img>` itself is not applied yet.)
+    id: "img-scaled-4x",
+    html: DOC(`<div style="${at(0, 0)};transform:scale(4);transform-origin:0 0"><img src="${SPRITE}" style="display:block;width:100px;height:40px"></div>`),
+    assets: [SPRITE],
+    probes: [[190, 80], [196, 80], [197, 80], [198, 80], [199, 80], [200, 80], [201, 80], [202, 80], [203, 80], [210, 80]],
+  },
+  {
+    // miaskiewicz/turbo-dom#272: a transform on the `<img>` itself scales it (paint and
+    // getBoundingClientRect), here about its default centre origin: the 100x40 box
+    // becomes 400x160 at (50,140). The edge blend is img-scaled-4x's.
+    id: "img-transformed",
+    html: DOC(`<img data-cid="i" src="${SPRITE}" style="${at(200, 200)};width:100px;height:40px;transform:scale(4)">`),
+    assets: [SPRITE],
+    probes: [[60, 160], [100, 220], [240, 220], [248, 220], [252, 220], [400, 220], [449, 299], [451, 220], [100, 301]],
+  },
+  {
+    // The same for image tiles: 50x20 sprite tiles under scale(4), edges at device x=100
+    // (red to blue inside a tile) and x=200 (blue to the next tile's red).
+    id: "bg-image-tiles-scaled-4x",
+    html: DOC(`<div style="${at(0, 300)};width:100px;height:20px;transform:scale(4);transform-origin:0 0;background:url(${SPRITE}) 0 0/50px 20px"></div>`),
+    assets: [SPRITE],
+    probes: [[97, 340], [98, 340], [99, 340], [100, 340], [101, 340], [102, 340], [197, 340], [198, 340], [199, 340], [200, 340], [201, 340], [202, 340]],
+  },
+  {
+    // miaskiewicz/turbo-dom#270: 2.5px tiles (red 40%, blue after) are not snapped to
+    // whole pixels: Chrome draws the tile once and repeats it every 2.5px, blending the
+    // pixels the tile edges cross.
+    id: "bg-tiles-fractional-blend",
+    html: DOC(`<div style="${at(0, 0)};width:200px;height:200px;background:#00ff00 linear-gradient(to right,#ff0000 40%,#0000ff 40%) 0 0/2.5px 2.5px"></div>`),
+    assets: [],
+    probes: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [7, 0], [8, 0], [102, 50], [103, 50], [197, 199], [198, 199]],
+  },
+  {
+    // The same with 1.5px tiles over a small box (fewer than 4096 tiles).
+    id: "bg-tiles-fractional-blend-few",
+    html: DOC(`<div style="${at(0, 0)};width:30px;height:30px;background:#00ff00 linear-gradient(to right,#ff0000 50%,#0000ff 50%) 0 0/1.5px 1.5px"></div>`),
+    assets: [],
+    probes: [[0, 5], [1, 5], [2, 5], [3, 5], [4, 5], [5, 5], [28, 29], [29, 29]],
+  },
+  {
+    // 0.7.0 round-3 review, finding 4: about 7.3 million 1.5px tiles (no whole-pixel
+    // period) shown under scale(0.25) cover the whole viewport, down to its bottom-right
+    // corner.
+    id: "bg-tiles-shrunk-fractional",
+    html: DOC(`<div style="${at(0, 0)};width:5120px;height:3200px;transform:scale(0.25);transform-origin:0 0;background:#00ff00 linear-gradient(#ff0000,#ff0000) 0 0/1.5px 1.5px"></div>`),
+    assets: [],
+    probes: [[0, 0], [640, 400], [1279, 0], [0, 799], [640, 700], [1279, 700], [1279, 799]],
+  },
+  {
     // An inline `content-box` origin: the first fragment's content starts after its
     // left padding, the last ends before its right padding; the 20px image sits at the
     // strip's content end.

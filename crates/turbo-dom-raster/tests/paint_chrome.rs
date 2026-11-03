@@ -51,24 +51,26 @@ const RGB_TOLERANCE: u8 = 8;
 /// - A radio button's 1px ring: Chrome's circle covers about three quarters of these
 ///   pixels (its grey blends with the white inside and the backdrop outside), ours all
 ///   of it.
-/// - `overflow-glyph-ink-*` (0.7.0 round-2 review, finding 3): edge pixels of the 40px
-///   "g". Chrome's glyph rasterizer darkens stems (its ink is about half a pixel wider
-///   on each side), ours draws the bare outline. Measured green channel, ours vs Chrome
-///   (red and blue match): (22,25) 111 vs 46 (65), (22,44) 159 vs 118 (41), (28,44) 255
-///   vs 139 (116: the descender's lower-left curve, which Chrome's wider stem reaches
-///   and ours misses). The descender's left part is also pinned by the solid-ink probes
-///   (23,42) and (24,44), compared by class; closing these edges needs Chrome-like stem
-///   darkening in the glyph rasterizer.
+/// - `overflow-glyph-ink-*` (0.7.0 round-2 review, finding 3; miaskiewicz/turbo-dom#266):
+///   edge pixels of the 40px "gy". The PNG painter now grows and lifts the outline like
+///   Chrome's CoreText smoothing and pre-blends the coverage (`src/glyph_raster.rs`); the
+///   SVG one emits the same grown outline but cannot express the pre-blend. Measured
+///   green channel (red and blue match), Chrome / PNG / SVG: (22,25) 46 / 35 / 63 (17),
+///   (22,44) 118 / 100 / 159 (41, the SVG blend; PNG 18), (28,44) 139 / 154 / 144 (15;
+///   before #266 the bare outline missed this pixel, 255, tolerance 116). The
+///   descender's left part is also pinned by the solid-ink probes (23,42) and (24,44),
+///   compared by class; the glyph-wide residual is measured in
+///   `tests/glyph_coverage_chrome.rs`.
 const ANTIALIASED_EDGES: &[(&str, u32, u32, u8)] = &[
     ("form-native-radio", 26, 20, 36),
     ("form-native-radio", 20, 26, 36),
     ("form-native-radio", 32, 26, 36),
     ("form-native-radio", 26, 32, 36),
     ("form-native-radio-checked", 26, 20, 45),
-    ("overflow-glyph-ink-hidden", 22, 25, 65),
-    ("overflow-glyph-ink-visible", 22, 25, 65),
+    ("overflow-glyph-ink-hidden", 22, 25, 17),
+    ("overflow-glyph-ink-visible", 22, 25, 17),
     ("overflow-glyph-ink-visible", 22, 44, 41),
-    ("overflow-glyph-ink-visible", 28, 44, 116),
+    ("overflow-glyph-ink-visible", 28, 44, 15),
     // The 90% thumb's (centre 67.6, 28; radius 7) top arc crosses this pixel: measured
     // rgb(0,126,255) against Chrome's rgb(0,117,255), PNG and SVG (round-2 review #9).
     ("form-native-range-step-max", 66, 21, 9),
@@ -117,10 +119,10 @@ fn unclassed_probes_compare_chromes_rgb_within_a_tolerance() {
     // An anti-aliased edge compares the RGB within its tolerance, across classes.
     let edge = serde_json::json!({"x": 22, "y": 25, "class": "B", "rgb": [0, 46, 255]});
     assert_eq!(
-        probe_difference("overflow-glyph-ink-visible", &edge, [0, 111, 255]),
+        probe_difference("overflow-glyph-ink-visible", &edge, [0, 63, 255]),
         None
     );
-    assert!(probe_difference("overflow-glyph-ink-visible", &edge, [0, 112, 255]).is_some());
+    assert!(probe_difference("overflow-glyph-ink-visible", &edge, [0, 64, 255]).is_some());
 }
 
 fn fixture() -> serde_json::Value {
@@ -428,7 +430,16 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
             img.width(),
             img.height()
         );
-        for y in 0..img.height() {
+        // Identical rows share their rects (one rect per run, as tall as the rows): an
+        // image drawn smaller than its pixels then has no seams between rows.
+        let row = |y: u32| {
+            (0..img.width())
+                .map(|x| img.get_pixel(x, y).0)
+                .collect::<Vec<_>>()
+        };
+        let mut y = 0;
+        while y < img.height() {
+            let rows = (y..img.height()).take_while(|&r| row(r) == row(y)).count() as u32;
             let mut x = 0;
             while x < img.width() {
                 let p = img.get_pixel(x, y).0;
@@ -437,7 +448,7 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
                     .count() as u32;
                 let _ = write!(
                     pixels,
-                    "<rect x='{x}' y='{y}' width='{run}' height='1' fill='rgb({},{},{})' fill-opacity='{}'/>",
+                    "<rect x='{x}' y='{y}' width='{run}' height='{rows}' fill='rgb({},{},{})' fill-opacity='{}'/>",
                     p[0],
                     p[1],
                     p[2],
@@ -445,6 +456,7 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
                 );
                 x += run;
             }
+            y += rows;
         }
         pixels.push_str("</svg>");
         let open = svg[..at].rfind("<image ").unwrap();
@@ -501,7 +513,10 @@ fn svg_rounded_borders_follow_the_radius_like_chrome_156() {
 /// The vector screenshot of every case, rasterized, against the same Chrome probes.
 #[test]
 fn svg_screenshots_paint_like_chrome_156() {
-    let failures = svg_differences(|id| !pending_case(id));
+    // `img-scaled-4x` (miaskiewicz/turbo-dom#269) embeds the source image as it is; how
+    // smoothly it is drawn four times larger is the viewer's filter, and
+    // [`rasterize_svg`] draws embedded images crisp by construction.
+    let failures = svg_differences(|id| !pending_case(id) && id != "img-scaled-4x");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
@@ -571,5 +586,105 @@ fn overflow_clips_glyph_ink_past_the_line_box_like_chrome_156() {
 fn cloned_inline_decorations_paint_like_chrome_156() {
     let mut failures = differences(|id| id.starts_with("inline-clone-"));
     failures.extend(svg_differences(|id| id.starts_with("inline-clone-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// 0.7.0 round-3 review, finding 7: a pattern of more than 4096 tiles without a
+/// whole-pixel period (2.5px tiles snap to alternating 3px and 2px) paints the same
+/// snapped tiles in both painters: the vector screenshot, rasterized, matches the PNG
+/// pixel for pixel (an unsnapped `<pattern>` of the exact tile put edges up to 1px off).
+#[test]
+fn fractional_tile_patterns_paint_alike_in_png_and_svg() {
+    let html = r#"<body style="margin:0;background:#0ff"><div style="position:absolute;left:3px;top:5px;width:203px;height:201px;background:#0f0 linear-gradient(to right,#f00 40%,#00f 40%) 0 0/2.5px 2.5px"></div>"#;
+    let none = ImageAssets::new();
+    let png = screenshot_png_with_opts(html, "", VIEWPORT, &none, false, false).expect("png");
+    let png = tiny_skia::Pixmap::decode_png(&png).expect("decode");
+    let svg = screenshot_svg_with_opts(html, "", VIEWPORT, &none, false, false).expect("svg");
+    assert!(
+        svg.matches("<rect").count() < 100,
+        "one pattern, not one rect per tile"
+    );
+    let raster = rasterize_svg(&svg);
+    let mut differences = Vec::new();
+    for y in 0..220 {
+        for x in 0..220 {
+            let p = png.pixel(x, y).unwrap();
+            let s = raster.pixel(x, y).unwrap().demultiply();
+            let far = [
+                p.red().abs_diff(s.red()),
+                p.green().abs_diff(s.green()),
+                p.blue().abs_diff(s.blue()),
+            ]
+            .into_iter()
+            .any(|d| d > 2);
+            if far {
+                differences.push(format!("({x},{y}): png {p:?}, svg {s:?}"));
+            }
+        }
+    }
+    assert!(
+        differences.is_empty(),
+        "{} pixels differ:\n{}",
+        differences.len(),
+        differences[..differences.len().min(20)].join("\n")
+    );
+}
+
+/// miaskiewicz/turbo-dom#269: an `<img>` and image tiles under `scale(4)` sample the
+/// source at device resolution (their edges blend over a few device px), not a 1x
+/// resample stretched. SVG: [`svg_screenshots_paint_like_chrome_156`].
+#[test]
+fn scaled_images_sample_their_source_at_device_resolution_like_chrome_156() {
+    let scaled = |id: &str| id == "img-scaled-4x" || id == "bg-image-tiles-scaled-4x";
+    let mut failures = differences(scaled);
+    // Every probe, classed or not, within the RGB tolerance of Chrome's: the blend
+    // across an edge is the point here.
+    for case in fixture()["cases"].as_array().unwrap() {
+        let id = case["id"].as_str().unwrap();
+        if !scaled(id) {
+            continue;
+        }
+        let html = case["html"].as_str().unwrap();
+        let png =
+            screenshot_png_with_opts(html, "", VIEWPORT, &assets(case), false, false).expect("png");
+        let pm = tiny_skia::Pixmap::decode_png(&png).expect("decode");
+        for probe in case["probes"].as_array().unwrap() {
+            let (x, y) = (
+                probe["x"].as_u64().unwrap() as u32,
+                probe["y"].as_u64().unwrap() as u32,
+            );
+            let c = pm.pixel(x, y).expect("in bounds");
+            let chrome: [u8; 3] = serde_json::from_value(probe["rgb"].clone()).unwrap();
+            let got = [c.red(), c.green(), c.blue()];
+            if got
+                .iter()
+                .zip(chrome)
+                .any(|(&g, c)| g.abs_diff(c) > RGB_TOLERANCE)
+            {
+                failures.push(format!("{id} ({x},{y}): {got:?}, Chrome {chrome:?}"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// miaskiewicz/turbo-dom#270: fractional tiles (2.5px, 1.5px) are drawn once and repeated
+/// every fractional step, blending the pixels their edges cross, like Chrome, in both
+/// painters.
+#[test]
+fn fractional_tiles_blend_their_edges_like_chrome_156() {
+    let mut failures = differences(|id| id.starts_with("bg-tiles-fractional-blend"));
+    failures.extend(svg_differences(|id| {
+        id.starts_with("bg-tiles-fractional-blend")
+    }));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// miaskiewicz/turbo-dom#272: a `transform` on an `<img>` itself scales the painted image
+/// and its `getBoundingClientRect()` (through `layout_boxes`) like Chrome. SVG:
+/// [`svg_screenshots_paint_like_chrome_156`].
+#[test]
+fn a_transformed_img_paints_and_measures_like_chrome_156() {
+    let failures = differences(|id| id == "img-transformed");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

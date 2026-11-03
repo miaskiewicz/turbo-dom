@@ -1,8 +1,8 @@
 {
   "browser": "Chrome/156.0.8078.47",
-  "recordedAt": "2026-11-03T17:32:05.195Z",
+  "recordedAt": "2026-11-03T18:47:57.659Z",
   "fixture": "xml_documents_probe.js",
-  "probeSha256": "6ab1584970067b5cd0656248df44136fd92589fc44bbc84a59e8ab3a8ec95ad0",
+  "probeSha256": "04396342857f4b5491e2215cb83157d8596c578a655a3a08ff42905ff9f22a7a",
   "result": {
     "nested": {
       "tag": "[object XMLDocument]",
@@ -4499,6 +4499,586 @@
         ]
       ],
       "xml": "<!DOCTYPE r><r><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 536: Entity too big</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></r>"
+    },
+    "attlistDefaultLaughs": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "a",
+                null,
+                null,
+                "a",
+                "&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;"
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r a=\"&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;\"/>"
+    },
+    "attlistDefaultSelfReference": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "a",
+                null,
+                null,
+                "a",
+                "&e;&e;"
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r a=\"&amp;e;&amp;e;\"/>"
+    },
+    "attlistNamespaceDefaultLaughs": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns:p",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "p",
+                "&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;"
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r xmlns:p=\"&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;\"/>"
+    },
+    "attlistNamespaceDefaultSelfReference": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns:p",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "p",
+                "&e;&e;"
+              ]
+            ],
+            [
+              [
+                1,
+                "p:c",
+                "&e;&e;",
+                "p",
+                "c",
+                "p:c",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r xmlns:p=\"&amp;e;&amp;e;\"><p:c/></r>"
+    },
+    "attlistDefaultReplacementText": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "a",
+                null,
+                null,
+                "a",
+                "&e0;|AB&lt;x&amp;y\tz&zz;|a\tb\nc| "
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r a=\"&amp;e0;|AB&amp;lt;x&amp;amp;y&#9;z&amp;zz;|a&#9;b&#10;c| \"/>"
+    },
+    "attlistDefaultBadCharacterReference": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 31: Invalid numeric entity: xZ"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 31: Invalid numeric entity: xZ</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "attlistNamespaceDefaultBadCharacterReference": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "html",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            1,
+            "html",
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "html",
+            "html",
+            [],
+            [
+              [
+                1,
+                "body",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "body",
+                "body",
+                [],
+                [
+                  [
+                    1,
+                    "parsererror",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "parsererror",
+                    "parsererror",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "This page contains the following errors:"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "div",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "div",
+                        "div",
+                        [
+                          [
+                            "style",
+                            null,
+                            null,
+                            "style",
+                            "font-family:monospace;font-size:12px"
+                          ]
+                        ],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "error on line 1 at column 31: Invalid numeric entity: xZ"
+                          ]
+                        ]
+                      ],
+                      [
+                        1,
+                        "h3",
+                        "http://www.w3.org/1999/xhtml",
+                        null,
+                        "h3",
+                        "h3",
+                        [],
+                        [
+                          [
+                            3,
+                            "#text",
+                            "Below is a rendering of the page up to the first error."
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><parsererror style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 31: Invalid numeric entity: xZ</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></body></html>"
+    },
+    "attributeEntityLaughs": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "a",
+                null,
+                null,
+                "a",
+                "&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;"
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r a=\"&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;\"/>"
+    },
+    "attributeEntitySelfReference": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "a",
+                null,
+                null,
+                "a",
+                "&e;&e;"
+              ],
+              [
+                "b",
+                null,
+                null,
+                "b",
+                "x&e;&e;y"
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r a=\"&amp;e;&amp;e;\" b=\"x&amp;e;&amp;e;y\"/>"
+    },
+    "attributeEntityReplacementText": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns:p",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "p",
+                "&e0;"
+              ],
+              [
+                "a",
+                null,
+                null,
+                "a",
+                "&e1;|AB&lt;x&amp;y\tz&zz;|a\tb\nc| "
+              ]
+            ],
+            [
+              [
+                1,
+                "p:s",
+                "&e0;",
+                "p",
+                "s",
+                "p:s",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r xmlns:p=\"&amp;e0;\" a=\"&amp;e1;|AB&amp;lt;x&amp;amp;y&#9;z&amp;zz;|a&#9;b&#10;c| \"><p:s/></r>"
     },
     "mismatch": {
       "tag": "[object XMLDocument]",

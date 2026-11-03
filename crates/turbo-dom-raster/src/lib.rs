@@ -23,6 +23,7 @@
 mod avif;
 mod canvas_ops;
 mod glyph;
+mod glyph_raster;
 mod image_paint;
 mod jxl;
 mod paint_canvas;
@@ -34,6 +35,7 @@ mod paint_png;
 mod paint_svg;
 mod rrect;
 mod style_extract;
+mod tile_cell;
 #[cfg(test)]
 mod vertical_upright_tests;
 #[cfg(feature = "gpu-metal")]

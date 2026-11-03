@@ -13,9 +13,9 @@ use turbo_dom_layout::{
     PositionedGlyph, Rgba, TilePattern,
 };
 
-use crate::glyph::{self, Pen, Tracer};
 use crate::image_paint::{self, DecodedAssets};
 use crate::rrect::{self, Seg};
+use crate::tile_cell::TileCell;
 
 const IMAGE_PLACEHOLDER: Rgba = Rgba {
     r: 220,
@@ -144,11 +144,13 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             upright,
             ..
         } => {
-            if *vertical && *upright {
-                paint_upright_text(svg, f, glyphs, face, (*font_size, *color));
-            } else {
-                paint_text(svg, (f, *vertical), glyphs, face, *font_size, *color);
-            }
+            paint_text(
+                svg,
+                (f, *vertical, *upright),
+                glyphs,
+                face,
+                (*font_size, *color),
+            );
         }
         FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
         FragmentContent::Tiles(pattern) => paint_tiles(svg, f, pattern, images),
@@ -160,44 +162,43 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
 /// The most tiles without a whole-pixel period [`paint_tiles`] writes one by one.
 const MAX_LISTED_TILES: usize = 4096;
 
-/// A background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1): one
-/// tile, at its snapped place and size, in a `<pattern>` repeating every step, filling
-/// the box (only the tile's own row or column on an axis that does not repeat). Tiles
-/// without a whole-pixel period (a `round` or `space` step off the pixel grid) snap to
-/// alternating sizes: up to [`MAX_LISTED_TILES`] of them are written one by one, more
-/// as a pattern of the exact tile (viewers that rasterize a pattern tile at whole
-/// pixels drift from Chrome there). The pattern id is the document offset, unique.
+/// A background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1): the
+/// tiles of one [`TileCell`] (a whole-pixel super-period of the snapped tiles, the same
+/// cell the PNG painter repeats), at their snapped places and sizes, in a `<pattern>`
+/// repeating every cell, filling the box (only the tile's own row or column on an axis
+/// that does not repeat). Tiles without a whole-pixel period (a `round` or `space` step
+/// off the pixel grid) are written one by one when there are at most
+/// [`MAX_LISTED_TILES`] of them. The pattern id is the document offset, unique.
 fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &DecodedAssets) {
     let area = (f.x, f.y, f.width, f.height);
-    let Some(snapped) = pattern.tiles(area).next() else {
+    let Some(first) = pattern.tiles(area).next() else {
         return;
     };
-    let few = pattern.tiles(area).nth(MAX_LISTED_TILES).is_none();
-    let (x, y, w, h) = match pattern.period() {
-        Some(_) => snapped,
-        None if few => {
-            for (x, y, w, h) in pattern.tiles(area) {
-                let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
-                paint_subtree(svg, &tile, images);
-            }
-            return;
+    if pattern.period().is_none()
+        && crate::paint_png::repeats_tiles(pattern)
+        && pattern.tiles(area).nth(1).is_some()
+        && paint_tile_texture(svg, f, pattern, (images, first)).is_some()
+    {
+        return;
+    }
+    if pattern.period().is_none() && pattern.tiles(area).nth(MAX_LISTED_TILES).is_none() {
+        for (x, y, w, h) in pattern.tiles(area) {
+            let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
+            paint_subtree(svg, &tile, images);
         }
-        None => (
-            pattern.x,
-            pattern.y,
-            pattern.tile_width,
-            pattern.tile_height,
-        ),
-    };
-    let along = |step: f32, (from, len): (f32, f32), (at, size): (f32, f32)| {
-        if step > 0.0 {
-            (step, from, len)
+        return;
+    }
+    let cell = TileCell::new(pattern, first);
+    let ((x, y), (pw, ph)) = (cell.origin, cell.size);
+    let along = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
+        if repeats {
+            (from, len)
         } else {
-            (size, at, size)
+            (at, size)
         }
     };
-    let (pw, fx, fw) = along(pattern.step_x, (f.x, f.width), (x, w));
-    let (ph, fy, fh) = along(pattern.step_y, (f.y, f.height), (y, h));
+    let (fx, fw) = along(cell.repeats.0, (f.x, f.width), (first.0, first.2));
+    let (fy, fh) = along(cell.repeats.1, (f.y, f.height), (first.1, first.3));
     let id = svg.len();
     let _ = write!(
         svg,
@@ -206,13 +207,60 @@ fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &D
     );
     // A tile's `<image>` lives in the pattern: no `<use>` outside may share it.
     SHARED.with(|memo| memo.borrow_mut().take());
-    let tile = Fragment::new(f.node_id, 0.0, 0.0, w, h, (*pattern.tile).clone());
-    paint_subtree(svg, &tile, images);
+    // The cell's tiles meet edge to edge on whole pixels: drawn without anti-aliasing
+    // their shared edges leave no seam however small a viewer draws the cell (a
+    // `scale(0.25)` box: 0.75 device px).
+    svg.push_str("<g shape-rendering=\"crispEdges\">");
+    for (tx, ty, w, h) in cell.tiles(pattern) {
+        let tile = Fragment::new(f.node_id, tx, ty, w, h, (*pattern.tile).clone());
+        paint_subtree(svg, &tile, images);
+    }
     SHARED.with(|memo| memo.borrow_mut().take());
     let _ = writeln!(
         svg,
-        "</pattern><rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>"
+        "</g></pattern><rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>"
     );
+}
+
+/// The most pixels of one fractional tile's image [`paint_tile_texture`] embeds.
+const MAX_TEXTURE_PIXELS: u64 = 1 << 22;
+
+/// Fractional tiles repeated every tile size (miaskiewicz/turbo-dom#270): one whole-pixel
+/// cell of them as Chrome and the PNG painter draw it
+/// ([`crate::paint_png::texture_cell`]: the pixels a tile edge crosses blend), embedded as
+/// one `<image>` in a `<pattern>` of the cell (a viewer rasterizes a fractional
+/// `<pattern>` cell with gaps, and tiles drawn side by side with seams). `None` (written
+/// another way) when the tile has no pixels to embed: a missing image, or a tile over
+/// [`MAX_TEXTURE_PIXELS`].
+fn paint_tile_texture(
+    svg: &mut String,
+    f: &Fragment,
+    pattern: &TilePattern,
+    (images, first): (&DecodedAssets, rrect::Rect),
+) -> Option<()> {
+    let (cell, (x, y)) =
+        crate::paint_png::texture_cell(pattern, images, first, MAX_TEXTURE_PIXELS)?;
+    let png = cell.encode_png().ok()?;
+    let (w, h) = (cell.width(), cell.height());
+    let along = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
+        if repeats {
+            (from, len)
+        } else {
+            (at, size)
+        }
+    };
+    let (fx, fw) = along(pattern.step_x > 0.0, (f.x, f.width), (first.0, first.2));
+    let (fy, fh) = along(pattern.step_y > 0.0, (f.y, f.height), (first.1, first.3));
+    let id = svg.len();
+    let _ = writeln!(
+        svg,
+        "<pattern id=\"tiles{id}\" patternUnits=\"userSpaceOnUse\" x=\"{x}\" y=\"{y}\" \
+         width=\"{w}\" height=\"{h}\"><image width=\"{w}\" height=\"{h}\" \
+         preserveAspectRatio=\"none\" href=\"data:image/png;base64,{}\"/></pattern>\
+         <rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>",
+        image_paint::base64(&png)
+    );
+    Some(())
 }
 
 /// Paint `f`'s children in stacking order inside a `<g clip-path>` of its `overflow`
@@ -598,39 +646,14 @@ fn paint_round_border(svg: &mut String, f: &Fragment, b: &BorderEdges, radii: &B
     }
 }
 
-/// An SVG path-data sink for [`glyph::trace_glyph`].
-#[derive(Default)]
-struct PathSink(String);
-
-impl Tracer for PathSink {
-    fn move_to(&mut self, x: f32, y: f32) {
-        let _ = write!(self.0, "M{x:.2} {y:.2} ");
-    }
-    fn line_to(&mut self, x: f32, y: f32) {
-        let _ = write!(self.0, "L{x:.2} {y:.2} ");
-    }
-    fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
-        let _ = write!(self.0, "Q{cx:.2} {cy:.2} {x:.2} {y:.2} ");
-    }
-    fn cubic_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
-        let _ = write!(
-            self.0,
-            "C{c1x:.2} {c1y:.2} {c2x:.2} {c2y:.2} {x:.2} {y:.2} "
-        );
-    }
-    fn close(&mut self) {
-        self.0.push_str("Z ");
-    }
-}
-
-/// Emit a line's glyph outlines as one filled `<path>` (a transparent colour, or a run
-/// with no outlined glyph, emits nothing). The face's `units_per_em` is non-zero:
-/// `ttf-parser` rejects a `head` outside 16..=16384.
-/// A turned (vertical) run of upright glyphs: each glyph its own path, turned back a
-/// quarter about its pen inside the run's turn (`paint_png::upright_turn`).
-fn paint_upright_text(
+/// Emit a line's glyph run as one filled `<path>` of the outline the raster painter
+/// fills ([`crate::glyph_raster::run_outline`]: snapped, lifted and emboldened like
+/// Chrome's glyphs, in page coordinates; a transparent colour or a run with no outlined
+/// glyph emits nothing). Chrome's luminance pre-blend has no SVG equivalent, so the
+/// vector screenshot's glyph edges keep a plain source-over blend.
+fn paint_text(
     svg: &mut String,
-    f: &Fragment,
+    (f, vertical, upright): (&Fragment, bool, bool),
     glyphs: &[PositionedGlyph],
     face: &FontFace,
     (font_size, color): (f32, Rgba),
@@ -638,79 +661,12 @@ fn paint_upright_text(
     if color.a == 0 {
         return;
     }
-    let scale = font_size / f32::from(face.units_per_em());
-    let outline = glyph::outline_face(face);
-    let frame = crate::paint_png::glyph_frame(f, true);
-    for g in glyphs {
-        let pen = Pen {
-            origin_x: f.x + g.x,
-            baseline_y: f.y + g.y,
-            scale,
-        };
-        let mut sink = PathSink::default();
-        glyph::trace_glyph(&outline, g.glyph_id, pen, &mut sink);
-        if sink.0.is_empty() {
-            continue;
-        }
-        let t = frame.pre_concat(crate::paint_png::upright_turn(
-            true,
-            (pen.origin_x, pen.baseline_y),
-        ));
-        let _ = writeln!(
-            svg,
-            "<path d=\"{}\" {} transform=\"matrix({:.4} {:.4} {:.4} {:.4} {:.2} {:.2})\"/>",
-            sink.0.trim_end(),
-            fill_attrs(color),
-            t.sx,
-            t.ky,
-            t.kx,
-            t.sy,
-            t.tx,
-            t.ty
-        );
-    }
-}
-
-fn paint_text(
-    svg: &mut String,
-    (f, vertical): (&Fragment, bool),
-    glyphs: &[PositionedGlyph],
-    face: &FontFace,
-    font_size: f32,
-    color: Rgba,
-) {
-    if color.a == 0 {
-        return;
-    }
-    let scale = font_size / f32::from(face.units_per_em());
-    let face = glyph::outline_face(face);
-    let mut sink = PathSink::default();
-    for g in glyphs {
-        let pen = Pen {
-            origin_x: f.x + g.x,
-            baseline_y: f.y + g.y,
-            scale,
-        };
-        glyph::trace_glyph(&face, g.glyph_id, pen, &mut sink);
-    }
-    if !sink.0.is_empty() {
-        // A vertical line's run turns a quarter clockwise about the fragment
-        // (`crate::paint_png::glyph_frame`).
-        let frame = if vertical {
-            format!(
-                " transform=\"matrix(0 1 -1 0 {:.2} {:.2})\"",
-                f.x + f.width + f.y,
-                f.y - f.x
-            )
-        } else {
-            String::new()
-        };
-        let _ = writeln!(
-            svg,
-            "<path d=\"{}\" {}{frame}/>",
-            sink.0.trim_end(),
-            fill_attrs(color)
-        );
+    let frame = crate::paint_png::glyph_frame(f, vertical);
+    let run =
+        crate::glyph_raster::run_outline((f, vertical && upright), glyphs, face, font_size, frame);
+    let d = run.svg_path();
+    if !d.is_empty() {
+        let _ = writeln!(svg, "<path d=\"{d}\" {}/>", fill_attrs(color));
     }
 }
 
@@ -804,19 +760,58 @@ mod tests {
             row.contains("<rect x=\"0\" y=\"4\" width=\"10\" height=\"3\""),
             "{row}"
         );
-        // Without a period: a few tiles are written one by one at their snapped boxes,
-        // many as a pattern of the exact tile.
-        let few = body(&tiles((0.0, 0.0), (1.5, 10.0), (1.5, 0.0)), &HashMap::new());
+        // Without a period, spaced (a step that is not the tile's size): a few tiles are
+        // written one by one at their snapped boxes, many as a pattern of one cell of
+        // snapped tiles (0.7.0 round-3 review, finding 7: the PNG painter's cell, not the
+        // exact unsnapped tile).
+        let few = body(&tiles((0.0, 0.0), (1.0, 10.0), (1.5, 0.0)), &HashMap::new());
         assert_eq!(few.matches("<rect").count(), 7, "{few}");
         assert!(!few.contains("<pattern"), "{few}");
         let mut many = tiles((0.0, 0.0), (0.0, 0.0), (0.0, 0.0));
         many.width = 1000.0;
         many.height = 1000.0;
         if let FragmentContent::Tiles(p) = &mut many.content {
-            (p.tile_width, p.tile_height, p.step_x, p.step_y) = (1.5, 1.5, 1.5, 1.5);
+            (p.tile_width, p.tile_height, p.step_x, p.step_y) = (1.0, 1.0, 1.5, 1.5);
         }
         let many = body(&many, &HashMap::new());
-        assert!(many.contains("width=\"1.5\" height=\"1.5\">"), "{many}");
+        assert!(
+            many.contains("x=\"0\" y=\"0\" width=\"3\" height=\"3\">"),
+            "{many}"
+        );
+        // Two snapped 1px tiles per axis (at 0 and 2): four in the cell, then the fill.
+        assert_eq!(many.matches("<rect").count(), 5, "{many}");
+        assert!(
+            many.contains("<rect x=\"2.00\" y=\"2.00\" width=\"1.00\" height=\"1.00\""),
+            "{many}"
+        );
+        // Fractional tiles repeated every tile size (miaskiewicz/turbo-dom#270): one
+        // whole-pixel cell of them (3px for 1.5px tiles, 22 of them: at least 64px, from
+        // the whole px at or before the 0.25 origin) as one `<image>` in a pattern,
+        // however few tiles there are.
+        let blended = body(&tiles((0.25, 0.0), (1.5, 1.5), (1.5, 1.5)), &HashMap::new());
+        let id = &blended["<pattern id=\"".len()..blended.find("\" patternUnits").unwrap()];
+        assert!(
+            blended.starts_with(&format!(
+                "<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" \
+                 width=\"66\" height=\"66\"><image width=\"66\" height=\"66\" \
+                 preserveAspectRatio=\"none\" href=\"data:image/png;base64,iVBORw0KGgo"
+            )),
+            "{blended}"
+        );
+        assert_eq!(blended.matches("<image").count(), 1, "{blended}");
+        assert!(
+            blended.contains(&format!(
+                "</pattern><rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" fill=\"url(#{id})\"/>"
+            )),
+            "{blended}"
+        );
+        // Along a lone axis: the tile's own (snapped) row, a cell of its height.
+        let row = body(&tiles((0.0, 2.25), (1.5, 3.0), (1.5, 0.0)), &HashMap::new());
+        assert!(row.contains("width=\"66\" height=\"3\"><image"), "{row}");
+        assert!(
+            row.contains("<rect x=\"0\" y=\"2\" width=\"10\" height=\"3\""),
+            "{row}"
+        );
         // No tile meets the box: nothing.
         assert_eq!(
             body(&tiles((20.0, 0.0), (1.0, 1.0), (0.0, 2.0)), &HashMap::new()),
@@ -1310,7 +1305,7 @@ mod tests {
         let reg = FontRegistry::new();
         for family in ["Inter", "Liberation Serif"] {
             let face = reg.select(&[family], 400, false).unwrap().clone();
-            let ttf = glyph::outline_face(&face);
+            let ttf = crate::glyph::outline_face(&face);
             let scale = 24.0 / f32::from(face.units_per_em());
             let mut x = 0.0;
             let glyphs: Vec<PositionedGlyph> = face
@@ -1349,11 +1344,28 @@ mod tests {
                 (d.1, d.2) = (7.0 + g.x, 4.0 + g.y);
                 ttf.outline_glyph(ttf_parser::GlyphId(g.glyph_id), &mut d);
             }
-            assert_eq!(
-                body(&line, &HashMap::new()),
-                format!("<path d=\"{}\" fill=\"#ff0000\"/>\n", d.0.trim_end()),
-                "{family}"
+            // The same commands, each point within a pixel of the bare outline's: the
+            // path is the outline Chrome fills, grown and snapped a fraction of a pixel
+            // (#266).
+            let got = body(&line, &HashMap::new());
+            let path = got
+                .strip_prefix("<path d=\"")
+                .and_then(|p| p.strip_suffix("\" fill=\"#ff0000\"/>\n"))
+                .expect("one red path");
+            let (got, want): (Vec<&str>, Vec<&str>) = (
+                path.split_whitespace().collect(),
+                d.0.split_whitespace().collect(),
             );
+            assert_eq!(got.len(), want.len(), "{family}");
+            for (g, w) in got.iter().zip(&want) {
+                let num = |t: &str| t.trim_start_matches(char::is_alphabetic).parse::<f32>();
+                let command = |t: &str| t.chars().take_while(|c| c.is_alphabetic()).count();
+                assert_eq!(&g[..command(g)], &w[..command(w)], "{family}");
+                let (Ok(g), Ok(w)) = (num(g), num(w)) else {
+                    continue;
+                };
+                assert!((g - w).abs() < 1.0, "{family}: {g} vs {w}");
+            }
         }
     }
 
