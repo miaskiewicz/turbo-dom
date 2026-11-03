@@ -57,6 +57,21 @@ fn a_cloned_inline_box_repeats_its_edges_on_every_line() {
     assert_eq!(span_box(&body), [20.0, 45.0, 100.0, 40.0]);
 }
 
+/// Nested end tags stay with the atom before them, their edges together (Chrome 156:
+/// `inline-close-glued-nested`): three atoms exactly fill an 88px line, two on a 95px
+/// line wrap the second for the 3px + 5px end edges.
+#[test]
+fn nested_end_tags_stay_with_the_atom_before_them() {
+    let nested = |width: u32, atoms: usize| {
+        format!(
+            r#"<div style="position:absolute;left:20px;top:20px;width:{width}px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px"><span style="padding:0 3px">{}</span></span></div>"#,
+            ATOM.repeat(atoms)
+        )
+    };
+    assert_eq!(span_box(&nested(88, 3)), [20.0, 45.0, 88.0, 40.0]);
+    assert_eq!(span_box(&nested(95, 2)), [20.0, 45.0, 48.0, 40.0]);
+}
+
 /// A forced break in a cloned box repeats both edges too (Chrome 156: `inline-clone-br`).
 #[test]
 fn a_forced_break_in_a_cloned_inline_box_repeats_its_edges() {

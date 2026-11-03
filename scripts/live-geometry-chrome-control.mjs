@@ -57,6 +57,7 @@ const playwrightVersion = require(join(playwrightCore, "package.json")).version;
 const DOC = (css, body) => `<!doctype html><style>${css}</style>${body}`;
 // A text-free cell content box of a known size.
 const BOX = (w, h, cid = "") => `<div${cid ? ` data-cid="${cid}"` : ""} style="width:${w}px;height:${h}px"></div>`;
+const ATOM40 = `<span style="display:inline-block;width:40px;height:30px"></span>`;
 const CELL = (w, h, cid) => `<td data-cid="${cid}">${BOX(w, h)}</td>`;
 // The repo's Fira Code, for the cases marked `fonts`.
 const fira = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/fira-code/FiraCode-Regular.ttf")).toString("base64");
@@ -725,6 +726,18 @@ const CASES = [
         `<div data-cid="te">a<span data-cid="ce" style="display:inline-flex;contain:size;padding:7px 0 3px"><span style="width:20px;height:30px">x</span></span>b</div>`,
     ),
     fonts: true,
+  },
+  // Mutation audit 0.7.0 (#244): no break opportunity before an end tag, so an atom
+  // wraps with the end edges after it (nested: 3px + 5px), sliced or cloned; a cloned
+  // box's repeated end edge takes no room in the break.
+  {
+    id: "inline-close-glued",
+    html: DOC(
+      "body{margin:0;font-size:0}",
+      `<div style="width:88px"><span data-cid="a" style="padding:5px"><span style="padding:0 3px">${ATOM40.repeat(3)}</span></span></div>` +
+        `<div style="width:95px"><span data-cid="b" style="padding:5px"><span style="padding:0 3px">${ATOM40.repeat(2)}</span></span></div>` +
+        `<div style="width:95px"><span data-cid="c" style="padding:5px 6px;border:0 solid;border-width:0 4px;box-decoration-break:clone">${ATOM40.repeat(4)}</span></div>`,
+    ),
   },
   // Mutation audit 0.7.0 (#258): only `<input type=image>` and `<img>` load a `src`; any
   // other element with one (a span, a text input) is not a replaced image.

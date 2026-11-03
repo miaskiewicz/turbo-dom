@@ -603,6 +603,13 @@ fn image_inputs_have_no_control_frame_like_chrome_156() {
     assert_matches_chrome(compare_cases(input_image_case));
 }
 
+/// miaskiewicz/turbo-dom#244 (mutation audit 0.7.0): an atom wraps with the end tags
+/// right after it; a cloned box's repeated end edge takes no room in the break.
+#[test]
+fn end_tags_stay_with_the_atom_before_them_like_chrome_156() {
+    assert_matches_chrome(compare_cases(|id| id == "inline-close-glued"));
+}
+
 /// miaskiewicz/turbo-dom#265: size containment (`container-type` / `contain`).
 fn contain_case(id: &str) -> bool {
     id.starts_with("contain-")

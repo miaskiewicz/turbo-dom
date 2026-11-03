@@ -3221,6 +3221,139 @@
    ]
   },
   {
+   "id": "inline-close-glued-nested",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:88px;font-size:0\"><span data-cid=\"s\" style=\"background:#ff0000;padding:5px\"><span style=\"padding:0 3px\"><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span></span></span></div><div style=\"position:absolute;left:20px;top:200px;width:95px;font-size:0\"><span data-cid=\"t\" style=\"background:#ff0000;padding:5px\"><span style=\"padding:0 3px\"><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span></span></span></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 20,
+     "y": 45,
+     "width": 88,
+     "height": 40
+    },
+    {
+     "cid": "t",
+     "x": 20,
+     "y": 225,
+     "width": 48,
+     "height": 40
+    }
+   ],
+   "probes": [
+    {
+     "x": 22,
+     "y": 50,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 100,
+     "y": 50,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 106,
+     "y": 50,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 22,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 64,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 72,
+     "y": 80,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 22,
+     "y": 230,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 64,
+     "y": 230,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 72,
+     "y": 230,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 22,
+     "y": 260,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 64,
+     "y": 260,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
    "id": "inline-clone-br",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:200px;font-size:0\"><span data-cid=\"s\" style=\"background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone\"><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><br><span style=\"display:inline-block;width:40px;height:30px\"></span></span></div></body></html>",
    "assets": [],
