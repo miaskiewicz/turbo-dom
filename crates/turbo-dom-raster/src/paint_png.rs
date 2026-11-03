@@ -19,6 +19,7 @@ use std::rc::Rc;
 use crate::glyph::{self, Pen, Tracer};
 use crate::image_paint::DecodedAssets;
 use crate::rrect::{self, Seg};
+use crate::tile_cell::TileCell;
 
 /// Neutral fill for an `<img>` box whose pixels we don't have.
 const IMAGE_PLACEHOLDER: Rgba = Rgba {
@@ -406,16 +407,10 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
     paint_children(pm, f, images, xf);
 }
 
-/// The most tiles [`paint_tiles`] walks one by one: a pattern with a whole-pixel period
-/// paints through a shader whatever its size, so only a pattern of alternating snapped
-/// sizes drawn shrunk below one tile per device pixel (a degenerate transform) can
-/// reach it; its tiles past this many are not drawn.
-const MAX_WALKED_TILES: usize = 1 << 22;
-
 /// Paint a background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1)
-/// over the part of its box the canvas shows: one tile drawn into a period-sized pixmap
-/// and repeated by a pattern shader when the tiles have a whole-pixel period, else
-/// tile by tile.
+/// over the part of its box the canvas shows: one [`TileCell`] (a whole-pixel super-period
+/// of the snapped tiles) drawn into a pixmap and repeated by a pattern shader, else (one
+/// tile, or a cell larger than the canvas: big tiles, few of them) tile by tile.
 fn paint_tiles(
     pm: &mut Pixmap,
     f: &Fragment,
@@ -431,13 +426,14 @@ fn paint_tiles(
         return;
     };
     let canvas = u64::from(pm.width()) * u64::from(pm.height());
-    if let Some(period) = pattern.period().filter(|_| tiles.next().is_some()) {
-        if let Some(tile) = tile_pixmap(pattern, first, period, images, canvas) {
-            fill_pattern(pm, &tile, (region, first, period), xf);
+    if tiles.next().is_some() {
+        let cell = TileCell::new(pattern, first);
+        if let Some(tile) = cell_pixmap(pattern, &cell, images, (xf, canvas)) {
+            fill_pattern(pm, &tile, (region, first, &cell), xf);
             return;
         }
     }
-    for (x, y, w, h) in pattern.tiles(region).take(MAX_WALKED_TILES) {
+    for (x, y, w, h) in pattern.tiles(region) {
         let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
         paint_subtree(pm, &tile, images, xf);
     }
@@ -457,42 +453,63 @@ fn visible_region(f: &Fragment, xf: Transform, canvas: (u32, u32)) -> Option<rre
     (x1 > x0 && y1 > y0).then_some((x0, y0, x1 - x0, y1 - y0))
 }
 
-/// One period of the pattern: the `first` tile's content drawn at its snapped size in
-/// the corner of a `period`-sized pixmap (the tile's size on an axis that does not
-/// repeat). `None` when a period would be larger than the canvas (a big tile: walked).
-fn tile_pixmap(
-    pattern: &TilePattern,
-    (_, _, w, h): rrect::Rect,
-    (step_x, step_y): (f32, f32),
-    images: &DecodedAssets,
-    canvas: u64,
-) -> Option<Pixmap> {
-    let (pw, ph) = (
-        if step_x > 0.0 { step_x } else { w },
-        if step_y > 0.0 { step_y } else { h },
-    );
-    if (pw as u64).saturating_mul(ph as u64) > canvas {
-        return None;
-    }
-    let mut tile = Pixmap::new(pw as u32, ph as u32)?;
-    let content = Fragment::new(
-        turbo_dom_layout::NodeId(0),
-        0.0,
-        0.0,
-        w,
-        h,
-        (*pattern.tile).clone(),
-    );
-    paint_subtree(&mut tile, &content, images, Transform::identity());
-    Some(tile)
+/// Whether `xf` only moves (no scale, rotation or skew): a tile pattern then paints its
+/// pixels 1:1, unfiltered (0.7.0 round-3 review, finding 3).
+fn only_translates(xf: Transform) -> bool {
+    xf.sx == 1.0 && xf.sy == 1.0 && xf.kx == 0.0 && xf.ky == 0.0
 }
 
-/// Fill `region` with `tile` repeated every period from the `first` tile's corner (only
-/// the tile's own row or column on an axis that does not repeat).
+/// The most device pixels per CSS px a cell is drawn at.
+const MAX_CELL_SCALE: f32 = 16.0;
+
+/// How many pixmap pixels per CSS px a cell is drawn at under `xf`: the whole number at
+/// or above the device scale (so the tiles' snapped edges stay on pixmap pixels and the
+/// pattern shader only ever shrinks it), 1 when `xf` only moves or shrinks.
+fn cell_scale(xf: Transform) -> f32 {
+    let x = xf.sx.hypot(xf.ky);
+    let y = xf.kx.hypot(xf.sy);
+    x.max(y).ceil().clamp(1.0, MAX_CELL_SCALE)
+}
+
+/// One cell of the pattern drawn at `cell_scale` (or 1x when that would not fit the
+/// canvas's pixel count): its tiles' content at their snapped places. `None` when even a
+/// 1x cell would be larger than the canvas (big tiles: walked).
+fn cell_pixmap(
+    pattern: &TilePattern,
+    cell: &TileCell,
+    images: &DecodedAssets,
+    (xf, canvas): (Transform, u64),
+) -> Option<Pixmap> {
+    let (w, h) = cell.size;
+    let pixels = |s: f32| ((w * s) as u64).saturating_mul((h * s) as u64);
+    let scale = Some(cell_scale(xf))
+        .filter(|&s| pixels(s) <= canvas)
+        .or_else(|| (pixels(1.0) <= canvas).then_some(1.0))?;
+    let mut pixmap = Pixmap::new((w * scale) as u32, (h * scale) as u32)?;
+    let at = Transform::from_scale(scale, scale);
+    for (x, y, tw, th) in cell.tiles(pattern) {
+        let content = Fragment::new(
+            turbo_dom_layout::NodeId(0),
+            x,
+            y,
+            tw,
+            th,
+            (*pattern.tile).clone(),
+        );
+        paint_subtree(&mut pixmap, &content, images, at);
+    }
+    Some(pixmap)
+}
+
+/// Fill `region` with the `cell` pixmap `tile` repeated from the cell's corner (only the
+/// `first` tile's row or column on an axis that does not repeat). Under a transform that
+/// only moves, the cell's pixels land 1:1 (nearest, no anti-aliasing); under a scale,
+/// rotation or skew they are filtered and the region's edges anti-aliased, as Chrome
+/// draws a scaled or rotated background (0.7.0 round-3 review, finding 3).
 fn fill_pattern(
     pm: &mut Pixmap,
     tile: &Pixmap,
-    (region, first, (step_x, step_y)): (rrect::Rect, rrect::Rect, (f32, f32)),
+    (region, first, cell): (rrect::Rect, rrect::Rect, &TileCell),
     xf: Transform,
 ) {
     let span = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
@@ -502,17 +519,21 @@ fn fill_pattern(
             (at, size)
         }
     };
-    let (x, w) = span(step_x > 0.0, (region.0, region.2), (first.0, first.2));
-    let (y, h) = span(step_y > 0.0, (region.1, region.3), (first.1, first.3));
+    let (x, w) = span(cell.repeats.0, (region.0, region.2), (first.0, first.2));
+    let (y, h) = span(cell.repeats.1, (region.1, region.3), (first.1, first.3));
+    let smooth = !only_translates(xf);
+    let quality = if smooth {
+        tiny_skia::FilterQuality::Bilinear
+    } else {
+        tiny_skia::FilterQuality::Nearest
+    };
+    let to_layer = Transform::from_translate(cell.origin.0, cell.origin.1).pre_scale(
+        cell.size.0 / tile.width() as f32,
+        cell.size.1 / tile.height() as f32,
+    );
     let paint = Paint {
-        shader: tiny_skia::Pattern::new(
-            tile.as_ref(),
-            SpreadMode::Repeat,
-            tiny_skia::FilterQuality::Nearest,
-            1.0,
-            Transform::from_translate(first.0, first.1),
-        ),
-        anti_alias: false,
+        shader: tiny_skia::Pattern::new(tile.as_ref(), SpreadMode::Repeat, quality, 1.0, to_layer),
+        anti_alias: smooth,
         ..Paint::default()
     };
     if let Some(rect) = Rect::from_xywh(x, y, w, h) {

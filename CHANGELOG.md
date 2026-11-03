@@ -270,7 +270,10 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
 - Inset `box-shadow` (#192); per-corner elliptical radii for backgrounds, gradients,
   borders, shadows and `overflow` clipping (#253); background layers with tiling and
   clipping, painted from one tile pattern per layer (a pattern shader in PNG, a
-  `<pattern>` in SVG; no tile cap) (#248, 0.7.0 round-2 review); inline-box decorations per line fragment
+  `<pattern>` in SVG; no tile cap) (#248, 0.7.0 round-2 review): both painters repeat one
+  whole-pixel cell of the snapped tiles, so fractional tiles paint alike in PNG and SVG and
+  millions of them fill the box, and a scaled or rotated box's tiles are drawn at device
+  resolution, filtered and anti-aliased (0.7.0 round-3 review); inline-box decorations per line fragment
   (#244); vertical and upright text (#234, #239); bidi-reordered runs (#238); list
   markers (#128); the `coretext` canvas painter selects the bold / italic face (#236);
   `measure_canvas_text(text, font)` (#237).

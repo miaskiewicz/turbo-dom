@@ -16,8 +16,12 @@ static LARGEST: AtomicUsize = AtomicUsize::new(0);
 /// Allocations of 1 MiB or more.
 static BIG: AtomicUsize = AtomicUsize::new(0);
 
+/// Every allocation (and reallocation).
+static COUNT: AtomicUsize = AtomicUsize::new(0);
+
 fn record(size: usize) {
     LARGEST.fetch_max(size, Ordering::Relaxed);
+    COUNT.fetch_add(1, Ordering::Relaxed);
     if size >= 1 << 20 {
         BIG.fetch_add(1, Ordering::Relaxed);
     }
@@ -53,6 +57,16 @@ fn allocations(run: impl FnOnce()) -> (usize, usize) {
     BIG.store(0, Ordering::Relaxed);
     run();
     (LARGEST.load(Ordering::Relaxed), BIG.load(Ordering::Relaxed))
+}
+
+/// How many allocations `run` makes.
+fn allocation_count(run: impl FnOnce()) -> usize {
+    let _guard = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    COUNT.store(0, Ordering::Relaxed);
+    run();
+    COUNT.load(Ordering::Relaxed)
 }
 
 fn largest_allocation(run: impl FnOnce()) -> usize {
@@ -135,4 +149,27 @@ fn inset_shadows_on_a_tall_page_paint_with_bounded_scratch() {
     // The canvas and its PNG encode take a handful; two canvas-sized layers per shadow
     // would take 400.
     assert!(big < 20, "{big} allocations of 1 MiB or more");
+}
+
+/// 0.7.0 round-3 review, finding 4: a box of about 7.3 million 1.5px tiles (no
+/// whole-pixel period) shown under `scale(0.25)` fills the whole canvas, down to its
+/// bottom-right corner, in bounded work: one pattern of a few tiles, not one fragment per
+/// tile (walking them cut off past 4.2 million tiles, after millions of allocations).
+/// Chrome 156: `bg-tiles-shrunk-fractional` in `paint_chrome156.json`.
+#[test]
+fn millions_of_fractional_tiles_paint_the_whole_box_in_bounded_work() {
+    let html = r#"<body style="margin:0;background:#0ff"><div style="position:absolute;left:0;top:0;width:800px;height:800px;transform:scale(0.25);transform-origin:0 0;background:#0f0 linear-gradient(#f00,#f00) 0 0/1.5px 1.5px"></div>"#;
+    let mut png = Vec::new();
+    let count = allocation_count(|| {
+        png = screenshot_png_with_opts(html, "", VIEWPORT, &HashMap::new(), false, false).unwrap();
+    });
+    assert_eq!(pixel(&png, 0, 0), [255, 0, 0]);
+    assert_eq!(
+        pixel(&png, 199, 199),
+        [255, 0, 0],
+        "the bottom-right corner"
+    );
+    assert_eq!(pixel(&png, 100, 199), [255, 0, 0]);
+    // 800 x 800 / 1.5^2 = 284444 tiles; walking them allocates at least once per tile.
+    assert!(count < 20_000, "{count} allocations");
 }
