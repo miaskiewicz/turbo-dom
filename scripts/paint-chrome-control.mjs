@@ -20,10 +20,10 @@
 // crates/turbo-dom-layout/tests/html_document_chrome.rs (boxes, through `layout_boxes`).
 //
 // Usage: node scripts/paint-chrome-control.mjs [--chrome PATH] [--out PATH]
-//   --chrome defaults to the Playwright-cached Chrome for Testing 156;
+//   --chrome defaults to the frozen Chrome 156 headless shell (~/.cache/turbo-consolidation);
 //   --out    defaults to crates/turbo-dom-raster/tests/fixtures/paint_chrome156.json.
 // Needs playwright-core: PLAYWRIGHT_CORE (default: ../turbo-surf/node_modules/playwright-core).
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -38,7 +38,7 @@ const chromePath =
   values.chrome ||
   join(
     homedir(),
-    "Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+    ".cache/turbo-consolidation/chrome156/chrome-headless-shell-mac-arm64/chrome-headless-shell",
   );
 const out = resolve(values.out || join(repo, "crates/turbo-dom-raster/tests/fixtures/paint_chrome156.json"));
 const playwrightCore =
@@ -59,6 +59,15 @@ const TABLE = (style, caption, cellStyle = "") =>
 // A 100x40 PNG sprite: left half red, right half blue.
 const SPRITE =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=";
+
+// The fixture Liberation Serif (the bundled face the screenshot's font registry resolves),
+// injected as an @font-face after load so the recorded `html` stays small.
+const FONT = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/liberation-serif/LiberationSerif-Regular.ttf")).toString("base64");
+const FACE = `@font-face{font-family:"Liberation Serif";src:url(data:font/ttf;base64,${FONT})}`;
+const SERIF = `font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent`;
+// A `w`x`h` inline-block, transparent unless `bg` is given.
+const ATOM = (w, h, bg = "") => `<span style="display:inline-block;width:${w}px;height:${h}px${bg ? `;background:${bg}` : ""}"></span>`;
+const RTL_OVERRIDE = (inner) => `<span style="direction:rtl;unicode-bidi:bidi-override">${inner}</span>`;
 
 // A 40x40 inline-block of colour `bg`.
 const IB = (bg, cid) => `<span data-cid="${cid}" style="display:inline-block;width:40px;height:40px;background:${bg}"></span>`;
@@ -289,6 +298,32 @@ const CASES = [
     html: DOC(`<div style="${at(0, 110)};font-size:0"><bdo dir="rtl">${IB("#ff0000", "f")}${IB("#00ff00", "g")}</bdo>${IB("#0000ff", "h")}</div>`),
     probes: [[20, 130], [60, 130], [100, 130], [140, 130]],
   },
+  // miaskiewicz/turbo-dom#244: an inline box paints its background, padding and border
+  // per line fragment (box-decoration-break: slice): the start edge on its first
+  // fragment, the end edge on its last; padding and border also push its neighbours.
+  // Text is transparent so the probes see the decoration only. The text cases record no
+  // boxes: their x positions follow the text advances, which the static layout does not
+  // accumulate in LayoutUnits like Chrome (off by up to 0.03px); the atom cases do.
+  {
+    id: "inline-background-text",
+    html: DOC(`<div style="${at(20, 20)};${SERIF}">aaa <span style="background:#ff0000">MMMM</span> bbb</div>`),
+    probes: [[87, 35], [53, 35], [121, 35], [49, 35], [125, 35], [87, 25], [87, 22], [87, 45], [87, 48]],
+  },
+  {
+    id: "inline-edges-text",
+    html: DOC(`<div style="${at(20, 20)};${SERIF}">aa<span style="background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px">MM</span>${ATOM(40, 40, "#00ff00")}</div>`),
+    probes: [[49, 50], [52, 50], [104, 50], [87, 36], [87, 40], [87, 69], [87, 73], [45, 50], [110, 50], [135, 40]],
+  },
+  {
+    id: "inline-slice-atoms",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 50], [27, 50], [108, 50], [112, 50], [60, 40], [22, 80], [104, 80], [108, 80], [112, 80], [60, 65]],
+  },
+  {
+    id: "inline-bidi-split-atoms",
+    html: DOC(`<div style="${at(20, 20)};font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 0;border-left:4px solid #0000ff;border-right:4px solid #0000ff">${ATOM(40, 30)}${RTL_OVERRIDE(ATOM(40, 30))}</span>${RTL_OVERRIDE(ATOM(40, 30, "#00ff00"))}</div>`),
+    probes: [[22, 50], [40, 50], [62, 50], [84, 52], [84, 40], [106, 52], [142, 52], [146, 52], [150, 52]],
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
@@ -353,6 +388,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, dev
 const cases = [];
 for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
+  await page.addStyleTag({ content: FACE });
   await page.evaluate(() => document.fonts.ready);
   const boxes = await page.evaluate(async () => {
     for (const img of document.images) await img.decode().catch(() => {});
