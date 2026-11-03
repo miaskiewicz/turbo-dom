@@ -91,6 +91,19 @@ const CONTAIN_FC_CASES = [
   ["size", "contain:size"],
   ["inline-size", "contain:inline-size"],
 ];
+// 0.7.0 review R3 #2: grid item sizes are content-box lengths under `box-sizing:
+// content-box` (padding and border add to them), border-box ones otherwise: size, min and
+// max on both axes. [id suffix, declaration].
+const GRID_ITEM_BOX_CASES = [
+  ["width", "width:100px"],
+  ["width-bb", "width:100px;box-sizing:border-box"],
+  ["height", "height:40px"],
+  ["height-bb", "height:40px;box-sizing:border-box"],
+  ["min", "min-width:150px;min-height:30px"],
+  ["min-bb", "min-width:150px;min-height:30px;box-sizing:border-box"],
+  ["max", "width:200px;max-width:120px;height:90px;max-height:50px"],
+  ["max-bb", "width:200px;max-width:120px;height:90px;max-height:50px;box-sizing:border-box"],
+];
 // miaskiewicz/turbo-dom#190 quirks-mode line strut cases: [id suffix, body].
 const QUIRKS_CSS = 'body{margin:0;font-family:"Fira Code";font-size:16px}div{font-size:30px}';
 const IB = (h) => `<span style="display:inline-block;width:10px;height:${h}px"></span>`;
@@ -708,6 +721,17 @@ const CASES = [
         `<div data-cid="tm">a<span data-cid="ibm" style="display:inline-block;width:30px;height:20px;margin:3px 0 5px;${decl}">b</span>c</div>`,
     ),
     fonts: true,
+  })),
+  // 0.7.0 review R3 #2: a grid item's own size, min and max under content-box and
+  // border-box sizing, start-aligned and stretched in a 300px track.
+  ...GRID_ITEM_BOX_CASES.map(([id, decl]) => ({
+    id: `grid-item-box-${id}`,
+    html: DOC(
+      "body{margin:0}.c{padding:10px 6px;border:5px solid;border-left-width:2px}",
+      `<div data-cid="gs" style="display:grid;grid-template-columns:300px;justify-items:start;align-items:start"><div data-cid="is" class="c" style="${decl}"></div></div>` +
+        `<div data-cid="gt" style="display:grid;grid-template-columns:300px;grid-template-rows:100px"><div data-cid="it" class="c" style="${decl}"></div></div>` +
+        `<div data-cid="gf" style="display:flex;align-items:flex-start"><div data-cid="if" class="c" style="${decl}"></div></div>`,
+    ),
   })),
   // miaskiewicz/turbo-dom#241: shrink-to-fit of text uses the native (device-scale)
   // advances line layout places it with, in horizontal flow too.

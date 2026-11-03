@@ -1947,6 +1947,66 @@ mod coverage_tests {
         assert!(rw >= 0.0 && cw >= 0.0);
     }
 
+    // --- a relabelled copy's measure memo is keyed by the exact probe width ---
+    #[test]
+    fn relabelled_measure_memo_keys_the_exact_width() {
+        use crate::layout::writing::{Relabel, WritingMode};
+        // Two 10px-tall inline-blocks, 50px and 50.4px wide: one line at a 100.4px
+        // probe, two at 99.6px. Both round to 100, so a rounded key handed the second
+        // probe the first one's height (0.7.0 review R3 #6).
+        let block = |w: &str| {
+            el(
+                "span",
+                &[
+                    ("display", "inline-block"),
+                    ("width", w),
+                    ("height", "10px"),
+                ],
+                vec![],
+            )
+        };
+        let root = build_box_tree(&[el(
+            "div",
+            &[("font-size", "0"), ("line-height", "0")],
+            vec![block("50px"), block("50.4px")],
+        )]);
+        let copy = root
+            .relabelled(Relabel::between(
+                WritingMode::HorizontalTb,
+                WritingMode::VerticalRl,
+            ))
+            .relabelled(Relabel::between(
+                WritingMode::VerticalRl,
+                WritingMode::HorizontalTb,
+            ));
+        assert!(copy.relabel_memo.is_copy());
+        let fonts = FontRegistry::new();
+        let images = crate::ImageCtx {
+            resolver: &crate::NoImages,
+            body_height: None,
+        };
+        let probe = |w: f32| {
+            measure_item(
+                Size {
+                    width: Some(w),
+                    height: None,
+                },
+                Size {
+                    width: AvailableSpace::Definite(w),
+                    height: AvailableSpace::MaxContent,
+                },
+                &copy,
+                16.0,
+                &fonts,
+                &images,
+                (false, false, None, None),
+            )
+            .height
+        };
+        assert_eq!(probe(100.4), 10.0, "one line at 100.4px");
+        assert_eq!(probe(99.6), 20.0, "two lines at 99.6px");
+    }
+
     // --- inline-block atomic contributes to a line's natural/min width ---
     #[test]
     fn inline_block_atomic_measured_in_line() {
