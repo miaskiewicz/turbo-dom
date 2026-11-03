@@ -2850,52 +2850,50 @@ fn prepend_background_layers(
     content: &mut FragmentContent,
     children: &mut Vec<Fragment>,
 ) {
-    use super::background::{area_rect, color_layer, layer, props, Area, Source};
-    let FragmentContent::Box {
+    use super::background::{
+        area_radius, area_rect, border_overlay, color_layer, layer, props, Area, Source,
+    };
+    if let FragmentContent::Box {
         background,
         gradient,
+        border,
+        border_radius,
         ..
     } = content
-    else {
-        return;
-    };
-    let image = background_placement(lb, ctx);
-    if image.is_none() && gradient.is_none() && background.is_none() {
-        return;
-    }
-    let props = props(&lb.style, bs.font_size);
-    let origin = area_rect(border_box, &bs.border, &bs.padding, props.origin);
-    let paint = area_rect(border_box, &bs.border, &bs.padding, props.clip);
-    let mut layers = Vec::new();
-    let tiled_gradient = gradient.take_if(|_| !props.is_initial());
-    if tiled_gradient.is_some() && lb.mask.is_none() {
-        // The gradient no longer covers the box: its colour shows around the tiles.
-        *background = bs.background;
-    }
-    if props.clip != Area::Border {
-        if let Some(color) = background.take() {
-            layers.push(color_layer(lb.node_id, color, paint));
+    {
+        let image = background_placement(lb, ctx);
+        let props = props(&lb.style, bs.font_size);
+        let origin = area_rect(border_box, &bs.border, &bs.padding, props.origin);
+        let paint = area_rect(border_box, &bs.border, &bs.padding, props.clip);
+        let radius = area_radius(*border_radius, &bs.border, &bs.padding, props.clip);
+        let mut layers = Vec::new();
+        let tiled_gradient = gradient.take_if(|_| !props.is_initial());
+        if tiled_gradient.is_some() && lb.mask.is_none() {
+            // The gradient no longer covers the box: its colour shows around the tiles.
+            *background = bs.background;
         }
-    }
-    if let Some(gradient) = tiled_gradient {
-        layers.extend(layer(
+        if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
+            layers.push(color_layer(lb.node_id, color, paint, radius));
+        }
+        let sources = tiled_gradient
+            .map(Source::Gradient)
+            .into_iter()
+            .chain(image.map(Source::Image));
+        for source in sources {
+            layers.extend(layer(lb.node_id, &props, &source, (origin, paint, radius)));
+        }
+        if layers.is_empty() {
+            return;
+        }
+        // The border paints over the background layers.
+        layers.push(border_overlay(
             lb.node_id,
-            &props,
-            &Source::Gradient(gradient),
-            origin,
-            paint,
+            border_box,
+            std::mem::take(border),
+            *border_radius,
         ));
+        children.splice(0..0, layers);
     }
-    if let Some(image) = image {
-        layers.extend(layer(
-            lb.node_id,
-            &props,
-            &Source::Image(image),
-            origin,
-            paint,
-        ));
-    }
-    children.splice(0..0, layers);
 }
 
 /// The placement for a box's `background-image`, if it has one the resolver can

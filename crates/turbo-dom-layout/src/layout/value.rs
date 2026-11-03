@@ -1009,6 +1009,7 @@ pub(crate) fn clip_region(
         y: top,
         width: (right - left).max(0.0),
         height: (bottom - top).max(0.0),
+        radius: 0.0,
     })
 }
 
@@ -2439,6 +2440,7 @@ mod clip_tests {
                 y,
                 width,
                 height,
+                radius: 0.0,
             })
         };
         assert_eq!(

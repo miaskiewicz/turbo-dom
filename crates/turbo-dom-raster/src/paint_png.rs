@@ -38,8 +38,34 @@ pub fn paint(
     let mut pm =
         Pixmap::new(width, height).ok_or_else(|| format!("bad canvas {width}x{height}"))?;
     pm.fill(tiny_skia::Color::from_rgba8(bg.r, bg.g, bg.b, bg.a));
+    SCALED.with(|memo| memo.borrow_mut().take());
     paint_fragment(&mut pm, galley, images, Transform::identity());
     pm.encode_png().map_err(|e| format!("png encode: {e}"))
+}
+
+/// The image scaled to `size` px, memoized for the render's next tile of the same image
+/// (a background layer draws one image many times; miaskiewicz/turbo-dom#248).
+type ScaledKey = (usize, turbo_dom_layout::image::Orientation, (u32, u32));
+thread_local! {
+    static SCALED: std::cell::RefCell<Option<(ScaledKey, Option<Pixmap>)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+fn scaled(
+    image: &crate::image_paint::DecodedImage,
+    orientation: turbo_dom_layout::image::Orientation,
+    size: (u32, u32),
+) -> Option<Pixmap> {
+    let key = (std::ptr::from_ref(image) as usize, orientation, size);
+    SCALED.with(|memo| {
+        let mut memo = memo.borrow_mut();
+        if let Some((_, pixmap)) = memo.as_ref().filter(|(seen, _)| *seen == key) {
+            return pixmap.clone();
+        }
+        let pixmap = image.oriented(orientation).scaled_pixmap(size.0, size.1);
+        *memo = Some((key, pixmap.clone()));
+        pixmap
+    })
 }
 
 /// Compose a box's CSS `transform` about its absolute origin onto the inherited
@@ -182,7 +208,19 @@ fn paint_clipped(
     let Some(region) = Rect::from_xywh(f.x + clip.x, f.y + clip.y, clip.width, clip.height) else {
         return;
     };
-    let path = PathBuilder::from_rect(region);
+    let path = if clip.radius > 0.0 {
+        // `region` is a valid rect (positive size), so its rounded outline always builds.
+        round_rect_path(
+            region.x(),
+            region.y(),
+            region.width(),
+            region.height(),
+            clip.radius,
+        )
+        .expect("a rounded rect of a valid region")
+    } else {
+        PathBuilder::from_rect(region)
+    };
     let Some(bounds) = path.clone().transform(xf).map(|p| p.bounds()) else {
         return;
     };
@@ -288,7 +326,7 @@ fn paint_image(
 ) {
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
     let decoded = images.get(&placement.name);
-    let img = decoded.and_then(|d| d.oriented(placement.orientation).scaled_pixmap(w, h));
+    let img = decoded.and_then(|d| scaled(d, placement.orientation, (w, h)));
     // Fold the box's top-left into the transform so a transformed image (a rotated
     // thumbnail, a translated slide) maps correctly; draw the pixmap at (0,0).
     let place = xf.pre_concat(Transform::from_translate(f.x.round(), f.y.round()));
@@ -1280,6 +1318,7 @@ mod tests {
             y: 0.0,
             width: -5.0,
             height: 10.0,
+            radius: 0.0,
         });
         assert!(all_white(&render(&negative, 10, 10, &HashMap::new())));
         let mut overflow = with_box(plain(0.0, 0.0, 10.0, 10.0, Some(RED)), |_, _, _, t| {
@@ -1294,6 +1333,7 @@ mod tests {
             y: 1.0,
             width: 5.0,
             height: 5.0,
+            radius: 0.0,
         });
         assert!(all_white(&render(&overflow, 10, 10, &HashMap::new())));
     }
