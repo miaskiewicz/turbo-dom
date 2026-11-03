@@ -13,7 +13,11 @@ fn parse_xml(
 ) {
     let source = dom_units(scope, args.get(0)).unwrap();
     let content_type = args.get(1).to_rust_string_lossy(scope);
-    rv.set(parse_xml_document_units(scope, &source, &content_type).into());
+    rv.set(
+        parse_xml_document_units(scope, &source, &content_type)
+            .document
+            .into(),
+    );
 }
 
 fn run(probe: &str) -> serde_json::Value {
@@ -118,4 +122,52 @@ fn entity_amplification_is_bounded() {
     );
     let text = xml_documents::serialize(&parsed.tree, parsed.tree.root(), None);
     assert_eq!(text, "<!DOCTYPE r><r>lollollollol</r>");
+}
+
+/// `parse_xml_document_units` reports whether the source was well-formed, so an embedder
+/// (turbo-surf's `responseXML`) need not look for a `<parsererror>` in the tree: a valid
+/// document that itself holds a `parsererror` element is still well-formed.
+#[test]
+fn parse_xml_document_units_reports_well_formedness() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(
+        scope,
+        "<!doctype html><html><head></head><body></body></html>",
+    );
+    let count = v8::String::new(
+        scope,
+        "(doc) => doc.getElementsByTagNameNS('http://www.w3.org/1999/xhtml', 'parsererror').length",
+    )
+    .unwrap();
+    let count = v8::Script::compile(scope, count, None)
+        .and_then(|script| script.run(scope))
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+        .unwrap();
+    // (source, well-formed, <parsererror> elements in the resulting tree)
+    let cases = [
+        ("<a><b/></a>", true, 0),
+        ("<a><b></a>", false, 1),
+        ("", false, 1),
+        (
+            "<r><parsererror xmlns=\"http://www.w3.org/1999/xhtml\"><h3>x</h3></parsererror></r>",
+            true,
+            1,
+        ),
+    ];
+    for (source, well_formed, errors) in cases {
+        let units: Vec<u16> = source.encode_utf16().collect();
+        let parsed = parse_xml_document_units(scope, &units, "application/xml");
+        assert_eq!(parsed.well_formed, well_formed, "{source}");
+        let undefined = v8::undefined(scope).into();
+        let found = count
+            .call(scope, undefined, &[parsed.document.into()])
+            .and_then(|value| value.uint32_value(scope))
+            .unwrap();
+        assert_eq!(found, errors, "{source}");
+    }
+    reset();
 }

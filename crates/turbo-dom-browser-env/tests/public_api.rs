@@ -27,8 +27,8 @@ use turbo_dom_browser_env::browser_env::{
     set_document_last_modified, set_document_origin_keyed, set_document_resource_active,
     set_form_submission_blocked, set_inert_document_initializer, set_interface_record,
     set_native_event_target_observer, snapshot_blob, string_code_units, sweep_collected_documents,
-    trusted_script_source, trusted_type_string, ActivationQuery, NativeDomScope, PointerLockPolicy,
-    SnapshotBlob, SnapshotWindow, ENGINE_NAMESPACE_PARAM,
+    trusted_script_source, trusted_type_string, ActivationQuery, NativeDomScope, ParsedXmlDocument,
+    PointerLockPolicy, SnapshotBlob, SnapshotWindow, ENGINE_NAMESPACE_PARAM,
 };
 
 #[test]
