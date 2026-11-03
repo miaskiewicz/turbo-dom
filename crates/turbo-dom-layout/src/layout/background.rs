@@ -308,6 +308,13 @@ fn place(axis: Axis, area: f32, tile: f32) -> f32 {
     }
 }
 
+/// The most tile fragments one layer paints (per axis and in all): a hostile tile
+/// size or position cannot exhaust memory. Tiles past it are not painted.
+const MAX_TILES: usize = 1 << 16;
+
+/// The smallest tile painted, in px: a sub-pixel tile is painted at 1px.
+const MIN_TILE: f32 = 1.0;
+
 /// `round`: the tile shrinks or grows so a whole number of tiles fills the area.
 fn rounded(tile: f32, area: f32) -> f32 {
     let count = (area / tile).round().max(1.0);
@@ -320,10 +327,13 @@ fn starts(start: f32, step: f32, (from, len): (f32, f32)) -> Vec<f32> {
     if step <= 0.0 {
         return vec![start];
     }
-    // The last tile start at or before the painting area's start.
-    let first = start - ((start - from) / step).ceil() * step;
+    // The last tile start at or before the painting area's start (the offset reduced
+    // modulo the step, so a huge position keeps its phase and stays finite).
+    let first = from - (from - start).rem_euclid(step);
     let count = ((from + len - first) / step).ceil().max(0.0) as usize;
-    (0..count).map(|i| first + i as f32 * step).collect()
+    (0..count.min(MAX_TILES))
+        .map(|i| first + i as f32 * step)
+        .collect()
 }
 
 /// One axis's tile start and step (0: not repeated): `space` spreads the whole tiles
@@ -343,22 +353,17 @@ fn axis(repeat: Tiling, placed: f32, (area_from, area): (f32, f32), tile: f32) -
     }
 }
 
-/// The fragments of one background layer of box `id`: `source` tiled over the
-/// positioning area `origin` under a container clipped to the painting area `paint`
-/// with corner `radius` (its per-corner radii).
-pub(crate) fn layer(
-    id: NodeId,
-    props: &Props,
-    source: &Source,
-    (origin, paint, radius): (Rect, Rect, BorderRadii),
-) -> Vec<Fragment> {
+/// One layer's tile size: `background-size`, refitted by `round` along an axis with
+/// room to fill (Chrome keeps the tile on an empty axis), at least `MIN_TILE`. None: no
+/// image (an empty or non-finite tile).
+fn sized_tile(props: &Props, source: &Source, origin: Rect) -> Option<(f32, f32)> {
     let (mut tw, mut th) = tile_size(props.size, source, (origin.2, origin.3));
-    if tw <= 0.0 || th <= 0.0 || paint.2 <= 0.0 || paint.3 <= 0.0 {
-        return Vec::new();
+    if !(tw > 0.0 && th > 0.0 && tw.is_finite() && th.is_finite()) {
+        return None;
     }
     let (round_x, round_y) = (
-        props.repeat.0 == Tiling::Round,
-        props.repeat.1 == Tiling::Round,
+        props.repeat.0 == Tiling::Round && origin.2 > 0.0,
+        props.repeat.1 == Tiling::Round && origin.3 > 0.0,
     );
     let auto = |side: LengthPct| matches!(props.size, Size::Lengths(..)) && side == LengthPct::Auto;
     let (auto_w, auto_h) = match props.size {
@@ -379,12 +384,34 @@ pub(crate) fn layer(
         }
         th = h;
     }
+    Some((tw.max(MIN_TILE), th.max(MIN_TILE)))
+}
+
+/// The fragments of one background layer of box `id`: `source` tiled over the
+/// positioning area `origin` under a container clipped to the painting area `paint`
+/// with corner `radius` (its per-corner radii).
+pub(crate) fn layer(
+    id: NodeId,
+    props: &Props,
+    source: &Source,
+    (origin, paint, radius): (Rect, Rect, BorderRadii),
+) -> Vec<Fragment> {
+    if paint.2 <= 0.0 || paint.3 <= 0.0 {
+        return Vec::new();
+    }
+    let Some((tw, th)) = sized_tile(props, source, origin) else {
+        return Vec::new();
+    };
     let x = origin.0 + place(props.position.0, origin.2, tw);
     let y = origin.1 + place(props.position.1, origin.3, th);
     let (x, step_x) = axis(props.repeat.0, x, (origin.0, origin.2), tw);
     let (y, step_y) = axis(props.repeat.1, y, (origin.1, origin.3), th);
+    if !x.is_finite() || !y.is_finite() {
+        return Vec::new();
+    }
     let xs = starts(x, step_x, (paint.0, paint.2));
-    let ys = starts(y, step_y, (paint.1, paint.3));
+    let mut ys = starts(y, step_y, (paint.1, paint.3));
+    ys.truncate(MAX_TILES / xs.len().max(1));
     let mut tiles = Vec::new();
     for &ty in &ys {
         for &tx in &xs {
@@ -833,6 +860,147 @@ mod tests {
                 (1.0, 1.0)
             ),
             (100.0, 40.0)
+        );
+    }
+
+    /// The tile fragments of one layer (none: an empty list).
+    fn tiles(pairs: &[(&str, &str)], source: &Source, area: Rect) -> Vec<Fragment> {
+        let props = props_of(pairs);
+        layer(NodeId(1), &props, source, (area, area, BorderRadii::ZERO))
+            .pop()
+            .map(|container| container.children)
+            .unwrap_or_default()
+    }
+
+    fn sprite() -> Source {
+        Source::Image(ImagePlacement {
+            name: "a".into(),
+            intrinsic_w: 100,
+            intrinsic_h: 40,
+            has_alpha: false,
+            tint: None,
+            orientation: crate::image::Orientation::IDENTITY,
+        })
+    }
+
+    #[test]
+    fn hostile_tiles_stay_bounded() {
+        let gradient = Source::Gradient(LinearGradient {
+            angle_deg: 90.0,
+            stops: Vec::new(),
+        });
+        let big = (0.0, 0.0, 1.0e6, 1.0e6);
+        let image = sprite();
+        // 1e30px and 1e400px (an f32 infinity), spelled out: lengths take no exponent.
+        let e30 = format!("1{}px", "0".repeat(30));
+        let inf = format!("1{}px", "0".repeat(400));
+        let (huge, negative, huge_x) = (
+            format!("{e30} {e30}"),
+            format!("-{e30} -{e30}"),
+            format!("{e30} 0"),
+        );
+        let cases: [(&[(&str, &str)], &Source); 7] = [
+            (&[("background-size", "0.01px")], &image),
+            (&[("background-size", "0.01px 0.01px")], &gradient),
+            (
+                &[
+                    ("background-size", "0.01px"),
+                    ("background-repeat", "space"),
+                ],
+                &image,
+            ),
+            (
+                &[
+                    ("background-size", "0.01px 0.01px"),
+                    ("background-repeat", "round"),
+                ],
+                &gradient,
+            ),
+            (&[("background-position", &huge)], &image),
+            (&[("background-position", &negative)], &image),
+            (
+                &[
+                    ("background-position", &huge_x),
+                    ("background-repeat", "space"),
+                ],
+                &image,
+            ),
+        ];
+        // The spelled-out lengths parse (the cases are not the default position).
+        assert_ne!(
+            props_of(&[("background-position", &huge)]).position,
+            props_of(&[]).position
+        );
+        for (pairs, source) in cases {
+            let tiles = tiles(pairs, source, big);
+            assert!(!tiles.is_empty(), "{pairs:?}");
+            assert!(tiles.len() <= MAX_TILES, "{pairs:?}: {}", tiles.len());
+            assert!(
+                tiles.iter().all(|t| t.width >= 1.0
+                    && t.height >= 1.0
+                    && t.x.is_finite()
+                    && t.y.is_finite()),
+                "{pairs:?}"
+            );
+        }
+        // A tile or an offset that overflows an f32 paints nothing.
+        for pairs in [
+            [("background-size", format!("{inf} 10px"))],
+            [("background-position", format!("{inf} 0"))],
+        ] {
+            let pairs = [(pairs[0].0, pairs[0].1.as_str())];
+            assert!(tiles(&pairs, &image, big).is_empty(), "{pairs:?}");
+        }
+        // A sub-pixel tile is painted 1px wide, so a small box gets one tile per pixel.
+        let fine = tiles(
+            &[("background-size", "0.25px 0.25px")],
+            &gradient,
+            (0.0, 0.0, 30.0, 20.0),
+        );
+        assert_eq!(fine.len(), 600);
+        // An empty painting area paints nothing, whatever the tile.
+        let empty = (0.0, 0.0, 0.0, 10.0);
+        assert!(layer(
+            NodeId(1),
+            &props_of(&[]),
+            &image,
+            (big, empty, BorderRadii::ZERO)
+        )
+        .is_empty());
+    }
+
+    #[test]
+    fn a_huge_offset_keeps_the_tile_phase() {
+        // 1e7 + 30 is 30 past a 100px tile boundary: the tiles start 70px left of the box.
+        let tiles = tiles(
+            &[("background-position", "10000030px 0")],
+            &sprite(),
+            (0.0, 0.0, 200.0, 40.0),
+        );
+        let xs: Vec<f32> = tiles.iter().map(|t| t.x).collect();
+        assert_eq!(xs, [-70.0, 30.0, 130.0]);
+    }
+
+    #[test]
+    fn round_keeps_the_tile_on_an_empty_axis() {
+        // Chrome (paint fixture `bg-zero-area-round`): with no height to fill, `round`
+        // fits the width (100 / 1) and keeps the image's height.
+        let props = props_of(&[("background-repeat", "round")]);
+        let layers = layer(
+            NodeId(1),
+            &props,
+            &sprite(),
+            (
+                (40.0, 40.0, 100.0, 0.0),
+                (20.0, 20.0, 140.0, 40.0),
+                BorderRadii::ZERO,
+            ),
+        );
+        let tiles = &layers[0].children;
+        assert!(tiles.iter().all(|t| (t.width, t.height) == (100.0, 40.0)));
+        assert!(
+            tiles.iter().any(|t| (t.x, t.y) == (40.0, 40.0)),
+            "{tiles:?}"
         );
     }
 }

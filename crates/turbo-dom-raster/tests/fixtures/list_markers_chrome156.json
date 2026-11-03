@@ -1,7 +1,7 @@
 {
  "generator": "scripts/list-marker-chrome-control.mjs",
  "chrome": "156.0.8078.47",
- "playwright_core": "1.60.0",
+ "playwright_core": "1.61.0",
  "viewport": [
   800,
   600
@@ -456,6 +456,238 @@
        40
       ],
       "count": 40
+     }
+    }
+   ]
+  },
+  {
+   "id": "ol-start-out-of-range",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\" start=\"3000000000\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li></ol><ol style=\"margin:0\" start=\"-2147483649\"><li data-cid=\"c\">item</li></ol><ol style=\"margin:0\" start=\"2147483647\"><li data-cid=\"d\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "d",
+     "rect": [
+      48,
+      62,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      32,
+      26,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       29,
+       43,
+       40
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      32,
+      44,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       47,
+       43,
+       58
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "d",
+     "rect": [
+      -40,
+      62,
+      88,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       65,
+       43,
+       76
+      ],
+      "count": 179
+     }
+    }
+   ]
+  },
+  {
+   "id": "li-value-out-of-range",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\">item</li><li data-cid=\"b\" value=\"2147483648\">item</li><li data-cid=\"c\" value=\"-2147483648\">item</li><li data-cid=\"d\" value=\"-99999999999\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "d",
+     "rect": [
+      48,
+      62,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      32,
+      26,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       29,
+       43,
+       40
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      -45.328125,
+      44,
+      93.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       47,
+       43,
+       58
+      ],
+      "count": 203
+     }
+    },
+    {
+     "cid": "d",
+     "rect": [
+      -45.328125,
+      62,
+      93.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       65,
+       43,
+       76
+      ],
+      "count": 179
      }
     }
    ]

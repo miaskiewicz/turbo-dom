@@ -119,7 +119,8 @@ fn attr<'a>(element: &'a StyledElement, name: &str) -> Option<&'a str> {
 }
 
 /// HTML's rules for parsing integers: optional leading whitespace and sign, then digits
-/// (anything after them is ignored).
+/// (anything after them is ignored); a value outside a signed 32-bit integer is none,
+/// as in Chrome.
 fn parse_integer(text: &str) -> Option<i64> {
     let text = text.trim_start_matches([' ', '\t', '\n', '\x0c', '\r']);
     let (negative, digits) = match text.as_bytes().first() {
@@ -130,24 +131,32 @@ fn parse_integer(text: &str) -> Option<i64> {
     let end = digits
         .find(|c: char| !c.is_ascii_digit())
         .unwrap_or(digits.len());
-    let value: i64 = digits[..end].parse().ok()?;
-    Some(if negative { -value } else { value })
+    let signed = if negative {
+        format!("-{}", &digits[..end])
+    } else {
+        digits[..end].to_string()
+    };
+    signed.parse::<i32>().ok().map(i64::from)
 }
 
 /// The list items a reversed list numbers: its descendant list items, not those of a
-/// nested list.
+/// nested list. An explicit stack, so a deeply nested page cannot overflow the call
+/// stack.
 fn owned_items(children: &[StyledNode]) -> i64 {
-    children
-        .iter()
-        .map(|node| match node {
-            StyledNode::Element(element) => {
-                let own = i64::from(display_of(&element.style) == Display::ListItem);
-                let nested = matches!(&element.tag, Tag::Html(n) if matches!(n.as_str(), "ol" | "ul" | "menu"));
-                own + if nested { 0 } else { owned_items(&element.children) }
-            }
-            StyledNode::Text(_) => 0,
-        })
-        .sum()
+    let mut stack: Vec<&StyledNode> = children.iter().collect();
+    let mut count = 0;
+    while let Some(node) = stack.pop() {
+        let StyledNode::Element(element) = node else {
+            continue;
+        };
+        count += i64::from(display_of(&element.style) == Display::ListItem);
+        let nested =
+            matches!(&element.tag, Tag::Html(n) if matches!(n.as_str(), "ol" | "ul" | "menu"));
+        if !nested {
+            stack.extend(&element.children);
+        }
+    }
+    count
 }
 
 /// What `list-style-type` shows for `ordinal`: text, a symbol, or nothing (`none`).

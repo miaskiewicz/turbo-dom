@@ -65,6 +65,9 @@ const CASES = [
   { id: "ol-reversed-start", html: DOC(OL(' reversed start="10"', LI("a") + LI("b"))) },
   { id: "li-value", html: DOC(OL("", LI("a") + LI("b", "item", ' value="20"') + LI("c"))) },
   { id: "ol-negative-start", html: DOC(OL(' start="-2"', LI("a") + LI("b"))) },
+  // `start` / `value` are signed 32-bit integers: an out-of-range one is absent.
+  { id: "ol-start-out-of-range", html: DOC(OL(' start="3000000000"', LI("a") + LI("b")) + OL(' start="-2147483649"', LI("c")) + OL(' start="2147483647"', LI("d"))) },
+  { id: "li-value-out-of-range", html: DOC(OL("", LI("a") + LI("b", "item", ' value="2147483648"') + LI("c", "item", ' value="-2147483648"') + LI("d", "item", ' value="-99999999999"'))) },
   { id: "li-outside-list", html: DOC(`<div>${LI("a")}${LI("b")}</div>`) },
   { id: "nested-ol", html: DOC(OL("", `<li data-cid="a">x<ol>${LI("b")}${LI("c")}</ol></li>${LI("d")}`)) },
   { id: "ol-type-attribute", html: DOC(`<ol style="margin:0" type="a">${LI("a")}</ol><ol style="margin:0" type="I">${LI("b")}</ol>`) },
