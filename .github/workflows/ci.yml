@@ -25,10 +25,12 @@ on:
         type: boolean
         default: false
 
-# A newer push to a PR supersedes its running CI. Only pull_request runs are
-# cancelled: main pushes, tag runs and publish.yml's workflow_call never are.
+# A newer push to a PR supersedes its running CI: pull_request runs share one group per PR
+# and cancel. Every other run (main pushes, tag runs, publish.yml's workflow_call) gets a
+# group of its own (the run id), so it is never cancelled, and never dropped as a pending
+# run that a newer run in the same group replaced.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -87,10 +89,18 @@ jobs:
           RUSTFLAGS: "-C strip=symbols"
         run: npx napi build --platform --release --target ${{ matrix.target }}
 
+      # Names the expected addon explicitly, so a missing or misnamed .node fails the guard
+      # instead of an unmatched glob passing it.
       - name: glibc ceiling guard (linux addon runs on glibc >= 2.35)
         if: contains(matrix.target, 'linux-gnu')
         shell: bash
-        run: bash scripts/check-glibc-ceiling.sh *.node
+        run: |
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-gnu) node=turbo-dom-parser.linux-x64-gnu.node ;;
+            aarch64-unknown-linux-gnu) node=turbo-dom-parser.linux-arm64-gnu.node ;;
+            *) echo "::error::no expected addon name for ${{ matrix.target }}"; exit 1 ;;
+          esac
+          bash scripts/check-glibc-ceiling.sh "$node"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -408,7 +418,7 @@ jobs:
         run: python -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'
       - name: turbo-dom-v8 regenerates to the pinned tree
         run: python crates/turbo-dom-v8/scripts/generate.py --download --check
-      - name: Release helper self-tests (scripts/publish-crates.py)
+      - name: Script self-tests (publish-crates.py, check-baseline-red.py, check-glibc-ceiling.sh)
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Parity harness self-test (no addons)
         run: python -m unittest discover -s tools/parity -p 'test_*.py'

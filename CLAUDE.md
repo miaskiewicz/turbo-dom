@@ -48,9 +48,14 @@ CI (`.github/workflows/ci.yml`) has one job family per crate (base / layout / ra
 browser-env matrix / msrv 1.89 / guards / coverage floors / complexity). PRs and pushes run on
 Linux + Windows; `publish.yml` runs it on a `v*` tag with `darwin: true` (adds the macOS arm64
 builds and jobs) and then publishes every package in dependency order. Linux binaries (napi
-matrix, publish `crates`/`npm`) build on `ubuntu-22.04`(`-arm`), glibc 2.35, never `ubuntu-latest`;
-`scripts/check-glibc-ceiling.sh` fails any linux-gnu `.node` needing > GLIBC_2.35. A newer push to a
-PR cancels its superseded run (`concurrency`, pull_request only; main/tag/publish runs never cancel). See `docs/CONSOLIDATION.md`.
+matrix, publish `crates`) build on `ubuntu-22.04`(`-arm`), glibc 2.35, never `ubuntu-latest`;
+the npm job ships the napi matrix's `.node` artifacts (it builds only the WASM targets, never
+`prepublishOnly`). `scripts/check-glibc-ceiling.sh` fails any linux-gnu `.node` needing > GLIBC_2.35,
+and also fails on a missing file, an objdump failure or no GLIBC_ symbols (self-test
+`scripts/test_check_glibc_ceiling.py`); callers name the expected files, never a bare glob. A newer
+push to a PR cancels its superseded run (`concurrency`: one group per PR); every other run (main,
+tag, publish's workflow_call) gets its own `run_id` group, so it is never cancelled or dropped
+as pending. See `docs/CONSOLIDATION.md`.
 
 **Two independent runtimes, one repo.** The JS runtime (`src/runtime/*.mjs`, the npm/vitest path)
 and the Rust runtime (`crates/turbo-dom`, the workspace-member crate published to crates.io as

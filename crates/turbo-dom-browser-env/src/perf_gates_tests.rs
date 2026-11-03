@@ -104,6 +104,95 @@ fn memoized_invalid_selectors_still_throw_chromes_exact_syntax_error() {
     clear_interface_records(isolate);
 }
 
+// The memo holds only short selectors (round-1 review #14): a selector over the size bound is
+// parsed on every call, so a page minting huge selectors cannot pin megabytes in the memo, and
+// its results and Chrome's exact SyntaxError are unchanged.
+#[test]
+fn oversized_selectors_are_not_memoized_and_keep_their_results_and_errors() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><div id=a class=x></div>");
+        let (parses, _) = selector_work();
+        // 2000 units: `div.x` followed by many `, div.x` alternatives (valid), and the same
+        // with a trailing `..` (invalid).
+        let found = run(
+            scope,
+            "globalThis.big = 'div.x' + ', div.x'.repeat(285); globalThis.bad = big + '..'; \
+             let n = 0; for (let i = 0; i < 3; i++) n += document.querySelectorAll(big).length; \
+             String([big.length, n])",
+        );
+        assert_eq!(found, "2000,3");
+        let (after, _) = selector_work();
+        assert_eq!(
+            after - parses,
+            3,
+            "an oversized selector is parsed per call"
+        );
+        let big = format!("div.x{}", ", div.x".repeat(285));
+        assert!(!selector_memo_contains(
+            &big.encode_utf16().collect::<Vec<_>>()
+        ));
+        let errors = run(
+            scope,
+            "const out = []; for (let i = 0; i < 2; i++) try { document.getElementById('a').matches(bad) } \
+             catch (e) { out.push(e.message === `Failed to execute 'matches' on 'Element': '${bad}' is not a valid selector.` && e.name) } \
+             String(out)",
+        );
+        assert_eq!(errors, "SyntaxError,SyntaxError");
+        assert_eq!(selector_work().0 - after, 2);
+        // A short selector is still memoized.
+        run(
+            scope,
+            "document.querySelector('div.x'); document.querySelector('div.x')",
+        );
+        assert_eq!(selector_work().0 - after, 3);
+        assert!(selector_memo_contains(
+            &"div.x".encode_utf16().collect::<Vec<_>>()
+        ));
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+// The memo is per page: a new install on the same thread starts it empty (round-1 review #14).
+#[test]
+fn the_selector_memo_is_cleared_by_each_install() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><p class=memo-a></p>");
+        let units: Vec<u16> = "p.memo-a".encode_utf16().collect();
+        assert_eq!(
+            run(
+                scope,
+                "String(document.querySelectorAll('p.memo-a').length)"
+            ),
+            "1"
+        );
+        assert!(selector_memo_contains(&units));
+        install_with_html(scope, "<body><p class=memo-a></p><p class=memo-a></p>");
+        assert!(!selector_memo_contains(&units), "install clears the memo");
+        let (parses, _) = selector_work();
+        assert_eq!(
+            run(
+                scope,
+                "String(document.querySelectorAll('p.memo-a').length)"
+            ),
+            "2"
+        );
+        assert_eq!(selector_work().0 - parses, 1);
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
 #[test]
 fn wrapper_owner_tags_are_small_integers_that_still_name_their_live_tree() {
     tests::init_v8();

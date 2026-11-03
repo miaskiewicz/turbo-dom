@@ -231,6 +231,97 @@ fn custom_element_constructors_of_a_snapshot_context_use_its_registry() {
     reset();
 }
 
+/// Whether `value` is a node wrapper whose internal fields `strip_wrappers` cleared (a
+/// wrapper of the build's shell tree that survived into the blob).
+fn stale_wrapper(scope: &mut v8::PinScope, value: v8::Local<v8::Value>) -> bool {
+    let Ok(object) = v8::Local::<v8::Object>::try_from(value) else {
+        return false;
+    };
+    object.internal_field_count() >= 2
+        && object
+            .get_internal_field(scope, 0)
+            .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())
+            .is_some_and(|field| field.is_undefined())
+}
+
+/// Only the document wrapper outlives the snapshot build (round-1 review #15): every other
+/// shell node wrapper is released before serialization, so no engine closure can hand a
+/// stripped wrapper to page script. The rehydrated window keeps node identity for the
+/// document, its head, body, root element and template contents, none of which is a stripped
+/// wrapper, and every captured engine helper is rehydrated and works through its page API.
+#[test]
+fn no_shell_node_wrapper_survives_into_the_snapshot() {
+    crate::browser_env::tests::init_v8();
+    assert!(startup_snapshot::build().is_some(), "the blob builds");
+    assert_eq!(
+        startup_snapshot::RETAINED_FOR_TEST.with(std::cell::Cell::get),
+        Some(0),
+        "a shell node wrapper is reachable from the snapshotted context"
+    );
+    let blob = snapshot_blob().expect("the process blob builds");
+    let isolate = &mut v8::Isolate::new(blob.create_params());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    assert!(
+        install_snapshot_context(scope, Tree::parse_with_processing_instructions(PAGE)).is_ok()
+    );
+    assert_eq!(
+        eval(
+            scope,
+            "{ const t = document.getElementById('t'); JSON.stringify([\
+             document === window.document, document.body === document.body, document.head === document.head, \
+             document.documentElement === document.documentElement, t.content === t.content, \
+             document.body.parentNode === document.documentElement, document.head.parentNode === document.documentElement, \
+             document.documentElement.parentNode === document, document.body.ownerDocument === document, \
+             document.doctype === document.firstChild, document.body.firstChild === document.getElementById('a'), \
+             t.content.firstChild === t.content.firstChild, document.body.localName, document.head.childNodes.length]) }"
+        ),
+        "[true,true,true,true,true,true,true,true,true,true,true,true,\"body\",2]"
+    );
+    for node in [
+        "document",
+        "document.doctype",
+        "document.documentElement",
+        "document.head",
+        "document.body",
+        "document.getElementById('t').content",
+    ] {
+        let value = eval_value(scope, node);
+        assert!(!stale_wrapper(scope, value), "{node} is a stripped wrapper");
+    }
+    // The captured engine helpers are internal (their natives assume engine-shaped
+    // arguments), so they are called through the page APIs that use them: the smoke covers
+    // events, custom elements, form validity, computed style, templates, shadow slots,
+    // selection and ranges, and the whole suite runs on this path under
+    // TURBO_DOM_SNAPSHOT_PATH=1. Every one of them is back after rehydration.
+    for entry in context_rehydrate::entries() {
+        let stored = context_rehydrate::store_object(scope, context)
+            .and_then(|store| {
+                let key = v8::String::new(scope, entry.name)?;
+                store.get(scope, key.into())
+            })
+            .is_some_and(|value| !value.is_undefined());
+        if stored {
+            assert!(
+                !(entry.get)(scope, context).is_empty(),
+                "{} not rehydrated",
+                entry.name
+            );
+        }
+    }
+    assert_eq!(smoke(scope), expected());
+    reset();
+}
+
+fn eval_value<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v8::Value> {
+    let code = v8::String::new(scope, source).unwrap();
+    v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+}
+
 /// A context that is not from the snapshot keeps the usual install on the snapshot path.
 #[test]
 fn the_snapshot_path_installs_a_plain_context_as_usual() {

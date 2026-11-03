@@ -1,0 +1,13 @@
+{
+  "id": "turbo-surf release/0.7.0 known gap: embedded-font-range-*",
+  "reason": "Known gap, not a parity claim. These pages style their buttons with an @font-face web font. turbo-surf's static path loads no @font-face, so the button text uses a fallback font and cannot match Chrome. The 0.7.0 line-height changes (#178, #245, #246) move the button 8 px in that fallback font: Chrome 156 y52 h21, surf 0.6.0 y50 h28, surf 0.7.0 y44 h26. 0.7.0 is not closer to Chrome here. These outputs stay a known gap until surf's static path loads web fonts.",
+  "control": "tools/parity/evidence/turbo-surf-0.7.0.md (section 'Known gap: embedded-font-range-*')",
+  "changes": {
+    "surf": [
+      "static-turbo-surf__harness__detection__fixtures__embedded-font-range-block-only.png",
+      "static-turbo-surf__harness__detection__fixtures__embedded-font-range-block-only.svg",
+      "static-turbo-surf__harness__detection__fixtures__embedded-font-range-mixed.png",
+      "static-turbo-surf__harness__detection__fixtures__embedded-font-range-mixed.svg"
+    ]
+  }
+}

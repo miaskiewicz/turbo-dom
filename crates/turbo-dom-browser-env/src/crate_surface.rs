@@ -171,16 +171,42 @@ pub(super) fn share_engine_namespace(
 ///
 /// The source's first line keeps its line number (the wrapper shares it), so stack
 /// positions past line one are unchanged.
+///
+/// Embedder sources can differ on every call, so this entry point never touches the
+/// process-wide bytecode cache; only the binding's own fixed engine scripts (the install
+/// path, [`run_engine_script_cached`]) are cached.
 pub fn run_engine_script<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     source: &str,
+) -> Option<v8::Local<'s, v8::Value>> {
+    run_engine_script_with(scope, source, false)
+}
+
+/// [`run_engine_script`] for one of the binding's fixed engine scripts: compiled from (and
+/// stored to) the process-wide bytecode cache. The set of such sources is fixed by this crate,
+/// so the cache stays bounded.
+pub(crate) fn run_engine_script_cached<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    source: &str,
+) -> Option<v8::Local<'s, v8::Value>> {
+    run_engine_script_with(scope, source, true)
+}
+
+fn run_engine_script_with<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    source: &str,
+    cached: bool,
 ) -> Option<v8::Local<'s, v8::Value>> {
     #[cfg(test)]
     ENGINE_SCRIPTS_RUN.with(|n| n.set(n.get() + 1));
     let namespace = engine_namespace(scope)?;
     let wrapped = format!("(function({ENGINE_NAMESPACE_PARAM}){{{source}\n}})");
     let code = v8::String::new(scope, &wrapped)?;
-    let (script, produce) = compile_engine_script(scope, code, &wrapped)?;
+    let (script, produce) = if cached {
+        compile_engine_script(scope, code, &wrapped)?
+    } else {
+        (v8::Script::compile(scope, code, None)?, None)
+    };
     let function = script.run(scope)?;
     let function = v8::Local::<v8::Function>::try_from(function).ok()?;
     let receiver = scope.get_current_context().global(scope);
@@ -271,7 +297,7 @@ pub(super) fn engine_expression<'s>(
     source: &str,
 ) -> Option<v8::Local<'s, v8::Value>> {
     let expression = source.trim_end().trim_end_matches(';');
-    run_engine_script(scope, &format!("return(\n{expression}\n)"))
+    run_engine_script_cached(scope, &format!("return(\n{expression}\n)"))
 }
 
 #[cfg(test)]

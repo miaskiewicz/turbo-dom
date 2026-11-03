@@ -39,6 +39,33 @@ fn a_callback_outside_the_table_yields_no_blob() {
     assert!(!startup_snapshot::building());
 }
 
+/// A failure before `create_blob` (round-1 review #16): the snapshot creator must never be
+/// dropped (rusty_v8 aborts the process on that, mid-unwind or not), so each failure leaks
+/// it and yields no blob, leaving the thread able to build again. Installs then fall back to
+/// running the engine scripts.
+#[test]
+fn a_failure_before_create_blob_yields_no_blob_without_aborting() {
+    use startup_snapshot::{BuildFailure, FAIL_BUILD_FOR_TEST};
+    crate::browser_env::tests::init_v8();
+    for failure in [
+        BuildFailure::IsolateData,
+        BuildFailure::Panic,
+        BuildFailure::RetainWrapper,
+    ] {
+        FAIL_BUILD_FOR_TEST.with(|at| at.set(Some(failure)));
+        assert!(startup_snapshot::build().is_none(), "{failure:?}");
+        FAIL_BUILD_FOR_TEST.with(|at| at.set(None));
+        assert!(!startup_snapshot::building(), "{failure:?}");
+        assert!(with_tree(|tree| tree.root()).is_none(), "{failure:?}");
+    }
+    assert_eq!(
+        startup_snapshot::RETAINED_FOR_TEST.with(std::cell::Cell::get),
+        Some(1),
+        "the kept document.body is detected"
+    );
+    assert!(startup_snapshot::build().is_some());
+}
+
 /// The bootstrap stores engine helpers in context slots, whose annex is a heap pointer in
 /// the context's embedder data. The blob must not carry that pointer: a context made from
 /// it has no slots (reading one must not dereference the build isolate's freed annex).

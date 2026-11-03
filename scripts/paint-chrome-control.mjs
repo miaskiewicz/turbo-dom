@@ -637,6 +637,11 @@ const CASES = [
     ["radio-checked", `<input data-cid="m" type="radio" checked style="${at(20, 20)};margin:0">`, [[0, 0], [1, 1], [6, 0], [6, 6], [4, 6], [6, 4], [1, 6], [6, 1], [11, 6], [6, 11]]],
     ["range", `<input data-cid="m" type="range" style="${at(20, 20)};margin:0;width:60px">`, [[0, 0], [5, 1], [5, 8], [20, 8], [30, 8], [30, 1], [30, 15], [45, 8], [55, 8], [45, 2], [45, 14], [58, 8]]],
     ["range-value", `<input data-cid="m" type="range" min="10" max="20" value="18" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [30, 8], [46, 8], [46, 1], [56, 8], [58, 8]]],
+    // A max below the min is the min (the thumb sits at the start); a value, min or max
+    // that is not a finite valid floating-point number is ignored (round 1 review #1).
+    ["range-max-below-min", `<input data-cid="m" type="range" min="10" max="5" value="500" style="${at(20, 20)};margin:0;width:60px">`, [[3, 8], [7, 1], [7, 8], [7, 14], [20, 8], [30, 1], [45, 8], [58, 8]]],
+    ["range-nan", `<input data-cid="m" type="range" min="NaN" max="Infinity" value="NaN" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [30, 8], [30, 1], [30, 15], [45, 8], [58, 8]]],
+    ["range-huge", `<input data-cid="m" type="range" min="-1e308" max="1e308" value="1e400" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [30, 8], [30, 1], [30, 15], [45, 8], [58, 8]]],
     ["color", `<input data-cid="m" type="color" style="${at(20, 20)};margin:0">`, [[0, 0], [25, 0], [25, 1], [2, 13], [4, 13], [25, 13], [10, 10], [40, 18], [25, 4], [25, 23], [25, 26], [49, 13], [48, 13]]],
     ["color-value", `<input data-cid="m" type="color" value="#ff0000" style="${at(20, 20)};margin:0">`, [[25, 13], [10, 10], [40, 18], [4, 13], [25, 4]]],
     ["text-appearance-none", `<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px;appearance:none">`, [[0, 0], [15, 0], [15, 1], [15, 2], [0, 11], [1, 11], [2, 11]]],
@@ -678,6 +683,19 @@ const CASES = [
         : `<style>${css}</style><div data-cid="m" id="k" class="x" style="${at(20, 20)};width:100px;height:40px;${inline}"></div>`,
     ),
     probes: probes.map(([dx, dy]) => [20 + dx, 20 + dy]),
+  })),
+  // Round 1 review #9 (`bg-zero-area-*`): a background image whose positioning area (the
+  // padding box) has no height paints nothing, even though the border box it is clipped
+  // to does; the background colour still fills the border box.
+  ...[
+    ["round", "round"],
+    ["repeat", "repeat;background-size:20px 10px"],
+    ["no-repeat", "no-repeat;background-size:20px 10px"],
+  ].map(([kind, tail]) => ({
+    id: `bg-zero-area-${kind}`,
+    assets: [SPRITE],
+    html: DOC(`<div data-cid="m" style="${at(20, 20)};width:100px;height:0;border:20px solid transparent;background:url(${SPRITE}) #00ff00;background-repeat:${tail}"></div>`),
+    probes: [[25, 25], [45, 30], [70, 40], [95, 50], [130, 55], [135, 25]],
   })),
   {
     id: "media-video-poster",

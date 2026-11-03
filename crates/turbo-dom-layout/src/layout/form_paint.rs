@@ -268,15 +268,27 @@ fn toggle(attrs: &[Attr], frag: &mut Fragment) {
 }
 
 /// A range slider's track and thumb, at its `value` between `min` and `max` (default
-/// 0 and 100; the value defaults to their middle and is clamped to them).
+/// 0 and 100; a max below the min is the min; the value defaults to their middle and is
+/// clamped to them). Attributes that are not finite valid floating-point numbers are
+/// ignored, as in Chrome.
 fn range(attrs: &[Attr], frag: &Fragment) -> Vec<Fragment> {
-    let number = |name| attr(attrs, name).and_then(|v| v.trim().parse::<f32>().ok());
+    let number = |name| attr(attrs, name).and_then(html_float);
     let min = number("min").unwrap_or(0.0);
-    let max = number("max").filter(|m| *m > min).unwrap_or(min + 100.0);
-    let value = number("value").unwrap_or((min + max) / 2.0).clamp(min, max);
+    let max = number("max").unwrap_or(100.0).max(min);
+    // Halved first, so `max - min` cannot overflow to infinity.
+    let (half_min, half_max) = (min / 2.0, max / 2.0);
+    let value = number("value")
+        .unwrap_or(half_min + half_max)
+        .clamp(min, max);
+    let span = half_max - half_min;
+    let ratio = if span > 0.0 {
+        (value / 2.0 - half_min) / span
+    } else {
+        0.0
+    };
     let (x, y, w, h) = (frag.x, frag.y, frag.width, frag.height);
     let r = h / 2.0;
-    let thumb = x + r + (w - 2.0 * r) * (value - min) / (max - min);
+    let thumb = x + r + (w - 2.0 * r) * ratio as f32;
     let (top, track_h) = (y + h / 2.0 - 3.5, 7.0);
     vec![
         rect(
@@ -304,6 +316,39 @@ fn range(attrs: &[Attr], frag: &Fragment) -> Vec<Fragment> {
             r - 1.0,
         ),
     ]
+}
+
+/// HTML's valid floating-point number (`-`? digits with an optional fraction, or a bare
+/// fraction, then an optional exponent; no whitespace, `+` or trailing text), when it is
+/// finite as a double.
+fn html_float(text: &str) -> Option<f64> {
+    let digits = |s: &str| s.bytes().take_while(u8::is_ascii_digit).count();
+    let rest = text.strip_prefix('-').unwrap_or(text);
+    let int = digits(rest);
+    let mut at = int;
+    if rest[at..].starts_with('.') {
+        let frac = digits(&rest[at + 1..]);
+        if frac == 0 {
+            return None;
+        }
+        at += 1 + frac;
+    } else if int == 0 {
+        return None;
+    }
+    if let Some(exp) = rest[at..].strip_prefix(['e', 'E']) {
+        let unsigned = exp.strip_prefix(['+', '-']).unwrap_or(exp);
+        let n = digits(unsigned);
+        if n == 0 {
+            return None;
+        }
+        at = rest.len() - unsigned.len() + n;
+    }
+    let parsed = if at == rest.len() {
+        text.parse::<f64>().ok()
+    } else {
+        None
+    };
+    parsed.filter(|v| v.is_finite())
 }
 
 /// A colour well's value (`#rrggbb`, case-insensitive), black when absent or invalid.
@@ -463,15 +508,33 @@ mod tests {
             &value,
             (36.2, 1.0, 14.0, 14.0, Some(ACCENT), None, 0, 7.0, false)
         ));
-        // A max not above min falls back to min + 100; a value past it clamps to it.
-        let clamped = at("min=10 max=5 value=500");
-        assert!(
-            has(
-                &clamped,
-                (45.0, 1.0, 14.0, 14.0, Some(ACCENT), None, 0, 7.0, false)
-            ),
-            "{clamped:?}"
-        );
+        // A max below the min is the min, so the value clamps to it and the thumb sits at
+        // the start, as in Chrome (paint fixture `form-native-range-max-below-min`).
+        let start = (1.0, 1.0, 14.0, 14.0, Some(ACCENT), None, 0, 7.0, false);
+        for below in [
+            "min=10 max=5 value=500",
+            "min=10 max=10 value=3",
+            "min=1e38",
+        ] {
+            let clamped = at(below);
+            assert!(has(&clamped, start), "{below}: {clamped:?}");
+        }
+        // Non-finite or invalid numbers are ignored (`form-native-range-nan`), and huge
+        // finite bounds neither overflow nor divide by zero (`form-native-range-huge`).
+        let middle = (23.0, 1.0, 14.0, 14.0, Some(ACCENT), None, 0, 7.0, false);
+        for ignored in [
+            "min=NaN max=Infinity value=NaN",
+            "min=inf max=-inf value=+5",
+            "min=-1e308 max=1e308 value=1e400",
+            "min=5. max=' 100' value=50abc",
+            "min=1e max=1e+ value=-",
+            "min=-1e39 max=1e39",
+        ] {
+            let parts = at(ignored);
+            assert!(has(&parts, middle), "{ignored}: {parts:?}");
+        }
+        // A leading `.` and an exponent are valid: 0.5e2 of 0..100 is the middle too.
+        assert!(has(&at("min=.0e1 value=.5e2"), middle));
         // No value: the middle.
         assert!(has(
             &at(""),

@@ -5,6 +5,48 @@
 use super::*;
 use std::borrow::Cow;
 
+#[cfg(test)]
+thread_local! {
+    /// Test hook: how many of them were still reachable when the last build serialized.
+    pub(crate) static RETAINED_FOR_TEST: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+    /// Test hook: make the next build on this thread fail at one step before `create_blob`.
+    pub(crate) static FAIL_BUILD_FOR_TEST: std::cell::Cell<Option<BuildFailure>> = const { std::cell::Cell::new(None) };
+}
+
+/// A build failure [`FAIL_BUILD_FOR_TEST`] can force.
+#[cfg(test)]
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum BuildFailure {
+    /// Isolate data added before the record key, so `persist_dom_state` finds the key at
+    /// another index.
+    IsolateData,
+    /// A panic in the bootstrap.
+    Panic,
+    /// Page state keeps a shell node wrapper (`document.body`) reachable.
+    RetainWrapper,
+}
+
+#[cfg(test)]
+fn forced_failure(scope: &mut v8::PinScope, at: BuildFailure) {
+    let Some(failure) = FAIL_BUILD_FOR_TEST.with(std::cell::Cell::get) else {
+        return;
+    };
+    match (failure, at) {
+        (BuildFailure::IsolateData, BuildFailure::IsolateData) => {
+            let filler = v8::Private::new(scope, None);
+            scope.add_isolate_data(filler);
+        }
+        (BuildFailure::Panic, BuildFailure::Panic) => panic!("forced snapshot build panic"),
+        (BuildFailure::RetainWrapper, BuildFailure::RetainWrapper) => {
+            let source = v8::String::new(scope, "globalThis.__kept = document.body").unwrap();
+            v8::Script::compile(scope, source, None)
+                .and_then(|script| script.run(scope))
+                .unwrap();
+        }
+        _ => {}
+    }
+}
+
 thread_local! {
     static BUILDING: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
@@ -34,9 +76,15 @@ fn record_references() {
     reset();
 }
 
-/// Build a startup blob whose default context is a bootstrapped shell window. `None` when
-/// the bootstrap in the snapshot isolate handed V8 a callback the recording pass did not
-/// (the blob would abort V8 on serialization).
+/// Build a startup blob whose default context is a bootstrapped shell window. `None` (and a
+/// log line; installs then run the engine scripts) when the build fails before `create_blob`:
+/// the bootstrap in the snapshot isolate handed V8 a callback the recording pass did not (the
+/// blob would abort V8 on serialization), a shell node wrapper stayed reachable, the window's
+/// native state could not be persisted, or the build panicked.
+///
+/// A snapshot creator can only be disposed through `create_blob`: rusty_v8 aborts the
+/// process when one is dropped, including during a panic's unwind. So no failure may unwind
+/// past it: each one leaks the creator instead (a panic is caught for that).
 pub(crate) fn build() -> Option<Blob> {
     record_references();
     let references: &'static [v8::ExternalReference] =
@@ -44,30 +92,56 @@ pub(crate) fn build() -> Option<Blob> {
     let mut isolate = v8::Isolate::snapshot_creator(Some(Cow::Borrowed(references)), None);
     BUILDING.with(|building| building.set(true));
     external_refs::begin_build_log();
-    {
-        v8::scope!(let scope, &mut isolate);
-        let context = v8::Context::new(scope, Default::default());
-        let scope = &mut v8::ContextScope::new(scope, context);
-        bootstrap_engine(scope);
-        persist_dom_state(scope);
-        range_live::persist(scope);
-        strip_wrappers(scope);
-        // The slot annex is a heap pointer (and a Weak) in the context's embedder data:
-        // serialized, a context made from the blob would read the freed annex.
-        context.clear_all_slots();
-        scope.set_default_context(context);
-    }
+    let prepared = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| prepare(&mut isolate)));
     reset();
+    let failure = match prepared {
+        Ok(Ok(stripped)) => {
+            let retained = still_reachable(&mut isolate, stripped);
+            #[cfg(test)]
+            RETAINED_FOR_TEST.with(|count| count.set(Some(retained)));
+            (retained > 0).then_some("a shell node wrapper is still reachable")
+        }
+        Ok(Err(reason)) => Some(reason),
+        Err(_) => Some("the build panicked"),
+    };
     BUILDING.with(|building| building.set(false));
-    if !external_refs::end_build_log(references) {
-        // A creator isolate can only be disposed through create_blob, which would abort on
-        // the unregistered callback: leak it (a bootstrap that took a code path the
-        // recording pass did not; never expected).
+    let registered = external_refs::end_build_log(references);
+    let failure = failure.or((!registered).then_some("an unregistered callback"));
+    if let Some(reason) = failure {
+        // Never expected: a bootstrap that took a code path the recording pass did not, or an
+        // engine closure that kept a stripped node wrapper (its rehydrated copy would name no
+        // node), or a broken build invariant.
+        eprintln!(
+            "[rust-dom] startup snapshot not built ({reason}): installs run the engine scripts"
+        );
         std::mem::forget(isolate);
         return None;
     }
     let data = isolate.create_blob(v8::FunctionCodeHandling::Keep)?;
     Some(Blob { data, references })
+}
+
+/// The snapshot isolate's default context: the bootstrapped shell window, its native state
+/// persisted into the heap and its node wrappers stripped (returned, see [`strip_wrappers`]).
+fn prepare(isolate: &mut v8::OwnedIsolate) -> Result<Vec<v8::Weak<v8::Object>>, &'static str> {
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    #[cfg(test)]
+    forced_failure(scope, BuildFailure::IsolateData);
+    bootstrap_engine(scope);
+    #[cfg(test)]
+    forced_failure(scope, BuildFailure::Panic);
+    #[cfg(test)]
+    forced_failure(scope, BuildFailure::RetainWrapper);
+    persist_dom_state(scope)?;
+    range_live::persist(scope);
+    let stripped = strip_wrappers(scope);
+    // The slot annex is a heap pointer (and a Weak) in the context's embedder data:
+    // serialized, a context made from the blob would read the freed annex.
+    context.clear_all_slots();
+    scope.set_default_context(context);
+    Ok(stripped)
 }
 
 /// Rehydrate the current context, deserialized from a [`build`] blob (turbo-dom#249).
@@ -166,30 +240,37 @@ where
 /// Keep the window document's heap-held native state where [`rehydrate`] finds it: its
 /// `basics_state` object in the captured-function store, the collection-record key as
 /// isolate data.
-fn persist_dom_state(scope: &mut v8::PinScope) {
+/// `Err` when the record key is not the isolate's only data ([`rehydrate`] reads it at
+/// `collection_records::SNAPSHOT_DATA`).
+fn persist_dom_state(scope: &mut v8::PinScope) -> Result<(), &'static str> {
     let basics = DOM.with(|d| d.borrow().as_ref()?.basics_state.clone());
     if let Some(basics) = basics.and_then(|weak| weak.to_local(scope)) {
         context_rehydrate::store(scope, BASICS_STATE, basics.into());
     }
     if let Some(key) = collection_records::key(scope) {
-        let index = scope.add_isolate_data(key);
-        assert_eq!(
-            index,
-            collection_records::SNAPSHOT_DATA,
-            "the record key is the only isolate data"
-        );
+        if scope.add_isolate_data(key) != collection_records::SNAPSHOT_DATA {
+            return Err("the record key is not the only isolate data");
+        }
     }
+    Ok(())
 }
 
 /// Clear the node wrappers' internal fields (handle id, owner tag) before serialization.
 /// They are Smis, which V8's snapshot serializer cannot tell from embedder pointers; and
 /// the ids name nodes of a tree that does not outlive the build.
-fn strip_wrappers(scope: &mut v8::PinScope) {
+///
+/// Only the window document's wrapper is relinked by [`rehydrate`], so every other node
+/// wrapper must stay out of the blob: the document's ownership edges to its connected nodes
+/// are released here (as `attach_document` does), and the returned wrappers (every one but
+/// the document's) are checked unreachable once the build's native state is gone.
+fn strip_wrappers(scope: &mut v8::PinScope) -> Vec<v8::Weak<v8::Object>> {
     let mut wrappers = Vec::new();
-    DOM.with(|dom| {
-        if let Some(state) = dom.borrow().as_ref() {
-            wrappers.extend(state.cache.values().cloned());
-        }
+    let (root, graph) = DOM.with(|dom| {
+        let dom = dom.borrow();
+        // invariant: bootstrap_engine installed a DOM
+        let state = dom.as_ref().expect("the bootstrap installed a DOM");
+        wrappers.extend(state.cache.values().cloned());
+        (state.tree.root(), state.ownership.clone())
     });
     OTHER_DOMS.with(|doms| {
         for saved in doms.borrow().values() {
@@ -198,19 +279,31 @@ fn strip_wrappers(scope: &mut v8::PinScope) {
             }
         }
     });
-    let document = DOM.with(|dom| {
-        let dom = dom.borrow();
-        let state = dom.as_ref()?;
-        state.cache.get(&state.tree.root()).cloned()
-    });
-    if let Some(document) = document.and_then(|weak| weak.to_local(scope)) {
+    let document = DOM.with(|dom| dom.borrow().as_ref()?.cache.get(&root).cloned());
+    let document = document.and_then(|weak| weak.to_local(scope));
+    if let Some(document) = document {
         template_contents::forget_associated(scope, document);
     }
+    if let Some(graph) = graph {
+        graph.borrow_mut().retire_nodes(scope, root.raw());
+    }
     let undefined = v8::undefined(scope);
-    for wrapper in wrappers {
-        if let Some(wrapper) = wrapper.to_local(scope) {
+    let mut stripped = Vec::new();
+    for weak in wrappers {
+        if let Some(wrapper) = weak.to_local(scope) {
             wrapper.set_internal_field(0, undefined.into());
             wrapper.set_internal_field(1, undefined.into());
+            if document != Some(wrapper) {
+                stripped.push(weak);
+            }
         }
     }
+    stripped
+}
+
+/// How many of the `stripped` wrappers survive a full GC (none may reach the blob).
+fn still_reachable(isolate: &mut v8::OwnedIsolate, stripped: Vec<v8::Weak<v8::Object>>) -> usize {
+    v8::scope!(let scope, isolate);
+    scope.low_memory_notification();
+    stripped.iter().filter(|weak| !weak.is_empty()).count()
 }

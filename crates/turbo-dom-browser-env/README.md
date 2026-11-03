@@ -105,7 +105,11 @@ registry, the window document's native state) and attaches the document. It retu
 `SnapshotWindow` (isolate + context). It runs no engine script, so per install it costs a
 deserialization and a parse instead of a bootstrap. The existing `install*` functions are
 unchanged. Embedder capabilities (activation host, timers, fonts, …) are registered on
-the new context as after any install. Bootstrap options cannot apply to a snapshot
+the new context as after any install. Only the window document's wrapper is carried in
+the blob: the build releases every other shell node wrapper and checks none is still
+reachable. When the build fails (that check, a callback missing from the reference table,
+a panic), a line is logged and `snapshot_blob()` / `install_from_snapshot` return `None`,
+so the embedder keeps the normal install. Bootstrap options cannot apply to a snapshot
 context: a test namespace, deferred key order, an embedder global template, or page script
 run before the install. Embedders that use them keep the normal install.
 

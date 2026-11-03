@@ -358,7 +358,9 @@ Every item is gated by a deterministic counter test, not wall-clock.
 - turbo-dom-browser-env keeps a process-wide V8 bytecode cache of its engine scripts: every
   page install (turbo-test installs one per test file) compiled each engine script from source,
   ~8-9% of a real app suite's CPU. The cache is produced after the script ran (so it holds the
-  lazily compiled functions) and is replaced when V8 rejects it.
+  lazily compiled functions) and is replaced when V8 rejects it. Only the binding's own fixed
+  engine scripts are cached: the public `run_engine_script`, which serves embedder sources,
+  compiles without it, so the cache stays bounded.
 - `matches()` / `closest()` classify the form-state pseudo-classes (`:disabled`, `:checked`,
   `:invalid`, ...) only for the elements their answer can read: the subject's inclusive
   ancestors (with their preceding siblings for `+` / `~`) and, for the validity classes, each
@@ -379,7 +381,8 @@ Every item is gated by a deterministic counter test, not wall-clock.
   are unchanged. Gates: deterministic fresh-cascade and update-pass counters
   (`computed_style_state_rules_reuse_gate`, `css_animation_update_runs_once_per_style_change_gate`).
 - turbo-dom-browser-env's selector-taking DOM methods (`querySelector[All]`, `matches`,
-  `closest`, ...) parse each selector string's grammar once (a bounded per-thread memo).
+  `closest`, ...) parse each selector string's grammar once (a per-thread memo, bounded in
+  entries, holding only selectors up to 512 UTF-16 units and cleared by each install).
   A selector without a `:` skips the five node-dependent pseudo-class rewrite passes, and
   the SyntaxError message is built only when a selector is rejected (same exact message as
   before). On form-heavy files this took ~9% of CPU.
@@ -414,11 +417,21 @@ Every item is gated by a deterministic counter test, not wall-clock.
 - Linux napi binaries and the publish jobs build on `ubuntu-22.04` / `ubuntu-22.04-arm`
   (glibc 2.35) instead of `ubuntu-latest` (26.04, glibc 2.43), and
   `scripts/check-glibc-ceiling.sh` fails any `linux-gnu` `.node` that needs a `GLIBC_`
-  symbol above 2.35 (d548cae).
+  symbol above 2.35 (d548cae). The guard never passes vacuously: a missing file or an
+  unmatched glob, an `objdump` failure and a binary with no `GLIBC_` symbols all fail
+  (self-test `scripts/test_check_glibc_ceiling.py`), and CI and publish name the expected
+  x64 and arm64 addons.
+- The npm publish job ships the `.node` files the CI napi matrix built and guarded. It
+  builds only the WASM targets, and no longer runs `prepublishOnly`, which rebuilt the
+  linux-x64 addon on the publish runner.
 - The browser-env coverage job's tarpaulin `--timeout` is sized for the whole test binary
   (it bounds a binary run, not one test; #235).
-- Superseded `pull_request` CI runs are cancelled (concurrency group); `workflow_call`
-  (publish), tag and `main` runs never are (5f8407b).
+- Superseded `pull_request` CI runs are cancelled (one concurrency group per PR).
+  `workflow_call` (publish), tag and `main` runs each get their own group (the run id), so
+  they are never cancelled or dropped while pending (5f8407b).
+- Every parity expected-diff entry names committed Chrome evidence (self-tested). The
+  turbo-surf 0.7.0 numbers are in `tools/parity/evidence/`, and embedded-font-range-* is a
+  declared known gap.
 - Every in-repo Chrome control launches the frozen Chrome 156 shell with
   `--use-mock-keychain --password-store=basic`.
 
