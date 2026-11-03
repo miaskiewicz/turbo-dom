@@ -1502,3 +1502,82 @@ fn a_cascade_reads_the_document_sheet_list_once_per_version() {
     assert_eq!(value["after"], "rgb(0, 0, 255)", "a new sheet is seen");
     assert!(value["first"].as_u64().unwrap() <= 2, "{value}");
 }
+
+/// An inline style write to one element keeps every other element's computed style reused:
+/// computed values read an element's own declarations and its parent's, and selectors see
+/// inline styles only through attribute selectors naming `style`. MUI's TextareaAutosize
+/// writes a hidden textarea's style between reads of its visible textarea's style, inside a
+/// deep dialog: those reads must not cascade the textarea and all its ancestors again.
+#[test]
+fn an_inline_style_write_keeps_unrelated_computed_styles() {
+    let value = run(
+        "<style>.t{color:red} div{margin:0}</style><body></body>",
+        r#"(()=>{
+      let parent=document.body;
+      for(let i=0;i<30;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const target=document.createElement('textarea');target.className='t';parent.appendChild(target);
+      const hidden=document.createElement('textarea');parent.appendChild(hidden);
+      getComputedStyle(target).color;
+      const runs=[];
+      for(let i=0;i<5;i++){
+        hidden.style.width=i+'px';
+        const before=__cssTestCascadeRuns();
+        const color=getComputedStyle(target).color;
+        runs.push(__cssTestCascadeRuns()-before);
+        if(color!=='rgb(255, 0, 0)')throw Error(color);
+      }
+      return JSON.stringify({max:Math.max(...runs),hidden:getComputedStyle(hidden).width});
+    })()"#,
+    );
+    assert_eq!(value["hidden"], "4px", "the written element's own style follows");
+    assert_eq!(value["max"], 0, "{value}");
+}
+
+/// What an inline style write still changes, beyond its element: inherited values below it,
+/// and every element an attribute selector naming `style` (directly, through a combinator or
+/// inside `:has()`) can reach. Same values as a fresh cascade (Chrome's: inline styles are
+/// the element's own declarations and the `style` attribute's value for selectors).
+#[test]
+fn an_inline_style_write_updates_inheritance_and_style_attribute_selectors() {
+    let value = run(
+        "<style>[style*=\"orange\"] + p{color:blue} section:has(> [style*=\"gold\"]){color:green}</style><body><div id=a><span id=s>x</span></div><b id=b></b><p id=p>p</p><section id=sec><i id=i></i></section></body>",
+        r#"(()=>{
+      const a=document.getElementById('a'),s=document.getElementById('s'),b=document.getElementById('b'),p=document.getElementById('p'),sec=document.getElementById('sec'),i=document.getElementById('i');
+      const read=()=>[getComputedStyle(s).color,getComputedStyle(p).color,getComputedStyle(sec).color,getComputedStyle(a).color].join('|');
+      const out=[read()];
+      a.style.color='rgb(1, 2, 3)'; out.push(read());
+      b.setAttribute('style','background:orange'); out.push(read());
+      i.style.outlineColor='gold'; out.push(read());
+      a.removeAttribute('style'); b.removeAttribute('style'); i.removeAttribute('style'); out.push(read());
+      return JSON.stringify(out);
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            "rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)",
+            "rgb(1, 2, 3)|rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(1, 2, 3)",
+            "rgb(1, 2, 3)|rgb(0, 0, 255)|rgb(0, 0, 0)|rgb(1, 2, 3)",
+            "rgb(1, 2, 3)|rgb(0, 0, 255)|rgb(0, 128, 0)|rgb(1, 2, 3)",
+            "rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)"
+        ])
+    );
+}
+
+/// A page with a shadow tree keeps the plain version: a shadow tree's own sheets (`::slotted`,
+/// `:host`) are outside the document sheets an embedder can check for `style` selectors.
+#[test]
+fn an_inline_style_write_in_a_shadow_page_still_updates_slotted_rules() {
+    let value = run(
+        "<body><div id=host><span id=light>x</span></div><em id=e></em></body>",
+        r#"(()=>{
+      const host=document.getElementById('host'),light=document.getElementById('light');
+      const root=host.attachShadow({mode:'open'});
+      root.innerHTML='<style>::slotted([style*="lime"]){color:rgb(9, 9, 9)}</style><slot></slot>';
+      const before=getComputedStyle(light).color;
+      light.style.backgroundColor='lime';
+      return JSON.stringify([before,getComputedStyle(light).color]);
+    })()"#,
+    );
+    assert_eq!(value, serde_json::json!(["rgb(0, 0, 0)", "rgb(9, 9, 9)"]));
+}
