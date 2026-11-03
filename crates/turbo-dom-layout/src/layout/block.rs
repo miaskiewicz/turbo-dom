@@ -1333,6 +1333,9 @@ fn out_of_flow_atom(id: usize) -> inline::InlineAtom {
 /// aligns instead). `central` (the device scale) reads the last line's central
 /// baseline instead of its alphabetic one (miaskiewicz/turbo-dom#239).
 fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f32> {
+    if let Some(baseline) = form_baseline(b, f, central.is_some()) {
+        return Some(baseline);
+    }
     if b.is_replaced() || !(inline_block(b) || b.shows_alt_text()) {
         return None;
     }
@@ -1350,6 +1353,42 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f3
     let mut last: Option<(f32, f32)> = None;
     last_line(f, &floats, central, &mut last);
     last.map(|(_, baseline)| baseline - f.y)
+}
+
+/// A form control's baseline below its border-box top, where Chrome 156's differs from an
+/// inline-block's (miaskiewicz/turbo-dom#239): a checkbox / radio / range at its
+/// border-box bottom (on a vertical line's central baseline: its border-box middle), an
+/// empty button at its content-box top, a textarea at its bottom margin edge.
+fn form_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> Option<f32> {
+    use super::form_controls::Control;
+    match b.form_control()? {
+        Control::Toggle if central => Some(f.height / 2.0),
+        Control::Toggle => Some(f.height),
+        _ if central => None,
+        // A textarea scrolls: it sits on its bottom margin edge, text or not.
+        Control::TextArea => Some(
+            f.height
+                + b.resolved(ResolveCtx {
+                    parent_font_size: super::value::DEFAULT_FONT_SIZE,
+                    cb_width: 0.0,
+                })
+                .margin
+                .bottom,
+        ),
+        Control::Button if !has_text(f) => {
+            let style = b.resolved(ResolveCtx {
+                parent_font_size: super::value::DEFAULT_FONT_SIZE,
+                cb_width: 0.0,
+            });
+            Some(style.border.widths().top + style.padding.top)
+        }
+        _ => None,
+    }
+}
+
+/// Whether a fragment subtree holds a line of text.
+fn has_text(f: &Fragment) -> bool {
+    matches!(f.content, FragmentContent::TextLine { .. }) || f.children.iter().any(has_text)
 }
 
 /// The central baseline an atom without a baseline of its own synthesizes on a line
@@ -3004,24 +3043,36 @@ fn aspect_auto_height(bs: &BoxStyle, content_w: f32) -> Option<f32> {
 /// entry has the resolver), but the resolver-less `natural_width`/`min_content_width`
 /// sizers run deep in the flex/table passes — so without a stamped width a `<div>`
 /// wrapping an `<img>` (a logo) measured 0 and its flex item collapsed / mis-aligned.
-pub(crate) fn stamp_intrinsic_widths(lb: &LayoutBox, images: &ImageCtx) {
-    stamp_replaced_intrinsic(lb, images);
+pub(crate) fn stamp_intrinsic_widths(lb: &LayoutBox, images: &ImageCtx, fonts: &FontRegistry) {
+    stamp_replaced_intrinsic(lb, images, fonts);
     match &lb.kind {
         BoxKind::Block(k) | BoxKind::Flex(k) | BoxKind::Grid(k) | BoxKind::Table(k) => {
             for c in k {
-                stamp_intrinsic_widths(c, images);
+                stamp_intrinsic_widths(c, images, fonts);
             }
         }
         BoxKind::Lines(items) => items
             .iter()
             .filter_map(inline_atomic)
-            .for_each(|c| stamp_intrinsic_widths(c, images)),
+            .for_each(|c| stamp_intrinsic_widths(c, images, fonts)),
         BoxKind::Marker(_) => {}
     }
 }
 
 /// Stamp one box's `intrinsic_w` if it is a resolvable replaced image.
-fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
+fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx, fonts: &FontRegistry) {
+    if let Some(control) = lb.form_control() {
+        let style = lb.resolved_base(ResolveCtx {
+            parent_font_size: super::value::DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        });
+        if let Some((width, height)) =
+            super::form_controls::intrinsic_size(control, &lb.attrs, &style, fonts)
+        {
+            lb.set_intrinsic(width, Some(height));
+        }
+        return;
+    }
     if lb.native_iframe() {
         lb.set_intrinsic(300.0, Some(150.0));
         return;
@@ -3466,7 +3517,7 @@ fn layout_tree_policy(
     };
     root.set_html_layout_policy((ctx.html_font_metrics, ctx.html_font_scale));
     root.set_original_units(original_units.as_ref());
-    stamp_intrinsic_widths(root, images);
+    stamp_intrinsic_widths(root, images, ctx.fonts);
     let mut frag = layout_box(root, 0.0, 0.0, cb_width, DEFAULT_FONT_SIZE, &mut ctx);
     if !live_geometry {
         super::invisible::scrub(&mut frag, &super::invisible::hidden_ids(root));

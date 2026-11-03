@@ -381,6 +381,12 @@ impl FontFace {
         face.tables().cff.is_some()
     }
 
+    /// Whether the face is fixed-pitch (`post.isFixedPitch`).
+    #[must_use]
+    pub fn is_fixed_pitch(&self) -> bool {
+        self.ttf().is_monospaced()
+    }
+
     #[must_use]
     pub fn weight(&self) -> u16 {
         self.weight

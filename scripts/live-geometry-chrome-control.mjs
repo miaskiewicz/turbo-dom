@@ -183,6 +183,10 @@ const FORM_CASES = [
   ["reset-default", `<input data-cid="m" type="reset">`],
   ["select", `<select data-cid="m"><option>abc</option></select>`],
   ["select-widest", `<select data-cid="m"><option>a</option><option>abcdefghij</option></select>`],
+  ["select-selected", `<select data-cid="m">
+    <option>a</option><hr><optgroup label="g"><option selected>abcdef</option></optgroup>
+  </select>`],
+  ["textarea-text", `<textarea data-cid="m" rows="1" cols="3">hi</textarea>`],
   ["textarea", `<textarea data-cid="m"></textarea>`],
   ["textarea-rows-cols", `<textarea data-cid="m" rows="4" cols="10"></textarea>`],
 ];

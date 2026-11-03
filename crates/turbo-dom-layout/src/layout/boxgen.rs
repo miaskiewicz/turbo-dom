@@ -182,6 +182,8 @@ enum SourceRole {
     AnonymousInlineFlow,
     /// The anonymous table grid box of a captioned table (miaskiewicz/turbo-dom#51).
     TableGrid,
+    /// A text field, textarea or menu list sized by its font (miaskiewicz/turbo-dom#239).
+    FormControl(super::form_controls::Control),
 }
 
 impl LayoutBox {
@@ -366,7 +368,35 @@ impl LayoutBox {
             style.width = super::value::LengthPct::Auto;
             style.height = super::value::LengthPct::Auto;
         }
+        self.form_control_size(&mut style);
+        ua_logical_size(&self.style, &mut style);
         style
+    }
+
+    /// The form control this box is (miaskiewicz/turbo-dom#239).
+    pub(crate) fn form_control(&self) -> Option<super::form_controls::Control> {
+        match self.source_role {
+            SourceRole::FormControl(control) => Some(control),
+            _ => None,
+        }
+    }
+
+    /// A form control's `auto` width / height: its stamped intrinsic content size
+    /// ([`super::form_controls::intrinsic_size`]), as a border box for `border-box`.
+    fn form_control_size(&self, style: &mut BoxStyle) {
+        use super::value::{BoxSizing, LengthPct};
+        if self.form_control().is_none() {
+            return;
+        }
+        let border_box = style.box_sizing == BoxSizing::BorderBox;
+        let frame_w = style.padding.horizontal() + style.border.widths().horizontal();
+        let frame_h = style.padding.vertical() + style.border.widths().vertical();
+        if let (LengthPct::Auto, Some(w)) = (style.width, self.intrinsic_w()) {
+            style.width = LengthPct::Px(w + if border_box { frame_w } else { 0.0 });
+        }
+        if let (LengthPct::Auto, Some(h)) = (style.height, self.intrinsic_h()) {
+            style.height = LengthPct::Px(h + if border_box { frame_h } else { 0.0 });
+        }
     }
 
     pub(crate) fn native_scale(&self) -> Option<f32> {
@@ -536,9 +566,13 @@ impl LayoutBox {
             ..self.clone_shallow()
         };
         copy.clear_measured_values();
-        if let (true, Some(width), Some(height)) =
-            (relabel.swaps(), self.intrinsic_w(), self.intrinsic_h())
-        {
+        // A form control's intrinsic size is in its own writing mode already (#239).
+        if let (true, None, Some(width), Some(height)) = (
+            relabel.swaps(),
+            self.form_control(),
+            self.intrinsic_w(),
+            self.intrinsic_h(),
+        ) {
             copy.set_intrinsic(height, Some(width));
         }
         copy
@@ -1302,6 +1336,9 @@ fn box_kind_for(display: Display, el: &StyledElement, ids: &mut Ids) -> BoxKind 
         // A replaced media box: its fallback content does not render (#252).
         return BoxKind::Lines(Vec::new());
     }
+    if let Some(control) = super::form_controls::control_of(el).filter(|c| c.sized()) {
+        return build_flow(&form_content(el, control), &el.style, ids);
+    }
     match display {
         Display::Flex | Display::InlineFlex => BoxKind::Flex(flex_grid_children(el, ids)),
         Display::Grid | Display::InlineGrid => BoxKind::Grid(flex_grid_children(el, ids)),
@@ -1384,6 +1421,89 @@ fn is_table_wrapper(kind: &BoxKind) -> bool {
     matches!(kind, BoxKind::Table(kids) if kids.iter().any(LayoutBox::table_grid))
 }
 
+/// The UA sheet's flow-relative size of a range slider or colour well (Chrome 156's
+/// `inline-size` / `block-size`, miaskiewicz/turbo-dom#239): `<inline> <block>` in
+/// the box's own writing mode, for an `auto` width / height. It names logical sizes,
+/// so a vertical layout's relabelling leaves it in place.
+fn ua_logical_size(computed: &ComputedStyle, style: &mut BoxStyle) {
+    use super::value::LengthPct;
+    let Some(value) = computed.get(UA_LOGICAL_SIZE) else {
+        return;
+    };
+    let mut sizes = value
+        .split_whitespace()
+        .filter_map(|v| v.strip_suffix("px")?.parse::<f32>().ok());
+    if let (Some(inline), Some(block)) = (sizes.next(), sizes.next()) {
+        if style.width == LengthPct::Auto {
+            style.width = LengthPct::Px(inline);
+        }
+        if style.height == LengthPct::Auto {
+            style.height = LengthPct::Px(block);
+        }
+    }
+}
+
+/// The internal property of [`ua_logical_size`].
+pub(crate) const UA_LOGICAL_SIZE: &str = "-internal-ua-size";
+
+/// A box's attributes: the element's, plus a `<select>`'s option texts
+/// ([`super::form_controls::OPTION_ATTR`]).
+fn box_attrs(el: &StyledElement) -> Vec<Attr> {
+    let mut attrs = el.attrs.clone();
+    if super::form_controls::control_of(el) == Some(super::form_controls::Control::Select) {
+        attrs.extend(
+            super::form_controls::select_options(el)
+                .into_iter()
+                .map(|(_, value)| Attr {
+                    name: super::form_controls::OPTION_ATTR.into(),
+                    value,
+                }),
+        );
+    }
+    attrs
+}
+
+/// What a form control shows (miaskiewicz/turbo-dom#239): a text field its `value`
+/// (bullets for a password), a textarea its text, a menu list its selected option; an
+/// empty one a line break, so its one line is the strut's (its baseline the text's).
+fn form_content(el: &StyledElement, control: super::form_controls::Control) -> Vec<StyledNode> {
+    use super::form_controls::Control;
+    let text = match control {
+        Control::TextField => {
+            let value = attr_value(&el.attrs, "value").unwrap_or_default();
+            if attr_value(&el.attrs, "type").is_some_and(|t| t.eq_ignore_ascii_case("password")) {
+                "\u{2022}".repeat(value.chars().count())
+            } else {
+                value.to_string()
+            }
+        }
+        Control::TextArea => super::form_controls::text_of(&el.children),
+        Control::Select | Control::Toggle | Control::Button => {
+            super::form_controls::select_options(el)
+                .into_iter()
+                .next()
+                .map(|(shown, _)| shown)
+                .unwrap_or_default()
+        }
+    };
+    if text.is_empty() && control == Control::TextField {
+        // An empty field still sits on its text's baseline: an invisible zero-width
+        // character gives it a line of text.
+        return vec![StyledNode::Text("\u{200b}".into())];
+    }
+    if text.is_empty() {
+        let br = StyledElement {
+            tag: Tag::Html("br".into()),
+            attrs: Vec::new(),
+            style: el.style.inherited_only(),
+            children: Vec::new(),
+            source: None,
+        };
+        return vec![StyledNode::Element(br)];
+    }
+    vec![StyledNode::Text(text.into())]
+}
+
 /// The label of a button-like `<input>` (`type` submit/button/reset) — its `value`
 /// attribute, shown as the box's text. `None` for any other element/input type.
 fn input_button_text(el: &StyledElement) -> Option<String> {
@@ -1391,13 +1511,25 @@ fn input_button_text(el: &StyledElement) -> Option<String> {
         return None;
     }
     let ty = attr_value(&el.attrs, "type").unwrap_or("text");
+    // Chrome's default labels of a submit / reset button without a `value` (#239).
+    let default = match ty {
+        "submit" => Some("Submit"),
+        "reset" => Some("Reset"),
+        _ => None,
+    };
     matches!(ty, "submit" | "button" | "reset")
-        .then(|| attr_value(&el.attrs, "value").map(str::to_string))
+        .then(|| {
+            attr_value(&el.attrs, "value")
+                .or(default)
+                .map(str::to_string)
+        })
         .flatten()
 }
 
 fn source_role(element: &StyledElement, ids: &Ids) -> SourceRole {
-    if native_iframe(element, ids) {
+    if let Some(control) = super::form_controls::control_of(element) {
+        SourceRole::FormControl(control)
+    } else if native_iframe(element, ids) {
         SourceRole::NativeIframe
     } else if ids
         .document_roots
@@ -1470,7 +1602,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         node_id,
         source_role: source_role(el, ids),
         style: el.style.clone(),
-        attrs: el.attrs.clone(),
+        attrs: box_attrs(el),
         display,
         kind,
         image: image_of(el).filter(|_| !wrapper),

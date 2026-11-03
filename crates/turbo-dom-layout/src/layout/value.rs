@@ -1092,9 +1092,19 @@ fn side_value(s: &ComputedStyle, prop: &str, fs: f32, basis: f32) -> Option<f32>
     s.get(prop).map(|v| edge_px(v, fs, basis))
 }
 
+/// The UA sheet's flow-relative padding of the text fields and buttons (Chrome 156's
+/// `padding-block` / `padding-inline`, miaskiewicz/turbo-dom#239): `<block> <inline>`
+/// in the box's own writing mode, under any `padding` the author sets. It names
+/// logical sides, so a vertical layout's relabelling leaves it in place.
+pub(crate) const UA_LOGICAL_PADDING: &str = "-internal-ua-padding";
+
 fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges {
-    let mut e = s
-        .get(prefix)
+    let base = s.get(prefix).or_else(|| {
+        (prefix == "padding" && !has_padding_longhand(s))
+            .then(|| s.get(UA_LOGICAL_PADDING))
+            .flatten()
+    });
+    let mut e = base
         .map(|v| parse_edge_shorthand(v, fs, basis))
         .unwrap_or_default();
     apply_side(s, prefix, "top", fs, basis, &mut e.top);
@@ -1110,6 +1120,23 @@ fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges 
     apply_side(s, prefix, "inline-start", fs, basis, &mut e.left);
     apply_side(s, prefix, "inline-end", fs, basis, &mut e.right);
     e
+}
+
+/// Whether a `padding-*` longhand is set (an author `padding` shorthand arrives as
+/// longhands): the UA's logical padding then gives way, as a shorthand would.
+fn has_padding_longhand(s: &ComputedStyle) -> bool {
+    [
+        "top",
+        "right",
+        "bottom",
+        "left",
+        "block-start",
+        "block-end",
+        "inline-start",
+        "inline-end",
+    ]
+    .iter()
+    .any(|side| s.get(&format!("padding-{side}")).is_some())
 }
 
 /// Overwrite one edge slot from `{prefix}-{name}` when that longhand is set.
