@@ -823,7 +823,7 @@ mod tests {
         // `type=Image` matches ASCII case-insensitively, any other input loads nothing.
         let png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=";
         let html = format!(
-            r#"<html><body><input data-cid="i" type="Image" src="{png}"><input data-cid="t" type="text" src="{png}" style="width:0;height:0;padding:0;border:0"></body></html>"#
+            r#"<html><body><input data-cid="i" type="Image" src="{png}"><input data-cid="t" type="text" src="{png}" style="width:0;height:0;padding:0;border:0"><div data-cid="d" src="{png}" style="height:10px"></div></body></html>"#
         );
         let mut diags = Diagnostics::default();
         let boxes = layout_boxes(&html, "", 600.0, 800.0, &FontRegistry::new(), &mut diags)
@@ -834,6 +834,9 @@ mod tests {
         };
         assert_eq!(size("i"), (8.0, 6.0));
         assert_eq!(size("t"), (0.0, 0.0));
+        // Any other element with a `src` is not a replaced image (live fixture
+        // `src-not-image`): a block fills the 584px body.
+        assert_eq!(size("d"), (584.0, 10.0));
     }
 
     #[test]

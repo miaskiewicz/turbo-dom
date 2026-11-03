@@ -595,7 +595,7 @@ fn vertical_form_controls_lay_out_like_chrome_156() {
 /// miaskiewicz/turbo-dom#258: `<input type=image>` is a replaced image control: html.css
 /// resets its padding, border and background, so the #239 input frame does not apply.
 fn input_image_case(id: &str) -> bool {
-    id.starts_with("input-image-")
+    id.starts_with("input-image-") || id == "src-not-image"
 }
 
 #[test]

@@ -709,6 +709,34 @@ const CASES = [
     ),
     fonts: true,
   })),
+  // Mutation audit 0.7.0 (#265): a size-contained inline-flex / inline-grid below the top
+  // of the page sits on its first item's border-box bottom; without containment, an
+  // inline-flex / inline-grid whose items have no line boxes does too.
+  {
+    id: "contain-flow-baselines",
+    html: DOC(
+      VERTICAL_CSS,
+      `<div style="height:13px"></div>` +
+        `<div data-cid="ta">a<span data-cid="ca" style="display:inline-flex;contain:size;padding:7px 0 3px"><span style="width:20px;height:10px"></span></span>b</div>` +
+        `<div data-cid="tg">a<span data-cid="cg" style="display:inline-grid;container-type:size;padding:7px 0 3px"><span style="width:20px;height:10px"></span></span>b</div>` +
+        `<div data-cid="tb">a<span data-cid="cb" style="display:inline-flex;padding:0 0 5px"><span style="width:20px;height:10px"></span></span>b</div>` +
+        `<div data-cid="tc">a<span data-cid="cc" style="display:inline-grid;padding:0 0 5px"><span style="width:20px;height:10px"></span></span>b</div>` +
+        `<div data-cid="td">a<span data-cid="cd" style="display:inline-flex;padding:0 0 5px"><span style="width:20px;height:30px">x</span></span>b</div>` +
+        `<div data-cid="te">a<span data-cid="ce" style="display:inline-flex;contain:size;padding:7px 0 3px"><span style="width:20px;height:30px">x</span></span>b</div>`,
+    ),
+    fonts: true,
+  },
+  // Mutation audit 0.7.0 (#258): only `<input type=image>` and `<img>` load a `src`; any
+  // other element with one (a span, a text input) is not a replaced image.
+  {
+    id: "src-not-image",
+    html: DOC(
+      `${VERTICAL_CSS}input{font-family:"Fira Code"}`,
+      `<div data-cid="p">a<span data-cid="s" src="${PNG8X6}">bc</span><input data-cid="t" type="text" src="${PNG8X6}">d</div>` +
+        `<div data-cid="d" src="${PNG8X6}" style="height:10px"></div>`,
+    ),
+    fonts: true,
+  },
   // miaskiewicz/turbo-dom#241: shrink-to-fit of text uses the native (device-scale)
   // advances line layout places it with, in horizontal flow too.
   {

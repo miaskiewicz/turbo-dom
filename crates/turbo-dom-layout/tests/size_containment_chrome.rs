@@ -48,6 +48,6 @@ fn size_containment_sizes_boxes_as_if_empty_like_chrome_156() {
             }
         }
     }
-    assert_eq!(compared, 8 * 12 + 6 * 15, "every contain-* box is compared");
+    assert_eq!(compared, 8 * 12 + 6 * 15 + 12, "every contain-* box is compared");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
