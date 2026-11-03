@@ -23,6 +23,15 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- turbo-dom-layout places background images and gradients like Chrome 156 (#248):
+  `background-size` (lengths, `%`, `auto`, `cover`, `contain`), `-position` (1-4 values),
+  `-repeat` (`repeat-x` / `-y`, two values; `space` / `round` tile like `repeat`),
+  `-origin` and `-clip` (the colour too), from the longhands or the `background`
+  shorthand, on block and inline boxes, in PNG, SVG and PDF. A background image was
+  stretched over the content box; it now tiles at its size from the padding box, which
+  changes the tools/parity image pages' `.bg` boxes (declared in
+  `tools/parity/expected/turbo-dom-248-background-layers.json`). Layers ignore
+  `border-radius`.
 - turbo-dom-raster's static screenshots (PNG and SVG) paint inline boxes like Chrome 156
   (#244): an inline with a background, box shadow, padding, border or horizontal margin
   keeps its box through turbo-dom-layout's static line layout and paints per line fragment

@@ -118,9 +118,21 @@ fn layers(background: &str, clone: bool) -> Vec<(f32, f32, f32, f32)> {
 #[test]
 fn inline_background_images_and_gradients_span_the_fragments_strip() {
     let slice = vec![(0.0, 160.0, 0.0, 80.0), (-80.0, 160.0, 80.0, 80.0)];
-    assert_eq!(layers("url(sprite.png)", false), slice);
-    assert_eq!(layers("linear-gradient(#ff0000, #0000ff)", false), slice);
+    assert_eq!(
+        layers("url(sprite.png) 0 0/100% 100% no-repeat", false),
+        slice
+    );
+    assert_eq!(
+        layers(
+            "linear-gradient(#ff0000, #0000ff) 0 0/100% 100% no-repeat",
+            false
+        ),
+        slice
+    );
     let clone = vec![(0.0, 80.0, 0.0, 80.0), (0.0, 80.0, 0.0, 80.0)];
-    assert_eq!(layers("url(sprite.png)", true), clone);
+    assert_eq!(
+        layers("url(sprite.png) 0 0/100% 100% no-repeat", true),
+        clone
+    );
     assert_eq!(layers("#ff0000", false), vec![]);
 }
