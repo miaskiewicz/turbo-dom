@@ -1570,7 +1570,7 @@ fn attr_value<'a>(attrs: &'a [Attr], name: &str) -> Option<&'a str> {
 /// The url of a `background-image: url(...)` longhand, or of a `url(...)` in the
 /// `background` shorthand (real stylesheets set images via the shorthand). A
 /// `none`/gradient/unparsable value yields `None`.
-fn background_image(style: &ComputedStyle) -> Option<String> {
+pub(super) fn background_image(style: &ComputedStyle) -> Option<String> {
     if let Some(url) = style.get("background-image").and_then(url_token) {
         return Some(url);
     }

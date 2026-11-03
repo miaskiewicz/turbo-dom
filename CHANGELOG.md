@@ -29,7 +29,9 @@ at the time); this file reconstructs them from history.
   (`box-decoration-break: slice`: the start edge on the first fragment, the end edge on the
   last, also across bidi-split fragments), its edges push its neighbours and count toward a
   shrink-to-fit container's max-content width, and `layout_boxes` reports the union of its
-  fragments. Plain inlines still flatten into their parent's run; the tools/parity corpora
+  fragments. `box-decoration-break: clone` repeats both edges on every fragment (they take
+  line space), and an inline box's background image / gradient spans its fragments' strip
+  (sliced) or each fragment (cloned), stretched like a block's. Plain inlines still flatten into their parent's run; the tools/parity corpora
   hold no such inline in a static render, so no checkpoint output changes.
 - turbo-dom-layout implements `hyphens: auto` for English (`lang=en` / `en-US` / other `en-*`
   regions; not en-GB): words break at the en-US Knuth-Liang points (the `hyphenation`

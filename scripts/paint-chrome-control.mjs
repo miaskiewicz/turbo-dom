@@ -324,6 +324,38 @@ const CASES = [
     html: DOC(`<div style="${at(20, 20)};font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 0;border-left:4px solid #0000ff;border-right:4px solid #0000ff">${ATOM(40, 30)}${RTL_OVERRIDE(ATOM(40, 30))}</span>${RTL_OVERRIDE(ATOM(40, 30, "#00ff00"))}</div>`),
     probes: [[22, 50], [40, 50], [62, 50], [84, 52], [84, 40], [106, 52], [142, 52], [146, 52], [150, 52]],
   },
+  // `box-decoration-break: clone`: every fragment has both edges, which also take line
+  // space (two atoms still fit each 100px line with 10px edges on both sides).
+  {
+    id: "inline-clone-atoms",
+    html: DOC(`<div style="${at(20, 20)};width:100px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 50], [27, 50], [100, 50], [113, 50], [118, 50], [122, 50], [22, 80], [27, 80], [113, 80], [118, 80], [122, 80], [60, 65]],
+  },
+  // An inline box's background image / gradient (stretched over its padding box here):
+  // sliced, the fragments show consecutive pieces of one image laid over their strip;
+  // cloned, each fragment shows the whole image.
+  {
+    id: "inline-image-slice",
+    html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:url(${SPRITE}) 0 0/100% 100% no-repeat;padding:5px 0">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[25, 52], [55, 52], [95, 52], [25, 82], [55, 82], [95, 82]],
+  },
+  {
+    id: "inline-image-clone",
+    html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:url(${SPRITE}) 0 0/100% 100% no-repeat;padding:5px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    assets: [SPRITE],
+    probes: [[25, 52], [95, 52], [25, 82], [95, 82]],
+  },
+  {
+    id: "inline-gradient-slice",
+    html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:linear-gradient(to right,#ff0000,#0000ff);padding:5px 0">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 52], [98, 52], [22, 82], [98, 82]],
+  },
+  {
+    id: "inline-gradient-clone",
+    html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:linear-gradient(to right,#ff0000,#0000ff);padding:5px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 52], [98, 52], [22, 82], [98, 82]],
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
