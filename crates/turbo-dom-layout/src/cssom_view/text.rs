@@ -397,6 +397,52 @@ mod tests {
         assert!(failures.is_empty(), "{}", failures.join("\n"));
     }
 
+    /// `unicode-bidi: isolate` / `embed` around text of the paragraph's own direction
+    /// reorders nothing (UAX #9 X5a-X5c, X10), so Chrome 156 hits and places carets in
+    /// that text exactly as without the isolate (the `span-*` rows of
+    /// `tests/fixtures/bidi/chrome156.json` keep LTR content in place). The generic box
+    /// snapshot carries the span's formatting characters as glyph-less runs of no source
+    /// of their own, which hit testing and carets pass over.
+    #[test]
+    fn same_direction_isolates_leave_hits_and_carets_unchanged() {
+        let layout = |style: &str| {
+            crate::live::testing::layout(
+                &format!(
+                    "<body style='margin:0;font:16px \"Liberation Serif\"'><div>ab <span id=s \
+                     style='{style}'>cd ef</span> gh</div></body>"
+                ),
+                "",
+                (400.0, 300.0),
+                None,
+            )
+        };
+        let (_, plain, plain_styles) = layout("");
+        let offsets = BTreeMap::new();
+        let mut carets = 0;
+        for style in ["unicode-bidi:isolate", "unicode-bidi:embed"] {
+            let (_, bidi, bidi_styles) = layout(style);
+            for x in 0..90 {
+                let point = [f64::from(x), 9.0];
+                let hit = |snapshot, styles| {
+                    super::super::hit::elements_at_point(snapshot, styles, &offsets, point)
+                };
+                assert_eq!(
+                    hit(&bidi, &bidi_styles),
+                    hit(&plain, &plain_styles),
+                    "{style} {x}"
+                );
+                let got = caret(&bidi, &bidi_styles, &offsets, point).unwrap();
+                assert_eq!(
+                    got,
+                    caret(&plain, &plain_styles, &offsets, point).unwrap(),
+                    "{style} {x}"
+                );
+                carets += usize::from(got.is_some());
+            }
+        }
+        assert_eq!(carets, 180, "every point of the line takes a caret");
+    }
+
     #[test]
     fn caret_candidates_rank_lines_below_the_point_first() {
         let line = |above: bool, gap: [f64; 2]| Candidate {

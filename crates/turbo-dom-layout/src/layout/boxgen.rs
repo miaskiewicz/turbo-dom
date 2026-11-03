@@ -1882,13 +1882,12 @@ fn hoist_top_layer(root: &mut BoxKind, ids: &mut Ids) {
         element.style.set("z-index", TOP_LAYER_Z.to_string());
         let backdrop = backdrop_box(ids.alloc());
         for b in [backdrop, element] {
-            match root {
-                BoxKind::Lines(items) => items.push(InlineItem::Atomic(b)),
-                BoxKind::Block(kids)
-                | BoxKind::Flex(kids)
-                | BoxKind::Grid(kids)
-                | BoxKind::Table(kids) => kids.push(b),
-                BoxKind::Marker(_) => {}
+            // `root` is `build_flow`'s result (`build_root`, the only caller), which is
+            // always `Lines` or `Block`.
+            if let BoxKind::Lines(items) = root {
+                items.push(InlineItem::Atomic(b));
+            } else if let BoxKind::Block(kids) = root {
+                kids.push(b);
             }
         }
     }
