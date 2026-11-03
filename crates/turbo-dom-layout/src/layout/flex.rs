@@ -1445,13 +1445,12 @@ fn build_grid_leaves(
         .map(|(i, it)| {
             let mut style = item_style(it, fs, false);
             // Grid has no flex-basis: an explicit width must reach its own size
-            // constraint instead of becoming the track's stretch width.
-            if it.uses_html_font_metrics() {
-                style.size = item_size(&it.resolved(ResolveCtx {
-                    parent_font_size: fs,
-                    cb_width: 0.0,
-                }));
-            }
+            // constraint instead of becoming the track's stretch width — under every
+            // layout policy (the HTML path too, miaskiewicz/turbo-dom#267).
+            style.size = item_size(&it.resolved(ResolveCtx {
+                parent_font_size: fs,
+                cb_width: 0.0,
+            }));
             // Grid items carry their own `justify-self` (flex has none). Its default
             // is `stretch` via the container's `justify-items`; a `center`/`start`/
             // `end` value here instead sizes the item to its own width and aligns it
