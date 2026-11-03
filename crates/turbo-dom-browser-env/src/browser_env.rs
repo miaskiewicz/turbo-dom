@@ -3326,6 +3326,15 @@ struct SelectorFacts {
 /// selector strings costs at most this many entries.
 const SELECTOR_MEMO_LIMIT: usize = 1024;
 
+/// The longest selector (in UTF-16 units, about 1 KB) the memo keeps: a longer one is parsed
+/// on every call, so huge selector strings never pin memory in the memo.
+const SELECTOR_MEMO_MAX_UNITS: usize = 512;
+
+/// Start the selector memo over: each install's page gets its own (the memo is per thread).
+fn clear_selector_memo() {
+    let _ = SELECTOR_MEMO.try_with(|memo| memo.borrow_mut().clear());
+}
+
 thread_local! {
     static SELECTOR_MEMO: RefCell<HashMap<Vec<u16>, std::rc::Rc<SelectorFacts>>> =
         RefCell::new(HashMap::new());
@@ -3363,6 +3372,9 @@ fn selector_facts(units: &[u16]) -> std::rc::Rc<SelectorFacts> {
         unit_path: String::from_utf16(units).is_err() || units.contains(&92),
         scalar,
     });
+    if units.len() > SELECTOR_MEMO_MAX_UNITS {
+        return facts;
+    }
     SELECTOR_MEMO.with(|memo| {
         let mut memo = memo.borrow_mut();
         if memo.len() >= SELECTOR_MEMO_LIMIT {
@@ -7753,6 +7765,7 @@ fn attach_document(scope: &mut v8::PinScope, mut tree: Tree) {
     STYLE.with(|s| s.borrow_mut().retain(|handle, _| *handle == root));
     LISTENERS.with(|s| s.borrow_mut().retain(|(handle, _), _| *handle == root));
     ACTIVE.with(|s| *s.borrow_mut() = None);
+    clear_selector_memo();
     let graph = DOM.with(|d| {
         let mut d = d.borrow_mut();
         // invariant: bootstrap_engine installed a DOM
@@ -7872,6 +7885,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     STYLE.with(|s| s.borrow_mut().clear());
     LISTENERS.with(|s| s.borrow_mut().clear());
     ACTIVE.with(|s| *s.borrow_mut() = None);
+    clear_selector_memo();
     let el_template = {
         let t = build_el_template(scope);
         v8::Global::new(scope, t)
@@ -8236,6 +8250,7 @@ pub fn reset() {
     let _ = LISTENERS.try_with(|s| s.borrow_mut().clear());
     event_listeners::reset_node_subscriptions();
     let _ = ACTIVE.try_with(|a| *a.borrow_mut() = None);
+    clear_selector_memo();
     if log_enabled() {
         dump_missing();
     }
