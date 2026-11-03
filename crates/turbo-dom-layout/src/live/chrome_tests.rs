@@ -279,7 +279,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 17] = [
+    let groups: [fn(&str) -> bool; 18] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -297,6 +297,7 @@ fn held_out(id: &str) -> bool {
         media_case,
         |id| id.starts_with("form-"),
         input_image_case,
+        contain_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -600,4 +601,14 @@ fn input_image_case(id: &str) -> bool {
 #[test]
 fn image_inputs_have_no_control_frame_like_chrome_156() {
     assert_matches_chrome(compare_cases(input_image_case));
+}
+
+/// miaskiewicz/turbo-dom#265: size containment (`container-type` / `contain`).
+fn contain_case(id: &str) -> bool {
+    id.starts_with("contain-")
+}
+
+#[test]
+fn size_containment_sizes_boxes_as_if_empty_like_chrome_156() {
+    assert_matches_chrome(compare_cases(contain_case));
 }

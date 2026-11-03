@@ -2908,7 +2908,14 @@ fn layout_box_sized_impl(
     // An `aspect-ratio` box with an auto height derives it from the content width
     // (`width / ratio`); content can still expand it. Used as the auto-height basis
     // so a square media tile is sized by ratio, not by a `min-height` fallback.
-    let auto_h = aspect_auto_height(bs, content_w).map_or(content_h, |a| a.max(content_h));
+    // Block-axis size containment sizes an auto height as if the box were empty
+    // (miaskiewicz/turbo-dom#265); its content overflows.
+    let sized_h = if lb.containment().height {
+        0.0
+    } else {
+        content_h
+    };
+    let auto_h = aspect_auto_height(bs, content_w).map_or(sized_h, |a| a.max(sized_h));
     let fill_h = resolved_content_height(bs, auto_h, ctx);
     record_dropped_end_margin(lb, bs, bfc, fill_h != content_h, ctx);
     let vh = if ctx.icb_h > 0.0 {

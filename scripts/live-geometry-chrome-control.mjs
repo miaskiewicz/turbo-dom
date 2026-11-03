@@ -71,6 +71,17 @@ const FACE =
   `@font-face{font-family:"Inter";src:url(data:font/otf;base64,${inter})}` +
   `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}` +
   `@font-face{font-family:"Ic Fixture";src:url(data:font/ttf;base64,${ic})}`;
+// miaskiewicz/turbo-dom#265 size containment cases: [id suffix, declaration].
+const CONTAIN_CASES = [
+  ["none", ""],
+  ["container-inline-size", "container-type:inline-size"],
+  ["container-size", "container-type:size"],
+  ["inline-size", "contain:inline-size"],
+  ["size", "contain:size"],
+  ["strict", "contain:strict"],
+  ["layout-paint", "contain:layout paint"],
+  ["container-normal", "container-type:normal"],
+];
 // miaskiewicz/turbo-dom#190 quirks-mode line strut cases: [id suffix, body].
 const QUIRKS_CSS = 'body{margin:0;font-family:"Fira Code";font-size:16px}div{font-size:30px}';
 const IB = (h) => `<span style="display:inline-block;width:10px;height:${h}px"></span>`;
@@ -650,6 +661,23 @@ const CASES = [
     fonts: true,
     metrics: true,
     ...(extra || {}),
+  })),
+  // miaskiewicz/turbo-dom#265: size containment. `container-type: inline-size` /
+  // `contain: inline-size` size the inline axis as if the box had no content (its
+  // shrink-to-fit width is its frame); `container-type: size` / `contain: size` / `strict`
+  // both axes. A float, an inline-block, an absolutely positioned auto width, a flex item
+  // and a grid item, and an explicit width (unchanged).
+  ...CONTAIN_CASES.map(([id, decl]) => ({
+    id: `contain-${id}`,
+    html: DOC(
+      "body{margin:0;font-size:0;line-height:0}.c{padding:3px 4px;border:1px solid}",
+      `<div data-cid="fl" class="c" style="float:left;${decl}">${BOX(120, 30, "fk")}</div><div style="clear:both"></div>` +
+        `<div data-cid="ibp" style="height:60px"><div data-cid="ib" class="c" style="display:inline-block;${decl}">${BOX(110, 20)}</div></div>` +
+        `<div style="position:relative;height:50px"><div data-cid="ab" class="c" style="position:absolute;left:10px;top:5px;${decl}">${BOX(100, 25)}</div></div>` +
+        `<div data-cid="fx" style="display:flex;align-items:flex-start"><div data-cid="fi" class="c" style="${decl}">${BOX(90, 15)}</div><div data-cid="fs" style="width:10px;height:10px"></div></div>` +
+        `<div data-cid="gr" style="display:grid;grid-template-columns:auto 10px;justify-content:start;align-items:start"><div data-cid="gi" class="c" style="${decl}">${BOX(80, 12)}</div><div data-cid="gs" style="height:10px"></div></div>` +
+        `<div data-cid="ew" class="c" style="float:left;width:70px;${decl}">${BOX(120, 30)}</div>`,
+    ),
   })),
   // miaskiewicz/turbo-dom#241: shrink-to-fit of text uses the native (device-scale)
   // advances line layout places it with, in horizontal flow too.
