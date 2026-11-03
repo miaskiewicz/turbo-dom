@@ -2,6 +2,8 @@
 // headless shell over a raw CDP pipe.
 //   node scripts/css-grouping-rules-chrome-control.mjs --chrome /path/to/chrome-headless-shell \
 //     [--probe src/css_grouping_rules_probe.js] [--out src/css_grouping_rules_chrome156.json]
+// The grouping-rule cascade control (turbo-dom#273) uses the same collector:
+//     --probe src/css_grouping_cascade_probe.js --out src/css_grouping_cascade_chrome156.json
 // Run from crates/turbo-dom-browser-env. The offline test installs the same empty document
 // before evaluating the probe and checks `browser` and `probeSha256`.
 import { spawn } from "node:child_process";

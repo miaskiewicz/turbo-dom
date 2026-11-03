@@ -340,6 +340,11 @@ css_admission_tests.rs: turbo-dom#254 grouping / condition rules vs their Chrome
 browser_env.rs: 0.7.0 R1 #13 run_js compiles through run_engine_script_cached (only fixed engine scripts reach the bytecode cache); R1 #14 the selector memo skips selectors over 512 units and is cleared by each install and reset
 browser_env.js: 0.7.0 R1 #15 the node-intrinsics probe div is released after use, so no closure carries it into a startup snapshot
 realm_ownership.rs: 0.7.0 R1 #15 retire_nodes leaves only the document in its own ownership component
+browser_env.js: 0.7.0 turbo-dom#273 getComputedStyle applies style rules nested in @supports / @layer / @media / @scope (condition evaluation, cascade-layer order), never @container / @starting-style
+css_admission_tests.rs: 0.7.0 turbo-dom#273 grouping-rule cascade vs its Chrome 156 control
+browser_env.js: 0.7.0 turbo-dom#275 the computed-style cascade orders rules by Selectors 4 specificity; turbo-dom#276 @scope proximity, :scope bound to the scoping root, & as :where(:scope)
+browser_env.rs: 0.7.0 turbo-dom#275 __parseCssNative 'specificity' mode (the cascade parser's complex selectors with their specificity)
+css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -369,6 +374,8 @@ OWNED="$OWNED css_animations_cases.json css_animations_chrome156.json css_animat
 OWNED="$OWNED page_patched_intrinsics_probe.js captured_intrinsics.js"
 OWNED="$OWNED xml_documents.rs xml_documents.js xml_documents_tests.rs xml_documents_probe.js xml_documents_chrome156.json xml_inner_html_probe.js xml_inner_html_chrome156.json"
 OWNED="$OWNED css_grouping_rules_probe.js css_grouping_rules_chrome156.json"
+OWNED="$OWNED css_grouping_cascade_probe.js css_grouping_cascade_chrome156.json"
+OWNED="$OWNED css_cascade_specificity_probe.js css_cascade_specificity_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}
