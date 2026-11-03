@@ -592,6 +592,33 @@ const CASES = [
     // only the field inside and the page around them are probed.
     probes: [[19, 30], [24, 30], [40, 30], [50, 36], [70, 30], [40, 50]],
   })),
+  // miaskiewicz/turbo-dom#255 (`form-native-*`): a control with its default appearance
+  // paints Chrome's native look (a 1px #767676 frame with rounded corners on white or
+  // #efefef, a menu list's chevron, the checkbox / radio glyphs, the range track and
+  // thumb, the colour swatch); `appearance: none` or an author border keeps the CSS
+  // painting. Probes are box-relative offsets from the control's (20, 20) corner.
+  ...[
+    ["text", `<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px">`, [[0, 0], [15, 0], [15, 1], [15, 2], [0, 11], [1, 11], [2, 11], [37, 11], [36, 11], [15, 21], [15, 20]]],
+    ["textarea", `<textarea data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px"></textarea>`, [[0, 0], [15, 0], [15, 1], [0, 10], [1, 10], [35, 10], [34, 10], [15, 21], [15, 20]]],
+    ["button", `<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px"></button>`, [[0, 0], [20, 0], [20, 1], [0, 11], [1, 11], [41, 11], [40, 11], [20, 21], [20, 20]]],
+    ["select", `<select data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px"></select>`, [[0, 0], [20, 0], [20, 1], [0, 11], [1, 11], [20, 21], [20, 20], [35, 12], [31, 9], [38, 9], [35, 8], [28, 11]]],
+    ["checkbox", `<input data-cid="m" type="checkbox" style="${at(20, 20)};margin:0">`, [[0, 0], [6, 0], [6, 1], [0, 6], [1, 6], [6, 6], [12, 6], [11, 6], [6, 12], [6, 11]]],
+    ["checkbox-checked", `<input data-cid="m" type="checkbox" checked style="${at(20, 20)};margin:0">`, [[0, 0], [6, 0], [6, 1], [2, 2], [10, 10], [5, 8], [8, 5], [2, 9], [10, 3], [6, 12]]],
+    ["radio", `<input data-cid="m" type="radio" style="${at(20, 20)};margin:0">`, [[0, 0], [1, 1], [6, 0], [6, 1], [6, 6], [0, 6], [1, 6], [12, 6], [11, 6], [6, 12], [6, 11]]],
+    ["radio-checked", `<input data-cid="m" type="radio" checked style="${at(20, 20)};margin:0">`, [[0, 0], [1, 1], [6, 0], [6, 6], [4, 6], [6, 4], [1, 6], [6, 1], [11, 6], [6, 11]]],
+    ["range", `<input data-cid="m" type="range" style="${at(20, 20)};margin:0;width:60px">`, [[0, 0], [5, 1], [5, 8], [20, 8], [30, 8], [30, 1], [30, 15], [45, 8], [55, 8], [45, 2], [45, 14], [58, 8]]],
+    ["range-value", `<input data-cid="m" type="range" min="10" max="20" value="18" style="${at(20, 20)};margin:0;width:60px">`, [[5, 8], [20, 8], [30, 8], [46, 8], [46, 1], [56, 8], [58, 8]]],
+    ["color", `<input data-cid="m" type="color" style="${at(20, 20)};margin:0">`, [[0, 0], [25, 0], [25, 1], [2, 13], [4, 13], [25, 13], [10, 10], [40, 18], [25, 4], [25, 23], [25, 26], [49, 13], [48, 13]]],
+    ["color-value", `<input data-cid="m" type="color" value="#ff0000" style="${at(20, 20)};margin:0">`, [[25, 13], [10, 10], [40, 18], [4, 13], [25, 4]]],
+    ["text-appearance-none", `<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px;appearance:none">`, [[0, 0], [15, 0], [15, 1], [15, 2], [0, 11], [1, 11], [2, 11]]],
+    ["text-author-border", `<input data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:30px;height:16px;border:2px solid #ff0000">`, [[0, 0], [15, 0], [15, 1], [15, 2], [0, 11], [1, 11], [2, 11]]],
+    ["button-author-background", `<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px;background:#ffff00"></button>`, [[0, 0], [20, 0], [20, 1], [20, 2], [1, 11], [2, 11], [20, 11]]],
+    ["checkbox-appearance-none", `<input data-cid="m" type="checkbox" checked style="${at(20, 20)};margin:0;appearance:none">`, [[0, 0], [6, 0], [6, 6], [5, 8]]],
+  ].map(([kind, html, probes]) => ({
+    id: `form-native-${kind}`,
+    html: DOC(html),
+    probes: probes.map(([dx, dy]) => [20 + dx, 20 + dy]),
+  })),
   {
     id: "media-video-poster",
     html: DOC(`<video data-cid="m" poster="${SPRITE}" style="${at(20, 20)};width:100px;height:40px"></video>`),

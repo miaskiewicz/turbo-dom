@@ -6887,6 +6887,1702 @@
    ]
   },
   {
+   "id": "form-native-text",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:30px;height:16px\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 38,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 35,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 35,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 35,
+     "y": 22,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 31,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 21,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 22,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 57,
+     "y": 31,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 56,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 35,
+     "y": 41,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 35,
+     "y": 40,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-textarea",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><textarea data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:30px;height:16px\"></textarea></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 36,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 35,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 35,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 30,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 21,
+     "y": 30,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 55,
+     "y": 30,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 54,
+     "y": 30,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 35,
+     "y": 41,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 35,
+     "y": 40,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-button",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><button data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:42px;height:22px\"></button></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 42,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 40,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 20,
+     "y": 31,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 21,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 61,
+     "y": 31,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 60,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 40,
+     "y": 41,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 40,
+     "y": 40,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-select",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><select data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:42px;height:22px\"></select></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 42,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 40,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 31,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 21,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 41,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 40,
+     "y": 40,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 55,
+     "y": 32,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 51,
+     "y": 29,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 58,
+     "y": 29,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 55,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 48,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-checkbox",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"checkbox\" style=\"position:absolute;left:20px;top:20px;margin:0\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 13,
+     "height": 13
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      25,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 26,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 26,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 21,
+     "y": 26,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 26,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 32,
+     "y": 26,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 31,
+     "y": 26,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 32,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 26,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-checkbox-checked",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"checkbox\" checked style=\"position:absolute;left:20px;top:20px;margin:0\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 13,
+     "height": 13
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      16,
+      208,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 22,
+     "y": 22,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 30,
+     "y": 30,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 28,
+     "y": 25,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 22,
+     "y": 29,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 30,
+     "y": 23,
+     "class": "W",
+     "rgb": [
+      234,
+      244,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 32,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-radio",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"radio\" style=\"position:absolute;left:20px;top:20px;margin:0\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 13,
+     "height": 13
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      134,
+      153,
+      153
+     ]
+    },
+    {
+     "x": 26,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 26,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 26,
+     "class": "?",
+     "rgb": [
+      141,
+      153,
+      153
+     ]
+    },
+    {
+     "x": 21,
+     "y": 26,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 32,
+     "y": 26,
+     "class": "?",
+     "rgb": [
+      139,
+      153,
+      153
+     ]
+    },
+    {
+     "x": 31,
+     "y": 26,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 32,
+     "class": "?",
+     "rgb": [
+      135,
+      153,
+      153
+     ]
+    },
+    {
+     "x": 26,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-radio-checked",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"radio\" checked style=\"position:absolute;left:20px;top:20px;margin:0\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 13,
+     "height": 13
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      45,
+      151,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 26,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 24,
+     "y": 26,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 24,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 26,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 31,
+     "y": 26,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-range",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"range\" style=\"position:absolute;left:20px;top:20px;margin:0;width:60px\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 60,
+     "height": 16
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 35,
+     "class": "T",
+     "rgb": [
+      0,
+      197,
+      255
+     ]
+    },
+    {
+     "x": 65,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 75,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 65,
+     "y": 22,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 65,
+     "y": 34,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 78,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      179,
+      188,
+      188
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-range-value",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"range\" min=\"10\" max=\"20\" value=\"18\" style=\"position:absolute;left:20px;top:20px;margin:0;width:60px\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 60,
+     "height": 16
+    }
+   ],
+   "probes": [
+    {
+     "x": 25,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 66,
+     "y": 28,
+     "class": "?",
+     "rgb": [
+      0,
+      117,
+      255
+     ]
+    },
+    {
+     "x": 66,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      179,
+      255
+     ]
+    },
+    {
+     "x": 76,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 78,
+     "y": 28,
+     "class": "W",
+     "rgb": [
+      179,
+      188,
+      188
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-color",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"color\" style=\"position:absolute;left:20px;top:20px;margin:0\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 50,
+     "height": 27
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 45,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 45,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 22,
+     "y": 33,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 24,
+     "y": 33,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 45,
+     "y": 33,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 30,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 60,
+     "y": 38,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 45,
+     "y": 24,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 45,
+     "y": 43,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 45,
+     "y": 46,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 69,
+     "y": 33,
+     "class": "?",
+     "rgb": [
+      118,
+      118,
+      118
+     ]
+    },
+    {
+     "x": 68,
+     "y": 33,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-color-value",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"color\" value=\"#ff0000\" style=\"position:absolute;left:20px;top:20px;margin:0\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 50,
+     "height": 27
+    }
+   ],
+   "probes": [
+    {
+     "x": 45,
+     "y": 33,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 60,
+     "y": 38,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 24,
+     "y": 33,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    },
+    {
+     "x": 45,
+     "y": 24,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-text-appearance-none",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:30px;height:16px;appearance:none\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 38,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 35,
+     "y": 20,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 35,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 35,
+     "y": 22,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 31,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 21,
+     "y": 31,
+     "class": "?",
+     "rgb": [
+      33,
+      33,
+      33
+     ]
+    },
+    {
+     "x": 22,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-text-author-border",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:30px;height:16px;border:2px solid #ff0000\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 38,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 35,
+     "y": 20,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 35,
+     "y": 21,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 35,
+     "y": 22,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 31,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 31,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 22,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-button-author-background",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><button data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:42px;height:22px;background:#ffff00\"></button></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 42,
+     "height": 22
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "W",
+     "rgb": [
+      168,
+      168,
+      168
+     ]
+    },
+    {
+     "x": 40,
+     "y": 20,
+     "class": "W",
+     "rgb": [
+      168,
+      168,
+      168
+     ]
+    },
+    {
+     "x": 40,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      168,
+      168,
+      168
+     ]
+    },
+    {
+     "x": 40,
+     "y": 22,
+     "class": "Y",
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 31,
+     "class": "W",
+     "rgb": [
+      168,
+      168,
+      168
+     ]
+    },
+    {
+     "x": 22,
+     "y": 31,
+     "class": "Y",
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 40,
+     "y": 31,
+     "class": "Y",
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form-native-checkbox-appearance-none",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" type=\"checkbox\" checked style=\"position:absolute;left:20px;top:20px;margin:0;appearance:none\"></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 0,
+     "height": 0
+    }
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 20,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 26,
+     "y": 26,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 28,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
    "id": "media-video-poster",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><video data-cid=\"m\" poster=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=\" style=\"position:absolute;left:20px;top:20px;width:100px;height:40px\"></video></body></html>",
    "assets": [
