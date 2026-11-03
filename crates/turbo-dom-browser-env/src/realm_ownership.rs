@@ -62,14 +62,23 @@ impl DocumentGraph {
     ) -> Option<Self> {
         let context = document.get_creation_context(scope)?;
         let scope = &mut v8::ContextScope::new(scope, context);
-        owner_roots(scope, document)?;
+        // A document deserialized from a startup snapshot (turbo-dom#249) arrives with its
+        // edges: node wrappers of a tree that did not survive (dropped here), and helpers
+        // (kept; numbering continues after them).
+        owner_roots(scope, document)?.clear();
+        let field = key(scope, "turbo-dom.ownership.document-helpers")?;
+        let next_helper = document
+            .get_private(scope, field)
+            .and_then(|value| v8::Local::<v8::Map>::try_from(value).ok())
+            // ids are 1..=size: retain_helper numbers them in a u32 and never deletes one
+            .map_or(0, |helpers| helpers.size() as u32);
         Some(Self {
             document: v8::Weak::new(scope, document),
             context: v8::Weak::new(scope, context),
             wrappers: HashMap::new(),
             connected: HashSet::new(),
             components: HashMap::new(),
-            next_helper: 0,
+            next_helper,
         })
     }
     pub fn retain_helper<'s>(
