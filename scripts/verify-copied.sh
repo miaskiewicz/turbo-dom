@@ -321,6 +321,20 @@ document_legacy.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halve
 html_popover.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
 realm_ownership.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
 template_contents.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+dom_isolation.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+frame_tokens_tests.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+html_meta_tests.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+iframe_credentialless_tests.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+mutation_observers_tests.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+shadow_slots_tests.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+range_live.rs: 0.7.0 turbo-dom#249 step 5: the live-range registry is persisted into a snapshot and re-registered on rehydrate
+browser_env.rs: 0.7.0 turbo-dom#249 step 5: snapshot_blob / install_from_snapshot / TURBO_DOM_SNAPSHOT_PATH install path; 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+custom_elements.rs: 0.7.0 turbo-dom#249 step 5: constructor delegates are template_data keys while a snapshot is built
+mutation_observers.rs: 0.7.0 turbo-dom#249 step 5: the delivery function's pending array is template data via template_data
+html_popover.rs: 0.7.0 turbo-dom#249 step 5: the flush function's data is template data via template_data
+collection_records.rs: 0.7.0 turbo-dom#249 step 5: a snapshot isolate adopts the snapshot's record key in whichever context first needs it
+reference_target.rs: 0.7.0 turbo-dom#249 step 5: ensure_key for snapshot rehydrate
+dom_ownership.rs: 0.7.0 turbo-dom#249 step 5: GC_EPOCH visible to the sweep test
 browser_env.js: turbo-dom#254 CSSGroupingRule / CSSConditionRule and the @container / @media / @supports / @layer / @scope / @starting-style rule interfaces (attributes, insertRule / deleteRule, normalized container query)
 css_admission_tests.rs: turbo-dom#254 grouping / condition rules vs their Chrome 156 control
 "
