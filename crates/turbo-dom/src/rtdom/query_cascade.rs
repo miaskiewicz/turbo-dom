@@ -1366,9 +1366,31 @@ mod tests {
         ] {
             assert!(parse_for_cascade(bad).is_err(), "{bad} should be invalid");
         }
+        // turbo-surf#117: the error names the pseudo-class it rejected, as written
+        for (bad, message) in [
+            ("a:bogus", "invalid selector: unknown pseudo-class ':bogus'"),
+            (
+                "a:-WebKit-Bogus",
+                "invalid selector: unknown pseudo-class ':-WebKit-Bogus'",
+            ),
+            (
+                "a:bogus(x)",
+                "invalid selector: unknown pseudo-class ':bogus()'",
+            ),
+            (
+                "option:selected",
+                "invalid selector: unknown pseudo-class ':selected'",
+            ),
+        ] {
+            assert_eq!(
+                parse_for_cascade(bad).unwrap_err().to_string(),
+                message,
+                "{bad}"
+            );
+        }
         assert_eq!(
-            parse_for_cascade("a:bogus").unwrap_err().to_string(),
-            "invalid selector: unknown pseudo-class"
+            parse_for_cascade("a:bogus").unwrap_err(),
+            SelectorError::UnknownPseudoClass("bogus".into())
         );
         let list = parse_for_cascade(" a , b.c ").unwrap();
         let texts: Vec<&str> = list.selectors().iter().map(CascadeSelector::text).collect();
