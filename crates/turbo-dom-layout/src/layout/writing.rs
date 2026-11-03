@@ -528,7 +528,7 @@ mod tests {
     }
 
     /// What the vertical layer does not lay out fails that element's reads only:
-    /// upright text and replaced elements sized by a physical default.
+    /// replaced elements sized by a physical default (upright text lays out).
     #[test]
     fn unsupported_vertical_boxes_fail_per_element() {
         use crate::layout_snapshot::SnapshotError;
@@ -554,7 +554,7 @@ mod tests {
                 "{supported}"
             );
         }
-        for unsupported in ["#sw", "#sa", "#if", "#in", "#c", "#u"] {
+        for unsupported in ["#sw", "#sa", "#if", "#in"] {
             assert_eq!(
                 snapshot.unsupported_inline_geometry(id(unsupported)),
                 Some(&SnapshotError::UnsupportedVerticalWriting),

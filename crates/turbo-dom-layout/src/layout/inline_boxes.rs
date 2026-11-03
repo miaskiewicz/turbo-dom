@@ -95,7 +95,7 @@ fn validate_writing(
     if !WritingMode::of(&element.style).vertical() {
         return Ok(());
     }
-    if upright_text(element) || physical_default_size(element, display) {
+    if physical_default_size(element, display) {
         return Err(SnapshotError::UnsupportedVerticalWriting);
     }
     Ok(())
@@ -117,19 +117,9 @@ fn physical_default_size(element: &crate::StyledElement, display: Display) -> bo
     };
     name != "svg" || !(sized("width") && sized("height"))
 }
-/// Whether the element's own text sets upright in a vertical line.
-fn upright_text(element: &crate::StyledElement) -> bool {
-    let upright = element.style.get("text-orientation").map(str::trim) == Some("upright");
-    element.children.iter().any(|node| match node {
-        crate::StyledNode::Text(text) => {
-            !text.text.trim().is_empty() && (upright || text.text.chars().any(sets_upright))
-        }
-        crate::StyledNode::Element(_) => false,
-    })
-}
 /// A character `text-orientation: mixed` sets upright (Unicode
 /// `Vertical_Orientation` U / Tu, the CJK and related blocks).
-fn sets_upright(c: char) -> bool {
+pub(super) fn sets_upright(c: char) -> bool {
     matches!(u32::from(c),
         0x1100..=0x11FF | 0x2E80..=0xA4CF | 0xA960..=0xA97F | 0xAC00..=0xD7FF
         | 0xF900..=0xFAFF | 0xFE10..=0xFE1F | 0xFE30..=0xFE4F | 0xFF00..=0xFFEF
@@ -596,6 +586,9 @@ struct InlineFragments<'a, 'b> {
     ctx: &'a mut Ctx<'b>,
     origin: (f32, f32, f32),
     offsets: &'a HashMap<NodeId, (f32, f32)>,
+    /// The inline boxes whose content area centres on the line's central baseline
+    /// ([`super::writing::central_baseline`]).
+    central: std::collections::HashSet<NodeId>,
 }
 impl InlineFragments<'_, '_> {
     fn line(&mut self, line: &super::inline::InlineLine, cx: f32, cy: f32) {
@@ -666,7 +659,8 @@ impl InlineFragments<'_, '_> {
         if empty_tail(value, end, used) {
             return;
         }
-        let mut part = fragment(value, used, end, last, self.origin, self.ctx);
+        let central = self.central.contains(&value.edge.node_id);
+        let mut part = fragment(value, used, (end, last, central), self.origin, self.ctx);
         let (dx, dy) = self.offsets.get(&part.node_id).copied().unwrap_or_default();
         part.translate(dx, dy);
         if skip_empty_part(&part, value, last, used) {
@@ -699,6 +693,17 @@ pub(super) fn fragments(
             _ => None,
         })
         .collect::<HashMap<_, _>>();
+    let central = items
+        .iter()
+        .filter_map(|item| match item {
+            InlineItem::Boundary {
+                node_id,
+                style,
+                start: true,
+            } if super::writing::central_baseline(ctx.writing, style) => Some(*node_id),
+            _ => None,
+        })
+        .collect();
     let mut builder = InlineFragments {
         styles,
         open: Vec::new(),
@@ -706,6 +711,7 @@ pub(super) fn fragments(
         ctx,
         origin: (origin.0, origin.1, 0.0),
         offsets,
+        central,
     };
     for line in &layout.lines {
         builder.line(line, origin.0, origin.1);
@@ -771,14 +777,18 @@ fn append_part(
 fn fragment(
     open: &Open,
     used: &BoxStyle,
-    end: f32,
-    last: bool,
+    (end, last, central): (f32, bool, bool),
     origin: (f32, f32, f32),
     ctx: &mut Ctx,
 ) -> Fragment {
     let scale = ctx.html_font_scale.unwrap_or(1.0);
     let font = open.edge.face.html_metrics(open.edge.font_size * scale);
     let content_height = (font.ascent + font.descent) / scale;
+    let ascent = if central {
+        super::inline::central_metrics(font.ascent / scale, font.descent / scale, scale).0
+    } else {
+        font.ascent / scale
+    };
     let mut border = used.border;
     let mut padding = used.padding;
     let x = open.x
@@ -801,7 +811,7 @@ fn fragment(
     let height = content_height + padding.vertical() + border_width.vertical();
     let width = (end - x).max(0.0);
     let shift = open.edge.baseline_shift;
-    let y = origin.1 + origin.2 - shift - font.ascent / scale - padding.top - border_width.top;
+    let y = origin.1 + origin.2 - shift - ascent - padding.top - border_width.top;
     if let Some(metrics) = &mut ctx.used_metrics {
         metrics.entry(open.edge.node_id).or_insert(UsedBoxMetrics {
             inline_fragment: true,
@@ -895,6 +905,7 @@ mod defensive_contract_tests {
             ctx: &mut ctx,
             origin: (0.0, 0.0, 18.0),
             offsets: &offsets,
+            central: std::collections::HashSet::new(),
         };
         projection.end(&edge);
         assert!(projection.out.is_empty());

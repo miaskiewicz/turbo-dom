@@ -694,6 +694,7 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
             style.get("-webkit-locale"),
             style.get("hyphenate-limit-chars"),
         ),
+        upright: super::inline::UprightText::of(style),
     })
 }
 
@@ -749,6 +750,7 @@ fn lines_to_fragments(
                 font_size: gr.font_size,
                 color: gr.color,
                 vertical: false,
+                upright: gr.upright,
             };
             out.push(Fragment::new(
                 node_id,

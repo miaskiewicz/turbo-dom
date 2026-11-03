@@ -241,6 +241,7 @@ fn transformed_run(text: &str, case: CaseTransform, locale: CaseLocale) -> Piece
         forced_newlines: false,
         text_transform: TextTransform { case, locale },
         word_breaking: turbo_dom_layout::layout::inline::WordBreaking::default(),
+        upright: turbo_dom_layout::layout::inline::UprightText::None,
     })
 }
 

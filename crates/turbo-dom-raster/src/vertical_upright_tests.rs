@@ -75,8 +75,14 @@ fn differences(paint: fn(&Fragment) -> Pixels) -> Vec<String> {
         }
         let id = case["id"].as_str().unwrap();
         let mut diags = Diagnostics::default();
-        let galley =
-            layout_html(case["html"].as_str().unwrap(), "", 800.0, &fonts, &mut diags).unwrap();
+        let galley = layout_html(
+            case["html"].as_str().unwrap(),
+            "",
+            800.0,
+            &fonts,
+            &mut diags,
+        )
+        .unwrap();
         let pixels = paint(&galley);
         for chrome in case["boxes"].as_array().unwrap() {
             let r = [0, 1, 2, 3].map(|i| chrome["rect"][i].as_f64().unwrap());
