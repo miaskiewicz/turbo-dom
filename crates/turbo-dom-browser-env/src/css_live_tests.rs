@@ -1474,7 +1474,10 @@ fn rendered_check_of_a_transition_read_is_linear_in_depth() {
     let depth = value["depth"].as_u64().unwrap();
     let max = value["max"].as_u64().unwrap();
     assert!(max > 0, "the hook counts lookups");
-    assert!(max <= 8 * (depth + 2), "{max} style lookups for one read at depth {depth}");
+    assert!(
+        max <= 8 * (depth + 2),
+        "{max} style lookups for one read at depth {depth}"
+    );
 }
 
 /// One computed-style read after a DOM change cascades the element and each ancestor afresh;
@@ -1529,7 +1532,10 @@ fn an_inline_style_write_keeps_unrelated_computed_styles() {
       return JSON.stringify({max:Math.max(...runs),hidden:getComputedStyle(hidden).width});
     })()"#,
     );
-    assert_eq!(value["hidden"], "4px", "the written element's own style follows");
+    assert_eq!(
+        value["hidden"], "4px",
+        "the written element's own style follows"
+    );
     assert_eq!(value["max"], 0, "{value}");
 }
 

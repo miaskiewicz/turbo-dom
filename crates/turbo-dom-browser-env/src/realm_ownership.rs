@@ -268,7 +268,8 @@ impl DocumentGraph {
                     let component = v8::Object::new(scope);
                     let null = v8::null(scope);
                     component.set_prototype(scope, null.into());
-                    self.components.insert(target, v8::Weak::new(scope, component));
+                    self.components
+                        .insert(target, v8::Weak::new(scope, component));
                     component
                 });
             let refs = match component

@@ -112,7 +112,9 @@ fn build_from(prelude: Option<fn(&mut v8::PinScope)>) -> Option<Blob> {
     let mut isolate = v8::Isolate::snapshot_creator(Some(Cow::Borrowed(references)), None);
     BUILDING.with(|building| building.set(true));
     external_refs::begin_build_log();
-    let prepared = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| prepare(&mut isolate, prelude)));
+    let prepared = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        prepare(&mut isolate, prelude)
+    }));
     reset();
     let failure = match prepared {
         Ok(Ok(stripped)) => {

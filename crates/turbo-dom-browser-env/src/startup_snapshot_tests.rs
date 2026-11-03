@@ -98,11 +98,17 @@ fn a_context_from_the_blob_carries_no_slot_annex() {
 fn an_embedder_prelude_shares_the_blob_and_contexts_install_from_it() {
     fn prelude(scope: &mut v8::PinScope) {
         let code = v8::String::new(scope, "globalThis.__prelude = typeof document;").unwrap();
-        v8::Script::compile(scope, code, None).unwrap().run(scope).unwrap();
+        v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
     }
     fn eval(scope: &mut v8::PinScope, code: &str) -> String {
         let code = v8::String::new(scope, code).unwrap();
-        let value = v8::Script::compile(scope, code, None).unwrap().run(scope).unwrap();
+        let value = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
         value.to_rust_string_lossy(scope)
     }
     crate::browser_env::tests::init_v8();
@@ -112,7 +118,10 @@ fn an_embedder_prelude_shares_the_blob_and_contexts_install_from_it() {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
-        assert_eq!(eval(scope, "[__prelude, typeof document, typeof Node].join()"), "undefined,undefined,undefined");
+        assert_eq!(
+            eval(scope, "[__prelude, typeof document, typeof Node].join()"),
+            "undefined,undefined,undefined"
+        );
     }
     set_snapshot_install(true);
     for page in ["<p id=x>one</p>", "<p id=x>two</p>"] {
@@ -124,7 +133,11 @@ fn an_embedder_prelude_shares_the_blob_and_contexts_install_from_it() {
             let scope = &mut v8::ContextScope::new(scope, context);
             let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);
             install_with_html(scope, page);
-            assert_eq!(ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get), before, "{page}");
+            assert_eq!(
+                ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get),
+                before,
+                "{page}"
+            );
             let text = if page.contains("one") { "one" } else { "two" };
             assert_eq!(
                 eval(scope, "[__prelude, document.getElementById('x').textContent, document.body.firstChild instanceof HTMLParagraphElement].join()"),
@@ -160,12 +173,16 @@ fn saved_blob_bytes_install_with_the_recorded_reference_table() {
     set_snapshot_install(true);
     {
         v8::scope!(let scope, isolate);
-        let context = v8::Context::from_snapshot(scope, SNAPSHOT_WINDOW_CONTEXT, Default::default())
-            .expect("the saved blob holds the window context");
+        let context =
+            v8::Context::from_snapshot(scope, SNAPSHOT_WINDOW_CONTEXT, Default::default())
+                .expect("the saved blob holds the window context");
         let scope = &mut v8::ContextScope::new(scope, context);
         install_with_html(scope, "<b id=b>saved</b>");
         let code = v8::String::new(scope, "document.getElementById('b').textContent").unwrap();
-        let text = v8::Script::compile(scope, code, None).unwrap().run(scope).unwrap();
+        let text = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
         assert_eq!(text.to_rust_string_lossy(scope), "saved");
     }
     reset();

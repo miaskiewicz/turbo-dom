@@ -249,7 +249,10 @@ fn a_reconcile_places_only_the_wrappers_whose_ownership_changed() {
             host_turn(scope);
         }
         let placed = placements();
-        assert!(placed <= 50 * 8, "{placed} placements for 50 small mutations over 3000 wrappers");
+        assert!(
+            placed <= 50 * 8,
+            "{placed} placements for 50 small mutations over 3000 wrappers"
+        );
     });
 }
 
@@ -283,8 +286,14 @@ fn moves_between_subtrees_keep_held_components_whole_and_free_the_rest() {
             let mut out = Vec::new();
             for src in ["globalThis.cWeak", "document.getElementById('a').lastChild"] {
                 let code = v8::String::new(inner, src).unwrap();
-                let value = v8::Script::compile(inner, code, None).unwrap().run(inner).unwrap();
-                out.push(v8::Weak::new(inner, v8::Local::<v8::Object>::try_from(value).unwrap()));
+                let value = v8::Script::compile(inner, code, None)
+                    .unwrap()
+                    .run(inner)
+                    .unwrap();
+                out.push(v8::Weak::new(
+                    inner,
+                    v8::Local::<v8::Object>::try_from(value).unwrap(),
+                ));
             }
             out
         };
@@ -293,14 +302,23 @@ fn moves_between_subtrees_keep_held_components_whole_and_free_the_rest() {
         for _ in 0..3 {
             scope.low_memory_notification();
         }
-        assert!(weaks[0].is_empty(), "the detached subtree c, held by nothing, is collectable");
-        assert!(!weaks[1].is_empty(), "c's old child, now attached under a, is owned by the document");
+        assert!(
+            weaks[0].is_empty(),
+            "the detached subtree c, held by nothing, is collectable"
+        );
+        assert!(
+            !weaks[1].is_empty(),
+            "c's old child, now attached under a, is owned by the document"
+        );
         assert_eq!(
             eval(scope, "[heldLeaf.parentNode.marker, heldLeaf.parentNode.lastChild.marker, heldLeaf.parentNode.children.length, document.getElementById('a').lastChild.marker].join()"),
             "b,a0,21,c0",
             "the held leaf keeps its detached subtree whole, expandos included"
         );
-        eval(scope, "heldLeaf.remove(); delete globalThis.heldLeaf; 'released'");
+        eval(
+            scope,
+            "heldLeaf.remove(); delete globalThis.heldLeaf; 'released'",
+        );
         host_turn(scope);
         for _ in 0..3 {
             scope.low_memory_notification();
@@ -327,6 +345,9 @@ fn a_reconcile_finds_roots_in_linear_steps() {
         eval(scope, "chain[599].setAttribute('data-x', '1'); chain[599].appendChild(document.createElement('b')); 'ok'");
         host_turn(scope);
         let steps = dom_ownership::WORK.with(|work| work.root_steps.get());
-        assert!(steps <= 4 * 610, "{steps} parent steps to root 600 nested wrappers");
+        assert!(
+            steps <= 4 * 610,
+            "{steps} parent steps to root 600 nested wrappers"
+        );
     });
 }
