@@ -57,7 +57,7 @@ The Placer placed that end tag as its own word. The fix:
 The perf test `clone_bookkeeping_grows_linearly_with_a_line` now ends its line with a
 `<br>`, because the bookkeeping runs only where a line ends. Its assertions are unchanged.
 
-The other `sync_clones` survivors are equivalent:
+The other `sync_clones` survivors were equivalent, and `951c6ece` then removed the cache they mutated (once the reserve was gone, its resume arm was unreachable and uncovered):
 
 - `len <= self.cur.len()` replaced by `true` is equivalent: `cur` only shrinks in `flush`,
   which resets `clones_len` to `None`, so the guard never sees a longer `len`.
@@ -133,6 +133,13 @@ also matched struct-field deletions in unrelated functions (`LayoutBox::relabell
 
 ## Coverage and gates
 
-The full local gate runs before push. It covers fmt and clippy on 1.98.0, the
-layout/raster suites with every CI feature set, and tarpaulin floors (layout 99.8, raster
-100).
+The local gate passed at the pushed head:
+
+- `cargo +1.98.0 fmt --all --check`;
+- clippy 1.98.0 `-D warnings` on turbo-dom / -parser / -layout / -raster;
+- `cargo test -p turbo-dom-layout` with the default, `svg`, `perf` and
+  `serde,test-support` features;
+- `cargo test -p turbo-dom-raster` with the default, `avif` and `jxl` features;
+- `verify-copied-layout.sh`: 0 mismatches;
+- `check-baseline-red`: exactly the 43 listed failures;
+- tarpaulin: layout 99.88% (default and all features), raster 100%.
