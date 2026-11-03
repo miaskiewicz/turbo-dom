@@ -655,6 +655,19 @@ const CASES = [
     ),
     probes: probes.map(([dx, dy]) => [20 + dx, 20 + dy]),
   })),
+  // Round 1 review #9 (`bg-zero-area-*`): a background image whose positioning area (the
+  // padding box) has no height paints nothing, even though the border box it is clipped
+  // to does; the background colour still fills the border box.
+  ...[
+    ["round", "round"],
+    ["repeat", "repeat;background-size:20px 10px"],
+    ["no-repeat", "no-repeat;background-size:20px 10px"],
+  ].map(([kind, tail]) => ({
+    id: `bg-zero-area-${kind}`,
+    assets: [SPRITE],
+    html: DOC(`<div data-cid="m" style="${at(20, 20)};width:100px;height:0;border:20px solid transparent;background:url(${SPRITE}) #00ff00;background-repeat:${tail}"></div>`),
+    probes: [[25, 25], [45, 30], [70, 40], [95, 50], [130, 55], [135, 25]],
+  })),
   {
     id: "media-video-poster",
     html: DOC(`<video data-cid="m" poster="${SPRITE}" style="${at(20, 20)};width:100px;height:40px"></video>`),

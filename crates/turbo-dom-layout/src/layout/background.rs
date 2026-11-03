@@ -309,6 +309,8 @@ fn place(axis: Axis, area: f32, tile: f32) -> f32 {
 }
 
 /// `round`: the tile shrinks or grows so a whole number of tiles fills the area.
+const MAX_TILES: usize = 1 << 16;
+
 fn rounded(tile: f32, area: f32) -> f32 {
     let count = (area / tile).round().max(1.0);
     area / count
@@ -833,6 +835,124 @@ mod tests {
                 (1.0, 1.0)
             ),
             (100.0, 40.0)
+        );
+    }
+
+    /// The tile fragments of one layer (none: an empty list).
+    fn tiles(pairs: &[(&str, &str)], source: &Source, area: Rect) -> Vec<Fragment> {
+        let props = props_of(pairs);
+        layer(NodeId(1), &props, source, (area, area, BorderRadii::ZERO))
+            .pop()
+            .map(|container| container.children)
+            .unwrap_or_default()
+    }
+
+    fn sprite() -> Source {
+        Source::Image(ImagePlacement {
+            name: "a".into(),
+            intrinsic_w: 100,
+            intrinsic_h: 40,
+            has_alpha: false,
+            tint: None,
+            orientation: crate::image::Orientation::IDENTITY,
+        })
+    }
+
+    #[test]
+    fn hostile_tiles_stay_bounded() {
+        let gradient = Source::Gradient(LinearGradient {
+            angle_deg: 90.0,
+            stops: Vec::new(),
+        });
+        let big = (0.0, 0.0, 1.0e6, 1.0e6);
+        let image = sprite();
+        let cases: [(&[(&str, &str)], &Source); 7] = [
+            (&[("background-size", "0.01px")], &image),
+            (&[("background-size", "0.01px 0.01px")], &gradient),
+            (
+                &[
+                    ("background-size", "0.01px"),
+                    ("background-repeat", "space"),
+                ],
+                &image,
+            ),
+            (
+                &[
+                    ("background-size", "0.01px 0.01px"),
+                    ("background-repeat", "round"),
+                ],
+                &gradient,
+            ),
+            (&[("background-position", "1e30px 1e30px")], &image),
+            (&[("background-position", "-1e30px -1e30px")], &image),
+            (
+                &[
+                    ("background-position", "1e30px 0"),
+                    ("background-repeat", "space"),
+                ],
+                &image,
+            ),
+        ];
+        for (pairs, source) in cases {
+            let tiles = tiles(pairs, source, big);
+            assert!(!tiles.is_empty(), "{pairs:?}");
+            assert!(tiles.len() <= MAX_TILES, "{pairs:?}: {}", tiles.len());
+            assert!(
+                tiles.iter().all(|t| t.width >= 1.0
+                    && t.height >= 1.0
+                    && t.x.is_finite()
+                    && t.y.is_finite()),
+                "{pairs:?}"
+            );
+        }
+        // A tile or an offset too large for an f32 paints nothing.
+        for pairs in [
+            [("background-size", "1e39px 10px")],
+            [("background-position", "1e39px 0")],
+        ] {
+            assert!(tiles(&pairs, &image, big).is_empty(), "{pairs:?}");
+        }
+        // A sub-pixel tile is painted 1px wide, so a small box gets one tile per pixel.
+        let fine = tiles(
+            &[("background-size", "0.25px 0.25px")],
+            &gradient,
+            (0.0, 0.0, 30.0, 20.0),
+        );
+        assert_eq!(fine.len(), 600);
+    }
+
+    #[test]
+    fn a_huge_offset_keeps_the_tile_phase() {
+        // 1e7 + 30 is 30 past a 100px tile boundary: the tiles start 70px left of the box.
+        let tiles = tiles(
+            &[("background-position", "10000030px 0")],
+            &sprite(),
+            (0.0, 0.0, 200.0, 40.0),
+        );
+        let xs: Vec<f32> = tiles.iter().map(|t| t.x).collect();
+        assert_eq!(xs, [-70.0, 30.0, 130.0]);
+    }
+
+    #[test]
+    fn round_keeps_the_tile_on_an_empty_axis() {
+        // Chrome (paint fixture `bg-zero-area-round`): with no height to fill, `round`
+        // fits the width (100 / 1) and keeps the image's height.
+        let props = props_of(&[("background-repeat", "round")]);
+        let layers = layer(
+            NodeId(1),
+            &props,
+            &sprite(),
+            (
+                (40.0, 40.0, 100.0, 0.0),
+                (20.0, 20.0, 140.0, 40.0),
+                BorderRadii::ZERO,
+            ),
+        );
+        let tiles = &layers[0].children;
+        assert!(tiles.iter().all(|t| (t.width, t.height) == (100.0, 40.0)));
+        assert!(
+            tiles.iter().any(|t| (t.x, t.y) == (40.0, 40.0)),
+            "{tiles:?}"
         );
     }
 }
