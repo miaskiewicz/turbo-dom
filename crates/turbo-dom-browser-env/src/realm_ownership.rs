@@ -239,6 +239,23 @@ impl DocumentGraph {
         self.wrappers.remove(&id);
         Some(())
     }
+    /// The document's tree was replaced (turbo-dom#249 attach): every node id but the
+    /// document's own `root` now names a node of the new tree, so the old ids' wrapper,
+    /// connection and component records leave the graph. Helpers are kept.
+    pub fn retire_nodes(&mut self, scope: &mut v8::PinScope, root: u32) -> Option<()> {
+        let ids = self
+            .connected
+            .iter()
+            .chain(self.wrappers.keys())
+            .copied()
+            .filter(|id| *id != root)
+            .collect::<HashSet<_>>();
+        for id in ids {
+            self.forget(scope, id)?;
+        }
+        self.components.clear();
+        Some(())
+    }
     pub fn lookup<'s>(
         &self,
         scope: &mut v8::PinScope<'s, '_>,
