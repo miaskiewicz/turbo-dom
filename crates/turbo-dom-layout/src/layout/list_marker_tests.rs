@@ -132,6 +132,34 @@ fn list_item_counters() {
 }
 
 #[test]
+fn ordinals_clamp_to_signed_32_bits() {
+    // Chrome's ClampAdd on int (fixtures `ol-start-i32-max-clamps`,
+    // `ol-reversed-i32-min-clamps`): the counter stays at i32::MAX / i32::MIN.
+    let li = element(Tag::Html("li".into()), &[], Vec::new());
+    let mut counters = ListCounters::default();
+    let up = element(
+        Tag::Html("ol".into()),
+        &[("start", "2147483647")],
+        Vec::new(),
+    );
+    assert!(counters.enter(&up));
+    assert_eq!(
+        (counters.ordinal(&li), counters.ordinal(&li)),
+        (2_147_483_647, 2_147_483_647)
+    );
+    let down = element(
+        Tag::Html("ol".into()),
+        &[("reversed", ""), ("start", "-2147483648")],
+        Vec::new(),
+    );
+    assert!(counters.enter(&down));
+    assert_eq!(
+        (counters.ordinal(&li), counters.ordinal(&li)),
+        (-2_147_483_648, -2_147_483_648)
+    );
+}
+
+#[test]
 fn a_reversed_list_counts_deeply_nested_items_without_recursing() {
     // 100k nested `div`s around one list item: counting them must not overflow the
     // stack (the tree is taken apart iteratively too, as its drop would recurse).

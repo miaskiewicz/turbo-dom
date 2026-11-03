@@ -693,6 +693,184 @@
    ]
   },
   {
+   "id": "ol-start-i32-max-clamps",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:lower-alpha\" start=\"2147483646\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li><li data-cid=\"c\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      -7.84375,
+      8,
+      55.84375,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       10,
+       43,
+       22
+      ],
+      "count": 158
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      -11.40625,
+      26,
+      59.40625,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       28,
+       43,
+       40
+      ],
+      "count": 158
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      -11.40625,
+      44,
+      59.40625,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       46,
+       43,
+       58
+      ],
+      "count": 158
+     }
+    }
+   ]
+  },
+  {
+   "id": "ol-reversed-i32-min-clamps",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\" reversed start=\"-2147483647\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li><li data-cid=\"c\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      -45.328125,
+      8,
+      93.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       11,
+       43,
+       22
+      ],
+      "count": 179
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      -45.328125,
+      26,
+      93.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       29,
+       43,
+       40
+      ],
+      "count": 203
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      -45.328125,
+      44,
+      93.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       47,
+       43,
+       58
+      ],
+      "count": 203
+     }
+    }
+   ]
+  },
+  {
    "id": "li-outside-list",
    "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><div><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li></div>",
    "boxes": [
