@@ -30,6 +30,19 @@ fn units(value: &str) -> Vec<u16> {
 pub(crate) struct ParsedXml {
     pub(crate) tree: Tree,
     pub(crate) declaration: Option<String>,
+    /// False when a well-formedness error stopped the parse (the tree holds Chrome's
+    /// `<parsererror>`).
+    pub(crate) well_formed: bool,
+}
+
+/// [`parse_xml_document_units`]' result: the `XMLDocument` and whether its source was
+/// well-formed. A malformed source still yields a document (Chrome's `<parsererror>`
+/// one); `well_formed` tells it apart from a valid document that holds a `parsererror`
+/// element itself, without looking at the tree (turbo-surf's `responseXML`).
+#[derive(Clone, Copy)]
+pub struct ParsedXmlDocument<'s> {
+    pub document: v8::Local<'s, v8::Object>,
+    pub well_formed: bool,
 }
 
 /// The namespace a fragment parse binds an unbound prefix to; Chrome's fragment parser
@@ -775,6 +788,7 @@ pub(crate) fn parse(source: &str) -> ParsedXml {
         tree.remove_child(root, child);
     }
     let mut declaration = None;
+    let mut well_formed = true;
     let rewritten = with_namespace_defaults(source);
     let text = rewritten.as_ref().map_or(source, |(text, _)| text.as_str());
     if let Err(error) = build(&mut tree, root, text, &mut declaration) {
@@ -783,8 +797,13 @@ pub(crate) fn parse(source: &str) -> ParsedXml {
             None => error,
         };
         report(&mut tree, &error);
+        well_formed = false;
     }
-    ParsedXml { tree, declaration }
+    ParsedXml {
+        tree,
+        declaration,
+        well_formed,
+    }
 }
 
 /// The prefix bindings in scope at `element` (its ancestors' and its own `xmlns`
@@ -901,15 +920,16 @@ fn prototype_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Priv
 /// Parse `units` as an XML document of `content_type` (`application/xml`, `text/xml`,
 /// `image/svg+xml` or `application/xhtml+xml`) into an inert `XMLDocument`, as Chrome
 /// 156's `DOMParser.parseFromString` does: a well-formedness error yields Chrome's
-/// `<parsererror>` document instead of throwing. Like [`parse_html_document_units`] the
+/// `<parsererror>` document instead of throwing, and `well_formed` is false. Like [`parse_html_document_units`] the
 /// embedder's inert-document initializer is not called; the embedder registers the
 /// document itself.
 pub fn parse_xml_document_units<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     units: &[u16],
     content_type: &str,
-) -> v8::Local<'s, v8::Object> {
+) -> ParsedXmlDocument<'s> {
     let parsed = parse(&String::from_utf16_lossy(units));
+    let well_formed = parsed.well_formed;
     let doc = parse_html_tree_with(scope, parsed.tree, false, None);
     let record = document_record(scope, doc);
     let content = record_key(scope, "nativeContentType");
@@ -925,7 +945,10 @@ pub fn parse_xml_document_units<'s>(
     if let Some(prototype) = global.get_private(scope, key) {
         doc.set_prototype(scope, prototype);
     }
-    doc
+    ParsedXmlDocument {
+        document: doc,
+        well_formed,
+    }
 }
 
 /// The XML declaration a parsed document keeps for `XMLSerializer`.

@@ -69,7 +69,7 @@ return.
 | event loop | `flush_ownership(scope)` between tasks (wrapper ownership is reconciled in batches, so building n nodes is O(n)) |
 | realms and frames | `register_dom_exception`, `capture_window_event_interfaces`, `retire_custom_element_context`, `set_computed_font_defaults`, `set_canvas_fonts` (canvas `measureText` fonts: the page's loaded `@font-face` faces + system fonts as a turbo-dom-layout `FontRegistry`; bundled faces otherwise) |
 | engine namespace | `engine_namespace(scope)` (the realm's internal state object, held in a V8 private: page script cannot reach it), `run_engine_script(scope, source)` (runs `source` as a function body whose `__tsNs` parameter is that namespace; `ENGINE_NAMESPACE_PARAM`) |
-| embedding hooks (turbo-surf) | the other `pub fn`s: form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import (`parse_xml_document_units` parses `DOMParser`'s XML types into an `XMLDocument`, `<parsererror>` documents included), node nonces |
+| embedding hooks (turbo-surf) | the other `pub fn`s: form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import (`parse_xml_document_units` parses `DOMParser`'s XML types into an `XMLDocument`, `<parsererror>` documents included, and returns it as `ParsedXmlDocument { document, well_formed }` so an embedder can tell a malformed source without inspecting the tree), node nonces |
 
 Also in the crate:
 - `css_snapshot::{SheetSnapshot, RuleSnapshot}` is the JSON contract of the private

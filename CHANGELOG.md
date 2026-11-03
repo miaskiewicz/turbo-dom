@@ -112,6 +112,11 @@ Rust API changes, per crate. The npm package's JS API is unchanged.
   stale wrappers from a discarded tree are still refused (turbo-test#204).
 - The crate now depends on `turbo-dom-layout` (bundled fonts) for canvas text
   measurement (#237).
+- `parse_xml_document_units` returns `ParsedXmlDocument { document, well_formed }`
+  instead of the bare document object. `well_formed` is false when a well-formedness
+  error produced Chrome's `<parsererror>` document, so an embedder (turbo-surf's
+  `responseXML`) no longer needs to look for a `parsererror` element; a valid document
+  that holds one itself reports `true`. Take `.document` for the old value.
 
 ### Behaviour changes
 
@@ -241,7 +246,10 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
 - XML documents (#186): `parse_xml_document_units` (DOMParser's `application/xml`,
   `text/xml`, `image/svg+xml`, `application/xhtml+xml`, with Chrome's `<parsererror>`
   document and error positions, via the `xml` crate), `XMLSerializer`,
-  `createCDATASection`, XML `innerHTML` / `outerHTML`.
+  `createCDATASection`, XML `innerHTML` / `outerHTML`. Internal DTD subsets apply their
+  ATTLIST defaults (attributes and namespace declarations, also on elements an entity
+  spells; #261) and the `xmlns` attributes of entity-expanded elements stay on their own
+  elements.
 - HTML processing instructions in every installed or parsed document (#135).
 - `CSSAnimation` / `CSSTransition` in `getAnimations()` (#187), `transition-property:
   all`, no CSS animations under `display: none` ancestors; `getKeyframes()` property order
