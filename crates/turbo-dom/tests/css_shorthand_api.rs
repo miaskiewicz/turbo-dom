@@ -221,3 +221,15 @@ fn transform_functions_keep_chromes_camel_case() {
         assert_eq!(text, spelled, "{written}");
     }
 }
+
+#[test]
+fn an_overflowing_number_is_clamped_to_the_largest_float() {
+    // Chrome 156: `el.style.borderRadius = "1e39px"` (and `1` followed by 400 zeros)
+    // reads back `3.40282e+38px`: the parsed number is clamped finite, never 0.
+    let huge = format!("1{}px", "0".repeat(400));
+    for value in ["1e39px", huge.as_str()] {
+        let longhands = turbo_dom::rtdom::css_shorthand::expand("border-radius", value).unwrap();
+        let values: Vec<&str> = longhands.iter().map(|l| l.value.as_str()).collect();
+        assert_eq!(values, ["3.40282e+38px"; 4], "{value}");
+    }
+}
