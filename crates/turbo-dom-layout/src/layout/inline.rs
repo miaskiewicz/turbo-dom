@@ -3069,7 +3069,7 @@ pub(crate) fn layout_runs_with_units(
         original,
     );
     if let Some(scale) = scale {
-        inline_advances::prepare(&mut words, scale);
+        inline_advances::prepare(&mut words.words, scale);
     }
     finalize(wrap_and_place(
         words,
