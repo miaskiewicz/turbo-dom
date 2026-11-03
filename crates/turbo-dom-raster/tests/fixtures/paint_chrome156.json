@@ -3125,6 +3125,102 @@
    ]
   },
   {
+   "id": "inline-slice-close-glued",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:85px;font-size:0\"><span data-cid=\"s\" style=\"background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff\"><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span></span></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 20,
+     "y": 45,
+     "width": 50,
+     "height": 70
+    }
+   ],
+   "probes": [
+    {
+     "x": 22,
+     "y": 50,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 68,
+     "y": 50,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 78,
+     "y": 50,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 22,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 58,
+     "y": 80,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 80,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 22,
+     "y": 110,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 110,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    }
+   ]
+  },
+  {
    "id": "inline-clone-br",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:200px;font-size:0\"><span data-cid=\"s\" style=\"background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone\"><span style=\"display:inline-block;width:40px;height:30px\"></span><span style=\"display:inline-block;width:40px;height:30px\"></span><br><span style=\"display:inline-block;width:40px;height:30px\"></span></span></div></body></html>",
    "assets": [],

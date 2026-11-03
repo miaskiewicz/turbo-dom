@@ -346,6 +346,13 @@ const CASES = [
     probes: [[22, 35], [92, 35], [22, 65], [92, 65], [22, 95]],
   },
   {
+    // No break opportunity before an end tag: the last atom moves to a new line with the
+    // box's end edge when both do not fit (80px + 10px on an 85px line), sliced or not.
+    id: "inline-slice-close-glued",
+    html: DOC(`<div style="${at(20, 20)};width:85px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
+    probes: [[22, 50], [68, 50], [78, 50], [22, 80], [58, 80], [68, 80], [22, 110], [68, 110]],
+  },
+  {
     // A forced break inside a cloned box: both lines' fragments repeat both edges.
     id: "inline-clone-br",
     html: DOC(`<div style="${at(20, 20)};width:200px;font-size:0"><span data-cid="s" style="background:#ff0000;padding:5px 6px;border-left:4px solid #0000ff;border-right:4px solid #0000ff;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}<br>${ATOM(40, 30)}</span></div>`),
