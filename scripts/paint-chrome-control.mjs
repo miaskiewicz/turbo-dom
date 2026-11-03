@@ -394,6 +394,33 @@ const CASES = [
     assets: [],
     probes: [[22, 30], [58, 30], [62, 30], [98, 30], [22, 65], [58, 65]],
   },
+  // miaskiewicz/turbo-dom#264: gradient colour stops at lengths (px, em), hard stops
+  // (two stops at one position), double-position stops, and repeating gradients.
+  {
+    id: "gradient-length-stops",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:40px;font-size:10px;background:linear-gradient(90deg,#ff0000 20px,#0000ff 20px,#0000ff 5em,#00ff00 5em)"></div>`),
+    assets: [],
+    probes: [[21, 30], [38, 30], [41, 30], [68, 30], [71, 30], [218, 30]],
+  },
+  {
+    id: "gradient-hard-stops",
+    html: DOC(`<div style="${at(20, 20)};width:100px;height:100px;background:linear-gradient(#ff0000 30%,#00ff00 30% 60%,#0000ff 60%)"></div>`),
+    assets: [],
+    probes: [[50, 21], [50, 48], [50, 51], [50, 78], [50, 81], [50, 118]],
+  },
+  {
+    id: "gradient-repeating",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:40px;background:repeating-linear-gradient(90deg,#ff0000 0 10px,#0000ff 10px 20px)"></div>`),
+    assets: [],
+    probes: [[21, 30], [28, 30], [31, 30], [38, 30], [121, 30], [131, 30], [218, 30]],
+  },
+  {
+    // The review's grid: a 1px #ccc line every 4px, both axes (two layers).
+    id: "gradient-grid-tiles",
+    html: DOC(`<div style="${at(20, 20)};width:200px;height:100px;background:#00ff00 linear-gradient(#cccccc 1px,transparent 1px) 0 0/4px 4px"></div>`),
+    assets: [],
+    probes: [[30, 20], [30, 21], [30, 23], [30, 24], [218, 116], [218, 117], [218, 119]],
+  },
   {
     // `space`: 5 whole 40px tiles over 220px, 5px apart, the first at the edge.
     id: "bg-space",
@@ -434,7 +461,7 @@ const CASES = [
     // 0.7.0 round-2 review, finding 1: 640 x 400 = 256000 two-pixel gradient tiles (red
     // top row) fill the whole viewport-sized box, down to its bottom-right tile.
     id: "bg-tiles-fill-a-big-box",
-    html: DOC(`<div style="${at(0, 0)};width:1280px;height:800px;background:#00ff00 linear-gradient(#ff0000 50%,transparent 50%) 0 0/2px 2px"></div>`),
+    html: DOC(`<div style="${at(0, 0)};width:1280px;height:800px;background:#00ff00 linear-gradient(#cccccc 1px,transparent 1px) 0 0/2px 2px"></div>`),
     assets: [],
     probes: [[1, 0], [1, 1], [640, 400], [640, 401], [5, 600], [5, 601], [1279, 796], [1279, 798], [1279, 799]],
   },

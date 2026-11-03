@@ -3737,6 +3737,298 @@
    ]
   },
   {
+   "id": "gradient-length-stops",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:200px;height:40px;font-size:10px;background:linear-gradient(90deg,#ff0000 20px,#0000ff 20px,#0000ff 5em,#00ff00 5em)\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 21,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 38,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 41,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 68,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 71,
+     "y": 30,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 218,
+     "y": 30,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gradient-hard-stops",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:100px;height:100px;background:linear-gradient(#ff0000 30%,#00ff00 30% 60%,#0000ff 60%)\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 50,
+     "y": 21,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 50,
+     "y": 48,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 50,
+     "y": 51,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 50,
+     "y": 78,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 50,
+     "y": 81,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 118,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gradient-repeating",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:200px;height:40px;background:repeating-linear-gradient(90deg,#ff0000 0 10px,#0000ff 10px 20px)\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 21,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 28,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 31,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 38,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 121,
+     "y": 30,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 131,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 218,
+     "y": 30,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gradient-grid-tiles",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:200px;height:100px;background:#00ff00 linear-gradient(#cccccc 1px,transparent 1px) 0 0/4px 4px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 30,
+     "y": 20,
+     "class": "W",
+     "rgb": [
+      204,
+      204,
+      204
+     ]
+    },
+    {
+     "x": 30,
+     "y": 21,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 23,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 24,
+     "class": "W",
+     "rgb": [
+      204,
+      204,
+      204
+     ]
+    },
+    {
+     "x": 218,
+     "y": 116,
+     "class": "W",
+     "rgb": [
+      204,
+      204,
+      204
+     ]
+    },
+    {
+     "x": 218,
+     "y": 117,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 218,
+     "y": 119,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
    "id": "bg-space",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:220px;height:60px;background:#00ff00 url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=) space;background-size:40px 20px\"></div></body></html>",
    "assets": [
@@ -4188,18 +4480,18 @@
   },
   {
    "id": "bg-tiles-fill-a-big-box",
-   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:0px;width:1280px;height:800px;background:#00ff00 linear-gradient(#ff0000 50%,transparent 50%) 0 0/2px 2px\"></div></body></html>",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:0px;top:0px;width:1280px;height:800px;background:#00ff00 linear-gradient(#cccccc 1px,transparent 1px) 0 0/2px 2px\"></div></body></html>",
    "assets": [],
    "boxes": [],
    "probes": [
     {
      "x": 1,
      "y": 0,
-     "class": "R",
+     "class": "W",
      "rgb": [
-      255,
-      0,
-      0
+      204,
+      204,
+      204
      ]
     },
     {
@@ -4215,11 +4507,11 @@
     {
      "x": 640,
      "y": 400,
-     "class": "R",
+     "class": "W",
      "rgb": [
-      255,
-      0,
-      0
+      204,
+      204,
+      204
      ]
     },
     {
@@ -4235,11 +4527,11 @@
     {
      "x": 5,
      "y": 600,
-     "class": "R",
+     "class": "W",
      "rgb": [
-      255,
-      0,
-      0
+      204,
+      204,
+      204
      ]
     },
     {
@@ -4255,21 +4547,21 @@
     {
      "x": 1279,
      "y": 796,
-     "class": "R",
+     "class": "W",
      "rgb": [
-      255,
-      0,
-      0
+      204,
+      204,
+      204
      ]
     },
     {
      "x": 1279,
      "y": 798,
-     "class": "R",
+     "class": "W",
      "rgb": [
-      255,
-      0,
-      0
+      204,
+      204,
+      204
      ]
     },
     {

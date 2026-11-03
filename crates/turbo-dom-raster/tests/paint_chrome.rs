@@ -247,6 +247,15 @@ fn background_layers_are_sized_positioned_and_tiled_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// miaskiewicz/turbo-dom#264: gradient colour stops at lengths, hard and double-position
+/// stops, and repeating gradients paint like Chrome, in both painters.
+#[test]
+fn gradient_stops_paint_like_chrome_156() {
+    let mut failures = differences(|id| id.starts_with("gradient-"));
+    failures.extend(svg_differences(|id| id.starts_with("gradient-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// miaskiewicz/turbo-dom#256: the `background` shorthand and its longhands cascade by
 /// origin, `!important`, specificity and order: an author shorthand beats the UA button's
 /// `background-color`, the later declaration wins, and a shorthand resets every longhand
