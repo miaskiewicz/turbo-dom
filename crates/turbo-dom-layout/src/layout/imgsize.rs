@@ -338,9 +338,32 @@ fn scale_other_live(given: f32, base: f32, other: f32) -> f32 {
     }
 }
 
+// Whether the running layout sizes images without the overflow caps
+// ([`crate::LayoutOptions::uncapped_images`]): installed for the entry's duration as
+// a scoped thread-local, like the `cmyk(...)` switch; off everywhere else.
+thread_local!(static UNCAPPED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) });
+
+/// Restores the previous cap policy when dropped.
+pub(crate) struct UncappedScope(bool);
+
+impl Drop for UncappedScope {
+    fn drop(&mut self) {
+        UNCAPPED.with(|flag| flag.set(self.0));
+    }
+}
+
+/// Size images without (`true`) or with the overflow caps until the guard drops.
+pub(crate) fn uncapped_scope(uncapped: bool) -> UncappedScope {
+    UncappedScope(UNCAPPED.with(|flag| flag.replace(uncapped)))
+}
+
 /// Clamp a box to the width and (when known) height caps, preserving aspect
-/// ratio by scaling both axes by the tighter of the two fit ratios.
+/// ratio by scaling both axes by the tighter of the two fit ratios; uncapped, the box
+/// keeps its CSS size.
 fn apply_caps(w: f32, h: f32, ctx: &SizeCtx) -> (f32, f32) {
+    if UNCAPPED.with(std::cell::Cell::get) {
+        return (w, h);
+    }
     let max_w = ctx.cb_width;
     let max_h = ctx.body_height.map(|bh| bh * MAX_HEIGHT_FRACTION);
     let scale = fit_scale(w, h, max_w, max_h);
