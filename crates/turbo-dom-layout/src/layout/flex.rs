@@ -488,12 +488,41 @@ fn atomics_natural(items: &[InlineItem], fonts: &FontRegistry) -> f32 {
         .sum()
 }
 
+/// The inline boxes' own horizontal margins, borders and padding in a run laid on one
+/// line (miaskiewicz/turbo-dom#244): each start boundary carries the edges its fragment
+/// keeps ([`crate::ComputedStyle::inline_fragment_style`] zeroes a split side).
+fn inline_edges_natural(items: &[InlineItem], fs: f32) -> f32 {
+    items
+        .iter()
+        .filter_map(|it| match it {
+            InlineItem::Boundary {
+                style, start: true, ..
+            } => {
+                let used = super::value::resolve_box_style(
+                    style,
+                    ResolveCtx {
+                        parent_font_size: fs,
+                        cb_width: 0.0,
+                    },
+                );
+                Some(
+                    used.margin.left
+                        + used.margin.right
+                        + used.padding.horizontal()
+                        + used.border.widths().horizontal(),
+                )
+            }
+            _ => None,
+        })
+        .sum()
+}
+
 fn lines_natural(
     items: &[InlineItem],
     fs: f32,
     fonts: &FontRegistry,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-    html_metrics: bool,
+    (html_metrics, scale): (bool, Option<f32>),
 ) -> f32 {
     let runs = block::build_runs(items, fs, 0.0, fonts);
     let mut scratch = Diagnostics::default();
@@ -508,11 +537,11 @@ fn lines_natural(
         f32::MAX,
         &mut scratch,
         original,
-        html_metrics,
+        (html_metrics, scale),
     )
     .width;
     let text = if html_metrics { text } else { text.ceil() };
-    text + atomics_natural(items, fonts)
+    text + atomics_natural(items, fonts) + inline_edges_natural(items, fs)
 }
 
 /// The widest in-flow child's max-content contribution: its margin box
@@ -706,7 +735,7 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 bs.font_size,
                 fonts,
                 lb.original_units().as_deref(),
-                lb.uses_html_font_metrics(),
+                (lb.uses_html_font_metrics(), lb.native_scale()),
             ),
             BoxKind::Flex(k) => flex_natural(k, &lb.style, fonts),
             // A table's max-content: its columns side by side plus border-spacing
@@ -727,13 +756,19 @@ fn lines_min(
     fs: f32,
     fonts: &FontRegistry,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
-    html_metrics: bool,
+    (html_metrics, scale): (bool, Option<f32>),
 ) -> f32 {
     let runs = block::build_runs(items, fs, 0.0, fonts);
     let mut scratch = Diagnostics::default();
-    let text =
-        inline::layout_runs_with_units(&runs, fonts, 0.0, &mut scratch, original, html_metrics)
-            .width;
+    let text = inline::layout_runs_with_units(
+        &runs,
+        fonts,
+        0.0,
+        &mut scratch,
+        original,
+        (html_metrics, scale),
+    )
+    .width;
     // An atomic doesn't break, so it contributes its own min-content; the line can
     // wrap between pieces, so its min-content is the widest single piece.
     let atom = items
@@ -771,7 +806,7 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 bs.font_size,
                 fonts,
                 lb.original_units().as_deref(),
-                lb.uses_html_font_metrics(),
+                (lb.uses_html_font_metrics(), lb.native_scale()),
             ),
             BoxKind::Table(k) => super::table::min_content_width(k, &lb.style, fonts),
             BoxKind::Flex(k) | BoxKind::Block(k) | BoxKind::Grid(k) => in_flow(k)
@@ -818,7 +853,7 @@ fn replaced_probe_width(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<
     if let LengthPct::Px(w) = bs.width {
         return Some(w + frame);
     }
-    let intrinsic = super::imgsize::box_intrinsic(images.resolver, &src.name, &item.style)?;
+    let (intrinsic, _) = super::imgsize::replaced_intrinsic(images.resolver, src, &item.style)?;
     Some(intrinsic.width as f32 + frame)
 }
 

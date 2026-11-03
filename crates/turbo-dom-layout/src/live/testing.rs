@@ -24,12 +24,14 @@ const PNG_8X6: [u8; 74] = [
     130,
 ];
 
-/// Every PNG `data:` URI is the 8x6 PNG (the live-geometry Chrome control's image); no
-/// other image resolves.
+/// Every base64 PNG `data:` URI that holds a PNG (its payload starts with the base64 of
+/// the PNG signature) is the 8x6 PNG (the live-geometry Chrome control's image); no
+/// other image resolves (the control's broken `data:image/png;base64,AAAA` does not).
 struct DataPng;
 impl crate::ImageResolver for DataPng {
     fn resolve(&self, name: &str) -> Option<&[u8]> {
-        name.starts_with("data:image/png;").then_some(&PNG_8X6[..])
+        name.starts_with("data:image/png;base64,iVBORw0KGgo")
+            .then_some(&PNG_8X6[..])
     }
 }
 

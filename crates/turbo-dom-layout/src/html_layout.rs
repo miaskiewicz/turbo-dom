@@ -355,11 +355,12 @@ pub struct CidBox {
 /// the source element's `attrs`, so we build the box tree once to map
 /// `node_id → data-cid`, then walk the laid-out [`Fragment`] galley and emit the
 /// first (outermost, border-box) fragment for each mapped id. The map is exact —
-/// no document-order fallback is needed — with one honest limitation: a
-/// `display:inline` element is flattened into anonymous inline runs during box
-/// generation and does not keep its own box/attrs, so a `data-cid` is only
-/// resolved on box-generating elements (block, `inline-block`, flex/grid/table
-/// items, replaced `<img>`). Tag the box-generating element under test.
+/// no document-order fallback is needed. A `display:inline` element with a
+/// background, box shadow, padding, border or horizontal margin keeps its inline box
+/// through line layout (miaskiewicz/turbo-dom#244) and reports the union of its line
+/// fragments, like `getBoundingClientRect()`; any other `display:inline` element is
+/// flattened into anonymous inline runs and has no box, so its `data-cid` resolves to
+/// nothing. Tag a box-generating element under test.
 ///
 /// Like `getBoundingClientRect()`, it also reports the boxes the render leaves out
 /// because they paint nothing at any size: an absolutely positioned box whose
@@ -423,11 +424,22 @@ pub fn layout_boxes_tree(
     // Box generation is deterministic (monotonic pre-order ids), so the ids in this
     // tree match the ones the layout below stamps on the fragments.
     let mut cids: HashMap<u32, String> = HashMap::new();
-    let (boxes, _, _) = crate::layout::boxgen::build_box_tree_with(
+    let (boxes, recorded, _) = crate::layout::boxgen::build_box_tree_with(
         &styled,
-        crate::layout::geometry_build_options(&layout_options),
+        crate::layout::boxgen::BuildOptions {
+            record_sources: true,
+            ..crate::layout::geometry_build_options(&layout_options)
+        },
     );
     collect_cids(&boxes, &mut cids);
+    // The elements with no box of their own are the inline boxes kept through line
+    // layout (miaskiewicz/turbo-dom#244): their box is the union of their fragments.
+    let inline: HashMap<u32, String> = recorded
+        .elements
+        .iter()
+        .filter(|(id, _)| !cids.contains_key(&id.0))
+        .filter_map(|(id, &h)| Some((id.0, view.attr(h, "data-cid")?.to_string())))
+        .collect();
 
     let resolver = DataUriImages(data_images);
     let ctx = ImageCtx {
@@ -446,7 +458,48 @@ pub fn layout_boxes_tree(
     let mut out = Vec::new();
     let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
     collect_boxes(&root, &cids, &mut seen, &mut out);
+    let mut unions: Vec<(u32, CidBox)> = Vec::new();
+    collect_inline_boxes(&root, &inline, &mut unions);
+    out.extend(unions.into_iter().map(|(_, b)| b));
     out
+}
+
+/// Each `inline` box's union of its fragments (`getBoundingClientRect()` of an inline
+/// box), in galley order.
+fn collect_inline_boxes(
+    frag: &Fragment,
+    inline: &HashMap<u32, String>,
+    out: &mut Vec<(u32, CidBox)>,
+) {
+    let id = frag.node_id.0;
+    if let Some(cid) = inline.get(&id) {
+        let (x, y, width, height) = transformed_rect(frag);
+        match out.iter_mut().find(|(seen, _)| *seen == id) {
+            Some((_, b)) => {
+                let (right, bottom) = (
+                    (b.x + b.width).max(x + width),
+                    (b.y + b.height).max(y + height),
+                );
+                b.x = b.x.min(x);
+                b.y = b.y.min(y);
+                b.width = right - b.x;
+                b.height = bottom - b.y;
+            }
+            None => out.push((
+                id,
+                CidBox {
+                    cid: cid.clone(),
+                    x,
+                    y,
+                    width,
+                    height,
+                },
+            )),
+        }
+    }
+    for c in &frag.children {
+        collect_inline_boxes(c, inline, out);
+    }
 }
 
 /// Walk the box tree, recording `node_id → data-cid` for every box that carries
