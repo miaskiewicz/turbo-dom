@@ -852,6 +852,10 @@ fn tiny_clipped(style: &ComputedStyle) -> bool {
 
 /// Whether the element is a `<br>` — an inline forced line break, handled by the
 /// inline layout, not a box (it has no `display`/`height` of its own).
+fn is_img(el: &StyledElement) -> bool {
+    matches!(&el.tag, Tag::Html(name) if name == "img")
+}
+
 fn is_br(el: &StyledElement) -> bool {
     matches!(&el.tag, Tag::Html(n) if n == "br")
 }
@@ -949,7 +953,9 @@ fn native_inline_items(el: &StyledElement, ids: &mut Ids) -> Level {
         .sources
         .as_ref()
         .is_some_and(|sources| sources.inline_borders);
-    if native && super::inline_boxes::atomic_element(el) {
+    // An inline `<img>` (its UA default, miaskiewicz/turbo-dom#242) is an atomic
+    // replaced box on every path, not flattened away like a text inline.
+    if is_img(el) || (native && super::inline_boxes::atomic_element(el)) {
         Level::Inline(vec![InlineItem::Atomic(build_block_box(el, ids))])
     } else if native {
         native_inline_flow(el, ids)
