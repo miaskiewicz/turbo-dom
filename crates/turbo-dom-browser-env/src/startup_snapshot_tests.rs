@@ -28,3 +28,13 @@ fn the_bootstrapped_shell_snapshots_and_deserializes() {
         .to_rust_string_lossy(scope);
     assert_eq!(result, "function,function,function,true");
 }
+
+/// A bootstrap that handed V8 a callback outside the table yields no blob instead of
+/// aborting V8 in create_blob.
+#[test]
+fn a_callback_outside_the_table_yields_no_blob() {
+    crate::browser_env::tests::init_v8();
+    external_refs::UNTABLED_FOR_TEST.with(|extra| extra.set(Some(1)));
+    assert!(startup_snapshot::build().is_none());
+    assert!(!startup_snapshot::building());
+}

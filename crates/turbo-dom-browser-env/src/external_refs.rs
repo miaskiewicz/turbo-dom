@@ -58,6 +58,12 @@ thread_local! {
     static BUILD_LOG: std::cell::RefCell<Option<HashSet<usize>>> = const { std::cell::RefCell::new(None) };
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Test hook: an address the next build logs although no table holds it.
+    pub(crate) static UNTABLED_FOR_TEST: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+}
+
 /// Start logging this thread's callbacks (a snapshot build begins).
 pub(crate) fn begin_build_log() {
     BUILD_LOG.with(|log| *log.borrow_mut() = Some(HashSet::new()));
@@ -65,9 +71,12 @@ pub(crate) fn begin_build_log() {
 
 /// Stop logging; whether every callback logged since [`begin_build_log`] is in `table`.
 pub(crate) fn end_build_log(table: &[v8::ExternalReference]) -> bool {
-    let logged = BUILD_LOG
+    #[allow(unused_mut)]
+    let mut logged = BUILD_LOG
         .with(|log| log.borrow_mut().take())
         .unwrap_or_default();
+    #[cfg(test)]
+    logged.extend(UNTABLED_FOR_TEST.with(std::cell::Cell::take));
     // SAFETY: every table entry was built from an address (`pointer`).
     let table = table
         .iter()
