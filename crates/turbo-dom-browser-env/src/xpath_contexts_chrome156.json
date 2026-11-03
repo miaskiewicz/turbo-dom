@@ -1,7 +1,7 @@
 {
   "browser": "156.0.8078.47",
   "fixture": "xpath_contexts_probe.js",
-  "probeSha256": "ad891b63f1ef08bd27a064488f0907e140927e5866800e7666d32c8140ec2124",
+  "probeSha256": "e3b289d86f46eaf9f1cad19fc7d9cafbdd3b4f865f4505fa461b939d8087f587",
   "result": {
     "fragment_div": {
       ".//span": [
@@ -42,6 +42,12 @@
       "preceding-sibling::node()": [],
       "id('fs')": [],
       "id('ss')": [],
+      "id('host')": [
+        "1:SECTION#host"
+      ],
+      "id('sv')/*": [
+        "1:g#sg"
+      ],
       "namespace::*": [],
       "count(namespace::node())": 0
     },
@@ -85,6 +91,12 @@
       "preceding-sibling::node()": [],
       "id('fs')": [],
       "id('ss')": [],
+      "id('host')": [
+        "1:SECTION#host"
+      ],
+      "id('sv')/*": [
+        "1:g#sg"
+      ],
       "namespace::*": [],
       "count(namespace::node())": 0
     },
@@ -127,6 +139,12 @@
       "preceding-sibling::node()": [],
       "id('fs')": [],
       "id('ss')": [],
+      "id('host')": [
+        "1:SECTION#host"
+      ],
+      "id('sv')/*": [
+        "1:g#sg"
+      ],
       "namespace::*": [],
       "count(namespace::node())": 0
     },
@@ -158,6 +176,12 @@
       "preceding-sibling::node()": [],
       "id('fs')": [],
       "id('ss')": [],
+      "id('host')": [
+        "1:SECTION#host"
+      ],
+      "id('sv')/*": [
+        "1:g#sg"
+      ],
       "namespace::*": [],
       "count(namespace::node())": 0
     },
@@ -176,6 +200,8 @@
       "preceding-sibling::node()": "NotSupportedError",
       "id('fs')": "NotSupportedError",
       "id('ss')": "NotSupportedError",
+      "id('host')": "NotSupportedError",
+      "id('sv')/*": "NotSupportedError",
       "namespace::*": "NotSupportedError",
       "count(namespace::node())": "NotSupportedError"
     },
@@ -219,6 +245,8 @@
       "id('ss')": [
         "1:SPAN#ss"
       ],
+      "id('host')": [],
+      "id('sv')/*": [],
       "namespace::*": [],
       "count(namespace::node())": 0
     },
@@ -260,6 +288,8 @@
       "id('ss')": [
         "1:SPAN#ss"
       ],
+      "id('host')": [],
+      "id('sv')/*": [],
       "namespace::*": [],
       "count(namespace::node())": 0
     },
@@ -278,6 +308,8 @@
       "preceding-sibling::node()": "NotSupportedError",
       "id('fs')": "NotSupportedError",
       "id('ss')": "NotSupportedError",
+      "id('host')": "NotSupportedError",
+      "id('sv')/*": "NotSupportedError",
       "namespace::*": "NotSupportedError",
       "count(namespace::node())": "NotSupportedError"
     },
@@ -311,6 +343,111 @@
       "preceding-sibling::node()": [],
       "id('fs')": [],
       "id('ss')": [],
+      "id('host')": [
+        "1:SECTION#host"
+      ],
+      "id('sv')/*": [
+        "1:g#sg"
+      ],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "detached": {
+      ".//span": [
+        "1:SPAN#ds"
+      ],
+      "//span": [
+        "1:SPAN#ds"
+      ],
+      "/": [
+        "1:ARTICLE#dt"
+      ],
+      "/*": [
+        "1:SPAN#ds"
+      ],
+      "/descendant::*": [
+        "1:SPAN#ds"
+      ],
+      "ancestor::node()": [],
+      "ancestor-or-self::*": [
+        "1:ARTICLE#dt"
+      ],
+      "..": [],
+      "following::*": [],
+      "preceding::*": [],
+      "following-sibling::*": [],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [],
+      "id('host')": [
+        "1:SECTION#host"
+      ],
+      "id('sv')/*": [
+        "1:g#sg"
+      ],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "template_span": {
+      ".//span": [],
+      "//span": [
+        "1:SPAN#host"
+      ],
+      "/": [
+        "11:#document-fragment"
+      ],
+      "/*": [
+        "1:P#tp"
+      ],
+      "/descendant::*": [
+        "1:P#tp",
+        "1:SPAN#host"
+      ],
+      "ancestor::node()": [
+        "11:#document-fragment",
+        "1:P#tp"
+      ],
+      "ancestor-or-self::*": [
+        "1:P#tp",
+        "1:SPAN#host"
+      ],
+      "..": [
+        "1:P#tp"
+      ],
+      "following::*": [],
+      "preceding::*": [],
+      "following-sibling::*": [],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [],
+      "id('host')": [],
+      "id('sv')/*": [],
+      "namespace::*": [],
+      "count(namespace::node())": 0
+    },
+    "xml_detached": {
+      ".//span": [],
+      "//span": [],
+      "/": [
+        "1:q"
+      ],
+      "/*": [],
+      "/descendant::*": [],
+      "ancestor::node()": [],
+      "ancestor-or-self::*": [
+        "1:q"
+      ],
+      "..": [],
+      "following::*": [],
+      "preceding::*": [],
+      "following-sibling::*": [],
+      "preceding-sibling::node()": [],
+      "id('fs')": [],
+      "id('ss')": [],
+      "id('host')": [
+        "1:s#host"
+      ],
+      "id('sv')/*": [],
       "namespace::*": [],
       "count(namespace::node())": 0
     },
@@ -349,6 +486,12 @@
       ],
       "id('fs')": [],
       "id('ss')": [],
+      "id('host')": [
+        "1:SECTION#host"
+      ],
+      "id('sv')/*": [
+        "1:g#sg"
+      ],
       "namespace::*": [],
       "count(namespace::node())": 0
     },
@@ -395,6 +538,12 @@
       "preceding-sibling::node()": [],
       "id('fs')": [],
       "id('ss')": [],
+      "id('host')": [
+        "1:SECTION#host"
+      ],
+      "id('sv')/*": [
+        "1:g#sg"
+      ],
       "namespace::*": [],
       "count(namespace::node())": 0
     },
@@ -425,6 +574,12 @@
       "preceding-sibling::node()": [],
       "id('fs')": [],
       "id('ss')": [],
+      "id('host')": [
+        "1:SECTION#host"
+      ],
+      "id('sv')/*": [
+        "1:g#sg"
+      ],
       "namespace::*": [],
       "count(namespace::node())": 0
     }

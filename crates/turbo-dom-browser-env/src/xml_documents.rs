@@ -169,45 +169,142 @@ fn qualified(name: &OwnedName) -> String {
 
 /// The source's start tags in order, for the namespace declarations xml-rs folds into
 /// its scope map (Chrome keeps each element's own `xmlns` attributes). The source up to
-/// a start-element event is well-formed, so a light scan finds the tags.
+/// a start-element event is well-formed, so a light scan finds the tags. An internal
+/// entity's reference is followed into its replacement text, which xml-rs reparses, so
+/// the elements an entity spells take their own tags (and declarations) in order.
 struct StartTags<'a> {
     rest: &'a str,
+    /// The text after each entity reference being expanded, innermost last.
+    outer: Vec<&'a str>,
+    /// The internal DTD subset's general entities with a literal replacement text.
+    entities: std::collections::HashMap<&'a str, &'a str>,
 }
 
+/// Entity references followed at once: xml-rs stops a reparse deeper than 10 (as Chrome
+/// 156 does, "Entity too big"), so the scan never needs more.
+const ENTITY_SCAN_DEPTH: usize = 64;
+
 impl<'a> StartTags<'a> {
-    /// Skip past `end`, or to the end of the source.
+    fn new(source: &'a str) -> Self {
+        StartTags {
+            rest: source,
+            outer: Vec::new(),
+            entities: std::collections::HashMap::new(),
+        }
+    }
+    /// Skip past `end`, or to the end of the current text.
     fn skip(&mut self, end: &str) {
         self.rest = self
             .rest
             .find(end)
             .map_or("", |index| &self.rest[index + end.len()..]);
     }
+    /// Skip past the first of `stops` outside a quoted literal and return it (None at
+    /// the end of the current text).
+    fn skip_quoted(&mut self, stops: &[char]) -> Option<char> {
+        let mut quote = None;
+        for (index, c) in self.rest.char_indices() {
+            match quote {
+                Some(open) if c == open => quote = None,
+                Some(_) => {}
+                None if c == '"' || c == '\'' => quote = Some(c),
+                None if stops.contains(&c) => {
+                    self.rest = &self.rest[index + 1..];
+                    return Some(c);
+                }
+                None => {}
+            }
+        }
+        self.rest = "";
+        None
+    }
     /// The next start tag's name and the prefixes it declares (`""` for `xmlns`).
     fn next_tag(&mut self) -> Option<(&'a str, Vec<&'a str>)> {
         loop {
-            self.skip("<");
+            let Some(index) = self.rest.find(['<', '&']) else {
+                self.rest = self.outer.pop()?;
+                continue;
+            };
+            let reference = self.rest.as_bytes()[index] == b'&';
+            self.rest = &self.rest[index + 1..];
             let markup = self.rest;
-            if markup.is_empty() {
-                return None;
-            }
-            if markup.starts_with("!--") {
+            if reference {
+                self.reference();
+            } else if markup.starts_with("!--") {
                 self.skip("-->");
             } else if markup.starts_with("![CDATA[") {
                 self.skip("]]>");
             } else if markup.starts_with('?') {
                 self.skip("?>");
             } else if markup.starts_with("!DOCTYPE") {
-                // an internal subset ends with "]" before the closing ">"
-                if markup[..markup.find('>').unwrap_or(markup.len())].contains('[') {
-                    self.skip("]");
-                }
-                self.skip(">");
+                self.doctype();
             } else if markup.starts_with('/') {
                 self.skip(">");
             } else {
                 return Some(self.attributes());
             }
         }
+    }
+    /// After `&`: continue in a declared entity's replacement text and then after the
+    /// reference (character and predefined references spell no markup).
+    fn reference(&mut self) {
+        let Some(end) = self.rest.find(';') else {
+            return;
+        };
+        let after = &self.rest[end + 1..];
+        match self.entities.get(&self.rest[..end]) {
+            Some(&text) if self.outer.len() < ENTITY_SCAN_DEPTH => {
+                self.outer.push(after);
+                self.rest = text;
+            }
+            _ => self.rest = after,
+        }
+    }
+    /// After `<`: skip `!DOCTYPE …>`, recording the internal subset's entities. A `]` or
+    /// `>` in a quoted literal, a comment or a processing instruction does not end it.
+    fn doctype(&mut self) {
+        if self.skip_quoted(&['[', '>']) != Some('[') {
+            return;
+        }
+        loop {
+            self.rest = self.rest.trim_start();
+            let markup = self.rest;
+            if markup.is_empty() {
+                return;
+            }
+            if markup.starts_with(']') {
+                self.skip(">");
+                return;
+            }
+            if markup.starts_with("<!--") {
+                self.skip("-->");
+            } else if markup.starts_with("<?") {
+                self.skip("?>");
+            } else if let Some(declaration) = markup.strip_prefix("<!ENTITY") {
+                self.rest = declaration;
+                self.entity();
+            } else if markup.starts_with('%') {
+                self.skip(";");
+            } else {
+                self.skip_quoted(&['>']);
+            }
+        }
+    }
+    /// After `<!ENTITY`: record a general entity's literal replacement text (the first
+    /// declaration of a name binds it), then skip the rest of the declaration.
+    fn entity(&mut self) {
+        let declaration = self.rest.trim_start();
+        let (name, value) =
+            declaration.split_at(declaration.find(char::is_whitespace).unwrap_or(0));
+        let value = value.trim_start();
+        let quote = value.chars().next().filter(|c| matches!(c, '"' | '\''));
+        if let (Some(quote), false) = (quote, name == "%") {
+            if let Some(close) = value[1..].find(quote) {
+                self.entities.entry(name).or_insert(&value[1..=close]);
+            }
+        }
+        self.rest = declaration;
+        self.skip_quoted(&['>']);
     }
     fn attributes(&mut self) -> (&'a str, Vec<&'a str>) {
         let end = self
@@ -366,7 +463,7 @@ fn build(
     let mut reader = reader_config().create_reader(source.as_bytes());
     let mut builder = Builder {
         tree,
-        tags: StartTags { rest: source },
+        tags: StartTags::new(source),
         open: vec![parent],
         pending: None,
     };

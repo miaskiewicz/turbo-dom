@@ -84,6 +84,8 @@
     row.push(tryRun(() => rule.insertRule("x{} y{}", 0)));
     row.push(tryRun(() => rule.insertRule("x{}", 99)));
     row.push(tryRun(() => rule.insertRule("@import url(a.css);", 0)));
+    row.push(tryRun(() => rule.insertRule("/**/@import url(a.css);", 0)));
+    row.push(tryRun(() => rule.insertRule(" /* x */ @IMPORT 'a.css' screen;", 0)));
     row.push(tryRun(() => rule.insertRule()));
     row.push(rule.cssText);
     const inserted = rule.cssRules[0];

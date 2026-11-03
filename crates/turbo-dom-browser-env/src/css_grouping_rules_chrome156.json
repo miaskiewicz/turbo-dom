@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "fixture": "css_grouping_rules_probe.js",
-  "probeSha256": "f53d5cea48b2ad9fab9634bb01d91a09ab35a34e6320dfbcc5db09c878151f52",
+  "probeSha256": "84ec5d634fc40728186bd92858bf059de0289c7c0552958986ad43ecaa3f0ecb",
   "flags": [
     "--headless",
     "--remote-debugging-pipe",
@@ -699,6 +699,12 @@
           "HierarchyRequestError"
         ],
         [
+          "HierarchyRequestError"
+        ],
+        [
+          "HierarchyRequestError"
+        ],
+        [
           "TypeError"
         ],
         "@container card (min-width: 200px) {\n  x { }\n  x { color: blue; }\n  @media print {\n  z { color: red; }\n}\n  .cq > i { width: 17px; }\n  y { color: red; }\n}",
@@ -740,6 +746,12 @@
         ],
         [
           "IndexSizeError"
+        ],
+        [
+          "HierarchyRequestError"
+        ],
+        [
+          "HierarchyRequestError"
         ],
         [
           "HierarchyRequestError"
@@ -791,6 +803,12 @@
           "HierarchyRequestError"
         ],
         [
+          "HierarchyRequestError"
+        ],
+        [
+          "HierarchyRequestError"
+        ],
+        [
           "TypeError"
         ],
         "@container side {\n  x { }\n  x { color: blue; }\n  @media print {\n  z { color: red; }\n}\n  p { margin: 0px; }\n  y { color: red; }\n}",
@@ -832,6 +850,12 @@
         ],
         [
           "IndexSizeError"
+        ],
+        [
+          "HierarchyRequestError"
+        ],
+        [
+          "HierarchyRequestError"
         ],
         [
           "HierarchyRequestError"
@@ -883,6 +907,12 @@
           "HierarchyRequestError"
         ],
         [
+          "HierarchyRequestError"
+        ],
+        [
+          "HierarchyRequestError"
+        ],
+        [
           "TypeError"
         ],
         "@supports (display:grid) and (gap:1px) {\n  x { }\n  x { color: blue; }\n  @media print {\n  z { color: red; }\n}\n  c { display: grid; }\n  y { color: red; }\n}",
@@ -929,6 +959,12 @@
           "HierarchyRequestError"
         ],
         [
+          "HierarchyRequestError"
+        ],
+        [
+          "HierarchyRequestError"
+        ],
+        [
           "TypeError"
         ],
         "@layer base {\n  x { }\n  x { color: blue; }\n  @media print {\n  z { color: red; }\n}\n  d { color: green; }\n  y { color: red; }\n}",
@@ -970,6 +1006,12 @@
         ],
         [
           "IndexSizeError"
+        ],
+        [
+          "HierarchyRequestError"
+        ],
+        [
+          "HierarchyRequestError"
         ],
         [
           "HierarchyRequestError"
@@ -1025,6 +1067,12 @@
           "HierarchyRequestError"
         ],
         [
+          "HierarchyRequestError"
+        ],
+        [
+          "HierarchyRequestError"
+        ],
+        [
           "TypeError"
         ],
         "@scope (.a) to (.b) {\n  x { }\n  x { color: blue; }\n  @media print {\n  z { color: red; }\n}\n  f { color: red; }\n  y { color: red; }\n}",
@@ -1071,6 +1119,12 @@
           "HierarchyRequestError"
         ],
         [
+          "HierarchyRequestError"
+        ],
+        [
+          "HierarchyRequestError"
+        ],
+        [
           "TypeError"
         ],
         "@scope {\n  x { }\n  x { color: blue; }\n  @media print {\n  z { color: red; }\n}\n  g { color: red; }\n  y { color: red; }\n}",
@@ -1112,6 +1166,12 @@
         ],
         [
           "IndexSizeError"
+        ],
+        [
+          "HierarchyRequestError"
+        ],
+        [
+          "HierarchyRequestError"
         ],
         [
           "HierarchyRequestError"
