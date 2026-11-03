@@ -236,7 +236,7 @@ const ARROW: f32 = 16.0;
 
 #[cfg(test)]
 mod tests {
-    use super::{positive, text_of};
+    use super::{positive, positive_int, text_of};
 
     #[test]
     fn only_text_children_count() {
