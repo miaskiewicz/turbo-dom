@@ -1,7 +1,7 @@
 {
  "generator": "scripts/cssom-view-chrome-control.mjs",
  "chrome": "156.0.8078.47",
- "playwright_core": "1.60.0",
+ "playwright_core": "1.61.0",
  "viewport": [
   1280,
   800
@@ -3380,6 +3380,194 @@
        9,
        0,
        12
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "vertical-range-and-carets",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"v\" style=\"writing-mode:vertical-rl;height:60px\">abcd efg<span data-cid=\"s\">hi</span></div><div data-cid=\"l\" style=\"writing-mode:vertical-lr;height:60px\">xy z</div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 60
+    },
+    {
+     "cid": "s",
+     "x": -1,
+     "y": 18.46875,
+     "width": 12,
+     "height": 12.3125
+    },
+    {
+     "cid": "l",
+     "x": 0,
+     "y": 60,
+     "width": 10,
+     "height": 60
+    }
+   ],
+   "carets": [
+    {
+     "x": 15,
+     "y": 3,
+     "cid": "v",
+     "path": [],
+     "child": 0,
+     "offset": 0,
+     "rect": [
+      9,
+      0,
+      12,
+      0
+     ]
+    },
+    {
+     "x": 15,
+     "y": 13,
+     "cid": "v",
+     "path": [],
+     "child": 0,
+     "offset": 2,
+     "rect": [
+      9,
+      12.296875,
+      12,
+      0
+     ]
+    },
+    {
+     "x": 3,
+     "y": 20,
+     "cid": "s",
+     "path": [],
+     "child": 0,
+     "offset": 0,
+     "rect": [
+      -1,
+      18.46875,
+      12,
+      0
+     ]
+    },
+    {
+     "x": 15,
+     "y": 45,
+     "cid": "v",
+     "path": [],
+     "child": 0,
+     "offset": 4,
+     "rect": [
+      9,
+      24.609375,
+      12,
+      0
+     ]
+    },
+    {
+     "x": 5,
+     "y": 70,
+     "cid": "l",
+     "path": [],
+     "child": 0,
+     "offset": 2,
+     "rect": [
+      -1,
+      72.296875,
+      12,
+      0
+     ]
+    },
+    {
+     "x": 5,
+     "y": 110,
+     "cid": "l",
+     "path": [],
+     "child": 0,
+     "offset": 4,
+     "rect": [
+      -1,
+      84.609375,
+      12,
+      0
+     ]
+    }
+   ],
+   "ranges": [
+    {
+     "start": [
+      "v",
+      0,
+      1
+     ],
+     "end": [
+      "v",
+      0,
+      3
+     ],
+     "rects": [
+      [
+       9,
+       6.140625,
+       12,
+       12.328125
+      ]
+     ]
+    },
+    {
+     "start": [
+      "v",
+      0,
+      2
+     ],
+     "end": [
+      "s",
+      0,
+      1
+     ],
+     "rects": [
+      [
+       9,
+       12.296875,
+       12,
+       12.328125
+      ],
+      [
+       -1,
+       0,
+       12,
+       18.46875
+      ],
+      [
+       -1,
+       18.46875,
+       12,
+       6.15625
+      ]
+     ]
+    },
+    {
+     "start": [
+      "l",
+      0,
+      0
+     ],
+     "end": [
+      "l",
+      0,
+      4
+     ],
+     "rects": [
+      [
+       -1,
+       60,
+       12,
+       24.625
       ]
      ]
     }

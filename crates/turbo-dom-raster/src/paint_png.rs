@@ -292,10 +292,11 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
             font_size,
             color,
             vertical,
+            upright,
             ..
         } => paint_text(
             pm,
-            f,
+            (f, *vertical && *upright),
             glyphs,
             face,
             (*font_size, *color),
@@ -910,9 +911,19 @@ pub(crate) fn glyph_frame(f: &Fragment, vertical: bool) -> Transform {
     }
 }
 
+/// An upright glyph of a turned (vertical) run turns back a quarter about its pen
+/// `(x, y)`, so it paints unturned (miaskiewicz/turbo-dom#239).
+pub(crate) fn upright_turn(upright: bool, (x, y): (f32, f32)) -> Transform {
+    if upright {
+        Transform::from_rotate_at(-90.0, x, y)
+    } else {
+        Transform::identity()
+    }
+}
+
 fn paint_text(
     pm: &mut Pixmap,
-    f: &Fragment,
+    (f, upright): (&Fragment, bool),
     glyphs: &[PositionedGlyph],
     face: &FontFace,
     (font_size, color): (f32, Rgba),
@@ -933,7 +944,8 @@ fn paint_text(
         let mut sink = PathSink(PathBuilder::new());
         glyph::trace_glyph(&face, g.glyph_id, pen, &mut sink);
         if let Some(path) = sink.0.finish() {
-            pm.fill_path(&path, &paint, FillRule::Winding, xf, None);
+            let turn = upright_turn(upright, (pen.origin_x, pen.baseline_y));
+            pm.fill_path(&path, &paint, FillRule::Winding, xf.pre_concat(turn), None);
         }
     }
 }
@@ -1176,6 +1188,7 @@ mod tests {
                 font_size: 30.0,
                 color: RED,
                 vertical: false,
+                upright: false,
             },
         );
         let shadowed = with_box(plain(30.0, 30.0, 20.0, 20.0, Some(RED)), |_, s, _, _| {
@@ -2184,6 +2197,7 @@ mod exact_tests {
                     font_size: size,
                     color: BLUE,
                     vertical: false,
+                    upright: false,
                 },
             );
             let got = drawn(&line, 90, 45);

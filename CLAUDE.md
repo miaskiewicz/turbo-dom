@@ -192,11 +192,20 @@ package or publish workflow.
   quarter clockwise (raster PNG + SVG) and a vertical-rl scroller scrolls from the right. Chrome
   controls: `live_geometry_chrome156.json` `vertical-*`, `scripts/vertical-text-chrome-control.mjs`
   -> turbo-dom-raster `tests/vertical_text_chrome.rs`. Since turbo-dom#239 flex / grid /
-  table boxes, inline-level atoms, `<img>` (intrinsic size turned), `direction: rtl`, floats and
-  absolute boxes lay out in the logical space too, and a vertical line aligns on the central
-  baseline (`writing::central_baseline`: fonts split evenly, baseline-less atoms centre; Blink's
-  `kIdeographicBaseline`); upright text (CJK / `text-orientation: upright`) and replaced elements
-  with a physical default size still fail per element (`SnapshotError::UnsupportedVerticalWriting`). Since turbo-dom#238 inline layout is UAX #9 bidi
+  table boxes, atoms, `<img>` / `<svg>` / `<iframe>` (physical intrinsic or default size turned),
+  `direction: rtl`, floats, absolute boxes, orthogonal flex/grid items, table cells and inlines
+  (atomic, `writing::layout_root_sized` / `orthogonal_extent`) lay out in the logical space; a
+  vertical line aligns on the central baseline (`writing::central_baseline`, Blink's
+  `kIdeographicBaseline`); upright text (`inline::UprightText`: CJK under `mixed`, all under
+  `upright`) advances by ascent + descent and paints turned back (`TextLine::upright`, raster
+  `vertical_upright_tests.rs` in the Ic Fixture face); vertical Range rects / carets turn the
+  line frame (`text_geometry::turn`). Since turbo-dom#252 `<canvas>` / `<video>` /
+  `<audio controls>` / `<object>` / `<embed src>` are inline replaced boxes on both paths and in
+  every writing mode (`boxgen::media_source`: Chrome's default sizes, canvas `width`/`height`
+  attributes as natural size, video poster; no fallback content; frame + background painted;
+  `live_geometry_chrome156.json` `media-*`, raster `paint_chrome156.json` `media-*`). Form controls
+  still fail per element (`SnapshotError::UnsupportedVerticalWriting`); border radii are one scalar,
+  so there are no corners to map. Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
   `unicode-bidi`/`direction` as formatting characters (the static path, which flattens
   inline boxes, emits them as zero-width text items), segments shaped in their level's

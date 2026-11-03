@@ -60,7 +60,12 @@ const BOX = (w, h, cid = "") => `<div${cid ? ` data-cid="${cid}"` : ""} style="w
 const CELL = (w, h, cid) => `<td data-cid="${cid}">${BOX(w, h)}</td>`;
 // The repo's Fira Code, for the cases marked `fonts`.
 const fira = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/fira-code/FiraCode-Regular.ttf")).toString("base64");
-const FACE = `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}`;
+// The generated Ic Fixture face (scripts/make-ic-fixture-font.py), for the upright-text
+// cases (U+6C34 and `a` / `b` boxes; 1em vertical advance).
+const ic = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/ic-fixture/IcFixture.ttf")).toString("base64");
+const FACE =
+  `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}` +
+  `@font-face{font-family:"Ic Fixture";src:url(data:font/ttf;base64,${ic})}`;
 // miaskiewicz/turbo-dom#190 quirks-mode line strut cases: [id suffix, body].
 const QUIRKS_CSS = 'body{margin:0;font-family:"Fira Code";font-size:16px}div{font-size:30px}';
 const IB = (h) => `<span style="display:inline-block;width:10px;height:${h}px"></span>`;
@@ -106,6 +111,48 @@ const IMG_CASES = [
   ["broken-height", `src="${BROKEN_PNG}" height="40"`],
   ["broken-empty-alt-pct-width", `src="${BROKEN_PNG}" alt="" style="display:block;width:50%"`],
   ["no-src-pct-width", `style="display:block;width:50%"`],
+];
+// miaskiewicz/turbo-dom#252: <canvas>, <video>, <audio controls>, <object> and <embed> are
+// inline replaced boxes (300x150 by default; canvas sizes from its width / height
+// attributes, video from its presentational width / height or its poster, audio controls
+// from the UA, object / embed from their presentational width / height), with their own
+// frame and background, in horizontal and vertical writing modes. [id suffix, element].
+const MEDIA_FRAME = "border:3px solid #00f;padding:2px 5px;background:#0f0";
+const MEDIA_CASES = [
+  ["canvas-default", `<canvas data-cid="m"></canvas>`],
+  ["canvas-attrs", `<canvas data-cid="m" width="200" height="100"></canvas>`],
+  ["canvas-width-attr", `<canvas data-cid="m" width="60"></canvas>`],
+  ["canvas-zero", `<canvas data-cid="m" width="0" height="0"></canvas>`],
+  ["canvas-css-width", `<canvas data-cid="m" style="width:100px"></canvas>`],
+  ["canvas-css-height-attrs", `<canvas data-cid="m" width="40" height="80" style="height:20px"></canvas>`],
+  ["canvas-frame", `<canvas data-cid="m" width="40" height="20" style="${MEDIA_FRAME}"></canvas>`],
+  ["canvas-fallback", `<canvas data-cid="m" width="40" height="20"><span data-cid="f">fallback text</span></canvas>`],
+  ["canvas-block", `<canvas data-cid="m" width="40" height="20" style="display:block"></canvas>`],
+  ["canvas-pct-width", `<canvas data-cid="m" width="40" height="20" style="display:block;width:50%"></canvas>`],
+  ["canvas-attr-syntax", `<canvas data-cid="m" width=" +50px" height="x9"></canvas>`],
+  ["canvas-border-box-height", `<canvas data-cid="m" width="40" height="20" style="box-sizing:border-box;height:30px;padding:5px"></canvas>`],
+  ["canvas-border-box-width", `<canvas data-cid="m" width="40" height="20" style="box-sizing:border-box;width:30px;padding:5px"></canvas>`],
+  ["canvas-zero-height-css-height", `<canvas data-cid="m" width="40" height="0" style="height:30px"></canvas>`],
+  ["video-default", `<video data-cid="m"></video>`],
+  ["video-attrs", `<video data-cid="m" width="200" height="100"></video>`],
+  ["video-width-attr", `<video data-cid="m" width="60"></video>`],
+  ["video-poster", `<video data-cid="m" poster="${PNG8X6}"></video>`],
+  ["video-poster-width", `<video data-cid="m" poster="${PNG8X6}" style="width:80px"></video>`],
+  ["video-frame", `<video data-cid="m" width="40" height="20" style="${MEDIA_FRAME}"></video>`],
+  ["video-controls", `<video data-cid="m" controls width="200" height="100"></video>`],
+  ["audio", `<audio data-cid="m"></audio>`],
+  ["audio-controls", `<audio data-cid="m" controls></audio>`],
+  ["audio-controls-width-attr", `<audio data-cid="m" controls width="100"></audio>`],
+  ["audio-controls-css", `<audio data-cid="m" controls style="width:100px;height:20px"></audio>`],
+  ["audio-controls-frame", `<audio data-cid="m" controls style="${MEDIA_FRAME}"></audio>`],
+  ["object-default", `<object data-cid="m"></object>`],
+  ["object-attrs", `<object data-cid="m" width="200" height="100"></object>`],
+  ["object-frame", `<object data-cid="m" width="40" height="20" style="${MEDIA_FRAME}"></object>`],
+  ["embed-default", `<embed data-cid="m">`],
+  ["embed-attrs", `<embed data-cid="m" width="200" height="100">`],
+  ["embed-frame", `<embed data-cid="m" width="40" height="20" style="${MEDIA_FRAME}">`],
+  ["embed-src", `<embed data-cid="m" src="${PNG8X6}" width="40" height="20">`],
+  ["embed-src-default", `<embed data-cid="m" src="about:blank">`],
 ];
 const VERTICAL_CSS = 'body{margin:0;font:16px/20px "Fira Code"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}';
 const VERTICAL_CASES = [
@@ -183,6 +230,48 @@ const VERTICAL_CASES = [
   [
     "rl-img",
     `<div data-cid="v" class="rl" style="height:100px"><img data-cid="i" src="${PNG8X6}" style="display:block"><img data-cid="j" src="${PNG8X6}" style="display:inline;height:12px">a<img data-cid="k" src="${PNG8X6}" style="display:inline;width:4px"></div>`,
+  ],
+  [
+    "rl-upright-cjk",
+    `<div data-cid="v" class="rl" style="height:100px;font-family:'Ic Fixture'"><span data-cid="c">\u6c34\u6c34</span><span data-cid="a">ab</span><span data-cid="u" style="text-orientation:upright">ab</span><span data-cid="m">a\u6c34b</span></div>`,
+  ],
+  [
+    "lr-upright-lines",
+    `<div data-cid="v" class="lr" style="height:40px;font-family:'Ic Fixture'"><span data-cid="c">\u6c34\u6c34\u6c34 \u6c34\u6c34\u6c34</span></div><div data-cid="w" class="rl" style="height:40px;font-family:'Ic Fixture';text-orientation:upright">aaa bb</div>`,
+  ],
+  [
+    "rl-replaced-defaults",
+    `<div data-cid="v" class="rl" style="height:400px"><svg data-cid="s" style="display:block"></svg><svg data-cid="w" width="40" style="display:block"></svg><iframe data-cid="f" style="display:block"></iframe><svg data-cid="h" height="30" style="display:block"></svg></div>`,
+  ],
+  [
+    "orthogonal-flex-item",
+    `<div data-cid="f" style="display:flex;width:300px"><div data-cid="fi" class="rl">aaaa bbbb</div><div data-cid="fj" style="width:10px;height:5px"></div></div>`,
+  ],
+  [
+    "orthogonal-grid-item",
+    `<div data-cid="g" style="display:grid;grid-template-columns:100px 50px"><div data-cid="gi" class="lr" style="padding-left:3px">ab cd</div><div data-cid="gj">x</div></div>`,
+  ],
+  [
+    "orthogonal-table-cell",
+    `<table data-cid="t"><tr><td data-cid="td" class="rl">ab cd</td><td data-cid="x">x</td></tr></table>`,
+  ],
+  // miaskiewicz/turbo-dom#251: a cell stretched to its row height reports the row height
+  // in client* / scroll* / offset* and its rect, with padding and border, in both modes.
+  [
+    "stretched-table-cells",
+    `<table data-cid="t"><tr><td data-cid="a">${BOX(10, 50)}</td><td data-cid="b">x</td><td data-cid="c" style="padding:3px 4px;border:2px solid">x</td></tr></table>`,
+  ],
+  [
+    "rl-stretched-table-cells",
+    `<div class="rl" style="height:200px"><table data-cid="t"><tr><td data-cid="a">${BOX(50, 10)}</td><td data-cid="b">x</td><td data-cid="c" style="padding:3px 4px;border:2px solid">x</td></tr></table></div>`,
+  ],
+  [
+    "lr-stretched-table-cells",
+    `<div class="lr" style="height:200px"><table data-cid="t"><tr><td data-cid="a">${BOX(50, 10)}</td><td data-cid="b" style="padding:1px 5px 2px 3px;border-left:4px solid">x</td></tr></table></div>`,
+  ],
+  [
+    "orthogonal-inline",
+    `<div data-cid="p" style="width:300px">a<span data-cid="s" class="rl">bcd</span>e</div>`,
   ],
   [
     "rl-rtl",
@@ -524,6 +613,13 @@ const CASES = [
     html: DOC(VERTICAL_CSS, `<div data-cid="p">a<img data-cid="i" ${img}>b</div>`),
     fonts: true,
   })),
+  ...["", "rl", "lr"].flatMap((mode) =>
+    MEDIA_CASES.map(([id, element]) => ({
+      id: `media-${mode ? `${mode}-` : ""}${id}`,
+      html: DOC(VERTICAL_CSS, `<div data-cid="p"${mode ? ` class="${mode}"` : ""}>a${element}b</div>`),
+      fonts: true,
+    })),
+  ),
 ];
 const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
@@ -533,7 +629,9 @@ for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
   if (testCase.fonts) {
     await page.addStyleTag({ content: FACE });
-    await page.evaluate(() => document.fonts.load('16px "Fira Code"').then(() => document.fonts.ready));
+    await page.evaluate(() =>
+      Promise.all([document.fonts.load('16px "Fira Code"'), document.fonts.load('16px "Ic Fixture"')]).then(() => document.fonts.ready),
+    );
   }
   if (testCase.fullscreen) {
     const target = `[data-cid="${testCase.fullscreen}"]`;

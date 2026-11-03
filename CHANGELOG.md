@@ -20,6 +20,32 @@ at the time); this file reconstructs them from history.
   call; user-event asks `matches(':disabled')` on every pointer step and MUI's rules ask
   `:invalid` per input, so large forms were quadratic (turbo-test 0.7.0 perf work).
   `:has()`, `:indeterminate` and `querySelector[All]` still classify the whole tree.
+- `getComputedStyle` reuses a computed style whose rules read live form / popover / dialog
+  state (`:invalid`, `:checked`, `:placeholder-shown`, `:popover-open`, `:modal`, `:open`, ...).
+  Such a style was never reused before. It is now keyed on a native live-state epoch, which every
+  change the tree version misses bumps: control values, option selectedness, custom and user
+  validity, `indeterminate`, ElementInternals validity, file selections, the popover stack,
+  modal dialogs and an opened picker. View-transition and interest state stay unreused.
+- The CSS animation / transition model (`animations.js` `cssUpdate`) runs once per style change
+  of an element, not on every computed-style read. A running animation recomputes the style on
+  each read, and the update (with `rendered()`'s ancestor walk) was 54% of the CPU of a
+  React/MUI modal test file. Its result is unchanged, and the `css_animations` Chrome controls
+  are unchanged. Gates: deterministic fresh-cascade and update-pass counters
+  (`computed_style_state_rules_reuse_gate`, `css_animation_update_runs_once_per_style_change_gate`).
+- turbo-dom-browser-env's selector-taking DOM methods (`querySelector[All]`, `matches`,
+  `closest`, ...) parse each selector string's grammar once (a bounded per-thread memo).
+  A selector without a `:` skips the five node-dependent pseudo-class rewrite passes, and
+  the SyntaxError message is built only when a selector is rejected (same exact message as
+  before). On form-heavy files this took ~9% of CPU.
+- Node wrappers carry their owner tag (DOM id + tree generation) as a small integer that
+  indexes a per-thread table, instead of a two-word BigInt that was allocated per wrapper and
+  decoded on every native call (`handle_of`, `tagged_owner` and the ownership reconcile were
+  3-5% each). Table entries are never reused, so wrappers from a discarded tree are still
+  refused (turbo-test#204).
+- The mutation fanout builds a V8 record object only when something reads it: a
+  MutationObserver, a custom element definition or the host's trusted document consumer.
+  A page that is recording mutations for script preparation, with nothing observing them,
+  no longer allocates one per mutation (4-5% on React-heavy files).
 
 ### Fixed
 
@@ -62,7 +88,9 @@ at the time); this file reconstructs them from history.
   item's first line box. turbo-dom-raster paints them (PNG and SVG), and
   `cssom_view::hit::elements_at_point` hits a marker's list item (#128;
   `scripts/list-marker-chrome-control.mjs`). The UA sheet gains Chrome's list-style-type
-  defaults and zero block margins for nested lists.
+  defaults and zero block margins for nested lists. `layout_recorded`'s `NodeSources` gains
+  `list_markers` (marker box / text id -> its list item's box), since a marker has no source
+  element (html2pdf tags it as the PDF/UA `Lbl`).
 - turbo-dom-raster paints inset `box-shadow`s (PNG and SVG) inside the padding box, over the
   background and under the border, with offset, spread and blur, like Chrome 156 (#192).
 - HTML processing instructions like Chrome 156 (turbo-dom#135): `Tree::parse_utf16_with_processing_instructions`

@@ -694,6 +694,7 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
             style.get("-webkit-locale"),
             style.get("hyphenate-limit-chars"),
         ),
+        upright: super::inline::UprightText::of(style),
     })
 }
 
@@ -749,6 +750,7 @@ fn lines_to_fragments(
                 font_size: gr.font_size,
                 color: gr.color,
                 vertical: false,
+                upright: gr.upright,
             };
             out.push(Fragment::new(
                 node_id,
@@ -2632,6 +2634,7 @@ fn prepend_mask_image(
         replaced: false,
         fallback: None,
         unloaded: std::cell::Cell::new(false),
+        media: super::boxgen::Media::None,
     };
     let Some(intrinsic) = probe_source(lb, &src, ctx) else {
         return;
@@ -2722,6 +2725,10 @@ fn layout_box_sized_impl(
     ctx: &mut Ctx,
     force_bfc: bool,
 ) -> Fragment {
+    // A flex / grid item or table cell that is a writing-mode root (#239).
+    if let Some(frag) = super::writing::layout_root_sized(lb, (bx, by), bbw, bs.font_size, ctx) {
+        return frag;
+    }
     lb.begin_layout();
     // A replaced `<img>` sizes from its intrinsic dimensions + caps rather than
     // flowing content — the same as the normal-flow `layout_box` path. Flex/grid
@@ -3014,7 +3021,7 @@ pub(crate) fn stamp_intrinsic_widths(lb: &LayoutBox, images: &ImageCtx) {
 /// Stamp one box's `intrinsic_w` if it is a resolvable replaced image.
 fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
     if lb.native_iframe() {
-        lb.intrinsic_w.set(Some(300.0));
+        lb.set_intrinsic(300.0, Some(150.0));
         return;
     }
     if let Some(viewport) = &lb.svg_viewport {
@@ -3022,8 +3029,7 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
             parent_font_size: super::value::DEFAULT_FONT_SIZE,
             cb_width: 0.0,
         });
-        lb.intrinsic_w
-            .set(Some(viewport.natural_width(style.font_size)));
+        lb.set_intrinsic(viewport.natural_width(style.font_size), None);
         return;
     }
     let Some(src) = lb.image.as_ref().filter(|s| s.replaced) else {
@@ -3032,7 +3038,7 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
     let probed = super::imgsize::replaced_intrinsic(images.resolver, src, &lb.style);
     src.unloaded.set(probed.is_none_or(|(_, loaded)| !loaded));
     if let Some((i, _)) = probed {
-        lb.intrinsic_w.set(Some(i.width as f32));
+        lb.set_intrinsic(i.width as f32, Some(i.height as f32));
     }
 }
 
@@ -3061,6 +3067,18 @@ fn replaced_image_box(
     let src = lb.image.as_ref().filter(|s| s.replaced)?;
     let (intrinsic, loaded) =
         super::imgsize::replaced_intrinsic(ctx.images.resolver, src, &lb.style)?;
+    if !loaded && src.media == super::boxgen::Media::Viewport {
+        // A media default box: no aspect ratio, like an iframe's (#252).
+        let natural = (intrinsic.width as f32, intrinsic.height as f32);
+        return Some(embedded_viewport_fragment(
+            lb,
+            bs,
+            (bx, by),
+            cb_width,
+            natural,
+            ctx,
+        ));
+    }
     let intrinsic = logical_intrinsic(intrinsic, ctx);
     let sizing = size_ctx(bs, cb_width, ctx);
     if ctx.live_geometry {
@@ -3072,6 +3090,13 @@ fn replaced_image_box(
             fragment.children.clear();
         }
         return Some(fragment);
+    }
+    if !loaded && src.media == super::boxgen::Media::Canvas {
+        // A canvas is sized like Chrome's replaced boxes (`box-sizing`, min / max) on
+        // this path too: a content box inside its padding and border (#252).
+        let sized = super::imgsize::size_replaced_live(String::new(), intrinsic, &sizing);
+        let content = (sized.width, sized.height);
+        return Some(viewport_fragment(lb, bs, bx, by, content, ctx));
     }
     let mut sized = size_replaced(src.name.clone(), intrinsic, &sizing);
     physical_placement(&mut sized.placement, ctx);
@@ -3110,23 +3135,37 @@ fn replaced_viewport_box(
     ctx: &mut Ctx,
 ) -> Option<Fragment> {
     if lb.native_iframe() {
-        return Some(embedded_viewport_fragment(lb, style, x, y, width, ctx));
+        return Some(embedded_viewport_fragment(
+            lb,
+            style,
+            (x, y),
+            width,
+            (300.0, 150.0),
+            ctx,
+        ));
     }
     let viewport = lb.svg_viewport.as_ref()?;
     Some(svg_viewport_fragment(lb, viewport, style, x, y, width, ctx))
 }
 
+/// An iframe's or a media element's default box (`natural`: its physical default
+/// size, with no aspect ratio), turned in a vertical space.
 fn embedded_viewport_fragment(
     lb: &LayoutBox,
     style: &BoxStyle,
-    x: f32,
-    y: f32,
+    (x, y): (f32, f32),
     width: f32,
+    natural: (f32, f32),
     ctx: &mut Ctx,
 ) -> Fragment {
+    let (natural_width, natural_height) = if ctx.writing.vertical() {
+        (Some(natural.1), Some(natural.0))
+    } else {
+        (Some(natural.0), Some(natural.1))
+    };
     let dimensions = super::imgsize::size_viewport_live(
-        Some(300.0),
-        None,
+        natural_width,
+        natural_height,
         style.aspect_ratio,
         ctx.html_font_scale.unwrap_or(1.0),
         &size_ctx(style, width, ctx),

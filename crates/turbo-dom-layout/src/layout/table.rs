@@ -1065,7 +1065,7 @@ fn layout_table_collapsed(
     };
     let height = row_cp.iter().sum::<f32>() + horiz.iter().sum::<f32>() - own.vertical();
     record_rows(rows, ctx);
-    let frags = finalize(rows, laid, &geom, cx, cy);
+    let frags = finalize(rows, laid, &geom, (cx, cy), ctx);
     record_row_metrics(rows, &frags, ctx);
     let frame = GroupFrame::of(&geom, cx, cy + geom.row_y[0]);
     (wrap_row_groups(frags, grid.groups, frame, ctx), height)
@@ -1337,7 +1337,13 @@ fn group_fragment(node_id: NodeId, rows: Vec<Fragment>) -> Fragment {
     frag
 }
 
-fn finalize(rows: &[RowRef], laid: Vec<LaidCell>, geom: &Geom, cx: f32, cy: f32) -> Vec<Fragment> {
+fn finalize(
+    rows: &[RowRef],
+    laid: Vec<LaidCell>,
+    geom: &Geom,
+    (cx, cy): (f32, f32),
+    ctx: &mut Ctx,
+) -> Vec<Fragment> {
     let mut row_frags: Vec<Fragment> = rows
         .iter()
         .enumerate()
@@ -1345,9 +1351,25 @@ fn finalize(rows: &[RowRef], laid: Vec<LaidCell>, geom: &Geom, cx: f32, cy: f32)
         .collect();
     for c in laid {
         let r = c.p.row;
-        row_frags[r].children.push(position_cell(c, geom, cx, cy));
+        let (node, before) = (c.p.lb.node_id, c.frag.height);
+        let cell = position_cell(c, geom, cx, cy);
+        stretch_cell_metrics(node, cell.height - before, ctx);
+        row_frags[r].children.push(cell);
     }
     row_frags
+}
+
+/// In live geometry, a cell stretched to its rows' height grows its used content box by
+/// the stretch, so its client* / scroll* reads report the stretched box like Chrome 156
+/// (miaskiewicz/turbo-dom#251).
+fn stretch_cell_metrics(node: NodeId, stretch: f32, ctx: &mut Ctx) {
+    if let Some(used) = ctx
+        .used_metrics
+        .as_mut()
+        .and_then(|metrics| metrics.get_mut(&node))
+    {
+        used.content_height += stretch;
+    }
 }
 
 /// Lay out a table's rows into the content box at `(cx, cy)` of width `cw`.
@@ -1700,7 +1722,7 @@ pub(crate) fn layout_table(
     };
     let height = geom.row_h.iter().sum::<f32>() + spacing;
     record_rows(&rows, ctx);
-    let frags = finalize(&rows, laid, &geom, cx, cy);
+    let frags = finalize(&rows, laid, &geom, (cx, cy), ctx);
     record_row_metrics(&rows, &frags, ctx);
     let frame = GroupFrame::of(&geom, cx, cy);
     (

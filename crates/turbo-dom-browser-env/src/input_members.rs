@@ -31,6 +31,7 @@ fn set_indeterminate(node: Handle, value: bool) {
             }
         }
     });
+    bump_style_state();
 }
 
 /// Checkbox legacy-pre-activation clears indeterminate; the previous flag restores a

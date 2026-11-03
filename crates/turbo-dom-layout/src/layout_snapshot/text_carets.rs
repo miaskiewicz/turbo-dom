@@ -19,7 +19,11 @@ pub(crate) fn offset(
     for (index, cell) in cells.iter().enumerate() {
         let fragment = &snapshot.fragments()[cell.fragment_index];
         let matrix = snapshot.native_hit_transforms[fragment.index];
-        let local = local_point(point, matrix, snapshot.html_layout_scale)?;
+        let mut local = local_point(point, matrix, snapshot.html_layout_scale)?;
+        if cell.vertical {
+            // Measured in the vertical line's own frame, like its cells.
+            local = super::text_geometry::unturn(local, fragment.rect);
+        }
         let distance = vertical_distance(local.y, cell.rect) * matrix[2].hypot(matrix[3]) as f32;
         let mut edge = nearest_edge(local.x, cell);
         edge.0 *= matrix[0].hypot(matrix[1]) as f32;
@@ -158,7 +162,11 @@ fn nearest_edge(x: f32, cell: &SourceClusterBox) -> (f32, usize) {
     };
     // At a shared edge the cell holding the point wins (a bidi boundary's two cells
     // name different offsets; miaskiewicz/turbo-dom#238).
-    let outside = if (cell.rect.x..=cell.rect.x + cell.rect.width).contains(&x) {
+    // A collapsed (zero-width) cell never beats a real cell at the same edge: Chrome
+    // hits the glyph there (a space collapsed after an empty inline box, Chrome 156).
+    let outside = if cell.rect.width == 0.0 {
+        2e-4
+    } else if (cell.rect.x..=cell.rect.x + cell.rect.width).contains(&x) {
         0.0
     } else {
         1e-4

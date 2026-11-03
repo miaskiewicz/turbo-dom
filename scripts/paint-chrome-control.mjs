@@ -66,7 +66,7 @@ const FONT = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/liber
 const FACE = `@font-face{font-family:"Liberation Serif";src:url(data:font/ttf;base64,${FONT})}`;
 const SERIF = `font-family:'Liberation Serif';font-size:20px;line-height:30px;color:transparent`;
 // A `w`x`h` inline-block, transparent unless `bg` is given.
-const ATOM = (w, h, bg = "") => `<span style="display:inline-block;width:${w}px;height:${h}px${bg ? `;background:${bg}` : ""}"></span>`;
+const ATOM = (w, h, bg = "", cid = "") => `<span${cid ? ` data-cid="${cid}"` : ""} style="display:inline-block;width:${w}px;height:${h}px${bg ? `;background:${bg}` : ""}"></span>`;
 const RTL_OVERRIDE = (inner) => `<span style="direction:rtl;unicode-bidi:bidi-override">${inner}</span>`;
 
 // A 40x40 inline-block of colour `bg`.
@@ -301,17 +301,16 @@ const CASES = [
   // miaskiewicz/turbo-dom#244: an inline box paints its background, padding and border
   // per line fragment (box-decoration-break: slice): the start edge on its first
   // fragment, the end edge on its last; padding and border also push its neighbours.
-  // Text is transparent so the probes see the decoration only. The text cases record no
-  // boxes: their x positions follow the text advances, which the static layout does not
-  // accumulate in LayoutUnits like Chrome (off by up to 0.03px); the atom cases do.
+  // Text is transparent so the probes see the decoration only. The text cases' boxes
+  // follow the text advances in Chrome's 1/64px LayoutUnits (miaskiewicz/turbo-dom#246).
   {
     id: "inline-background-text",
-    html: DOC(`<div style="${at(20, 20)};${SERIF}">aaa <span style="background:#ff0000">MMMM</span> bbb</div>`),
+    html: DOC(`<div style="${at(20, 20)};${SERIF}">aaa <span data-cid="s" style="background:#ff0000">MMMM</span> bbb${ATOM(10, 10, "", "a")}</div>`),
     probes: [[87, 35], [53, 35], [121, 35], [49, 35], [125, 35], [87, 25], [87, 22], [87, 45], [87, 48]],
   },
   {
     id: "inline-edges-text",
-    html: DOC(`<div style="${at(20, 20)};${SERIF}">aa<span style="background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px">MM</span>${ATOM(40, 40, "#00ff00")}</div>`),
+    html: DOC(`<div style="${at(20, 20)};${SERIF}">aa<span data-cid="s" style="background:#ff0000;padding:4px 8px;border:3px solid #0000ff;margin:0 10px">MM</span>${ATOM(40, 40, "#00ff00", "a")}</div>`),
     probes: [[49, 50], [52, 50], [104, 50], [87, 36], [87, 40], [87, 69], [87, 73], [45, 50], [110, 50], [135, 40]],
   },
   {
@@ -472,6 +471,28 @@ const CASES = [
     id: "inline-gradient-clone",
     html: DOC(`<div style="${at(20, 20)};width:80px;font-size:0"><span style="background:linear-gradient(to right,#ff0000,#0000ff);padding:5px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone">${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}${ATOM(40, 30)}</span></div>`),
     probes: [[22, 52], [98, 52], [22, 82], [98, 82]],
+  },
+  // miaskiewicz/turbo-dom#252 (`media-*`): <canvas>, <video>, <audio controls> and <object>
+  // are replaced boxes that paint their own background and border (a 4px blue border, a
+  // 6px green padding and background, in horizontal and vertical-rl writing modes); a
+  // <video> paints its poster image. Chrome's 2D canvas content is the embedder's
+  // (`canvas_ops_png`), so an empty canvas shows its background.
+  ...["canvas width=40 height=20", "video width=40 height=20", "audio controls", "object width=40 height=20"].flatMap((element) => {
+    const tag = element.split(" ")[0];
+    // Chrome paints the audio controls' panel over the content box, which a screenshot
+    // here does not: only the frame is probed there.
+    const probes = tag === "audio" ? [[22, 22], [28, 28], [26, 40], [21, 60]] : [[22, 22], [28, 28], [26, 40], [34, 34], [21, 60], [90, 30]];
+    const media = `<${element} data-cid="m" style="background:#00ff00;border:4px solid #0000ff;padding:6px"></${tag}>`;
+    return [
+      { id: `media-${tag}-frame`, html: DOC(`<div data-cid="p" style="${at(20, 20)};font-size:0">${media}</div>`), probes },
+      { id: `media-${tag}-frame-rl`, html: DOC(`<div data-cid="p" style="${at(20, 20)};font-size:0;writing-mode:vertical-rl">${media}</div>`), probes },
+    ];
+  }),
+  {
+    id: "media-video-poster",
+    html: DOC(`<video data-cid="m" poster="${SPRITE}" style="${at(20, 20)};width:100px;height:40px"></video>`),
+    assets: [SPRITE],
+    probes: [[25, 40], [65, 40], [75, 40], [115, 40], [125, 40]],
   },
 ];
 

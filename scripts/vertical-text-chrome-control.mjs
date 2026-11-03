@@ -43,7 +43,19 @@ const FACE = `@font-face{font-family:"Liberation Serif";src:url(data:font/ttf;ba
 const DOC = (body) =>
   `<!doctype html><style>body{margin:8px;font-family:"Liberation Serif";font-size:16px;line-height:20px;color:#ff0000}</style>${body}`;
 
+// miaskiewicz/turbo-dom#239 upright text: the generated box-glyph Ic Fixture face
+// (scripts/make-ic-fixture-font.py; U+6C34 a 0.9em box, `a` / `b` boxes, no vmtx so the
+// vertical advance is the 1em ascent + descent). Cases marked `ic` use it.
+const IC = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/ic-fixture/IcFixture.ttf")).toString("base64");
+const IC_FACE = `@font-face{font-family:"Ic Fixture";src:url(data:font/ttf;base64,${IC})}`;
+const IC_DOC = (body) =>
+  `<!doctype html><style>body{margin:8px;font-family:"Ic Fixture";font-size:16px;line-height:20px;color:#ff0000}</style>${body}`;
+
 const CASES = [
+  { id: "ic-rl-cjk", ic: true, html: IC_DOC(`<div data-cid="v" style="writing-mode:vertical-rl;height:120px">\u6c34\u6c34</div>`) },
+  { id: "ic-lr-upright", ic: true, html: IC_DOC(`<div data-cid="v" style="writing-mode:vertical-lr;height:120px;text-orientation:upright">ab</div>`) },
+  { id: "ic-rl-mixed", ic: true, html: IC_DOC(`<div data-cid="v" style="writing-mode:vertical-rl;height:120px">a\u6c34b</div>`) },
+  { id: "ic-rl-lines", ic: true, html: IC_DOC(`<div data-cid="v" style="writing-mode:vertical-rl;height:40px">\u6c34\u6c34\u6c34\u6c34</div>`) },
   { id: "rl-word", html: DOC(`<div data-cid="v" style="writing-mode:vertical-rl;height:120px">Hello</div>`) },
   { id: "lr-word", html: DOC(`<div data-cid="v" style="writing-mode:vertical-lr;height:120px">Hello</div>`) },
   { id: "rl-lines", html: DOC(`<div data-cid="v" style="writing-mode:vertical-rl;height:50px">lll mmm</div>`) },
@@ -135,8 +147,9 @@ const page = await browser.newPage({ viewport: { width: 800, height: 600 }, devi
 const result = [];
 for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
-  await page.addStyleTag({ content: FACE });
-  await page.evaluate(() => document.fonts.load('16px "Liberation Serif"').then(() => document.fonts.ready));
+  await page.addStyleTag({ content: testCase.ic ? IC_FACE : FACE });
+  const family = testCase.ic ? '16px "Ic Fixture"' : '16px "Liberation Serif"';
+  await page.evaluate((f) => document.fonts.load(f).then(() => document.fonts.ready), family);
   const boxes = await page.evaluate(() =>
     [...document.querySelectorAll("[data-cid]")].map((el) => {
       const r = el.getBoundingClientRect();

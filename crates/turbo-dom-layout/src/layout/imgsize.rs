@@ -168,8 +168,8 @@ fn live_dimension(value: LengthPct, basis: Option<f32>, frame: f32) -> Option<f3
 fn live_base(iw: f32, ih: f32, width: Option<f32>, height: Option<f32>) -> (f32, f32) {
     match (width, height) {
         (Some(w), Some(h)) => (w, h),
-        (Some(w), None) => (w, scale_other(w, iw, ih)),
-        (None, Some(h)) => (scale_other(h, ih, iw), h),
+        (Some(w), None) => (w, scale_other_live(w, iw, ih)),
+        (None, Some(h)) => (scale_other_live(h, ih, iw), h),
         (None, None) => (iw, ih),
     }
 }
@@ -206,12 +206,12 @@ fn constrain_live(w: f32, h: f32, auto_w: bool, auto_h: bool, limits: Limits) ->
     let height = h.clamp(limits.min_h, limits.max_h);
     match (auto_w, auto_h) {
         (true, false) => (
-            scale_other(height, h, w).clamp(limits.min_w, limits.max_w),
+            scale_other_live(height, h, w).clamp(limits.min_w, limits.max_w),
             height,
         ),
         (false, true) => (
             width,
-            scale_other(width, w, h).clamp(limits.min_h, limits.max_h),
+            scale_other_live(width, w, h).clamp(limits.min_h, limits.max_h),
         ),
         _ => (width, height),
     }
@@ -323,6 +323,18 @@ fn scale_other(given: f32, base: f32, other: f32) -> f32 {
         given
     } else {
         0.0
+    }
+}
+
+/// [`scale_other`] with Chrome 156's live semantics: a degenerate (zero) base has no
+/// aspect ratio, so the dependent axis keeps `other`, its intrinsic size (a
+/// `height=0` canvas sized `height: 30px` keeps its intrinsic width,
+/// miaskiewicz/turbo-dom#252; a 0x0 `<img>` keeps its 0, #243).
+fn scale_other_live(given: f32, base: f32, other: f32) -> f32 {
+    if base > 0.0 {
+        given * other / base
+    } else {
+        other
     }
 }
 

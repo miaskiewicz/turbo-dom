@@ -267,7 +267,17 @@ mod chrome_tests {
 
     #[test]
     fn range_client_rects_match_chrome_156() {
-        let case = case("range-client-rects");
+        range_failures("range-client-rects");
+    }
+
+    /// miaskiewicz/turbo-dom#239: text Range rects in vertical-rl / vertical-lr lines.
+    #[test]
+    fn vertical_range_client_rects_match_chrome_156() {
+        range_failures("vertical-range-and-carets");
+    }
+
+    fn range_failures(id: &str) {
+        let case = case(id);
         let boundary = |b: &Value| {
             let element = case
                 .tree

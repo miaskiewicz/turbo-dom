@@ -62,7 +62,11 @@ pub struct LayoutBox {
     /// resolver), but `natural_width`/`min_content_width` — which run deep in the
     /// flex/table sizers without a resolver — must see it so a `<div>` wrapping an
     /// `<img>` (a logo) measures the image's width instead of collapsing to 0.
-    pub(crate) intrinsic_w: std::cell::Cell<Option<f32>>,
+    /// With it the intrinsic height (not for an inline `<svg>`): a vertical space's
+    /// relabelled copy trades the two, its inline axis being the physical height
+    /// (miaskiewicz/turbo-dom#252). `NaN` is unset; two plain `f32`s keep the box (an
+    /// inline item) small. Read through [`LayoutBox::intrinsic_w`] / [`LayoutBox::intrinsic_h`].
+    intrinsic: std::cell::Cell<[f32; 2]>,
     /// Memoized flex/grid measurement: the content `(width, height)` this box lays
     /// out to at a given proposed width. taffy probes each item's size several times
     /// per solve (min/max-content, then the resolved width) and each probe does a
@@ -79,6 +83,9 @@ pub struct LayoutBox {
     /// logical space and establishes an independent formatting context
     /// ([`super::writing`]).
     pub(crate) writing_root: bool,
+    /// A writing-mode root whose block axis is its parent's inline axis (an orthogonal
+    /// flow, miaskiewicz/turbo-dom#239).
+    pub(crate) orthogonal_root: bool,
 }
 
 fn same_original_inputs(
@@ -215,6 +222,21 @@ impl LayoutBox {
         self.out_of_flow() || self.floated()
     }
 
+    /// The stamped intrinsic width ([`LayoutBox::intrinsic`]).
+    pub(crate) fn intrinsic_w(&self) -> Option<f32> {
+        Some(self.intrinsic.get()[0]).filter(|w| !w.is_nan())
+    }
+
+    /// The stamped intrinsic height ([`LayoutBox::intrinsic`]).
+    pub(crate) fn intrinsic_h(&self) -> Option<f32> {
+        Some(self.intrinsic.get()[1]).filter(|h| !h.is_nan())
+    }
+
+    /// Stamp the intrinsic width and, when known, height.
+    pub(crate) fn set_intrinsic(&self, width: f32, height: Option<f32>) {
+        self.intrinsic.set([width, height.unwrap_or(f32::NAN)]);
+    }
+
     pub(crate) fn is_replaced(&self) -> bool {
         self.native_iframe()
             || self.svg_viewport.is_some()
@@ -246,7 +268,9 @@ impl LayoutBox {
             .is_some_and(|source| match source.fallback {
                 None => true,
                 Some(size) => {
-                    size == BROKEN_ICON && ((style.width == Auto) != (style.height == Auto))
+                    source.media == Media::None
+                        && size == BROKEN_ICON
+                        && ((style.width == Auto) != (style.height == Auto))
                 }
             })
     }
@@ -348,6 +372,10 @@ impl LayoutBox {
     pub(crate) fn native_scale(&self) -> Option<f32> {
         let scale = self.html_layout_policy.get().1;
         (scale != 0.0).then_some(scale)
+    }
+    /// The HTML font-metrics policy and device scale this box lays out with.
+    pub(crate) fn html_layout_policy_pair(&self) -> (bool, Option<f32>) {
+        (self.uses_html_font_metrics(), self.native_scale())
     }
     pub(crate) fn uses_html_font_metrics(&self) -> bool {
         self.html_layout_policy.get().0
@@ -501,9 +529,18 @@ impl LayoutBox {
             natural_cache: std::cell::Cell::new(None),
             min_content_cache: std::cell::Cell::new(None),
             margin_memo: MarginMemoSlot::default(),
+            svg_viewport: self
+                .svg_viewport
+                .as_ref()
+                .map(|viewport| Box::new(viewport.relabelled(relabel.swaps()))),
             ..self.clone_shallow()
         };
         copy.clear_measured_values();
+        if let (true, Some(width), Some(height)) =
+            (relabel.swaps(), self.intrinsic_w(), self.intrinsic_h())
+        {
+            copy.set_intrinsic(height, Some(width));
+        }
         copy
     }
 
@@ -511,6 +548,7 @@ impl LayoutBox {
     fn mark_writing_roots(&mut self, parent: super::writing::WritingMode) {
         let mode = super::writing::WritingMode::of(&self.style);
         self.writing_root = mode != parent;
+        self.orthogonal_root = mode.vertical() != parent.vertical();
         match &mut self.kind {
             BoxKind::Block(kids)
             | BoxKind::Flex(kids)
@@ -547,10 +585,11 @@ impl LayoutBox {
             html_layout_policy: self.html_layout_policy.clone(),
             natural_cache: std::cell::Cell::new(None),
             min_content_cache: std::cell::Cell::new(None),
-            intrinsic_w: self.intrinsic_w.clone(),
+            intrinsic: self.intrinsic.clone(),
             measure_cache: RefCell::new(self.measure_cache.borrow().clone()),
             margin_memo: MarginMemoSlot::default(),
             writing_root: self.writing_root,
+            orthogonal_root: self.orthogonal_root,
             list_marker: None,
         }
     }
@@ -593,6 +632,20 @@ pub struct ImageSource {
     /// Set before layout when the resolver could not load this `<img>`'s image
     /// (`crate::layout::stamp_intrinsic_widths`).
     pub(crate) unloaded: std::cell::Cell<bool>,
+    /// The replaced media element this is the default box of (miaskiewicz/turbo-dom#252).
+    pub(crate) media: Media,
+}
+
+/// Which replaced media element an [`ImageSource`] sizes (miaskiewicz/turbo-dom#252):
+/// none (an `<img>` or a background), a `<canvas>` (its default size, from its
+/// `width` / `height` attributes, has an aspect ratio) or a `<video>` without a
+/// loaded poster, `<audio controls>`, `<object>` or `<embed>` (a default size with
+/// no aspect ratio, like an `<iframe>`'s, Chrome 156).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Media {
+    None,
+    Canvas,
+    Viewport,
 }
 
 /// What a box contains, by formatting context.
@@ -723,6 +776,8 @@ pub(crate) struct Recorded {
     pub(crate) texts: std::collections::HashMap<NodeId, turbo_dom::Handle>,
     /// The anonymous table grid boxes ([`LayoutBox::table_grid`]).
     pub(crate) table_grids: std::collections::HashSet<NodeId>,
+    /// `::marker` box / text ids -> their list item's box id.
+    pub(crate) list_markers: std::collections::HashMap<NodeId, NodeId>,
 }
 
 /// A monotonic source of pre-order node ids.
@@ -792,6 +847,9 @@ impl Ids {
         let id = self.alloc();
         if let Some(sources) = &mut self.sources {
             sources.list_marker(id, owner);
+        }
+        if let Some(recorded) = &mut self.recorded {
+            recorded.list_markers.insert(id, owner);
         }
         id
     }
@@ -930,7 +988,7 @@ fn line_break(el: &StyledElement, ids: &mut Ids) -> InlineItem {
     }
 }
 fn classify_html(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
-    if ids.hidden(&el.style) {
+    if ids.hidden(&el.style) || unrendered_embed(el) {
         return None;
     }
     if is_br(el) {
@@ -1007,7 +1065,10 @@ fn native_inline_items(el: &StyledElement, ids: &mut Ids) -> Level {
     let native = ids.inline_boxes();
     // An inline `<img>` (its UA default, miaskiewicz/turbo-dom#242) is an atomic
     // replaced box on every path, not flattened away like a text inline.
-    if is_img(el) || (native && super::inline_boxes::atomic_element(el)) {
+    if is_img(el)
+        || media_element(el).is_some()
+        || (native && super::inline_boxes::atomic_element(el))
+    {
         Level::Inline(vec![InlineItem::Atomic(build_block_box(el, ids))])
     } else if native || decorated_inline(el) {
         native_inline_flow(el, ids)
@@ -1150,6 +1211,19 @@ fn classify(node: &StyledNode, parent_style: &ComputedStyle, ids: &mut Ids) -> O
     if ids.is_svg_viewport(el) {
         return Some(classify_svg_viewport(el, ids));
     }
+    // An inline whose writing mode differs from its parent's is an orthogonal (or
+    // reversed) flow root: it lays out as an atomic inline, like an inline-block
+    // (Chrome 156; miaskiewicz/turbo-dom#239).
+    if display_of(&el.style) == Display::Inline
+        && super::writing::WritingMode::of(&el.style)
+            != super::writing::WritingMode::of(parent_style)
+        && !ids.hidden(&el.style)
+        && matches!(el.tag, Tag::Html(_))
+    {
+        return Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
+            el, ids,
+        ))]));
+    }
     classify_element(el, ids)
 }
 
@@ -1224,6 +1298,10 @@ fn box_kind_for(display: Display, el: &StyledElement, ids: &mut Ids) -> BoxKind 
     if let Some(alt) = img_alt_text(el) {
         return build_flow(&alt_fallback(el, alt), &el.style, ids);
     }
+    if media_element(el).is_some() {
+        // A replaced media box: its fallback content does not render (#252).
+        return BoxKind::Lines(Vec::new());
+    }
     match display {
         Display::Flex | Display::InlineFlex => BoxKind::Flex(flex_grid_children(el, ids)),
         Display::Grid | Display::InlineGrid => BoxKind::Grid(flex_grid_children(el, ids)),
@@ -1263,10 +1341,11 @@ fn table_kind(el: &StyledElement, ids: &mut Ids) -> BoxKind {
         html_layout_policy: std::cell::Cell::new((false, 0.0)),
         natural_cache: std::cell::Cell::new(None),
         min_content_cache: std::cell::Cell::new(None),
-        intrinsic_w: std::cell::Cell::new(None),
+        intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
         writing_root: false,
+        orthogonal_root: false,
         list_marker: None,
     });
     BoxKind::Table(captions)
@@ -1354,10 +1433,11 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             html_layout_policy: std::cell::Cell::new((false, 0.0)),
             natural_cache: std::cell::Cell::new(None),
             min_content_cache: std::cell::Cell::new(None),
-            intrinsic_w: std::cell::Cell::new(None),
+            intrinsic: std::cell::Cell::new([f32::NAN; 2]),
             measure_cache: RefCell::new(None),
             margin_memo: MarginMemoSlot::default(),
             writing_root: false,
+            orthogonal_root: false,
             list_marker: None,
         };
     }
@@ -1400,10 +1480,11 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         html_layout_policy: std::cell::Cell::new((false, 0.0)),
         natural_cache: std::cell::Cell::new(None),
         min_content_cache: std::cell::Cell::new(None),
-        intrinsic_w: std::cell::Cell::new(None),
+        intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
         writing_root: false,
+        orthogonal_root: false,
         list_marker,
     }
 }
@@ -1457,12 +1538,16 @@ fn marker_of(
 /// content; a `background-image: url(...)` paints behind the box. The `<img>`
 /// source wins when both are present.
 fn image_of(el: &StyledElement) -> Option<ImageSource> {
+    if let Some(source) = media_source(el) {
+        return Some(source);
+    }
     if let Some(src) = img_src(el) {
         return Some(ImageSource {
             name: src.to_string(),
             replaced: true,
             fallback: broken_image_size(el),
             unloaded: std::cell::Cell::new(false),
+            media: Media::None,
         });
     }
     if img_alt_text(el).is_some() {
@@ -1472,6 +1557,7 @@ fn image_of(el: &StyledElement) -> Option<ImageSource> {
             replaced: true,
             fallback: None,
             unloaded: std::cell::Cell::new(false),
+            media: Media::None,
         });
     }
     background_image(&el.style).map(|name| ImageSource {
@@ -1479,7 +1565,69 @@ fn image_of(el: &StyledElement) -> Option<ImageSource> {
         replaced: false,
         fallback: None,
         unloaded: std::cell::Cell::new(false),
+        media: Media::None,
     })
+}
+
+/// The replaced content of a media element (miaskiewicz/turbo-dom#252), with Chrome
+/// 156's default sizes: a `<canvas>` its `width` / `height` attributes (300 x 150 when
+/// missing or invalid), a `<video>` its poster image (when the resolver loads it) else
+/// 300 x 150, `<audio controls>` 300 x 54, `<object>` / `<embed>` 300 x 150. Nothing
+/// loads into the box but a poster: its background and border paint, its fallback
+/// content does not render.
+fn media_source(el: &StyledElement) -> Option<ImageSource> {
+    let (name, fallback, media) = match media_element(el)? {
+        "canvas" => (
+            String::new(),
+            (
+                canvas_dimension(attr_value(&el.attrs, "width"), 300),
+                canvas_dimension(attr_value(&el.attrs, "height"), 150),
+            ),
+            Media::Canvas,
+        ),
+        "video" => (
+            attr_value(&el.attrs, "poster")
+                .unwrap_or_default()
+                .to_string(),
+            (300, 150),
+            Media::Viewport,
+        ),
+        "audio" => (String::new(), (300, 54), Media::Viewport),
+        _ => (String::new(), (300, 150), Media::Viewport),
+    };
+    Some(ImageSource {
+        name,
+        replaced: true,
+        fallback: Some(fallback),
+        unloaded: std::cell::Cell::new(false),
+        media,
+    })
+}
+
+/// The media element `el` is (`canvas`, `video`, `audio`, `object`, `embed`), if any.
+pub(crate) fn media_element(el: &StyledElement) -> Option<&'static str> {
+    let Tag::Html(name) = &el.tag else {
+        return None;
+    };
+    ["canvas", "video", "audio", "object", "embed"]
+        .into_iter()
+        .find(|media| name == media)
+}
+
+/// Whether `el` is an `<embed>` without a source, which Chrome 156 renders no box for.
+pub(crate) fn unrendered_embed(el: &StyledElement) -> bool {
+    media_element(el) == Some("embed") && attr_value(&el.attrs, "src").is_none_or(str::is_empty)
+}
+
+/// A canvas `width` / `height` attribute: a valid non-negative integer (HTML's rules:
+/// leading whitespace, an optional `+`, the leading digits), else `default`.
+fn canvas_dimension(value: Option<&str>, default: u32) -> u32 {
+    let value = value
+        .unwrap_or_default()
+        .trim_start_matches([' ', '\t', '\n', '\x0c', '\r']);
+    let value = value.strip_prefix('+').unwrap_or(value);
+    let digits = value.len() - value.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+    value[..digits].parse().unwrap_or(default)
 }
 
 /// The intrinsic size of Chrome's broken-image icon.
@@ -1662,7 +1810,7 @@ fn flush_flex_text(
 
 fn block_child(node: &StyledNode, ids: &mut Ids) -> Option<LayoutBox> {
     let el = node.as_element()?;
-    if !is_marker(el) && ids.hidden(&el.style) {
+    if !is_marker(el) && (ids.hidden(&el.style) || unrendered_embed(el)) {
         return None;
     }
     Some(build_block_box(el, ids))
@@ -1720,10 +1868,11 @@ fn anon_lines_box(
         html_layout_policy: std::cell::Cell::new((false, 0.0)),
         natural_cache: std::cell::Cell::new(None),
         min_content_cache: std::cell::Cell::new(None),
-        intrinsic_w: std::cell::Cell::new(None),
+        intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
         writing_root: false,
+        orthogonal_root: false,
         list_marker: None,
     }
 }
@@ -1988,10 +2137,11 @@ pub(crate) fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind
         html_layout_policy: std::cell::Cell::new((false, 0.0)),
         natural_cache: std::cell::Cell::new(None),
         min_content_cache: std::cell::Cell::new(None),
-        intrinsic_w: std::cell::Cell::new(None),
+        intrinsic: std::cell::Cell::new([f32::NAN; 2]),
         measure_cache: RefCell::new(None),
         margin_memo: MarginMemoSlot::default(),
         writing_root: false,
+        orthogonal_root: false,
         list_marker: None,
     }
 }

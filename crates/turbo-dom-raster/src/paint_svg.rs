@@ -145,8 +145,15 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             font_size,
             color,
             vertical,
+            upright,
             ..
-        } => paint_text(svg, (f, *vertical), glyphs, face, *font_size, *color),
+        } => {
+            if *vertical && *upright {
+                paint_upright_text(svg, f, glyphs, face, (*font_size, *color));
+            } else {
+                paint_text(svg, (f, *vertical), glyphs, face, *font_size, *color);
+            }
+        }
         FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
         FragmentContent::Marker(_) => {}
     }
@@ -499,6 +506,51 @@ impl Tracer for PathSink {
 /// Emit a line's glyph outlines as one filled `<path>` (a transparent colour, or a run
 /// with no outlined glyph, emits nothing). The face's `units_per_em` is non-zero:
 /// `ttf-parser` rejects a `head` outside 16..=16384.
+/// A turned (vertical) run of upright glyphs: each glyph its own path, turned back a
+/// quarter about its pen inside the run's turn (`paint_png::upright_turn`).
+fn paint_upright_text(
+    svg: &mut String,
+    f: &Fragment,
+    glyphs: &[PositionedGlyph],
+    face: &FontFace,
+    (font_size, color): (f32, Rgba),
+) {
+    if color.a == 0 {
+        return;
+    }
+    let scale = font_size / f32::from(face.units_per_em());
+    let outline = glyph::outline_face(face);
+    let frame = crate::paint_png::glyph_frame(f, true);
+    for g in glyphs {
+        let pen = Pen {
+            origin_x: f.x + g.x,
+            baseline_y: f.y + g.y,
+            scale,
+        };
+        let mut sink = PathSink::default();
+        glyph::trace_glyph(&outline, g.glyph_id, pen, &mut sink);
+        if sink.0.is_empty() {
+            continue;
+        }
+        let t = frame.pre_concat(crate::paint_png::upright_turn(
+            true,
+            (pen.origin_x, pen.baseline_y),
+        ));
+        let _ = writeln!(
+            svg,
+            "<path d=\"{}\" {} transform=\"matrix({:.4} {:.4} {:.4} {:.4} {:.2} {:.2})\"/>",
+            sink.0.trim_end(),
+            fill_attrs(color),
+            t.sx,
+            t.ky,
+            t.kx,
+            t.sy,
+            t.tx,
+            t.ty
+        );
+    }
+}
+
 fn paint_text(
     svg: &mut String,
     (f, vertical): (&Fragment, bool),
@@ -1101,6 +1153,7 @@ mod tests {
                     font_size: 24.0,
                     color: RED,
                     vertical: false,
+                    upright: false,
                 },
             );
             let mut d = Data(String::new(), 0.0, 0.0, scale);
@@ -1212,6 +1265,7 @@ mod tests {
                     font_size: 20.0,
                     color,
                     vertical: false,
+                    upright: false,
                 },
             )
         };

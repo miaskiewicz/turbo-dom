@@ -31,7 +31,7 @@
   const regexExec = Function.prototype.call.bind(RegExp.prototype.exec), regexTest = (pattern, text) => regexExec(pattern, text) !== null;
   const associatedGet=element=>bridge('associated',element),associatedSet=(element,record)=>bridge('associated',element,record);
   const privateGet=(object,family)=>bridge('private',object,family),privateSet=(object,family,value)=>bridge('private',object,family,value);
-  const customGet=element=>privateGet(element,'customMessage'),customSet=(element,value)=>privateSet(element,'customMessage',value);
+  const customGet=element=>privateGet(element,'customMessage'),customSet=(element,value)=>{ns.bumpStyleState();privateSet(element,'customMessage',value);};
   const validityGet=state=>privateGet(state,'validityRecord'),validitySet=(state,value)=>privateSet(state,'validityRecord',value);
   const stateGet=element=>privateGet(element,'validityObject'),stateSet=(element,value)=>privateSet(element,'validityObject',value);
   const submitterGet=event=>privateGet(event,'submitter'),submitterSet=(event,value)=>privateSet(event,'submitter',value),submitterHas=event=>submitterGet(event)!==undefined;
@@ -329,7 +329,7 @@
     try {
       // A submission attempt sets every listed input, select and textarea's user validity.
       const controls=formControls(form);
-      for(let i=0;i<controls.length;i++){const kind=tag(controls[i]);if(kind==='input'||kind==='select'||kind==='textarea')privateSet(controls[i],'userValidity',true);}
+      for(let i=0;i<controls.length;i++){const kind=tag(controls[i]);if(kind==='input'||kind==='select'||kind==='textarea'){ns.bumpStyleState();privateSet(controls[i],'userValidity',true);}}
       if(!present(form,'novalidate')&&!(submitter&&present(submitter,'formnovalidate'))&&!validate(form))return;
       const event=new SubmitEventClass('submit',{bubbles:true,cancelable:true,composed:submitter!==null,submitter});
       if(!bridge('emit',form,event))return;
@@ -377,7 +377,7 @@
   }
 
   for(const methodName of ['checkValidity','reportValidity'])method(formPrototype,methodName,function(){checkForm(this);return validate(this);},0);
-  method(formPrototype,'reset',function(){checkForm(this);const event=new EventClass('reset',{bubbles:true,cancelable:true});if(!bridge('emit',this,event))return;const controls=formControls(this);for(let i=0;i<controls.length;i++){privateSet(controls[i],'userValidity',false);const record=associatedGet(controls[i]);if(record){if(record.reset)record.reset();}else resetControl(controls[i]);}},0);
+  method(formPrototype,'reset',function(){checkForm(this);const event=new EventClass('reset',{bubbles:true,cancelable:true});if(!bridge('emit',this,event))return;const controls=formControls(this);for(let i=0;i<controls.length;i++){ns.bumpStyleState(),privateSet(controls[i],'userValidity',false);const record=associatedGet(controls[i]);if(record){if(record.reset)record.reset();}else resetControl(controls[i]);}},0);
   method(formPrototype,'requestSubmit',function(submitter){return request(this,submitter);},0);
   method(formPrototype,'submit',function(){checkForm(this);if(!bridge('allowed',this)||!bridge('active',this))return;return queue(this,null);},0);
   for(const [proto,property,attributeName] of [[formPrototype,'noValidate','novalidate'],[HTMLButtonElement.prototype,'formNoValidate','formnovalidate'],[HTMLInputElement.prototype,'formNoValidate','formnovalidate']]) {

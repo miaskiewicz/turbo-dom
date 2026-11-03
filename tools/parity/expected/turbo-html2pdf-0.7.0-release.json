@@ -1,0 +1,10 @@
+{
+  "id": "turbo-html2pdf release/0.7.0 (turbo-dom#178, turbo-dom#128)",
+  "reason": "Measured with the html2pdf napi addons of turbo-html2pdf release/0.7.0 (pinned to turbo-dom e425311, flatten_inline_elements = true) against the released turbo-html2pdf 0.6.0 (main b66dba9, turbo-dom 0.6.0) on the same host. Outputs that changed and that no other expected file declares: conformance-13-inline-block-wrap (pdf, and its PDF/UA render): the boxes are unchanged; the text inside each 30px inline-block chip (14px, line-height: 1) moves up 2px. That is the negative half-leading with no line-height floor (turbo-dom#178), floored the way Blink floors it. The other outputs listed here are the PDF/UA renders with lists, which also change their structure tree: a list marker (turbo-dom#128 ::marker, from NodeSources::list_markers) is the LI's Lbl instead of an anonymous P. veraPDF PDF/UA-1 passes (turbo-html2pdf tests/pdf_ua.rs). The other 0.7.0 html2pdf changes are declared in turbo-dom-241-242-243, -245, -246 and -248.",
+  "control": "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json",
+  "changes": {
+    "html2pdf": ["conformance-13-inline-block-wrap.pdf", "template-legal-ua.pdf", "template-mixed-ua.pdf", "template-report-ua.pdf"],
+    "html2pdf-svg": ["conformance-13-inline-block-wrap.pdf", "template-legal-ua.pdf", "template-mixed-ua.pdf", "template-report-ua.pdf"],
+    "html2pdf-extra": ["conformance-13-inline-block-wrap.ua.pdf", "conformance-06-list-indent.ua.pdf"]
+  }
+}

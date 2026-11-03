@@ -677,12 +677,15 @@ fn markers_in_vertical_roots_and_inline_blocks_take_no_space() {
     // A block marker is a zero-size point wherever it sits: inside a vertical writing
     // root (the logical layer turns it like any box, and it is no physically sized
     // replaced element) and inside an inline-block (whose baseline still comes from its
-    // last line box), every box lays out exactly as without the markers.
-    let body = |marker: &str| {
+    // last line box), every box lays out exactly as without the markers. An inline
+    // marker and a `<br>` in a vertical root's line boxes turn the same way.
+    let body = |marker: &str, inline: &str| {
         format!(
             "<body style='margin:0;font:16px monospace'>\
              <div style='writing-mode:vertical-rl;height:100px'>{marker}<div data-cid=v \
              style='inline-size:20px;block-size:10px'></div></div>\
+             <div style='writing-mode:vertical-rl;height:100px'>a{inline}<br>b<span data-cid=w \
+             style='display:inline-block;width:5px;height:5px'></span></div>\
              <div>x<span data-cid=ib style='display:inline-block'>{marker}y</span>\
              <span data-cid=a style='display:inline-block;width:5px;height:5px'></span></div></body>"
         )
@@ -704,13 +707,64 @@ fn markers_in_vertical_roots_and_inline_blocks_take_no_space() {
         boxes.sort_by(|a, b| a.0.cmp(&b.0));
         boxes
     };
-    let marked = body("<x-marker-2-b></x-marker-2-b>");
+    let marked = body(
+        "<x-marker-2-b></x-marker-2-b>",
+        "<x-marker-4-i></x-marker-4-i>",
+    );
     let tree = parse_html_tree(&marked);
     let styled = turbo_dom_layout::style_html_tree(&tree, "", 400.0, &marker_options());
     let mut markers = 0;
     count(&styled, &mut markers);
-    assert_eq!(markers, 2);
-    let without = boxes(&body(""));
-    assert_eq!(without.len(), 3);
+    assert_eq!(markers, 3);
+    let without = boxes(&body("", ""));
+    assert_eq!(without.len(), 4);
     assert_eq!(boxes(&marked), without);
+}
+
+/// A list item's `::marker` boxes (miaskiewicz/turbo-dom#128) have no source element; the
+/// recorded sources map them to their list item's box so a consumer can tell them from
+/// anonymous blocks (html2pdf tags them `Lbl`, not `P`, for PDF/UA).
+#[test]
+fn recorded_sources_map_list_markers_to_their_item() {
+    let tree = parse_html_tree(
+        "<body><ul><li id=a>one</li><li id=b style='list-style:none'>two</li></ul><ol><li id=c>three</li></ol></body>",
+    );
+    let laid = lay(&tree, "", LayoutOptions::default());
+    let id_of = |name: &str| {
+        laid.sources
+            .elements
+            .iter()
+            .find(|(_, &h)| tree.get_attribute(h, "id") == Some(name))
+            .map(|(id, _)| *id)
+            .unwrap()
+    };
+    let mut owners: Vec<NodeId> = laid.sources.list_markers.values().copied().collect();
+    owners.sort_by_key(|id| id.0);
+    owners.dedup();
+    assert_eq!(owners, [id_of("a"), id_of("c")]);
+    let item = |name: &str| {
+        let frags = fragments(&laid.galley);
+        frags
+            .iter()
+            .find(|f| f.node_id == id_of(name))
+            .unwrap()
+            .clone()
+    };
+    // The item's first child is its marker box, beside (left of) the item's content.
+    for name in ["a", "c"] {
+        let first = &item(name).children;
+        assert!(first
+            .iter()
+            .any(|f| laid.sources.list_markers.get(&f.node_id) == Some(&id_of(name))));
+    }
+    for (marker, owner) in &laid.sources.list_markers {
+        assert!(!laid.sources.elements.contains_key(marker));
+        assert!(!laid.sources.texts.contains_key(marker));
+        let frags = fragments(&laid.galley);
+        let item = frags.iter().find(|f| f.node_id == *owner).unwrap();
+        assert!(
+            fragments(item).iter().any(|f| f.node_id == *marker),
+            "the marker is laid out inside its item's fragment"
+        );
+    }
 }

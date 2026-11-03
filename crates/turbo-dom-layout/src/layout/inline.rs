@@ -63,6 +63,56 @@ pub struct InlineRun {
     /// The run's break opportunities inside words: `word-break`, `overflow-wrap`
     /// and `hyphens` (miaskiewicz/turbo-dom#212, #213).
     pub word_breaking: WordBreaking,
+    /// Which characters stand upright in a vertical line (miaskiewicz/turbo-dom#239).
+    pub upright: UprightText,
+}
+
+/// The characters of a run that stand upright in a vertical line instead of turning a
+/// quarter (CSS Writing Modes 4 §7.1): none in horizontal flow or under
+/// `text-orientation: sideways`, the CJK and related blocks (`Vertical_Orientation`
+/// U / Tu) under `mixed`, every character under `upright`. An upright character
+/// advances by the font's vertical advance (its ascent + descent: the fixture faces
+/// have no `vmtx`) and stands centred on the line.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum UprightText {
+    #[default]
+    None,
+    Mixed,
+    All,
+}
+
+impl UprightText {
+    /// The orientation of text styled `style` (its inherited `writing-mode` and
+    /// `text-orientation`).
+    #[must_use]
+    pub fn of(style: &crate::ComputedStyle) -> UprightText {
+        let mode = super::writing::WritingMode::of(style);
+        if !super::writing::central_baseline(mode, style) {
+            return UprightText::None;
+        }
+        if style.get("text-orientation").map(str::trim) == Some("upright") {
+            UprightText::All
+        } else {
+            UprightText::Mixed
+        }
+    }
+
+    /// Whether `c` stands upright.
+    #[must_use]
+    pub fn sets(self, c: char) -> bool {
+        match self {
+            UprightText::None => false,
+            UprightText::Mixed => super::inline_boxes::sets_upright(c),
+            UprightText::All => true,
+        }
+    }
+}
+
+/// The vertical advance of an upright glyph of `face` at `font_size`: its ascent +
+/// descent.
+fn upright_advance(face: &FontFace, font_size: f32) -> f32 {
+    let metrics = face.html_metrics(font_size);
+    metrics.ascent + metrics.descent
 }
 
 /// Where a run may break inside a word (CSS Text 3 §5): `word-break: break-all`
@@ -240,6 +290,8 @@ pub struct GlyphRun {
     pub face: FontFace,
     pub font_size: f32,
     pub color: Rgba,
+    /// The glyphs stand upright in a vertical line (see [`UprightText`]).
+    pub upright: bool,
 }
 
 /// One laid-out line: its glyph runs, atom placements, used width, top offset,
@@ -332,6 +384,8 @@ struct CharInfo {
     face: FontFace,
     original: bool,
     invalid_unit: Option<u16>,
+    /// Stands upright in a vertical line ([`UprightText::sets`]).
+    upright: bool,
     /// The resolved bidi embedding level ([`bidi::paragraph_levels`]) and its
     /// paragraph's.
     level: u8,
@@ -518,6 +572,7 @@ fn flatten_chars(
                 face,
                 original: original.is_some(),
                 invalid_unit,
+                upright: run.upright.sets(ch),
                 level: 0,
                 paragraph: 0,
             });
@@ -670,6 +725,8 @@ struct Seg {
     /// before this segment, on its logically first glyph (`inline_advances::prepare`;
     /// included in `native_width`).
     leading_kern: f64,
+    /// Upright glyphs ([`UprightText`]): each advances by [`upright_advance`].
+    upright: bool,
 }
 
 struct Word {
@@ -707,12 +764,13 @@ struct Word {
     atom_level: u8,
 }
 
-fn seg_key(c: &CharInfo) -> (usize, String, u16, bool, u8) {
+fn seg_key(c: &CharInfo) -> (usize, String, u16, bool, bool, u8) {
     (
         c.run,
         c.face.family().to_string(),
         c.face.weight(),
         c.face.is_italic(),
+        c.upright,
         c.level,
     )
 }
@@ -722,11 +780,21 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
     let run = &runs[chars[0].run];
     let face = chars[0].face.clone();
     let original_units = segment_original_units(chars);
+    let upright = chars[0].upright;
     let rtl = chars[0].level % 2 == 1;
-    let width = original_units.as_deref().map_or_else(
-        || face.measure_in(&text, run.font_size, run.letter_spacing, rtl),
-        |units| face.measure_original_utf16(units, run.font_size, run.letter_spacing),
-    );
+    let width = if upright {
+        // One vertical advance per cluster: a combining mark joins its base.
+        let clusters = chars
+            .iter()
+            .filter(|c| !crate::text::transform::is_mark(c.ch))
+            .count();
+        clusters as f32 * (upright_advance(&face, run.font_size) + run.letter_spacing)
+    } else {
+        original_units.as_deref().map_or_else(
+            || face.measure_in(&text, run.font_size, run.letter_spacing, rtl),
+            |units| face.measure_original_utf16(units, run.font_size, run.letter_spacing),
+        )
+    };
     Seg {
         baseline_shift: None,
         source_bytes: chars[0].byte_offset,
@@ -748,6 +816,7 @@ fn make_seg(chars: &[CharInfo], runs: &[InlineRun]) -> Seg {
         level: chars[0].level,
         paragraph: chars[0].paragraph,
         leading_kern: 0.0,
+        upright,
     }
 }
 
@@ -1281,13 +1350,26 @@ fn opportunity(previous: &CharInfo, next: &CharInfo, runs: &[InlineRun]) -> Opti
         return Some(Opportunity::Normal);
     }
     let breaking = runs[next.run].word_breaking;
-    if breaking.break_all {
+    if breaking.break_all || ideographic_break(previous.ch, next.ch) {
         Some(Opportunity::Normal)
     } else if breaking.emergency {
         Some(Opportunity::Emergency)
     } else {
         None
     }
+}
+
+/// A UAX #14 break opportunity between `previous` and `next` beside an ideograph (class
+/// ID: CJK breaks between its characters and against Latin, miaskiewicz/turbo-dom#239).
+fn ideographic_break(previous: char, next: char) -> bool {
+    use unicode_linebreak::{break_property, linebreaks, BreakClass};
+    let ideograph = |c: char| break_property(u32::from(c)) == BreakClass::Ideographic;
+    if !ideograph(previous) && !ideograph(next) {
+        return false;
+    }
+    let pair: String = [previous, next].iter().collect();
+    let found = linebreaks(&pair).any(|(at, _)| at == previous.len_utf8());
+    found
 }
 
 /// Split `items` (one word's characters and inline edges) at its `kind`
@@ -1618,6 +1700,38 @@ fn wrapped_extra_spaces(previous: &Word, next: &Word) -> bool {
 /// top-down so each line's available width is queried from `region` at its own
 /// vertical position — text wraps in the narrow column beside a float, then widens
 /// once past its bottom — and flushes eagerly at a forced break (`<br>`).
+/// The device scales of a line policy (miaskiewicz/turbo-dom#246): `advances` adds
+/// text advances in Chrome's 1/64px `LayoutUnit`s ([`inline_advances`]), `metrics`
+/// rounds font metrics and baselines natively. The native HTML path sets both; the
+/// static (PDF / screenshot) path sets only the advances, so its glyphs land where
+/// Chrome's do while its line box model keeps its own metrics.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct NativeScale {
+    pub metrics: Option<f32>,
+    pub advances: Option<f32>,
+}
+
+impl NativeScale {
+    const NONE: NativeScale = NativeScale {
+        metrics: None,
+        advances: None,
+    };
+
+    /// Both scales (the native HTML path).
+    pub(crate) fn both(scale: Option<f32>) -> NativeScale {
+        NativeScale {
+            metrics: scale,
+            advances: scale,
+        }
+    }
+
+    /// 1/64px advances at device scale 1 with the legacy metrics (the static path).
+    const STATIC: NativeScale = NativeScale {
+        metrics: None,
+        advances: Some(1.0),
+    };
+}
+
 struct Placer<'a> {
     align: Align,
     region: LineRegion<'a>,
@@ -1627,6 +1741,7 @@ struct Placer<'a> {
     capture_sources: bool,
     html_font_metrics: bool,
     html_font_scale: Option<f32>,
+    advance_scale: Option<f32>,
     advances: Option<inline_advances::Cursor>,
     strut_metrics: Option<(f32, f32)>,
     /// Lines align on the central baseline (see [`NativeLineOptions::central`]).
@@ -1653,9 +1768,9 @@ impl<'a> Placer<'a> {
         align: Align,
         region: LineRegion<'a>,
         strut: f32,
-        policy: (bool, bool, Option<f32>),
+        policy: (bool, bool, NativeScale),
     ) -> Self {
-        let (capture_sources, html_font_metrics, html_font_scale) = policy;
+        let (capture_sources, html_font_metrics, scales) = policy;
         let (indent, lw) = region(0.0);
         Placer {
             align,
@@ -1663,8 +1778,11 @@ impl<'a> Placer<'a> {
             strut,
             capture_sources,
             html_font_metrics,
-            html_font_scale,
-            advances: html_font_scale.map(|scale| inline_advances::Cursor::new(scale, 0.0)),
+            html_font_scale: scales.metrics,
+            advance_scale: scales.advances,
+            advances: scales
+                .advances
+                .map(|scale| inline_advances::Cursor::new(scale, 0.0)),
             strut_metrics: None,
             central: false,
             quirk_roots: None,
@@ -1734,7 +1852,10 @@ impl<'a> Placer<'a> {
             (
                 self.capture_sources,
                 self.html_font_metrics,
-                self.html_font_scale,
+                NativeScale {
+                    metrics: self.html_font_scale,
+                    advances: self.advance_scale,
+                },
             ),
         );
         self.open_edges = next_open;
@@ -1745,7 +1866,7 @@ impl<'a> Placer<'a> {
         (self.indent, self.lw) = (self.region)(self.y);
         self.x = 0.0;
         self.advances = self
-            .html_font_scale
+            .advance_scale
             .map(|scale| inline_advances::Cursor::new(scale, 0.0));
     }
 
@@ -1846,7 +1967,7 @@ impl<'a> Placer<'a> {
     }
 
     fn place(&mut self, word: Word) {
-        let width = self.html_font_scale.map_or(word.width, |scale| {
+        let width = self.advance_scale.map_or(word.width, |scale| {
             inline_advances::Cursor::new(scale, 0.0).candidate_width(&word)
         });
         self.avoid_floats(width);
@@ -1970,7 +2091,7 @@ fn wrap_and_place(
     align: Align,
     region: LineRegion,
     strut: f32,
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
 ) -> Vec<SourceLine> {
     let ParagraphWords { mut words, bidi } = paragraph;
     let mut placer = Placer::new(align, region, strut, policy);
@@ -2281,6 +2402,20 @@ fn source_shaper_is_rtl(seg: &Seg, enabled: bool) -> bool {
 /// kerning Chrome's whole-item shaping puts across the spaces around it on its logically
 /// last and first glyphs (`inline_advances::prepare`).
 fn native_seg_advances(seg: &Seg, shaped: &[crate::text::ShapedGlyph], device: f32) -> Vec<f64> {
+    if seg.upright {
+        let ends: Vec<bool> = crate::text::cluster_ends(shaped).collect();
+        let advance = upright_advance(&seg.face, seg.font_size);
+        return ends
+            .into_iter()
+            .map(|end| {
+                if end {
+                    f64::from(advance + seg.letter_spacing)
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+    }
     let mut advances = native_text_advance::advances(
         &seg.face,
         (seg.font_size, device),
@@ -2305,8 +2440,9 @@ fn native_seg_advances(seg: &Seg, shaped: &[crate::text::ShapedGlyph], device: f
     advances
 }
 
-fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f32>)) -> SourceRun {
-    let (capture_sources, html_font_metrics, html_font_scale) = policy;
+fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, NativeScale)) -> SourceRun {
+    let (capture_sources, html_font_metrics, scales) = policy;
+    let (html_font_scale, advance_scale) = (scales.metrics, scales.advances);
     let scale = seg.face.scale(seg.font_size);
     let shift = seg
         .baseline_shift
@@ -2343,15 +2479,23 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
         (Vec::new(), Vec::new())
     };
     let ends: Vec<bool> = crate::text::cluster_ends(&shaped).collect();
-    let native = html_font_scale.map(|device| native_seg_advances(seg, &shaped, device));
+    let native = advance_scale.map(|device| native_seg_advances(seg, &shaped, device));
     for (index, (g, cluster_end)) in shaped.into_iter().zip(ends).enumerate() {
         let letter_spacing = if cluster_end { seg.letter_spacing } else { 0.0 };
-        let ordinary_advance = scale * g.x_advance as f32 + letter_spacing;
+        let ordinary_advance = if seg.upright {
+            if cluster_end {
+                upright_advance(&seg.face, seg.font_size) + letter_spacing
+            } else {
+                0.0
+            }
+        } else {
+            scale * g.x_advance as f32 + letter_spacing
+        };
         let native_advance = native
             .as_ref()
             .map_or(f64::from(ordinary_advance), |advances| advances[index]);
-        let advance = html_font_scale.map_or(ordinary_advance, |_| native_advance as f32);
-        let position = html_font_scale.map_or(x, |_| native_x as f32);
+        let advance = advance_scale.map_or(ordinary_advance, |_| native_advance as f32);
+        let position = advance_scale.map_or(x, |_| native_x as f32);
         if capture_sources {
             let start = g.cluster as usize;
             let end = boundaries[boundaries
@@ -2388,10 +2532,18 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
             });
         }
         let (text_start, text_end) = glyph_text_range(&mut text_ranges, &seg.text, g.cluster);
+        let (gx, gy) = if seg.upright {
+            upright_pen(seg, (position, seg_baseline), scale * g.x_advance as f32)
+        } else {
+            (
+                position + scale * g.x_offset as f32,
+                seg_baseline - scale * g.y_offset as f32,
+            )
+        };
         glyphs.push(PositionedGlyph {
             glyph_id: g.glyph_id,
-            x: position + scale * g.x_offset as f32,
-            y: seg_baseline - scale * g.y_offset as f32,
+            x: gx,
+            y: gy,
             text_start,
             text_end,
         });
@@ -2400,7 +2552,16 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
     }
     let (ascent, descent) = if html_font_metrics {
         let metrics = source_font_metrics(seg, html_font_scale);
-        (metrics.ascent, metrics.descent)
+        if seg.upright {
+            // An upright run's box centres on the central baseline it sits on.
+            central_metrics(
+                metrics.ascent,
+                metrics.descent,
+                html_font_scale.unwrap_or(1.0),
+            )
+        } else {
+            (metrics.ascent, metrics.descent)
+        }
     } else {
         (
             seg.face.ascent_px(seg.font_size),
@@ -2421,8 +2582,18 @@ fn shape_seg(seg: &Seg, pen_x: f32, baseline: f32, policy: (bool, bool, Option<f
             face: seg.face.clone(),
             font_size: seg.font_size,
             color: seg.color,
+            upright: seg.upright,
         },
     }
+}
+
+/// An upright glyph's pen in the line's frame, for a run the painter turns a quarter
+/// clockwise and turns each upright glyph back about its pen: the glyph's em box starts
+/// at `cell` along the line, its alphabetic baseline the font's ascent below that, and
+/// it stands centred (by its horizontal `advance`) on the line's central `baseline`.
+fn upright_pen(seg: &Seg, (cell, baseline): (f32, f32), advance: f32) -> (f32, f32) {
+    let ascent = seg.face.html_metrics(seg.font_size).ascent;
+    (cell + ascent, baseline + advance / 2.0)
 }
 
 /// The shaper's cluster starts, sorted, for each glyph's cluster byte range
@@ -2474,7 +2645,9 @@ fn can_merge(a: &GlyphRun, b: &GlyphRun) -> bool {
 }
 
 fn can_merge_source(a: &SourceRun, b: &SourceRun, capture_sources: bool) -> bool {
-    can_merge(&a.run, &b.run) && source_metadata_compatible(a, b, capture_sources)
+    can_merge(&a.run, &b.run)
+        && a.run.upright == b.run.upright
+        && source_metadata_compatible(a, b, capture_sources)
 }
 fn source_metadata_compatible(a: &SourceRun, b: &SourceRun, enabled: bool) -> bool {
     if !enabled {
@@ -2529,7 +2702,7 @@ struct LinePlacement {
     pen: f32,
     baseline: f32,
     height: f32,
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
     /// The line aligns on the central baseline (see [`NativeLineOptions::central`]).
     central: bool,
     runs: Vec<SourceRun>,
@@ -2546,6 +2719,10 @@ struct Recorder {
     /// Each open box and the item count at its start (an empty box gets a place).
     marks: Vec<(NodeId, usize)>,
     level: u8,
+    /// The empty boxes placed since the last item: Chrome 156 orders an empty inline
+    /// box with the item after it, so they take its level (the previous one's at the
+    /// line end).
+    empty: Vec<usize>,
 }
 
 impl Recorder {
@@ -2555,6 +2732,7 @@ impl Recorder {
             stack: open.iter().map(|edge| edge.node_id).collect(),
             marks: Vec::new(),
             level: 0,
+            empty: Vec::new(),
         }
     }
     fn push(
@@ -2565,6 +2743,9 @@ impl Recorder {
         atom: Option<usize>,
     ) {
         self.level = level;
+        for index in self.empty.drain(..) {
+            self.items[index].level = level;
+        }
         self.items.push(bidi::LineItem {
             x0,
             x1,
@@ -2590,6 +2771,7 @@ impl Recorder {
         if empty {
             let level = self.level;
             self.push((x, x), level, 0..0, None);
+            self.empty.push(self.items.len() - 1);
         }
         if let Some(at) = self.stack.iter().rposition(|node| *node == edge.node_id) {
             self.stack.remove(at);
@@ -2601,13 +2783,24 @@ impl LinePlacement {
     /// The alphabetic baseline `seg`'s glyphs sit on. On a central line the font's box
     /// centres on the line's baseline, so its alphabetic baseline lies its ascent below
     /// the box's top (Blink's sideways glyphs in vertical text).
+    ///
+    /// An upright run sits on the central baseline: on a line laid out on the alphabetic
+    /// one (the approximate policies) it lies the same distance above it.
     fn seg_baseline(&self, seg: &Seg) -> f32 {
-        if !self.central {
+        if self.central == seg.upright {
             return self.baseline;
         }
-        let font = source_font_metrics(seg, self.policy.2);
-        let (ascent, _) = central_metrics(font.ascent, font.descent, self.policy.2.unwrap_or(1.0));
-        self.baseline - ascent + font.ascent
+        let font = source_font_metrics(seg, self.policy.2.metrics);
+        let (ascent, _) = central_metrics(
+            font.ascent,
+            font.descent,
+            self.policy.2.metrics.unwrap_or(1.0),
+        );
+        if seg.upright {
+            self.baseline + ascent - font.ascent
+        } else {
+            self.baseline - ascent + font.ascent
+        }
     }
     fn word(&mut self, word: &Word, has_next: bool) {
         let leading = self.runs.len();
@@ -2640,9 +2833,20 @@ impl LinePlacement {
         if let Some(record) = self.record.as_mut() {
             if self.pen > x0 || self.runs.len() > runs {
                 let level = word.space_level.unwrap_or(record.level);
+                // A space collapsed away after an empty box goes with it, to the item
+                // after them (Chrome 156).
+                let pending = if self.pen > x0 {
+                    Vec::new()
+                } else {
+                    std::mem::take(&mut record.empty)
+                };
                 record.push((x0, self.pen), level, runs..self.runs.len(), None);
                 if let Some(item) = record.items.last_mut() {
                     item.space = true;
+                }
+                if !pending.is_empty() {
+                    record.empty = pending;
+                    record.empty.push(record.items.len() - 1);
                 }
             }
         }
@@ -2749,7 +2953,7 @@ impl LinePlacement {
             let baseline = self.seg_baseline(space);
             self.runs
                 .push(shape_space(space, pen, baseline, self.policy, advance));
-            if self.policy.2.is_some() {
+            if self.policy.2.advances.is_some() {
                 pen += advance;
             }
         }
@@ -2802,7 +3006,7 @@ fn shape_space(
     space: &Seg,
     pen: f32,
     baseline: f32,
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
     advance: f32,
 ) -> SourceRun {
     let mut run = shape_seg(space, pen, baseline, policy);
@@ -2829,7 +3033,7 @@ fn line_box_metrics(
     words: &[Word],
     open_edges: &[InlineEdge],
     (strut, strut_metrics): (f32, Option<NativeStrut>),
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
 ) -> Metrics {
     if words.iter().all(phantom_word) {
         return Metrics {
@@ -2840,9 +3044,9 @@ fn line_box_metrics(
     }
     match strut_metrics {
         Some((strut, central)) => {
-            native_line_metrics(words, open_edges, strut, (policy.2, central))
+            native_line_metrics(words, open_edges, strut, (policy.2.metrics, central))
         }
-        None => line_metrics(words, strut, policy.1, policy.2, open_edges),
+        None => line_metrics(words, strut, policy.1, policy.2.metrics, open_edges),
     }
 }
 
@@ -2854,22 +3058,23 @@ fn place_line(
     strut: f32,
     open_edges: &[InlineEdge],
     (strut_metrics, bidi): (Option<NativeStrut>, bool),
-    policy: (bool, bool, Option<f32>),
+    policy: (bool, bool, NativeScale),
 ) -> SourceLine {
     let m = line_box_metrics(&words, open_edges, (strut, strut_metrics), policy);
     let half_leading = (m.height - m.ascent - m.descent) / 2.0;
     let leading = policy
         .2
+        .metrics
         .map_or(half_leading, |scale| (half_leading * scale).floor() / scale);
     // The approximate (non-native) policy measures fractional font metrics; Blink's
     // are whole pixels there, so its line baselines are too (#219). The native
     // policies keep their own sub-pixel baselines.
-    let baseline = match (strut_metrics.map(|(metrics, _)| metrics), policy.2) {
+    let baseline = match (strut_metrics.map(|(metrics, _)| metrics), policy.2.metrics) {
         (Some(_), _) => m.ascent,
         (None, Some(_)) => m.ascent + leading,
         (None, None) => (m.ascent + leading).round(),
     };
-    let width = policy.2.map_or_else(
+    let width = policy.2.advances.map_or_else(
         || line_used_width(&words),
         |scale| inline_advances::line_width(&words, scale),
     );
@@ -2885,6 +3090,7 @@ fn place_line(
         central: strut_metrics.is_some_and(|(_, central)| central),
         advances: policy
             .2
+            .advances
             .map(|scale| inline_advances::Cursor::new(scale, pen)),
         record: bidi.then(|| Recorder::new(open_edges)),
     };
@@ -3005,7 +3211,7 @@ pub fn layout_paragraph_in(
         align,
         region,
         strut,
-        (false, false, None),
+        (false, false, NativeScale::NONE),
     ))
     .layout
 }
@@ -3036,7 +3242,7 @@ pub fn layout_paragraph_in_with_sources(
         align,
         region,
         strut,
-        (true, false, None),
+        (true, false, NativeScale::NONE),
     ))
 }
 
@@ -3065,7 +3271,7 @@ pub fn layout_html_paragraph_in_with_sources(
         align,
         region,
         strut,
-        (true, true, None),
+        (true, true, NativeScale::NONE),
     ))
 }
 
@@ -3093,7 +3299,12 @@ pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
     if let Some(scale) = options.scale {
         inline_advances::prepare(&mut words, scale);
     }
-    let mut placer = Placer::new(align, region, strut, (true, true, options.scale));
+    let mut placer = Placer::new(
+        align,
+        region,
+        strut,
+        (true, true, NativeScale::both(options.scale)),
+    );
     placer.strut_metrics = options.strut_metrics;
     placer.central = options.central;
     placer.quirk_roots = options.quirk_roots;
@@ -3127,12 +3338,13 @@ pub(crate) fn layout_paragraph_in_chrome_lines(
         diags,
         SourcePolicy {
             capture,
-            advances: false,
+            advances: true,
         },
         None,
     );
     apply_baselines(&mut words, lines.baselines);
-    let mut placer = Placer::new(align, region, strut, (capture, false, None));
+    inline_advances::prepare(&mut words, 1.0);
+    let mut placer = Placer::new(align, region, strut, (capture, false, NativeScale::STATIC));
     placer.strut_metrics = lines.strut_metrics;
     placer.central = lines.central;
     placer.quirk_roots = lines.quirk_roots;
@@ -3171,20 +3383,25 @@ pub(crate) fn layout_runs_with_units(
     (html_metrics, scale): (bool, Option<f32>),
 ) -> ParagraphLayout {
     let pieces: Vec<_> = runs.iter().cloned().map(Piece::Run).collect();
-    // A native HTML box measures with the device-scale advances its lines are placed
-    // with (miaskiewicz/turbo-dom#241), so a shrink-to-fit width holds its own text.
-    let scale = scale.filter(|_| html_metrics);
+    // A box measures with the advances its lines are placed with: the native HTML
+    // path's device-scale ones (miaskiewicz/turbo-dom#241), the static path's 1/64px
+    // ones at scale 1 (#246), so a shrink-to-fit width holds its own text.
+    let scales = if html_metrics {
+        NativeScale::both(scale)
+    } else {
+        NativeScale::STATIC
+    };
     let mut words = build_pieces(
         &pieces,
         fonts,
         diags,
         SourcePolicy {
             capture: html_metrics,
-            advances: scale.is_some(),
+            advances: scales.advances.is_some(),
         },
         original,
     );
-    if let Some(scale) = scale {
+    if let Some(scale) = scales.advances {
         inline_advances::prepare(&mut words.words, scale);
     }
     finalize(wrap_and_place(
@@ -3192,7 +3409,7 @@ pub(crate) fn layout_runs_with_units(
         Align::Left,
         &|_| (0.0, width),
         0.0,
-        (html_metrics, html_metrics, scale),
+        (html_metrics, html_metrics, scales),
     ))
     .layout
 }
@@ -3228,6 +3445,7 @@ mod tests {
                 text: "A".into(),
                 face,
                 font_size: 16.0,
+                upright: false,
                 color: Rgba {
                     r: 0,
                     g: 0,
@@ -3297,6 +3515,7 @@ mod tests {
             forced_newlines: false,
             text_transform: crate::text::TextTransform::default(),
             word_breaking: WordBreaking::default(),
+            upright: UprightText::None,
         })
     }
 

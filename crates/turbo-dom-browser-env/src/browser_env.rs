@@ -25,6 +25,8 @@ mod dom_ownership;
 mod element_internals;
 #[path = "element_members.rs"]
 mod element_members;
+#[path = "external_refs.rs"]
+pub(crate) mod external_refs;
 pub use dom_isolation::{activate_isolate, reset_isolate, NativeDomScope};
 #[path = "storage_ownership.rs"]
 mod storage_ownership;
@@ -541,11 +543,42 @@ fn with_dom_state<R>(id: u64, f: impl FnOnce(&DomState) -> R) -> Option<R> {
     OTHER_DOMS.with(|doms| doms.try_borrow().ok()?.get(&id)?.dom.as_ref().map(f))
 }
 
-/// A wrapper's owner tag (internal field 1): its DOM id and that DOM's tree generation.
-fn owner_tag<'s>(scope: &mut v8::PinScope<'s, '_>, id: u64) -> v8::Local<'s, v8::BigInt> {
+thread_local! {
+    /// Owner tags handed out on this thread: tag `k` names `OWNER_TAGS[k]`, a (DOM id, tree
+    /// generation) pair. Entries are never reused or removed (one per installed tree, 16 bytes),
+    /// so a tag keeps naming the tree it was minted for after that tree is gone.
+    static OWNER_TAGS: RefCell<Vec<(u64, u64)>> = const { RefCell::new(Vec::new()) };
+    static OWNER_TAG_INDEX: RefCell<HashMap<(u64, u64), i32>> = RefCell::new(HashMap::new());
+    /// The last pair interned and its tag: wrappers are minted in runs for one tree.
+    static LAST_OWNER_TAG: std::cell::Cell<(u64, u64, i32)> = const { std::cell::Cell::new((0, 0, -1)) };
+}
+
+/// The small-integer tag of (DOM `id`, its current tree generation).
+fn owner_tag_index(id: u64) -> i32 {
     let serial = with_dom_state(id, |state| state.serial).unwrap_or(0);
-    // invariant: two words are far below V8's BigInt length limit
-    v8::BigInt::new_from_words(scope, false, &[id, serial]).unwrap()
+    let (last_id, last_serial, last_tag) = LAST_OWNER_TAG.with(std::cell::Cell::get);
+    if last_tag >= 0 && last_id == id && last_serial == serial {
+        return last_tag;
+    }
+    let tag = OWNER_TAG_INDEX.with(|index| {
+        *index.borrow_mut().entry((id, serial)).or_insert_with(|| {
+            OWNER_TAGS.with(|tags| {
+                let mut tags = tags.borrow_mut();
+                tags.push((id, serial));
+                // invariant: one tag per installed tree; 2^31 trees on one thread is unreachable
+                i32::try_from(tags.len() - 1).expect("owner tags fit an i32")
+            })
+        })
+    });
+    LAST_OWNER_TAG.with(|last| last.set((id, serial, tag)));
+    tag
+}
+
+/// A wrapper's owner tag (internal field 1): a Smi naming its DOM id and that DOM's tree
+/// generation (turbo-dom 0.7.0 perf item 5; a two-word BigInt before, allocated per wrapper
+/// and decoded on every native call).
+fn owner_tag<'s>(scope: &mut v8::PinScope<'s, '_>, id: u64) -> v8::Local<'s, v8::Integer> {
+    v8::Integer::new(scope, owner_tag_index(id))
 }
 
 /// The owner of a tagged wrapper: `Some(Some(id))` while its tree is still DOM `id`'s,
@@ -555,12 +588,13 @@ fn tagged_owner(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> Opti
     let tag = object
         .get_internal_field(scope, 1)
         .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())
-        .and_then(|value| v8::Local::<v8::BigInt>::try_from(value).ok())?;
-    let mut words = [0u64; 2];
-    let (_, words) = tag.to_words_array(&mut words);
-    // Tags are always two words: generations start at 1.
-    let id = words.first().copied().unwrap_or(0);
-    let serial = words.get(1).copied().unwrap_or(0);
+        .and_then(|value| v8::Local::<v8::Int32>::try_from(value).ok())?
+        .value();
+    let (id, serial) = OWNER_TAGS.with(|tags| {
+        usize::try_from(tag)
+            .ok()
+            .and_then(|tag| tags.borrow().get(tag).copied())
+    })?;
     let live = with_dom_state(id, |state| state.serial) == Some(serial);
     Some(live.then_some(id))
 }
@@ -3264,10 +3298,71 @@ fn el_remove_attribute<'s>(
     }
 }
 
+/// What `selector_argument` learns from a selector string alone, independent of the node and
+/// the document: memoized per string (a React form re-runs the same few selectors on every
+/// render; turbo-dom 0.7.0 perf item 4).
+struct SelectorFacts {
+    /// Admitted by the stylesheet selector grammar.
+    valid: bool,
+    /// Contains a `:`. Every node-dependent rewrite (`:popover-open`, `:modal`, `:open`,
+    /// `:interest-*`, the form pseudo-classes, `:active-view-transition*`) starts at a colon
+    /// delimiter, which an escape cannot produce, so a selector without one is never rewritten.
+    pseudo: bool,
+    /// Matched through the UTF-16 API (a lone surrogate or an escape).
+    unit_path: bool,
+    scalar: String,
+}
+
+/// The memo's bound: past it the memo starts over, so a page minting unbounded distinct
+/// selector strings costs at most this many entries.
+const SELECTOR_MEMO_LIMIT: usize = 1024;
+
+thread_local! {
+    static SELECTOR_MEMO: RefCell<HashMap<Vec<u16>, std::rc::Rc<SelectorFacts>>> =
+        RefCell::new(HashMap::new());
+}
+
+/// Work counters for the deterministic selector perf gate (`perf_gates_tests`).
+#[cfg(test)]
+#[derive(Default)]
+pub(super) struct SelectorWork {
+    pub(super) grammar_parses: std::cell::Cell<usize>,
+    pub(super) rewrites: std::cell::Cell<usize>,
+}
+#[cfg(test)]
+thread_local! {
+    pub(super) static SELECTOR_WORK: SelectorWork = SelectorWork::default();
+}
+
+fn selector_facts(units: &[u16]) -> std::rc::Rc<SelectorFacts> {
+    if let Some(facts) = SELECTOR_MEMO.with(|memo| memo.borrow().get(units).cloned()) {
+        return facts;
+    }
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.grammar_parses.set(work.grammar_parses.get() + 1));
+    let scalar = String::from_utf16_lossy(units);
+    // The matcher is lenient; admission uses the same grammar as stylesheets.
+    let facts = std::rc::Rc::new(SelectorFacts {
+        valid: !scalar.is_empty() && css_selector_syntax::selector_list(&scalar).is_some(),
+        pseudo: units.contains(&u16::from(b':')),
+        unit_path: String::from_utf16(units).is_err() || units.contains(&92),
+        scalar,
+    });
+    SELECTOR_MEMO.with(|memo| {
+        let mut memo = memo.borrow_mut();
+        if memo.len() >= SELECTOR_MEMO_LIMIT {
+            memo.clear();
+        }
+        memo.insert(units.to_vec(), facts.clone());
+    });
+    facts
+}
+
 /// The selector argument of `operation` (`matches`, `closest`, `querySelector`, ...) on
 /// `node`. A SyntaxError names the operation and the interface it runs on, as Chrome's
 /// bindings do: `Element`, `Document`, or `DocumentFragment` (also for a ShadowRoot, which
-/// inherits the ParentNode members from DocumentFragment).
+/// inherits the ParentNode members from DocumentFragment). The message is built only when
+/// the selector is rejected.
 fn selector_argument<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: &v8::FunctionCallbackArguments<'s>,
@@ -3278,41 +3373,41 @@ fn selector_argument<'s>(
         return None;
     }
     let units = dom_units(scope, args.get(0))?;
-    let scalar = String::from_utf16_lossy(&units);
-    let interface = match with_tree(|tree| tree.node_type_id(node)) {
-        Some(9) => "Document",
-        Some(11) => "DocumentFragment",
-        _ => "Element",
-    };
-    let prefix = format!("Failed to execute '{operation}' on '{interface}': ");
-    if scalar.is_empty() {
+    let facts = selector_facts(&units);
+    if !facts.valid {
+        let interface = match with_tree(|tree| tree.node_type_id(node)) {
+            Some(9) => "Document",
+            Some(11) => "DocumentFragment",
+            _ => "Element",
+        };
+        let reason = if facts.scalar.is_empty() {
+            "The provided selector is empty.".to_owned()
+        } else {
+            format!("'{}' is not a valid selector.", facts.scalar)
+        };
         throw_dom_error(
             scope,
             "SyntaxError",
-            &format!("{prefix}The provided selector is empty."),
+            &format!("Failed to execute '{operation}' on '{interface}': {reason}"),
         );
         return None;
     }
-    // The matcher is lenient; admission uses the same grammar as stylesheets.
-    if css_selector_syntax::selector_list(&scalar).is_none() {
-        throw_dom_error(
-            scope,
-            "SyntaxError",
-            &format!("{prefix}'{scalar}' is not a valid selector."),
-        );
-        return None;
+    if !facts.pseudo {
+        return Some((facts.scalar.clone(), units, facts.unit_path));
     }
-    let transformed = html_popover::selector(scope, node, &scalar)?;
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.rewrites.set(work.rewrites.get() + 1));
+    let scalar = &facts.scalar;
+    let transformed = html_popover::selector(scope, node, scalar)?;
     let transformed = html_dialog::selector(scope, node, &transformed)?;
     let transformed = interest_invokers::selector(scope, node, &transformed)?;
     let subject_local = matches!(operation, "matches" | "webkitMatchesSelector" | "closest");
     let transformed = form_pseudo::selector(scope, node, &transformed, subject_local)?;
     let transformed = view_transitions::selector(scope, node, &transformed)?;
-    let original = if transformed == scalar {
-        units
-    } else {
-        transformed.encode_utf16().collect()
-    };
+    if transformed == *scalar {
+        return Some((transformed, units, facts.unit_path));
+    }
+    let original: Vec<u16> = transformed.encode_utf16().collect();
     let unit_path = String::from_utf16(&original).is_err() || original.contains(&92);
     Some((transformed, original, unit_path))
 }
@@ -4602,11 +4697,12 @@ pub fn dispatch_host_event(
     }
     if handle_of(scope, target).is_some() {
         let host = v8::Boolean::new(scope, true);
-        if let Some(function) = v8::FunctionTemplate::builder(el_dispatch_event)
-            .data(host.into())
-            .constructor_behavior(v8::ConstructorBehavior::Throw)
-            .build(scope)
-            .get_function(scope)
+        if let Some(function) =
+            v8::FunctionTemplate::builder(ext!(FunctionCallback, el_dispatch_event))
+                .data(host.into())
+                .constructor_behavior(v8::ConstructorBehavior::Throw)
+                .build(scope)
+                .get_function(scope)
         {
             function.call(scope, target.into(), &[event.into()]);
         }
@@ -5622,11 +5718,12 @@ fn dispatch_synthetic_with_trust(
         dispatch_host_event(scope, ev, node);
     } else {
         let flag = v8::Boolean::new(scope, false);
-        if let Some(function) = v8::FunctionTemplate::builder(el_dispatch_event)
-            .data(flag.into())
-            .constructor_behavior(v8::ConstructorBehavior::Throw)
-            .build(scope)
-            .get_function(scope)
+        if let Some(function) =
+            v8::FunctionTemplate::builder(ext!(FunctionCallback, el_dispatch_event))
+                .data(flag.into())
+                .constructor_behavior(v8::ConstructorBehavior::Throw)
+                .build(scope)
+                .get_function(scope)
         {
             function.call(scope, node.into(), &[ev.into()]);
         }
@@ -6115,7 +6212,7 @@ where
 {
     // DOM operations are callable methods, not constructors. Enforce that in
     // V8 itself rather than removing a property from a constructible function.
-    let template = v8::FunctionTemplate::builder(ownership_callback::<F>)
+    let template = v8::FunctionTemplate::builder(ext!(FunctionCallback, ownership_callback::<F>))
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .length(method_arity(name))
         .build(scope);
@@ -6164,11 +6261,11 @@ fn tmpl_getter(
     scope: &mut v8::PinScope,
     tmpl: v8::Local<v8::ObjectTemplate>,
     name: &str,
-    g: impl v8::MapFnTo<v8::AccessorNameGetterCallback>,
+    g: impl v8::MapFnTo<v8::AccessorNameGetterCallback> + Copy,
 ) {
     // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, name).unwrap();
-    tmpl.set_accessor(key.into(), g);
+    tmpl.set_accessor(key.into(), ext!(AccessorNameGetterCallback, g));
 }
 
 fn ownership_setter<'s, 'i, S>(
@@ -6236,7 +6333,7 @@ fn tmpl_accessor<S>(
     scope: &mut v8::PinScope,
     tmpl: v8::Local<v8::ObjectTemplate>,
     name: &str,
-    g: impl v8::MapFnTo<v8::AccessorNameGetterCallback>,
+    g: impl v8::MapFnTo<v8::AccessorNameGetterCallback> + Copy,
     _s: S,
 ) where
     S: v8::MapFnTo<v8::AccessorNameSetterCallback>
@@ -6250,7 +6347,11 @@ fn tmpl_accessor<S>(
 {
     // invariant: engine-built name, far below V8's string length limit
     let key = v8::String::new(scope, name).unwrap();
-    tmpl.set_accessor_with_setter(key.into(), g, ownership_setter::<S>);
+    tmpl.set_accessor_with_setter(
+        key.into(),
+        ext!(AccessorNameGetterCallback, g),
+        ext!(AccessorNameSetterCallback, ownership_setter::<S>),
+    );
 }
 
 /// Build the shared element template (methods + accessors).
@@ -6392,8 +6493,8 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     // Always-on graceful-degradation interceptor: unimplemented members read as undefined (no
     // crash); recording the access list is gated by log_enabled() (TURBO_RUST_DOM_LOG).
     let handler = v8::NamedPropertyHandlerConfiguration::new()
-        .getter(missing_getter)
-        .setter(passthrough_setter)
+        .getter(ext!(NamedPropertyGetterCallback, missing_getter))
+        .setter(ext!(NamedPropertySetterCallback, passthrough_setter))
         .flags(
             v8::PropertyHandlerFlags::NON_MASKING
                 | v8::PropertyHandlerFlags::ONLY_INTERCEPT_STRINGS,
@@ -6522,7 +6623,7 @@ fn make_dom_accessor(
     let operation = if setter { "set" } else { "get" };
     // invariant: engine-built name, far below V8's string length limit
     let data = v8::String::new(scope, &format!("{operation}\0{owner}\0{property}")).unwrap();
-    let template = v8::FunctionTemplate::builder(dom_accessor_dispatch)
+    let template = v8::FunctionTemplate::builder(ext!(FunctionCallback, dom_accessor_dispatch))
         .data(data.into())
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .length(i32::from(setter))
@@ -6699,15 +6800,16 @@ fn make_native_dom_function(
             call_message,
         ],
     );
-    let template = v8::FunctionTemplate::builder(native_dom_function_dispatch)
-        .data(data.into())
-        .constructor_behavior(if constructor {
-            v8::ConstructorBehavior::Allow
-        } else {
-            v8::ConstructorBehavior::Throw
-        })
-        .length(length)
-        .build(scope);
+    let template =
+        v8::FunctionTemplate::builder(ext!(FunctionCallback, native_dom_function_dispatch))
+            .data(data.into())
+            .constructor_behavior(if constructor {
+                v8::ConstructorBehavior::Allow
+            } else {
+                v8::ConstructorBehavior::Throw
+            })
+            .length(length)
+            .build(scope);
     // invariant: engine-built name, far below V8's string length limit
     let name = v8::String::new(scope, &name).unwrap();
     template.set_class_name(name);
@@ -7045,13 +7147,13 @@ fn make_native_named_object(
     let template = v8::ObjectTemplate::new(scope);
     template.set_named_property_handler(
         v8::NamedPropertyHandlerConfiguration::new()
-            .getter(named_getter)
-            .setter(named_setter)
-            .query(named_query)
-            .descriptor(named_descriptor)
-            .deleter(named_deleter)
-            .enumerator(named_enumerator)
-            .definer(named_definer)
+            .getter(ext!(NamedPropertyGetterCallback, named_getter))
+            .setter(ext!(NamedPropertySetterCallback, named_setter))
+            .query(ext!(NamedPropertyQueryCallback, named_query))
+            .descriptor(ext!(NamedPropertyDescriptorCallback, named_descriptor))
+            .deleter(ext!(NamedPropertyDeleterCallback, named_deleter))
+            .enumerator(ext!(NamedPropertyEnumeratorCallback, named_enumerator))
+            .definer(ext!(NamedPropertyDefinerCallback, named_definer))
             .data(args.get(1))
             .flags(if args.get(3).is_true() {
                 v8::PropertyHandlerFlags::ONLY_INTERCEPT_STRINGS
@@ -7063,13 +7165,13 @@ fn make_native_named_object(
     if args.get(2).is_true() {
         template.set_indexed_property_handler(
             v8::IndexedPropertyHandlerConfiguration::new()
-                .getter(indexed_getter)
-                .setter(indexed_setter)
-                .query(indexed_query)
-                .descriptor(indexed_descriptor)
-                .deleter(indexed_deleter)
-                .enumerator(indexed_enumerator)
-                .definer(indexed_definer)
+                .getter(ext!(IndexedPropertyGetterCallback, indexed_getter))
+                .setter(ext!(IndexedPropertySetterCallback, indexed_setter))
+                .query(ext!(IndexedPropertyQueryCallback, indexed_query))
+                .descriptor(ext!(IndexedPropertyDescriptorCallback, indexed_descriptor))
+                .deleter(ext!(IndexedPropertyDeleterCallback, indexed_deleter))
+                .enumerator(ext!(IndexedPropertyEnumeratorCallback, indexed_enumerator))
+                .definer(ext!(IndexedPropertyDefinerCallback, indexed_definer))
                 .data(args.get(1)),
         );
     }
@@ -7238,7 +7340,11 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     );
     #[cfg(test)]
     bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
+    #[cfg(test)]
+    bind_method(scope, global, "__noteCssUpdatePass", note_css_update_pass);
     bind_method(scope, global, "__cssomEpoch", cssom_epoch);
+    bind_method(scope, global, "__styleStateEpoch", style_state_epoch);
+    bind_method(scope, global, "__bumpStyleState", bump_style_state_native);
     bind_method(scope, global, "__bumpCssomEpoch", bump_cssom_epoch);
 }
 
@@ -7248,6 +7354,42 @@ thread_local! {
     /// another realm's element (a parent reading an iframe's), and a CSSOM edit runs in the realm
     /// that owns the sheet, so a per-realm epoch left the reader's reuse stale.
     static CSSOM_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+thread_local! {
+    /// The live-state epoch getComputedStyle keys a reused computed style on when its cascade
+    /// read a selector over live form / popover / dialog state (`:invalid`, `:checked`,
+    /// `:placeholder-shown`, `:popover-open`, `:modal`, `:open`, ...): every change of that state
+    /// that the tree version does not see bumps it (control values, option selectedness, custom
+    /// validity, user validity, the indeterminate flag, ElementInternals validity / disabled /
+    /// owner, file selections, the popover stack, modal dialogs, an opened picker). Shared by
+    /// every realm on the thread, like `CSSOM_EPOCH`.
+    static STYLE_STATE_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// Advance the live-state epoch (see `STYLE_STATE_EPOCH`).
+pub(super) fn bump_style_state() {
+    STYLE_STATE_EPOCH.with(|epoch| epoch.set(epoch.get() + 1));
+}
+
+/// The current live-state epoch (see `STYLE_STATE_EPOCH`).
+fn style_state_epoch(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    let epoch = STYLE_STATE_EPOCH.with(std::cell::Cell::get);
+    result.set(v8::Number::new(scope, epoch as f64).into());
+}
+
+/// `__bumpStyleState()`: the JS-side state stores (control values, option selectedness, custom
+/// and user validity, ElementInternals, file selections) report a change.
+fn bump_style_state_native(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    bump_style_state();
 }
 
 #[cfg(test)]
@@ -7271,6 +7413,29 @@ fn note_cascade_run(
     _rv: v8::ReturnValue,
 ) {
     CASCADE_RUNS.with(|runs| runs.set(runs.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    /// CSS animation / transition update passes (animations.js `cssUpdate` running its update
+    /// steps) on this thread, counted by the test-only `__noteCssUpdatePass` hook.
+    static CSS_UPDATE_PASSES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The CSS animation / transition update passes counted so far (see `CSS_UPDATE_PASSES`).
+#[cfg(test)]
+fn css_update_passes() -> u64 {
+    CSS_UPDATE_PASSES.with(std::cell::Cell::get)
+}
+
+/// Counts one CSS animation / transition update pass (the test-only `__noteCssUpdatePass` hook).
+#[cfg(test)]
+fn note_css_update_pass(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    CSS_UPDATE_PASSES.with(|passes| passes.set(passes.get() + 1));
 }
 
 /// The current CSSOM epoch (see `CSSOM_EPOCH`).
@@ -7360,7 +7525,99 @@ pub fn install_with_utf16_source_positions(scope: &mut v8::PinScope, units: &[u1
         Tree::parse_utf16_with_source_positions_and_processing_instructions(units),
     );
 }
-fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
+fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
+    if attach_path() {
+        bootstrap_engine(scope);
+        attach_document(scope, tree);
+        return;
+    }
+    install_engine_with_tree(scope, tree);
+}
+
+/// Whether installs take the split path (turbo-dom#249): [`bootstrap_engine`] over the
+/// empty shell, then [`attach_document`]. Off by default; `TURBO_DOM_ATTACH_PATH` turns it
+/// on so CI runs the whole suite on both paths. A V8 startup snapshot of the bootstrapped
+/// shell (the next phase) makes the attach the only per-install work.
+fn attach_path() -> bool {
+    #[cfg(test)]
+    if ATTACH_PATH_FOR_TEST.with(std::cell::Cell::get) {
+        return true;
+    }
+    std::env::var_os("TURBO_DOM_ATTACH_PATH").is_some()
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Test hook: take the split install path on this thread.
+    pub(crate) static ATTACH_PATH_FOR_TEST: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The tree-independent engine bootstrap: the whole install over the canonical empty shell.
+fn bootstrap_engine(scope: &mut v8::PinScope) {
+    install_engine_with_tree(
+        scope,
+        Tree::parse_with_processing_instructions(
+            "<!DOCTYPE html><html><head></head><body></body></html>",
+        ),
+    );
+}
+
+/// Replace the bootstrapped shell's tree with `tree`, redoing only the per-document steps
+/// [`install_engine_with_tree`] interleaves with the engine scripts: parser scripts,
+/// declarative shadow roots, nonces, checkedness, template contents and inline event
+/// handlers. Runs no engine script. The document wrapper is kept (retagged to the new tree
+/// generation); every other shell node leaves the identity cache and the ownership graph,
+/// so a wrapper the bootstrap made never aliases a node of the attached tree.
+fn attach_document(scope: &mut v8::PinScope, mut tree: Tree) {
+    tree.set_processing_instructions(true);
+    let root = tree.root();
+    let parser_scripts = script_state::parse_order(&tree);
+    let declared = shadow_html::declarative(&mut tree, root, None);
+    STYLE.with(|s| s.borrow_mut().retain(|handle, _| *handle == root));
+    LISTENERS.with(|s| s.borrow_mut().retain(|(handle, _), _| *handle == root));
+    ACTIVE.with(|s| *s.borrow_mut() = None);
+    let graph = DOM.with(|d| {
+        let mut d = d.borrow_mut();
+        // invariant: bootstrap_engine installed a DOM
+        let state = d.as_mut().unwrap();
+        assert_eq!(
+            state.tree.root(),
+            root,
+            "shell and document share the root handle"
+        );
+        // invariant: bind_document cached the document wrapper, which the global holds
+        let document = state.cache.remove(&root).unwrap();
+        state.cache.clear();
+        state.cache.insert(root, document);
+        state.scripts = script_state::initial(&tree);
+        state.parser_scripts = parser_scripts;
+        state.nonces = initial_nonces(&tree);
+        state.tree = tree;
+        // A new generation: wrappers the bootstrap made for shell nodes never resolve
+        // against this tree's nodes under a reused id.
+        state.serial = next_tree_serial();
+        state.checked_radios = Default::default();
+        state.shadow_modes = HashMap::new();
+        state.ownership_dirty = true;
+        state.ownership.clone()
+    });
+    // The shell's node wrappers leave the document's ownership graph with their tree.
+    if let Some(graph) = graph {
+        graph.borrow_mut().retire_nodes(scope, root.raw());
+    }
+    form_checked_state::parsed(root);
+    let document = wrap(scope, root);
+    let owner = owner_tag(scope, DOM_ID.with(std::cell::Cell::get));
+    document.set_internal_field(1, owner.into());
+    let declared = shadow_html::register(scope, declared);
+    template_contents::realize(scope, document);
+    for root in declared.iter().rev() {
+        template_contents::realize(scope, *root);
+    }
+    event_handlers::install(scope, None, "about:blank");
+}
+
+fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     SETUP_TERMINATED.with(|t| t.set(false));
     // Fragment parsing tokenizes `<?target data?>` like Chrome (turbo-dom#135).
     tree.set_processing_instructions(true);
@@ -7452,7 +7709,7 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     let reflect = v8::Local::<v8::Object>::try_from(reflect).unwrap();
     // invariant: install-time intrinsic lookup, before page script runs
     let construct = reflect.get(scope, construct_key.into()).unwrap();
-    let factory = v8::FunctionTemplate::builder(make_native_dom_function)
+    let factory = v8::FunctionTemplate::builder(ext!(FunctionCallback, make_native_dom_function))
         .data(construct)
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .build(scope)
@@ -7719,6 +7976,12 @@ thread_local! {
     /// Test hook (turbo-dom#184): terminate execution as the N-th install script starts, the
     /// way an embedder's watchdog can land in the middle of setup.
     pub(crate) static TERMINATE_AT_RUN_JS: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Test gate (turbo-dom#249): install scripts run on this thread.
+    pub(crate) static ENGINE_SCRIPTS_RUN: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 fn run_js(scope: &mut v8::PinScope, src: &str) {
@@ -10150,3 +10413,7 @@ pub use crate_surface::*;
 #[cfg(test)]
 #[path = "stack_edge_tests.rs"]
 mod stack_edge_tests;
+
+#[cfg(test)]
+#[path = "perf_gates_tests.rs"]
+mod perf_gates_tests;

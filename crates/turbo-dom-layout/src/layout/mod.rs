@@ -80,6 +80,10 @@ pub struct NodeSources {
     /// source element and is no structure of its own (PDF/UA: its rows belong to the
     /// table).
     pub table_grids: HashSet<NodeId>,
+    /// A list item's `::marker` boxes and text (miaskiewicz/turbo-dom#128) -> the list
+    /// item's box. A marker has no source element, so without this it reads like an
+    /// anonymous block (PDF/UA: it is the item's `Lbl`).
+    pub list_markers: HashMap<NodeId, NodeId>,
 }
 
 /// A galley plus the [`NodeSources`] of its boxes.
@@ -254,6 +258,11 @@ pub fn layout_recorded_in_viewport(
             texts: shift_map(recorded.texts),
             table_rows: rows.into_iter().map(shift).collect(),
             table_grids: recorded.table_grids.into_iter().map(shift).collect(),
+            list_markers: recorded
+                .list_markers
+                .into_iter()
+                .map(|(marker, owner)| (shift(marker), shift(owner)))
+                .collect(),
         },
     }
 }

@@ -279,7 +279,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 14] = [
+    let groups: [fn(&str) -> bool; 15] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -294,6 +294,7 @@ fn held_out(id: &str) -> bool {
         quirks_strut_case,
         rtl_block_case,
         vertical_case,
+        media_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -511,7 +512,8 @@ fn check_metrics(case: &Value, want: &Value, laid: Laid, failures: &mut Vec<Stri
 /// are unscrolled here) and offset / client / scroll metrics.
 fn compare_vertical_cases() -> (usize, Vec<String>) {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
-    let fonts = crate::test_support::fixture_fonts();
+    let mut fonts = crate::test_support::fixture_fonts();
+    fonts.add(crate::test_support::ic_fixture_face());
     let mut failures = Vec::new();
     let mut compared = 0;
     for case in fixture["cases"].as_array().unwrap() {
@@ -556,4 +558,15 @@ fn compare_vertical_cases() -> (usize, Vec<String>) {
 #[test]
 fn vertical_writing_modes_lay_out_like_chrome_156() {
     assert_matches_chrome(compare_vertical_cases());
+}
+
+/// miaskiewicz/turbo-dom#252: `<canvas>`, `<video>`, `<audio controls>`, `<object>` and
+/// `<embed>` are inline replaced boxes, in horizontal and vertical writing modes.
+fn media_case(id: &str) -> bool {
+    id.starts_with("media-")
+}
+
+#[test]
+fn media_elements_are_replaced_boxes_like_chrome_156() {
+    assert_matches_chrome(compare_cases(media_case));
 }

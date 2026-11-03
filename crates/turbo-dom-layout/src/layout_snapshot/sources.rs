@@ -185,7 +185,8 @@ impl Walker<'_> {
         };
         let excluded = excluded
             || matches!(node, StyledNode::Element(element) if display_of(&element.style) == Display::None
-                || crate::layout::contents::suppresses_subtree(element));
+                || crate::layout::contents::suppresses_subtree(element)
+                || crate::layout::boxgen::unrendered_embed(element));
         let id = self.wanted.get(path).copied();
         let (key, kind) = node_key(node);
         self.nodes.insert(
@@ -224,8 +225,9 @@ impl Walker<'_> {
     }
 
     fn excludes_child_content(&self, element: &crate::StyledElement) -> bool {
-        self.native_html
-            && matches!(&element.tag, crate::Tag::Html(name) if name.eq_ignore_ascii_case("iframe"))
+        (self.native_html
+            && matches!(&element.tag, crate::Tag::Html(name) if name.eq_ignore_ascii_case("iframe")))
+            || crate::layout::boxgen::media_element(element).is_some()
     }
 
     fn children(
@@ -242,7 +244,8 @@ impl Walker<'_> {
         let mut next = ancestors.to_vec();
         next.extend(id);
         // Fallback descendants remain in the DOM/source inventory, but a live
-        // embedded viewport never renders them in its parent's formatting tree.
+        // embedded viewport or a media element (miaskiewicz/turbo-dom#252) never
+        // renders them in its parent's formatting tree.
         let excluded = excluded || self.excludes_child_content(element);
         self.visit(&element.children, path, &next, excluded);
     }

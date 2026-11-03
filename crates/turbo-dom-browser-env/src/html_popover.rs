@@ -204,7 +204,7 @@ fn queue<'s>(
         scope,
         &[owner.into(), handle.into(), task.into(), record.into()],
     );
-    let Some(function) = v8::FunctionTemplate::builder(flush)
+    let Some(function) = v8::FunctionTemplate::builder(ext!(FunctionCallback, flush))
         .data(data.into())
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .build(scope)
@@ -310,6 +310,7 @@ fn hide_from<'s>(
             .open
             .retain(|entry| entry.node != node)
     });
+    bump_style_state();
     user_activation_gates::popover_hidden(node);
     if events {
         queue(scope, node, true, false, source);
@@ -395,6 +396,7 @@ fn show_steps<'s>(
             mode: mode.clone(),
         })
     });
+    bump_style_state();
     if mode != "manual" {
         user_activation_gates::popover_shown(node);
     }
