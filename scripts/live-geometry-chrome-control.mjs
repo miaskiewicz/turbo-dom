@@ -131,6 +131,7 @@ const MEDIA_CASES = [
   ["canvas-pct-width", `<canvas data-cid="m" width="40" height="20" style="display:block;width:50%"></canvas>`],
   ["canvas-attr-syntax", `<canvas data-cid="m" width=" +50px" height="x9"></canvas>`],
   ["canvas-border-box-height", `<canvas data-cid="m" width="40" height="20" style="box-sizing:border-box;height:30px;padding:5px"></canvas>`],
+  ["canvas-border-box-width", `<canvas data-cid="m" width="40" height="20" style="box-sizing:border-box;width:30px;padding:5px"></canvas>`],
   ["canvas-zero-height-css-height", `<canvas data-cid="m" width="40" height="0" style="height:30px"></canvas>`],
   ["video-default", `<video data-cid="m"></video>`],
   ["video-attrs", `<video data-cid="m" width="200" height="100"></video>`],

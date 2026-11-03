@@ -93,6 +93,9 @@ textarea { display: inline-block; width: 200px; height: 3em; border: 1px solid #
 select, button { display: inline-block; border: 1px solid #a9a9a9; background-color: #efefef }
 button, select, meter, progress, input[type=button], input[type=submit], input[type=reset], input[type=color], input[type=checkbox], input[type=radio], input[type=search] { box-sizing: border-box }
 template { display: none }
+canvas, video, audio, object, embed { display: inline }
+audio:not([controls]) { display: none }
+video { object-fit: contain }
 [dir=rtl i] { direction: rtl }
 [dir=ltr i] { direction: ltr }
 [dir=rtl i], [dir=ltr i], [dir=auto i], bdi { unicode-bidi: isolate }

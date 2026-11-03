@@ -7529,6 +7529,32 @@
    ]
   },
   {
+   "id": "media-canvas-border-box-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<canvas data-cid=\"m\" width=\"40\" height=\"20\" style=\"box-sizing:border-box;width:30px;padding:5px\"></canvas>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 25,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 9.859375,
+     "y": 0,
+     "width": 30,
+     "height": 20,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
    "id": "media-canvas-zero-height-css-height",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\">a<canvas data-cid=\"m\" width=\"40\" height=\"0\" style=\"height:30px\"></canvas>b</div>",
    "fonts": true,
@@ -8396,6 +8422,32 @@
    ]
   },
   {
+   "id": "media-rl-canvas-border-box-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\" class=\"rl\">a<canvas data-cid=\"m\" width=\"40\" height=\"20\" style=\"box-sizing:border-box;width:30px;padding:5px\"></canvas>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 39.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 30,
+     "height": 20,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
    "id": "media-rl-canvas-zero-height-css-height",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\" class=\"rl\">a<canvas data-cid=\"m\" width=\"40\" height=\"0\" style=\"height:30px\"></canvas>b</div>",
    "fonts": true,
@@ -9257,6 +9309,32 @@
      "y": 9.859375,
      "width": 50,
      "height": 30,
+     "display": "inline",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "media-lr-canvas-border-box-width",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Fira Code\"}.rl{writing-mode:vertical-rl}.lr{writing-mode:vertical-lr}</style><div data-cid=\"p\" class=\"lr\">a<canvas data-cid=\"m\" width=\"40\" height=\"20\" style=\"box-sizing:border-box;width:30px;padding:5px\"></canvas>b</div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 39.71875,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 9.859375,
+     "width": 30,
+     "height": 20,
      "display": "inline",
      "position": "static"
     }
