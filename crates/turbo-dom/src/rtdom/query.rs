@@ -402,6 +402,9 @@ pub enum SelectorError {
     /// pseudo, a type selector after another simple selector (`[a]div`), a simple selector
     /// after a pseudo-element (`::before.x`), an invalid `An+B` (`:nth-child(foo)`), …
     Invalid(&'static str),
+    /// A pseudo-class Chrome does not know, named as written (a functional one ends in
+    /// `()`): `a:bogus` → `"bogus"` (turbo-surf#117).
+    UnknownPseudoClass(String),
 }
 
 impl std::fmt::Display for SelectorError {
@@ -411,6 +414,9 @@ impl std::fmt::Display for SelectorError {
             SelectorError::UnexpectedChar(c) => write!(f, "unexpected '{c}' in selector"),
             SelectorError::EmptyCompound => f.write_str("empty compound (stray combinator)"),
             SelectorError::Invalid(reason) => write!(f, "invalid selector: {reason}"),
+            SelectorError::UnknownPseudoClass(name) => {
+                write!(f, "invalid selector: unknown pseudo-class ':{name}'")
+            }
         }
     }
 }

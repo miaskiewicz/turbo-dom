@@ -67,6 +67,12 @@ Rust API changes, per crate. The npm package's JS API is unchanged.
   `NodeType` needs an arm; treat it like `Text` for character data (it is character data
   for `nodeValue`, `textContent`, `CharacterData` edits and `:empty`, and serializes as
   escaped text in HTML serialization).
+- `SelectorError` has a new variant `UnknownPseudoClass(String)`, which names the
+  rejected pseudo-class as written (a functional one ends in `()`). The cascade grammar
+  (`parse_for_cascade`) used to return `Invalid("unknown pseudo-class")` and now returns
+  this, so its message reads e.g. `unknown pseudo-class ':-webkit-bogus'`
+  (turbo-surf#117). An exhaustive `match` needs an arm. Chrome-visible `querySelector`
+  `SyntaxError` text is unchanged.
 
 **turbo-dom-layout**
 
