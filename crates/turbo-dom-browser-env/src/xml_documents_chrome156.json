@@ -1,8 +1,8 @@
 {
   "browser": "Chrome/156.0.8078.47",
-  "recordedAt": "2026-11-03T16:51:57.336Z",
+  "recordedAt": "2026-11-03T17:08:10.456Z",
   "fixture": "xml_documents_probe.js",
-  "probeSha256": "ee551115fddc280cb66786592eab916640733b49341ff8e27eedb06066bbd7f5",
+  "probeSha256": "6e1853573dd2cd9ec19ef84af264904eab3813cb353b8e917a34edfdd94ebe30",
   "result": {
     "nested": {
       "tag": "[object XMLDocument]",
@@ -2317,6 +2317,406 @@
         ]
       ],
       "xml": "<!DOCTYPE r><r><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 66: Attribute p:x prefix is unbound</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></r>"
+    },
+    "attlistNamespaceDeclarations": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            "urn:d",
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns",
+                "http://www.w3.org/2000/xmlns/",
+                null,
+                "xmlns",
+                "urn:d"
+              ],
+              [
+                "xmlns:q",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "q",
+                "urn:q"
+              ]
+            ],
+            [
+              [
+                1,
+                "q:c",
+                "urn:q",
+                "q",
+                "c",
+                "q:c",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r xmlns=\"urn:d\" xmlns:q=\"urn:q\"><q:c/></r>"
+    },
+    "attlistNamespaceOverride": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [],
+            [
+              [
+                1,
+                "s",
+                "urn:d",
+                null,
+                "s",
+                "s",
+                [
+                  [
+                    "xmlns",
+                    "http://www.w3.org/2000/xmlns/",
+                    null,
+                    "xmlns",
+                    "urn:d"
+                  ],
+                  [
+                    "xmlns:q",
+                    "http://www.w3.org/2000/xmlns/",
+                    "xmlns",
+                    "q",
+                    "urn:v"
+                  ],
+                  [
+                    "q:a",
+                    "urn:v",
+                    "q",
+                    "a",
+                    "1"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "q:c",
+                    "urn:v",
+                    "q",
+                    "c",
+                    "q:c",
+                    [],
+                    []
+                  ]
+                ]
+              ],
+              [
+                1,
+                "s",
+                "urn:d",
+                null,
+                "s",
+                "s",
+                [
+                  [
+                    "xmlns",
+                    "http://www.w3.org/2000/xmlns/",
+                    null,
+                    "xmlns",
+                    "urn:d"
+                  ],
+                  [
+                    "xmlns:q",
+                    "http://www.w3.org/2000/xmlns/",
+                    "xmlns",
+                    "q",
+                    "urn:q"
+                  ],
+                  [
+                    "q:a",
+                    "urn:q",
+                    "q",
+                    "a",
+                    "1"
+                  ]
+                ],
+                []
+              ],
+              [
+                1,
+                "s",
+                null,
+                null,
+                "s",
+                "s",
+                [
+                  [
+                    "xmlns",
+                    "http://www.w3.org/2000/xmlns/",
+                    null,
+                    "xmlns",
+                    ""
+                  ],
+                  [
+                    "xmlns:q",
+                    "http://www.w3.org/2000/xmlns/",
+                    "xmlns",
+                    "q",
+                    "urn:q"
+                  ],
+                  [
+                    "q:a",
+                    "urn:q",
+                    "q",
+                    "a",
+                    "1"
+                  ]
+                ],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r><s xmlns=\"urn:d\" xmlns:q=\"urn:v\" q:a=\"1\"><q:c/></s><s xmlns=\"urn:d\" xmlns:q=\"urn:q\" q:a=\"1\"/><s xmlns=\"\" xmlns:q=\"urn:q\" q:a=\"1\"/></r>"
+    },
+    "attlistNamespaceEscapes": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns:q",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "q",
+                "urn:\"<&E"
+              ],
+              [
+                "q:a",
+                "urn:\"<&E",
+                "q",
+                "a",
+                "1"
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r xmlns:q=\"urn:&quot;&lt;&amp;E\" q:a=\"1\"/>"
+    },
+    "attlistNamespaceErrorColumn": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 1,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns:q",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "q",
+                "urn:q"
+              ]
+            ],
+            [
+              [
+                1,
+                "parsererror",
+                "http://www.w3.org/1999/xhtml",
+                null,
+                "parsererror",
+                "parsererror",
+                [
+                  [
+                    "style",
+                    null,
+                    null,
+                    "style",
+                    "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "This page contains the following errors:"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "div",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "div",
+                    "div",
+                    [
+                      [
+                        "style",
+                        null,
+                        null,
+                        "style",
+                        "font-family:monospace;font-size:12px"
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "error on line 1 at column 72: Unexpected closing tag: r != x"
+                      ]
+                    ]
+                  ],
+                  [
+                    1,
+                    "h3",
+                    "http://www.w3.org/1999/xhtml",
+                    null,
+                    "h3",
+                    "h3",
+                    [],
+                    [
+                      [
+                        3,
+                        "#text",
+                        "Below is a rendering of the page up to the first error."
+                      ]
+                    ]
+                  ]
+                ]
+              ],
+              [
+                1,
+                "r",
+                null,
+                null,
+                "r",
+                "r",
+                [
+                  [
+                    "xmlns:q",
+                    "http://www.w3.org/2000/xmlns/",
+                    "xmlns",
+                    "q",
+                    "urn:q"
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    "q:c",
+                    "urn:q",
+                    "q",
+                    "c",
+                    "q:c",
+                    [],
+                    []
+                  ]
+                ]
+              ],
+              [
+                1,
+                "x",
+                null,
+                null,
+                "x",
+                "x",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r xmlns:q=\"urn:q\"><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 72: Unexpected closing tag: r != x</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror><r xmlns:q=\"urn:q\"><q:c/></r><x/></r>"
     },
     "subsetCommentAttlist": {
       "tag": "[object XMLDocument]",
