@@ -20,6 +20,18 @@ at the time); this file reconstructs them from history.
   call; user-event asks `matches(':disabled')` on every pointer step and MUI's rules ask
   `:invalid` per input, so large forms were quadratic (turbo-test 0.7.0 perf work).
   `:has()`, `:indeterminate` and `querySelector[All]` still classify the whole tree.
+- `getComputedStyle` reuses a computed style whose rules read live form / popover / dialog
+  state (`:invalid`, `:checked`, `:placeholder-shown`, `:popover-open`, `:modal`, `:open`, ...).
+  Such a style was never reused before. It is now keyed on a native live-state epoch, which every
+  change the tree version misses bumps: control values, option selectedness, custom and user
+  validity, `indeterminate`, ElementInternals validity, file selections, the popover stack,
+  modal dialogs and an opened picker. View-transition and interest state stay unreused.
+- The CSS animation / transition model (`animations.js` `cssUpdate`) runs once per style change
+  of an element, not on every computed-style read. A running animation recomputes the style on
+  each read, and the update (with `rendered()`'s ancestor walk) was 54% of the CPU of a
+  React/MUI modal test file. Its result is unchanged, and the `css_animations` Chrome controls
+  are unchanged. Gates: deterministic fresh-cascade and update-pass counters
+  (`computed_style_state_rules_reuse_gate`, `css_animation_update_runs_once_per_style_change_gate`).
 - turbo-dom-browser-env's selector-taking DOM methods (`querySelector[All]`, `matches`,
   `closest`, ...) parse each selector string's grammar once (a bounded per-thread memo).
   A selector without a `:` skips the five node-dependent pseudo-class rewrite passes, and
