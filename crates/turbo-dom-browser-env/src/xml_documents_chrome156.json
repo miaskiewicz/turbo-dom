@@ -1,8 +1,8 @@
 {
   "browser": "Chrome/156.0.8078.47",
-  "recordedAt": "2026-11-03T17:32:05.195Z",
+  "recordedAt": "2026-11-03T18:08:07.062Z",
   "fixture": "xml_documents_probe.js",
-  "probeSha256": "6ab1584970067b5cd0656248df44136fd92589fc44bbc84a59e8ab3a8ec95ad0",
+  "probeSha256": "8bcf3f8e1bbc581184a3e2506d1245edff900fb516bb3b5b7903d25b89c2ee19",
   "result": {
     "nested": {
       "tag": "[object XMLDocument]",
@@ -4499,6 +4499,217 @@
         ]
       ],
       "xml": "<!DOCTYPE r><r><parsererror xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black\"><h3>This page contains the following errors:</h3><div style=\"font-family:monospace;font-size:12px\">error on line 1 at column 536: Entity too big</div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></r>"
+    },
+    "attlistDefaultLaughs": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "a",
+                null,
+                null,
+                "a",
+                "&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;"
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r a=\"&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;\"/>"
+    },
+    "attlistDefaultSelfReference": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "a",
+                null,
+                null,
+                "a",
+                "&e;&e;"
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r a=\"&amp;e;&amp;e;\"/>"
+    },
+    "attlistNamespaceDefaultLaughs": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns:p",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "p",
+                "&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;&l8;"
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r xmlns:p=\"&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;&amp;l8;\"/>"
+    },
+    "attlistNamespaceDefaultSelfReference": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "xmlns:p",
+                "http://www.w3.org/2000/xmlns/",
+                "xmlns",
+                "p",
+                "&e;&e;"
+              ]
+            ],
+            [
+              [
+                1,
+                "p:c",
+                "&e;&e;",
+                "p",
+                "c",
+                "p:c",
+                [],
+                []
+              ]
+            ]
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r xmlns:p=\"&amp;e;&amp;e;\"><p:c/></r>"
+    },
+    "attlistDefaultReplacementText": {
+      "tag": "[object XMLDocument]",
+      "contentType": "application/xml",
+      "compatMode": "CSS1Compat",
+      "characterSet": "UTF-8",
+      "root": "r",
+      "errors": 0,
+      "tree": [
+        9,
+        "#document",
+        [
+          [
+            10,
+            "r",
+            "r",
+            "",
+            ""
+          ],
+          [
+            1,
+            "r",
+            null,
+            null,
+            "r",
+            "r",
+            [
+              [
+                "a",
+                null,
+                null,
+                "a",
+                "&e0;|AB&lt;x&amp;y\tz&zz;|a\tb\nc| "
+              ]
+            ],
+            []
+          ]
+        ]
+      ],
+      "xml": "<!DOCTYPE r><r a=\"&amp;e0;|AB&amp;lt;x&amp;amp;y&#9;z&amp;zz;|a&#9;b&#10;c| \"/>"
     },
     "mismatch": {
       "tag": "[object XMLDocument]",
