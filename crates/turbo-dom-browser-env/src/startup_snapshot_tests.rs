@@ -135,3 +135,39 @@ fn an_embedder_prelude_shares_the_blob_and_contexts_install_from_it() {
     }
     set_snapshot_install(false);
 }
+
+/// An embedder can keep a [`snapshot_blob_with`] blob across processes (V8 rejects bytecode
+/// caches made against another blob, and a rebuilt blob is not byte-identical): the table a
+/// later process records for it ([`snapshot_references`]) is the one the blob was built with,
+/// with a fingerprint that is stable for the binary, so saved bytes deserialize and install.
+#[test]
+fn saved_blob_bytes_install_with_the_recorded_reference_table() {
+    fn prelude(_scope: &mut v8::PinScope) {}
+    crate::browser_env::tests::init_v8();
+    let blob = snapshot_blob_with(prelude).expect("every callback is registered");
+    let saved: &'static [u8] = Box::leak(blob.data.to_vec().into_boxed_slice());
+    let (references, fingerprint) = snapshot_references();
+    let (_, again) = snapshot_references();
+    assert_eq!(fingerprint, again, "stable within the process");
+    assert!(references.len() >= blob.references.len());
+    for (recorded, built) in references.iter().zip(blob.references) {
+        assert_eq!(unsafe { recorded.pointer }, unsafe { built.pointer });
+    }
+    let params = v8::CreateParams::default()
+        .snapshot_blob(v8::StartupData::from(saved))
+        .external_references(Cow::Borrowed(references));
+    let isolate = &mut v8::Isolate::new(params);
+    set_snapshot_install(true);
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::from_snapshot(scope, SNAPSHOT_WINDOW_CONTEXT, Default::default())
+            .expect("the saved blob holds the window context");
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<b id=b>saved</b>");
+        let code = v8::String::new(scope, "document.getElementById('b').textContent").unwrap();
+        let text = v8::Script::compile(scope, code, None).unwrap().run(scope).unwrap();
+        assert_eq!(text.to_rust_string_lossy(scope), "saved");
+    }
+    reset();
+    set_snapshot_install(false);
+}
