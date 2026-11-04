@@ -137,6 +137,7 @@ mod document_legacy;
 mod interceptor_mode;
 pub use document_legacy::{
     set_document_domain_sandboxed, set_document_last_modified, set_document_origin_keyed,
+    share_document_domain,
 };
 #[path = "dom_implementation.rs"]
 mod dom_implementation;

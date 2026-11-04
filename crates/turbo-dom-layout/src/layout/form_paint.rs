@@ -15,7 +15,8 @@
 //!   after it) and a blue round thumb (1px inside its box) at its value.
 //!
 //! Text fields, textareas, menu lists, buttons and colour wells fall back to their CSS
-//! painting when the author restyles their border or background (as Chrome does), and
+//! painting when the author restyles their border or background (as Chrome does: any
+//! author `border*` declaration, even one equal to the UA's, miaskiewicz/turbo-dom#283), and
 //! every control with `appearance: none` (and in vertical writing modes, whose rotated
 //! native look is not drawn). Those CSS borders are the UA sheet's: a text field's
 //! `2px inset #767676` and a button's `2px outset black`, shaded like Chrome's inset /
@@ -103,6 +104,9 @@ fn native(control: Control, style: &crate::ComputedStyle, frag: &Fragment) -> bo
     // The UA border: (width, colour, inset / outset / solid) and background.
     let (width, colour, shade, face) = match control {
         Control::Toggle => return true,
+        // Any author border declaration turns the native look off, even one setting the
+        // UA's own values (Chrome 156, miaskiewicz/turbo-dom#283).
+        _ if style.get(crate::style::AUTHOR_BORDER).is_some() => return false,
         Control::TextField => (2, FRAME, Some(true), WHITE),
         Control::Button => (2, Rgba::BLACK, Some(false), FACE),
         Control::TextArea | Control::Select => (1, FRAME, None, WHITE),
@@ -726,5 +730,39 @@ mod tests {
             "<input type=checkbox style='{ABS};appearance:none'>"
         ));
         assert!(none.iter().all(|p| p.2 != 13.0), "{none:?}");
+    }
+
+    #[test]
+    fn an_author_border_equal_to_the_uas_still_turns_the_native_look_off() {
+        // miaskiewicz/turbo-dom#283: the UA outset border's darkened right (Chrome 156: 84)
+        // paints instead of the native 1px #767676 frame.
+        let dark = Some(Rgba {
+            r: 84,
+            g: 84,
+            b: 84,
+            a: 255,
+        });
+        for style in [
+            "border-width:2px",
+            "border-top-color:#000",
+            "border-radius:0",
+        ] {
+            let button = parts(&format!(
+                "<button style='{ABS};width:42px;height:22px;{style}'></button>"
+            ));
+            assert!(
+                button.iter().any(|p| p.5 == dark && p.6 == 2),
+                "{style}: {button:?}"
+            );
+            assert!(
+                button.iter().all(|p| p.5 != Some(FRAME)),
+                "{style}: {button:?}"
+            );
+        }
+        // A table's `border-spacing` / `border-collapse` is no border.
+        let native = parts(&format!(
+            "<button style='{ABS};width:42px;height:22px;border-spacing:3px;border-collapse:collapse'></button>"
+        ));
+        assert!(native.iter().any(|p| p.5 == Some(FRAME)), "{native:?}");
     }
 }

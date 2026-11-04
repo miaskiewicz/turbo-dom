@@ -279,7 +279,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 19] = [
+    let groups: [fn(&str) -> bool; 20] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -299,6 +299,7 @@ fn held_out(id: &str) -> bool {
         input_image_case,
         contain_case,
         close_glued_case,
+        quirks_form_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -625,4 +626,17 @@ fn contain_case(id: &str) -> bool {
 #[test]
 fn size_containment_sizes_boxes_as_if_empty_like_chrome_156() {
     assert_matches_chrome(compare_cases(contain_case));
+}
+
+/// miaskiewicz/turbo-dom#282: Chrome's quirks.css `form { margin-block-end: 1em }` (and
+/// the standards-mode twins, where it does not apply).
+fn quirks_form_case(id: &str) -> bool {
+    id.starts_with("quirks-form-")
+}
+
+#[test]
+fn quirks_mode_forms_take_a_block_end_margin_like_chrome_156() {
+    let (compared, failures) = compare_cases(quirks_form_case);
+    assert_eq!(compared, 148, "every quirks-form-* box is compared");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

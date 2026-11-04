@@ -1,0 +1,6 @@
+[
+  {"id": "site", "host": "a.b.example.com", "html": "<!doctype html><html><head></head><body></body></html>"},
+  {"id": "secure-keyed", "https": true, "host": "a.b.example.com", "html": "<!doctype html><html><head></head><body></body></html>"},
+  {"id": "secure-site-keyed", "https": true, "host": "a.b.example.com", "headers": [["Origin-Agent-Cluster", "?0"]], "html": "<!doctype html><html><head></head><body></body></html>"},
+  {"id": "site-origin-keyed", "host": "a.b.example.com", "headers": [["Origin-Agent-Cluster", "?1"]], "html": "<!doctype html><html><head></head><body></body></html>"}
+]

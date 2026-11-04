@@ -7,8 +7,24 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Added
+
+- turbo-dom-browser-env: `browser_env::share_document_domain(scope, document, origin)`, an embedder hook that joins a document to another document's origin (Blink's shared `SecurityOrigin` for initial `about:blank` and `about:srcdoc` children), so a `document.domain` set in any document of the cluster relaxes all of them, with Chrome 156's getter values, SecurityError refusals and origin-keyed no-op (`document_domain_chrome156.json`). Single-document embedders are unchanged (turbo-dom#284, turbo-surf#116).
+
 ### Fixed
 
+- **turbo-dom-layout: quirks-mode `<form>` margin.** A quirks-mode (`BackCompat`) document's
+  forms take Chrome 156's quirks.css `margin-block-end: 1em` on the live and static HTML
+  paths (an author `margin-bottom` / `margin-block-end` replaces it; at the start of a quirks
+  `<body>`, `<td>` or `<th>` an empty form's margin is ignored, nested in empty boxes too,
+  as Blink's quirky containers do).
+  `Cascade::with_quirks` adds the rule to a caller-built cascade (#282).
+- **turbo-dom-layout / -raster: an author border turns a control's native look off.** Any
+  author `border*` declaration (the shorthand, one longhand, even a value equal to the UA's,
+  `border: none`, a radius) on a `<button>`, an `<input>` button type or another restylable
+  control drops Chrome's native appearance, so the CSS border and background paint in the
+  PNG and SVG screenshots, like Chrome 156. Square borders whose sides differ in colour now
+  meet on the corner diagonals (#283).
 - turbo-dom-browser-env: custom properties (`--*`, e.g. `--theme-color`) keep their authored
   text in `style.setProperty` / `getPropertyValue` / `cssText`; only colour properties
   canonicalize hex colours to `rgb()` (turbo-dom#285, Chrome 156 control

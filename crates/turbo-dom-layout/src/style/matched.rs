@@ -1,6 +1,7 @@
 //! Apply declarations selected by an embedder against its actual tree scopes.
 use super::{
-    collect_presentational, expand_quad_candidates, inherit, pick_winners, Attrs, Cand, Subject,
+    collect_presentational, expand_quad_candidates, inherit, is_border_property,
+    mark_author_border, pick_winners, Attrs, Cand, Subject,
 };
 use super::{ComputedStyle, Declaration};
 use crate::tag::Attr;
@@ -76,6 +77,10 @@ pub fn resolve_matched_style(
     parent: &ComputedStyle,
     declarations: &[MatchedDeclaration],
 ) -> ComputedStyle {
+    let author_border = declarations.iter().any(|matched| {
+        matched.origin != CascadeOrigin::UserAgent
+            && is_border_property(&matched.declaration.property)
+    });
     let mut ordered: Vec<_> = declarations.iter().collect();
     ordered.sort_by_key(|declaration| declaration.rank());
     let candidates = ordered
@@ -87,9 +92,12 @@ pub fn resolve_matched_style(
             value: matched.declaration.value.clone(),
         })
         .collect();
-    inherit(
-        pick_winners(expand_quad_candidates(candidates, parent)),
-        parent,
+    mark_author_border(
+        inherit(
+            pick_winners(expand_quad_candidates(candidates, parent)),
+            parent,
+        ),
+        author_border,
     )
 }
 

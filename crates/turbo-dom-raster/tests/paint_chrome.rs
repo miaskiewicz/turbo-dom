@@ -74,6 +74,11 @@ const ANTIALIASED_EDGES: &[(&str, u32, u32, u8)] = &[
     // The 90% thumb's (centre 67.6, 28; radius 7) top arc crosses this pixel: measured
     // rgb(0,126,255) against Chrome's rgb(0,117,255), PNG and SVG (round-2 review #9).
     ("form-native-range-step-max", 66, 21, 9),
+    // The blue top / grey left mitre diagonal halves the corner pixel (#283): Chrome
+    // blends it rgb(84,84,211), exactly half; the painters' coverage of the diagonal
+    // measures rgb(105,105,200), PNG and SVG.
+    ("author-border-button-top-color", 20, 20, 21),
+    ("author-border-button-top-color-bg", 20, 20, 21),
 ];
 
 /// Why `got` (the screenshot's RGB at `probe`) differs from Chrome's, if it does: a
@@ -311,6 +316,18 @@ fn form_controls_paint_their_fields_like_chrome_156() {
 fn form_controls_paint_chrome_native_appearance() {
     let mut failures = differences(|id| id.starts_with("form-native-"));
     failures.extend(svg_differences(|id| id.starts_with("form-native-")));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// miaskiewicz/turbo-dom#283: any author border declaration (the shorthand, a width equal
+/// to the UA's, a style, a colour, one side's colour, `border: none`) on a `<button>` or an
+/// `<input>` button type turns its native appearance off: the CSS border and background
+/// paint, with and without an author background, in the PNG and SVG screenshots.
+#[test]
+fn an_author_border_turns_a_buttons_native_appearance_off_like_chrome_156() {
+    let pick = |id: &str| id.starts_with("author-border-");
+    let mut failures = differences(pick);
+    failures.extend(svg_differences(pick));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 

@@ -4081,6 +4081,1594 @@
    ]
   },
   {
+   "id": "quirks-form-block",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-block",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-font-size",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\" style=\"font-size:20px\"><div data-cid=\"a\" style=\"height:10px\"></div></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 30,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-font-size",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\" style=\"font-size:20px\"><div data-cid=\"a\" style=\"height:10px\"></div></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-author-margin",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\" style=\"margin-bottom:3px\"><div data-cid=\"a\" style=\"height:10px\"></div></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 13,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-author-margin",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\" style=\"margin-bottom:3px\"><div data-cid=\"a\" style=\"height:10px\"></div></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 13,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-two-forms",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form><form data-cid=\"g\"><div data-cid=\"c\" style=\"height:10px\"></div></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 52,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-two-forms",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form><form data-cid=\"g\"><div data-cid=\"c\" style=\"height:10px\"></div></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-in-div",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><div data-cid=\"d\"><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form></div><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-in-div",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><div data-cid=\"d\"><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form></div><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-nested-div",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\"><div data-cid=\"d\"><form data-cid=\"g\"><div data-cid=\"a\" style=\"height:10px\"></div></form></div><div data-cid=\"c\" style=\"height:10px\"></div></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 36,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-nested-div",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\"><div data-cid=\"d\"><form data-cid=\"g\"><div data-cid=\"a\" style=\"height:10px\"></div></form></div><div data-cid=\"c\" style=\"height:10px\"></div></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-then-p",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form><p data-cid=\"p\" style=\"height:10px\"></p>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-then-p",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form><p data-cid=\"p\" style=\"height:10px\"></p>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-table-cell",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><table data-cid=\"t\"><tr><td data-cid=\"c\"><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form></td><td data-cid=\"e\"><div data-cid=\"h\" style=\"height:40px\"></div></td></tr></table><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 46,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 3,
+     "y": 10,
+     "width": 0,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 3,
+     "y": 10,
+     "width": 0,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 6,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "h",
+     "x": 7,
+     "y": 3,
+     "width": 0,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 46,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-table-cell",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><table data-cid=\"t\"><tr><td data-cid=\"c\"><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form></td><td data-cid=\"e\"><div data-cid=\"h\" style=\"height:40px\"></div></td></tr></table><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 46,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 3,
+     "y": 18,
+     "width": 0,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 3,
+     "y": 18,
+     "width": 0,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 6,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "h",
+     "x": 7,
+     "y": 3,
+     "width": 0,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 46,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-table-cell-text",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><table data-cid=\"t\"><tr><td data-cid=\"c\" style=\"width:20px\"><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form>x</td></tr></table><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 26,
+     "height": 52,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 2,
+     "width": 22,
+     "height": 48,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 3,
+     "y": 3,
+     "width": 20,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 3,
+     "y": 3,
+     "width": 20,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 52,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-table-cell-text",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><table data-cid=\"t\"><tr><td data-cid=\"c\" style=\"width:20px\"><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form>x</td></tr></table><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 26,
+     "height": 36,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 2,
+     "width": 22,
+     "height": 32,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 3,
+     "y": 3,
+     "width": 20,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 3,
+     "y": 3,
+     "width": 20,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 36,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-then-text",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><div data-cid=\"w\"><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form>x</div><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 46,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 46,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-then-text",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><div data-cid=\"w\"><form data-cid=\"f\"><div data-cid=\"a\" style=\"height:10px\"></div></form>x</div><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 30,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 30,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-empty",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\"></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-empty",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><form data-cid=\"f\"></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-empty-in-div",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><div data-cid=\"d\"><form data-cid=\"f\"></form></div><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-empty-in-div",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><div data-cid=\"d\"><form data-cid=\"f\"></form></div><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-empty-in-div-then-box",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><div data-cid=\"d\"><form data-cid=\"f\"></form></div><div data-cid=\"a\" style=\"height:10px\"></div><form data-cid=\"g\"></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-empty-in-div-then-box",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><div data-cid=\"d\"><form data-cid=\"f\"></form></div><div data-cid=\"a\" style=\"height:10px\"></div><form data-cid=\"g\"></form><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-empty-in-cell",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><table data-cid=\"t\"><tr><td data-cid=\"c\" style=\"vertical-align:top\"><form data-cid=\"f\"></form><div data-cid=\"a\" style=\"height:10px\"></div></td><td data-cid=\"e\"><div data-cid=\"h\" style=\"height:40px\"></div></td></tr></table><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 46,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 3,
+     "y": 3,
+     "width": 0,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 3,
+     "y": 3,
+     "width": 0,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 6,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "h",
+     "x": 7,
+     "y": 3,
+     "width": 0,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 46,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-empty-in-cell",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><table data-cid=\"t\"><tr><td data-cid=\"c\" style=\"vertical-align:top\"><form data-cid=\"f\"></form><div data-cid=\"a\" style=\"height:10px\"></div></td><td data-cid=\"e\"><div data-cid=\"h\" style=\"height:40px\"></div></td></tr></table><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 46,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 3,
+     "y": 3,
+     "width": 0,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 3,
+     "y": 3,
+     "width": 0,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 6,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "h",
+     "x": 7,
+     "y": 3,
+     "width": 0,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 46,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-empty-in-cell-div",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><table data-cid=\"t\"><tr><td data-cid=\"c\" style=\"vertical-align:top\"><div data-cid=\"d\"><form data-cid=\"f\"></form></div><div data-cid=\"a\" style=\"height:10px\"></div></td><td data-cid=\"e\"><div data-cid=\"h\" style=\"height:40px\"></div></td></tr></table><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 46,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "d",
+     "x": 3,
+     "y": 3,
+     "width": 0,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 3,
+     "y": 3,
+     "width": 0,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 3,
+     "y": 3,
+     "width": 0,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 6,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "h",
+     "x": 7,
+     "y": 3,
+     "width": 0,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 46,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-empty-in-cell-div",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><table data-cid=\"t\"><tr><td data-cid=\"c\" style=\"vertical-align:top\"><div data-cid=\"d\"><form data-cid=\"f\"></form></div><div data-cid=\"a\" style=\"height:10px\"></div></td><td data-cid=\"e\"><div data-cid=\"h\" style=\"height:40px\"></div></td></tr></table><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 46,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "d",
+     "x": 3,
+     "y": 3,
+     "width": 0,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 3,
+     "y": 3,
+     "width": 0,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 3,
+     "y": 3,
+     "width": 0,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 6,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "h",
+     "x": 7,
+     "y": 3,
+     "width": 0,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 46,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-empty-in-cell-middle",
+   "html": "<style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><table data-cid=\"t\"><tr><td data-cid=\"c\"><form data-cid=\"f\"></form><div data-cid=\"a\" style=\"height:10px\"></div></td><td data-cid=\"e\"><div data-cid=\"h\" style=\"height:40px\"></div></td></tr></table><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 46,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 3,
+     "y": 18,
+     "width": 0,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 3,
+     "y": 18,
+     "width": 0,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 6,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "h",
+     "x": 7,
+     "y": 3,
+     "width": 0,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 46,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "quirks-form-standards-empty-in-cell-middle",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}</style><table data-cid=\"t\"><tr><td data-cid=\"c\"><form data-cid=\"f\"></form><div data-cid=\"a\" style=\"height:10px\"></div></td><td data-cid=\"e\"><div data-cid=\"h\" style=\"height:40px\"></div></td></tr></table><div data-cid=\"b\" style=\"height:10px\"></div>",
+   "fonts": true,
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 46,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 2,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 3,
+     "y": 18,
+     "width": 0,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 3,
+     "y": 18,
+     "width": 0,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 6,
+     "y": 2,
+     "width": 2,
+     "height": 42,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "h",
+     "x": 7,
+     "y": 3,
+     "width": 0,
+     "height": 40,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 46,
+     "width": 1280,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
    "id": "quirks-strut-standards-control",
    "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:16px}div{font-size:30px}</style><div data-cid=\"d\"><span style=\"display:inline-block;width:10px;height:30px\"></span></div><div data-cid=\"e\"><span style=\"display:inline-block;width:10px;height:10px\"></span></div>",
    "fonts": true,

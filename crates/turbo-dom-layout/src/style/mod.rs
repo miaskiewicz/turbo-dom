@@ -18,12 +18,12 @@ pub(crate) fn expand_quad<'a>(
 }
 mod token;
 
-pub(crate) use cascade::presentational_declarations_of;
 pub use cascade::{
     presentational_declarations, resolve_matched_style, style_input, Cascade, CascadeOrigin,
     ComputedStyle, LeveledRule, MatchedDeclaration, Navigator, Roots, SiblingPosition, StyleInput,
     StyleOptions, StyledElement, StyledNode, StyledText, TreeView,
 };
+pub(crate) use cascade::{presentational_declarations_of, AUTHOR_BORDER};
 pub use parser::{
     parse_declarations, parse_stylesheet, AtRule, Declaration, Rule, RuleSelectors, Stylesheet,
 };
@@ -148,6 +148,39 @@ height: 100% !important; transform: none !important; \
 /// block's strut only for text directly in the block; miaskiewicz/turbo-dom#190).
 pub const QUIRKS_LINE_HEIGHT: &str = "-internal-quirks-line-height";
 
+/// Chrome 156's quirks.css rule for forms (miaskiewicz/turbo-dom#282): in a quirks-mode
+/// (`BackCompat`) document a `<form>` takes `margin-block-end: 1em`. The HTML drive adds
+/// it at the UA level ([`Cascade::with_quirks`]); the live style pass adds the same
+/// declaration to a quirks document's forms ([`quirks_form_declarations`]). It is the
+/// internal `-internal-ua-margin-block-end` (`layout::value`): a UA logical margin that
+/// any author `margin-bottom` / `margin-block-end` replaces, whatever its cascade order
+/// against the logical longhand, as Chrome's logical property groups resolve.
+const QUIRKS_UA_CSS: &str = "form { -internal-ua-margin-block-end: 1em }";
+
+/// The internal property the quirks marking sets on a quirks-mode document's `<body>`,
+/// `<td>` and `<th>` (Blink's "quirky containers"): a quirks.css margin collapsing
+/// through an empty box (nested ones too) at the start of its content is ignored there, like Chrome 156 (miaskiewicz/turbo-dom#282).
+pub const QUIRKY_CONTAINER: &str = "-internal-quirky-container";
+
+static QUIRKS_UA_SHEET: std::sync::LazyLock<Stylesheet> =
+    std::sync::LazyLock::new(|| parse_stylesheet(QUIRKS_UA_CSS));
+
+/// The quirks-mode form rule's declarations as UA-origin matched declarations (its
+/// `form` type selector's specificity, before every embedder UA rule).
+pub(crate) fn quirks_form_declarations() -> impl Iterator<Item = MatchedDeclaration> {
+    QUIRKS_UA_SHEET.rules[0]
+        .declarations
+        .iter()
+        .map(|declaration| MatchedDeclaration {
+            declaration: declaration.clone(),
+            origin: CascadeOrigin::UserAgent,
+            scope_depth: 0,
+            inline: false,
+            specificity: (0, 0, 1),
+            order: 0,
+        })
+}
+
 static FULLSCREEN_UA_SHEET: std::sync::LazyLock<Stylesheet> =
     std::sync::LazyLock::new(|| parse_stylesheet(FULLSCREEN_UA_CSS));
 
@@ -198,6 +231,19 @@ impl Cascade {
         // A cascade numbers its rules 0, 1, ... in order: the fullscreen rules follow.
         let mut order = rules.len();
         add_leveled(&mut rules, &mut order, 0, FULLSCREEN_UA_SHEET.clone());
+        Cascade {
+            rules,
+            tokens: self.tokens.clone(),
+        }
+    }
+
+    /// This cascade plus Chrome's quirks.css form rule (at the UA level, after its other
+    /// UA rules) — for a quirks-mode document (miaskiewicz/turbo-dom#282).
+    #[must_use]
+    pub fn with_quirks(&self) -> Cascade {
+        let mut rules = self.rules.clone();
+        let mut order = rules.len();
+        add_leveled(&mut rules, &mut order, 0, QUIRKS_UA_SHEET.clone());
         Cascade {
             rules,
             tokens: self.tokens.clone(),

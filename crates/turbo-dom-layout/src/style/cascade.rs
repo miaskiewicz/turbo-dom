@@ -1039,7 +1039,33 @@ fn resolve_style(
     collect_rules(cascade, nav, h, &mut cands);
     collect_tokens(element, cascade, &mut cands);
     collect_inline(element, &mut cands);
-    inherit(pick_winners(expand_quad_candidates(cands, parent)), parent)
+    let author_border = cands.iter().any(|cand| {
+        !matches!(cand.key.1, UA_LEVEL | u8::MAX) && is_border_property(&cand.property)
+    });
+    mark_author_border(
+        inherit(pick_winners(expand_quad_candidates(cands, parent)), parent),
+        author_border,
+    )
+}
+
+/// The internal property the cascade sets on an element with an author (non-UA) border
+/// declaration — a `border*` shorthand or longhand, radii included: like Chrome 156, it
+/// turns a form control's native appearance off (`layout::form_paint`;
+/// miaskiewicz/turbo-dom#283), whatever value it sets.
+pub(crate) const AUTHOR_BORDER: &str = "-internal-author-border";
+
+/// Whether `property` is a border declaration for [`AUTHOR_BORDER`] (not the table
+/// `border-collapse` / `border-spacing`).
+fn is_border_property(property: &str) -> bool {
+    property.starts_with("border") && !matches!(property, "border-collapse" | "border-spacing")
+}
+
+/// `style` with [`AUTHOR_BORDER`] set when `author_border`.
+fn mark_author_border(mut style: ComputedStyle, author_border: bool) -> ComputedStyle {
+    if author_border {
+        style.set(AUTHOR_BORDER, "1".to_string());
+    }
+    style
 }
 
 #[path = "matched.rs"]

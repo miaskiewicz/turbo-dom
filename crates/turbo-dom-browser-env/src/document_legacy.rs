@@ -297,6 +297,9 @@ const LAST_MODIFIED: &str = "turbo-dom.Document.lastModified";
 const DOMAIN_SANDBOXED: &str = "turbo-dom.Document.domainSandboxed";
 const ORIGIN_KEYED: &str = "turbo-dom.Document.originKeyed";
 const RELAXED_DOMAIN: &str = "turbo-dom.Document.domain";
+/// The Document whose origin (URL host, relaxed domain, agent clustering) this
+/// one shares, set by `share_document_domain`; absent = its own.
+const ORIGIN_SOURCE: &str = "turbo-dom.Document.originSource";
 
 /// The document a browsing context presents, resolved through `document`'s own
 /// realm so inert documents report their creator's origin, as Blink's shared
@@ -392,14 +395,29 @@ fn trustworthy(url: &str) -> bool {
         None => false,
     }
 }
+/// The document holding `document`'s origin state and that origin's URL: the
+/// shared source when an embedder joined it to another document's origin.
+fn origin_source<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    document: v8::Local<'s, v8::Object>,
+    url: &str,
+) -> (v8::Local<'s, v8::Object>, String) {
+    let source = private_value(scope, document, ORIGIN_SOURCE)
+        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok());
+    match source.and_then(|source| Some((source, document_state(scope, source)?.1))) {
+        Some(shared) => shared,
+        None => (document, url.to_owned()),
+    }
+}
 fn effective_domain<'s>(scope: &mut v8::PinScope<'s, '_>, owner: &Owner<'s>) -> String {
     if !owner.browsing {
         return String::new();
     }
-    if let Some(relaxed) = private_value(scope, owner.document, RELAXED_DOMAIN) {
+    let (source, url) = origin_source(scope, owner.document, &owner.url);
+    if let Some(relaxed) = private_value(scope, source, RELAXED_DOMAIN) {
         return relaxed.to_rust_string_lossy(scope);
     }
-    origin_host(&owner.url)
+    origin_host(&url)
         .map(|host| host.to_string())
         .unwrap_or_default()
 }
@@ -505,9 +523,10 @@ fn set_domain<'s>(
         return Some("'' is an empty domain.".into());
     }
     let current = effective_domain(scope, &owner);
+    let (source, url) = origin_source(scope, document, &owner.url);
     // The match runs against the origin's own host, so a relaxed document may
     // restore any suffix of it; the message names the current effective domain.
-    let host = origin_host(&owner.url).map(|host| host.to_string());
+    let host = origin_host(&url).map(|host| host.to_string());
     let ip = url::Host::parse(&new_domain).is_ok_and(|host| !matches!(host, url::Host::Domain(_)));
     let exact = host.as_deref() == Some(new_domain.as_str());
     let suffix = !ip
@@ -522,14 +541,14 @@ fn set_domain<'s>(
     if suffix && is_public_suffix(&new_domain) {
         return Some(format!("'{new_domain}' is a top-level domain."));
     }
-    let keyed = private_value(scope, document, ORIGIN_KEYED)
+    let keyed = private_value(scope, source, ORIGIN_KEYED)
         .map(|value| value.is_true())
-        .unwrap_or_else(|| trustworthy(&owner.url));
+        .unwrap_or_else(|| trustworthy(&url));
     // An origin-keyed agent cluster ignores the assignment (Chrome only warns).
     if !keyed {
         // turbo-dom#183: fails only past V8's string length limit
         let value = super::utf8_string(scope, &new_domain);
-        set_private_value(scope, document, RELAXED_DOMAIN, value.into());
+        set_private_value(scope, source, RELAXED_DOMAIN, value.into());
     }
     None
 }
@@ -583,6 +602,36 @@ pub fn set_document_origin_keyed<'s>(
     }
     let value = v8::Boolean::new(scope, keyed).into();
     set_private_value(scope, document, ORIGIN_KEYED, value);
+    true
+}
+
+/// Join `document` to `origin`'s origin, as Blink's initial `about:blank` and
+/// `about:srcdoc` documents share their creator's `SecurityOrigin`: from then on
+/// `document.domain` in either reads and relaxes one effective domain, checked
+/// against `origin`'s URL host and agent clustering (turbo-dom#284). An origin
+/// that itself shares another's is followed to that source, and passing
+/// `document` as `origin` restores its own. Both must be browsing-context
+/// documents; returns `false` (and changes nothing) otherwise.
+pub fn share_document_domain<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    document: v8::Local<'s, v8::Object>,
+    origin: v8::Local<'s, v8::Object>,
+) -> bool {
+    let browsing_document = |scope: &mut v8::PinScope<'s, '_>, object| {
+        let handle = handle_of(scope, object);
+        let _dom = DomScope::for_object(scope, object);
+        handle.is_some() && handle == with_tree(Tree::root) && host_document(scope, object)
+    };
+    if !browsing_document(scope, document) || !browsing_document(scope, origin) {
+        return false;
+    }
+    let source = private_value(scope, origin, ORIGIN_SOURCE).unwrap_or(origin.into());
+    let value = if origin == document || source.strict_equals(document.into()) {
+        v8::undefined(scope).into()
+    } else {
+        source
+    };
+    set_private_value(scope, document, ORIGIN_SOURCE, value);
     true
 }
 

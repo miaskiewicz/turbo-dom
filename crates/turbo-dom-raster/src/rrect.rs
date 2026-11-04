@@ -97,6 +97,37 @@ pub(crate) fn widths(b: &BorderEdges) -> [f32; 4] {
     [w.top, w.right, w.bottom, w.left]
 }
 
+/// Whether the painted sides of `b` (a width and a colour) differ in colour: a square
+/// box's top and bottom bands then end on each corner's diagonal ([`mitred_band`]),
+/// over the full-height left and right bands, so a corner pixel the diagonal halves
+/// shows both sides' colours half and half like Chrome 156 (an author
+/// `border-top-color` on an outset button, miaskiewicz/turbo-dom#283).
+pub(crate) fn mixed_colours(b: &BorderEdges) -> bool {
+    let mut colours = [&b.top, &b.right, &b.bottom, &b.left]
+        .into_iter()
+        .filter(|s| s.width > 0)
+        .filter_map(|s| s.color);
+    colours
+        .next()
+        .is_some_and(|first| colours.any(|c| c != first))
+}
+
+/// The top (`top`) or bottom band of a square box `rect` with border `widths`, cut at
+/// both corners by the line from the outer corner to the inner (padding-box) corner.
+pub(crate) fn mitred_band((x, y, w, h): Rect, widths: [f32; 4], top: bool) -> [(f32, f32); 4] {
+    let [t, r, b, l] = widths;
+    if top {
+        [(x, y), (x + w, y), (x + w - r, y + t), (x + l, y + t)]
+    } else {
+        [
+            (x + l, y + h - b),
+            (x + w - r, y + h - b),
+            (x + w, y + h),
+            (x, y + h),
+        ]
+    }
+}
+
 /// The padding box of `f` (its border box less the border widths) and its inner radii:
 /// each outer radius less the adjacent border width (CSS Backgrounds 3 §5.2).
 pub(crate) fn padding_box(
@@ -186,6 +217,45 @@ fn keep_side(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use turbo_dom_layout::layout::value::{BorderSide, Rgba};
+
+    #[test]
+    fn mitred_bands_end_on_the_corner_diagonals() {
+        let rect = (10.0, 20.0, 40.0, 30.0);
+        let widths = [1.0, 2.0, 3.0, 4.0];
+        assert_eq!(
+            mitred_band(rect, widths, true),
+            [(10.0, 20.0), (50.0, 20.0), (48.0, 21.0), (14.0, 21.0)]
+        );
+        assert_eq!(
+            mitred_band(rect, widths, false),
+            [(14.0, 47.0), (48.0, 47.0), (50.0, 50.0), (10.0, 50.0)]
+        );
+    }
+
+    #[test]
+    fn only_painted_sides_of_different_colours_are_mixed() {
+        let side = |width: u16, color: Option<Rgba>| BorderSide { width, color };
+        let (red, blue) = (
+            Some(Rgba::new(255, 0, 0, 255)),
+            Some(Rgba::new(0, 0, 255, 255)),
+        );
+        let edges = |top, right, bottom, left| BorderEdges {
+            top,
+            right,
+            bottom,
+            left,
+        };
+        let uniform = edges(side(1, red), side(2, red), side(3, red), side(4, red));
+        assert!(!mixed_colours(&uniform));
+        let mixed = edges(side(1, blue), side(2, red), side(3, red), side(4, red));
+        assert!(mixed_colours(&mixed));
+        // A zero-width or colourless side does not count; no painted side is not mixed.
+        let hidden = edges(side(0, blue), side(2, red), side(3, None), side(4, red));
+        assert!(!mixed_colours(&hidden));
+        let none = edges(side(0, red), side(0, blue), side(2, None), side(0, red));
+        assert!(!mixed_colours(&none));
+    }
 
     #[test]
     fn outlines_follow_each_corner_and_square_degenerate_ones() {
