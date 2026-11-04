@@ -26,9 +26,10 @@ use turbo_dom_browser_env::browser_env::{
     run_engine_script, script_document, set_activation_host, set_document_domain_sandboxed,
     set_document_last_modified, set_document_origin_keyed, set_document_resource_active,
     set_form_submission_blocked, set_inert_document_initializer, set_interface_record,
-    set_native_event_target_observer, snapshot_blob, string_code_units, sweep_collected_documents,
-    trusted_script_source, trusted_type_string, ActivationQuery, NativeDomScope, ParsedXmlDocument,
-    PointerLockPolicy, SnapshotBlob, SnapshotWindow, ENGINE_NAMESPACE_PARAM,
+    set_native_event_target_observer, share_document_domain, snapshot_blob, string_code_units,
+    sweep_collected_documents, trusted_script_source, trusted_type_string, ActivationQuery,
+    NativeDomScope, ParsedXmlDocument, PointerLockPolicy, SnapshotBlob, SnapshotWindow,
+    ENGINE_NAMESPACE_PARAM,
 };
 
 #[test]

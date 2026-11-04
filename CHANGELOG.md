@@ -7,6 +7,10 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Added
+
+- turbo-dom-browser-env: `browser_env::share_document_domain(scope, document, origin)`, an embedder hook that joins a document to another document's origin (Blink's shared `SecurityOrigin` for initial `about:blank` and `about:srcdoc` children), so a `document.domain` set in any document of the cluster relaxes all of them, with Chrome 156's getter values, SecurityError refusals and origin-keyed no-op (`document_domain_chrome156.json`). Single-document embedders are unchanged (turbo-dom#284, turbo-surf#116).
+
 ## [0.7.0] — <date TBD at tag>
 
 | crate | version |
