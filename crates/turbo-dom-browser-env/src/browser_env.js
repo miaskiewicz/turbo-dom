@@ -1008,13 +1008,18 @@
   }
   if (typeof g.requestAnimationFrame === 'undefined') g.requestAnimationFrame = function(cb){ return setTimeout(function(){ cb(Date.now()); }, 0); };
   if (typeof g.cancelAnimationFrame === 'undefined') g.cancelAnimationFrame = function(id){ clearTimeout(id); };
-  if (typeof g.matchMedia === 'undefined') g.matchMedia = function(q){ return { matches:false, media:q, addListener:function(){}, removeListener:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return false;} }; };
+  var ownMatchMedia = null;
+  if (typeof g.matchMedia === 'undefined') ownMatchMedia = g.matchMedia = function(q){ return __ns.matchMedia(q); };
   if (typeof g.scrollTo === 'undefined') g.scrollTo = function(){};
   // Window operations are not constructors: no own `prototype` (turbo-dom#221).
   ['getComputedStyle','requestAnimationFrame','cancelAnimationFrame','matchMedia','scrollTo'].forEach(function(name){
     var fn=g[name];
     if(typeof fn==='function'&&Object.prototype.hasOwnProperty.call(fn,'prototype')&&__ns.makeNativeFunction)g[name]=__ns.makeNativeFunction(fn,name,name==='scrollTo'?0:1);
   });
+  if (ownMatchMedia) ownMatchMedia = g.matchMedia;
+  // The cascade evaluates media text directly while matchMedia is the binding's own (no
+  // MediaQueryList per rule); a page or embedder replacement is asked instead.
+  function mediaMatches(text){ return g.matchMedia === ownMatchMedia ? __ns.mediaTextMatches(text) : !!g.matchMedia(text).matches; }
   // `Image(width, height)` is the native legacy factory in html_image.js (turbo-dom#23); image
   // loading (load / error events, natural size) is the host's (record.imageHost).
   if (typeof g.location === 'undefined' || g.location == null) {
@@ -1317,6 +1322,232 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       }}finally{endEventDispatch(state);}
       return !state.defaultPrevented;
     };
+  })();
+  // matchMedia returns a live MediaQueryList (an EventTarget) evaluated against the window
+  // viewport (innerWidth / innerHeight / devicePixelRatio, which the embedder sets) with
+  // Chrome headless's defaults for the user-preference features; a `resize` dispatched on
+  // the window re-evaluates every list and fires `change` on those that flipped
+  // (turbo-dom#287, Chrome 156 control `match_media_chrome156.json`).
+  (function(){
+    // Builtins are captured: a page patching WeakMap / Reflect must not reach the engine.
+    var construct = Reflect.construct, wmGet = WeakMap.prototype.get, wmSet = WeakMap.prototype.set;
+    var getOf = function(map, key){ return $apply(wmGet, map, [key]); }, setOf = function(map, key, value){ $apply(wmSet, map, [key, value]); };
+    var make = __ns.makeNativeFunction, $apply = Reflect.apply, records = new WeakMap(), lists = [], watching = false;
+    // EventTarget is rebuilt later in the bootstrap: construct through, and call, the final one.
+    var ET = g.EventTarget, base = ET.prototype;
+    var call = function(name, target, args){ return $apply(base[name], target, args); };
+    var TYPES = { all: true, screen: true, print: false, tty: false, tv: false, projection: false, handheld: false, braille: false, embossed: false, aural: false, speech: false };
+    var IDENTS = { 'prefers-color-scheme': 'light', 'prefers-reduced-motion': 'no-preference', 'prefers-contrast': 'no-preference',
+      'prefers-reduced-transparency': 'no-preference', 'prefers-reduced-data': 'no-preference', 'forced-colors': 'none', 'inverted-colors': 'none',
+      hover: 'hover', 'any-hover': 'hover', pointer: 'fine', 'any-pointer': 'fine', 'display-mode': 'browser', scripting: 'enabled', update: 'fast',
+      'overflow-block': 'scroll', 'overflow-inline': 'scroll', 'color-gamut': 'srgb', 'dynamic-range': 'standard', 'video-dynamic-range': 'standard' };
+    var size = function(name){ var value = g[name]; return typeof value === 'number' && isFinite(value) ? value : NaN; };
+    var dpr = function(){ var value = size('devicePixelRatio'); return value > 0 ? value : 1; };
+    var screenSize = function(axis, fallback){ var screen = g.screen, value = screen && screen[axis]; return typeof value === 'number' ? value : size(fallback); };
+    // Range features: [value kind, current value]; ratios compare as width/height pairs.
+    var RANGES = {
+      width: ['length', function(){ return size('innerWidth'); }], height: ['length', function(){ return size('innerHeight'); }],
+      'device-width': ['length', function(){ return screenSize('width', 'innerWidth'); }], 'device-height': ['length', function(){ return screenSize('height', 'innerHeight'); }],
+      'aspect-ratio': ['ratio', function(){ return [size('innerWidth'), size('innerHeight')]; }],
+      'device-aspect-ratio': ['ratio', function(){ return [screenSize('width', 'innerWidth'), screenSize('height', 'innerHeight')]; }],
+      resolution: ['resolution', dpr], '-webkit-device-pixel-ratio': ['number', dpr],
+      color: ['number', function(){ return 8; }], 'color-index': ['number', function(){ return 0; }],
+      monochrome: ['number', function(){ return 0; }], grid: ['number', function(){ return 0; }],
+    };
+    var UNITS = { px: 1, em: 16, rem: 16, cm: 96 / 2.54, mm: 96 / 25.4, q: 96 / 101.6, in: 96, pt: 4 / 3, pc: 16 };
+    var RESOLUTION = { dppx: 1, x: 1, dpi: 1 / 96, dpcm: 2.54 / 96 };
+    // A value token of `kind` as [number (or ratio pair), serialization], or null when invalid.
+    function parseValue(kind, text){
+      if (kind === 'ratio') {
+        var ratio = /^(\d+(?:\.\d+)?)(?:\s*\/\s*(\d+(?:\.\d+)?))?$/.exec(text);
+        return ratio ? [[+ratio[1], ratio[2] === undefined ? 1 : +ratio[2]], ratio[1] + ' / ' + (ratio[2] === undefined ? '1' : ratio[2])] : null;
+      }
+      var match = /^(-?(?:\d+\.?\d*|\.\d+))([a-z]*)$/.exec(text);
+      if (!match) return null;
+      var table = kind === 'length' ? UNITS : kind === 'resolution' ? RESOLUTION : null;
+      if (!table) return match[2] ? null : [+match[1], text];
+      if (!match[2]) return kind === 'length' && +match[1] === 0 ? [0, text] : null;
+      return table[match[2]] ? [+match[1] * table[match[2]], text] : null;
+    }
+    function compare(kind, current, value){
+      if (kind === 'ratio') return current[0] * value[1] - current[1] * value[0];
+      return current - value;
+    }
+    var TEST = { '=': function(d){ return d === 0; }, '<': function(d){ return d < 0; }, '<=': function(d){ return d <= 0; }, '>': function(d){ return d > 0; }, '>=': function(d){ return d >= 0; } };
+    var FLIP = { '=': '=', '<': '>', '<=': '>=', '>': '<', '>=': '<=' };
+    // `name: value` (with min- / max- prefixes) as a node {ser, test}, or null when invalid.
+    function plainFeature(name, text){
+      var prefix = /^(-webkit-)?(min-|max-)/.exec(name), base = prefix ? (prefix[1] || '') + name.slice(prefix[0].length) : name;
+      if (IDENTS[name] !== undefined) return /^[a-z-]+$/.test(text) ? { ser: '(' + name + ': ' + text + ')', test: function(){ return IDENTS[name] === text; } } : null;
+      if (name === 'orientation') return text === 'portrait' || text === 'landscape' ? { ser: '(orientation: ' + text + ')', test: function(){ var width = size('innerWidth'), height = size('innerHeight'); return text === 'portrait' ? height >= width : height < width; } } : null;
+      var range = RANGES[base], value = range && parseValue(range[0], text);
+      if (!value) return null;
+      var op = !prefix ? '=' : prefix[2] === 'min-' ? '>=' : '<=';
+      return { ser: '(' + name + ': ' + value[1] + ')', test: function(){ return TEST[op](compare(range[0], range[1](), value[0])); } };
+    }
+    function booleanFeature(name){
+      if (IDENTS[name] !== undefined) return { ser: '(' + name + ')', test: function(){ return IDENTS[name] !== 'none' && IDENTS[name] !== 'no-preference'; } };
+      if (name === 'orientation') return { ser: '(orientation)', test: function(){ return true; } };
+      var range = RANGES[name];
+      return range ? { ser: '(' + name + ')', test: function(){ var current = range[1](); return range[0] === 'ratio' ? current[0] !== 0 : current !== 0 && current === current; } } : null;
+    }
+    // `(width >= 600px)` / `(400px <= width <= 1100px)` range syntax.
+    function rangeFeature(text){
+      var parts = text.split(/\s*(<=|>=|<|>|=)\s*/);
+      if (parts.length !== 3 && parts.length !== 5) return null;
+      var nameAt = RANGES[parts[0]] ? 0 : RANGES[parts[2]] ? 2 : -1;
+      if (nameAt < 0 || parts.length === 5 && nameAt !== 2) return null;
+      var range = RANGES[parts[nameAt]], checks = [];
+      for (var index = 1; index < parts.length; index += 2) {
+        var valueAt = index - 1 === nameAt ? index + 1 : index - 1, value = parseValue(range[0], parts[valueAt]);
+        if (!value || !TEST[parts[index]]) return null;
+        parts[valueAt] = value[1];
+        checks.push([valueAt > nameAt ? parts[index] : FLIP[parts[index]], value[0]]);
+      }
+      return { ser: '(' + parts.join(' ') + ')', test: function(){ var current = range[1](); return checks.every(function(check){ return TEST[check[0]](compare(range[0], current, check[1])); }); } };
+    }
+    function feature(text){
+      var colon = text.indexOf(':');
+      if (colon >= 0) return plainFeature(text.slice(0, colon).trim(), text.slice(colon + 1).trim());
+      return /[<>=]/.test(text) ? rangeFeature(text) : booleanFeature(text);
+    }
+    // Top-level tokens: words and balanced `( … )` groups.
+    function tokens(text){
+      var out = [], depth = 0, start = -1;
+      for (var index = 0; index < text.length; index++) {
+        var c = text[index];
+        if (c === '(') { if (depth++ === 0) { if (start >= 0) out.push(text.slice(start, index)); start = index; } }
+        else if (c === ')') { if (--depth < 0) return null; if (depth === 0) { out.push(text.slice(start, index + 1)); start = -1; } }
+        else if (depth === 0 && /\s/.test(c)) { if (start >= 0) out.push(text.slice(start, index)); start = -1; }
+        else if (start < 0) start = index;
+      }
+      if (start >= 0) out.push(text.slice(start));
+      return depth === 0 ? out : null;
+    }
+    function group(token){
+      if (!token || token[0] !== '(') return null;
+      var inner = token.slice(1, -1).trim();
+      if (inner[0] === '(' || /^not\s/.test(inner)) { var nested = condition(tokens(inner) || []); return nested && { ser: '(' + nested.ser + ')', test: nested.test }; }
+      return feature(inner);
+    }
+    // `[not] (a) [and|or (b)]…`
+    function condition(list){
+      var negate = list[0] === 'not', at = negate ? 1 : 0, first = group(list[at]);
+      if (!first) return null;
+      var nodes = [first], joiner = null;
+      for (at++; at < list.length; at += 2) {
+        if (list[at] !== 'and' && list[at] !== 'or' || joiner && joiner !== list[at] || negate) return null;
+        joiner = list[at];
+        var next = group(list[at + 1]);
+        if (!next) return null;
+        nodes.push(next);
+      }
+      var ser = nodes.map(function(node){ return node.ser; }).join(' ' + (joiner || 'and') + ' ');
+      if (negate) return { ser: 'not ' + ser, test: function(){ return !first.test(); } };
+      return { ser: ser, test: function(){ return joiner === 'or' ? nodes.some(function(node){ return node.test(); }) : nodes.every(function(node){ return node.test(); }); } };
+    }
+    // `[not|only] type [and condition]`
+    function typed(list){
+      var modifier = list[0] === 'not' || list[0] === 'only' ? list[0] : '', at = modifier ? 1 : 0, type = list[at];
+      if (!/^[a-z][a-z0-9-]*$/.test(type) || /^(and|or|not|only)$/.test(type)) return null;
+      var rest = list.slice(at + 1), cond = null;
+      if (rest.length) { if (rest[0] !== 'and' || rest[1] === 'not') return null; cond = condition(rest.slice(1)); if (!cond) return null; }
+      var ser = (modifier ? modifier + ' ' : '') + type + (cond ? ' and ' + cond.ser : '');
+      return { ser: ser, test: function(){ var matches = TYPES[type] === true && (!cond || cond.test()); return modifier === 'not' ? !matches : matches; } };
+    }
+    var NOT_ALL = { ser: 'not all', test: function(){ return false; } };
+    function query(text){
+      var list = tokens(text);
+      if (!list || !list.length) return NOT_ALL;
+      return (list[0][0] === '(' || list[0] === 'not' && list[1] && list[1][0] === '(' ? condition(list) : typed(list)) || NOT_ALL;
+    }
+    // Split at top-level commas, close what EOF left open, lower-case (media queries are ASCII
+    // case-insensitive).
+    function parseList(text){
+      text = String(text).toLowerCase().replace(/\s+/g, ' ').trim();
+      var open = 0;
+      for (var index = 0; index < text.length; index++) open += text[index] === '(' ? 1 : text[index] === ')' ? -1 : 0;
+      while (open-- > 0) text += ')';
+      if (text === '') return [];
+      var parts = [], depth = 0, start = 0;
+      for (var at = 0; at < text.length; at++) {
+        if (text[at] === '(') depth++; else if (text[at] === ')') depth--;
+        else if (text[at] === ',' && depth === 0) { parts.push(text.slice(start, at)); start = at + 1; }
+      }
+      parts.push(text.slice(start));
+      return parts.map(function(part){ return query(part.trim()); });
+    }
+    function evaluate(queries){ return !queries.length || queries.some(function(item){ return item.test(); }); }
+    var cache = new Map();
+    function parsed(text){ var queries = cache.get(text); if (!queries) { queries = parseList(text); if (cache.size > 512) cache.clear(); cache.set(text, queries); } return queries; }
+    __ns.mediaTextMatches = function(text){ return evaluate(parsed(String(text))); };
+    var record = function(list){ var state = getOf(records, list); if (!state) throw new TypeError('Illegal invocation'); return state; };
+    var MQLEvent = g.MediaQueryListEvent;
+    if (typeof MQLEvent !== 'function' || !('matches' in MQLEvent.prototype)) {
+      var eventRecords = new WeakMap(), Event = g.Event;
+      var EventDelegate = function(type, init){
+        if (!new.target) throw new TypeError("Failed to construct 'MediaQueryListEvent': Please use the 'new' operator.");
+        if (!arguments.length) throw new TypeError("Failed to construct 'MediaQueryListEvent': 1 argument required, but only 0 present.");
+        init = init == null ? {} : init;
+        var event = construct(Event, [String(type), { bubbles: !!init.bubbles, cancelable: !!init.cancelable, composed: !!init.composed }], new.target);
+        setOf(eventRecords, event, { matches: !!init.matches, media: init.media === undefined ? '' : String(init.media) });
+        return event;
+      };
+      Object.setPrototypeOf(EventDelegate.prototype, Event.prototype);
+      Object.defineProperty(EventDelegate.prototype, Symbol.toStringTag, { value: 'MediaQueryListEvent', configurable: true });
+      ['matches', 'media'].forEach(function(name){
+        Object.defineProperty(EventDelegate.prototype, name, { enumerable: true, configurable: true, get: make(function(){ var state = getOf(eventRecords, this); if (!state) throw new TypeError('Illegal invocation'); return state[name]; }, 'get ' + name, 0) });
+      });
+      MQLEvent = make(EventDelegate, 'MediaQueryListEvent', 1, true, true);
+      MQLEvent.prototype = EventDelegate.prototype;
+      Object.defineProperty(EventDelegate.prototype, 'constructor', { value: MQLEvent, writable: true, configurable: true });
+      Object.defineProperty(MQLEvent, 'prototype', { writable: false });
+      Object.setPrototypeOf(MQLEvent, Event);
+      Object.defineProperty(g, 'MediaQueryListEvent', { value: MQLEvent, writable: true, configurable: true });
+    }
+    var MQL = make(function(){ throw new TypeError('Illegal constructor'); }, 'MediaQueryList', 0, true);
+    var proto = Object.create(ET.prototype);
+    Object.defineProperty(proto, Symbol.toStringTag, { value: 'MediaQueryList', configurable: true });
+    Object.defineProperty(proto, 'constructor', { value: MQL, writable: true, configurable: true });
+    var methods = {
+      addListener: function(callback){ record(this); if (callback != null) call('addEventListener', this, ['change', callback]); },
+      removeListener: function(callback){ record(this); if (callback != null) call('removeEventListener', this, ['change', callback]); },
+    };
+    Object.keys(methods).forEach(function(name){ Object.defineProperty(proto, name, { value: make(methods[name], name, 1), writable: true, enumerable: true, configurable: true }); });
+    Object.defineProperty(proto, 'media', { enumerable: true, configurable: true, get: make(function(){ return record(this).media; }, 'get media', 0) });
+    Object.defineProperty(proto, 'matches', { enumerable: true, configurable: true, get: make(function(){ return evaluate(record(this).queries); }, 'get matches', 0) });
+    Object.defineProperty(proto, 'onchange', { enumerable: true, configurable: true,
+      get: make(function(){ return record(this).handler; }, 'get onchange', 0),
+      set: make(function(value){
+        var state = record(this);
+        state.handler = typeof value === 'function' || value !== null && typeof value === 'object' ? value : null;
+        if (state.handler && !state.invoker) { state.invoker = function(event){ var handler = state.handler; if (typeof handler === 'function') return $apply(handler, this, [event]); }; call('addEventListener', this, ['change', state.invoker]); }
+      }, 'set onchange', 1) });
+    MQL.prototype = proto;
+    Object.defineProperty(MQL, 'prototype', { writable: false });
+    Object.setPrototypeOf(MQL, ET);
+    Object.defineProperty(g, 'MediaQueryList', { value: MQL, writable: true, configurable: true, enumerable: false });
+    __ns.matchMedia = function(text){
+      text = String(text);
+      // Listen once the page runs: the window's listener store is installed after this block.
+      if (!watching) { watching = true; try { g.addEventListener('resize', viewportChanged); } catch(e){} }
+      var queries = parsed(text), list = construct(__ns.eventTargetConstructor || ET, [], MQL);
+      setOf(records, list, { media: queries.map(function(item){ return item.ser; }).join(', '), queries: queries, handler: null, invoker: null, last: evaluate(queries) });
+      lists.push(typeof WeakRef === 'function' ? new WeakRef(list) : { deref: function(){ return list; } });
+      return list;
+    };
+    // A viewport change: every live list that flipped fires `change`, in creation order.
+    function viewportChanged(){
+      var live = [];
+      lists.forEach(function(ref){ var list = ref.deref(); if (list) live.push([ref, list]); });
+      lists = live.map(function(pair){ return pair[0]; });
+      live.forEach(function(pair){
+        var state = getOf(records, pair[1]), now = evaluate(state.queries);
+        if (now === state.last) return;
+        state.last = now;
+        call('dispatchEvent', pair[1], [new MQLEvent('change', { matches: now, media: state.media })]);
+      });
+    }
   })();
   // make `node instanceof HTMLElement/Element/Node/...` work for native DOM nodes (jest-dom's
   // checkHtmlElement + many libs rely on it) via Symbol.hasInstance keyed on nodeType.
@@ -1704,7 +1935,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // The media conditions the current computation evaluated, with their answers (null: not
   // tracking): a reused computed style is reused only while each still answers the same.
   var computedMediaReads=null;
-  function cssMediaState(record,state){var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;var matches=!!g.matchMedia(text).matches;if(computedMediaReads&&computedMediaReads[text]===undefined)computedMediaReads[text]=matches;return matches?1:2;}
+  function cssMediaState(record,state){var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;var matches=mediaMatches(text);if(computedMediaReads&&computedMediaReads[text]===undefined)computedMediaReads[text]=matches;return matches?1:2;}
   // The rule entries of a sheet list (its style rules under their grouping rules, the layer
   // tree they rank in, the @media answers they were built with): built once per list, CSSOM
   // epoch and media answers, and shared by every element computed meanwhile. The build reads
@@ -1727,10 +1958,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function computedMergeMedia(reads){if(computedMediaReads&&reads)for(var text in reads)if(computedMediaReads[text]===undefined)computedMediaReads[text]=reads[text];}
   function computedMediaUnchanged(reads){
     if(!reads)return true;
-    try{for(var text in reads)if(!!g.matchMedia(text).matches!==reads[text])return false;}catch(e){return false;}
+    try{for(var text in reads)if(mediaMatches(text)!==reads[text])return false;}catch(e){return false;}
     return true;
   }
-  function appliedImport(record,el,context,out){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||g.matchMedia(record.media.mediaText).matches))appliedSheetEntries(record.styleSheet,el,context.layers,out,context.seen);}
+  function appliedImport(record,el,context,out){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||mediaMatches(record.media.mediaText)))appliedSheetEntries(record.styleSheet,el,context.layers,out,context.seen);}
   // The context of a grouping rule's children, or null when they never apply.
   function groupContext(record,kind,el,context){
     if(kind==='container'||kind==='starting-style'||kind==='supports'&&!cssSupportsMatches(preludeRest(record),el))return null;
@@ -3136,6 +3367,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var PreviousEventTarget=g.EventTarget;
     var eventTargetCtor=__ns.makeNativeFunction(class extends PreviousEventTarget{constructor(){super();$c.add(eventTargets,this);}},'EventTarget',0,true,true);
     eventTargetCtor.prototype=eventTargetProto;
+    __ns.eventTargetConstructor=eventTargetCtor;
     Object.defineProperty(g,'EventTarget',{value:eventTargetCtor,writable:true,configurable:true,enumerable:false});
     Object.defineProperty(eventTargetProto,'constructor',{value:eventTargetCtor,writable:true,configurable:true});
     Object.defineProperty(eventTargetProto,Symbol.toStringTag,{value:'EventTarget',configurable:true});

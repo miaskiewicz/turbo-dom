@@ -11,7 +11,7 @@
   const indexOf=(value,item)=>{for(let index=0;index<value.length;index++)if(value[index]===item)return index;return -1;};
   const splice=(value,index)=>{for(let at=index;at+1<value.length;at++)ownIndex(value,at,value[at+1]);delete value[value.length-1];value.length--;};
   const NativeTarget=make(class EventTarget extends BaseTarget{constructor(){super();native('targetSet',this,{__proto__:null,listeners:[],handlers:create(null)})}},'EventTarget',0,true,true);
-  NativeTarget.prototype=BaseTarget.prototype;define(NativeTarget.prototype,'constructor',{value:NativeTarget,writable:true,configurable:true});define(NativeTarget,'prototype',{writable:false});define(g,'EventTarget',{value:NativeTarget,writable:true,configurable:true});
+  NativeTarget.prototype=BaseTarget.prototype;define(NativeTarget.prototype,'constructor',{value:NativeTarget,writable:true,configurable:true});define(NativeTarget,'prototype',{writable:false});define(g,'EventTarget',{value:NativeTarget,writable:true,configurable:true});ns.eventTargetConstructor=NativeTarget;
   // Node was projected before the listener-backed constructor replaced EventTarget.
   // Keep its constructor inheritance aligned without replacing its instance prototype.
   if(getPrototype(NodeConstructor)===BaseTarget)setPrototype(NodeConstructor,NativeTarget);

@@ -16,6 +16,14 @@ at the time); this file reconstructs them from history.
 - turbo-dom-browser-env: `getComputedStyle(el).getPropertyValue('--x')` returns the custom
   property's specified text from inline styles, style attributes and stylesheets, inherited
   down the tree like Chrome (turbo-dom#286, `computed_custom_properties_chrome156.json`).
+- turbo-dom-browser-env: `matchMedia` returns a real `MediaQueryList` (an `EventTarget`:
+  `matches`, `media`, `onchange`, `addListener` / `removeListener`, `change` listeners;
+  `MediaQueryListEvent`) evaluated against the window viewport (`innerWidth` /
+  `innerHeight` / `devicePixelRatio`) with Chrome headless's preference defaults, media text
+  serialized like Chrome; a `resize` dispatched on the window fires `change` on every list
+  that flipped. The JS cascade's `@media` / `@import` media evaluate the same way while
+  `matchMedia` is the binding's own; without an embedder viewport the size features never
+  match (turbo-dom#287, `match_media_chrome156.json`).
 
 ## [0.7.0] — <date TBD at tag>
 
