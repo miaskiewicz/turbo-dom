@@ -488,17 +488,31 @@ fn hot_engine_getters_cost_one_native_crossing() {
         let used = crossings() - before;
         assert!(used <= 1100, "{used} crossings for 1000 document.body reads");
 
+        // A control round (the same mutations, no `children`) prices the mutations alone.
+        let before = crossings();
+        run(
+            scope,
+            "for (let i = 0; i < 300; i++) d.append(document.createElement('p')); 'ok'",
+        );
+        let control = crossings() - before;
+        run(scope, "d.querySelectorAll('p').forEach(p => p.remove()); 'ok'");
         let before = crossings();
         let out = run(
             scope,
             "let k = 0; for (let i = 0; i < 300; i++) { d.append(document.createElement('p')); \
-             const c = d.children; k += c === d.children && c.length === 4 + i && c[0].localName === 'b' ? 1 : 0; } \
-             d.querySelectorAll('p').forEach(p => p.remove()); String(k)",
+             const c = d.children; k += c === d.children && c.length === 4 + i ? 1 : 0; } String(k)",
         );
         assert_eq!(out, "300");
-        let used = crossings() - before;
-        // per iteration: createElement + append + the remove loop, plus the getter reads.
-        assert!(used <= 300 * 12, "{used} crossings for 300 mutate+children rounds");
+        let used = crossings() - before - control;
+        // two getter reads + one length read per round, the list re-read once per mutation.
+        assert!(used <= 300 * 5, "{used} crossings for 300 mutate+children rounds over the control");
+        let out = run(
+            scope,
+            "const cc = d.children; const q = [cc[0].localName, cc[2].localName, cc.length]; \
+             d.firstElementChild.remove(); q.push(cc[0].localName, cc.length, [...cc].length); \
+             d.querySelectorAll('p').forEach(p => p.remove()); q.push(cc.length); JSON.stringify(q)",
+        );
+        assert_eq!(out, r#"["b","s",303,"i",302,302,2]"#);
 
         let before = crossings();
         let out = run(
