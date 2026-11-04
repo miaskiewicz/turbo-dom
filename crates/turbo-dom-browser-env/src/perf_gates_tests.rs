@@ -612,3 +612,46 @@ fn hot_computed_style_and_collection_paths_build_no_null_proto_literals() {
         .collect();
     assert!(left.is_empty(), "per-call null-prototype literals left: {left:?}");
 }
+
+/// 0.7.1 item 2: a cached live collection (`childNodes`, `children`, `getElementsBy*`)
+/// learns of mutations from an epoch the engine pushes on every tree write, so an indexed,
+/// `length` or iterator read between mutations makes no native crossing (it used to ask
+/// for the tree stamp on every read). Liveness and identity are unchanged.
+#[test]
+fn live_collection_reads_between_mutations_cross_nothing() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><ul id=u><li>a</li><li>b</li><li class=k>c</li></ul>");
+        run(
+            scope,
+            "globalThis.u = document.getElementById('u'); globalThis.nodes = u.childNodes; \
+             globalThis.kids = u.children; globalThis.ks = document.getElementsByClassName('k'); \
+             nodes.length; kids.length; ks.length; 'ok'",
+        );
+        let before = crossings();
+        let out = run(
+            scope,
+            "let n = 0; for (let i = 0; i < 1000; i++) { n += nodes.length + kids.length + ks.length; \
+             n += nodes[i % 3] === kids[i % 3] ? 1 : 0; for (const k of kids) n += k === ks[0] ? 1 : 0; } String(n)",
+        );
+        assert_eq!(out, "9000");
+        let used = crossings() - before;
+        assert!(used <= 10, "{used} crossings for 1000 rounds of reads with no mutation");
+        let out = run(
+            scope,
+            "const r = [nodes === u.childNodes, kids === u.children]; const li = document.createElement('li'); \
+             u.append(li); r.push(nodes.length, kids[3] === li); li.className = 'k'; r.push(ks.length, ks[1] === li); \
+             u.firstChild.remove(); r.push(nodes.length, kids.length, kids[0].textContent); \
+             u.textContent = ''; r.push(nodes.length, kids.length, ks.length, nodes[0], [...kids].length); \
+             const other = document.implementation.createHTMLDocument('o'); other.body.append(document.adoptNode(u)); \
+             u.append(other.createElement('i')); r.push(nodes.length, kids[0].localName); JSON.stringify(r)",
+        );
+        assert_eq!(out, r#"[true,true,4,true,2,true,3,3,"b",0,0,0,null,0,1,"i"]"#);
+        reset();
+    }
+    clear_interface_records(isolate);
+}
