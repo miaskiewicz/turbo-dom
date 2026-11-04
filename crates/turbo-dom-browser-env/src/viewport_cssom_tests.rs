@@ -117,3 +117,15 @@ fn iframe_viewport_matches_chrome156_control() {
         include_str!("iframe_viewport_probe.js"),
     );
 }
+
+/// turbo-dom#288 follow-up: an iframe's `width` / `height` attributes are presentational
+/// hints in the cascade (author CSS wins, the default is 300x150), its window's viewport is
+/// that computed content box (rounded like Chrome), and the child window's matchMedia
+/// evaluates against it, firing `change` when the iframe resizes.
+#[test]
+fn iframe_media_matches_chrome156_control() {
+    check(
+        include_str!("iframe_media_chrome156.json"),
+        include_str!("iframe_media_probe.js"),
+    );
+}

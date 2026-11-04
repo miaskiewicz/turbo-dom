@@ -1,0 +1,106 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "probeSha256": "1e166f88bb7b1d05733e6f5675a21df8fef34d60a2bcbb618cb5dfc2dd774f6b",
+  "collectorSha256": "c8a12247067ebd632b2a1631b1d87bd26fa6a6bd0c00e62c20970022ad25688b",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "default": [
+      "300px",
+      "150px",
+      300,
+      150
+    ],
+    "attributes": [
+      "250px",
+      "100px",
+      250,
+      100
+    ],
+    "authorWins": [
+      "300px",
+      "150px",
+      300,
+      150
+    ],
+    "authorOneAxis": [
+      "250px",
+      "300px",
+      250,
+      300
+    ],
+    "attributePixels": [
+      "120px",
+      "80.5px",
+      120,
+      81
+    ],
+    "child": [
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "top": [
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true
+    ],
+    "childList": [
+      true,
+      "(max-width: 300px)"
+    ],
+    "wider": [
+      false,
+      400
+    ],
+    "restored": [
+      true,
+      false,
+      250,
+      100
+    ],
+    "log": [
+      [
+        "narrow",
+        false,
+        "(max-width: 300px)"
+      ],
+      [
+        "tall",
+        true
+      ],
+      [
+        "narrow",
+        true,
+        "(max-width: 300px)"
+      ],
+      [
+        "tall",
+        false
+      ]
+    ]
+  }
+}
