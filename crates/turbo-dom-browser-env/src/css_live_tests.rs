@@ -1341,6 +1341,53 @@ fn css_animation_update_runs_once_per_style_change_gate() {
     );
 }
 
+// turbo-test#227: a transition update decides "rendered" (no display:none ancestor) from the
+// ancestor styles the same computed-style read already resolves, so reading a transitioned
+// element after a tree mutation costs no more cascade runs than reading an identical element
+// without a transition. The ancestors run transitions of their own (volatile styles, never
+// reused), as MUI form controls do.
+#[test]
+fn transition_update_resolves_no_extra_ancestor_styles_gate() {
+    let value = run(
+        "<!doctype html><head><style>.v {transition:opacity 100s linear;opacity:1} .v.dim {opacity:0.5} #t {display:block;height:1px;transition:height 100s linear}</style></head><body><div id=x></div><div class=v id=r1><div><div class=v><div><div><div><span id=t>t</span></div></div></div></div></div></div><div class=v id=r2><div><div class=v><div><div><div><span id=c>c</span></div></div></div></div></div></div></body>",
+        r#"(()=>{
+          const runs=__cssTestCascadeRuns,x=document.getElementById('x'),t=document.getElementById('t'),c=document.getElementById('c');
+          for(const v of document.querySelectorAll('.v')){getComputedStyle(v).opacity;v.classList.add('dim');getComputedStyle(v).opacity;}
+          for(const el of [t,c])getComputedStyle(el).height;
+          const cost=el=>{let total=0;for(let i=0;i<20;i++){x.textContent=String(i);const mark=runs();getComputedStyle(el).height;total+=runs()-mark;}return total;};
+          const transitioned=cost(t),control=cost(c);
+          t.style.height='5px';getComputedStyle(t).height;
+          const kinds=t.getAnimations().map(a=>a.constructor.name+':'+a.transitionProperty);
+          return JSON.stringify({extra:transitioned-control,kinds,running:document.querySelectorAll('.v')[0].getAnimations().length});
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"extra": 0, "kinds": ["CSSTransition:height"], "running": 1})
+    );
+}
+
+// turbo-test#227: an ancestor first resolved while a descendant's CSS update runs (the
+// descendant inherits from it) still records its own before-change style, so a later change
+// of the ancestor starts its transition, as Chrome's style recalc does.
+#[test]
+fn an_ancestor_resolved_inside_a_descendant_update_still_starts_its_transition() {
+    let value = run(
+        "<!doctype html><head><style>.v {transition:opacity 100s linear;opacity:1} .v.dim {opacity:0.5} #t {transition:color 100s linear}</style></head><body><div class=v id=v><span id=t>t</span></div></body>",
+        r#"(()=>{
+          const v=document.getElementById('v'),t=document.getElementById('t');
+          getComputedStyle(t).color;
+          v.classList.add('dim');
+          const opacity=getComputedStyle(v).opacity;
+          return JSON.stringify({opacity,kinds:v.getAnimations().map(a=>a.constructor.name+':'+a.transitionProperty)});
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"opacity": "1", "kinds": ["CSSTransition:opacity"]})
+    );
+}
+
 // turbo-dom#113: the reuse key covers CSSOM edits made in another realm. A live declaration one
 // realm returned for an element of another realm's document re-reads after that document's
 // sheet is edited (a declaration write, an inserted rule), in both directions, while repeated
