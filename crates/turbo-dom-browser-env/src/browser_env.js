@@ -895,7 +895,18 @@
     function inheritedValue(name){ return inheritSnapshot ? computedSnapshotValue(inheritSnapshot,name) : inheritParent ? computedSnapshotValue(parentStyle(inheritParent),name) : ''; }
     // Web Animations compose over cascaded and inline values; !important declarations win.
     if(!pseudo&&el&&__ns.hasAnimations&&__ns.hasAnimations(el))computedVolatile=true;
-    var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},inheritedValue):null;
+    // The element's own display as the UA / initial resolution below will compute it ("" for
+    // a value it cannot tell before then), and this read's snapshot map: a transition update
+    // decides "rendered" from them without resolving the element or its ancestors again
+    // (turbo-test#227).
+    function ownDisplay(){
+      var value=decl.display;
+      if((value==null||value==='')&&typeof __ns.cascadeProp==='function'){try{value=__ns.cascadeProp.call(el,'display')||'';}catch(e){value='';}}
+      value=$c.toLowerCase($c.trim(String(value==null?'':value)));
+      if(!value||value==='revert'||value==='revert-layer'){try{return computedUserAgentBox(el,layer).display;}catch(e){return '';}}
+      return $c.test(/^[a-z-]+(?: [a-z-]+)*$/,value)?value:'';
+    }
+    var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},inheritedValue,snapshots,ownDisplay):null;
     if(animated)for(var ai=0;ai<animated.length;ai++)if(!priorities[animated[ai][0]])setProp(animated[ai][0],animated[ai][1]);
     var color = decl.color || '';
     if (!color && !pseudo) { try { color = __ns.cascadeProp.call(el, 'color'); } catch(e) {} }

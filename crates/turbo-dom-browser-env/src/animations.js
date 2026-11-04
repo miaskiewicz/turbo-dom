@@ -1094,9 +1094,9 @@
   // Whether any animation targets `element`: its computed style follows the timeline, so
   // getComputedStyle never reuses it (turbo-test#125).
   ns.hasAnimations = function (element) { const entries = targets.get(element); return !!(entries && entries.length); };
-  ns.animatedStyle = function (element, read, inherited) {
+  ns.animatedStyle = function (element, read, inherited, snapshots, ownDisplay) {
     if (suppressStyle) return null;
-    cssUpdate(element, read, inherited);
+    cssUpdate(element, read, inherited, snapshots, ownDisplay);
     const stack = effectStack(element, null);
     return stack ? stackResult(stack, read, inherited) : null;
   };
@@ -1451,6 +1451,18 @@
     for (let node = element; node && nodeType(node) === 1; node = apply(parentGetter, node, [])) { suppressStyle = true; try { if (ns.computedDisplay(node, snapshots) === 'none') return false; } finally { suppressStyle = false; } }
     return true;
   }
+  // `rendered` from inside the element's own style resolution (turbo-test#227): its own display
+  // comes from the resolution in progress (`own`), and the ancestors from that resolution's
+  // snapshot map, which inheritance has usually filled already. Ancestors resolve with their
+  // animations and their own CSS updates, as any other read of them. Without a usable own
+  // display, the standalone walk above.
+  function renderedFrom(element, snapshots, own) {
+    if (!snapshots || !own) return rendered(element);
+    if (own === 'none') return false;
+    if (!apply(connectedGetter, element, [])) return false;
+    for (let node = apply(parentGetter, element, []); node && nodeType(node) === 1; node = apply(parentGetter, node, [])) if (ns.computedDisplay(node, snapshots) === 'none') return false;
+    return true;
+  }
   function baseStyle(element) {
     suppressStyle = true;
     let style, parent;
@@ -1523,7 +1535,11 @@
   const CSS_TRANSITION = 0, CSS_ANIMATION = 1, SCRIPT = 2; // CSSTransition / CSSAnimation kinds above
   const firstChild = ns.domAccessor('firstChild', false, 'Node'), nextSibling = ns.domAccessor('nextSibling', false, 'Node');
   const comparePosition = g.Node.prototype.compareDocumentPosition;
-  let cssBusy = false, cssGeneration = 0, cssKeyframes = null;
+  // The elements whose CSS update is running: a style read the update causes for the same
+  // element does not update it again; other elements (ancestors resolved for `rendered`) update
+  // as on any read, so each records its before-change style.
+  const cssBusy = store();
+  let cssGeneration = 0, cssKeyframes = null;
   // A comma-separated computed list; commas inside functions do not split.
   function splitList(text) {
     const out = [];
@@ -1837,22 +1853,22 @@
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
     return true;
   }
-  function cssUpdate(element, read, inherited) {
-    if (cssBusy) return;
+  function cssUpdate(element, read, inherited, snapshots, ownDisplay) {
+    if (cssBusy.get(element)) return;
     const declared = read('animation-name') || read('transition-property');
     if (!declared && !cssStates.has(element)) return;
-    cssBusy = true;
+    cssBusy.set(element, true);
     try {
       const underlying = property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
       const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(read, underlying), last = cssUpdates.get(element);
       if (stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs)) return;
       if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
-      const hidden = read('display') === 'none' || !rendered(element);
+      const hidden = read('display') === 'none' || !renderedFrom(element, snapshots, ownDisplay ? ownDisplay() : '');
       cssAnimations(element, read, underlying, hidden);
       cssTransitions(element, read, underlying, hidden);
       // Stamped after the update: the invalidation its own animations cause is not a new input.
       cssUpdates.set(element, { stamp: stamp && ns.computedStyleStamp(element), inputs });
-    } finally { cssBusy = false; }
+    } finally { cssBusy.set(element, false); }
   }
   // getAnimations() flushes style: every element of the tree resolves its style once.
   function cssFlush(node) {
