@@ -185,7 +185,18 @@ pub(super) fn inserted_many(ancestors: &[Handle]) {
         group(node);
     }
 }
+#[cfg(test)]
+thread_local! {
+    static OWNER_SCANS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+/// Checked-radio owner scans run on this thread (the perf gate in `perf_gates_tests`).
+#[cfg(test)]
+pub(super) fn owner_scans() -> usize {
+    OWNER_SCANS.with(std::cell::Cell::get)
+}
 pub(super) fn owner_changes() {
+    #[cfg(test)]
+    OWNER_SCANS.with(|scans| scans.set(scans.get() + 1));
     let previous = DOM.with(|dom| {
         dom.borrow()
             .as_ref()

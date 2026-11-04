@@ -415,6 +415,45 @@ fn internal_dispatch_defines_no_argument_rows() {
     clear_interface_records(isolate);
 }
 
+/// Every mutation-observer flush (each dispatched event) asks whether a checked radio's form
+/// owner changed. The owners follow the tree only, so a flush with no tree change since the
+/// last scan must not walk every checked radio again (React suites keep many: every unmounted
+/// but still-checked radio stays registered). The owners still follow real changes.
+#[test]
+fn radio_owner_scans_run_once_per_tree_version() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<body><form id=f><input type=radio name=r id=a checked></form>\
+             <form id=g></form><input type=radio name=r id=b form=g checked><button id=x>x</button>",
+        );
+        run(scope, "document.getElementById('x').click(); 'ok'");
+        let before = form_checked_state::owner_scans();
+        run(
+            scope,
+            "const x = document.getElementById('x'); for (let i = 0; i < 100; i++) x.click(); 'ok'",
+        );
+        let scans = form_checked_state::owner_scans() - before;
+        assert!(scans <= 1, "{scans} radio owner scans for 100 clicks without a DOM change");
+        let out = run(
+            scope,
+            "const a = document.getElementById('a'), b = document.getElementById('b'); \
+             document.getElementById('g').append(a); document.getElementById('x').click(); \
+             const c = document.createElement('input'); c.type = 'radio'; c.name = 'r'; \
+             document.getElementById('g').append(c); c.checked = true; \
+             JSON.stringify([a.form.id, a.checked, b.checked, c.checked])",
+        );
+        assert_eq!(out, "[\"g\",false,false,true]");
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
 /// A selector with a `:` none of the state-dependent transforms (popover, dialog, interest,
 /// form, view transition) applies to skips them: whether each applies is a property of the
 /// selector text, kept per selector, so `matches(':focus-visible')` or `closest('li:hover')`
