@@ -926,6 +926,9 @@
   function computedOwnerScope(el){
     var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return -1;}
     if(!owner||computedAdopted(owner))return -1;
+    // A child iframe document (#299) cascades its own sheets, which the owner's style filter
+    // never names: its elements key on the plain tree version.
+    if(computedFrameRoot(el))return -1;
     var ownerRecord=collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
     if(!host)return 0;
     var sheets=computedOwnerSheets(owner,host),entry=computedSnapshotGet(computedSheetLists,owner);
