@@ -582,6 +582,7 @@ fn measure_orthogonal_extent(lb: &super::boxgen::LayoutBox, fonts: &crate::FontR
         table_rows: None,
         dropped_end_margins: std::collections::HashSet::new(),
         sticky_pending: Vec::new(),
+        sticky: crate::layout::sticky::StickyState::default(),
         writing: parent,
     };
     let available = if parent.vertical() { height } else { width };

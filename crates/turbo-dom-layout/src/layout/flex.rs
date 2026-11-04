@@ -522,6 +522,22 @@ fn lines_natural(
     fs: f32,
     fonts: &FontRegistry,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
+    policy: (bool, Option<f32>),
+) -> f32 {
+    // A forced break (`<br>`) ends a line: the max-content width is the widest line's
+    // (Chrome 156: `sticky-inline-inline-block-*`, miaskiewicz/turbo-dom#295).
+    items
+        .split(|item| matches!(item, InlineItem::LineBreak | InlineItem::SourceBreak { .. }))
+        .map(|line| line_natural(line, fs, fonts, original, policy))
+        .fold(0.0, f32::max)
+}
+
+/// The max-content width of one forced line of inline items.
+fn line_natural(
+    items: &[InlineItem],
+    fs: f32,
+    fonts: &FontRegistry,
+    original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
     (html_metrics, scale): (bool, Option<f32>),
 ) -> f32 {
     let runs = block::build_runs(items, fs, 0.0, fonts);
@@ -967,6 +983,7 @@ fn measure_item(
                 table_rows: None,
                 dropped_end_margins: std::collections::HashSet::new(),
                 sticky_pending: Vec::new(),
+                sticky: crate::layout::sticky::StickyState::default(),
                 writing: crate::layout::writing::WritingMode::default(),
             };
             let frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, w, &mut mctx);
