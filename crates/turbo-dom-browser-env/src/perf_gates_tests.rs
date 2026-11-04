@@ -546,3 +546,69 @@ fn hot_engine_getters_cost_one_native_crossing() {
     }
     clear_interface_records(isolate);
 }
+
+/// The `{__proto__: null, ...}` literals left in `source`'s hot function at `marker`: the body
+/// from the first `{` after the marker to its matching `}` (`whole_line`: the marker's line).
+fn null_proto_literals(source: &str, marker: &str, whole_line: bool) -> usize {
+    let start = source
+        .find(marker)
+        .unwrap_or_else(|| panic!("hot path {marker:?} not found"));
+    let rest = &source[start..];
+    let body = if whole_line {
+        rest.lines().next().unwrap_or("")
+    } else {
+        let open = rest.find('{').expect("function body");
+        let mut depth = 0usize;
+        let mut end = rest.len();
+        for (index, ch) in rest[open..].char_indices() {
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = open + index + 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        &rest[..end]
+    };
+    body.replace(' ', "").matches("__proto__:null").count()
+}
+
+/// 0.7.1 item 3: the per-call computed-style and collection paths build no
+/// `{__proto__: null, ...}` literal per call (V8 makes each a slow dictionary-mode object
+/// and the profile's CreateShallowObjectLiteral / dictionary lookups are their cost): static
+/// tables are hoisted, records come from fixed-shape constructors, and row descriptors are
+/// one reused null-prototype descriptor.
+#[test]
+fn hot_computed_style_and_collection_paths_build_no_null_proto_literals() {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/src/");
+    let read = |name: &str| std::fs::read_to_string(format!("{dir}{name}")).unwrap();
+    let browser_env = read("browser_env.js");
+    let document_basics = read("document_basics.js");
+    let form_collections = read("form_collections.js");
+    let typed_om = read("typed_om.js");
+    let sites = [
+        (&browser_env, "var add=function(list,value){", false),
+        (&browser_env, "function computedFonts(", false),
+        (&browser_env, "function groupContext(", false),
+        (&browser_env, "function appliedGroupRules(", false),
+        (&browser_env, "function appliedSheetEntries(", false),
+        (&browser_env, "function appliedEntryMatch(", false),
+        (&document_basics, "const collectionOwn=", true),
+        (&form_collections, "const row = (array, item) =>", false),
+        (&typed_om, "const push = (array, value) =>", true),
+        (&typed_om, "const toArray = (array) =>", true),
+    ];
+    let left: Vec<String> = sites
+        .iter()
+        .filter_map(|(source, marker, line)| {
+            let count = null_proto_literals(source, marker, *line);
+            (count > 0).then(|| format!("{marker} x{count}"))
+        })
+        .collect();
+    assert!(left.is_empty(), "per-call null-prototype literals left: {left:?}");
+}
