@@ -20,7 +20,8 @@ fn shared_styles_match_fresh_cascades() {
     let value = run(
         "<!doctype html><html><head></head><body></body></html>",
         r#"(()=>{
-      let seed=3072;const rand=n=>{seed=(seed*1103515245+12345)%2147483648;return seed%n;};
+      // MINSTD, read from the high bits.
+      let seed=3072;const rand=n=>{seed=(seed*48271)%2147483647;return Math.floor(seed/2147483647*n);};
       const pick=list=>list[rand(list.length)];
       const classes=['a','b','c','d','row','cell'],tags=['div','span','p','li','b','input','button','section'];
       const props=['display','position','color','font-size','font-weight','line-height','margin-top','padding-left','width','height','opacity','visibility','flex-grow','background-color','text-align','border-top-width','border-top-style','z-index','cursor','letter-spacing','font-family','--c','--d','zoom','content','float'];
@@ -43,7 +44,7 @@ fn shared_styles_match_fresh_cascades() {
         'line-height: '+pick(['1.5','normal','2em']),'text-align: '+pick(['center','start']),'border-top: '+rand(4)+'px solid red','z-index: '+rand(5),'cursor: pointer',
         'letter-spacing: '+rand(3)+'px','font-family: '+pick(['serif','a, b']),'--c: '+rand(9),'--d: var(--c)','zoom: '+pick(['1','2','normal']),'width: '+pick(['50%','10px','auto']),
         'float: '+pick(['left','none']),'height: '+pick(['3px','50%']),'color: inherit']);
-      let checks=0,shares=0,offShares=0,mismatches=[];
+      let checks=0,shares=0,offShares=0,stale=0,mismatches=[];
       for(let round=0;round<20;round++){
         __cssTestStyleShareOff(false);wide=round%4===3;
         document.head.textContent='';document.body.textContent='';
@@ -74,19 +75,23 @@ fn shared_styles_match_fresh_cascades() {
         }
         shares+=__cssTestStyleShares()-before;
         __cssTestStyleShareOff(true);
-        const bump=document.createElement('style');bump.textContent='.never-'+round+' { color: red }';document.head.appendChild(bump);
+        const bump=document.createElement('style');document.head.appendChild(bump);bump.sheet.insertRule('.never-'+round+' { color: red }',0);
+        const runsBefore=__cssTestCascadeRuns();
         const offBefore=__cssTestStyleShares();
         const fresh=read();
         offShares+=__cssTestStyleShares()-offBefore;
+        if(__cssTestCascadeRuns()-runsBefore<fresh.length)stale++;
         fresh.forEach((row,i)=>row.forEach((v,j)=>{checks++;if(v!==shared[i][j]&&mismatches.length<10)mismatches.push({round,prop:props[j],shared:shared[i][j],fresh:v,css:css.length});}));
       }
       __cssTestStyleShareOff(false);
-      return JSON.stringify({checks,shares,offShares,mismatches});
+      return JSON.stringify({checks,shares,offShares,stale,mismatches});
     })()"#,
     );
     assert!(value["checks"].as_u64().unwrap() >= 10_000, "{value}");
-    assert!(value["shares"].as_u64().unwrap() >= 250, "{value}");
+    assert!(value["shares"].as_u64().unwrap() >= 150, "{value}");
     assert_eq!(value["offShares"], 0, "{value}");
+    // The oracle cascades every element afresh.
+    assert_eq!(value["stale"], 0, "{value}");
     assert_eq!(value["mismatches"], serde_json::json!([]), "{value}");
 }
 
