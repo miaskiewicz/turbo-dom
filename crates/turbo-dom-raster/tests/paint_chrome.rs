@@ -74,6 +74,11 @@ const ANTIALIASED_EDGES: &[(&str, u32, u32, u8)] = &[
     // The 90% thumb's (centre 67.6, 28; radius 7) top arc crosses this pixel: measured
     // rgb(0,126,255) against Chrome's rgb(0,117,255), PNG and SVG (round-2 review #9).
     ("form-native-range-step-max", 66, 21, 9),
+    // The blue top / grey left mitre diagonal halves the corner pixel (#283): Chrome
+    // blends it rgb(84,84,211), exactly half; the painters' coverage of the diagonal
+    // measures rgb(105,105,200), PNG and SVG.
+    ("author-border-button-top-color", 20, 20, 21),
+    ("author-border-button-top-color-bg", 20, 20, 21),
 ];
 
 /// Why `got` (the screenshot's RGB at `probe`) differs from Chrome's, if it does: a

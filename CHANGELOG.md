@@ -14,6 +14,12 @@ at the time); this file reconstructs them from history.
   paths (an author `margin-bottom` / `margin-block-end` replaces it; at the start of a quirks
   `<body>` an empty form's margin is ignored, as Blink's quirky container does).
   `Cascade::with_quirks` adds the rule to a caller-built cascade (#282).
+- **turbo-dom-layout / -raster: an author border turns a control's native look off.** Any
+  author `border*` declaration (the shorthand, one longhand, even a value equal to the UA's,
+  `border: none`, a radius) on a `<button>`, an `<input>` button type or another restylable
+  control drops Chrome's native appearance, so the CSS border and background paint in the
+  PNG and SVG screenshots, like Chrome 156. Square borders whose sides differ in colour now
+  meet on the corner diagonals (#283).
 
 ## [0.7.0] — <date TBD at tag>
 

@@ -589,17 +589,32 @@ fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
             .filter(|_| s.width > 0)
             .map(|c| (f32::from(s.width), c))
     };
-    if let Some((w, c)) = side(&b.top) {
-        rect(svg, f.x, f.y, f.width, w, c);
-    }
-    if let Some((w, c)) = side(&b.bottom) {
-        rect(svg, f.x, f.y + f.height - w, f.width, w, c);
+    let mitred = crate::rrect::mixed_colours(b);
+    if !mitred {
+        if let Some((w, c)) = side(&b.top) {
+            rect(svg, f.x, f.y, f.width, w, c);
+        }
+        if let Some((w, c)) = side(&b.bottom) {
+            rect(svg, f.x, f.y + f.height - w, f.width, w, c);
+        }
     }
     if let Some((w, c)) = side(&b.left) {
         rect(svg, f.x, f.y, w, f.height, c);
     }
     if let Some((w, c)) = side(&b.right) {
         rect(svg, f.x + f.width - w, f.y, w, f.height, c);
+    }
+    if !mitred {
+        return;
+    }
+    // As the raster painter: sides that differ in colour paint the top and bottom bands
+    // over the left and right ones, mitred on the corner diagonals.
+    for (top, s) in [(true, &b.top), (false, &b.bottom)] {
+        let Some((_, c)) = side(s) else { continue };
+        let band =
+            crate::rrect::mitred_band((f.x, f.y, f.width, f.height), crate::rrect::widths(b), top);
+        let d = path_data(&crate::rrect::polygon(&band));
+        let _ = writeln!(svg, "<path d=\"{d}\" {}/>", fill_attrs(c));
     }
 }
 

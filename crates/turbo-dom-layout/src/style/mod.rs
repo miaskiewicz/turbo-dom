@@ -18,12 +18,12 @@ pub(crate) fn expand_quad<'a>(
 }
 mod token;
 
-pub(crate) use cascade::presentational_declarations_of;
 pub use cascade::{
     presentational_declarations, resolve_matched_style, style_input, Cascade, CascadeOrigin,
     ComputedStyle, LeveledRule, MatchedDeclaration, Navigator, Roots, SiblingPosition, StyleInput,
     StyleOptions, StyledElement, StyledNode, StyledText, TreeView,
 };
+pub(crate) use cascade::{presentational_declarations_of, AUTHOR_BORDER};
 pub use parser::{
     parse_declarations, parse_stylesheet, AtRule, Declaration, Rule, RuleSelectors, Stylesheet,
 };
