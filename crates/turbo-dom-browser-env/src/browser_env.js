@@ -119,6 +119,7 @@
   // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
   if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
+  var cssomStructureEpoch=g.__cssomStructureEpoch,bumpCssomStructure=g.__bumpCssomStructure;delete g.__cssomStructureEpoch;delete g.__bumpCssomStructure;
   // The native live-state epoch (form / popover / dialog state the tree version misses); the
   // engine's JS state stores report their changes through __tsNs.bumpStyleState.
   var styleStateEpoch=g.__styleStateEpoch,bumpStyleState=g.__bumpStyleState;delete g.__styleStateEpoch;delete g.__bumpStyleState;__tsNs.bumpStyleState=bumpStyleState;
@@ -995,7 +996,7 @@
   // interest state that could match, an animated element, the fullscreen element
   // (viewport-sized), an @import's media query.
   var computedStyleCache=new computedSnapshotMap(),computedVolatile=false,computedStateRead=false;
-  function invalidateComputedStyles(){bumpCssomEpoch();}
+  function invalidateComputedStyles(){bumpCssomStructure();}
   __ns.invalidateComputedStyles=invalidateComputedStyles;
   // What a CSS animation / transition update reads beyond the element's own values
   // (animations.js cssUpdate): null when the element has no stamp (it is then never skipped).
@@ -2247,7 +2248,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
   function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries)$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
   function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}'));$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1)return;var name=$c.trim($c.slice(part,0,index));if(!record.fontFace&&!$c.startsWith(name,'--')&&!knownProperty(name))return;var value=$c.trim($c.slice(part,index+1)),important=$c.test(/\s*!important\s*$/i,value);if(important)value=$c.trim($c.replace(value,/\s*!important\s*$/i,''));if(!record.fontFace&&!$c.startsWith(name,'--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=$c.get(record.values,name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
-  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');if(!record.owner)invalidateComputedStyles();}
+  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');if(!record.owner)bumpCssomEpoch();}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);$c.call(appliedInlineWrite,record.owner,record.source);}}
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
   function removeDeclaration(record,name){if(!record.fontFace){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands){var removed=false;$c.forEach(longhands,function(longhand){if($c.delete(record.values,longhand)){$c.splice(record.names,$c.indexOf(record.names,longhand),1);removed=true;}});if(removed)commitDeclaration(record);return '';}}var previous=$c.get(record.values,name);if(!previous)return '';$c.delete(record.values,name);$c.splice(record.names,$c.indexOf(record.names,name),1);commitDeclaration(record);return previous.text;}
@@ -2392,7 +2393,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // shared by every sheet of one computation; `el` checks @supports selector() conditions.
   function cssLayerChild(node,name){var child=name===null?null:node.named[name];if(!child){child={__proto__:null,named:$O.create(null),children:[],rank:0};if(name!==null)node.named[name]=child;$c.push(node.children,child);}return child;}
   function cssLayerPath(node,name){var parts=cssParts(name,'.');for(var index=0;index<parts.length;index++)node=cssLayerChild(node,$c.trim(parts[index]));return node;}
-  function cssLayerTree(){return {__proto__:null,named:$O.create(null),children:[],rank:0};}
+  function cssLayerTree(){return {__proto__:null,named:$O.create(null),children:[],rank:0,root:true};}
+  // An entry's layer rank; an unlayered entry kept from an earlier build (computedSheetEntries)
+  // holds that build's root, so every root ranks as the current one.
+  function cssLayerRank(layer,layers){return layer.root?layers.rank:layer.rank;}
   // Sub-layers precede their layer's own rules; the root (unlayered rules) comes last.
   function cssLayerRanks(root){var next=0;(function visit(node){for(var index=0;index<node.children.length;index++)visit(node.children[index]);node.rank=next++;})(root);}
   var cssSupportsCache=$O.create(null);
@@ -2430,11 +2434,31 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var outerMedia=computedMediaReads,outerVolatile=computedVolatile,media={__proto__:null},layers=cssLayerTree(),lists=[];
     computedMediaReads=media;computedVolatile=false;
     var volatile=false;
-    try{for(var si=0;si<sheets.length;si++)$c.push(lists,appliedSheetEntries(sheets[si],el,layers));volatile=computedVolatile;}
+    try{var seen=new Set();for(var si=0;si<sheets.length;si++)$c.push(lists,computedOneSheetEntries(sheets[si],el,layers,seen));volatile=computedVolatile;}
     finally{computedMediaReads=outerMedia;computedVolatile=outerVolatile||volatile;computedMergeMedia(media);}
     build={__proto__:null,epoch:epoch,media:media,layers:layers,lists:lists};
     if(!volatile&&sheets.length)computedSnapshotSet(computedEntryBuilds,sheets,build);
     return build;
+  }
+  // One sheet's rule entries, kept across entry builds (an emotion test run adds a <style> per
+  // rule, so every build would otherwise re-walk every earlier sheet) while no CSSOM change but a
+  // declaration write happened and its @media answers hold. Only a sheet of unlayered rules
+  // without @import is kept: a layer joins the build's layer tree, an import the build's seen set.
+  var computedSheetCache=new computedSnapshotMap();
+  function computedOneSheetEntries(sheet,el,layers,seen){
+    if($c.has(seen,sheet))return [];
+    var kept=computedSnapshotGet(computedSheetCache,sheet);
+    var structure=cssomStructureEpoch();
+    if(kept&&kept.epoch===structure&&computedMediaUnchanged(kept.media)){$c.add(seen,sheet);computedMergeMedia(kept.media);return kept.list;}
+    var outer=computedMediaReads,media={__proto__:null},volatile=computedVolatile,layersBefore=layers.children.length,list;
+    computedMediaReads=media;computedVolatile=false;
+    try{list=appliedSheetEntries(sheet,el,layers,undefined,seen);}
+    finally{var went=computedVolatile;computedMediaReads=outer;computedVolatile=volatile||went;computedMergeMedia(media);}
+    var keep=!went&&layers.children.length===layersBefore,rules=cssItems(sheetRecord(sheet).rules);
+    for(var at=0;keep&&at<rules.length;at++)if(cssRuleRecord(rules[at]).type===3)keep=false;
+    for(var index=0;keep&&index<list.length;index++)if(list[index].layer!==layers)keep=false;
+    computedSnapshotSet(computedSheetCache,sheet,keep?{__proto__:null,epoch:structure,media:media,list:list}:null);
+    return list;
   }
   // Rule buckets (turbo-dom#307): a style rule can select an element only when, for some
   // alternative of its selector list, the element carries every class and id named at the top
@@ -2451,13 +2475,24 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // The build's bucket index, made on first use: every entry by its position in the build
   // (sheet by sheet, in order), the sheet it came from, the positions of the unkeyed entries and,
   // per name, the positions of the entries keyed on it (all ascending).
+  // The last index made is extended instead when its build's lists are a prefix of the new
+  // one's (a sheet appended: an emotion test run adds a <style> per rule); the earlier build
+  // then drops it and indexes afresh if it is used again.
+  var cssLastBuckets=null;
   function cssBucketIndex(build){
     var index=build.buckets;if(index)return index;
-    index=build.buckets={__proto__:null,entries:[],sheet:[],unkeyed:[],keyed:{__proto__:null}};
-    for(var si=0;si<build.lists.length;si++){
+    var start=0,last=cssLastBuckets;
+    if(last&&last.build.buckets===last.index&&last.build.lists.length<build.lists.length){
+      start=last.build.lists.length;
+      for(var at=0;at<start;at++)if(last.build.lists[at]!==build.lists[at]){start=0;break;}
+    }
+    if(start){index=last.index;last.build.buckets=null;}
+    else index={__proto__:null,entries:[],sheet:[],unkeyed:[],keyed:{__proto__:null}};
+    build.buckets=index;cssLastBuckets={__proto__:null,build:build,index:index};
+    for(var si=start;si<build.lists.length;si++){
       var entries=build.lists[si];
       for(var ri=0;ri<entries.length;ri++){
-        var at=index.entries.length,entry=entries[ri],keys=entry.scopes?null:cssRuleKeys($c.trim(String(entry.rule.selectorText||'')));
+        var at=index.entries.length,entry=entries[ri],keys=entry.bucketKeys;if(keys===undefined)keys=entry.bucketKeys=entry.scopes?null:cssRuleKeys($c.trim(String(entry.rule.selectorText||'')));
         $c.push(index.entries,entry);$c.push(index.sheet,si);
         if(!keys){$c.push(index.unkeyed,at);continue;}
         for(var ki=0;ki<keys.length;ki++){var list=index.keyed[keys[ki]];if(!list)list=index.keyed[keys[ki]]=[];if(list[list.length-1]!==at)$c.push(list,at);}
@@ -2533,7 +2568,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   AppliedContext.prototype=$O.create(null);
   function ScopeFrame(root,limit,owner){this.root=root;this.limit=limit;this.owner=owner;}
   ScopeFrame.prototype=$O.create(null);
-  function AppliedEntry(rule,layer,media,scopes){this.rule=rule;this.layer=layer;this.media=media;this.scopes=scopes;}
+  function AppliedEntry(rule,layer,media,scopes){this.rule=rule;this.layer=layer;this.media=media;this.scopes=scopes;this.bucketKeys=undefined;}
   AppliedEntry.prototype=$O.create(null);
   function EntryMatch(entry,specificity,proximity,order){this.entry=entry;this.specificity=specificity;this.proximity=proximity;this.order=order;}
   EntryMatch.prototype=$O.create(null);
@@ -2638,9 +2673,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // unlayered ones first); within a layer by specificity, @scope proximity, then document order.
   function cascadeEntries(records,layers,apply){
     cssLayerRanks(layers);
-    var sorted=layerSorted(records,function(a,b){var x=a.entry.layer.rank,y=b.entry.layer.rank;return x!==y?x>y:!cascadeWeaker(a,b);});
+    var sorted=layerSorted(records,function(a,b){var x=cssLayerRank(a.entry.layer,layers),y=cssLayerRank(b.entry.layer,layers);return x!==y?x>y:!cascadeWeaker(a,b);});
     for(var index=0;index<sorted.length;index++)apply(sorted[index].entry,false);
-    sorted=layerSorted(records,function(a,b){var x=a.entry.layer.rank,y=b.entry.layer.rank;return x!==y?x<y:!cascadeWeaker(a,b);});
+    sorted=layerSorted(records,function(a,b){var x=cssLayerRank(a.entry.layer,layers),y=cssLayerRank(b.entry.layer,layers);return x!==y?x<y:!cascadeWeaker(a,b);});
     for(var index=0;index<sorted.length;index++)apply(sorted[index].entry,true);
   }
   // A stable insertion sort (`after(a, b)`: a goes after b).

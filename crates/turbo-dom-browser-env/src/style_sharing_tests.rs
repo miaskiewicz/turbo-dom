@@ -27,12 +27,16 @@ fn shared_styles_match_fresh_cascades() {
       // Every fourth round also uses pseudo-classes outside the style filter's scopes (:has, :empty,
       // :checked, :lang, :dir): their trees key on the tree-wide version and never share.
       let wide=false;
-      const simple=()=>pick([()=>'.'+pick(classes),()=>'.'+pick(classes),()=>'.'+pick(classes),()=>pick(tags),()=>'[data-k]',()=>'[data-k="1"]',()=>'[lang]',
+      // Mostly signature-only compounds (classes, tags, attributes), so most rules are decided
+      // by the signature alone; the rest test position, state or siblings.
+      const plain=()=>pick([()=>'.'+pick(classes),()=>'.'+pick(classes),()=>'.'+pick(classes),()=>pick(tags),()=>'[data-k]',()=>'[data-k="1"]',()=>'[lang]',()=>'#x1',()=>'[type=checkbox]']);
+      const simple=()=>rand(3)?plain():pick([
         ()=>':first-child',()=>':last-child',()=>':nth-child(2n+1)',()=>':not(.'+pick(classes)+')',()=>':is(.'+pick(classes)+')',()=>':hover',()=>':only-child',
-        ()=>'[type=checkbox]',()=>'.'+pick(classes)+':disabled',()=>'.'+pick(classes)+':nth-child(2)',
+        ()=>'[type=checkbox]',()=>':is(button, input):disabled',()=>'.'+pick(classes)+':nth-child(2)',
         ()=>':has(> .'+pick(classes)+')',()=>':empty',()=>':checked',()=>':lang(pl)',()=>':dir(rtl)'].filter(f=>wide||!/has|empty|checked|lang\(|dir\(/.test(f.toString())));
       const compound=()=>{let out=pick([()=>'.'+pick(classes),()=>'.'+pick(classes),()=>pick(tags)])();const n=rand(3);for(let i=0;i<n;i++)out+=simple()();return out;};
-      const complex=()=>{let out=compound();const n=rand(3);for(let i=0;i<n;i++)out=compound()+pick([' ',' > ',' + ',' ~ '])+out;return out;};
+      const combinator=()=>rand(4)?pick([' ',' > ']):pick([' + ',' ~ ']);
+      const complex=()=>{let out=compound();const n=rand(3);for(let i=0;i<n;i++)out=compound()+combinator()+out;return out;};
       const decl=()=>pick(['color: rgb('+rand(256)+', 1, 2)','font-size: '+(1+rand(3))+'em','margin-top: '+rand(9)+'px','padding-left: '+rand(5)+'%',
         'display: '+pick(['flex','grid','block','inline','none','inline-block','contents']),'position: '+pick(['absolute','relative','static']),'opacity: 0.'+rand(10),
         'visibility: '+pick(['hidden','visible','inherit']),'flex-grow: '+rand(3),'background-color: #'+pick(['abc','123456','fff']),'font-weight: '+pick(['bold','400','inherit']),
@@ -51,11 +55,11 @@ fn shared_styles_match_fresh_cascades() {
         for(let i=0;i<8;i++){const p=document.createElement(pick(['div','ul','section']));p.className=pick(classes)+(rand(2)?' '+pick(classes):'');if(rand(3)===0)p.style.display=pick(['flex','grid']);if(rand(4)===0)p.lang='pl';if(rand(5)===0)p.dir='rtl';pick(parents).appendChild(p);parents.push(p);}
         // Few tags and class lists, so many siblings share a signature and many differ from a
         // sharing sibling in one input only (class, id, data-k, lang, type, position, state).
-        const lists=['a','b','a b','row','cell','row cell','c','b a'];
+        const lists=['a','b','a b','row cell'];
         const all=[];
-        const make=()=>{const tag=pick(['div','div','div','span','li','input','button']),el=document.createElement(tag);el.className=pick(lists);
+        const make=()=>{const tag=pick(['div','div','div','div','span','li','input','button']),el=document.createElement(tag);el.className=pick(lists);
           if(tag==='input')el.type=pick(['checkbox','text']);
-          if(rand(5)===0)el.setAttribute('data-k',String(rand(2)));if(rand(10)===0)el.style.marginTop=rand(9)+'px';if(rand(10)===0)el.lang='pl';if(rand(12)===0)el.id='x'+rand(2);
+          if(rand(8)===0)el.setAttribute('data-k',String(rand(2)));if(rand(12)===0)el.style.marginTop=rand(9)+'px';if(rand(15)===0)el.lang='pl';if(rand(15)===0)el.id='x'+rand(2);
           if(el.type==='checkbox'&&rand(2))el.checked=true;if(tag==='button'&&rand(3)===0)el.disabled=true;if(rand(12)===0)el.textContent='t';return el;};
         for(const p of parents)for(let i=0,n=4+rand(9);i<n;i++){const el=make();p.appendChild(el);all.push(el);}
         all.push(...parents.slice(1));
