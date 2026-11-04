@@ -65,7 +65,7 @@ fn a_new_elements_cascade_tests_only_its_buckets() {
     let value = run(
         "<!doctype html><html><head></head><body></body></html>",
         r#"(()=>{
-      let css='div { margin: 0 } *, *::before { box-sizing: border-box } body > p { padding: 1px }\n';
+      let css='div { margin: 0 } *, *::before { box-sizing: border-box } body > p { padding: 1px } .multi-a, .multi-b { margin-top: 3px }\n';
       for(let i=0;i<400;i++)css+='.css-'+i+' { color: rgb('+(i%256)+', 0, 0) } .css-'+i+':hover { color: red } #id-'+i+' { padding: 2px }\n';
       const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
       const host=document.createElement('section');document.body.appendChild(host);
@@ -73,16 +73,20 @@ fn a_new_elements_cascade_tests_only_its_buckets() {
       const before=__cssTestRuleProbes(),colors=[];
       for(let i=0;i<20;i++){const d=document.createElement('div');d.className='css-'+(i*7)+' extra';host.appendChild(d);colors.push(getComputedStyle(d).color);}
       const probes=__cssTestRuleProbes()-before;
+      const multi=document.createElement('div');multi.className='multi-a multi-b';host.appendChild(multi);
+      const beforeMulti=__cssTestRuleProbes(),multiMargin=getComputedStyle(multi).marginTop,multiProbes=__cssTestRuleProbes()-beforeMulti;
       const keyed=document.createElement('p');keyed.id='id-5';keyed.className='css-5';document.body.appendChild(keyed);
-      return JSON.stringify({probes,colors,keyed:[getComputedStyle(keyed).color,getComputedStyle(keyed).paddingTop]});
+      return JSON.stringify({probes,multiProbes,multiMargin,colors,keyed:[getComputedStyle(keyed).color,getComputedStyle(keyed).paddingTop]});
     })()"#,
     );
     assert_eq!(value["colors"][1], "rgb(7, 0, 0)", "{value}");
     assert_eq!(value["colors"][19], "rgb(133, 0, 0)", "{value}");
     assert_eq!(value["keyed"], serde_json::json!(["rgb(5, 0, 0)", "2px"]));
     // Per element: its two class rules and the three unkeyed rules.
-    let probes = value["probes"].as_u64().unwrap();
-    assert!((20..=20 * 5).contains(&probes), "{value}");
+    assert_eq!(value["probes"], 20 * 5, "{value}");
+    // A rule keyed on two names the element carries is tested once.
+    assert_eq!(value["multiMargin"], "3px");
+    assert_eq!(value["multiProbes"], 4, "{value}");
 }
 
 /// Buckets fold case on both sides, so whichever case rule the selector engine applies to a
