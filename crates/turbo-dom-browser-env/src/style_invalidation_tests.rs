@@ -17,7 +17,10 @@ fn style_invalidation_matches_the_chrome_control() {
         "<!doctype html><html><head></head><body></body></html>",
         &format!("JSON.stringify({probe})"),
     );
-    let (actual, expected) = (actual.as_object().unwrap(), expected["result"].as_object().unwrap());
+    let (actual, expected) = (
+        actual.as_object().unwrap(),
+        expected["result"].as_object().unwrap(),
+    );
     assert_eq!(actual.len(), expected.len());
     for (case, rows) in expected {
         assert_eq!(&actual[case], rows, "case {case}");

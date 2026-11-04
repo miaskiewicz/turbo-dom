@@ -606,6 +606,17 @@ pub struct Tree {
     /// element's cascade reads moves it, except an element's inline style, which selectors
     /// see only through attribute selectors naming `style` (embedders check for those).
     pub selector_version: u64,
+    /// Subtree-scoped style invalidation (turbo-dom#279): the `selector_version` at which a
+    /// mutation last touched each node (its attributes other than `style`, its insertion or
+    /// removal, its text, its custom / form / element state). A computed style is stale only
+    /// when its element or an ancestor moved (see [`Tree::style_generation`]).
+    style_gens: FxHashMap<Handle, u64>,
+    /// The `selector_version` at which each node's child list last changed (a child inserted,
+    /// removed or mutated): what sibling and child-indexed selectors read.
+    child_gens: FxHashMap<Handle, u64>,
+    /// The `selector_version` of the last mutation no node scope covers (a stylesheet owner's
+    /// attribute, the fullscreen stack, a shadow root): it moves every style generation.
+    global_style_gen: u64,
     /// version-keyed query result cache (mirrors JS cachedQSA / Document.__version).
     pub(crate) qcache: RefCell<QueryCache>,
     /// selector-string → parsed selector-list cache. A `matches()` driven over an
@@ -683,6 +694,9 @@ impl Tree {
             host_of_shadow_root: FxHashMap::default(),
             version: 0,
             selector_version: 0,
+            style_gens: FxHashMap::default(),
+            child_gens: FxHashMap::default(),
+            global_style_gen: 0,
             qcache: RefCell::new(QueryCache::default()),
             parse_cache: RefCell::new(FxHashMap::default()),
             css_cache: RefCell::new(crate::rtdom::cascade::CssCache::default()),
@@ -1276,7 +1290,7 @@ impl Tree {
         self.attribute_units.remove(&key);
         self.ensure_attrs(owner).set_namespace(data.clone());
         self.sync_attribute_node(owner, data);
-        self.bump();
+        self.bump_owner_attribute(owner);
         self.record_attributes(owner, &data.local_name, old, data.namespace.as_deref());
         self.record_old_units(old_units);
         self.record_native_attribute_names(data);
@@ -1316,7 +1330,7 @@ impl Tree {
         self.detach_attribute_node(owner, &data);
         self.attribute_units.remove(&key);
         self.ensure_attrs(owner).remove_ns(namespace, local);
-        self.bump();
+        self.bump_owner_attribute(owner);
         self.record_attributes(
             owner,
             &data.local_name,
@@ -1468,18 +1482,78 @@ impl Tree {
     }
 
     // ------------------------------------------------------------- mutations
+    /// A mutation no node scope covers: every style generation moves.
     fn bump(&mut self) {
+        self.bump_unscoped();
+        self.global_style_gen = self.selector_version;
+    }
+
+    /// A mutation no element's style can read: a node created detached (it reaches a tree
+    /// only through an insertion, which moves its own generation).
+    fn bump_unscoped(&mut self) {
         self.version += 1;
         self.selector_version += 1;
     }
 
-    /// [`Self::bump`] for an attribute change: a `style` attribute moves `version` only.
-    fn bump_attribute(&mut self, name: &str) {
+    /// A mutation of `h` itself (an attribute, its text, its state): its generation and its
+    /// parent's child-list generation move.
+    pub(crate) fn bump_node(&mut self, h: Handle) {
+        self.bump_unscoped();
+        self.style_gens.insert(h, self.selector_version);
+        if let Some(parent) = self.parent(h) {
+            self.child_gens.insert(parent, self.selector_version);
+        }
+    }
+
+    /// `child` inserted into or removed from `parent`.
+    fn bump_child_list(&mut self, parent: Handle, child: Handle) {
+        self.bump_unscoped();
+        self.style_gens.insert(child, self.selector_version);
+        self.child_gens.insert(parent, self.selector_version);
+    }
+
+    /// [`Self::bump`] for an attribute change of `h`: a `style` attribute moves `version` only;
+    /// a stylesheet owner's (`<style>` / `<link>`: `media`, `type`, `disabled`, ...) moves every
+    /// style generation; any other moves `h`'s.
+    fn bump_attribute(&mut self, h: Handle, name: &str) {
         if name == "style" {
             self.version += 1;
         } else {
-            self.bump();
+            self.bump_owner_attribute(h);
         }
+    }
+
+    /// An attribute of `h` other than `style` changed (see [`Self::bump_attribute`]).
+    fn bump_owner_attribute(&mut self, h: Handle) {
+        if matches!(self.local_name(h), Some("style" | "link")) {
+            self.bump();
+        } else {
+            self.bump_node(h);
+        }
+    }
+
+    /// The style generation of `h` (turbo-dom#279): the latest `selector_version` at which a
+    /// mutation reached what a selector matching `h` or one of its ancestors can read without
+    /// `:has()` or other upward / document-wide dependencies — `h` and every ancestor (their
+    /// attributes, state, insertion) and, with `siblings`, every child list along the chain
+    /// (what `+`, `~`, `:nth-*`, `:*-of-type`, `:first-child` ... read). Never below the
+    /// last unscoped mutation. A cached computed style keyed on it is current while it holds.
+    #[must_use]
+    pub fn style_generation(&self, h: Handle, siblings: bool) -> u64 {
+        let mut generation = self.global_style_gen;
+        let mut node = Some(h);
+        while let Some(current) = node {
+            if let Some(&own) = self.style_gens.get(&current) {
+                generation = generation.max(own);
+            }
+            node = self.parent(current);
+            if siblings {
+                if let Some(&list) = node.and_then(|parent| self.child_gens.get(&parent)) {
+                    generation = generation.max(list);
+                }
+            }
+        }
+        generation
     }
 
     /// Whether any element of the tree hosts a shadow root.
@@ -1636,7 +1710,7 @@ impl Tree {
         self.attribute_units
             .remove(&(h, changed.ns.clone(), changed.local.clone()));
         self.sync_attribute_node(h, &changed);
-        self.bump_attribute(name);
+        self.bump_attribute(h, name);
         self.record_attributes(h, &changed.local_name, old, changed.namespace.as_deref());
         self.record_old_units(old_units);
         self.record_native_attribute_names(&changed);
@@ -1657,7 +1731,7 @@ impl Tree {
             self.attribute_units
                 .remove(&(h, removed.ns.clone(), removed.local.clone()));
         }
-        self.bump_attribute(name);
+        self.bump_attribute(h, name);
         if let Some(removed) = removed {
             self.record_attributes(h, &removed.local_name, old, removed.namespace.as_deref());
             self.record_old_units(old_units);
@@ -1676,7 +1750,7 @@ impl Tree {
             && self.node_type(h) == NodeType::Element
             && self.form_props.insert((h, prop), value) != Some(value)
         {
-            self.bump();
+            self.bump_node(h);
         }
     }
 
@@ -1684,7 +1758,7 @@ impl Tree {
     /// the HTML attribute. Bumps the version.
     pub fn clear_form_property(&mut self, h: Handle, prop: FormProp) {
         if self.form_props.remove(&(h, prop)).is_some() {
-            self.bump();
+            self.bump_node(h);
         }
     }
 
@@ -1767,7 +1841,7 @@ impl Tree {
         self.detach(child);
         self.ensure_children(parent).push(child);
         self.parent_ov.insert(child, Some(parent));
-        self.bump();
+        self.bump_child_list(parent, child);
         if self.is_recording() {
             self.record_child_list(
                 parent,
@@ -1803,7 +1877,7 @@ impl Tree {
             None => list.push(child),
         }
         self.parent_ov.insert(child, Some(parent));
-        self.bump();
+        self.bump_child_list(parent, child);
         if self.is_recording() {
             self.record_child_list(
                 parent,
@@ -1827,7 +1901,7 @@ impl Tree {
             list.remove(pos);
         }
         self.parent_ov.insert(child, None);
-        self.bump();
+        self.bump_child_list(parent, child);
         if let Some((previous, next)) = siblings {
             self.record_child_list(parent, None, Some(child), previous, next);
         }
@@ -1853,7 +1927,7 @@ impl Tree {
             };
             let old_units = self.recorded_character_units(h);
             self.text_ov.insert(h, text.into());
-            self.bump();
+            self.bump_node(h);
             self.record_character_data(h, old);
             self.record_old_units(old_units);
         } else {
@@ -1881,11 +1955,11 @@ impl Tree {
             };
             if self.is_recording() {
                 self.children_ov.insert(h, added.clone().into());
-                self.bump();
+                self.bump_node(h);
                 self.record_child_list_batch(h, added, removed);
             } else {
                 self.children_ov.insert(h, added.into());
-                self.bump();
+                self.bump_node(h);
             }
         }
     }
@@ -1913,7 +1987,7 @@ impl Tree {
         };
         let old_units = self.recorded_character_units(h);
         self.text_ov.insert(h, text.into());
-        self.bump();
+        self.bump_node(h);
         self.record_character_data(h, old);
         self.record_old_units(old_units);
     }
@@ -1955,7 +2029,7 @@ impl Tree {
         });
         self.children_ov.insert(h, ChildList::new());
         self.attrs_ov.insert(h, AttrList::new());
-        self.bump();
+        self.bump_unscoped();
         h
     }
 
@@ -1966,7 +2040,7 @@ impl Tree {
         });
         self.children_ov.insert(h, ChildList::new());
         self.attrs_ov.insert(h, AttrList::new());
-        self.bump();
+        self.bump_unscoped();
         h
     }
 
@@ -1996,7 +2070,7 @@ impl Tree {
 
     pub fn create_text_node(&mut self, data: &str) -> Handle {
         let h = self.push_node(NewNode::Text(data.into()));
-        self.bump();
+        self.bump_unscoped();
         h
     }
 
@@ -2004,7 +2078,7 @@ impl Tree {
     pub fn create_document_fragment(&mut self) -> Handle {
         let h = self.push_node(NewNode::Fragment(None));
         self.children_ov.insert(h, ChildList::new());
-        self.bump();
+        self.bump_unscoped();
         h
     }
 
@@ -2019,7 +2093,7 @@ impl Tree {
 
     pub fn create_comment(&mut self, data: &str) -> Handle {
         let h = self.push_node(NewNode::Comment(data.into()));
-        self.bump();
+        self.bump_unscoped();
         h
     }
 
@@ -2032,7 +2106,7 @@ impl Tree {
                 data: data.into(),
             },
         )));
-        self.bump();
+        self.bump_unscoped();
         h
     }
 
@@ -2079,13 +2153,13 @@ impl Tree {
         }
         if self.is_recording() {
             self.children_ov.insert(h, kids.clone().into());
-            self.bump();
+            self.bump_node(h);
             if !kids.is_empty() || !removed.is_empty() {
                 self.record_child_list_batch(h, kids, removed);
             }
         } else {
             self.children_ov.insert(h, kids.into());
-            self.bump();
+            self.bump_node(h);
         }
         core::discard_node(frag);
     }
@@ -2651,6 +2725,105 @@ mod tests {
         assert_eq!(tree.get_attribute(div, "class"), Some("card"));
         // original buffer attr still readable through overlay
         assert_eq!(tree.get_attribute(div, "id"), Some("a"));
+    }
+
+    /// Find the first element named `name`.
+    fn element(tree: &Tree, name: &str) -> Handle {
+        tree.handles()
+            .find(|&h| tree.local_name(h) == Some(name))
+            .unwrap()
+    }
+
+    /// turbo-dom#279: a mutation of an element moves the style generation of it and its
+    /// descendants only; its parent, siblings and their subtrees keep theirs unless the read
+    /// asks for sibling scope, which follows every child list along the ancestor chain.
+    #[test]
+    fn style_generation_scopes_an_element_mutation_to_its_subtree() {
+        let mut tree = t("<main><div><p><i></i></p></div><section><b></b></section></main>");
+        let (main, div, p, i, section, b) = (
+            element(&tree, "main"),
+            element(&tree, "div"),
+            element(&tree, "p"),
+            element(&tree, "i"),
+            element(&tree, "section"),
+            element(&tree, "b"),
+        );
+        let gens = |tree: &Tree, siblings| {
+            [main, div, p, i, section, b].map(|h| tree.style_generation(h, siblings))
+        };
+        let (before, before_siblings) = (gens(&tree, false), gens(&tree, true));
+        tree.set_attribute(p, "class", "x");
+        let (after, after_siblings) = (gens(&tree, false), gens(&tree, true));
+        let s = tree.selector_version;
+        assert_eq!(after, [before[0], before[1], s, s, before[4], before[5]]);
+        // `div`'s child list changed: its children read it with sibling scope.
+        assert_eq!(
+            after_siblings,
+            [
+                before_siblings[0],
+                before_siblings[1],
+                s,
+                s,
+                before_siblings[4],
+                before_siblings[5]
+            ]
+        );
+        tree.set_attribute(section, "class", "y");
+        let s2 = tree.selector_version;
+        // `main`'s child list changed: `div`'s subtree sees it with sibling scope only.
+        assert_eq!(gens(&tree, false), [before[0], before[1], s, s, s2, s2]);
+        assert_eq!(gens(&tree, true), [before_siblings[0], s2, s2, s2, s2, s2]);
+    }
+
+    /// Which mutations move which generations: insertion and removal move the node's own
+    /// (and its parent's child list), creating a detached node moves none, an inline style
+    /// write moves none, and an unscoped change (a stylesheet owner's attribute, a shadow root,
+    /// the fullscreen stack) moves every element's.
+    #[test]
+    fn style_generation_tracks_each_mutation_kind() {
+        let mut tree = t("<style></style><div><p></p></div><span></span>");
+        let (style, div, p, span) = (
+            element(&tree, "style"),
+            element(&tree, "div"),
+            element(&tree, "p"),
+            element(&tree, "span"),
+        );
+        let g0 = tree.style_generation(span, true);
+        let made = tree.create_element("em");
+        tree.create_text_node("t");
+        tree.set_attribute(span, "style", "color: red");
+        assert_eq!(
+            tree.style_generation(span, true),
+            g0,
+            "inline style and detached nodes"
+        );
+        tree.set_attribute(made, "class", "detached");
+        assert_eq!(tree.style_generation(made, false), tree.selector_version);
+        assert_eq!(tree.style_generation(span, true), g0);
+        tree.append_child(div, made);
+        let s = tree.selector_version;
+        assert_eq!(tree.style_generation(made, false), s);
+        assert!(tree.style_generation(p, false) < s);
+        assert_eq!(tree.style_generation(p, true), s, "a new sibling");
+        tree.remove_child(div, made);
+        assert_eq!(tree.style_generation(made, false), tree.selector_version);
+        let text = tree.create_text_node("x");
+        tree.append_child(p, text);
+        tree.set_node_value(text, "y");
+        assert_eq!(tree.style_generation(text, false), tree.selector_version);
+        assert!(tree.style_generation(span, false) < tree.selector_version);
+        tree.set_attribute(style, "media", "print");
+        assert_eq!(
+            tree.style_generation(span, false),
+            tree.selector_version,
+            "a sheet owner"
+        );
+        tree.set_attribute(span, "lang", "en");
+        let link = tree.create_element("link");
+        tree.remove_attribute(link, "href");
+        assert_eq!(tree.style_generation(div, false), tree.selector_version);
+        tree.attach_shadow(div);
+        assert_eq!(tree.style_generation(span, false), tree.selector_version);
     }
 
     /// `selector_version` moves with every mutation but a `style` attribute change: an

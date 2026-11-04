@@ -211,7 +211,7 @@ impl Tree {
             .set_qualified(name, &String::from_utf16_lossy(value));
         self.retain_native_attribute_value(owner, &data, value);
         self.sync_attribute_node(owner, &data);
-        self.bump();
+        self.bump_owner_attribute(owner);
         self.record_attributes(
             owner,
             &data.local_name,

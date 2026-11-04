@@ -7517,6 +7517,12 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         "__computedStyleSelectorVersion",
         computed_style_selector_version,
     );
+    bind_method(
+        scope,
+        global,
+        "__computedStyleGeneration",
+        computed_style_generation,
+    );
     #[cfg(test)]
     bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
     #[cfg(test)]
@@ -7731,6 +7737,32 @@ fn computed_style_selector_version(
         }
     }) {
         result.set(v8::Number::new(scope, version as f64).into());
+    }
+}
+
+/// `__computedStyleGeneration(node, siblings)`: the style generation of `node`
+/// (`Tree::style_generation`, turbo-dom#279) — what moves when a mutation reaches `node`, an
+/// ancestor or (with `siblings`) a child list along that chain. `undefined` for anything but a
+/// node, and when the tree has a shadow root (its scoped sheets are not analysed: the caller
+/// keys on the tree-wide version).
+fn computed_style_generation(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let siblings = args.get(1).is_true();
+    let _owner = DomScope::for_object(scope, node);
+    let Some(handle) = handle_of(scope, node) else {
+        return;
+    };
+    let generation = with_tree(|tree| {
+        (!tree.has_shadow_roots()).then(|| tree.style_generation(handle, siblings))
+    });
+    if let Some(Some(generation)) = generation {
+        result.set(v8::Number::new(scope, generation as f64).into());
     }
 }
 

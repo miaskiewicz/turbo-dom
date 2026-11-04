@@ -7,6 +7,19 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Performance
+
+- **Subtree-scoped style invalidation** (#279, browser-env + `turbo-dom`). A DOM mutation no
+  longer drops every reused computed style: `Tree` keeps per-node style generations
+  (`Tree::style_generation`: the element and its ancestors, plus the child lists along that
+  chain when the sheets use `+`, `~`, `:nth-*`, `:*-of-type`, `:first/last/only-child`,
+  `:enabled` / `:disabled`), and getComputedStyle keys a reused style on it. Sheets with
+  `:has()`, `:empty`, `:checked` / `:default` / validity pseudo-classes, `:host`, `@scope`,
+  unknown pseudo-classes or escapes keep the tree-wide selector version; `[style]` selectors,
+  `@container`, `@import`, adopted sheets and shadow roots keep the plain version. A sheet
+  list changed through the DOM advances the CSSOM epoch. Chrome 156 control
+  `style_invalidation_chrome156.json` (`scripts/style-invalidation-chrome-control.mjs`).
+
 ## [0.7.0] — <date TBD at tag>
 
 | crate | version |

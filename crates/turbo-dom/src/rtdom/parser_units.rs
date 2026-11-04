@@ -256,7 +256,7 @@ impl Tree {
         }
         self.children_ov.insert(fragment, children.into());
         self.mutation_log = recording;
-        self.bump();
+        self.bump_unscoped();
         core::discard_node(parsed_root);
         fragment
     }
@@ -445,7 +445,7 @@ impl Tree {
             self.parent_ov.insert(child, Some(node));
         }
         self.children_ov.insert(node, children.clone().into());
-        self.bump();
+        self.bump_node(node);
         if self.is_recording() && (!children.is_empty() || !removed.is_empty()) {
             self.record_child_list_batch(node, children, removed);
         }
@@ -501,7 +501,7 @@ impl Tree {
                 data: DomString::from_units(data),
             },
         )));
-        self.bump();
+        self.bump_unscoped();
         node
     }
     pub fn create_document_type_units(
@@ -515,7 +515,7 @@ impl Tree {
             public_id: DomString::from_units(public),
             system_id: DomString::from_units(system),
         })));
-        self.bump();
+        self.bump_unscoped();
         node
     }
     #[must_use]

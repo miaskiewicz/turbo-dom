@@ -102,6 +102,7 @@
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
   var computedStyleSelectorVersion=g.__computedStyleSelectorVersion;delete g.__computedStyleSelectorVersion;
+  var computedStyleGeneration=g.__computedStyleGeneration;delete g.__computedStyleGeneration;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
   var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
@@ -583,51 +584,93 @@
   // document rules never select its elements (turbo-dom#68; its own rules come from the
   // native shadow-scoped cascade).
   // The owner's sheet list, reread only when its tree version or the CSSOM epoch moved: every
-  // element of one cascade (the read element and each ancestor) shares it.
+  // element of one cascade (the read element and each ancestor) shares it. A reread list that
+  // differs from the last one (a <style> / <link> inserted, removed or re-parsed through the
+  // DOM) advances the CSSOM epoch: reused styles are keyed on a mutation's node scope
+  // (turbo-dom#279), which need not contain the elements a new sheet selects. An unchanged
+  // list keeps its selector analysis (computedOwnerScope).
   var computedSheetLists=new computedSnapshotMap();
+  function computedSameSheets(list,sheets){if(list.length!==sheets.length)return false;for(var index=0;index<list.length;index++)if(list[index]!==sheets[index])return false;return true;}
   function computedOwnerSheets(owner,host){
     var version=null;try{version=computedStyleSelectorVersion(owner);}catch(e){}
     var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&typeof version==='number'&&entry.version===version&&entry.epoch===epoch&&entry.host===host)return entry.sheets;
-    var sheets=host.readSheets();
-    if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets});
+    var sheets=host.readSheets(),same=!!entry&&entry.host===host&&computedSameSheets(entry.list,sheets);
+    if(entry&&!same){bumpCssomEpoch();epoch=cssomEpoch();}
+    var keep=same&&entry.epoch===epoch,list=[];for(var index=0;index<sheets.length;index++)list[index]=sheets[index];
+    if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets,list:list,scope:keep?entry.scope:undefined});
     return sheets;
   }
-  // Whether a cascade of `el` can read another element's inline style: a rule of its sheets
-  // with an attribute selector naming `style` (directly, through a combinator, inside :has()),
-  // an @container query, or sheets the scan does not see (adopted ones). Scanned once per
-  // sheet list; any match, even in a string, only keeps the plain tree version.
-  var computedStyleAttributeSelector=/\[\s*(?:[\w*-]*\|)?style(?![\w-])|@container/i;
-  // Selector and prelude text only (no declaration is serialized), nested rules included; an
-  // @import's sheet is not walked, so an @import counts as a match.
-  function computedRulesReadStyle(rules){
-    var items=cssItems(rules);
-    for(var i=0;i<items.length;i++){
-      var record=cssRuleRecord(items[i]);
-      if(record.type===3||record.kind==='container')return true;
-      var text=record.type===1?record.selectorText:record.prelude;
-      if(text&&cssApply(cssZoomExec,computedStyleAttributeSelector,[String(text)]))return true;
-      if(record.cssRules&&computedRulesReadStyle(record.cssRules))return true;
+  // What a cascade of an element of the owner's tree reads beyond the element and its
+  // ancestors (turbo-dom#279), from its sheets' selectors: -1 another element's inline style
+  // (an attribute selector naming `style`, directly, through a combinator or inside :has(); an
+  // @container or @import rule; adopted sheets, which the scan does not see: key on the plain
+  // tree version), 2 anything else no node scope covers (:has(), :empty, form
+  // state over other elements, :host and @scope rules, unknown
+  // pseudo-classes, escapes: key on the selector version), 1 the child lists along the chain (+, ~, :nth-*, :*-of-type,
+  // :first/last/only-child, :enabled / :disabled through a fieldset's legend), 0 nothing
+  // (key on the element's style generation). Scanned once per sheet and CSSOM epoch.
+  var computedStyleAttributeSelector=/\[\s*(?:[\w*-]*\|)?style(?![\w-])/i;
+  var computedSiblingPseudo=/^(?:first-child|last-child|only-child|nth-child|nth-last-child|first-of-type|last-of-type|only-of-type|nth-of-type|nth-last-of-type|enabled|disabled|read-only|read-write)$/;
+  // Pseudo-classes over the element itself and its ancestors only (their attributes and the
+  // state the live-state epoch or the element's own generation tracks). Pseudo-elements never
+  // widen the scope: `::slotted` / `::part` select into shadow trees, and a tree with a shadow
+  // root keys on its tree-wide version (`__computedStyleGeneration` answers undefined).
+  var computedOwnPseudo=/^(?:not|is|where|matches|-webkit-any|root|scope|link|any-link|visited|hover|active|focus|focus-visible|focus-within|required|optional|placeholder-shown|in-range|out-of-range|autofill|-webkit-autofill|defined|popover-open|modal|open|fullscreen|-webkit-full-screen|-webkit-full-screen-ancestor|state|before|after|first-line|first-letter|placeholder|selection|marker|backdrop|file-selector-button|-webkit-[\w-]+|-moz-[\w-]+)$/;
+  function computedSelectorScope(text){
+    var scope=0;
+    for(var index=0;index<text.length;index++){
+      var c=text[index];
+      if(c==='\\')return 2;
+      if(c==='"'||c==="'"){index++;while(index<text.length&&text[index]!==c)index++;continue;}
+      if(c==='['){var close=index;while(close<text.length&&text[close]!==']')close++;if(close>=text.length)return 2;if(cssApply(cssZoomExec,computedStyleAttributeSelector,[$c.slice(text,index,close+1)]))return -1;index=close;continue;}
+      if(c==='+'||c==='~'){scope=1;continue;}
+      if(c!==':')continue;
+      var element=text[index+1]===':';if(element)index++;
+      var name=$c.toLowerCase(cssApply(cssZoomExec,/^[A-Za-z0-9_-]*/,[$c.slice(text,index+1)])[0]);
+      index+=name.length;
+      if(element||cssApply(cssZoomExec,computedOwnPseudo,[name]))continue;
+      if(cssApply(cssZoomExec,computedSiblingPseudo,[name])){scope=1;continue;}
+      return 2;
     }
-    return false;
+    return scope;
   }
-  function computedInlineSensitive(el){
-    var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return true;}
-    if(!owner)return true;
+  function computedRulesScope(rules){
+    var items=cssItems(rules),scope=0;
+    for(var i=0;i<items.length&&scope>=0;i++){
+      var record=cssRuleRecord(items[i]),inner=0;
+      // An @import's sheet is not walked; a container query reads its container's size, which
+      // other elements' inline styles set.
+      if(record.type===3||record.kind==='container')return -1;
+      if(record.kind==='scope')return 2;
+      if(record.type===7||record.type===5)continue;
+      if(record.type===1){inner=computedSelectorScope(String(record.selectorText||''));if(inner<0)return -1;}
+      if(record.cssRules){var nested=computedRulesScope(record.cssRules);if(nested<0)return -1;if(nested>inner)inner=nested;}
+      if(inner>scope)scope=inner;
+    }
+    return scope;
+  }
+  var computedSheetScopes=new computedSnapshotMap();
+  function computedSheetScope(sheet){
+    var epoch=cssomEpoch(),memo=computedSnapshotGet(computedSheetScopes,sheet);
+    if(memo&&memo.epoch===epoch)return memo.scope;
+    var scope=2;try{scope=computedRulesScope(sheetRecord(sheet).rules);}catch(e){}
+    computedSnapshotSet(computedSheetScopes,sheet,{__proto__:null,epoch:epoch,scope:scope});
+    return scope;
+  }
+  function computedOwnerScope(el){
+    var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return -1;}
+    if(!owner)return -1;
     var adopted=adoptionStates&&$c.get(adoptionStates,owner);
-    if(adopted&&adopted.target&&adopted.target.length)return true;
+    if(adopted&&adopted.target&&adopted.target.length)return -1;
     var ownerRecord=collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
-    if(!host)return false;
-    return computedOwnerSheetsReadStyle(owner,host);
-  }
-  // The sheet scan of computedInlineSensitive, memoized on the owner's sheet-list entry.
-  function computedOwnerSheetsReadStyle(owner,host){
+    if(!host)return 0;
     var sheets=computedOwnerSheets(owner,host),entry=computedSnapshotGet(computedSheetLists,owner);
-    if(entry&&entry.sheets===sheets&&entry.styleSelectors!==undefined)return entry.styleSelectors;
-    var found=false;
-    try{for(var si=0;si<sheets.length&&!found;si++)found=computedRulesReadStyle(sheetRecord(sheets[si]).rules);}catch(e){found=true;}
-    if(entry&&entry.sheets===sheets)entry.styleSelectors=found;
-    return found;
+    if(entry&&entry.sheets===sheets&&entry.scope!==undefined)return entry.scope;
+    var scope=0;
+    for(var si=0;si<sheets.length&&scope>=0;si++){var one=computedSheetScope(sheets[si]);if(one<0||one>scope)scope=one;}
+    if(entry&&entry.sheets===sheets)entry.scope=scope;
+    return scope;
   }
   function computedSheets(el){
     var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
@@ -683,19 +726,23 @@
   __ns.computedDisplay=function(el,snapshots){return computedSnapshotValue(computeStyleSnapshot(el,snapshots),'display');};
   __ns.computedSnapshots=function(){return new computedSnapshotMap();};
   __ns.computedStyleStamp=function(el){var key=computedCacheKey(el);return key?[key.full,key.epoch-animatedStyleBumps,styleStateEpoch(),key.owner]:null;};
-  // The key's `version` is the tree's selector version (Tree::selector_version: inline style
-  // writes do not move it) plus the element's own inline style text, unless a cascade of the
-  // element can read other elements' inline styles (computedInlineSensitive) or the tree has
-  // a shadow root (whose own sheets are not scanned): then the plain tree version. Ancestors'
-  // inline styles reach it through the parent snapshots it depends on. `full` (the plain
-  // version) is what `rendered` and the animation stamp read.
+  // The key's `version` (turbo-dom#279) follows what the owner's sheets can select on
+  // (computedOwnerScope): the element's style generation (Tree::style_generation: a mutation
+  // of the element or an ancestor; with sibling selectors, of a child list along that chain)
+  // when nothing else, otherwise the tree's selector version (Tree::selector_version: inline
+  // style writes do not move it), or its plain version when a cascade of the element can read
+  // other elements' inline styles or the tree has a shadow root (whose own sheets are not
+  // scanned). Outside the plain version the element's own inline style text is keyed too;
+  // ancestors' inline styles reach it through the parent snapshots it depends on. `full` (the
+  // plain version) is what `rendered` and the animation stamp read.
   function computedCacheKey(el){
     var version,full;try{full=computedStyleVersion(el);version=computedStyleSelectorVersion(el);}catch(e){return null;}
     if(typeof full!=='number'||typeof version!=='number')return null;
     var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
-    var inline=null;
-    if(computedInlineSensitive(el))version=full;
-    else{try{inline=$c.call(appliedInlineRead,el);}catch(e){version=full;inline=null;}}
+    var inline=null,scope=computedOwnerScope(el);
+    if(scope<0)version=full;
+    else{try{inline=$c.call(appliedInlineRead,el);}catch(e){version=full;inline=null;scope=-1;}}
+    if(scope===0||scope===1){var generation;try{generation=computedStyleGeneration(el,scope===1);}catch(e){}if(typeof generation==='number')version=generation;else scope=2;}
     return {__proto__:null,epoch:cssomEpoch(),version:version,full:full,inline:inline,owner:owner};
   }
   // What the key cannot see: the element's top layer and font context.
