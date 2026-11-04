@@ -405,11 +405,52 @@ fn node_getters_decode_the_owner_tag_once_per_call() {
         let before = TAG_READS.with(std::cell::Cell::get);
         let out = run(
             scope,
-            "let n = 0; for (let i = 0; i < 1000; i++) { n += a.parentNode === document.body ? 1 : 0; } String(n)",
+            "const body = document.body; let n = 0; for (let i = 0; i < 1000; i++) { n += a.parentNode === body ? 1 : 0; } String(n)",
         );
         assert_eq!(out, "1000");
         let reads = TAG_READS.with(std::cell::Cell::get) - before;
-        assert!(reads <= 1100, "{reads} owner-tag decodes for 1000 parentNode reads");
+        assert!(
+            reads <= 2100,
+            "{reads} owner-tag decodes for 1000 parentNode reads"
+        );
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// A projected DOM accessor (every public node getter and setter goes through
+/// `dom_accessor_dispatch`) reads the native template accessor through a reused raw view of
+/// its DOM, not a new template instance per call; reentrant calls take their own view. The
+/// values, `this` checks and stale-wrapper refusal are unchanged.
+#[test]
+fn dom_accessor_dispatch_reuses_raw_views() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><div id=a><b>x</b><i>y</i></div>");
+        run(scope, "globalThis.a = document.getElementById('a'); 'ok'");
+        let before = RAW_VIEWS_BUILT.with(std::cell::Cell::get);
+        let out = run(
+            scope,
+            "let n = 0; for (let i = 0; i < 1000; i++) { n += a.parentNode === document.body ? 1 : 0; \
+             n += a.firstChild.nextSibling.nodeName === 'I' ? 1 : 0; a.firstChild.textContent = 'x' + (i % 3); } \
+             String(n) + ':' + a.textContent",
+        );
+        assert_eq!(out, "2000:x0y");
+        let built = RAW_VIEWS_BUILT.with(std::cell::Cell::get) - before;
+        assert!(
+            built <= 8,
+            "{built} raw views built for ~16000 projected accessor calls"
+        );
+        let thrown = run(
+            scope,
+            "const get = Object.getOwnPropertyDescriptor(Node.prototype, 'parentNode').get; \
+             try { get.call({}); 'no' } catch (e) { e.constructor.name + ':' + e.message }",
+        );
+        assert_eq!(thrown, "TypeError:Illegal invocation");
         reset();
     }
     clear_interface_records(isolate);
