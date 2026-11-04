@@ -161,20 +161,35 @@ upstream rusty_v8's features (for example `simdutf`).
   fixtures recorded from headless Chrome and asserted in tests. Every corpus output change
   is declared in [`tools/parity/expected/`](tools/parity/expected) (checkpoint `b-0.7.0`).
   0.7.0 adds vertical writing modes, UAX #9 bidi, Chrome's line box model on the PDF path,
-  the full `border-radius` model with `overflow` clipping, background tiling, XML
-  documents, processing instructions, CSS animations in `getAnimations()` and real canvas
-  `measureText` (see [CHANGELOG.md](CHANGELOG.md)).
+  the full `border-radius` model with `overflow` clipping, background tiling and gradient
+  length stops, native form-control appearance, size / layout containment, replaced media
+  boxes, XML documents (with DTD ATTLIST defaults), processing instructions, CSS
+  animations in `getAnimations()`, a browser-env cascade with specificity, `@layer`,
+  `@supports` and `@scope`, real canvas `measureText` and an opt-in V8 startup snapshot
+  install (see [CHANGELOG.md](CHANGELOG.md)).
 - **Open gaps (tracked as issues):**
-  - form controls: native-looking frames, and menu-list / colour-well baselines (turbo-dom#239 follow-up)
-  - `hyphens: auto` covers English only; Chrome on macOS uses the system dictionary,
-    whose points differ for some words (#213)
-- **The npm runtime has no layout:** `getBoundingClientRect()` returns a synthetic, stable size at position 0, and
-  `getComputedStyle` is a partial cascade. It resolves real `<style>` rules and inline
-  styles, applies inheritance, and serializes colours as `rgb()`. It never invents a
-  value. `@media`, state pseudo-classes, pseudo-elements and unit conversion return `''`.
-  Shadow DOM is supported: slots, retargeting, `:host` / `::slotted`, and declarative
-  shadow roots. Layout belongs to `turbo-dom-layout`, and through it to turbo-html2pdf and
-  turbo-surf.
+  - glyph stems in raster screenshots lack Chrome's stem darkening, so glyph edges are
+    up to ~0.5px thinner per side (#266).
+  - Known difference, not tracked: `hyphens: auto` covers English only, and Chrome on
+    macOS hyphenates with the system dictionary, whose points differ for some words.
+- **The npm runtime has no layout.** Geometry is synthetic: `getBoundingClientRect()`,
+  `offsetWidth/Height`, `clientWidth/Height` and `scrollWidth/Height` return a non-zero
+  size that is stable for a given DOM state (blocks fill the parent's width, the root
+  takes `innerWidth` or 1024; heights stack children or 18px per line), while every
+  position (`top` / `left`, `offsetTop/Left`, `scrollTop/Left`) is 0.
+  `getComputedStyle` is a partial cascade: top-level `<style>` rules (and rules injected
+  with `insertRule`) plus inline styles, ordered by Selectors 4 specificity and source
+  order, with a fixed set of inherited properties. Colours read back as `rgb()` /
+  `rgba()` and a bare `0` as `0px`; a property no rule sets reads `''` (never an initial
+  value). Not resolved: rules inside any at-rule block (`@media`, `@supports`, `@layer`,
+  `@container`, `@scope`) are skipped, rules with state pseudo-classes (`:hover`, ...)
+  never match, a pseudo-element argument is ignored (the element's own style comes
+  back) and `::before`-style rules never apply. Values come back as written: no unit
+  conversion (`2em` stays `2em`), and `var(...)` and `inherit` / `initial` / `unset` are
+  returned verbatim, not resolved. Shadow DOM is supported: `attachShadow`, declarative
+  shadow roots, slots and `assignedNodes()`, event retargeting, scoped styles with
+  `:host` / `::slotted()`, and inheritance across the host boundary. Layout belongs to
+  `turbo-dom-layout`, and through it to turbo-html2pdf and turbo-surf.
 
 ## Benchmarks — pending re-run
 

@@ -57,6 +57,11 @@ graph and consumer setup: [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md).
    `cargo package -p turbo-dom-browser-env --no-verify --exclude-lockfile` (it cannot
    resolve until turbo-dom-v8 is on crates.io); `python3 crates/turbo-dom-v8/scripts/release.py
    --out <dir>` for the fork. Every crate must stay under crates.io's 10 MB compressed limit.
+   Record the release's public Rust API diff against the previous release in
+   `tools/release/public-api-X.Y.Z.txt` (`cargo public-api -sss`, CI's features; the
+   header names the tool version and both revisions) and make the CHANGELOG's
+   "Breaking changes" match it. 0.7.0 also keeps its review-round mutation audit in
+   `tools/release/mutation-audit-0.7.0.md`.
 6. Commit without bypassing the configured pre-commit coverage/conformance gate, push
    the release PR, and wait for every CI job to pass on that exact head revision.
 

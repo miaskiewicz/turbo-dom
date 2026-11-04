@@ -84,14 +84,21 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   to the item's box; html2pdf tags it `Lbl`), in a snapshot `LayoutSnapshot::list_marker_owner` names its item, which it hits.
 - **Writing modes and bidi.** `vertical-rl` / `vertical-lr` lay out through a logical
   layer (block, inline, flex, grid, table, floats, absolute boxes, orthogonal items, upright
-  text, the central baseline; `TextLine::vertical` / `upright`); form controls in a vertical
-  mode fail per element with `SnapshotError::UnsupportedVerticalWriting` (turbo-dom#239).
+  text, the central baseline, form controls; `TextLine::vertical` / `upright`; nothing
+  raises `SnapshotError::UnsupportedVerticalWriting` since turbo-dom#239).
   Inline layout is UAX #9 bidi (`layout::inline::bidi`) with Blink's caret adjustment; RTL
   boxes and viewports scroll from the right (`ScrollMetrics::min_x`).
 - **Painting inputs.** `BorderRadii` (per-corner elliptical radii, `as_uniform()` for a
   single-radius consumer), `Fragment::overflow_clip`, background layers with
   size / position / repeat / origin / clip (`ClipRect::radii`), inline-box fragments with
-  `box-decoration-break`.
+  `box-decoration-break` (backgrounds in vertical spaces resolve against the physical box),
+  `TilePattern` (one repeating-pattern fragment per background layer) and `GradientSpec`
+  (length / double-position / repeating stops). Form controls get Chrome 156's native
+  appearance as ordinary galley boxes (`appearance: none` opts out), and `<input
+  type=image>` is a replaced image control.
+- **Containment.** `container-type` and `contain` (`size` / `inline-size` / `layout` /
+  `content` / `strict`) size contained axes as if empty and establish an independent
+  formatting context.
 - **Text** (`text`): `FontRegistry` (`new`, `FontRegistry::system(SystemFontPolicy)` for the
   process-wide installed fonts), `FontFace`, `layout_text`, `TextStyle`, `LineBox`, `Align`,
   `WhiteSpace`. `FontFace::from_web_font_bytes` loads an `@font-face` face like Chrome

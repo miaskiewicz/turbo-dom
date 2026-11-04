@@ -198,6 +198,17 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
   `hyphenation`); build with `default-features = false` (and `bundled-fonts` as needed)
   to keep `auto` acting as `manual`.
 - **List markers (#128):** `display: list-item` boxes now generate `::marker` boxes.
+- **Generic font families on macOS (#259, #260):** under both system-font policies
+  `sans-serif` resolves to Helvetica (it fell through to Helvetica Neue: Helvetica.ttc
+  names its family only in platform records), and the HTML policy's `monospace` is Courier
+  (was Menlo; the PDF policy keeps Courier New). Bare `FontRegistry::new()` stays on the
+  bundled faces.
+- **Size and layout containment (#265):** `container-type: inline-size | size` and
+  `contain: inline-size | size | layout | content | strict` size contained axes as if
+  the box had no content and establish an independent formatting context; an
+  inline-flex / inline-grid sits on its first item's first text line (else its border-box
+  bottom), contained or not, and layout containment drops an inline-block's content
+  baseline.
 - **HTML processing instructions in browser-env (#135):** documents installed or parsed
   by browser-env make `<?target data?>` a ProcessingInstruction, not a bogus comment.
 
@@ -213,6 +224,13 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
 - Menu lists centre their label (their baseline follows) and colour wells sit 4px above
   their content-box bottom on the line, like Chrome (#255); the `form-*` live-geometry
   control compares their full boxes.
+- `inset` / `outset` borders shade each side with Blink's dark / light colours on the
+  physical sides (computed at style resolution, so PNG, SVG and PDF agree); the UA button
+  border is Chrome's 2px black `outset`; the menu-list chevron is the turned L of a 7px
+  square (#257).
+- `<input type=image>` is a replaced image control without the control frame: its `src`
+  (data URIs too on the static path), else its alt text (`alt`, else `value`, else
+  "Submit") in a box that takes `width` / `height` (#258).
 
 **turbo-dom**
 
@@ -230,8 +248,9 @@ output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
   vertical flex / grid / table, atoms, `<img>`, floats, absolute boxes and `direction: rtl`
   inside vertical roots; orthogonal flex / grid items and table cells; upright text
   (`text-orientation: mixed` CJK and `upright`); the ideographic central baseline;
-  `<svg>` / `<iframe>` / media default sizes; Range rects and carets in vertical text.
-  Form controls in vertical modes still fail per element (#239, in progress).
+  `<svg>` / `<iframe>` / media default sizes; Range rects and carets in vertical text;
+  form controls (Chrome's `html.css` UA, font-derived intrinsic sizes) lay out vertically
+  too (#239).
 - UAX #9 bidi inline layout (#238): `layout::inline::bidi` (`UnicodeBidi`,
   `first_strong_rtl`, `is_formatting`), `FontFace::shape_in` / `measure_in`, Blink's caret
   adjustment at run boundaries, `bdo` / `bdi` / `[dir]` UA rules, `dir=auto`,
@@ -429,6 +448,43 @@ Detail per fix (each backed by a Chrome 156 control):
   only. Inside `@scope`, `:scope` binds to the scoping root (`:scope + i` no longer matches
   outside the scope), `&` is `:where(:scope)`, and a selector without them adds no
   specificity. Chrome control `css_cascade_specificity_chrome156.json`.
+- Background layers in vertical writing modes (#274, #277, #278): a block or inline box
+  laid out in a vertical space builds its layers over its physical shape, so percentage /
+  keyword positions and percentage sizes no longer resolve against the swapped size; a
+  layer container's `clip` maps with its fragment; `Fragment::translate` (flex items,
+  floats, table cells, html2pdf pagination) and the orthogonal-flow mapping move a
+  `Tiles` pattern's origin, so tiles keep their phase.
+- Grid items (#267, round-3 review): a fixed-width grid item keeps its width on the HTML
+  path (it stretched to the grid), grid leaves hand taffy their border-box size / min /
+  max, and the relabel / measure memos key on the exact probe width.
+- Form-control boxes match Chrome 156 absolutely (#263): the 187x38 vs 182x36 textarea gap
+  was the control capture's host font, so no layout change; the tests now compare whole
+  boxes in Fira Code.
+- The static path's LTR-embed-in-RTL glyph (#247) was Noto Sans Hebrew's RTL GPOS offset,
+  painted at pen + offset like Chrome; the test compares pen positions and is no longer
+  held out.
+- Glyph rasterization (#266, partly): turbo-dom-raster paints glyph runs with exact-area
+  coverage instead of tiny-skia's 4x supersampling, grows and lifts the outline by
+  0.005 x size px (CoreText font smoothing), places pens at Skia's quarter-pixel x /
+  whole-pixel y and applies Skia's luminance mask pre-blend; the SVG painter emits the
+  same grown outline. The mean residual against the `glyph_coverage` control falls from
+  22-59 to 4-21. Still open: stem darkening at small sizes and for white text (#266).
+- From the 0.7.0 review rounds, each against a Chrome 156 control:
+  - layout: `text-orientation: mixed` reads a table generated from UAX #50
+    (`scripts/gen-vertical-orientation.py`, UCD 16.0.0); list `start` / `value` parse as
+    32-bit integers and ordinals clamp like Chrome's `ClampAdd`, and reversed lists count
+    with a stack; textarea `rows` / `cols` and input `size` past `i32` fall back to the
+    default; range inputs parse HTML floats, clamp `max` to `min`, never divide by zero and
+    snap their value to the `step`; an infinite `border-radius` clamps to a LayoutUnit
+    (a pill, not NaN radii);
+  - browser-env: kept CSS animations follow `animation-*` and `@keyframes` changes except
+    what script overrode, a `display: none` element starts no transition (hiding cancels
+    running ones), and transitions compare computed values (`red` / `#f00`); an `@import`
+    passed to `CSSGroupingRule.insertRule` is a `HierarchyRequestError` however it is
+    spelled; XML entity nesting stays at depth 10 (billion laughs is rejected with
+    "Entity too big", as in Chrome);
+  - startup snapshot (#249): no shell node wrapper is retained in the blob, and a build
+    failure before `create_blob` logs and returns no blob instead of aborting.
 
 ### Performance
 

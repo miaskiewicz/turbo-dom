@@ -12,6 +12,11 @@ surface with **no JavaScript DOM implementation**:
   instructions, XPath (fragment and shadow-root contexts included), CSS animations and
   transitions in `getAnimations()`, the CSSOM grouping / condition rule interfaces
   (`CSSContainerRule`, `CSSMediaRule`, `CSSLayerBlockRule`, …).
+- a `getComputedStyle` cascade that orders rules by Selectors 4 specificity, cascade
+  layer and `@scope` proximity, and applies the rules nested in `@media`, `@supports`,
+  `@layer` and `@scope` (`@container` / `@starting-style` children never apply);
+- XML internal DTD subsets: ATTLIST defaults (attributes and namespace declarations),
+  with entity expansion bounded like Chrome ("Entity too big").
 
 Behaviour is held to Chrome by committed Chrome 155/156 controls asserted in the crate's
 tests. The crate ships its engine JS (`src/*.js`, run in V8) and production JSON with it.
