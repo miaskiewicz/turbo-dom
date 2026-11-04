@@ -78,6 +78,32 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
         let key = v8::String::new(scope, "__cssTestCssUpdates").unwrap();
         global.set(scope, key.into(), getter.into());
     }
+    if code.contains("__cssTestStyleLookups") {
+        // The computed-style cache lookups behind the test-only `__noteStyleLookup` hook.
+        fn style_lookups(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::style_lookups() as f64).into());
+        }
+        let getter = v8::Function::new(scope, style_lookups).unwrap();
+        let key = v8::String::new(scope, "__cssTestStyleLookups").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
+    if code.contains("__cssTestEntryBuilds") {
+        // The cascade rule-entry list builds behind the test-only `__noteEntryBuild` hook.
+        fn entry_builds(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::entry_builds() as f64).into());
+        }
+        let getter = v8::Function::new(scope, entry_builds).unwrap();
+        let key = v8::String::new(scope, "__cssTestEntryBuilds").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
     if code.contains("__fontInertDoc") {
         let document = parse_html_document(scope, "<!doctype html><body><b>inert</b>", false);
         let key = v8::String::new(scope, "__fontInertDoc").unwrap();
@@ -1431,4 +1457,248 @@ fn adopted_style_sheets_reject_non_objects_like_chrome156() {
     let d = "d:TypeError:Failed to set the 'adoptedStyleSheets' property on 'Document': The provided value cannot be converted to a sequence.";
     let s = "s:TypeError:Failed to set the 'adoptedStyleSheets' property on 'ShadowRoot': The provided value cannot be converted to a sequence.";
     assert_eq!(value, serde_json::json!([d, d, d, d, s, s, s, s]));
+}
+
+/// A transitioned element's style read after a DOM change checks whether the element is
+/// rendered (no display:none ancestor). That check resolves each ancestor once per read, not
+/// once per ancestor per level: a read stays linear in the tree depth (MUI's
+/// TextareaAutosize reads its textarea's style between mutations inside a deep dialog).
+#[test]
+fn rendered_check_of_a_transition_read_is_linear_in_depth() {
+    let value = run(
+        "<style>.t{transition:opacity 1s}</style><body></body>",
+        r#"(()=>{
+      const depth=40;let parent=document.body;
+      for(let i=0;i<depth;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const el=document.createElement('div');el.className='t';parent.appendChild(el);
+      const other=document.createElement('span');document.body.appendChild(other);
+      getComputedStyle(el).opacity;
+      const counts=[];
+      for(let i=0;i<3;i++){
+        other.style.width=i+'px';
+        const before=__cssTestStyleLookups();
+        const opacity=getComputedStyle(el).opacity;
+        counts.push(__cssTestStyleLookups()-before);
+        if(opacity!=='1')throw Error('opacity '+opacity);
+      }
+      return JSON.stringify({depth,max:Math.max(...counts)});
+    })()"#,
+    );
+    let depth = value["depth"].as_u64().unwrap();
+    let max = value["max"].as_u64().unwrap();
+    assert!(max > 0, "the hook counts lookups");
+    assert!(
+        max <= 8 * (depth + 2),
+        "{max} style lookups for one read at depth {depth}"
+    );
+}
+
+/// One computed-style read after a DOM change cascades the element and each ancestor afresh;
+/// they all read the same document sheet list, so the list is read once per tree version and
+/// CSSOM epoch, not once per element.
+#[test]
+fn a_cascade_reads_the_document_sheet_list_once_per_version() {
+    let value = run(
+        "<style>.t{color:red}</style><body></body>",
+        r#"(()=>{
+      let parent=document.body;
+      for(let i=0;i<20;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const el=document.createElement('div');el.className='t';parent.appendChild(el);
+      const read=__cssTestHost.readSheets;let reads=0;
+      __cssTestHost.readSheets=function(){reads++;return read.apply(this,arguments);};
+      document.body.setAttribute('data-x','1');
+      const color=getComputedStyle(el).color;
+      const first=reads;
+      const s=document.createElement('style');s.textContent='.t{color:blue}';document.head.appendChild(s);
+      const after=getComputedStyle(el).color;
+      return JSON.stringify({color,first,after});
+    })()"#,
+    );
+    assert_eq!(value["color"], "rgb(255, 0, 0)");
+    assert_eq!(value["after"], "rgb(0, 0, 255)", "a new sheet is seen");
+    assert!(value["first"].as_u64().unwrap() <= 2, "{value}");
+}
+
+/// An inline style write to one element keeps every other element's computed style reused:
+/// computed values read an element's own declarations and its parent's, and selectors see
+/// inline styles only through attribute selectors naming `style`. MUI's TextareaAutosize
+/// writes a hidden textarea's style between reads of its visible textarea's style, inside a
+/// deep dialog: those reads must not cascade the textarea and all its ancestors again.
+#[test]
+fn an_inline_style_write_keeps_unrelated_computed_styles() {
+    let value = run(
+        "<style>.t{color:red} div{margin:0}</style><body></body>",
+        r#"(()=>{
+      let parent=document.body;
+      for(let i=0;i<30;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const target=document.createElement('textarea');target.className='t';parent.appendChild(target);
+      const hidden=document.createElement('textarea');parent.appendChild(hidden);
+      getComputedStyle(target).color;
+      const runs=[];
+      for(let i=0;i<5;i++){
+        hidden.style.width=i+'px';
+        const before=__cssTestCascadeRuns();
+        const color=getComputedStyle(target).color;
+        runs.push(__cssTestCascadeRuns()-before);
+        if(color!=='rgb(255, 0, 0)')throw Error(color);
+      }
+      return JSON.stringify({max:Math.max(...runs),hidden:getComputedStyle(hidden).width});
+    })()"#,
+    );
+    assert_eq!(
+        value["hidden"], "4px",
+        "the written element's own style follows"
+    );
+    assert_eq!(value["max"], 0, "{value}");
+}
+
+/// What an inline style write still changes, beyond its element: inherited values below it,
+/// and every element an attribute selector naming `style` (directly, through a combinator or
+/// inside `:has()`) can reach. Same values as a fresh cascade (Chrome's: inline styles are
+/// the element's own declarations and the `style` attribute's value for selectors).
+#[test]
+fn an_inline_style_write_updates_inheritance_and_style_attribute_selectors() {
+    let value = run(
+        "<style>[style*=\"orange\"] + p{color:blue} section:has(> [style*=\"gold\"]){color:green}</style><body><div id=a><span id=s>x</span></div><b id=b></b><p id=p>p</p><section id=sec><i id=i></i></section></body>",
+        r#"(()=>{
+      const a=document.getElementById('a'),s=document.getElementById('s'),b=document.getElementById('b'),p=document.getElementById('p'),sec=document.getElementById('sec'),i=document.getElementById('i');
+      const read=()=>[getComputedStyle(s).color,getComputedStyle(p).color,getComputedStyle(sec).color,getComputedStyle(a).color].join('|');
+      const out=[read()];
+      a.style.color='rgb(1, 2, 3)'; out.push(read());
+      b.setAttribute('style','background:orange'); out.push(read());
+      i.style.outlineColor='gold'; out.push(read());
+      a.removeAttribute('style'); b.removeAttribute('style'); i.removeAttribute('style'); out.push(read());
+      return JSON.stringify(out);
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            "rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)",
+            "rgb(1, 2, 3)|rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(1, 2, 3)",
+            "rgb(1, 2, 3)|rgb(0, 0, 255)|rgb(0, 0, 0)|rgb(1, 2, 3)",
+            "rgb(1, 2, 3)|rgb(0, 0, 255)|rgb(0, 128, 0)|rgb(1, 2, 3)",
+            "rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)"
+        ])
+    );
+}
+
+/// A page with a shadow tree keeps the plain version: a shadow tree's own sheets (`::slotted`,
+/// `:host`) are outside the document sheets an embedder can check for `style` selectors.
+#[test]
+fn an_inline_style_write_in_a_shadow_page_still_updates_slotted_rules() {
+    let value = run(
+        "<body><div id=host><span id=light>x</span></div><em id=e></em></body>",
+        r#"(()=>{
+      const host=document.getElementById('host'),light=document.getElementById('light');
+      const root=host.attachShadow({mode:'open'});
+      root.innerHTML='<style>::slotted([style*="lime"]){color:rgb(9, 9, 9)}</style><slot></slot>';
+      const before=getComputedStyle(light).color;
+      light.style.backgroundColor='lime';
+      return JSON.stringify([before,getComputedStyle(light).color]);
+    })()"#,
+    );
+    assert_eq!(value, serde_json::json!(["rgb(0, 0, 0)", "rgb(9, 9, 9)"]));
+}
+
+/// An adopted sheet's attribute selector naming `style` still follows inline writes: the
+/// sheet scan does not read adopted sheets, so their presence keeps the plain version. Same
+/// values as a fresh cascade.
+#[test]
+fn style_attribute_selectors_in_adopted_sheets_still_follow_inline_writes() {
+    let value = run(
+        "<body><em id=e></em><q id=q>q</q></body>",
+        r#"(()=>{
+      const e=document.getElementById('e'),q=document.getElementById('q');
+      const sheet=new CSSStyleSheet();sheet.replaceSync('[style*="teal"] + q { color: rgb(0, 128, 128) }');
+      document.adoptedStyleSheets=[sheet];
+      const out=[getComputedStyle(q).color];
+      e.style.borderColor='teal';
+      out.push(getComputedStyle(q).color);
+      e.removeAttribute('style');
+      out.push(getComputedStyle(q).color);
+      return JSON.stringify(out);
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!(["rgb(0, 0, 0)", "rgb(0, 128, 128)", "rgb(0, 0, 0)"])
+    );
+}
+
+/// The inline-style reuse cases (inheritance below a written element, `[style*=] + p`,
+/// `:has(> [style*=])`, attribute removal, an unrelated element's writes deep in the tree, an
+/// adopted sheet's and a shadow tree's `::slotted` `style` selectors), reads interleaved with
+/// the writes, against the Chrome 156 control (`scripts/css-probe-chrome-control.mjs`).
+#[test]
+fn inline_style_reuse_matches_the_chrome_control() {
+    use sha2::{Digest, Sha256};
+    let source = include_str!("inline_style_reuse_probe.js");
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("inline_style_reuse_chrome156.json")).unwrap();
+    assert_eq!(
+        fixture["probeSha256"],
+        format!("{:x}", Sha256::digest(source.as_bytes()))
+    );
+    assert_eq!(fixture["browser"], "Chrome/156.0.8078.47");
+    let actual = run(
+        "<!doctype html><html><head></head><body></body></html>",
+        source,
+    );
+    assert_eq!(actual, fixture["result"]);
+}
+
+/// A computation that read a rule under a conditional @media is reused while every media
+/// condition it evaluated still gives the same `matchMedia` answer (a page or test can swap
+/// `matchMedia`, so the answers are checked again, not assumed): MUI puts @media rules on most
+/// elements, and never reusing those styles made every read a fresh cascade.
+#[test]
+fn media_rule_styles_are_reused_until_a_media_answer_changes() {
+    let value = run(
+        "<style>p{color:rgb(1, 1, 1)} @media (min-width: 600px) { p { color: rgb(2, 2, 2) } }</style><body><p id=p>p</p></body>",
+        r#"(()=>{
+      let wide=true;globalThis.matchMedia=query=>({matches:query.includes('600px')?wide:false,media:query});
+      const p=document.getElementById('p');
+      const first=getComputedStyle(p).color;
+      const before=__cssTestCascadeRuns();
+      const again=getComputedStyle(p).color;
+      const reused=__cssTestCascadeRuns()-before;
+      wide=false;
+      const narrow=getComputedStyle(p).color;
+      return JSON.stringify({first,again,reused,narrow});
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"first":"rgb(2, 2, 2)","again":"rgb(2, 2, 2)","reused":0,"narrow":"rgb(1, 1, 1)"})
+    );
+}
+
+/// The document's rule entries (style rules under their grouping rules, layers and @media
+/// answers) are built once per sheet list, CSSOM epoch and media answers, not once per element
+/// whose style is computed: a read after a DOM change cascades the element and each ancestor.
+#[test]
+fn rule_entries_are_built_once_per_sheet_list() {
+    let value = run(
+        "<style>@layer base { div { color: rgb(1, 1, 1) } } @media (min-width: 1px) { .t { color: rgb(2, 2, 2) } } @supports (color: red) { .u { margin: 1px } }</style><body></body>",
+        r#"(()=>{
+      globalThis.matchMedia=query=>({matches:true,media:query});
+      let parent=document.body;
+      for(let i=0;i<20;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const t=document.createElement('p');t.className='t u';parent.appendChild(t);
+      const first=getComputedStyle(t).color;
+      document.body.setAttribute('data-x','1');
+      const before=__cssTestEntryBuilds();
+      const color=getComputedStyle(t).color, margin=getComputedStyle(t).marginTop, inherited=getComputedStyle(parent).color;
+      const builds=__cssTestEntryBuilds()-before;
+      const sheet=document.querySelector('style').sheet;sheet.insertRule('.t { color: rgb(3, 3, 3) }', sheet.cssRules.length);
+      return JSON.stringify({first,color,margin,inherited,builds,after:getComputedStyle(t).color});
+    })()"#,
+    );
+    assert_eq!(value["first"], "rgb(2, 2, 2)");
+    assert_eq!(value["color"], "rgb(2, 2, 2)");
+    assert_eq!(value["margin"], "1px");
+    assert_eq!(value["inherited"], "rgb(1, 1, 1)");
+    assert_eq!(value["after"], "rgb(3, 3, 3)", "a CSSOM change rebuilds");
+    assert!(value["builds"].as_u64().unwrap() <= 1, "{value}");
 }

@@ -263,3 +263,195 @@ fn flush_builds_no_records_when_nothing_observes() {
     }
     clear_interface_records(isolate);
 }
+
+/// A [CEReactions] frame allocates its reaction queue (a V8 array behind a weak global
+/// handle) only when a reaction can be queued: with no custom element definition, the DOM
+/// calls a React page makes create none (they were a V8 global-handle create and release per
+/// call). With a definition, reactions are still queued and delivered in order.
+#[test]
+fn reaction_frames_allocate_no_queue_without_custom_element_definitions() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><div id=root></div>");
+        let before = custom_elements::reaction_queues_built();
+        let out = run(
+            scope,
+            "const root = document.getElementById('root'); for (let i = 0; i < 100; i++) { \
+             const d = document.createElement('div'); d.setAttribute('class', 'c' + i); root.appendChild(d); d.remove(); } \
+             String(root.children.length)",
+        );
+        assert_eq!(out, "0");
+        assert_eq!(custom_elements::reaction_queues_built() - before, 0);
+        let out = run(
+            scope,
+            "globalThis.log = []; customElements.define('x-r', class extends HTMLElement { \
+             connectedCallback() { log.push('c:' + this.id); } disconnectedCallback() { log.push('d:' + this.id); } \
+             attributeChangedCallback(n, o, v) { log.push('a:' + v); } static get observedAttributes() { return ['data-v']; } }); \
+             const x = document.createElement('x-r'); x.id = 'one'; root.appendChild(x); x.setAttribute('data-v', '1'); x.remove(); \
+             root.innerHTML = '<x-r id=two></x-r>'; log.join()",
+        );
+        assert_eq!(out, "c:one,a:1,d:one,c:two");
+        assert!(custom_elements::reaction_queues_built() - before > 0);
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// `labels` and a label's `control` read a per-tree-version index (each root's elements by id,
+/// its label elements in tree order) instead of walking the whole tree on every call:
+/// dom-testing-library reads `labels` of every element it matches by role or label text.
+/// The index follows every change (ids, `for`, structure).
+#[test]
+fn label_lookups_walk_the_tree_once_per_version() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><form id=f></form>");
+        run(
+            scope,
+            "const f = document.getElementById('f'); for (let i = 0; i < 200; i++) { \
+             const l = document.createElement('label'); l.htmlFor = 'i' + i; l.textContent = 'L' + i; \
+             const input = document.createElement('input'); input.id = 'i' + i; f.append(l, input); } 'ok'",
+        );
+        let before = control_labels::walk_steps();
+        let out = run(
+            scope,
+            "let n = 0; for (const input of document.querySelectorAll('input')) n += input.labels.length; \
+             for (const l of document.querySelectorAll('label')) n += l.control ? 1 : 0; String(n)",
+        );
+        assert_eq!(out, "400");
+        let steps = control_labels::walk_steps() - before;
+        assert!(
+            steps <= 4 * 410,
+            "{steps} walk steps for 400 lookups over 402 nodes"
+        );
+        let out = run(
+            scope,
+            "const a = document.getElementById('i0'), b = document.getElementById('i1'); \
+             a.id = 'x'; const moved = [a.labels.length, document.querySelector('label').control === null]; \
+             b.id = 'i0'; moved.push(b.labels.length, document.querySelector('label').control === b); \
+             document.querySelector('label').htmlFor = 'x'; moved.push(a.labels.length, b.labels.length); \
+             a.remove(); moved.push(a.labels.length, document.querySelector('label').control === null); JSON.stringify(moved)",
+        );
+        assert_eq!(out, "[0,true,1,true,1,0,0,true]");
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// A selector with a `:` none of the state-dependent transforms (popover, dialog, interest,
+/// form, view transition) applies to skips them: whether each applies is a property of the
+/// selector text, kept per selector, so `matches(':focus-visible')` or `closest('li:hover')`
+/// on every pointer event parses it once, not five times per call. A transform that applies
+/// still runs on every call (its answer reads live state).
+#[test]
+fn transforms_that_cannot_apply_are_skipped_per_selector() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<body><ul><li id=a>a</li><li id=b><input id=i disabled></li></ul>",
+        );
+        let before = SELECTOR_WORK.with(|work| work.transforms.get());
+        let out = run(
+            scope,
+            "const a = document.getElementById('a'), i = document.getElementById('i'); let n = 0; \
+             for (let k = 0; k < 100; k++) { n += a.matches('li:first-child') ? 1 : 0; n += a.matches(':focus-visible') ? 1 : 0; } String(n)",
+        );
+        assert_eq!(out, "100");
+        let skipped = SELECTOR_WORK.with(|work| work.transforms.get()) - before;
+        assert!(
+            skipped <= 10,
+            "{skipped} transform runs for 200 calls of two transform-free selectors"
+        );
+        let before = SELECTOR_WORK.with(|work| work.transforms.get());
+        let out = run(
+            scope,
+            "let m = 0; for (let k = 0; k < 10; k++) { m += i.matches(':disabled') ? 1 : 0; i.disabled = k % 2 === 0; } String(m)",
+        );
+        assert_eq!(out, "6");
+        assert!(
+            SELECTOR_WORK.with(|work| work.transforms.get()) - before >= 10,
+            "a transform that applies runs every call"
+        );
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// A node getter decodes its holder's owner tag once: the tag routes the call to the
+/// holder's DOM and proves its handle live (stale wrappers stay refused, turbo-dom#224).
+#[test]
+fn node_getters_decode_the_owner_tag_once_per_call() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><div id=a><b>x</b></div>");
+        run(scope, "globalThis.a = document.getElementById('a'); 'ok'");
+        let before = TAG_READS.with(std::cell::Cell::get);
+        let out = run(
+            scope,
+            "const body = document.body; let n = 0; for (let i = 0; i < 1000; i++) { n += a.parentNode === body ? 1 : 0; } String(n)",
+        );
+        assert_eq!(out, "1000");
+        let reads = TAG_READS.with(std::cell::Cell::get) - before;
+        assert!(
+            reads <= 2100,
+            "{reads} owner-tag decodes for 1000 parentNode reads"
+        );
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// A projected DOM accessor (every public node getter and setter goes through
+/// `dom_accessor_dispatch`) reads the native template accessor through a reused raw view of
+/// its DOM, not a new template instance per call; reentrant calls take their own view. The
+/// values, `this` checks and stale-wrapper refusal are unchanged.
+#[test]
+fn dom_accessor_dispatch_reuses_raw_views() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><div id=a><b>x</b><i>y</i></div>");
+        run(scope, "globalThis.a = document.getElementById('a'); 'ok'");
+        let before = RAW_VIEWS_BUILT.with(std::cell::Cell::get);
+        let out = run(
+            scope,
+            "let n = 0; for (let i = 0; i < 1000; i++) { n += a.parentNode === document.body ? 1 : 0; \
+             n += a.firstChild.nextSibling.nodeName === 'I' ? 1 : 0; a.firstChild.textContent = 'x' + (i % 3); } \
+             String(n) + ':' + a.textContent",
+        );
+        assert_eq!(out, "2000:x0y");
+        let built = RAW_VIEWS_BUILT.with(std::cell::Cell::get) - before;
+        assert!(
+            built <= 8,
+            "{built} raw views built for ~16000 projected accessor calls"
+        );
+        let thrown = run(
+            scope,
+            "const get = Object.getOwnPropertyDescriptor(Node.prototype, 'parentNode').get; \
+             try { get.call({}); 'no' } catch (e) { e.constructor.name + ':' + e.message }",
+        );
+        assert_eq!(thrown, "TypeError:Illegal invocation");
+        reset();
+    }
+    clear_interface_records(isolate);
+}

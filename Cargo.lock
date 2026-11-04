@@ -2812,6 +2812,7 @@ dependencies = [
  "cssparser",
  "lightningcss",
  "psl",
+ "rustc-hash 2.1.2",
  "serde",
  "serde_json",
  "sha2",

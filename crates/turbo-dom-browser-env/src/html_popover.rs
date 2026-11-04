@@ -692,6 +692,15 @@ pub(super) fn capture_scheduler(scope: &mut v8::PinScope) {
     }
 }
 
+/// Whether [`selector`] can change `source` or throw on it: it has a popover pseudo-class
+/// (a property of the text, memoized by `selector_argument`).
+pub(super) fn applies(source: &str) -> bool {
+    let mut input = cssparser::ParserInput::new(source);
+    let mut parser = cssparser::Parser::new(&mut input);
+    let mut ranges = Vec::new();
+    let _ = pseudo_ranges(&mut parser, &mut ranges);
+    !ranges.is_empty()
+}
 pub(super) fn selector_root(tree: &Tree, mut node: Handle) -> Handle {
     while let Some(parent) = tree.parent(node) {
         node = parent;
@@ -803,6 +812,8 @@ fn pseudo_ranges<'i, 't>(
 /// Represent private native state as structural selectors within this exact DOM
 /// root. No attributes, styles or nodes are inserted into the guest's tree.
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     let mut input = cssparser::ParserInput::new(source);
     let mut parser = cssparser::Parser::new(&mut input);
     let mut ranges = Vec::new();

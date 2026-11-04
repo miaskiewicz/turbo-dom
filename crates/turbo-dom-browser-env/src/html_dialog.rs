@@ -449,12 +449,22 @@ fn pseudo_ranges<'i, 't>(
     Ok(())
 }
 
+/// Whether [`selector`] can change `source` or throw on it: a `:modal`/`:open` range, or a
+/// parse it rejects (a property of the text, memoized by `selector_argument`).
+pub(super) fn applies(source: &str) -> bool {
+    let mut input = cssparser::ParserInput::new(source);
+    let mut parser = cssparser::Parser::new(&mut input);
+    let mut ranges = Vec::new();
+    pseudo_ranges(&mut parser, &mut ranges).is_err() || !ranges.is_empty()
+}
 /// Represent private dialog state as structural selectors within this exact DOM root, as
 /// `:popover-open` does. `:open` is the dialog/details open attribute or a control's open picker
 /// ([`user_activation_gates::open_picker`]); `:modal` is the is-modal flag, which outlives a removed `open` attribute,
 /// and the document's fullscreen element (Chrome 156). `:fullscreen` and its prefixed forms
 /// match in the selector engine (`Tree::fullscreen_stack`, miaskiewicz/turbo-dom#58).
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     let mut input = cssparser::ParserInput::new(source);
     let mut parser = cssparser::Parser::new(&mut input);
     let mut ranges = Vec::new();

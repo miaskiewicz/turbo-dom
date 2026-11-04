@@ -506,10 +506,27 @@ fn pseudo_ranges<'i, 't>(
     Ok(())
 }
 
+/// Whether [`selector`] can change `source` or throw on it: it names an active view
+/// transition and either parses with a range or fails the parse (a property of the text,
+/// memoized by `selector_argument`).
+pub(super) fn applies(source: &str) -> bool {
+    if !source
+        .to_ascii_lowercase()
+        .contains("active-view-transition")
+    {
+        return false;
+    }
+    let mut input = cssparser::ParserInput::new(source);
+    let mut parser = cssparser::Parser::new(&mut input);
+    let mut ranges = Vec::new();
+    pseudo_ranges(&mut parser, &mut ranges).is_err() || !ranges.is_empty()
+}
 /// Represent active-transition state as structural selectors within this exact DOM root,
 /// as `:popover-open` and `:modal` do: `:active-view-transition` is every active transition
 /// root, `:active-view-transition-type(a, b)` those whose types contain `a` or `b`.
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     if !source
         .to_ascii_lowercase()
         .contains("active-view-transition")

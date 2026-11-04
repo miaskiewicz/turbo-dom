@@ -142,25 +142,46 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
         let state = state.borrow();
         let state = state.as_ref()?;
         let graph = state.ownership.clone()?;
-        let mut roots = std::collections::HashMap::new();
-        let mut connected = std::collections::HashSet::new();
+        let size = state.cache.len();
+        let mut roots = rustc_hash::FxHashMap::with_capacity_and_hasher(size, Default::default());
+        let mut connected =
+            rustc_hash::FxHashSet::with_capacity_and_hasher(size, Default::default());
         #[cfg(test)]
         WORK.with(|work| {
             work.wrappers_visited
                 .set(work.wrappers_visited.get() + state.cache.len())
         });
+        // Every node walked on the way up shares the root found: memoized for this pass
+        // (cached wrappers and their uncached ancestors), each edge is walked once.
+        let mut found: rustc_hash::FxHashMap<u32, u32> =
+            rustc_hash::FxHashMap::with_capacity_and_hasher(size * 2, Default::default());
+        let mut path = Vec::new();
         for handle in state.cache.keys() {
-            let mut root = *handle;
-            while let Some(parent) = state
-                .tree
-                .parent(root)
-                .or_else(|| state.tree.attribute_owner(root))
-                .or_else(|| state.tree.shadow_host(root))
-            {
-                root = parent;
+            let mut node = *handle;
+            let root = loop {
+                if let Some(root) = found.get(&node.raw()) {
+                    break *root;
+                }
+                path.push(node.raw());
+                match state
+                    .tree
+                    .parent(node)
+                    .or_else(|| state.tree.attribute_owner(node))
+                    .or_else(|| state.tree.shadow_host(node))
+                {
+                    Some(parent) => {
+                        #[cfg(test)]
+                        WORK.with(|work| work.root_steps.set(work.root_steps.get() + 1));
+                        node = parent;
+                    }
+                    None => break node.raw(),
+                }
+            };
+            for walked in path.drain(..) {
+                found.insert(walked, root);
             }
-            roots.insert(handle.raw(), root.raw());
-            if root == state.tree.root() {
+            roots.insert(handle.raw(), root);
+            if root == state.tree.root().raw() {
                 connected.insert(handle.raw());
             }
         }
@@ -187,6 +208,10 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
 pub(super) struct Work {
     pub(super) wrappers_visited: std::cell::Cell<usize>,
     pub(super) sweeps: std::cell::Cell<usize>,
+    /// Wrappers (re)placed in an ownership component or re-retained by their document.
+    pub(super) placements: std::cell::Cell<usize>,
+    /// Parent steps `reconcile_current` took to find the wrappers' roots.
+    pub(super) root_steps: std::cell::Cell<usize>,
 }
 #[cfg(test)]
 thread_local! {

@@ -11,6 +11,7 @@ keywords = ["dom", "v8", "browser", "testing"]
 categories = ["web-programming", "development-tools::testing"]
 
 [dependencies]
+rustc-hash = "2"
 # V8 bindings: turbo-dom's rusty_v8 fork (crates/turbo-dom-v8), which carries the
 # interceptor ShouldThrowOnError fix. `~150.4` admits fork patch releases only.
 v8 = { package = "turbo-dom-v8", version = "~150.4" }

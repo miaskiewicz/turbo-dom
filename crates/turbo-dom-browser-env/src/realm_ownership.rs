@@ -1,8 +1,6 @@
 //! Native weak lookups with V8-owned document and native subtree edges.
-use std::{
-    collections::{HashMap, HashSet},
-    rc::Rc,
-};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+use std::rc::Rc;
 
 fn key<'s>(scope: &mut v8::PinScope<'s, '_>, name: &str) -> Option<v8::Local<'s, v8::Private>> {
     let name = v8::String::new(scope, name)?;
@@ -53,6 +51,10 @@ pub struct DocumentGraph {
     wrappers: HashMap<u32, Rc<v8::Weak<v8::Object>>>,
     connected: HashSet<u32>,
     components: HashMap<u32, v8::Weak<v8::Object>>,
+    /// The component (root id) each wrapper is a member of, as last placed.
+    placed: HashMap<u32, u32>,
+    /// Ids whose wrapper object was (re)observed since the last component reconcile.
+    fresh: HashSet<u32>,
     next_helper: u32,
 }
 impl DocumentGraph {
@@ -75,9 +77,11 @@ impl DocumentGraph {
         Some(Self {
             document: v8::Weak::new(scope, document),
             context: v8::Weak::new(scope, context),
-            wrappers: HashMap::new(),
-            connected: HashSet::new(),
-            components: HashMap::new(),
+            wrappers: HashMap::default(),
+            connected: HashSet::default(),
+            components: HashMap::default(),
+            placed: HashMap::default(),
+            fresh: HashSet::default(),
             next_helper,
         })
     }
@@ -119,6 +123,7 @@ impl DocumentGraph {
         }
         self.wrappers
             .insert(id, Rc::new(v8::Weak::new(scope, wrapper)));
+        self.fresh.insert(id);
         if connected {
             retain(scope, document, id, wrapper.into())?;
             self.connected.insert(id);
@@ -165,9 +170,33 @@ impl DocumentGraph {
             component.set_private(scope, refs_key, refs.into())?;
             refs
         };
+        if let Some(old) = self.placed.insert(id, root).filter(|old| *old != root) {
+            self.leave(scope, old, id)?;
+        }
+        self.fresh.remove(&id);
         let id = v8::Integer::new_from_unsigned(scope, id);
         refs.set(scope, id.into(), wrapper.into())?;
         (wrapper.set_private(scope, owner_key, component.into()) == Some(true)).then_some(())
+    }
+    /// Drop `id` from the member map of component `root` (when that component is alive), so
+    /// a wrapper that moved on is not kept alive by its old component.
+    fn leave(&mut self, scope: &mut v8::PinScope, root: u32, id: u32) -> Option<()> {
+        let Some(component) = self
+            .components
+            .get(&root)
+            .and_then(|component| component.to_local(scope))
+        else {
+            return Some(());
+        };
+        let refs_key = key(scope, "turbo-dom.ownership.component-nodes")?;
+        if let Some(refs) = component
+            .get_private(scope, refs_key)
+            .and_then(|value| v8::Local::<v8::Map>::try_from(value).ok())
+        {
+            let id = v8::Integer::new_from_unsigned(scope, id);
+            refs.delete(scope, id.into())?;
+        }
+        Some(())
     }
     pub fn reconcile(&mut self, scope: &mut v8::PinScope, connected: &HashSet<u32>) -> Option<()> {
         let owner = self.context.to_local(scope)?;
@@ -186,6 +215,11 @@ impl DocumentGraph {
     }
     /// Every disconnected native subtree is one collectible ownership component.
     /// Holding a descendant must keep cached siblings/ancestors alive too.
+    ///
+    /// Incremental: only a wrapper whose component (`root`) changed, or whose wrapper object
+    /// is new since the last reconcile, is placed again (leaving its old component's member
+    /// map); a wrapper that left the graph leaves its component. Connected ones among them
+    /// are retained by the document again.
     pub fn reconcile_components(
         &mut self,
         scope: &mut v8::PinScope,
@@ -194,43 +228,70 @@ impl DocumentGraph {
         let owner = self.context.to_local(scope)?;
         let scope = &mut v8::ContextScope::new(scope, owner);
         let document = self.document.to_local(scope)?;
-        let mut groups: HashMap<u32, Vec<(u32, v8::Local<v8::Object>)>> = HashMap::new();
-        for (id, weak) in &self.wrappers {
-            if let Some(wrapper) = weak.to_local(scope) {
-                groups.entry(root(*id)).or_default().push((*id, wrapper));
+        let gone = self
+            .placed
+            .keys()
+            .filter(|id| !self.wrappers.contains_key(id))
+            .copied()
+            .collect::<Vec<_>>();
+        for id in gone {
+            if let Some(old) = self.placed.remove(&id) {
+                self.leave(scope, old, id)?;
             }
         }
+        let mut moves: Vec<(u32, u32, v8::Local<v8::Object>)> = Vec::new();
+        for (id, weak) in &self.wrappers {
+            let target = root(*id);
+            if self.placed.get(id) == Some(&target) && !self.fresh.contains(id) {
+                continue;
+            }
+            if let Some(wrapper) = weak.to_local(scope) {
+                moves.push((*id, target, wrapper));
+            }
+        }
+        self.fresh.clear();
         let owner_key = key(scope, "turbo-dom.ownership.component-owner")?;
         let refs_key = key(scope, "turbo-dom.ownership.component-nodes")?;
-        for (id, members) in groups {
+        for (id, target, wrapper) in moves {
+            #[cfg(test)]
+            super::WORK.with(|work| work.placements.set(work.placements.get() + 1));
+            if let Some(old) = self.placed.insert(id, target).filter(|old| *old != target) {
+                self.leave(scope, old, id)?;
+            }
             let component = self
                 .components
-                .get(&id)
+                .get(&target)
                 .and_then(|weak| weak.to_local(scope))
                 .unwrap_or_else(|| {
                     let component = v8::Object::new(scope);
                     let null = v8::null(scope);
                     component.set_prototype(scope, null.into());
-                    self.components.insert(id, v8::Weak::new(scope, component));
+                    self.components
+                        .insert(target, v8::Weak::new(scope, component));
                     component
                 });
-            let refs = v8::Map::new(scope);
-            for (node, wrapper) in members {
-                let index = v8::Integer::new_from_unsigned(scope, node);
-                refs.set(scope, index.into(), wrapper.into())?;
-                if wrapper.set_private(scope, owner_key, component.into()) != Some(true) {
-                    return None;
+            let refs = match component
+                .get_private(scope, refs_key)
+                .and_then(|value| v8::Local::<v8::Map>::try_from(value).ok())
+            {
+                Some(refs) => refs,
+                None => {
+                    let refs = v8::Map::new(scope);
+                    if component.set_private(scope, refs_key, refs.into()) != Some(true) {
+                        return None;
+                    }
+                    refs
                 }
-            }
-            if component.set_private(scope, refs_key, refs.into()) != Some(true) {
+            };
+            let index = v8::Integer::new_from_unsigned(scope, id);
+            refs.set(scope, index.into(), wrapper.into())?;
+            if wrapper.set_private(scope, owner_key, component.into()) != Some(true) {
                 return None;
             }
-        }
-        // Connected roots remain directly owned by the document. Disconnected
-        // component anchors are reachable only through their member wrappers.
-        for id in &self.connected {
-            if let Some(wrapper) = self.wrappers.get(id).and_then(|weak| weak.to_local(scope)) {
-                retain(scope, document, *id, wrapper.into())?;
+            // Connected roots remain directly owned by the document. Disconnected
+            // component anchors are reachable only through their member wrappers.
+            if self.connected.contains(&id) {
+                retain(scope, document, id, wrapper.into())?;
             }
         }
         Some(())
@@ -263,6 +324,8 @@ impl DocumentGraph {
             self.forget(scope, id)?;
         }
         self.components.clear();
+        self.placed.clear();
+        self.fresh.clear();
         // The document's own ownership component lists every wrapper of its composed tree:
         // leave only the document in it, so the old tree's wrappers are not kept alive (nor
         // carried into a startup snapshot; round-1 review #15).

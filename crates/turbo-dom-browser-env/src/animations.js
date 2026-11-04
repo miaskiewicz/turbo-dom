@@ -1446,7 +1446,9 @@
 
   function rendered(element) {
     if (!apply(connectedGetter, element, [])) return false;
-    for (let node = element; node && nodeType(node) === 1; node = apply(parentGetter, node, [])) { suppressStyle = true; try { if (apply(computedStyle, g, [node]).display === 'none') return false; } finally { suppressStyle = false; } }
+    // One snapshot map for the walk: each ancestor resolves once (turbo-test perf parity).
+    const snapshots = ns.computedSnapshots();
+    for (let node = element; node && nodeType(node) === 1; node = apply(parentGetter, node, [])) { suppressStyle = true; try { if (ns.computedDisplay(node, snapshots) === 'none') return false; } finally { suppressStyle = false; } }
     return true;
   }
   function baseStyle(element) {

@@ -101,8 +101,11 @@
   var canvasLengthUnitNative=g.__canvasLengthUnitNative;delete g.__canvasLengthUnitNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
+  var computedStyleSelectorVersion=g.__computedStyleSelectorVersion;delete g.__computedStyleSelectorVersion;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
+  var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
+  var noteEntryBuild=g.__noteEntryBuild;delete g.__noteEntryBuild;
   // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
   if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
@@ -579,16 +582,59 @@
   // adopted sheets, for elements of the document tree. A shadow tree is its own style scope:
   // document rules never select its elements (turbo-dom#68; its own rules come from the
   // native shadow-scoped cascade).
+  // The owner's sheet list, reread only when its tree version or the CSSOM epoch moved: every
+  // element of one cascade (the read element and each ancestor) shares it.
+  var computedSheetLists=new computedSnapshotMap();
+  function computedOwnerSheets(owner,host){
+    var version=null;try{version=computedStyleSelectorVersion(owner);}catch(e){}
+    var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
+    if(entry&&typeof version==='number'&&entry.version===version&&entry.epoch===epoch&&entry.host===host)return entry.sheets;
+    var sheets=host.readSheets();
+    if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets});
+    return sheets;
+  }
+  // Whether a cascade of `el` can read another element's inline style: a rule of its sheets
+  // with an attribute selector naming `style` (directly, through a combinator, inside :has()),
+  // an @container query, or sheets the scan does not see (adopted ones). Scanned once per
+  // sheet list; any match, even in a string, only keeps the plain tree version.
+  var computedStyleAttributeSelector=/\[\s*(?:[\w*-]*\|)?style(?![\w-])|@container/i;
+  // Selector and prelude text only (no declaration is serialized), nested rules included; an
+  // @import's sheet is not walked, so an @import counts as a match.
+  function computedRulesReadStyle(rules){
+    var items=cssItems(rules);
+    for(var i=0;i<items.length;i++){
+      var record=cssRuleRecord(items[i]);
+      if(record.type===3||record.kind==='container')return true;
+      var text=record.type===1?record.selectorText:record.prelude;
+      if(text&&cssApply(cssZoomExec,computedStyleAttributeSelector,[String(text)]))return true;
+      if(record.cssRules&&computedRulesReadStyle(record.cssRules))return true;
+    }
+    return false;
+  }
+  function computedInlineSensitive(el){
+    var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return true;}
+    if(!owner)return true;
+    var adopted=adoptionStates&&$c.get(adoptionStates,owner);
+    if(adopted&&adopted.target&&adopted.target.length)return true;
+    var ownerRecord=collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
+    if(!host)return false;
+    var sheets=computedOwnerSheets(owner,host),entry=computedSnapshotGet(computedSheetLists,owner);
+    if(entry&&entry.sheets===sheets&&entry.styleSelectors!==undefined)return entry.styleSelectors;
+    var found=false;
+    try{for(var si=0;si<sheets.length&&!found;si++)found=computedRulesReadStyle(sheetRecord(sheets[si]).rules);}catch(e){found=true;}
+    if(entry&&entry.sheets===sheets)entry.styleSelectors=found;
+    return found;
+  }
   function computedSheets(el){
     var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
     if(owner&&cssApply(computedStyleNativeRoot,el,[])!==owner&&cssApply(computedStyleNativeConnected,el,[]))return [];
     // A live list refreshes on every indexed/length read. Refresh its private
     // backing array once per computation; retained declarations still recompute.
     var ownerRecord=owner&&collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
-    var sheets = host ? host.readSheets() : [];
+    var sheets = host ? computedOwnerSheets(owner,host) : [];
     // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
     var adopted=adoptionStates&&$c.get(adoptionStates,owner);
-    if(adopted&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
+    if(adopted&&adopted.target&&adopted.target.length&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
     return sheets;
   }
   // The selector text of every enabled style rule that can select `el`.
@@ -627,12 +673,26 @@
   // realm's only cause an extra update, never a missed one).
   var animatedStyleBumps=0;
   __ns.invalidateAnimatedStyles=function(){animatedStyleBumps++;bumpCssomEpoch();};
-  __ns.computedStyleStamp=function(el){var key=computedCacheKey(el);return key?[key.version,key.epoch-animatedStyleBumps,styleStateEpoch(),key.owner]:null;};
+  // An element's computed `display` (animations.js `rendered`): resolved through `snapshots`,
+  // one map shared by a whole ancestor walk, so each ancestor resolves (or revalidates its
+  // reuse) once per walk instead of once per level, and no declaration object is made.
+  __ns.computedDisplay=function(el,snapshots){return computedSnapshotValue(computeStyleSnapshot(el,snapshots),'display');};
+  __ns.computedSnapshots=function(){return new computedSnapshotMap();};
+  __ns.computedStyleStamp=function(el){var key=computedCacheKey(el);return key?[key.full,key.epoch-animatedStyleBumps,styleStateEpoch(),key.owner]:null;};
+  // The key's `version` is the tree's selector version (Tree::selector_version: inline style
+  // writes do not move it) plus the element's own inline style text, unless a cascade of the
+  // element can read other elements' inline styles (computedInlineSensitive) or the tree has
+  // a shadow root (whose own sheets are not scanned): then the plain tree version. Ancestors'
+  // inline styles reach it through the parent snapshots it depends on. `full` (the plain
+  // version) is what `rendered` and the animation stamp read.
   function computedCacheKey(el){
-    var version;try{version=computedStyleVersion(el);}catch(e){return null;}
-    if(typeof version!=='number')return null;
+    var version,full;try{full=computedStyleVersion(el);version=computedStyleSelectorVersion(el);}catch(e){return null;}
+    if(typeof full!=='number'||typeof version!=='number')return null;
     var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
-    return {__proto__:null,epoch:cssomEpoch(),version:version,owner:owner};
+    var inline=null;
+    if(computedInlineSensitive(el))version=full;
+    else{try{inline=$c.call(appliedInlineRead,el);}catch(e){version=full;inline=null;}}
+    return {__proto__:null,epoch:cssomEpoch(),version:version,full:full,inline:inline,owner:owner};
   }
   // What the key cannot see: the element's top layer and font context.
   function computedCacheProbe(el){
@@ -644,8 +704,9 @@
   function computedProbeEqual(a,b){if(a.length!==b.length)return false;for(var index=0;index<a.length;index++)if(a[index]!==b[index])return false;return true;}
   function computedCacheHit(el,key,snapshots){
     var entry=computedSnapshotGet(computedStyleCache,el);
-    if(!entry||entry.epoch!==key.epoch||entry.version!==key.version||entry.owner!==key.owner)return null;
+    if(!entry||entry.epoch!==key.epoch||entry.version!==key.version||entry.inline!==key.inline||entry.owner!==key.owner)return null;
     if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
+    if(!computedMediaUnchanged(entry.media))return null;
     if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
     for(var index=0;index<entry.deps.length;index+=2)if(computeStyleSnapshot(entry.deps[index],snapshots)!==entry.deps[index+1])return null;
     return entry.snapshot;
@@ -653,14 +714,15 @@
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     if(pseudo||sink||!el||typeof el!=='object')return computeStyleFresh(el,snapshots,sink,pseudo,null);
     var local=computedSnapshotGet(snapshots,el);if(local)return local;
+    if(noteStyleLookup)noteStyleLookup();
     var key=computedCacheKey(el);
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
-    var deps=[],outer=computedVolatile,outerState=computedStateRead,snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;
-    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;}
+    var deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,media={__proto__:null},snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;computedMediaReads=media;
+    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
     if(key){
       var after=computedCacheKey(el);
-      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.owner!==key.owner||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
-      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,owner:key.owner,state:stateRead?state:null,probe:computedCacheProbe(el),deps:deps});
+      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.inline!==key.inline||after.owner!==key.owner||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
+      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps});
     }
     return snapshot;
   }
@@ -772,10 +834,10 @@
       // Element-backed pseudo-elements the element does not have see no author rules.
       // Match the private selector list before touching declarations. Native parsing
       // preserves quoted delimiters that serialized text splitting loses.
-      var sheets = info && !info.authored ? [] : computedSheets(el),layers=cssLayerTree(),matched=[];
+      var sheets = info && !info.authored ? [] : computedSheets(el),build=computedSheetEntries(sheets,el),layers=build.layers,matched=[];
       for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
-        var entries = appliedSheetEntries(sheets[si],el,layers);
+        var entries = build.lists[si];
         for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
       }
       cascadeEntries(matched,layers,function(entry,only){applyDeclarations(declarationRecord(entry.rule.style),info&&info.accepts,only);});
@@ -1464,7 +1526,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
   function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries)$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
   function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}'));$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1)return;var name=$c.trim($c.slice(part,0,index));if(!record.fontFace&&!$c.startsWith(name,'--')&&!knownProperty(name))return;var value=$c.trim($c.slice(part,index+1)),important=$c.test(/\s*!important\s*$/i,value);if(important)value=$c.trim($c.replace(value,/\s*!important\s*$/i,''));if(!record.fontFace&&!$c.startsWith(name,'--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=$c.get(record.values,name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
-  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');invalidateComputedStyles();}
+  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');if(!record.owner)invalidateComputedStyles();}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);$c.call(appliedInlineWrite,record.owner,record.source);}}
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
   function removeDeclaration(record,name){if(!record.fontFace){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands){var removed=false;$c.forEach(longhands,function(longhand){if($c.delete(record.values,longhand)){$c.splice(record.names,$c.indexOf(record.names,longhand),1);removed=true;}});if(removed)commitDeclaration(record);return '';}}var previous=$c.get(record.values,name);if(!previous)return '';$c.delete(record.values,name);$c.splice(record.names,$c.indexOf(record.names,name),1);commitDeclaration(record);return previous.text;}
@@ -1630,7 +1692,35 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // A condition is fixed for the engine, so it is evaluated once per text.
   function cssSupportsMatches(text,el){var cached=cssSupportsCache[text];if(cached===undefined)cached=cssSupportsCache[text]=cssSupportsCondition(text,el);return cached;}
   // 0: unconditional; 1: under @media that matches now; 2: under @media that does not.
-  function cssMediaState(record,state){var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;return g.matchMedia(text).matches?1:2;}
+  // The media conditions the current computation evaluated, with their answers (null: not
+  // tracking): a reused computed style is reused only while each still answers the same.
+  var computedMediaReads=null;
+  function cssMediaState(record,state){var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;var matches=!!g.matchMedia(text).matches;if(computedMediaReads&&computedMediaReads[text]===undefined)computedMediaReads[text]=matches;return matches?1:2;}
+  // The rule entries of a sheet list (its style rules under their grouping rules, the layer
+  // tree they rank in, the @media answers they were built with): built once per list, CSSOM
+  // epoch and media answers, and shared by every element computed meanwhile. The build reads
+  // no element (an @supports answer is cached by text). A build that went volatile (an
+  // @import under a media query) is not kept.
+  var computedEntryBuilds=new computedSnapshotMap();
+  function computedSheetEntries(sheets,el){
+    var epoch=cssomEpoch(),build=computedSnapshotGet(computedEntryBuilds,sheets);
+    if(build&&build.epoch===epoch&&computedMediaUnchanged(build.media)){computedMergeMedia(build.media);return build;}
+    if(noteEntryBuild&&sheets.length)noteEntryBuild();
+    var outerMedia=computedMediaReads,outerVolatile=computedVolatile,media={__proto__:null},layers=cssLayerTree(),lists=[];
+    computedMediaReads=media;computedVolatile=false;
+    var volatile=false;
+    try{for(var si=0;si<sheets.length;si++)$c.push(lists,appliedSheetEntries(sheets[si],el,layers));volatile=computedVolatile;}
+    finally{computedMediaReads=outerMedia;computedVolatile=outerVolatile||volatile;computedMergeMedia(media);}
+    build={__proto__:null,epoch:epoch,media:media,layers:layers,lists:lists};
+    if(!volatile&&sheets.length)computedSnapshotSet(computedEntryBuilds,sheets,build);
+    return build;
+  }
+  function computedMergeMedia(reads){if(computedMediaReads&&reads)for(var text in reads)if(computedMediaReads[text]===undefined)computedMediaReads[text]=reads[text];}
+  function computedMediaUnchanged(reads){
+    if(!reads)return true;
+    try{for(var text in reads)if(!!g.matchMedia(text).matches!==reads[text])return false;}catch(e){return false;}
+    return true;
+  }
   function appliedImport(record,el,context,out){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||g.matchMedia(record.media.mediaText).matches))appliedSheetEntries(record.styleSheet,el,context.layers,out,context.seen);}
   // The context of a grouping rule's children, or null when they never apply.
   function groupContext(record,kind,el,context){
@@ -1714,7 +1804,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
     else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
     else{try{matched=cssApply(computedStyleNativeMatches,el,[selector]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,item);});}
-    if(matched&&entry.media)computedVolatile=true;
+    if(matched&&entry.media&&!computedMediaReads)computedVolatile=true;
     return matched&&entry.media!==2?{__proto__:null,entry:entry,specificity:specificity,proximity:proximity,order:order}:null;
   }
   // Is `a` weaker than `b` once their layers tie: lower specificity, then farther from its

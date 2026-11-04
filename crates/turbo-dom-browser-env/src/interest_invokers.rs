@@ -106,6 +106,17 @@ pub(super) fn attribute_changed<'s>(
     call(scope, element, &[kind.into(), element.into()]);
 }
 
+/// Whether [`selector`] can change `source`: an interest pseudo-class range (a property of
+/// the text, memoized by `selector_argument`).
+pub(super) fn applies(source: &str) -> bool {
+    if !source.to_ascii_lowercase().contains("interest-") {
+        return false;
+    }
+    let mut input = cssparser::ParserInput::new(source);
+    let mut parser = cssparser::Parser::new(&mut input);
+    let mut ranges = Vec::new();
+    pseudo_ranges(&mut parser, &mut ranges).is_ok() && !ranges.is_empty()
+}
 #[derive(Clone, Copy, PartialEq)]
 enum Pseudo {
     Source,
@@ -157,6 +168,8 @@ fn pseudo_ranges<'i, 't>(
 /// Represent the private interest state as structural selectors within the anchor's root,
 /// exactly as `:popover-open` does.
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     if !source.to_ascii_lowercase().contains("interest-") {
         return Some(source.to_owned());
     }

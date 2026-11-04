@@ -127,6 +127,13 @@ Measured on darwin-arm64, release build, min / median of 30
 | `install_from_snapshot` (isolate included) | 4.99 ms | 5.38 ms |
 | one-time `snapshot_blob()` build | 171 ms | |
 
+An embedder that bakes its own startup context (turbo-test's framework layer) uses
+`snapshot_blob_with(prelude)`: the blob's default context ran `prelude` alone (the
+embedder's window-free contexts), and context `SNAPSHOT_WINDOW_CONTEXT` ran `prelude`, then
+the engine bootstrap (`v8::Context::from_snapshot`). With `set_snapshot_install(true)`, an
+install into a window context rehydrates instead of running the engine scripts; installs
+into any other context are unchanged. The prelude must hand V8 no native callback.
+
 `TURBO_DOM_SNAPSHOT_PATH=1` makes the test isolates come from the blob and routes every
 install into a snapshot context through the same rehydrate + attach. Each such install
 asserts that it ran 0 engine scripts. CI runs the whole suite on all three paths

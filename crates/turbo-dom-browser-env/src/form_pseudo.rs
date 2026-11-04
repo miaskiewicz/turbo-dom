@@ -267,6 +267,14 @@ fn classify(
     Some(sets)
 }
 
+/// Whether [`selector`] can change `source`: a form-state pseudo-class range (a property of
+/// the text, memoized by `selector_argument`).
+pub(super) fn applies(source: &str) -> bool {
+    let mut input = cssparser::ParserInput::new(source);
+    let mut parser = cssparser::Parser::new(&mut input);
+    let mut ranges = Vec::new();
+    pseudo_ranges(&mut parser, &mut ranges).is_ok() && !ranges.is_empty()
+}
 /// `subject_local`: the query is `matches()`/`closest()` on `anchor`, whose answer depends only
 /// on `anchor`'s ancestors (and their siblings), not on the rest of the tree.
 pub(super) fn selector(
@@ -275,6 +283,8 @@ pub(super) fn selector(
     source: &str,
     subject_local: bool,
 ) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     let mut input = cssparser::ParserInput::new(source);
     let mut parser = cssparser::Parser::new(&mut input);
     let mut ranges = Vec::new();

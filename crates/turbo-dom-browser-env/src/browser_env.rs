@@ -494,7 +494,7 @@ mod template_contents;
 struct DomState {
     tree: Tree,
     /// handle → JS node object, for identity (`el === el`).
-    cache: HashMap<Handle, v8::Weak<v8::Object>>,
+    cache: rustc_hash::FxHashMap<Handle, v8::Weak<v8::Object>>,
     checked_radios: HashMap<Handle, Option<Handle>>,
     dialog: html_dialog::State,
     /// shared element object template (internal_field_count = 2).
@@ -587,10 +587,18 @@ fn owner_tag<'s>(scope: &mut v8::PinScope<'s, '_>, id: u64) -> v8::Local<'s, v8:
     v8::Integer::new(scope, owner_tag_index(id))
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Owner-tag decodes on this thread (the perf gate in `perf_gates_tests`).
+    pub(super) static TAG_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// The owner of a tagged wrapper: `Some(Some(id))` while its tree is still DOM `id`'s,
 /// `Some(None)` once that tree is gone (reset, or replaced by a new document), `None` for an
 /// object without an owner tag.
 fn tagged_owner(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> Option<Option<u64>> {
+    #[cfg(test)]
+    TAG_READS.with(|reads| reads.set(reads.get() + 1));
     let tag = object
         .get_internal_field(scope, 1)
         .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())
@@ -725,7 +733,17 @@ fn install_independent_tree(scope: &mut v8::PinScope, tree: Tree) {
 }
 
 fn dom_id_of(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> u64 {
-    match tagged_owner(scope, object) {
+    let owner = tagged_owner(scope, object);
+    dom_id_with_owner(scope, object, owner)
+}
+
+/// [`dom_id_of`] with the object's owner tag already decoded.
+fn dom_id_with_owner(
+    scope: &mut v8::PinScope,
+    object: v8::Local<v8::Object>,
+    owner: Option<Option<u64>>,
+) -> u64 {
+    match owner {
         Some(Some(id)) => return id,
         // A wrapper of a discarded tree routes nowhere new: it stays in the caller's DOM,
         // where `handle_of` refuses it.
@@ -817,7 +835,7 @@ fn parse_html_tree_with<'s>(
             resource_active: false,
             nonces: initial_nonces(&tree),
             tree,
-            cache: HashMap::new(),
+            cache: rustc_hash::FxHashMap::default(),
             checked_radios: Default::default(),
             dialog: Default::default(),
             el_template: template,
@@ -1038,6 +1056,16 @@ fn copy_control_state<'s>(
 
 /// Read a node object's handle from internal field 0.
 fn handle_of(scope: &mut v8::PinScope, obj: v8::Local<v8::Object>) -> Option<Handle> {
+    let owner = tagged_owner(scope, obj);
+    handle_with_owner(scope, obj, owner)
+}
+
+/// [`handle_of`] with the object's owner tag already decoded (`tagged_owner`).
+fn handle_with_owner(
+    scope: &mut v8::PinScope,
+    obj: v8::Local<v8::Object>,
+    owner: Option<Option<u64>>,
+) -> Option<Handle> {
     let f = obj.get_internal_field(scope, 0)?;
     let v = v8::Local::<v8::Value>::try_from(f).ok()?;
     // Embedder globals can also have internal fields; undefined and pointers
@@ -1049,13 +1077,36 @@ fn handle_of(scope: &mut v8::PinScope, obj: v8::Local<v8::Object>) -> Option<Han
     // A wrapper names a node of its owner's tree only while that tree lives: one from a
     // discarded tree (turbo-test#204), or a handle its tree never minted, is not a node
     // (Chrome: a detached realm's wrapper), so no read can index past the tree.
-    match tagged_owner(scope, obj) {
+    match owner {
         Some(None) => None,
         Some(Some(id)) if with_dom_state(id, |state| state.tree.is_live(handle)) == Some(false) => {
             None
         }
         _ => Some(handle),
     }
+}
+
+/// Enter `object`'s DOM and read its node handle, decoding its owner tag once (it both routes
+/// the call and proves the handle live: a stale wrapper is still refused, turbo-dom#224).
+fn enter_node(
+    scope: &mut v8::PinScope,
+    object: v8::Local<v8::Object>,
+) -> (DomScope, Option<Handle>) {
+    let owner = tagged_owner(scope, object);
+    let dom = DomScope::enter(dom_id_with_owner(scope, object, owner));
+    (dom, handle_with_owner(scope, object, owner))
+}
+
+/// [`enter_node`] for an element-template accessor's holder (see [`holder_handle`]).
+fn enter_holder(
+    scope: &mut v8::PinScope,
+    args: &v8::PropertyCallbackArguments,
+) -> (DomScope, Handle) {
+    let (dom, handle) = enter_node(scope, args.holder());
+    (
+        dom,
+        handle.expect("element-template holders carry a node handle"),
+    )
 }
 
 /// The node behind an element-template accessor's holder. Template accessors run only on
@@ -1731,8 +1782,7 @@ fn get_shadow_mode(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let root = holder_handle(scope, &args);
+    let (_dom, root) = enter_holder(scope, &args);
     let mode = DOM.with(|state| {
         state
             .borrow()
@@ -3208,8 +3258,7 @@ fn set_attr_value<'s, 'i, T>(
     args: v8::PropertyCallbackArguments<'s>,
     _rv: v8::ReturnValue<T>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let node = holder_handle(scope, &args);
+    let (_dom, node) = enter_holder(scope, &args);
     let Some(value) = dom_units(scope, value) else {
         return;
     };
@@ -3346,6 +3395,9 @@ thread_local! {
 pub(super) struct SelectorWork {
     pub(super) grammar_parses: std::cell::Cell<usize>,
     pub(super) rewrites: std::cell::Cell<usize>,
+    /// State-dependent selector transforms run (popover, dialog, interest, form, view
+    /// transition): each parses the selector.
+    pub(super) transforms: std::cell::Cell<usize>,
 }
 #[cfg(test)]
 thread_local! {
@@ -3390,6 +3442,33 @@ fn selector_facts(units: &[u16]) -> std::rc::Rc<SelectorFacts> {
 /// bindings do: `Element`, `Document`, or `DocumentFragment` (also for a ShadowRoot, which
 /// inherits the ParentNode members from DocumentFragment). The message is built only when
 /// the selector is rejected.
+thread_local! {
+    /// [`transform_mask`] answers by selector text.
+    static TRANSFORM_MASKS: RefCell<HashMap<String, u8>> = RefCell::new(HashMap::new());
+}
+
+/// Which state-dependent selector transforms can change (or reject) `selector`: bit 0
+/// popover, 1 dialog, 2 interest, 3 form state, 4 view transition. A property of the text,
+/// kept per selector (the map is dropped past 4096 entries).
+fn transform_mask(selector: &str) -> u8 {
+    if let Some(mask) = TRANSFORM_MASKS.with(|masks| masks.borrow().get(selector).copied()) {
+        return mask;
+    }
+    let mask = u8::from(html_popover::applies(selector))
+        | u8::from(html_dialog::applies(selector)) << 1
+        | u8::from(interest_invokers::applies(selector)) << 2
+        | u8::from(form_pseudo::applies(selector)) << 3
+        | u8::from(view_transitions::applies(selector)) << 4;
+    TRANSFORM_MASKS.with(|masks| {
+        let mut masks = masks.borrow_mut();
+        if masks.len() >= 4096 {
+            masks.clear();
+        }
+        masks.insert(selector.to_owned(), mask);
+    });
+    mask
+}
+
 fn selector_argument<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: &v8::FunctionCallbackArguments<'s>,
@@ -3425,12 +3504,28 @@ fn selector_argument<'s>(
     #[cfg(test)]
     SELECTOR_WORK.with(|work| work.rewrites.set(work.rewrites.get() + 1));
     let scalar = &facts.scalar;
-    let transformed = html_popover::selector(scope, node, scalar)?;
-    let transformed = html_dialog::selector(scope, node, &transformed)?;
-    let transformed = interest_invokers::selector(scope, node, &transformed)?;
     let subject_local = matches!(operation, "matches" | "webkitMatchesSelector" | "closest");
-    let transformed = form_pseudo::selector(scope, node, &transformed, subject_local)?;
-    let transformed = view_transitions::selector(scope, node, &transformed)?;
+    // Which transforms can apply is a property of the text (`transform_mask`); a transform
+    // is skipped only while the text is still the caller's (a rewrite feeds the next one).
+    let mask = transform_mask(scalar);
+    let mut transformed = scalar.clone();
+    let mut rewritten = false;
+    for bit in 0..5u8 {
+        if !rewritten && mask & (1 << bit) == 0 {
+            continue;
+        }
+        let next = match bit {
+            0 => html_popover::selector(scope, node, &transformed)?,
+            1 => html_dialog::selector(scope, node, &transformed)?,
+            2 => interest_invokers::selector(scope, node, &transformed)?,
+            3 => form_pseudo::selector(scope, node, &transformed, subject_local)?,
+            _ => view_transitions::selector(scope, node, &transformed)?,
+        };
+        if next != transformed {
+            rewritten = true;
+            transformed = next;
+        }
+    }
     if transformed == *scalar {
         return Some((transformed, units, facts.unit_path));
     }
@@ -3471,8 +3566,7 @@ fn get_inner_html(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     if let Some(markup) = xml_documents::markup(scope, h, false) {
         rv.set(unit_string(scope, &markup).into());
         return;
@@ -3488,8 +3582,7 @@ fn set_inner_html<'s>(
     args: v8::PropertyCallbackArguments<'s>,
     _rv: v8::ReturnValue<()>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let Some(html) = trusted_types::units(
         scope,
         args.holder(),
@@ -3529,8 +3622,7 @@ fn get_outer_html(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     if let Some(markup) = xml_documents::markup(scope, h, true) {
         rv.set(unit_string(scope, &markup).into());
         return;
@@ -3547,8 +3639,7 @@ fn set_outer_html<'s>(
     args: v8::PropertyCallbackArguments<'s>,
     _rv: v8::ReturnValue<()>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let node = holder_handle(scope, &args);
+    let (_dom, node) = enter_holder(scope, &args);
     let parent = with_tree(|tree| {
         NodeRef::new(tree, node)
             .parent()
@@ -3626,8 +3717,7 @@ fn get_children(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let kids: Vec<Handle> = with_tree(|t| {
         t.children(h)
             .into_iter()
@@ -3645,8 +3735,7 @@ fn get_parent_element(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let p = with_tree(|t| {
         NodeRef::new(t, h)
             .parent()
@@ -3664,8 +3753,7 @@ fn get_first_element_child(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let c = with_tree(|t| NodeRef::new(t, h).first_element_child().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, c);
     rv.set(v);
@@ -3677,8 +3765,7 @@ fn get_namespace_uri(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let namespace = with_tree(|tree| tree.namespace_uri_utf16(h)).flatten();
     match namespace {
         Some(namespace) => rv.set(unit_string(scope, &namespace).into()),
@@ -4139,8 +4226,7 @@ fn get_is_connected(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let c = with_tree(|t| is_connected(t, h)).unwrap_or(false);
     rv.set(v8::Boolean::new(scope, c).into());
 }
@@ -4152,8 +4238,7 @@ fn get_attributes(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let attrs = with_tree_mut(|tree| {
         let records = tree.attributes_units(h);
         records
@@ -4338,8 +4423,7 @@ fn get_tag_name(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let tag = with_tree(|t| t.tag_name_utf16(h))
         .flatten()
         .unwrap_or_default();
@@ -4352,8 +4436,7 @@ fn get_text_content(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     // A document's and a doctype's textContent is null and setting it does nothing
     // (https://dom.spec.whatwg.org/#dom-node-textcontent).
     if with_tree(|t| matches!(t.node_type_id(h), 9 | 10)).unwrap_or(false) {
@@ -4371,8 +4454,7 @@ fn set_text_content<'s>(
     args: v8::PropertyCallbackArguments<'s>,
     _rv: v8::ReturnValue<()>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let Some(units) = trusted_types::script_units(scope, args.holder(), value, "textContent", true)
     else {
         return;
@@ -4399,8 +4481,7 @@ fn get_id(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let id = with_tree(|t| t.get_attribute_utf16(h, "id"))
         .flatten()
         .unwrap_or_default();
@@ -4414,8 +4495,7 @@ fn set_id(
     args: v8::PropertyCallbackArguments,
     _rv: v8::ReturnValue<()>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let Some(v) = dom_units(scope, value) else {
         return;
     };
@@ -4430,8 +4510,7 @@ fn get_class_name(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let c = with_tree(|t| t.get_attribute_utf16(h, "class"))
         .flatten()
         .unwrap_or_default();
@@ -4445,8 +4524,7 @@ fn set_class_name(
     args: v8::PropertyCallbackArguments,
     _rv: v8::ReturnValue<()>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let Some(v) = dom_units(scope, value) else {
         return;
     };
@@ -4463,8 +4541,7 @@ fn get_content_editable(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let attr = with_tree(|t| attr_get(t, h, "contenteditable")).flatten();
     let out = match attr.as_deref() {
         Some("") | Some("true") => "true",
@@ -4485,8 +4562,7 @@ fn get_parent_node(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let found = with_tree(|t| NodeRef::new(t, h).parent().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, found);
     rv.set(v);
@@ -4498,8 +4574,7 @@ fn get_first_child(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let found = with_tree(|t| NodeRef::new(t, h).first_child().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, found);
     rv.set(v);
@@ -4511,8 +4586,7 @@ fn get_next_sibling(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let found = with_tree(|t| NodeRef::new(t, h).next_sibling().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, found);
     rv.set(v);
@@ -5794,8 +5868,7 @@ fn get_node_type(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let nt = with_tree(|t| t.node_type_id(h)).unwrap_or(1);
     rv.set(v8::Integer::new(scope, nt as i32).into());
 }
@@ -5808,8 +5881,7 @@ fn get_node_data(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let nt = with_tree(|t| t.node_type_id(h)).unwrap_or(1);
     if matches!(nt, 2 | 3 | 4 | 7 | 8) {
         let data = with_tree(|t| t.node_value_utf16(h))
@@ -5827,8 +5899,7 @@ fn set_node_data(
     args: v8::PropertyCallbackArguments,
     _rv: v8::ReturnValue<()>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     if !with_tree(|tree| matches!(tree.node_type_id(h), 2 | 3 | 4 | 7 | 8)).unwrap_or(false) {
         return;
     }
@@ -5855,8 +5926,7 @@ fn get_local_name(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     match with_tree(|t| t.local_name_utf16(h)).flatten() {
         Some(ln) => rv.set(unit_string(scope, &ln).into()),
         None => rv.set(v8::null(scope).into()),
@@ -5869,8 +5939,7 @@ fn get_node_name(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     if let Some(units) = with_tree(|tree| match tree.node_type_id(h) {
         1 => tree.tag_name_utf16(h),
         2 => tree.qualified_name_utf16(h),
@@ -5902,8 +5971,7 @@ fn get_child_nodes(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
+    let (_dom, h) = enter_holder(scope, &args);
     let kids = with_tree(|t| t.children(h)).unwrap_or_default();
     let arr = node_array(scope, kids);
     rv.set(arr.into());
@@ -5915,8 +5983,7 @@ fn get_owner_document(
     args: v8::PropertyCallbackArguments,
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let handle = holder_handle(scope, &args);
+    let (_dom, handle) = enter_holder(scope, &args);
     if with_tree(|tree| tree.node_type_id(handle)) == Some(9) {
         rv.set_null();
         return;
@@ -6590,13 +6657,17 @@ fn dom_accessor_dispatch(
     mut rv: v8::ReturnValue,
 ) {
     let receiver = args.this();
-    let _dom = DomScope::for_object(scope, receiver);
-    let descriptor = args.data().to_rust_string_lossy(scope);
+    let (_dom, handle) = enter_node(scope, receiver);
+    let mut buffer = [std::mem::MaybeUninit::<u8>::uninit(); 256];
+    let descriptor = args
+        .data()
+        .to_string(scope)
+        .map(|data| data.to_rust_cow_lossy(scope, &mut buffer));
+    let descriptor = descriptor.as_deref().unwrap_or("");
     let mut fields = descriptor.split('\0');
     let setter = fields.next() == Some("set");
     let owner = fields.next().unwrap_or("Node");
     let property = fields.next().unwrap_or("");
-    let handle = handle_of(scope, receiver);
     let valid = handle
         .and_then(|h| {
             with_tree(|tree| {
@@ -6637,11 +6708,31 @@ fn dom_accessor_dispatch(
         return;
     };
     let scope = &mut v8::ContextScope::new(scope, context);
-    // invariant: natives run under the DomScope of an installed DOM
-    let template = DOM.with(|d| d.borrow().as_ref().unwrap().el_template.clone());
-    let template = dom_ownership::local(scope, template);
-    // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
-    let raw = template.new_instance(scope).unwrap();
+    let pool_key = (
+        DOM_ID.with(|id| id.get()),
+        DOM.with(|d| d.borrow().as_ref().map_or(0, |state| state.serial)),
+    );
+    let pooled = RAW_VIEWS.with(|views| {
+        let mut views = views.borrow_mut();
+        if views.0 != pool_key {
+            *views = (pool_key, Vec::new());
+        }
+        views.1.pop()
+    });
+    let mut kept = pooled.and_then(|weak| weak.to_local(scope).map(|raw| (raw, weak)));
+    let raw = match &kept {
+        Some((raw, _)) => *raw,
+        None => {
+            // invariant: natives run under the DomScope of an installed DOM
+            let template = DOM.with(|d| d.borrow().as_ref().unwrap().el_template.clone());
+            let template = dom_ownership::local(scope, template);
+            // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
+            let raw = template.new_instance(scope).unwrap();
+            #[cfg(test)]
+            RAW_VIEWS_BUILT.with(|built| built.set(built.get() + 1));
+            raw
+        }
+    };
     let handle = v8::Integer::new_from_unsigned(scope, handle.raw());
     raw.set_internal_field(0, handle.into());
     let owner = owner_tag(scope, DOM_ID.with(|id| id.get()));
@@ -6653,6 +6744,31 @@ fn dom_accessor_dispatch(
     } else if let Some(value) = raw.get(scope, key.into()) {
         rv.set(value);
     }
+    // Back to the pool (a reentrant dispatch took another): the view is the caller's again
+    // only if the tree it was made for is still current. A pooled view keeps its weak handle.
+    let weak = kept
+        .take()
+        .map_or_else(|| v8::Weak::new(scope, raw), |(_, weak)| weak);
+    RAW_VIEWS.with(|views| {
+        let mut views = views.borrow_mut();
+        if views.0 == pool_key && views.1.len() < 8 {
+            views.1.push(weak);
+        }
+    });
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Raw views `dom_accessor_dispatch` instantiated (the perf gate in `perf_gates_tests`).
+    pub(super) static RAW_VIEWS_BUILT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+thread_local! {
+    /// `dom_accessor_dispatch`'s raw template views for one (DOM id, tree serial): reused
+    /// across calls instead of a template instance per call, taken while a call uses one (a
+    /// reentrant dispatch takes another). Weak: a view nothing uses is collectable, and none
+    /// outlives its isolate.
+    static RAW_VIEWS: RefCell<((u64, u64), Vec<v8::Weak<v8::Object>>)> = RefCell::new(((u64::MAX, 0), Vec::new()));
 }
 
 fn make_dom_accessor(
@@ -7395,10 +7511,20 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         "__computedStyleVersion",
         computed_style_version,
     );
+    bind_method(
+        scope,
+        global,
+        "__computedStyleSelectorVersion",
+        computed_style_selector_version,
+    );
     #[cfg(test)]
     bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
     #[cfg(test)]
     bind_method(scope, global, "__noteCssUpdatePass", note_css_update_pass);
+    #[cfg(test)]
+    bind_method(scope, global, "__noteStyleLookup", note_style_lookup);
+    #[cfg(test)]
+    bind_method(scope, global, "__noteEntryBuild", note_entry_build);
     bind_method(scope, global, "__cssomEpoch", cssom_epoch);
     bind_method(scope, global, "__styleStateEpoch", style_state_epoch);
     bind_method(scope, global, "__bumpStyleState", bump_style_state_native);
@@ -7495,6 +7621,52 @@ fn note_css_update_pass(
     CSS_UPDATE_PASSES.with(|passes| passes.set(passes.get() + 1));
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Computed-style cache lookups on this thread (a `computeStyleSnapshot` call that missed
+    /// its read-local snapshot map), counted by the test-only `__noteStyleLookup` hook so tests
+    /// can bound how many element styles one read resolves.
+    static STYLE_LOOKUPS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The computed-style cache lookups counted so far (see `STYLE_LOOKUPS`).
+#[cfg(test)]
+fn style_lookups() -> u64 {
+    STYLE_LOOKUPS.with(std::cell::Cell::get)
+}
+
+/// Counts one computed-style cache lookup (the test-only `__noteStyleLookup` hook).
+#[cfg(test)]
+fn note_style_lookup(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    STYLE_LOOKUPS.with(|lookups| lookups.set(lookups.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Cascade rule-entry list builds on this thread (the test-only `__noteEntryBuild` hook).
+    static ENTRY_BUILDS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The cascade rule-entry list builds counted so far (see `ENTRY_BUILDS`).
+#[cfg(test)]
+fn entry_builds() -> u64 {
+    ENTRY_BUILDS.with(std::cell::Cell::get)
+}
+
+/// Counts one cascade rule-entry list build (the test-only `__noteEntryBuild` hook).
+#[cfg(test)]
+fn note_entry_build(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    ENTRY_BUILDS.with(|builds| builds.set(builds.get() + 1));
+}
+
 /// The current CSSOM epoch (see `CSSOM_EPOCH`).
 fn cssom_epoch(
     scope: &mut v8::PinScope,
@@ -7531,6 +7703,33 @@ fn computed_style_version(
         return;
     }
     if let Some(version) = with_tree(|tree| tree.version) {
+        result.set(v8::Number::new(scope, version as f64).into());
+    }
+}
+
+/// The selector version of the tree that owns `node` (`Tree::selector_version`: inline style
+/// writes do not move it), or its plain version when the tree has a shadow root (a shadow
+/// tree's own sheets can select by `style`, and the computed-style key does not scan them).
+/// `undefined` for anything but a node.
+fn computed_style_selector_version(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let _owner = DomScope::for_object(scope, node);
+    if handle_of(scope, node).is_none() {
+        return;
+    }
+    if let Some(version) = with_tree(|tree| {
+        if tree.has_shadow_roots() {
+            tree.version
+        } else {
+            tree.selector_version
+        }
+    }) {
         result.set(v8::Number::new(scope, version as f64).into());
     }
 }
@@ -7630,11 +7829,30 @@ fn attach_path() -> bool {
 /// [`snapshot_blob`], so CI runs the whole suite on this path too. An install into any
 /// other context takes the usual path.
 fn snapshot_path() -> bool {
+    SNAPSHOT_INSTALL.load(std::sync::atomic::Ordering::Relaxed) || snapshot_path_configured()
+}
+
+/// [`snapshot_path`] without the process-wide [`set_snapshot_install`] switch: the
+/// environment variable (and the test hook). The test isolates follow this one, so a test
+/// that switches snapshot installs on does not move the tests running beside it onto blob
+/// isolates.
+fn snapshot_path_configured() -> bool {
     #[cfg(test)]
     if SNAPSHOT_PATH_FOR_TEST.with(std::cell::Cell::get) {
         return true;
     }
     std::env::var_os("TURBO_DOM_SNAPSHOT_PATH").is_some()
+}
+
+/// Set by [`set_snapshot_install`].
+static SNAPSHOT_INSTALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Turn snapshot installs on or off for the process (what `TURBO_DOM_SNAPSHOT_PATH` turns on):
+/// an install into a context made from a startup blob ([`snapshot_blob`],
+/// [`snapshot_blob_with`]) rehydrates the snapshotted window instead of running the engine
+/// scripts. Installs into any other context are unaffected.
+pub fn set_snapshot_install(on: bool) {
+    SNAPSHOT_INSTALL.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
 #[cfg(test)]
@@ -7677,6 +7895,62 @@ pub fn snapshot_blob() -> Option<&'static SnapshotBlob> {
         .flatten()
     })
     .as_ref()
+}
+
+/// The index of the window context in a [`snapshot_blob_with`] blob
+/// (`v8::Context::from_snapshot`).
+pub const SNAPSHOT_WINDOW_CONTEXT: usize = 0;
+
+/// [`snapshot_blob`] for an embedder that bakes its own startup context (turbo-test's
+/// framework layer): a new blob whose default context ran `prelude` alone (the embedder's
+/// non-DOM contexts), and whose context [`SNAPSHOT_WINDOW_CONTEXT`] ran `prelude`, then the
+/// engine bootstrap (`v8::Context::from_snapshot`): the embedder's context with the window
+/// installed. With [`set_snapshot_install`] on, installing into one runs no engine script. Built on a thread
+/// of its own (no caller's DOM is touched) every call: the embedder keeps the blob. `prelude`
+/// must hand V8 no native callback. `None` when the build failed (installs then keep the
+/// usual path).
+pub fn snapshot_blob_with(prelude: fn(&mut v8::PinScope)) -> Option<SnapshotBlob> {
+    std::thread::spawn(move || {
+        let blob = crate_surface::startup_snapshot::build_with(prelude)?;
+        let data: &'static [u8] = Box::leak(blob.data.to_vec().into_boxed_slice());
+        Some(SnapshotBlob {
+            data,
+            references: blob.references,
+        })
+    })
+    .join()
+    .ok()
+    .flatten()
+}
+
+/// The external reference table a [`snapshot_blob_with`] blob is built with, and its
+/// fingerprint: a hash of each callback's offset from this crate's code, the same in every
+/// process of one binary (whatever its load address) as long as the table is. An embedder that
+/// keeps a blob across processes keys it on the fingerprint and deserializes it with this table
+/// (a rebuilt blob is not byte-identical, and V8 rejects bytecode caches made against another
+/// blob). Recorded on a thread of its own (one throwaway bootstrap; no caller's DOM is touched).
+/// Call it before any install in the process, as a build would be: installs record callbacks
+/// too, which would change the table.
+pub fn snapshot_references() -> (&'static [v8::ExternalReference], u64) {
+    let (start, len) = std::thread::spawn(|| {
+        let references = crate_surface::startup_snapshot::references();
+        (references.as_ptr() as usize, references.len())
+    })
+    .join()
+    .expect("the reference recording does not panic");
+    // SAFETY: a leaked, never-mutated slice (`startup_snapshot::references`).
+    let references: &'static [v8::ExternalReference] =
+        unsafe { std::slice::from_raw_parts(start as *const v8::ExternalReference, len) };
+    let anchor = snapshot_references as usize;
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for reference in references {
+        // SAFETY: every table entry is a function pointer (`external_refs::table`).
+        let offset = (unsafe { reference.pointer } as usize).wrapping_sub(anchor) as u64;
+        for byte in offset.to_le_bytes() {
+            hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    (references, hash)
 }
 
 /// A startup blob and its external reference table ([`snapshot_blob`]).
@@ -7836,7 +8110,7 @@ fn window_dom_state(
         resource_active: true,
         nonces: initial_nonces(&tree),
         tree,
-        cache: HashMap::new(),
+        cache: rustc_hash::FxHashMap::default(),
         checked_radios: Default::default(),
         dialog: Default::default(),
         el_template,
@@ -8292,7 +8566,7 @@ mod tests {
     /// turbo-dom#249), else a plain one.
     pub(crate) fn new_isolate() -> v8::OwnedIsolate {
         init_v8();
-        if snapshot_path() {
+        if snapshot_path_configured() {
             if let Some(blob) = snapshot_blob() {
                 return v8::Isolate::new(blob.create_params());
             }

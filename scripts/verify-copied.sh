@@ -345,6 +345,7 @@ css_admission_tests.rs: 0.7.0 turbo-dom#273 grouping-rule cascade vs its Chrome 
 browser_env.js: 0.7.0 turbo-dom#275 the computed-style cascade orders rules by Selectors 4 specificity; turbo-dom#276 @scope proximity, :scope bound to the scoping root, & as :where(:scope)
 browser_env.rs: 0.7.0 turbo-dom#275 __parseCssNative 'specificity' mode (the cascade parser's complex selectors with their specificity)
 css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
+control_labels.rs: 0.7.0 perf turbo-dom#271 label lookups read a per-tree-version index (first element per id, label candidates per host chain) + a test-only walk counter
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -376,6 +377,7 @@ OWNED="$OWNED xml_documents.rs xml_documents.js xml_documents_tests.rs xml_docum
 OWNED="$OWNED css_grouping_rules_probe.js css_grouping_rules_chrome156.json"
 OWNED="$OWNED css_grouping_cascade_probe.js css_grouping_cascade_chrome156.json"
 OWNED="$OWNED css_cascade_specificity_probe.js css_cascade_specificity_chrome156.json"
+OWNED="$OWNED inline_style_reuse_probe.js inline_style_reuse_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

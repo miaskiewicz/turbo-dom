@@ -76,6 +76,14 @@ fn record_references() {
     reset();
 }
 
+/// The external reference table a [`build_with`] blob is made with: one throwaway bootstrap
+/// records it (as a build does first). With nothing recorded before, its order is the
+/// bootstrap's, the same in every process of one binary.
+pub(crate) fn references() -> &'static [v8::ExternalReference] {
+    record_references();
+    Box::leak(external_refs::table().into_boxed_slice())
+}
+
 /// Build a startup blob whose default context is a bootstrapped shell window. `None` (and a
 /// log line; installs then run the engine scripts) when the build fails before `create_blob`:
 /// the bootstrap in the snapshot isolate handed V8 a callback the recording pass did not (the
@@ -86,13 +94,27 @@ fn record_references() {
 /// process when one is dropped, including during a panic's unwind. So no failure may unwind
 /// past it: each one leaks the creator instead (a panic is caught for that).
 pub(crate) fn build() -> Option<Blob> {
+    build_from(None)
+}
+
+/// [`build`] for an embedder with its own startup context: the blob's default context is
+/// `prelude` alone, and context [`SNAPSHOT_WINDOW_CONTEXT`] ran `prelude`, then the engine
+/// bootstrap (the order of a prelude, then an install). The prelude must hand V8 no native
+/// callback (none is in the reference table).
+pub(crate) fn build_with(prelude: fn(&mut v8::PinScope)) -> Option<Blob> {
+    build_from(Some(prelude))
+}
+
+fn build_from(prelude: Option<fn(&mut v8::PinScope)>) -> Option<Blob> {
     record_references();
     let references: &'static [v8::ExternalReference] =
         Box::leak(external_refs::table().into_boxed_slice());
     let mut isolate = v8::Isolate::snapshot_creator(Some(Cow::Borrowed(references)), None);
     BUILDING.with(|building| building.set(true));
     external_refs::begin_build_log();
-    let prepared = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| prepare(&mut isolate)));
+    let prepared = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        prepare(&mut isolate, prelude)
+    }));
     reset();
     let failure = match prepared {
         Ok(Ok(stripped)) => {
@@ -123,12 +145,27 @@ pub(crate) fn build() -> Option<Blob> {
 
 /// The snapshot isolate's default context: the bootstrapped shell window, its native state
 /// persisted into the heap and its node wrappers stripped (returned, see [`strip_wrappers`]).
-fn prepare(isolate: &mut v8::OwnedIsolate) -> Result<Vec<v8::Weak<v8::Object>>, &'static str> {
+fn prepare(
+    isolate: &mut v8::OwnedIsolate,
+    prelude: Option<fn(&mut v8::PinScope)>,
+) -> Result<Vec<v8::Weak<v8::Object>>, &'static str> {
     v8::scope!(let scope, isolate);
+    if let Some(prelude) = prelude {
+        // The embedder's own default context: its prelude, no window.
+        let plain = v8::Context::new(scope, Default::default());
+        {
+            let scope = &mut v8::ContextScope::new(scope, plain);
+            prelude(scope);
+        }
+        scope.set_default_context(plain);
+    }
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     #[cfg(test)]
     forced_failure(scope, BuildFailure::IsolateData);
+    if let Some(prelude) = prelude {
+        prelude(scope);
+    }
     bootstrap_engine(scope);
     #[cfg(test)]
     forced_failure(scope, BuildFailure::Panic);
@@ -140,7 +177,12 @@ fn prepare(isolate: &mut v8::OwnedIsolate) -> Result<Vec<v8::Weak<v8::Object>>, 
     // The slot annex is a heap pointer (and a Weak) in the context's embedder data:
     // serialized, a context made from the blob would read the freed annex.
     context.clear_all_slots();
-    scope.set_default_context(context);
+    if prelude.is_some() {
+        let index = scope.add_context(context);
+        debug_assert_eq!(index, SNAPSHOT_WINDOW_CONTEXT);
+    } else {
+        scope.set_default_context(context);
+    }
     Ok(stripped)
 }
 

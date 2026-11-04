@@ -602,6 +602,10 @@ pub struct Tree {
     shadow_root_of_host: FxHashMap<Handle, Handle>,
     host_of_shadow_root: FxHashMap<Handle, Handle>,
     pub version: u64,
+    /// `version` without the `style` attribute changes: everything a selector or another
+    /// element's cascade reads moves it, except an element's inline style, which selectors
+    /// see only through attribute selectors naming `style` (embedders check for those).
+    pub selector_version: u64,
     /// version-keyed query result cache (mirrors JS cachedQSA / Document.__version).
     pub(crate) qcache: RefCell<QueryCache>,
     /// selector-string → parsed selector-list cache. A `matches()` driven over an
@@ -678,6 +682,7 @@ impl Tree {
             shadow_root_of_host: FxHashMap::default(),
             host_of_shadow_root: FxHashMap::default(),
             version: 0,
+            selector_version: 0,
             qcache: RefCell::new(QueryCache::default()),
             parse_cache: RefCell::new(FxHashMap::default()),
             css_cache: RefCell::new(crate::rtdom::cascade::CssCache::default()),
@@ -1465,6 +1470,21 @@ impl Tree {
     // ------------------------------------------------------------- mutations
     fn bump(&mut self) {
         self.version += 1;
+        self.selector_version += 1;
+    }
+
+    /// [`Self::bump`] for an attribute change: a `style` attribute moves `version` only.
+    fn bump_attribute(&mut self, name: &str) {
+        if name == "style" {
+            self.version += 1;
+        } else {
+            self.bump();
+        }
+    }
+
+    /// Whether any element of the tree hosts a shadow root.
+    pub fn has_shadow_roots(&self) -> bool {
+        !self.shadow_root_of_host.is_empty()
     }
 
     fn record_event(
@@ -1616,7 +1636,7 @@ impl Tree {
         self.attribute_units
             .remove(&(h, changed.ns.clone(), changed.local.clone()));
         self.sync_attribute_node(h, &changed);
-        self.bump();
+        self.bump_attribute(name);
         self.record_attributes(h, &changed.local_name, old, changed.namespace.as_deref());
         self.record_old_units(old_units);
         self.record_native_attribute_names(&changed);
@@ -1637,7 +1657,7 @@ impl Tree {
             self.attribute_units
                 .remove(&(h, removed.ns.clone(), removed.local.clone()));
         }
-        self.bump();
+        self.bump_attribute(name);
         if let Some(removed) = removed {
             self.record_attributes(h, &removed.local_name, old, removed.namespace.as_deref());
             self.record_old_units(old_units);
@@ -2631,6 +2651,39 @@ mod tests {
         assert_eq!(tree.get_attribute(div, "class"), Some("card"));
         // original buffer attr still readable through overlay
         assert_eq!(tree.get_attribute(div, "id"), Some("a"));
+    }
+
+    /// `selector_version` moves with every mutation but a `style` attribute change: an
+    /// element's inline style is read by selectors only through attribute selectors naming it,
+    /// so an embedder that checks for those can keep other elements' computed styles across an
+    /// inline style write (`version` still moves).
+    #[test]
+    fn selector_version_skips_style_attribute_changes_only() {
+        let mut tree = t("<div id=a><p></p></div>");
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
+        let (v0, s0) = (tree.version, tree.selector_version);
+        tree.set_attribute(div, "style", "width: 1px");
+        assert!(tree.version > v0);
+        assert_eq!(tree.selector_version, s0);
+        let v1 = tree.version;
+        tree.remove_attribute(div, "style");
+        assert!(tree.version > v1);
+        assert_eq!(tree.selector_version, s0);
+        tree.set_attribute(div, "class", "card");
+        assert!(tree.selector_version > s0);
+        let s1 = tree.selector_version;
+        tree.remove_attribute(div, "class");
+        assert!(tree.selector_version > s1);
+        let s2 = tree.selector_version;
+        let p = tree.create_element("p");
+        tree.append_child(div, p);
+        assert!(tree.selector_version > s2);
+        assert!(!tree.has_shadow_roots());
+        tree.attach_shadow(div);
+        assert!(tree.has_shadow_roots());
     }
 
     #[test]

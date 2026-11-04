@@ -29,10 +29,14 @@ fn reset_work() {
     dom_ownership::WORK.with(|work| {
         work.wrappers_visited.set(0);
         work.sweeps.set(0);
+        work.placements.set(0);
     });
 }
 fn wrappers_visited() -> usize {
     dom_ownership::WORK.with(|work| work.wrappers_visited.get())
+}
+fn placements() -> usize {
+    dom_ownership::WORK.with(|work| work.placements.get())
 }
 fn sweeps() -> usize {
     dom_ownership::WORK.with(|work| work.sweeps.get())
@@ -222,5 +226,128 @@ fn collected_listener_sweeps_wait_for_a_gc() {
         );
         host_turn(scope);
         assert!(sweeps() > quiet, "the first reconcile after a GC sweeps");
+    });
+}
+
+/// A reconcile re-places only the wrappers whose ownership changed: small mutations in a large
+/// attached tree (React re-rendering one row) must not re-place every live wrapper each time.
+#[test]
+fn a_reconcile_places_only_the_wrappers_whose_ownership_changed() {
+    with_page(|scope| {
+        eval(
+            scope,
+            "globalThis.rows = [];
+             const host = document.createElement('div');
+             document.body.appendChild(host);
+             for (let i = 0; i < 3000; i++) rows.push(host.appendChild(document.createElement('p')));
+             'built'",
+        );
+        host_turn(scope);
+        reset_work();
+        for i in 0..50 {
+            eval(scope, &format!("rows[{i}].setAttribute('data-x', '{i}'); rows[{i}].appendChild(document.createElement('b')); 'ok'"));
+            host_turn(scope);
+        }
+        let placed = placements();
+        assert!(
+            placed <= 50 * 8,
+            "{placed} placements for 50 small mutations over 3000 wrappers"
+        );
+    });
+}
+
+/// Moves between detached subtrees and the document keep the ownership contract: a held node
+/// keeps its whole detached subtree (ancestors and siblings, with their expandos) alive, an
+/// attached node is owned by its document, and a subtree nothing holds any more is
+/// collectable, whichever components its nodes passed through.
+#[test]
+fn moves_between_subtrees_keep_held_components_whole_and_free_the_rest() {
+    with_page(|scope| {
+        eval(
+            scope,
+            "(() => {
+               const make = (id) => { const root = document.createElement('section'); root.id = id; root.marker = id;
+                 for (let i = 0; i < 20; i++) { const c = document.createElement('i'); c.marker = id + i; root.appendChild(c); } return root; };
+               const a = make('a'), b = make('b'), c = make('c');
+               document.body.appendChild(a);
+               // b, c detached; a node of each moves around
+               b.appendChild(a.children[0]);
+               a.appendChild(c.children[0]);
+               document.body.appendChild(b);
+               b.remove();
+               globalThis.heldLeaf = b.children[3];
+               globalThis.cWeak = c;
+               return 'moved';
+             })()",
+        );
+        host_turn(scope);
+        let weaks = {
+            v8::scope!(let inner, scope);
+            let mut out = Vec::new();
+            for src in ["globalThis.cWeak", "document.getElementById('a').lastChild"] {
+                let code = v8::String::new(inner, src).unwrap();
+                let value = v8::Script::compile(inner, code, None)
+                    .unwrap()
+                    .run(inner)
+                    .unwrap();
+                out.push(v8::Weak::new(
+                    inner,
+                    v8::Local::<v8::Object>::try_from(value).unwrap(),
+                ));
+            }
+            out
+        };
+        eval(scope, "delete globalThis.cWeak; 'dropped'");
+        host_turn(scope);
+        for _ in 0..3 {
+            scope.low_memory_notification();
+        }
+        assert!(
+            weaks[0].is_empty(),
+            "the detached subtree c, held by nothing, is collectable"
+        );
+        assert!(
+            !weaks[1].is_empty(),
+            "c's old child, now attached under a, is owned by the document"
+        );
+        assert_eq!(
+            eval(scope, "[heldLeaf.parentNode.marker, heldLeaf.parentNode.lastChild.marker, heldLeaf.parentNode.children.length, document.getElementById('a').lastChild.marker].join()"),
+            "b,a0,21,c0",
+            "the held leaf keeps its detached subtree whole, expandos included"
+        );
+        eval(
+            scope,
+            "heldLeaf.remove(); delete globalThis.heldLeaf; 'released'",
+        );
+        host_turn(scope);
+        for _ in 0..3 {
+            scope.low_memory_notification();
+        }
+        assert_eq!(eval(scope, "String(document.getElementById('b'))"), "null");
+    });
+}
+
+/// Finding each cached wrapper's root walks each tree edge once per reconcile, not once per
+/// wrapper below it: a deep tree (a chain of 600 cached elements) must not cost
+/// wrappers x depth parent steps.
+#[test]
+fn a_reconcile_finds_roots_in_linear_steps() {
+    with_page(|scope| {
+        eval(
+            scope,
+            "globalThis.chain = [];
+             let parent = document.body;
+             for (let i = 0; i < 600; i++) { const d = document.createElement('div'); parent.appendChild(d); chain.push(d); parent = d; }
+             'built'",
+        );
+        host_turn(scope);
+        dom_ownership::WORK.with(|work| work.root_steps.set(0));
+        eval(scope, "chain[599].setAttribute('data-x', '1'); chain[599].appendChild(document.createElement('b')); 'ok'");
+        host_turn(scope);
+        let steps = dom_ownership::WORK.with(|work| work.root_steps.get());
+        assert!(
+            steps <= 4 * 610,
+            "{steps} parent steps to root 600 nested wrappers"
+        );
     });
 }

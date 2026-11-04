@@ -87,3 +87,115 @@ fn a_context_from_the_blob_carries_no_slot_annex() {
     context.set_slot(std::rc::Rc::new(7u8));
     assert_eq!(context.get_slot::<u8>().as_deref(), Some(&7));
 }
+
+/// An embedder that bakes its own startup context (turbo-test's framework layer) gets the
+/// window into the same blob: the default context is the embedder's alone (no window, for
+/// its non-DOM files), and context [`SNAPSHOT_WINDOW_CONTEXT`] is the embedder's prelude, then
+/// the engine bootstrap (the order of a prelude, then an install). With snapshot installs on,
+/// every window context the isolate makes (an embedder reusing its isolate makes several)
+/// installs its document without running an engine script.
+#[test]
+fn an_embedder_prelude_shares_the_blob_and_contexts_install_from_it() {
+    fn prelude(scope: &mut v8::PinScope) {
+        let code = v8::String::new(scope, "globalThis.__prelude = typeof document;").unwrap();
+        v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+    }
+    fn eval(scope: &mut v8::PinScope, code: &str) -> String {
+        let code = v8::String::new(scope, code).unwrap();
+        let value = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        value.to_rust_string_lossy(scope)
+    }
+    crate::browser_env::tests::init_v8();
+    let blob = snapshot_blob_with(prelude).expect("every callback is registered");
+    let isolate = &mut v8::Isolate::new(blob.create_params());
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        assert_eq!(
+            eval(scope, "[__prelude, typeof document, typeof Node].join()"),
+            "undefined,undefined,undefined"
+        );
+    }
+    set_snapshot_install(true);
+    for page in ["<p id=x>one</p>", "<p id=x>two</p>"] {
+        {
+            v8::scope!(let scope, isolate);
+            let context =
+                v8::Context::from_snapshot(scope, SNAPSHOT_WINDOW_CONTEXT, Default::default())
+                    .expect("the blob holds the window context");
+            let scope = &mut v8::ContextScope::new(scope, context);
+            let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);
+            install_with_html(scope, page);
+            assert_eq!(
+                ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get),
+                before,
+                "{page}"
+            );
+            let text = if page.contains("one") { "one" } else { "two" };
+            assert_eq!(
+                eval(scope, "[__prelude, document.getElementById('x').textContent, document.body.firstChild instanceof HTMLParagraphElement].join()"),
+                format!("undefined,{text},true")
+            );
+        }
+        reset();
+    }
+    set_snapshot_install(false);
+}
+
+/// An embedder can keep a [`snapshot_blob_with`] blob across processes (V8 rejects bytecode
+/// caches made against another blob, and a rebuilt blob is not byte-identical): the table a
+/// later process records for it ([`snapshot_references`]) is the one the blob was built with,
+/// with a fingerprint that is stable for the binary, so saved bytes deserialize and install.
+#[test]
+fn saved_blob_bytes_install_with_the_recorded_reference_table() {
+    fn prelude(_scope: &mut v8::PinScope) {}
+    crate::browser_env::tests::init_v8();
+    let blob = snapshot_blob_with(prelude).expect("every callback is registered");
+    let saved: &'static [u8] = Box::leak(blob.data.to_vec().into_boxed_slice());
+    let (references, fingerprint) = snapshot_references();
+    // The table is process-wide and append-only: tests running beside this one may record
+    // callbacks in between, so a later table extends this one, and the same table has the
+    // same fingerprint (an embedder records it before any install, so its table is fixed).
+    let (later, again) = snapshot_references();
+    assert!(later.len() >= references.len());
+    for (first, second) in references.iter().zip(later) {
+        assert_eq!(unsafe { first.pointer }, unsafe { second.pointer });
+    }
+    if later.len() == references.len() {
+        assert_eq!(fingerprint, again, "the same table, the same fingerprint");
+    } else {
+        assert_ne!(fingerprint, again, "a longer table, another fingerprint");
+    }
+    assert!(references.len() >= blob.references.len());
+    for (recorded, built) in references.iter().zip(blob.references) {
+        assert_eq!(unsafe { recorded.pointer }, unsafe { built.pointer });
+    }
+    let params = v8::CreateParams::default()
+        .snapshot_blob(v8::StartupData::from(saved))
+        .external_references(Cow::Borrowed(references));
+    let isolate = &mut v8::Isolate::new(params);
+    set_snapshot_install(true);
+    {
+        v8::scope!(let scope, isolate);
+        let context =
+            v8::Context::from_snapshot(scope, SNAPSHOT_WINDOW_CONTEXT, Default::default())
+                .expect("the saved blob holds the window context");
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<b id=b>saved</b>");
+        let code = v8::String::new(scope, "document.getElementById('b').textContent").unwrap();
+        let text = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        assert_eq!(text.to_rust_string_lossy(scope), "saved");
+    }
+    reset();
+    set_snapshot_install(false);
+}
