@@ -138,3 +138,79 @@ fn a_running_transition_reuses_its_cascaded_declarations() {
     assert_eq!(value["running"], 1);
 }
 
+
+/// Runs `body` (which returns the values to compare) with sharing on, then again over the same
+/// tree with sharing off after a CSSOM change that drops every reused style.
+fn shared_and_fresh(html: &str, setup: &str, read: &str) -> serde_json::Value {
+    let code = format!(
+        r#"(()=>{{{setup}
+      const read=()=>{{{read}}};
+      const before=__cssTestStyleShares(),shared=read(),shares=__cssTestStyleShares()-before;
+      __cssTestStyleShareOff(true);
+      const bump=document.createElement('style');document.head.appendChild(bump);bump.sheet.insertRule('.never {{ color: red }}',0);
+      const fresh=read();__cssTestStyleShareOff(false);
+      return JSON.stringify({{shared,fresh,shares}});
+    }})()"#
+    );
+    run(html, &code)
+}
+
+/// A sibling cascaded before its parent changed is no source: the parent's style generation
+/// moved, so a new child cascades with the parent's new class.
+#[test]
+fn a_parent_change_ends_sharing_with_earlier_siblings() {
+    let value = shared_and_fresh(
+        "<!doctype html><html><head><style>.x { color: rgb(1, 1, 1) } .open > .x { color: rgb(2, 2, 2) }</style></head><body><section id=p></section></body>",
+        "const p=document.getElementById('p'),first=document.createElement('div');first.className='x';p.appendChild(first);getComputedStyle(first).color;p.className='open';const late=document.createElement('div');late.className='x';p.appendChild(late);",
+        "return getComputedStyle(late).color;",
+    );
+    assert_eq!(value["shared"], "rgb(2, 2, 2)", "{value}");
+    assert_eq!(value["fresh"], value["shared"]);
+}
+
+/// Form controls never share: their UA tables read the `type` attribute even when no sheet
+/// names it.
+#[test]
+fn form_controls_never_share() {
+    let value = shared_and_fresh(
+        "<!doctype html><html><head><style>.f { color: rgb(1, 1, 1) }</style></head><body><form id=p></form></body>",
+        "const p=document.getElementById('p'),a=document.createElement('input'),b=document.createElement('input'),c=document.createElement('button'),d=document.createElement('button');a.className=b.className=c.className=d.className='f';b.type='date';d.type='submit';p.append(a,b,c,d);",
+        "return [a,b,c,d].map(el=>{const s=getComputedStyle(el);return [s.fontFamily,s.fontSize,s.display,s.paddingTop].join('/');});",
+    );
+    assert_eq!(value["shares"], 0, "{value}");
+    assert_eq!(value["fresh"], value["shared"], "{value}");
+    assert_ne!(value["shared"][0], value["shared"][1], "{value}");
+}
+
+/// A sibling whose state rule cannot match the source but can match it (relaxed: the state
+/// pseudo-class taken as matching) cascades itself, so its style follows that state later.
+#[test]
+fn a_possible_state_match_cascades_itself() {
+    let value = run(
+        "<!doctype html><html><head><style>.a { color: rgb(1, 1, 1) } .a:first-child:popover-open { color: rgb(2, 2, 2) }</style></head><body><section id=p><div></div></section></body>",
+        r#"(()=>{
+      const p=document.getElementById('p'),source=document.createElement('div');source.className='a';source.popover='manual';p.appendChild(source);getComputedStyle(source).color;
+      p.firstElementChild.remove();
+      const late=document.createElement('div');late.className='a';late.popover='manual';p.prepend(late);
+      const before=getComputedStyle(late).color;late.showPopover();
+      return JSON.stringify([before,getComputedStyle(late).color]);
+    })()"#,
+    );
+    assert_eq!(value, serde_json::json!(["rgb(1, 1, 1)", "rgb(2, 2, 2)"]));
+}
+
+/// A dialog with a transition rule that becomes modal cascades again (the modal UA table).
+#[test]
+fn a_transitioning_element_entering_the_top_layer_cascades_again() {
+    let value = run(
+        "<!doctype html><html><head><style>.v { transition: opacity 100s linear; opacity: 1 } .v.dim { opacity: 0.5 }</style></head><body><dialog class=v id=v>d</dialog></body>",
+        r#"(()=>{
+      const v=document.getElementById('v');getComputedStyle(v).opacity;v.classList.add('dim');
+      const before=getComputedStyle(v);const closed=[before.position,before.display];
+      v.showModal();const open=getComputedStyle(v);
+      return JSON.stringify({closed,open:[open.position,open.display,open.opacity]});
+    })()"#,
+    );
+    assert_eq!(value["closed"], serde_json::json!(["absolute", "none"]));
+    assert_eq!(value["open"], serde_json::json!(["fixed", "block", "0.5"]));
+}

@@ -1116,7 +1116,8 @@
     var record=computedSnapshotGet(styleShares,parent);
     if(!record||record.generation!==generation||record.build!==build){record={__proto__:null,generation:generation,build:build,signatures:{__proto__:null},count:0};computedSnapshotSet(styleShares,parent,record);}
     var probe={__proto__:null,record:record,signature:signature,hit:null},entry=record.signatures[signature];
-    if(entry&&computedMediaUnchanged(entry.base.media)&&styleShareAgrees(el,entry.tests)){probe.hit=entry.base;if(noteStyleShare)noteStyleShare();}
+    // (The record's build already holds only while its @media answers do.)
+    if(entry&&styleShareAgrees(el,entry.tests)){probe.hit=entry.base;if(noteStyleShare)noteStyleShare();}
     return probe;
   }
   // The attribute names the owner's sheets name (Tree::set_style_filter's features), once each.
