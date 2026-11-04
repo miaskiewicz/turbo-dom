@@ -612,12 +612,11 @@ pub struct Tree {
     /// when its element or an ancestor moved (see [`Tree::style_generation`]).
     style_gens: FxHashMap<Handle, u64>,
     /// The `selector_version` at which each node's child list last changed (a child inserted,
-    /// removed or mutated): what sibling and child-indexed selectors read.
-    child_gens: FxHashMap<Handle, u64>,
-    /// [`Self::child_gens`] for the changes a later sibling can see: a child inserted, removed
-    /// or mutated that has a next sibling. An append, or a change to the last child, reaches
-    /// no sibling through `+`, `~`, `:nth-child`, `:first-child` or `:*-of-type` forward.
-    forward_child_gens: FxHashMap<Handle, u64>,
+    /// removed or mutated): what sibling and child-indexed selectors read. First: any change;
+    /// second: the changes a later sibling can see (a child inserted, removed or mutated that
+    /// has a next sibling — an append, or a change to the last child, reaches no sibling
+    /// through `+`, `~`, `:nth-child`, `:first-child` or `:*-of-type`).
+    child_gens: FxHashMap<Handle, (u64, u64)>,
     /// The `selector_version` of the last mutation that can change form validity anywhere
     /// (`:valid` / `:invalid` / `:user-*` of a control, its form, fieldset or radio group).
     form_gen: u64,
@@ -739,7 +738,6 @@ impl Tree {
             selector_version: 0,
             style_gens: FxHashMap::default(),
             child_gens: FxHashMap::default(),
-            forward_child_gens: FxHashMap::default(),
             form_gen: 0,
             style_filter: None,
             global_style_gen: 0,
@@ -890,6 +888,29 @@ impl Tree {
             c = self.buf.next_sib[c as usize];
         }
         out
+    }
+
+    /// [`Self::first_child`] without allocating the child list.
+    fn first_child_handle(&self, h: Handle) -> Option<Handle> {
+        if let Some(list) = self.children_ov.get(h) {
+            return list.first().copied();
+        }
+        if self.is_new(h) {
+            return None;
+        }
+        let c = self.buf.first_child[h.idx()];
+        (c >= 0).then(|| Handle(c as u32))
+    }
+
+    /// [`Self::next_sibling`] without allocating the parent's child list.
+    fn next_sibling_handle(&self, h: Handle) -> Option<Handle> {
+        let parent = self.parent(h)?;
+        if let Some(list) = self.children_ov.get(parent) {
+            let at = list.iter().position(|&child| child == h)?;
+            return list.get(at + 1).copied();
+        }
+        let next = self.buf.next_sib[h.idx()];
+        (next >= 0).then(|| Handle(next as u32))
     }
 
     /// Visit each child handle WITHOUT allocating a `Vec` — walks the child overlay
@@ -1545,12 +1566,13 @@ impl Tree {
     }
 
     /// A mutation of `h` itself (an attribute, its text, its state): its generation and its
-    /// parent's child-list generations move.
+    /// parent's child-list generations move. A parentless node records nothing: it has no
+    /// style until an insertion, which moves its generation.
     pub(crate) fn bump_node(&mut self, h: Handle) {
         self.bump_unscoped();
-        self.style_gens.insert(h, self.selector_version);
         if let Some(parent) = self.parent(h) {
-            let forward = self.next_sibling(h).is_some();
+            self.style_gens.insert(h, self.selector_version);
+            let forward = self.next_sibling_handle(h).is_some();
             self.bump_child_gens(parent, forward);
         }
     }
@@ -1558,18 +1580,26 @@ impl Tree {
     /// `child` inserted into or removed from `parent`; `forward`: it has (had) a next sibling.
     fn bump_child_list(&mut self, parent: Handle, child: Handle, forward: bool) {
         self.bump_unscoped();
-        self.style_gens.insert(child, self.selector_version);
-        self.bump_child_gens(parent, forward);
+        // Below a parentless node other than a document or shadow root nothing has a style
+        // yet: inserting that node moves its generation.
+        if self.parent(parent).is_some()
+            || self.node_type(parent) == NodeType::Document
+            || self.shadow_host(parent).is_some()
+        {
+            self.style_gens.insert(child, self.selector_version);
+            self.bump_child_gens(parent, forward);
+        }
         if self.touches_forms(parent) || self.has_form_content(child) {
             self.form_gen = self.selector_version;
         }
     }
 
     fn bump_child_gens(&mut self, parent: Handle, forward: bool) {
-        self.child_gens.insert(parent, self.selector_version);
+        let version = self.selector_version;
+        let gens = self.child_gens.entry(parent).or_insert((0, 0));
+        gens.0 = version;
         if forward {
-            self.forward_child_gens
-                .insert(parent, self.selector_version);
+            gens.1 = version;
         }
     }
 
@@ -1595,7 +1625,7 @@ impl Tree {
             if self.is_form_element(node) || self.get_attribute(node, "form").is_some() {
                 return true;
             }
-            if let Some(child) = self.first_child(node) {
+            if let Some(child) = self.first_child_handle(node) {
                 node = child;
                 continue;
             }
@@ -1603,7 +1633,7 @@ impl Tree {
                 if node == h {
                     return false;
                 }
-                if let Some(next) = self.next_sibling(node) {
+                if let Some(next) = self.next_sibling_handle(node) {
                     node = next;
                     break;
                 }
@@ -1653,7 +1683,7 @@ impl Tree {
             self.selector_version += 1;
             self.style_gens.insert(h, self.selector_version);
             if let Some(parent) = self.parent(h) {
-                let forward = self.next_sibling(h).is_some();
+                let forward = self.next_sibling_handle(h).is_some();
                 self.bump_child_gens(parent, forward);
             }
         } else {
@@ -1740,10 +1770,10 @@ impl Tree {
         if scope.forms {
             generation = generation.max(self.form_gen);
         }
-        let lists = match scope.siblings {
-            Siblings::None => None,
-            Siblings::Forward => Some(&self.forward_child_gens),
-            Siblings::Both => Some(&self.child_gens),
+        let list_gen = |gens: &(u64, u64)| match scope.siblings {
+            Siblings::None => 0,
+            Siblings::Forward => gens.1,
+            Siblings::Both => gens.0,
         };
         let mut node = Some(h);
         while let Some(current) = node {
@@ -1751,11 +1781,8 @@ impl Tree {
                 generation = generation.max(own);
             }
             node = self.parent(current);
-            if let Some(&list) = lists
-                .zip(node)
-                .and_then(|(lists, parent)| lists.get(&parent))
-            {
-                generation = generation.max(list);
+            if let Some(gens) = node.and_then(|parent| self.child_gens.get(&parent)) {
+                generation = generation.max(list_gen(gens));
             }
         }
         generation
@@ -2050,7 +2077,7 @@ impl Tree {
         self.detach(child);
         self.ensure_children(parent).push(child);
         self.parent_ov.insert(child, Some(parent));
-        let forward = self.next_sibling(child).is_some();
+        let forward = self.next_sibling_handle(child).is_some();
         self.bump_child_list(parent, child, forward);
         if self.is_recording() {
             self.record_child_list(
@@ -2087,7 +2114,7 @@ impl Tree {
             None => list.push(child),
         }
         self.parent_ov.insert(child, Some(parent));
-        let forward = self.next_sibling(child).is_some();
+        let forward = self.next_sibling_handle(child).is_some();
         self.bump_child_list(parent, child, forward);
         if self.is_recording() {
             self.record_child_list(
@@ -2107,7 +2134,7 @@ impl Tree {
         let siblings = self
             .is_recording()
             .then(|| (self.previous_sibling(child), self.next_sibling(child)));
-        let forward = self.next_sibling(child).is_some();
+        let forward = self.next_sibling_handle(child).is_some();
         let list = self.ensure_children(parent);
         if let Some(pos) = list.iter().position(|&x| x == child) {
             list.remove(pos);
@@ -3029,6 +3056,15 @@ mod tests {
         assert_eq!(tree.style_generation(li, FORWARD), before, "the last child");
         tree.remove_child(ul, first);
         assert_eq!(tree.style_generation(li, FORWARD), tree.selector_version);
+        // Below a detached root nothing records; below a shadow root it does.
+        let (detached, inner) = (tree.create_element("div"), tree.create_element("p"));
+        let before = tree.style_generation(inner, OWN);
+        tree.append_child(detached, inner);
+        assert_eq!(tree.style_generation(inner, OWN), before);
+        let shadow = tree.attach_shadow(li);
+        let slotted = tree.create_element("b");
+        tree.append_child(shadow, slotted);
+        assert_eq!(tree.style_generation(slotted, OWN), tree.selector_version);
     }
 
     /// Form validity moves with changes inside or of form-associated elements, and with
@@ -3190,7 +3226,11 @@ mod tests {
             "inline style and detached nodes"
         );
         tree.set_attribute(made, "class", "detached");
-        assert_eq!(tree.style_generation(made, OWN), tree.selector_version);
+        assert_eq!(
+            tree.style_generation(made, OWN),
+            g0,
+            "a parentless node records nothing"
+        );
         assert_eq!(tree.style_generation(span, BOTH), g0);
         let text = tree.create_text_node("x");
         tree.append_child(div, text);
