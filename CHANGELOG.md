@@ -14,6 +14,18 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom: a tree version names one tree's state across the process.** Each tree's version
+  counter starts at its own base, so caches keyed on (document, version) outside the tree (the
+  label index, the XPath and CSS policy caches) never serve a new tree an older tree's entries.
+  turbo-test's next file on a reused worker restarted the main document's version, so a label
+  index from the previous file (stale handles) made `labels` / `getByLabelText` fail flakily in
+  full payroll runs. Test: `a_new_install_never_reuses_the_previous_trees_label_index`.
+- **turbo-dom-browser-env: the startup-snapshot fingerprint follows the engine scripts.** It
+  hashed only the native callbacks' offsets, so a JS-only engine change kept the key an embedder
+  saves its blob under, and turbo-test (whose build id does not follow a path-dependency
+  turbo-dom) reran an older build's engine scripts. Test:
+  `the_fingerprint_follows_the_engine_scripts`.
+
 - **turbo-dom-browser-env: getComputedStyle never asks a page's `window.matchMedia`.** A page
   or test that replaces `matchMedia` (a mock) changed which `@media` / `@import` rules applied;
   the cascade now evaluates media lists against the viewport itself, as Chrome and jsdom do.
@@ -110,6 +122,20 @@ at the time); this file reconstructs them from history.
   `{__proto__: null}` literal per call (hoisted tables, fixed-shape records, one reused row
   descriptor).
 - Counter gates for all three in `perf_gates_tests.rs`.
+- The `$c` dispatcher passes its arguments as array literals instead of `add`'s per-element
+  `Object.defineProperty`, which cost a runtime call per argument of every internal call
+  (perf gate `internal_dispatch_defines_no_argument_rows`: 19805 -> 1146 defines).
+- A stable computed style (validated with its whole ancestor chain at unchanged tree, selector,
+  CSSOM and state versions) is reused without recomputing its cache key or revalidating its
+  ancestors: each property read and testing-library's visibility walk did both, quadratic in
+  depth (`stable_computed_styles_skip_the_key_and_ancestor_walk`: 9900 -> 0 full keys for 300
+  reads). payroll's RecurringDeductionModal: 8.9 -> 5.8 CPU-s.
+- The owner's stylesheet list holds while either tree version does: an animation joining or
+  leaving an element moves only the selector version, and every transition start or end reread
+  the list (`animation_changes_do_not_reread_the_sheet_list`: 150 -> <=4 rereads).
+- A flush skips the checked-radio form-owner scan when the tree has not changed since the last
+  one (`radio_owner_scans_run_once_per_tree_version`: 1401 -> 1 scan for 100 clicks).
+
 ### Performance
 
 - **Subtree-scoped style invalidation** (#279, browser-env + `turbo-dom`). A DOM mutation no
