@@ -766,12 +766,16 @@
     var version=null;try{version=computedStyleSelectorVersion(owner);}catch(e){}
     var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&typeof version==='number'&&entry.version===version&&entry.epoch===epoch&&entry.host===host)return entry.sheets;
-    var sheets=host.readSheets(),features=entry?computedListFeatures(owner,host,entry,sheets,epoch):undefined;
+    var sheets=host.readSheets();
+    // An unchanged list keeps its identity, so the entry build keyed on it is reused (#307).
+    if(entry&&entry.host===host&&computedSameList(entry.list,sheets))sheets=entry.sheets;
+    var features=entry?computedListFeatures(owner,host,entry,sheets,epoch):undefined;
     epoch=cssomEpoch();
     var keep=!!features&&entry.epoch===epoch;
     if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets,list:computedListCopy(sheets),scope:keep?entry.scope:undefined,features:keep?features:undefined});
     return sheets;
   }
+  function computedSameList(a,b){if(a.length!==b.length)return false;for(var index=0;index<a.length;index++)if(a[index]!==b[index])return false;return true;}
   function computedListCopy(sheets){var list=[];for(var index=0;index<sheets.length;index++)list[index]=sheets[index];return list;}
   // The owner's selector features after a reread: the entry's when the list is the same, the
   // extended ones when sheets were only added (computedSheetsAdded); otherwise the CSSOM epoch

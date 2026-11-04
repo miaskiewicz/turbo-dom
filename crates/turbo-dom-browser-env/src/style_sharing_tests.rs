@@ -161,7 +161,7 @@ fn shared_and_fresh(html: &str, setup: &str, read: &str) -> serde_json::Value {
 fn a_parent_change_ends_sharing_with_earlier_siblings() {
     let value = shared_and_fresh(
         "<!doctype html><html><head><style>.x { color: rgb(1, 1, 1) } .open > .x { color: rgb(2, 2, 2) }</style></head><body><section id=p></section></body>",
-        "const p=document.getElementById('p'),first=document.createElement('div');first.className='x';p.appendChild(first);getComputedStyle(first).color;p.className='open';const late=document.createElement('div');late.className='x';p.appendChild(late);",
+        "const p=document.getElementById('p'),first=document.createElement('div'),late=document.createElement('div');first.className=late.className='x';p.append(first,late);getComputedStyle(first).color;p.className='open';",
         "return getComputedStyle(late).color;",
     );
     assert_eq!(value["shared"], "rgb(2, 2, 2)", "{value}");
