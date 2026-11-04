@@ -1,0 +1,327 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "probeSha256": "2693a551e7ec21b2a62980ea7d4d044f1643eb3cf04c0acf6c4cbccf128fab5d",
+  "collectorSha256": "c8a12247067ebd632b2a1631b1d87bd26fa6a6bd0c00e62c20970022ad25688b",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "child": [
+      [
+        "rgb(0, 128, 0)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "0px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(0, 128, 0)",
+        "rgb(1, 1, 1)",
+        "7px",
+        "0px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(4, 5, 6)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "8px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "inline"
+      ],
+      [
+        "rgb(0, 0, 0)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "0px",
+        "16px",
+        "",
+        "inline"
+      ]
+    ],
+    "parent": [
+      [
+        "rgb(0, 128, 0)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "0px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(0, 128, 0)",
+        "rgb(1, 1, 1)",
+        "7px",
+        "0px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(4, 5, 6)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "8px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "inline"
+      ],
+      [
+        "rgb(0, 0, 0)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "0px",
+        "16px",
+        "",
+        "inline"
+      ]
+    ],
+    "outer": [
+      [
+        "rgb(1, 2, 3)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "6px",
+        "16px",
+        "",
+        "block"
+      ],
+      [
+        "rgb(1, 2, 3)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "6px",
+        "16px",
+        "",
+        "block"
+      ]
+    ],
+    "wide": [
+      700,
+      [
+        [
+          "rgb(0, 0, 255)",
+          "rgb(1, 1, 1)",
+          "5px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(0, 0, 255)",
+          "rgb(1, 1, 1)",
+          "7px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(4, 5, 6)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "8px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "inline"
+        ],
+        [
+          "rgb(0, 0, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "16px",
+          "",
+          "inline"
+        ]
+      ],
+      [
+        [
+          "rgb(0, 0, 255)",
+          "rgb(1, 1, 1)",
+          "5px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(0, 0, 255)",
+          "rgb(1, 1, 1)",
+          "7px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(4, 5, 6)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "8px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "inline"
+        ],
+        [
+          "rgb(0, 0, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "16px",
+          "",
+          "inline"
+        ]
+      ]
+    ],
+    "narrow": [
+      300,
+      [
+        [
+          "rgb(0, 128, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(0, 128, 0)",
+          "rgb(255, 0, 0)",
+          "7px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(4, 5, 6)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "8px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "inline"
+        ],
+        [
+          "rgb(0, 0, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "16px",
+          "",
+          "inline"
+        ]
+      ],
+      [
+        [
+          "rgb(0, 128, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(0, 128, 0)",
+          "rgb(255, 0, 0)",
+          "7px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(4, 5, 6)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "8px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "inline"
+        ],
+        [
+          "rgb(0, 0, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "16px",
+          "",
+          "inline"
+        ]
+      ]
+    ],
+    "injected": [
+      [
+        "rgb(0, 128, 0)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "12px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(7, 8, 9)",
+        "rgb(1, 1, 1)",
+        "11px",
+        "0px",
+        "16px",
+        "",
+        "inline"
+      ],
+      [
+        "rgb(7, 8, 9)",
+        "rgb(1, 1, 1)",
+        "11px",
+        "0px",
+        "16px",
+        "",
+        "inline"
+      ]
+    ],
+    "restored": [
+      [
+        "rgb(0, 0, 255)",
+        "rgb(1, 1, 1)",
+        "5px",
+        "12px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(7, 8, 9)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "0px",
+        "16px",
+        "",
+        "inline"
+      ]
+    ]
+  }
+}
