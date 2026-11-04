@@ -7648,6 +7648,10 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     bind_method(scope, global, "__noteEntryBuild", note_entry_build);
     #[cfg(test)]
     bind_method(scope, global, "__noteRuleProbe", note_rule_probe);
+    #[cfg(test)]
+    bind_method(scope, global, "__noteStyleShare", note_style_share);
+    #[cfg(test)]
+    bind_method(scope, global, "__styleShareOff", style_share_off);
     bind_method(scope, global, "__cssomEpoch", cssom_epoch);
     bind_method(scope, global, "__styleStateEpoch", style_state_epoch);
     bind_method(scope, global, "__bumpStyleState", bump_style_state_native);
@@ -7812,6 +7816,47 @@ fn note_rule_probe(
     _rv: v8::ReturnValue,
 ) {
     RULE_PROBES.with(|probes| probes.set(probes.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Computed styles a cascade took from a same-signature sibling instead of matching rules
+    /// (the test-only `__noteStyleShare` hook, turbo-dom#307), and whether sharing is switched
+    /// off (the test-only `__styleShareOff` hook: the differential test's fresh-cascade oracle).
+    static STYLE_SHARES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    static STYLE_SHARE_OFF: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The styles shared so far (see `STYLE_SHARES`).
+#[cfg(test)]
+fn style_shares() -> u64 {
+    STYLE_SHARES.with(std::cell::Cell::get)
+}
+
+/// Switches style sharing off (`true`) or on for this thread's cascades.
+#[cfg(test)]
+fn set_style_share_off(off: bool) {
+    STYLE_SHARE_OFF.with(|cell| cell.set(off));
+}
+
+/// Counts one shared computed style (the test-only `__noteStyleShare` hook).
+#[cfg(test)]
+fn note_style_share(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    STYLE_SHARES.with(|shares| shares.set(shares.get() + 1));
+}
+
+/// Whether sharing is switched off (the test-only `__styleShareOff` hook).
+#[cfg(test)]
+fn style_share_off(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    rv.set(v8::Boolean::new(scope, STYLE_SHARE_OFF.with(std::cell::Cell::get)).into());
 }
 
 /// The current CSSOM epoch (see `CSSOM_EPOCH`).

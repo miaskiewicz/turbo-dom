@@ -113,6 +113,9 @@
   var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
   var noteEntryBuild=g.__noteEntryBuild;delete g.__noteEntryBuild;
   var noteRuleProbe=g.__noteRuleProbe;delete g.__noteRuleProbe;
+  // Test builds only: counts shared computed styles; the differential test switches sharing off.
+  var noteStyleShare=g.__noteStyleShare;delete g.__noteStyleShare;
+  var styleShareOff=g.__styleShareOff;delete g.__styleShareOff;
   // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
   if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
