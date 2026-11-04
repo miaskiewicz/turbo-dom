@@ -117,6 +117,7 @@
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
   var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
   var noteEntryBuild=g.__noteEntryBuild;delete g.__noteEntryBuild;
+  var noteSheetRead=g.__noteSheetRead;delete g.__noteSheetRead;
   var noteRuleProbe=g.__noteRuleProbe;delete g.__noteRuleProbe;
   // Test builds only: counts shared computed styles; the differential test switches sharing off.
   var noteStyleShare=g.__noteStyleShare;delete g.__noteStyleShare;
@@ -771,6 +772,7 @@
     var version=null;try{version=computedStyleSelectorVersion(owner);}catch(e){}
     var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&typeof version==='number'&&entry.version===version&&entry.epoch===epoch&&entry.host===host)return entry.sheets;
+    if(noteSheetRead)noteSheetRead();
     var sheets=host.readSheets();
     // An unchanged list keeps its identity, so the entry build keyed on it is reused (#307).
     if(entry&&entry.host===host&&computedSameList(entry.list,sheets))sheets=entry.sheets;

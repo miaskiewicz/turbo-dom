@@ -7674,6 +7674,8 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     #[cfg(test)]
     bind_method(scope, global, "__noteEntryBuild", note_entry_build);
     #[cfg(test)]
+    bind_method(scope, global, "__noteSheetRead", note_sheet_read);
+    #[cfg(test)]
     bind_method(scope, global, "__noteRuleProbe", note_rule_probe);
     #[cfg(test)]
     bind_method(scope, global, "__noteStyleShare", note_style_share);
@@ -7815,6 +7817,28 @@ thread_local! {
 #[cfg(test)]
 fn entry_builds() -> u64 {
     ENTRY_BUILDS.with(std::cell::Cell::get)
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Owner stylesheet-list rereads on this thread (the test-only `__noteSheetRead` hook).
+    static SHEET_READS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The owner stylesheet-list rereads counted so far (see `SHEET_READS`).
+#[cfg(test)]
+pub(super) fn sheet_reads() -> u64 {
+    SHEET_READS.with(std::cell::Cell::get)
+}
+
+/// Counts one owner stylesheet-list reread (the test-only `__noteSheetRead` hook).
+#[cfg(test)]
+fn note_sheet_read(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    SHEET_READS.with(|reads| reads.set(reads.get() + 1));
 }
 
 /// Counts one cascade rule-entry list build (the test-only `__noteEntryBuild` hook).

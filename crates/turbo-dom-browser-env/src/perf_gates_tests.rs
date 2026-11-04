@@ -509,6 +509,45 @@ fn stable_computed_styles_skip_the_key_and_ancestor_walk() {
     clear_interface_records(isolate);
 }
 
+/// An animation joining or leaving an element moves its style generation (the tree's selector
+/// version) but changes no stylesheet: the owner's sheet list, keyed on that version, must not
+/// be reread for it (MUI transitions start and end on every interaction). A real sheet change
+/// still reaches the next read.
+#[test]
+fn animation_changes_do_not_reread_the_sheet_list() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<head><style>#a{color:red}</style></head><body><div id=a>x</div>",
+        );
+        run(scope, "getComputedStyle(document.getElementById('a')).color");
+        let before = sheet_reads();
+        let out = run(
+            scope,
+            "(() => { const a = document.getElementById('a'); let n = 0; \
+             for (let i = 0; i < 50; i++) { const anim = a.animate([{opacity: 0}, {opacity: 1}], 1000); \
+               n += getComputedStyle(a).color.length; anim.cancel(); n += getComputedStyle(a).color.length; } \
+             return String(n); })()",
+        );
+        assert_eq!(out, "1400");
+        let reads = sheet_reads() - before;
+        assert!(reads <= 4, "{reads} sheet list rereads for 100 animation changes");
+        let out = run(
+            scope,
+            "(() => { const s = document.createElement('style'); s.textContent = '#a{color:blue}'; \
+             document.head.append(s); return getComputedStyle(document.getElementById('a')).color; })()",
+        );
+        assert_eq!(out, "rgb(0, 0, 255)");
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
 /// A selector with a `:` none of the state-dependent transforms (popover, dialog, interest,
 /// form, view transition) applies to skips them: whether each applies is a property of the
 /// selector text, kept per selector, so `matches(':focus-visible')` or `closest('li:hover')`
