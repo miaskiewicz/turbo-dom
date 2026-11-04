@@ -768,10 +768,15 @@
     return sheets;
   }
   function computedSameSheets(list,sheets){if(list.length!==sheets.length)return false;for(var index=0;index<list.length;index++)if(list[index]!==sheets[index])return false;return true;}
+  // The owner's sheet list, reread only after a change that can move it. Every mutation that
+  // can (a stylesheet owner inserted, removed, edited or re-attributed) moves both the tree
+  // version and its selector version; only a `style` attribute moves the version alone and
+  // only an animation joining or leaving an element (Tree::invalidate_style quiet) moves the
+  // selector version alone. So the list holds while either is where it was last validated.
   function computedOwnerSheets(owner,host){
-    var version=null;try{version=computedStyleSelectorVersion(owner);}catch(e){}
+    var version=null,full=null;try{version=computedStyleSelectorVersion(owner);full=computedStyleVersion(owner);}catch(e){}
     var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
-    if(entry&&typeof version==='number'&&entry.version===version&&entry.epoch===epoch&&entry.host===host)return entry.sheets;
+    if(entry&&typeof version==='number'&&typeof full==='number'&&(entry.version===version||entry.full===full)&&entry.epoch===epoch&&entry.host===host){entry.version=version;entry.full=full;return entry.sheets;}
     if(noteSheetRead)noteSheetRead();
     var sheets=host.readSheets();
     // An unchanged list keeps its identity, so the entry build keyed on it is reused (#307).
@@ -779,7 +784,7 @@
     var features=entry?computedListFeatures(owner,host,entry,sheets,epoch):undefined;
     epoch=cssomEpoch();
     var keep=!!features&&entry.epoch===epoch;
-    if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets,list:computedListCopy(sheets),scope:keep?entry.scope:undefined,features:keep?features:undefined});
+    if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,full:full,epoch:epoch,host:host,sheets:sheets,list:computedListCopy(sheets),scope:keep?entry.scope:undefined,features:keep?features:undefined});
     return sheets;
   }
   function computedSameList(a,b){if(a.length!==b.length)return false;for(var index=0;index<a.length;index++)if(a[index]!==b[index])return false;return true;}
