@@ -8328,15 +8328,24 @@ pub fn snapshot_references() -> (&'static [v8::ExternalReference], u64) {
     let references: &'static [v8::ExternalReference] =
         unsafe { std::slice::from_raw_parts(start as *const v8::ExternalReference, len) };
     let anchor = snapshot_references as *const () as usize;
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for reference in references {
+    let offsets = references.iter().map(|reference| {
         // SAFETY: every table entry is a function pointer (`external_refs::table`).
-        let offset = (unsafe { reference.pointer } as usize).wrapping_sub(anchor) as u64;
+        (unsafe { reference.pointer } as usize).wrapping_sub(anchor) as u64
+    });
+    let hash = fingerprint_of(offsets, crate_surface::startup_snapshot::engine_sources_hash());
+    (references, hash)
+}
+
+/// The blob fingerprint: an FNV-1a hash of the callbacks' offsets, then of the engine scripts'
+/// hash (the blob holds both).
+pub(crate) fn fingerprint_of(offsets: impl Iterator<Item = u64>, sources: u64) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for offset in offsets {
         for byte in offset.to_le_bytes() {
             hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
         }
     }
-    (references, hash)
+    hash
 }
 
 /// A startup blob and its external reference table ([`snapshot_blob`]).

@@ -199,3 +199,25 @@ fn saved_blob_bytes_install_with_the_recorded_reference_table() {
     reset();
     set_snapshot_install(false);
 }
+
+/// A saved blob is keyed on the fingerprint, so it must change with the engine scripts the
+/// blob holds, not only with the native callbacks: an embedder whose own build id does not
+/// follow this crate (a path dependency) otherwise reran the engine scripts of an older
+/// build from its saved blob.
+#[test]
+fn the_fingerprint_follows_the_engine_scripts() {
+    crate::browser_env::tests::init_v8();
+    let (_, fingerprint) = snapshot_references();
+    let sources = startup_snapshot::engine_sources_hash();
+    assert_ne!(sources, startup_snapshot::SOURCES_SEED, "the bootstrap's scripts are hashed");
+    let offsets = [1u64, 2, 3];
+    assert_ne!(
+        fingerprint_of(offsets.iter().copied(), sources),
+        fingerprint_of(offsets.iter().copied(), sources ^ 1)
+    );
+    assert_eq!(
+        fingerprint_of(offsets.iter().copied(), sources),
+        fingerprint_of(offsets.iter().copied(), sources)
+    );
+    let _ = fingerprint;
+}

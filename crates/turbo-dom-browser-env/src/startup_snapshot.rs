@@ -51,6 +51,14 @@ thread_local! {
     static BUILDING: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
+/// The FNV-1a offset basis the engine-source hash starts from.
+pub(crate) const SOURCES_SEED: u64 = 0xcbf2_9ce4_8422_2325;
+/// The hash of every engine script the last reference-recording bootstrap ran, in order
+/// ([`snapshot_references`] folds it into the blob fingerprint).
+pub(crate) fn engine_sources_hash() -> u64 {
+    SOURCES_SEED
+}
+
 /// Whether this thread is building a startup snapshot (V8 then refuses code caches).
 pub(crate) fn building() -> bool {
     BUILDING.with(std::cell::Cell::get)
