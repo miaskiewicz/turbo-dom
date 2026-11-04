@@ -7674,6 +7674,8 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     #[cfg(test)]
     bind_method(scope, global, "__noteEntryBuild", note_entry_build);
     #[cfg(test)]
+    bind_method(scope, global, "__noteSheetRead", note_sheet_read);
+    #[cfg(test)]
     bind_method(scope, global, "__noteRuleProbe", note_rule_probe);
     #[cfg(test)]
     bind_method(scope, global, "__noteStyleShare", note_style_share);
@@ -7815,6 +7817,28 @@ thread_local! {
 #[cfg(test)]
 fn entry_builds() -> u64 {
     ENTRY_BUILDS.with(std::cell::Cell::get)
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Owner stylesheet-list rereads on this thread (the test-only `__noteSheetRead` hook).
+    static SHEET_READS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The owner stylesheet-list rereads counted so far (see `SHEET_READS`).
+#[cfg(test)]
+pub(super) fn sheet_reads() -> u64 {
+    SHEET_READS.with(std::cell::Cell::get)
+}
+
+/// Counts one owner stylesheet-list reread (the test-only `__noteSheetRead` hook).
+#[cfg(test)]
+fn note_sheet_read(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    SHEET_READS.with(|reads| reads.set(reads.get() + 1));
 }
 
 /// Counts one cascade rule-entry list build (the test-only `__noteEntryBuild` hook).
@@ -7985,11 +8009,24 @@ fn computed_style_selector_version(
 /// ancestor, plus by `scope`'s bits the child lists along that chain (1 forward, 2 both ways)
 /// and form validity (4). `undefined` for anything but a node, and when the tree has a shadow
 /// root (its scoped sheets are not analysed: the caller keys on the tree-wide version).
+#[cfg(test)]
+thread_local! {
+    /// `__computedStyleGeneration` calls on this thread: one per full computed-style cache key
+    /// (the perf gate in `perf_gates_tests`).
+    static STYLE_GENERATION_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+/// The `__computedStyleGeneration` calls counted so far (see `STYLE_GENERATION_READS`).
+#[cfg(test)]
+pub(super) fn style_generation_reads() -> usize {
+    STYLE_GENERATION_READS.with(std::cell::Cell::get)
+}
 fn computed_style_generation(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
     mut result: v8::ReturnValue,
 ) {
+    #[cfg(test)]
+    STYLE_GENERATION_READS.with(|reads| reads.set(reads.get() + 1));
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
         return;
     };
@@ -8291,15 +8328,30 @@ pub fn snapshot_references() -> (&'static [v8::ExternalReference], u64) {
     let references: &'static [v8::ExternalReference] =
         unsafe { std::slice::from_raw_parts(start as *const v8::ExternalReference, len) };
     let anchor = snapshot_references as *const () as usize;
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for reference in references {
+    let offsets = references.iter().map(|reference| {
         // SAFETY: every table entry is a function pointer (`external_refs::table`).
-        let offset = (unsafe { reference.pointer } as usize).wrapping_sub(anchor) as u64;
+        (unsafe { reference.pointer } as usize).wrapping_sub(anchor) as u64
+    });
+    let hash = fingerprint_of(
+        offsets,
+        crate_surface::startup_snapshot::engine_sources_hash(),
+    );
+    (references, hash)
+}
+
+/// The blob fingerprint: an FNV-1a hash of the callbacks' offsets, then of the engine scripts'
+/// hash (the blob holds both).
+pub(crate) fn fingerprint_of(offsets: impl Iterator<Item = u64>, sources: u64) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for offset in offsets {
         for byte in offset.to_le_bytes() {
             hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
         }
     }
-    (references, hash)
+    for byte in sources.to_le_bytes() {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
+    }
+    hash
 }
 
 /// A startup blob and its external reference table ([`snapshot_blob`]).

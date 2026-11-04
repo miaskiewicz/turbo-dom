@@ -346,6 +346,214 @@ fn label_lookups_walk_the_tree_once_per_version() {
     clear_interface_records(isolate);
 }
 
+/// The label index is a thread-local keyed on (document id, tree version). A new install on
+/// the same thread (turbo-test's next file on a reused worker) starts a new tree whose
+/// version restarts, so the same key must never name the previous tree's index: its stale
+/// handles made `labels` / `control` flakily wrong in full suite runs.
+#[test]
+fn a_new_install_never_reuses_the_previous_trees_label_index() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><label for=a>A</label><input id=a>");
+        assert_eq!(
+            run(scope, "String(document.getElementById('a').labels.length)"),
+            "1"
+        );
+        install_with_html(scope, "<body><input id=a><label>B<input id=b></label>");
+        assert_eq!(
+            run(
+                scope,
+                "JSON.stringify([document.getElementById('a').labels.length, \
+                 document.getElementById('b').labels.length, \
+                 document.querySelector('label').control === document.getElementById('b')])"
+            ),
+            "[0,1,true]"
+        );
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// The engine's `$c` dispatcher (every `$c.get(map, key)`, `$c.forEach(list, f)` ...) passes
+/// its arguments as array literals, not through `add`'s per-element defineProperty: that cost
+/// one runtime call per argument of every internal call (about a fifth of a form-heavy
+/// payroll file's CPU). Counted by wrapping `Object.defineProperty` before the install, so the
+/// engine captures the counter; the workload's count must stay at the literal-array level.
+#[test]
+fn internal_dispatch_defines_no_argument_rows() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        run(
+            scope,
+            "globalThis.__defines = 0; const define = Object.defineProperty; \
+             Object.defineProperty = function (o, k, d) { globalThis.__defines++; return define(o, k, d); }; 'ok'",
+        );
+        install_with_html(
+            scope,
+            "<head><style>.a{color:red;margin:1px 2px}.b .a{padding:3px}</style></head>\
+             <body><div class=b><p class=a>x</p><p class=a>y</p><span>z</span></div>",
+        );
+        let out = run(
+            scope,
+            "globalThis.__defines = 0; let n = 0; \
+             for (let i = 0; i < 50; i++) { document.body.dataset.i = i; \
+               for (const el of document.querySelectorAll('*')) n += getComputedStyle(el).color.length; } \
+             String(globalThis.__defines)",
+        );
+        let defines: u64 = out.parse().unwrap();
+        assert!(
+            defines < 3_000,
+            "{defines} defineProperty calls for 50 style passes"
+        );
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// Every mutation-observer flush (each dispatched event) asks whether a checked radio's form
+/// owner changed. The owners follow the tree only, so a flush with no tree change since the
+/// last scan must not walk every checked radio again (React suites keep many: every unmounted
+/// but still-checked radio stays registered). The owners still follow real changes.
+#[test]
+fn radio_owner_scans_run_once_per_tree_version() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<body><form id=f><input type=radio name=r id=a checked></form>\
+             <form id=g></form><input type=radio name=r id=b form=g checked><button id=x>x</button>",
+        );
+        run(scope, "document.getElementById('x').click(); 'ok'");
+        let before = form_checked_state::owner_scans();
+        run(
+            scope,
+            "const x = document.getElementById('x'); for (let i = 0; i < 100; i++) x.click(); 'ok'",
+        );
+        let scans = form_checked_state::owner_scans() - before;
+        assert!(
+            scans <= 1,
+            "{scans} radio owner scans for 100 clicks without a DOM change"
+        );
+        let out = run(
+            scope,
+            "const a = document.getElementById('a'), b = document.getElementById('b'); \
+             document.getElementById('g').append(a); document.getElementById('x').click(); \
+             const c = document.createElement('input'); c.type = 'radio'; c.name = 'r'; \
+             document.getElementById('g').append(c); c.checked = true; \
+             JSON.stringify([a.form.id, a.checked, b.checked, c.checked])",
+        );
+        assert_eq!(out, "[\"g\",false,false,true]");
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// A stable computed style (validated with its whole ancestor chain at an unchanged tree,
+/// selector, CSSOM and state version) is reused without recomputing its cache key or walking
+/// its ancestors again: each property read of a computed declaration re-reads the style, and
+/// testing-library's visibility checks read every ancestor's, which made role queries
+/// quadratic in depth. Any change still reaches the next read.
+#[test]
+fn stable_computed_styles_skip_the_key_and_ancestor_walk() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<head><style>.leaf{color:red}.big{font-size:30px}</style></head><body><div id=root></div>",
+        );
+        run(
+            scope,
+            "let at = document.getElementById('root'); for (let i = 0; i < 30; i++) { \
+             const d = document.createElement('div'); at.append(d); at = d; } \
+             at.className = 'leaf'; at.id = 'leaf'; getComputedStyle(at).color",
+        );
+        let before = style_generation_reads();
+        let out = run(
+            scope,
+            "(() => { const leaf = document.getElementById('leaf'); let n = 0; \
+             for (let i = 0; i < 100; i++) { const s = getComputedStyle(leaf); n += s.color.length + s.display.length; } \
+             return String(n); })()",
+        );
+        assert_eq!(out, String::from("1900"));
+        let reads = style_generation_reads() - before;
+        assert!(reads <= 10, "{reads} full cache keys for 300 stable reads");
+        let out = run(
+            scope,
+            "(() => { const leaf = document.getElementById('leaf'), s = getComputedStyle(leaf); \
+             const out = [s.color, s.fontSize]; leaf.className = ''; out.push(s.color); \
+             document.getElementById('root').firstChild.className = 'big'; out.push(s.fontSize); \
+             return JSON.stringify(out); })()",
+        );
+        assert_eq!(
+            out,
+            "[\"rgb(255, 0, 0)\",\"16px\",\"rgb(0, 0, 0)\",\"30px\"]"
+        );
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// An animation joining or leaving an element moves its style generation (the tree's selector
+/// version) but changes no stylesheet: the owner's sheet list, keyed on that version, must not
+/// be reread for it (MUI transitions start and end on every interaction). A real sheet change
+/// still reaches the next read.
+#[test]
+fn animation_changes_do_not_reread_the_sheet_list() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<head><style>#a{color:red}</style></head><body><div id=a>x</div>",
+        );
+        run(
+            scope,
+            "getComputedStyle(document.getElementById('a')).color",
+        );
+        let before = sheet_reads();
+        let out = run(
+            scope,
+            "(() => { const a = document.getElementById('a'); let n = 0; \
+             for (let i = 0; i < 50; i++) { const anim = a.animate([{opacity: 0}, {opacity: 1}], 1000); \
+               n += getComputedStyle(a).color.length; anim.cancel(); n += getComputedStyle(a).color.length; } \
+             return String(n); })()",
+        );
+        assert_eq!(out, "1400");
+        let reads = sheet_reads() - before;
+        assert!(
+            reads <= 4,
+            "{reads} sheet list rereads for 100 animation changes"
+        );
+        let out = run(
+            scope,
+            "(() => { const s = document.createElement('style'); s.textContent = '#a{color:blue}'; \
+             document.head.append(s); return getComputedStyle(document.getElementById('a')).color; })()",
+        );
+        assert_eq!(out, "rgb(0, 0, 255)");
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
 /// A selector with a `:` none of the state-dependent transforms (popover, dialog, interest,
 /// form, view transition) applies to skips them: whether each applies is a property of the
 /// selector text, kept per selector, so `matches(':focus-visible')` or `closest('li:hover')`

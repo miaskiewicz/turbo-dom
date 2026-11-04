@@ -354,6 +354,9 @@ css_live_tests.rs: 0.7.1 turbo-dom#307 __cssTestRuleProbes getter and the rule_b
 browser_env.js: 0.7.1 turbo-dom#307 part 2 style sharing between same-signature siblings, kept per-sheet rule entries, an unchanged sheet list keeps its identity, the last bucket index extended; turbo-test#227 part 2 cascaded declarations reused under a volatile (animated) style; test-only __noteStyleShare / __styleShareOff hooks
 browser_env.rs: 0.7.1 turbo-dom#307 part 2 CSSOM structure epoch natives (__cssomStructureEpoch / __bumpCssomStructure); test-only STYLE_SHARES counter and STYLE_SHARE_OFF switch
 css_live_tests.rs: 0.7.1 turbo-dom#307 part 2 __cssTestStyleShares / __cssTestStyleShareOff and the style_sharing_tests submodule
+form_checked_state.rs: 0.7.1 perf the checked-radio owner scan runs once per (document, tree version); test-only OWNER_SCANS counter
+browser_env.js: 0.7.1 perf the internal-call dispatcher passes arguments as array literals; stable computed styles reused at an unchanged world stamp; the owner's sheet list holds while either tree version does; test-only __noteSheetRead hook
+browser_env.rs: 0.7.1 perf test-only STYLE_GENERATION_READS / SHEET_READS counters; the snapshot fingerprint folds in the engine scripts' hash (fingerprint_of)
 css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
 control_labels.rs: 0.7.0 perf turbo-dom#271 label lookups read a per-tree-version index (first element per id, label candidates per host chain) + a test-only walk counter
 "
