@@ -1076,11 +1076,11 @@
       // Element-backed pseudo-elements the element does not have see no author rules.
       // Match the private selector list before touching declarations. Native parsing
       // preserves quoted delimiters that serialized text splitting loses.
-      var sheets = info && !info.authored ? [] : computedSheets(el),build=computedSheetEntries(sheets,el),layers=build.layers,matched=[];
+      var sheets = info && !info.authored ? [] : computedSheets(el),build=computedSheetEntries(sheets,el),layers=build.layers,matched=[],own=sheets.length?cssElementKeys(el):null;
       for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
         var entries = build.lists[si];
-        for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
+        for (var ri=0; ri<entries.length; ri++) { if(own&&!cssEntryCandidate(entries[ri],own))continue; var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
       }
       cascadeEntries(matched,layers,function(entry,only){applyDeclarations(declarationRecord(entry.rule.style),info&&info.accepts,only);});
     } catch(e){}
@@ -2211,6 +2211,64 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     build={__proto__:null,epoch:epoch,media:media,layers:layers,lists:lists};
     if(!volatile&&sheets.length)computedSnapshotSet(computedEntryBuilds,sheets,build);
     return build;
+  }
+  // Rule buckets (turbo-dom#307): a style rule can select an element only when, for some
+  // alternative of its selector list, the element carries every class and id named at the top
+  // level of that alternative's rightmost compound. Each entry keeps one such name per
+  // alternative ('.a' / '#b', ASCII- and Unicode-lowercased, so quirks mode's case-insensitive
+  // class and id matching is never under-approximated), or none when some alternative names
+  // none or the scan cannot read it; a cascade skips an entry none of whose names the element
+  // carries. Skipping only drops rules that cannot match, in any live state (relaxing a state
+  // pseudo-class keeps the names), so the matched list, its order and every volatility read
+  // are unchanged. Names inside functional pseudo-classes (:is, :not, :has, :host(), ...) are
+  // never keys; :host / ::slotted / ::part compounds, nesting (&), namespaces (|) and escapes
+  // leave the rule unkeyed.
+  function cssEntryCandidate(entry,own){
+    var keys=entry.keys;
+    if(keys===undefined)keys=entry.keys=entry.scopes?null:cssRuleKeys($c.trim(String(entry.rule.selectorText||'')));
+    if(!keys)return true;
+    for(var index=0;index<keys.length;index++)if(own[keys[index]])return true;
+    return false;
+  }
+  var cssUnkeyedCompound=/^::?(?:host|slotted|part)(?![\w-])/i;
+  function cssRuleKeys(text){
+    if($c.indexOf(text,'\\')>=0)return null;
+    var keys=[],key=null,depth=0;
+    for(var index=0;index<text.length;index++){
+      var c=text[index];
+      if(c==='\\'||c==='&'||c==='|')return null;
+      if(c==='"'||c==="'"){index=computedStringEnd(text,index);continue;}
+      if(c==='['){index=cssBracketEnd(text,index);continue;}
+      if(c==='('){depth++;continue;}
+      if(c===')'){depth--;continue;}
+      if(depth)continue;
+      if(c===','){if(!key)return null;$c.push(keys,key);key=null;}
+      else if(c===' '||c==='\t'||c==='\n'||c==='\r'||c==='\f'||c==='>'||c==='+'||c==='~')key=null;
+      else if(c===':'&&cssApply(cssZoomExec,cssUnkeyedCompound,[$c.slice(text,index)]))return null;
+      else if(c==='.'||c==='#'){
+        var ident=cssApply(cssZoomExec,computedIdent,[$c.slice(text,index+1)]);
+        if(!ident)return null;
+        if(!key)key=c+$c.toLowerCase(ident[0]);
+        index+=ident[0].length;
+      }
+    }
+    if(!key)return null;
+    $c.push(keys,key);
+    return keys;
+  }
+  // The index of the `]` closing the attribute selector at `index` (quoted values skipped).
+  function cssBracketEnd(text,index){
+    while(index<text.length&&text[index]!==']'){if(text[index]==='"'||text[index]==="'")index=computedStringEnd(text,index);index++;}
+    return index;
+  }
+  // The element's class and id names, lowercased like cssRuleKeys' names; null (test every rule)
+  // when they cannot be read.
+  function cssElementKeys(el){
+    var keys={__proto__:null},names,id;
+    try{names=cssApply(computedStyleNativeGetAttribute,el,['class']);id=cssApply(computedStyleNativeGetAttribute,el,['id']);}catch(e){return null;}
+    if(id)keys['#'+$c.toLowerCase(id)]=true;
+    if(names){names=$c.toLowerCase(names);var start=0;for(var index=0;index<=names.length;index++){var c=names[index];if(index===names.length||c===' '||c==='\t'||c==='\n'||c==='\f'||c==='\r'){if(index>start)keys['.'+$c.slice(names,start,index)]=true;start=index+1;}}}
+    return keys;
   }
   function computedMergeMedia(reads){if(computedMediaReads&&reads)for(var text in reads)if(computedMediaReads[text]===undefined)computedMediaReads[text]=reads[text];}
   function computedMediaUnchanged(reads){
