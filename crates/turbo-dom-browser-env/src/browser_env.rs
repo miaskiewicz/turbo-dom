@@ -7824,8 +7824,9 @@ fn computed_style_filter(
     }
 }
 
-/// `__computedStyleTouch(elements)`: move the style generation of each node of the array
-/// (`Tree::invalidate_style`): the elements a sheet added to the document can select.
+/// `__computedStyleTouch(elements, quiet)`: move the style generation of each node of the
+/// array (`Tree::invalidate_style`): the elements a sheet added to the document can select,
+/// or (`quiet`: the tree version stays) the targets an animation joined or left.
 fn computed_style_touch(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
@@ -7834,6 +7835,7 @@ fn computed_style_touch(
     let Ok(list) = v8::Local::<v8::Array>::try_from(args.get(0)) else {
         return;
     };
+    let quiet = args.get(1).is_true();
     for index in 0..list.length() {
         let Some(node) = list
             .get_index(scope, index)
@@ -7843,7 +7845,7 @@ fn computed_style_touch(
         };
         let _owner = DomScope::for_object(scope, node);
         if let Some(handle) = handle_of(scope, node) {
-            with_tree_mut(|tree| tree.invalidate_style(handle));
+            with_tree_mut(|tree| tree.invalidate_style(handle, quiet));
         }
     }
 }

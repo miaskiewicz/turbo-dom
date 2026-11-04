@@ -785,7 +785,15 @@
   // without changing any cascaded value; the stamp discounts this realm's such bumps (another
   // realm's only cause an extra update, never a missed one).
   var animatedStyleBumps=0;
-  __ns.invalidateAnimatedStyles=function(){animatedStyleBumps++;bumpCssomEpoch();};
+  // `from` / `to`: the targets an animation left and joined (turbo-dom#279). Their style
+  // generations move (not the tree version, so no other element's animation stamp does);
+  // a target whose owner keys reused styles on the plain tree version drops every reuse.
+  __ns.invalidateAnimatedStyles=function(from,to){
+    var targets=[];if(from)$c.push(targets,from);if(to)$c.push(targets,to);
+    for(var index=0;index<targets.length;index++){var scope=-1;try{scope=computedOwnerScope(targets[index]);}catch(e){}if(scope<0){targets=null;break;}}
+    if(targets){try{computedStyleTouch(targets,true);return;}catch(e){}}
+    animatedStyleBumps++;bumpCssomEpoch();
+  };
   // An element's computed `display` (animations.js `rendered`): resolved through `snapshots`,
   // one map shared by a whole ancestor walk, so each ancestor resolves (or revalidates its
   // reuse) once per walk instead of once per level, and no declaration object is made.

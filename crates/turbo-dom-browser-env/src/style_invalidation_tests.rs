@@ -200,6 +200,25 @@ fn an_added_sheet_recascades_only_what_it_selects() {
     );
 }
 
+/// An animation starting or ending on another element re-cascades only that element's
+/// subtree (MUI transitions animate their own nodes); the animated values still apply.
+#[test]
+fn an_animation_elsewhere_recascades_nothing() {
+    let value = gate(
+        ".t{color:red}",
+        r#"const g=__gate((other,i)=>{const a=other.firstChild.animate([{opacity:0},{opacity:1}],{duration:1000});a.cancel();},3);
+        const child=g.other.firstChild.firstChild;getComputedStyle(child).opacity;
+        const a=g.other.firstChild.animate([{opacity:0.25},{opacity:0.25}],{duration:100000});
+        const animated=getComputedStyle(g.other.firstChild).opacity;
+        a.cancel();
+        return JSON.stringify({max:g.max,animated,after:getComputedStyle(g.other.firstChild).opacity});"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"max":0,"animated":"0.25","after":"1"})
+    );
+}
+
 /// `:has()` (and the other upward or document-wide dependencies) fall back to the tree-wide
 /// version: a write anywhere is seen.
 #[test]

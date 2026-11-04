@@ -1631,9 +1631,20 @@ impl Tree {
     }
 
     /// Move the style generation of `h` and its subtree (and its parent's child lists): what
-    /// an embedder reports for the elements a newly added stylesheet can select.
-    pub fn invalidate_style(&mut self, h: Handle) {
-        self.bump_node(h);
+    /// an embedder reports for the elements a newly added stylesheet can select. `quiet`
+    /// moves `selector_version` but not `version` (an animation joining or leaving `h`: no
+    /// DOM change, so version-keyed caches stay).
+    pub fn invalidate_style(&mut self, h: Handle, quiet: bool) {
+        if quiet {
+            self.selector_version += 1;
+            self.style_gens.insert(h, self.selector_version);
+            if let Some(parent) = self.parent(h) {
+                let forward = self.next_sibling(h).is_some();
+                self.bump_child_gens(parent, forward);
+            }
+        } else {
+            self.bump_node(h);
+        }
     }
 
     /// Report the selector features the embedder's computed styles follow (turbo-dom#279), or
@@ -3110,6 +3121,29 @@ mod tests {
         tree.set_style_filter(None);
         tree.set_attribute(div, "class", "c");
         assert_eq!(tree.style_generation(p, OWN), tree.selector_version);
+    }
+
+    /// `invalidate_style` moves the subtree's generation; quietly, without the tree version.
+    #[test]
+    fn invalidate_style_moves_the_subtree_generation() {
+        let mut tree = t("<div><p></p></div><span></span>");
+        let (div, p, span) = (
+            element(&tree, "div"),
+            element(&tree, "p"),
+            element(&tree, "span"),
+        );
+        let (version, other) = (tree.version, tree.style_generation(span, OWN));
+        tree.invalidate_style(div, true);
+        assert_eq!(tree.version, version);
+        assert_eq!(tree.style_generation(p, OWN), tree.selector_version);
+        assert_eq!(tree.style_generation(span, OWN), other);
+        assert_eq!(tree.style_generation(span, FORWARD), tree.selector_version);
+        tree.invalidate_style(span, false);
+        assert!(tree.version > version);
+        assert_eq!(tree.style_generation(span, OWN), tree.selector_version);
+        let detached = tree.create_element("i");
+        tree.invalidate_style(detached, true);
+        assert_eq!(tree.style_generation(detached, OWN), tree.selector_version);
     }
 
     /// Which mutations move which generations: creating a detached node moves none, an inline
