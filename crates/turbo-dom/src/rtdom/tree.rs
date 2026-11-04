@@ -701,7 +701,7 @@ pub enum Siblings {
 
 /// Each tree's `version` starts at its own base, 2^28 apart, so a version names one tree's
 /// state across every tree of the process: caches keyed on (document, version) outside the
-/// tree (the label index, XPath, CSS policy) can never mistake a new tree for an older one
+/// tree (the label index, the `XPath` and CSS policy caches) can never mistake a new tree for an older one
 /// whose counter happened to reach the same value. The bases cycle through 2^25 slots so
 /// every version stays below 2^53 (exact as a JS number).
 fn next_version_base() -> u64 {
