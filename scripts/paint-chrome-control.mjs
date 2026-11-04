@@ -923,7 +923,8 @@ const CASES = [
   })),
   // miaskiewicz/turbo-dom#303 (`currentcolor-*`): a border without a colour, or with
   // `currentcolor` spelled out, paints in the element's `color` (its own, inherited, or the
-  // initial black; a button's buttontext). Each case is a 40x20 box (a <button>: 48x28
+  // initial black; a button's buttontext); an `inset` / `outset` one shades Blink's
+  // #eeeeee instead. Each case is a 40x20 box (a <button>: 48x28
   // border box) with a 4px border at (20, 20); probes are box-relative: top, left,
   // bottom, right, the face.
   ...[
@@ -933,6 +934,7 @@ const CASES = [
     ["explicit-longhand", "border:4px solid #00ff00;border-color:currentcolor;color:#ff0000"],
     ["per-side", "color:#ff0000;border-top:4px solid;border-right:4px solid #00ff00;border-bottom:4px solid #00ff00;border-bottom-color:currentcolor;border-left:4px solid #0000ff;border-left-color:currentColor"],
     ["outset", "border:4px outset;color:#ff0000"],
+    ["inset-explicit", "border:4px inset currentcolor;color:#0000ff"],
   ]
     .map(([kind, style]) => [kind, `<div data-cid="m" style="${at(20, 20)};width:40px;height:20px;${style}"></div>`])
     .concat([
