@@ -351,6 +351,9 @@ css_live_tests.rs: 0.7.1 turbo-dom#279 style_invalidation_tests submodule; the r
 browser_env.js: 0.7.1 turbo-dom#307 rule buckets: a cascade skips style rules whose rightmost compound names no class or id the element carries; test-only __noteRuleProbe hook
 browser_env.rs: 0.7.1 turbo-dom#307 test-only __noteRuleProbe native (RULE_PROBES counter)
 css_live_tests.rs: 0.7.1 turbo-dom#307 __cssTestRuleProbes getter and the rule_bucket_tests submodule
+browser_env.js: 0.7.1 turbo-dom#307 part 2 style sharing between same-signature siblings, kept per-sheet rule entries, an unchanged sheet list keeps its identity, the last bucket index extended; turbo-test#227 part 2 cascaded declarations reused under a volatile (animated) style; test-only __noteStyleShare / __styleShareOff hooks
+browser_env.rs: 0.7.1 turbo-dom#307 part 2 CSSOM structure epoch natives (__cssomStructureEpoch / __bumpCssomStructure); test-only STYLE_SHARES counter and STYLE_SHARE_OFF switch
+css_live_tests.rs: 0.7.1 turbo-dom#307 part 2 __cssTestStyleShares / __cssTestStyleShareOff and the style_sharing_tests submodule
 css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
 control_labels.rs: 0.7.0 perf turbo-dom#271 label lookups read a per-tree-version index (first element per id, label candidates per host chain) + a test-only walk counter
 "
@@ -377,7 +380,8 @@ OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
 OWNED="$OWNED activation_focus_probe.js activation_focus_chrome156.json selector_errors_probe.js selector_errors_chrome156.json"
 OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
 OWNED="$OWNED style_invalidation_probe.js style_invalidation_chrome156.json style_invalidation_tests.rs"
-OWNED="$OWNED rule_bucket_tests.rs"
+OWNED="$OWNED rule_bucket_tests.rs style_sharing_tests.rs"
+OWNED="$OWNED jsdom_media_jsdom27.json jsdom_media_probe.js media_override_chrome156.json media_override_probe.js"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
 OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"
