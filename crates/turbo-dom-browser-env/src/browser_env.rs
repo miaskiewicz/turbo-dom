@@ -7941,7 +7941,7 @@ pub fn snapshot_references() -> (&'static [v8::ExternalReference], u64) {
     // SAFETY: a leaked, never-mutated slice (`startup_snapshot::references`).
     let references: &'static [v8::ExternalReference] =
         unsafe { std::slice::from_raw_parts(start as *const v8::ExternalReference, len) };
-    let anchor = snapshot_references as usize;
+    let anchor = snapshot_references as *const () as usize;
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     for reference in references {
         // SAFETY: every table entry is a function pointer (`external_refs::table`).
