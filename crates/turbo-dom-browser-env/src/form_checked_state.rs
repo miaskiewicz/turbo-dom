@@ -194,7 +194,19 @@ thread_local! {
 pub(super) fn owner_scans() -> usize {
     OWNER_SCANS.with(std::cell::Cell::get)
 }
+thread_local! {
+    /// The (document, tree version) of the last owner scan with nothing left to regroup.
+    static OWNERS_SCANNED_AT: std::cell::Cell<Option<(u64, u64)>> = const { std::cell::Cell::new(None) };
+}
+/// Regroup every checked radio whose form owner moved. Owners follow the tree only (structure,
+/// `form` and `id` attributes), and a tree version names one tree's state (versions never repeat
+/// across trees), so a call at the version of the last scan has nothing to do: every flush (each
+/// dispatched event) calls this.
 pub(super) fn owner_changes() {
+    let at = with_tree(|tree| (DOM_ID.with(std::cell::Cell::get), tree.version));
+    if at.is_some() && OWNERS_SCANNED_AT.with(std::cell::Cell::get) == at {
+        return;
+    }
     #[cfg(test)]
     OWNER_SCANS.with(|scans| scans.set(scans.get() + 1));
     let previous = DOM.with(|dom| {
@@ -224,6 +236,8 @@ pub(super) fn owner_changes() {
     for (_, _, node) in rows {
         group(node);
     }
+    // The version the scan started from: if regrouping moved the tree, the next call rescans.
+    OWNERS_SCANNED_AT.with(|scanned| scanned.set(at));
 }
 pub(super) fn snapshot(node: Handle) -> Vec<(Handle, bool)> {
     let mut rows = peers(node)
