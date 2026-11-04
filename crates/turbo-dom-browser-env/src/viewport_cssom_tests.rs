@@ -95,3 +95,14 @@ fn computed_custom_properties_match_chrome156_control() {
         include_str!("computed_custom_properties_probe.js"),
     );
 }
+
+/// turbo-dom#287: matchMedia returns a MediaQueryList (an EventTarget) evaluated against
+/// the window viewport, serializing its media text like Chrome and firing `change`
+/// (legacy listeners, `change` listeners, `onchange`) when a resize flips it.
+#[test]
+fn match_media_matches_chrome156_control() {
+    check(
+        include_str!("match_media_chrome156.json"),
+        include_str!("match_media_probe.js"),
+    );
+}
