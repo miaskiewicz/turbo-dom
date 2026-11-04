@@ -346,6 +346,38 @@ fn label_lookups_walk_the_tree_once_per_version() {
     clear_interface_records(isolate);
 }
 
+/// The label index is a thread-local keyed on (document id, tree version). A new install on
+/// the same thread (turbo-test's next file on a reused worker) starts a new tree whose
+/// version restarts, so the same key must never name the previous tree's index: its stale
+/// handles made `labels` / `control` flakily wrong in full suite runs.
+#[test]
+fn a_new_install_never_reuses_the_previous_trees_label_index() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><label for=a>A</label><input id=a>");
+        assert_eq!(
+            run(scope, "String(document.getElementById('a').labels.length)"),
+            "1"
+        );
+        install_with_html(scope, "<body><input id=a><label>B<input id=b></label>");
+        assert_eq!(
+            run(
+                scope,
+                "JSON.stringify([document.getElementById('a').labels.length, \
+                 document.getElementById('b').labels.length, \
+                 document.querySelector('label').control === document.getElementById('b')])"
+            ),
+            "[0,1,true]"
+        );
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
 /// A selector with a `:` none of the state-dependent transforms (popover, dialog, interest,
 /// form, view transition) applies to skips them: whether each applies is a property of the
 /// selector text, kept per selector, so `matches(':focus-visible')` or `closest('li:hover')`
