@@ -1630,6 +1630,12 @@ impl Tree {
         }
     }
 
+    /// Move the style generation of `h` and its subtree (and its parent's child lists): what
+    /// an embedder reports for the elements a newly added stylesheet can select.
+    pub fn invalidate_style(&mut self, h: Handle) {
+        self.bump_node(h);
+    }
+
     /// Report the selector features the embedder's computed styles follow (turbo-dom#279), or
     /// `None` when every attribute write can change a computed style (the default). Only
     /// `class`, `id`, `role`, `tabindex`, `title`, `aria-*` and `data-*` writes are filtered:

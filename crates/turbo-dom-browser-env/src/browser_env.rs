@@ -7529,6 +7529,7 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         "__computedStyleFilter",
         computed_style_filter,
     );
+    bind_method(scope, global, "__computedStyleTouch", computed_style_touch);
     #[cfg(test)]
     bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
     #[cfg(test)]
@@ -7820,6 +7821,30 @@ fn computed_style_filter(
     let _owner = DomScope::for_object(scope, node);
     if handle_of(scope, node).is_some() {
         with_tree_mut(|tree| tree.set_style_filter(filter));
+    }
+}
+
+/// `__computedStyleTouch(elements)`: move the style generation of each node of the array
+/// (`Tree::invalidate_style`): the elements a sheet added to the document can select.
+fn computed_style_touch(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    let Ok(list) = v8::Local::<v8::Array>::try_from(args.get(0)) else {
+        return;
+    };
+    for index in 0..list.length() {
+        let Some(node) = list
+            .get_index(scope, index)
+            .and_then(|node| v8::Local::<v8::Object>::try_from(node).ok())
+        else {
+            continue;
+        };
+        let _owner = DomScope::for_object(scope, node);
+        if let Some(handle) = handle_of(scope, node) {
+            with_tree_mut(|tree| tree.invalidate_style(handle));
+        }
     }
 }
 

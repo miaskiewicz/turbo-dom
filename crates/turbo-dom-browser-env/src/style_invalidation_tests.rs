@@ -172,6 +172,34 @@ fn unnamed_class_and_attribute_writes_recascade_nothing() {
     );
 }
 
+/// A <style> appended or prepended through the DOM (emotion's insertion) re-cascades only the
+/// elements its rules can select (and their subtrees), like Chrome's rule-set invalidation;
+/// the new rules apply, inside @media too, and before earlier sheets in the cascade order.
+#[test]
+fn an_added_sheet_recascades_only_what_it_selects() {
+    let value = gate(
+        ".t{color:red}",
+        r#"globalThis.matchMedia=query=>({matches:true,media:query});
+        const g=__gate(()=>{},1);
+        const add=(css,first)=>{const s=document.createElement('style');s.textContent=css;first?document.head.prepend(s):document.head.append(s);};
+        let before=__cssTestCascadeRuns();
+        add('.css-a{margin-left:1px} @media (min-width: 1px){.css-b{margin-left:2px}} .css-b:hover{color:red}');
+        const other=getComputedStyle(g.target).color, untouched=__cssTestCascadeRuns()-before;
+        g.target.classList.add('css-b');
+        const media=getComputedStyle(g.target).marginLeft;
+        add('.t{color:blue}');
+        const appended=getComputedStyle(g.target).color;
+        add('.t{color:lime} .css-c ::placeholder{color:red}',true);
+        const prepended=getComputedStyle(g.target).color;
+        g.parent.classList.add('css-d');add('.css-d{color:rgb(1, 2, 3)} .css-d > .t{margin-left:3px}');
+        return JSON.stringify({other,untouched,media,appended,prepended,inherited:getComputedStyle(g.parent).color,child:getComputedStyle(g.target).marginLeft});"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"other":"rgb(255, 0, 0)","untouched":0,"media":"2px","appended":"rgb(0, 0, 255)","prepended":"rgb(0, 0, 255)","inherited":"rgb(1, 2, 3)","child":"3px"})
+    );
+}
+
 /// `:has()` (and the other upward or document-wide dependencies) fall back to the tree-wide
 /// version: a write anywhere is seen.
 #[test]
@@ -225,7 +253,7 @@ fn reused_styles_equal_a_fresh_cascade_under_random_mutations() {
         const sheet=[];
         for(let r=0;r<5;r++){const s=pick(sels);sheet.push(r%2?`${s}{margin-left:${r+1}px}`:`${s}{color:rgb(${r*40}, 1, 2)}`);}
         if(round%4===3)sheet.pop();
-        const style=document.createElement('style');style.textContent=sheet.filter(x=>!(round%3===0&&/:has|:empty/.test(x))).join(' ');document.head.append(style);
+        const extra=[];const style=document.createElement('style');style.textContent=sheet.filter(x=>!(round%3===0&&/:has|:empty/.test(x))).join(' ');document.head.append(style);
         const host=document.createElement('main');document.body.append(host);
         const all=[host];
         for(let n=0;n<25;n++){const el=document.createElement(pick(tags));if(rnd(2))el.className=pick(classes);el.id='n'+n;pick(all).append(el);all.push(el);}
@@ -240,12 +268,13 @@ fn reused_styles_equal_a_fresh_cascade_under_random_mutations() {
           else if(kind===3){const p=pick(all);if(!el.contains(p))p.insertBefore(el,rnd(2)?p.firstChild:null);}
           else if(kind===4)el.remove();
           else if(kind===5){if(!el.isConnected){const p=pick(all);if(!el.contains(p))p.append(el);}else el.append(document.createTextNode('t'));}
-          else el.textContent='';
+          else if(rnd(2))el.textContent='';
+          else{const st=document.createElement('style');st.textContent=pick(sels)+(rnd(2)?'{color:rgb(9, 9, 9)}':'{margin-left:9px}');rnd(2)?document.head.prepend(st):document.head.append(st);extra.push(st);}
           if(rnd(3)===0)read();
           const reused=read();ns.invalidateComputedStyles();const fresh=read();
           for(let i=0;i<all.length;i++){checks++;if(reused[i]!==fresh[i]){mismatches++;first=first||{round,step,id:all[i].id,reused:reused[i],fresh:fresh[i]};}}
         }
-        host.remove();style.remove();
+        host.remove();style.remove();extra.forEach(x=>x.remove());
       }
       return JSON.stringify({mismatches,checks,first});
     })()"#,
