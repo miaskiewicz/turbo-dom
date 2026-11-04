@@ -135,6 +135,17 @@
   computedStyleNativeNamespace=__ns.domAccessor('namespaceURI',false,'Element');
   computedStyleNativeConnected=__ns.domAccessor('isConnected',false,'Node');
   var createdLocalName=__ns.domAccessor('localName',false,'Element');
+  var computedStyleNativeAttribute=null;
+  // An HTML <iframe>'s `width` / `height` attributes map to presentational hints (author CSS
+  // wins); without them the replaced box is 300x150 (turbo-dom#288).
+  function iframeSizeHints(el){
+    try{if(cssApply(createdLocalName,el,[])!=='iframe'||cssApply(computedStyleNativeNamespace,el,[])!=='http://www.w3.org/1999/xhtml')return null;}catch(e){return null;}
+    // Captured on first use: Element.prototype is complete once pages run.
+    if(!computedStyleNativeAttribute)computedStyleNativeAttribute=g.Element.prototype.getAttribute;
+    var hints={__proto__:null};
+    $c.forEach([['width','300px'],['height','150px']],function(pair){var text=cssApply(computedStyleNativeAttribute,el,[pair[0]]),match=text==null?null:$c.exec(/^[\t\n\f\r ]*(\d+(?:\.\d+)?)(%?)/,text);hints[pair[0]]=match?(+match[1])+(match[2]?'%':'px'):pair[1];});
+    return hints;
+  }
   if (typeof g.__nativeDOMFunction === 'function') { __ns.makeNativeFunction = g.__nativeDOMFunction; delete g.__nativeDOMFunction; }
   if (typeof g.__nativeNamedObject === 'function') { __ns.makeNamedObject = g.__nativeNamedObject; delete g.__nativeNamedObject; }
   if (typeof g.navigator === 'undefined') g.navigator = { userAgent: 'turbo-test', platform: 'rust', language: 'en-US', languages: ['en-US'], clipboard: {}, maxTouchPoints: 0 };
@@ -837,6 +848,8 @@
     try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
       if(!pseudo&&layer==='fullscreen')ua=$O.assign({},ua||{},fullscreenUserAgent); } catch(e){}
     if(ua){$c.forEach($O.keys(ua), function(name){setProp(name,ua[name]);});uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
+    var sizeHints=!pseudo&&iframeSizeHints(el);
+    if(sizeHints)$c.forEach($O.keys(sizeHints),function(name){setProp(name,sizeHints[name]);});
     try {
       // Element-backed pseudo-elements the element does not have see no author rules.
       // Match the private selector list before touching declarations. Native parsing
@@ -1019,7 +1032,10 @@
   if (ownMatchMedia) ownMatchMedia = g.matchMedia;
   // The cascade evaluates media text directly while matchMedia is the binding's own (no
   // MediaQueryList per rule); a page or embedder replacement is asked instead.
-  function mediaMatches(text){ return g.matchMedia === ownMatchMedia ? __ns.mediaTextMatches(text) : !!g.matchMedia(text).matches; }
+  // A child iframe window's getComputedStyle evaluates @media against its own viewport.
+  var mediaView = null;
+  function mediaMatches(text){ return g.matchMedia === ownMatchMedia ? __ns.mediaTextMatches(text, mediaView) : !!g.matchMedia(text).matches; }
+  __ns.withMediaView = function(target, run){ var outer = mediaView; mediaView = target; try { return run(); } finally { mediaView = outer; } };
   // `Image(width, height)` is the native legacy factory in html_image.js (turbo-dom#23); image
   // loading (load / error events, natural size) is the host's (record.imageHost).
   if (typeof g.location === 'undefined' || g.location == null) {
@@ -1341,7 +1357,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       'prefers-reduced-transparency': 'no-preference', 'prefers-reduced-data': 'no-preference', 'forced-colors': 'none', 'inverted-colors': 'none',
       hover: 'hover', 'any-hover': 'hover', pointer: 'fine', 'any-pointer': 'fine', 'display-mode': 'browser', scripting: 'enabled', update: 'fast',
       'overflow-block': 'scroll', 'overflow-inline': 'scroll', 'color-gamut': 'srgb', 'dynamic-range': 'standard', 'video-dynamic-range': 'standard' };
-    var size = function(name){ var value = g[name]; return typeof value === 'number' && isFinite(value) ? value : NaN; };
+    // The window whose viewport a query is evaluated against: the top window, or a child
+    // iframe window (its content box) while one of its lists evaluates.
+    var view = g;
+    var size = function(name){ var value = view[name]; return typeof value === 'number' && isFinite(value) ? value : NaN; };
     var dpr = function(){ var value = size('devicePixelRatio'); return value > 0 ? value : 1; };
     var screenSize = function(axis, fallback){ var screen = g.screen, value = screen && screen[axis]; return typeof value === 'number' ? value : size(fallback); };
     // Range features: [value kind, current value]; ratios compare as width/height pairs.
@@ -1477,10 +1496,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       parts.push(text.slice(start));
       return parts.map(function(part){ return query(part.trim()); });
     }
-    function evaluate(queries){ return !queries.length || queries.some(function(item){ return item.test(); }); }
+    function evaluate(queries, target){
+      var outer = view; view = target || g;
+      try { return !queries.length || queries.some(function(item){ return item.test(); }); } finally { view = outer; }
+    }
     var cache = new Map();
     function parsed(text){ var queries = cache.get(text); if (!queries) { queries = parseList(text); if (cache.size > 512) cache.clear(); cache.set(text, queries); } return queries; }
-    __ns.mediaTextMatches = function(text){ return evaluate(parsed(String(text))); };
+    __ns.mediaTextMatches = function(text, target){ return evaluate(parsed(String(text)), target); };
     var record = function(list){ var state = getOf(records, list); if (!state) throw new TypeError('Illegal invocation'); return state; };
     var MQLEvent = g.MediaQueryListEvent;
     if (typeof MQLEvent !== 'function' || !('matches' in MQLEvent.prototype)) {
@@ -1515,7 +1537,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     };
     Object.keys(methods).forEach(function(name){ Object.defineProperty(proto, name, { value: make(methods[name], name, 1), writable: true, enumerable: true, configurable: true }); });
     Object.defineProperty(proto, 'media', { enumerable: true, configurable: true, get: make(function(){ return record(this).media; }, 'get media', 0) });
-    Object.defineProperty(proto, 'matches', { enumerable: true, configurable: true, get: make(function(){ return evaluate(record(this).queries); }, 'get matches', 0) });
+    Object.defineProperty(proto, 'matches', { enumerable: true, configurable: true, get: make(function(){ var state = record(this); return evaluate(state.queries, state.view); }, 'get matches', 0) });
     Object.defineProperty(proto, 'onchange', { enumerable: true, configurable: true,
       get: make(function(){ return record(this).handler; }, 'get onchange', 0),
       set: make(function(value){
@@ -1527,12 +1549,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     Object.defineProperty(MQL, 'prototype', { writable: false });
     Object.setPrototypeOf(MQL, ET);
     Object.defineProperty(g, 'MediaQueryList', { value: MQL, writable: true, configurable: true, enumerable: false });
-    __ns.matchMedia = function(text){
-      text = String(text);
+    __ns.matchMedia = function(text, target){
+      text = String(text); target = target || g;
       // Listen once the page runs: the window's listener store is installed after this block.
       if (!watching) { watching = true; try { g.addEventListener('resize', viewportChanged); } catch(e){} }
+      if (target !== g && typeof __ns.watchFrameViewport === 'function') __ns.watchFrameViewport(target);
       var queries = parsed(text), list = construct(__ns.eventTargetConstructor || ET, [], MQL);
-      setOf(records, list, { media: queries.map(function(item){ return item.ser; }).join(', '), queries: queries, handler: null, invoker: null, last: evaluate(queries) });
+      setOf(records, list, { media: queries.map(function(item){ return item.ser; }).join(', '), queries: queries, view: target, handler: null, invoker: null, last: evaluate(queries, target) });
       lists.push(typeof WeakRef === 'function' ? new WeakRef(list) : { deref: function(){ return list; } });
       return list;
     };
@@ -1542,12 +1565,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       lists.forEach(function(ref){ var list = ref.deref(); if (list) live.push([ref, list]); });
       lists = live.map(function(pair){ return pair[0]; });
       live.forEach(function(pair){
-        var state = getOf(records, pair[1]), now = evaluate(state.queries);
+        var state = getOf(records, pair[1]), now = evaluate(state.queries, state.view);
         if (now === state.last) return;
         state.last = now;
         call('dispatchEvent', pair[1], [new MQLEvent('change', { matches: now, media: state.media })]);
       });
     }
+    __ns.mediaViewportChanged = viewportChanged;
   })();
   // make `node instanceof HTMLElement/Element/Node/...` work for native DOM nodes (jest-dom's
   // checkHtmlElement + many libs rely on it) via Symbol.hasInstance keyed on nodeType.
@@ -3254,16 +3278,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // origin (scheme://host[:port]) of a URL string; 'null' when not absolute http(s).
     var originOf = function(u){ try { var m=/^(https?:\/\/[^\/]+)/i.exec(String(u||'')); return m?m[1]:'null'; } catch(e){ return 'null'; } };
 
-    // An iframe's content box on `axis` ('width' / 'height'): its used CSS size (less padding
-    // and border under border-box sizing), else its `width` / `height` attribute, else Chrome's
-    // 300x150 default (turbo-dom#288).
+    // An iframe's content box on `axis` ('width' / 'height'): its computed size (the cascade
+    // maps the size attributes as presentational hints), less padding and border under
+    // border-box sizing, rounded to whole pixels like Chrome (turbo-dom#288).
     var framePx = function(style, name){ var match = /^(-?\d+(?:\.\d+)?)px$/.exec(String(style.getPropertyValue(name) || '').trim()); return match ? +match[1] : null; };
-    var frameAttribute = function(hostEl, axis){
-      if (!hostEl || !hostEl.getAttribute) return null;
-      var text = hostEl.getAttribute(axis) || (typeof hostEl[axis] === 'string' ? hostEl[axis] : '');
-      var match = /^\s*(\d+(?:\.\d+)?)/.exec(text);
-      return match ? +match[1] : null;
-    };
     // Under border-box sizing the content box excludes padding and border.
     var frameBoxExtras = function(style, axis){
       if (String(style.getPropertyValue('box-sizing')).trim() !== 'border-box') return 0;
@@ -3273,11 +3291,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var frameContentSize = function(hostEl, axis){
       var style = null;
       try { style = hostEl && g.getComputedStyle(hostEl); } catch(e){}
-      var size = style ? framePx(style, axis) : null, fallback = axis === 'width' ? 300 : 150, attribute = frameAttribute(hostEl, axis);
-      // The cascade reports the UA 300x150 default where Chrome maps the attribute as a
-      // presentational hint (below author CSS); an attribute then wins over that default.
-      if (attribute !== null && (size === null || size === fallback)) return attribute;
-      return size === null ? fallback : Math.max(0, size - frameBoxExtras(style, axis));
+      var size = style ? framePx(style, axis) : null;
+      // A detached iframe has no box: its window reports the 300x150 default.
+      return size === null ? (axis === 'width' ? 300 : 150) : Math.max(0, Math.round(size - frameBoxExtras(style, axis)));
     };
     // A child window's viewport is its iframe's content box; its outer size is the top window's.
     var defineFrameViewport = function(childWin, hostEl, parentWin){
@@ -3285,6 +3301,23 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
        ['outerWidth', function(){ return parentWin.outerWidth; }], ['outerHeight', function(){ return parentWin.outerHeight; }]].forEach(function(pair){
         try { Object.defineProperty(childWin, pair[0], { get: pair[1], set: function(value){ Object.defineProperty(childWin, pair[0], { value: value, writable: true, configurable: true, enumerable: true }); }, configurable: true, enumerable: true }); } catch(e){}
       });
+    };
+
+    // A child window's matchMedia and getComputedStyle's @media evaluate against its own
+    // viewport (turbo-dom#288); the binding's own matchMedia only (a replaced one is kept).
+    var defineFrameMedia = function(childWin){
+      if (typeof __ns.matchMedia !== 'function' || !__ns.withMediaView) return;
+      var make = __ns.makeNativeFunction, computed = g.getComputedStyle;
+      childWin.matchMedia = make(function matchMedia(query){ return __ns.matchMedia(query, childWin); }, 'matchMedia', 1);
+      childWin.getComputedStyle = make(function getComputedStyle(element){ var args = arguments; return __ns.withMediaView(childWin, function(){ return Reflect.apply(computed, g, args); }); }, 'getComputedStyle', 1);
+    };
+    // An iframe resizes with the DOM (its attributes, styles, style sheets): once a child
+    // window has a MediaQueryList, every DOM change re-evaluates the lists after it.
+    var frameWatcher = null;
+    __ns.watchFrameViewport = function(){
+      if (frameWatcher || typeof g.MutationObserver !== 'function' || !__ns.mediaViewportChanged) return;
+      frameWatcher = new g.MutationObserver(function(){ __ns.mediaViewportChanged(); });
+      try { frameWatcher.observe(d, { subtree: true, childList: true, attributes: true, characterData: true }); } catch(e){ frameWatcher = null; }
     };
 
     // Build (once) a bridged child realm for the <iframe> `hostEl`. `parentWin` defaults
@@ -3315,7 +3348,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         setTimeout: g.setTimeout, clearTimeout: g.clearTimeout,
         setInterval: g.setInterval, clearInterval: g.clearInterval,
         requestAnimationFrame: g.requestAnimationFrame, cancelAnimationFrame: g.cancelAnimationFrame,
-        getComputedStyle: g.getComputedStyle, matchMedia: g.matchMedia,
+        getComputedStyle: g.getComputedStyle, matchMedia: g.matchMedia, MediaQueryList: g.MediaQueryList, MediaQueryListEvent: g.MediaQueryListEvent,
         atob: g.atob, btoa: g.btoa, crypto: g.crypto, performance: g.performance,
         addEventListener: function(t,f){ if(typeof f==='function') (wl[t]=wl[t]||[]).push(f); },
         removeEventListener: function(t,f){ var a=wl[t]; if(a){ var i=a.indexOf(f); if(i>=0) a.splice(i,1); } },
@@ -3328,6 +3361,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         },
       });
       defineFrameViewport(childWin, hostEl, parentWin);
+      defineFrameMedia(childWin);
       childWin.window = childWin; childWin.self = childWin; childWin.globalThis = childWin;
       childDoc.defaultView = childWin;
       // parentView: what the child holds to reach the parent (child.parent / child.top /
@@ -3781,6 +3815,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     reflectedContent.push(['HTMLMediaElement','controls',true,'controls'],['HTMLMediaElement','autoplay',true,'autoplay'],['HTMLMediaElement','loop',true,'loop'],['HTMLMediaElement','defaultMuted',true,'muted'],['HTMLMediaElement','disableRemotePlayback',true,'disableremoteplayback'],['HTMLVideoElement','playsInline',true,'playsinline']);
     // turbo-dom#169: the name attribute of every owner the form-control copies do not cover.
     ['HTMLImageElement','HTMLEmbedElement','HTMLObjectElement','HTMLIFrameElement','HTMLMapElement','HTMLFieldSetElement','HTMLAnchorElement','HTMLDetailsElement'].forEach(function(owner){reflectedContent.push([owner,'name',false,'name']);});
+    // turbo-dom#288: HTMLIFrameElement's width / height (DOMString reflections).
+    reflectedContent.push(['HTMLIFrameElement','width',false,'width'],['HTMLIFrameElement','height',false,'height']);
     // turbo-dom#174: HTMLParamElement.
     reflectedContent.push(['HTMLParamElement','name',false,'name'],['HTMLParamElement','value',false,'value'],['HTMLParamElement','type',false,'type'],['HTMLParamElement','valueType',false,'valuetype']);
     reflectedContent.forEach(function(entry){
