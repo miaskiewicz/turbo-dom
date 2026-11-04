@@ -1,0 +1,123 @@
+{
+ "browser": "Google Chrome for Testing 156.0.8078.47",
+ "result": {
+  "descendant": [
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px t:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px",
+   "a:rgb(200, 0, 0)|0px b:rgb(200, 0, 0)|0px t:rgb(200, 0, 0)|1px c:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px",
+   "a:rgb(200, 0, 0)|0px b:rgb(200, 0, 0)|0px t:rgb(200, 0, 0)|1px c:rgb(200, 0, 0)|0px u:rgb(200, 0, 0)|1px",
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px t:rgb(0, 0, 0)|0px c:rgb(200, 0, 0)|0px u:rgb(200, 0, 0)|1px",
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px c:rgb(200, 0, 0)|0px u:rgb(200, 0, 0)|1px t:rgb(200, 0, 0)|1px",
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|2px c:rgb(200, 0, 0)|0px t:rgb(200, 0, 0)|1px",
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px c:rgb(200, 0, 0)|0px t:rgb(200, 0, 0)|1px"
+  ],
+  "child": [
+   "a:rgb(0, 0, 0)|0px t:rgb(0, 0, 0)|0px s:rgb(0, 0, 0)|0px",
+   "a:rgb(0, 0, 0)|0px t:rgb(0, 100, 0)|3px s:rgb(0, 100, 0)|0px",
+   "a:rgb(0, 0, 0)|0px t:rgb(0, 100, 0)|3px s:rgb(0, 100, 0)|3px",
+   "a:rgb(0, 0, 0)|0px t:rgb(0, 0, 0)|0px s:rgb(0, 100, 0)|3px",
+   "a:rgb(0, 0, 0)|0px t:rgb(0, 0, 0)|0px s:rgb(0, 0, 0)|0px"
+  ],
+  "adjacent": [
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px",
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|4px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px",
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|4px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 150)|0px",
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 150)|0px",
+   "a:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px",
+   "c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px",
+   "a:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 150)|0px b:rgb(0, 0, 0)|0px"
+  ],
+  "general-sibling": [
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px e:rgb(0, 0, 0)|0px",
+   "a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|5px d:rgb(0, 0, 0)|0px e:rgb(1, 2, 3)|0px",
+   "a:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px e:rgb(1, 2, 3)|0px",
+   "a:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|5px b:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px e:rgb(1, 2, 3)|0px",
+   "a:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px e:rgb(1, 2, 3)|0px",
+   "a:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px e:rgb(0, 0, 0)|5px"
+  ],
+  "nth": [
+   "r:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|7px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px e:rgb(0, 20, 0)|8px",
+   "r:rgb(0, 0, 0)|0px n:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|6px b:rgb(0, 0, 0)|7px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px e:rgb(0, 20, 0)|8px",
+   "r:rgb(0, 0, 0)|0px n:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|7px b:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px e:rgb(0, 20, 0)|8px",
+   "r:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|7px b:rgb(0, 0, 0)|6px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px e:rgb(0, 20, 0)|8px",
+   "r:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|7px c:rgb(0, 0, 0)|6px d:rgb(0, 0, 0)|0px e:rgb(0, 20, 0)|8px a:rgb(10, 0, 0)|0px",
+   "r:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|7px c:rgb(0, 0, 0)|6px i:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|8px e:rgb(0, 20, 0)|0px a:rgb(10, 0, 0)|0px",
+   "r:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|7px c:rgb(0, 0, 0)|6px i:rgb(0, 0, 0)|0px d:rgb(0, 20, 0)|8px a:rgb(10, 0, 0)|0px",
+   "r:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|6px i:rgb(0, 0, 0)|0px d:rgb(0, 20, 0)|8px a:rgb(10, 0, 0)|7px"
+  ],
+  "of-type": [
+   "r:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|9px b:rgb(0, 0, 0)|0px c:rgb(0, 30, 0)|0px q:rgb(0, 0, 0)|0px d:rgb(30, 0, 0)|10px",
+   "r:rgb(0, 0, 0)|0px a:rgb(30, 0, 0)|10px b:rgb(0, 0, 0)|0px q:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|9px c:rgb(30, 0, 0)|0px",
+   "r:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px a:rgb(0, 30, 0)|10px q:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|9px c:rgb(30, 0, 0)|0px",
+   "r:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px q:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|9px c:rgb(30, 0, 0)|0px",
+   "r:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px a:rgb(0, 30, 0)|10px q:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|9px c:rgb(30, 0, 0)|0px",
+   "r:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px a:rgb(0, 30, 0)|10px q:rgb(0, 0, 0)|0px span:rgb(0, 0, 0)|9px d:rgb(0, 0, 0)|0px c:rgb(30, 0, 0)|0px"
+  ],
+  "has": [
+   "box:rgb(0, 0, 0)|0px p:rgb(0, 0, 0)|0px q:rgb(0, 0, 0)|0px w:rgb(0, 0, 0)|0px i:rgb(0, 0, 0)|0px",
+   "box:rgb(0, 0, 0)|11px p:rgb(0, 0, 0)|12px q:rgb(40, 0, 0)|0px w:rgb(0, 0, 0)|0px i:rgb(0, 0, 0)|0px",
+   "box:rgb(0, 40, 0)|11px p:rgb(0, 40, 0)|12px q:rgb(40, 0, 0)|0px w:rgb(0, 40, 0)|0px i:rgb(0, 40, 0)|0px",
+   "box:rgb(0, 40, 0)|0px p:rgb(0, 40, 0)|0px q:rgb(0, 40, 0)|0px w:rgb(0, 40, 0)|0px i:rgb(0, 40, 0)|0px",
+   "box:rgb(0, 40, 0)|0px p:rgb(0, 40, 0)|0px q:rgb(40, 0, 0)|0px w:rgb(0, 40, 0)|0px i:rgb(0, 40, 0)|0px",
+   "box:rgb(0, 0, 0)|0px p:rgb(0, 0, 0)|0px q:rgb(0, 0, 0)|0px",
+   "box:rgb(0, 40, 0)|0px p:rgb(0, 40, 0)|0px q:rgb(40, 0, 0)|0px w:rgb(0, 40, 0)|0px i:rgb(0, 40, 0)|0px",
+   "box:rgb(0, 0, 0)|0px p:rgb(0, 0, 0)|0px q:rgb(40, 0, 0)|0px w:rgb(0, 0, 0)|0px i:rgb(0, 0, 0)|0px"
+  ],
+  "empty-and-child-position": [
+   "e:rgb(0, 0, 0)|13px a:rgb(0, 0, 0)|15px r:rgb(0, 0, 0)|0px b:rgb(0, 50, 0)|14px",
+   "e:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|0px r:rgb(0, 0, 0)|0px b:rgb(0, 50, 0)|14px",
+   "e:rgb(0, 0, 0)|13px a:rgb(0, 0, 0)|15px r:rgb(0, 0, 0)|0px b:rgb(0, 50, 0)|14px",
+   "e:rgb(0, 0, 0)|13px a:rgb(0, 0, 0)|15px r:rgb(0, 0, 0)|0px b:rgb(50, 0, 0)|0px c:rgb(0, 0, 0)|14px",
+   "e:rgb(0, 0, 0)|13px a:rgb(0, 0, 0)|15px r:rgb(0, 0, 0)|0px b:rgb(0, 50, 0)|14px",
+   "e:rgb(0, 0, 0)|13px a:rgb(0, 0, 0)|15px r:rgb(0, 0, 0)|0px b:rgb(0, 50, 0)|14px",
+   "e:rgb(0, 0, 0)|13px a:rgb(0, 0, 0)|15px r:rgb(0, 0, 0)|0px p:rgb(50, 0, 0)|0px b:rgb(0, 0, 0)|14px",
+   "e:rgb(0, 0, 0)|13px a:rgb(0, 0, 0)|15px r:rgb(0, 0, 0)|0px p:rgb(50, 0, 0)|0px b:rgb(0, 0, 0)|14px",
+   "e:rgb(0, 0, 0)|13px a:rgb(0, 0, 0)|15px r:rgb(0, 0, 0)|0px p:rgb(50, 0, 0)|0px b:rgb(0, 0, 0)|14px"
+  ],
+  "class-id-attribute": [
+   "p:rgb(0, 0, 0)|0px t:rgb(0, 60, 0)|0px q:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px",
+   "p:rgb(0, 0, 0)|0px x:rgb(0, 60, 0)|16px q:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px",
+   "p:rgb(60, 0, 0)|0px x:rgb(0, 60, 0)|16px q:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px",
+   "p:rgb(0, 0, 0)|0px x:rgb(0, 60, 0)|16px q:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px",
+   "p:rgb(0, 0, 0)|0px x:rgb(0, 60, 0)|16px q:rgb(0, 0, 0)|0px u:rgb(0, 60, 0)|0px",
+   "p:rgb(0, 0, 0)|0px x:rgb(0, 60, 0)|16px q:rgb(0, 0, 0)|0px u:rgb(0, 60, 0)|18px",
+   "p:rgb(0, 0, 0)|0px p:rgb(0, 60, 0)|17px q:rgb(0, 0, 0)|0px u:rgb(0, 60, 0)|19px",
+   "p:rgb(0, 0, 0)|0px p:rgb(0, 0, 60)|17px q:rgb(0, 0, 0)|0px u:rgb(0, 60, 0)|19px",
+   "p:rgb(0, 0, 0)|0px p:rgb(0, 0, 60)|0px q:rgb(0, 0, 0)|0px u:rgb(0, 60, 0)|19px"
+  ],
+  "inherited": [
+   "s:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px p:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px",
+   "s:rgb(70, 70, 70)|0px d:rgb(70, 70, 70)|0px p:rgb(70, 70, 70)|0px b:rgb(70, 70, 70)|0px a:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px",
+   "s:rgb(70, 70, 70)|0px d:rgb(70, 70, 70)|0px p:rgb(80, 0, 0)|20px b:rgb(80, 0, 0)|0px a:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px",
+   "s:rgb(70, 70, 70)|0px a:rgb(0, 0, 0)|0px c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px p:rgb(0, 0, 0)|20px b:rgb(0, 0, 0)|0px",
+   "s:rgb(70, 70, 70)|0px a:rgb(70, 70, 70)|0px c:rgb(70, 70, 70)|0px d:rgb(70, 70, 70)|0px p:rgb(80, 0, 0)|20px b:rgb(80, 0, 0)|0px",
+   "s:rgb(70, 70, 70)|0px d:rgb(70, 70, 70)|0px p:rgb(80, 0, 0)|20px b:rgb(80, 0, 0)|0px a:rgb(70, 70, 70)|0px c:rgb(70, 70, 70)|0px",
+   "s:rgb(70, 70, 70)|0px d:rgb(90, 0, 0)|0px p:rgb(80, 0, 0)|20px b:rgb(80, 0, 0)|0px a:rgb(70, 70, 70)|0px c:rgb(70, 70, 70)|0px",
+   "s:rgb(70, 70, 70)|0px d:rgb(90, 0, 0)|0px p:rgb(90, 0, 0)|0px b:rgb(90, 0, 0)|0px a:rgb(70, 70, 70)|0px c:rgb(70, 70, 70)|0px"
+  ],
+  "shadow": [
+   "h:rgb(0, 0, 0)|0px s:rgb(0, 100, 0)|21px r:rgb(0, 0, 0)|0px p:rgb(0, 0, 0)|0px",
+   "h:rgb(100, 0, 0)|0px s:rgb(0, 100, 0)|21px r:rgb(100, 0, 0)|0px p:rgb(0, 0, 0)|0px",
+   "h:rgb(100, 0, 0)|0px s:rgb(0, 100, 0)|21px r:rgb(0, 100, 0)|21px p:rgb(0, 0, 0)|0px",
+   "h:rgb(100, 0, 0)|0px s:rgb(0, 100, 0)|21px r:rgb(0, 100, 0)|21px p:rgb(0, 0, 0)|0px",
+   "h:rgb(0, 0, 0)|0px s:rgb(0, 100, 0)|21px r:rgb(0, 100, 0)|21px p:rgb(0, 0, 0)|0px",
+   "h:rgb(0, 0, 0)|0px r:rgb(0, 100, 0)|21px p:rgb(0, 0, 0)|0px s:rgb(0, 0, 0)|21px"
+  ],
+  "container": [
+   "c:rgb(0, 0, 0)|0px t:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px",
+   "c:rgb(0, 0, 0)|0px t:rgb(110, 0, 0)|0px d:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px",
+   "c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px t:rgb(0, 0, 0)|0px",
+   "c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px u:rgb(110, 0, 0)|0px t:rgb(110, 0, 0)|0px"
+  ],
+  "interleaved": [
+   "u:rgb(0, 0, 0)|0px l1:rgb(0, 0, 0)|0px l2:rgb(0, 0, 0)|0px l3:rgb(0, 120, 0)|0px d:rgb(0, 0, 0)|0px s:rgb(0, 0, 0)|0px",
+   "u:rgb(0, 0, 0)|0px l1:rgb(0, 0, 0)|0px l2:rgb(0, 0, 0)|0px l3:rgb(0, 120, 0)|0px d:rgb(0, 0, 0)|0px s:rgb(120, 0, 0)|0px",
+   "u:rgb(0, 0, 0)|0px li:rgb(0, 0, 0)|0px l1:rgb(0, 0, 0)|0px l2:rgb(0, 120, 0)|0px l3:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px s:rgb(120, 0, 0)|0px",
+   "u:rgb(0, 0, 0)|0px li:rgb(0, 0, 0)|25px l1:rgb(0, 0, 0)|25px l2:rgb(0, 120, 0)|25px l3:rgb(0, 0, 0)|25px d:rgb(0, 0, 0)|0px s:rgb(120, 0, 0)|0px",
+   "u:rgb(0, 0, 0)|0px li:rgb(0, 0, 0)|25px l1:rgb(0, 0, 0)|25px l2:rgb(0, 120, 0)|24px l3:rgb(0, 0, 0)|25px d:rgb(0, 0, 0)|0px s:rgb(120, 0, 0)|0px",
+   "u:rgb(0, 0, 0)|0px li:rgb(0, 0, 0)|0px l1:rgb(0, 0, 0)|0px l3:rgb(0, 120, 0)|0px d:rgb(0, 0, 0)|0px s:rgb(120, 0, 0)|0px",
+   "u:rgb(0, 0, 0)|0px li:rgb(0, 0, 0)|0px l1:rgb(0, 0, 0)|0px l3:rgb(0, 120, 0)|0px d:rgb(0, 0, 0)|0px s:rgb(120, 0, 0)|0px",
+   "u:rgb(0, 0, 0)|0px li:rgb(0, 0, 0)|25px l1:rgb(0, 0, 0)|25px l3:rgb(0, 120, 0)|25px l2:rgb(0, 0, 0)|25px d:rgb(0, 0, 0)|0px s:rgb(120, 0, 0)|0px",
+   "u:rgb(0, 0, 0)|0px li:rgb(0, 0, 0)|25px l1:rgb(0, 0, 0)|25px l3:rgb(0, 120, 0)|25px l2:rgb(0, 0, 0)|25px d:rgb(0, 0, 0)|0px s:rgb(0, 0, 120)|0px"
+  ]
+ }
+}

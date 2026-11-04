@@ -1702,3 +1702,6 @@ fn rule_entries_are_built_once_per_sheet_list() {
     assert_eq!(value["after"], "rgb(3, 3, 3)", "a CSSOM change rebuilds");
     assert!(value["builds"].as_u64().unwrap() <= 1, "{value}");
 }
+
+#[path = "style_invalidation_tests.rs"]
+mod style_invalidation_tests;
