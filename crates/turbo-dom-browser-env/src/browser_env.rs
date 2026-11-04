@@ -587,10 +587,18 @@ fn owner_tag<'s>(scope: &mut v8::PinScope<'s, '_>, id: u64) -> v8::Local<'s, v8:
     v8::Integer::new(scope, owner_tag_index(id))
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Owner-tag decodes on this thread (the perf gate in `perf_gates_tests`).
+    pub(super) static TAG_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// The owner of a tagged wrapper: `Some(Some(id))` while its tree is still DOM `id`'s,
 /// `Some(None)` once that tree is gone (reset, or replaced by a new document), `None` for an
 /// object without an owner tag.
 fn tagged_owner(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> Option<Option<u64>> {
+    #[cfg(test)]
+    TAG_READS.with(|reads| reads.set(reads.get() + 1));
     let tag = object
         .get_internal_field(scope, 1)
         .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())

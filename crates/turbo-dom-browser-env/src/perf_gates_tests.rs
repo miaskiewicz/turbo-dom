@@ -389,3 +389,28 @@ fn transforms_that_cannot_apply_are_skipped_per_selector() {
     }
     clear_interface_records(isolate);
 }
+
+/// A node getter decodes its holder's owner tag once: the tag routes the call to the
+/// holder's DOM and proves its handle live (stale wrappers stay refused, turbo-dom#224).
+#[test]
+fn node_getters_decode_the_owner_tag_once_per_call() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><div id=a><b>x</b></div>");
+        run(scope, "globalThis.a = document.getElementById('a'); 'ok'");
+        let before = TAG_READS.with(std::cell::Cell::get);
+        let out = run(
+            scope,
+            "let n = 0; for (let i = 0; i < 1000; i++) { n += a.parentNode === document.body ? 1 : 0; } String(n)",
+        );
+        assert_eq!(out, "1000");
+        let reads = TAG_READS.with(std::cell::Cell::get) - before;
+        assert!(reads <= 1100, "{reads} owner-tag decodes for 1000 parentNode reads");
+        reset();
+    }
+    clear_interface_records(isolate);
+}
