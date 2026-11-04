@@ -279,6 +279,22 @@
       return [before, style.color, style === getComputedStyle(li, '::marker')];
     })();
     out.ua = ua;
+  } else if (document.getElementById('unsetProps')) {
+    // turbo-dom#305: properties no rule sets compute to their initial value (non-inherited) or
+    // the parent's computed value (inherited; the root's is the initial value), after html.css:
+    // body's 8px margin, p / ul / h1 block margins, ul's 40px padding, li's list-style-type,
+    // h1 / b font weights. border-*-color / outline-color / text-decoration-color resolve
+    // currentcolor; a border or outline whose style is none has width 0px.
+    const props = ['background-color', 'background-image', 'background-repeat', 'background-position', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'border-top-width', 'border-right-width', 'border-top-style', 'border-left-style', 'border-top-color', 'border-bottom-color', 'border-top-left-radius', 'outline-style', 'outline-width', 'outline-color', 'outline-offset', 'color', 'font-size', 'font-weight', 'font-style', 'line-height', 'text-align', 'text-decoration-line', 'text-decoration-style', 'text-decoration-color', 'text-transform', 'text-indent', 'letter-spacing', 'word-spacing', 'white-space-collapse', 'text-wrap-mode', 'cursor', 'direction', 'writing-mode', 'float', 'clear', 'overflow-x', 'overflow-y', 'box-sizing', 'z-index', 'top', 'right', 'bottom', 'left', 'flex-grow', 'flex-shrink', 'flex-basis', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-self', 'align-content', 'order', 'row-gap', 'column-gap', 'max-width', 'max-height', 'pointer-events', 'user-select', 'box-shadow', 'text-shadow', 'list-style-type', 'list-style-position', 'list-style-image', 'vertical-align', 'filter', 'mix-blend-mode', 'isolation', 'object-fit', 'resize', 'table-layout', 'border-collapse', 'transition-duration', 'transition-property', 'animation-name', 'animation-duration', 'will-change', 'clip-path', 'content-visibility', 'overflow-wrap', 'word-break', 'tab-size', 'quotes', 'caret-color', 'accent-color', 'font-variant-caps', 'font-stretch', 'text-overflow', 'empty-cells', 'caption-side', 'touch-action', 'scroll-behavior', 'appearance'];
+    const read = (el) => { const s = getComputedStyle(el); return Object.fromEntries(props.map((p) => [p, s.getPropertyValue(p)])); };
+    out.unset = Object.fromEntries(Array.from(document.querySelectorAll('[id]'), (el) => [el.id, read(el)]));
+    out.unset.html = read(document.documentElement);
+    const camel = getComputedStyle(document.getElementById('div'));
+    out.unsetCamel = [camel.backgroundColor, camel.marginLeft, camel.borderTopColor, camel.cssFloat, camel.zIndex];
+    out.unsetDetached = read(document.createElement('div'));
+    const later = document.createElement('p');
+    document.getElementById('styled').append(later);
+    out.unsetAppended = read(later);
   } else {
     // the title setter creates a <title> on demand
     document.title = 'set';
