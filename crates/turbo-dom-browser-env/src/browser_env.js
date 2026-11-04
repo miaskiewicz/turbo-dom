@@ -1473,11 +1473,25 @@
     if(typeof fn==='function'&&Object.prototype.hasOwnProperty.call(fn,'prototype')&&__ns.makeNativeFunction)g[name]=__ns.makeNativeFunction(fn,name,name==='scrollTo'?0:1);
   });
   if (ownMatchMedia) ownMatchMedia = g.matchMedia;
-  // The cascade evaluates media text directly while matchMedia is the binding's own (no
-  // MediaQueryList per rule); a page or embedder replacement is asked instead.
+  // The cascade evaluates media text directly against the viewport (no MediaQueryList per
+  // rule); like Chrome (and jsdom) it never asks a page's replacement window.matchMedia.
   // A child iframe window's getComputedStyle evaluates @media against its own viewport.
   var mediaView = null;
-  function mediaMatches(text){ return g.matchMedia === ownMatchMedia ? __ns.mediaTextMatches(text, mediaView) : !!g.matchMedia(text).matches; }
+  function mediaMatches(text){ return __ns.mediaTextMatches(text, mediaView); }
+  // The embedder's media mode (set_media_mode): 'chrome' (the default) or 'jsdom', jsdom
+  // 27's behaviour for vitest parity: no matchMedia / MediaQueryList / MediaQueryListEvent,
+  // and a media list applies only when one of its items is exactly `screen` (jsdom's
+  // forEachMatchingSheetRuleOfElement); an @import also applies with no media list.
+  var mediaMode = 'chrome', jsdomHidden = null;
+  function jsdomScreen(text){ var items = $c.split(String(text), ','); for (var i = 0; i < items.length; i++) if ($c.trim(items[i]) === 'screen') return true; return false; }
+  __ns.setMediaMode = function(mode){
+    if (mode === mediaMode) return;
+    mediaMode = mode;
+    var names = ['matchMedia', 'MediaQueryList', 'MediaQueryListEvent'];
+    if (mode === 'jsdom') { jsdomHidden = names.map(function(name){ var d = Object.getOwnPropertyDescriptor(g, name); delete g[name]; return d; }); }
+    else { names.forEach(function(name, i){ if (jsdomHidden[i]) Object.defineProperty(g, name, jsdomHidden[i]); }); jsdomHidden = null; }
+    invalidateComputedStyles();
+  };
   __ns.withMediaView = function(target, run){ var outer = mediaView; mediaView = target; try { return run(); } finally { mediaView = outer; } };
   // `Image(width, height)` is the native legacy factory in html_image.js (turbo-dom#23); image
   // loading (load / error events, natural size) is the host's (record.imageHost).
@@ -2402,7 +2416,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // The media conditions the current computation evaluated, with their answers (null: not
   // tracking): a reused computed style is reused only while each still answers the same.
   var computedMediaReads=null;
-  function cssMediaState(record,state){var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;var matches=mediaMatches(text);if(computedMediaReads&&computedMediaReads[text]===undefined)computedMediaReads[text]=matches;return matches?1:2;}
+  function cssMediaState(record,state){if(mediaMode==='jsdom')return state===0&&jsdomScreen(preludeRest(record))?1:2;var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;var matches=mediaMatches(text);if(computedMediaReads&&computedMediaReads[text]===undefined)computedMediaReads[text]=matches;return matches?1:2;}
   // The rule entries of a sheet list (its style rules under their grouping rules, the layer
   // tree they rank in, the @media answers they were built with): built once per list, CSSOM
   // epoch and media answers, and shared by every element computed meanwhile. The build reads
@@ -2513,7 +2527,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     try{for(var text in reads)if(mediaMatches(text)!==reads[text])return false;}catch(e){return false;}
     return true;
   }
-  function appliedImport(record,el,context,out){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||mediaMatches(record.media.mediaText)))appliedSheetEntries(record.styleSheet,el,context.layers,out,context.seen);}
+  function appliedImport(record,el,context,out){if(mediaMode==='jsdom'){var source=mediaRecord(record.media).source;if(record.styleSheet&&(!$c.trim(source)||jsdomScreen(source)))appliedSheetEntries(record.styleSheet,el,context.layers,out,context.seen);return;}if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||mediaMatches(record.media.mediaText)))appliedSheetEntries(record.styleSheet,el,context.layers,out,context.seen);}
   // The cascade's fixed-shape records (no null-prototype literal per rule or element).
   function AppliedContext(layers,seen,owner,layer,media,scopes){this.layers=layers;this.seen=seen;this.owner=owner;this.layer=layer;this.media=media;this.scopes=scopes;}
   AppliedContext.prototype=$O.create(null);
@@ -3858,7 +3872,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // binding's own matchMedia only (a replaced one is kept). getComputedStyle evaluates @media
     // against the read element's document's viewport (computeStyle, turbo-dom#299).
     var defineFrameMedia = function(childWin){
-      if (typeof __ns.matchMedia !== 'function' || !__ns.withMediaView) return;
+      if (typeof __ns.matchMedia !== 'function' || !__ns.withMediaView || mediaMode === 'jsdom') return;
       childWin.matchMedia = __ns.makeNativeFunction(function matchMedia(query){ return __ns.matchMedia(query, childWin); }, 'matchMedia', 1);
     };
     // The child document cascades its own sheets (turbo-dom#299); a srcdoc is its markup.
