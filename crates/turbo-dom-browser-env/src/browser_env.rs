@@ -3393,6 +3393,33 @@ fn selector_facts(units: &[u16]) -> std::rc::Rc<SelectorFacts> {
 /// bindings do: `Element`, `Document`, or `DocumentFragment` (also for a ShadowRoot, which
 /// inherits the ParentNode members from DocumentFragment). The message is built only when
 /// the selector is rejected.
+thread_local! {
+    /// [`transform_mask`] answers by selector text.
+    static TRANSFORM_MASKS: RefCell<HashMap<String, u8>> = RefCell::new(HashMap::new());
+}
+
+/// Which state-dependent selector transforms can change (or reject) `selector`: bit 0
+/// popover, 1 dialog, 2 interest, 3 form state, 4 view transition. A property of the text,
+/// kept per selector (the map is dropped past 4096 entries).
+fn transform_mask(selector: &str) -> u8 {
+    if let Some(mask) = TRANSFORM_MASKS.with(|masks| masks.borrow().get(selector).copied()) {
+        return mask;
+    }
+    let mask = u8::from(html_popover::applies(selector))
+        | u8::from(html_dialog::applies(selector)) << 1
+        | u8::from(interest_invokers::applies(selector)) << 2
+        | u8::from(form_pseudo::applies(selector)) << 3
+        | u8::from(view_transitions::applies(selector)) << 4;
+    TRANSFORM_MASKS.with(|masks| {
+        let mut masks = masks.borrow_mut();
+        if masks.len() >= 4096 {
+            masks.clear();
+        }
+        masks.insert(selector.to_owned(), mask);
+    });
+    mask
+}
+
 fn selector_argument<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: &v8::FunctionCallbackArguments<'s>,
@@ -3429,11 +3456,27 @@ fn selector_argument<'s>(
     SELECTOR_WORK.with(|work| work.rewrites.set(work.rewrites.get() + 1));
     let scalar = &facts.scalar;
     let subject_local = matches!(operation, "matches" | "webkitMatchesSelector" | "closest");
-    let transformed = html_popover::selector(scope, node, scalar)?;
-    let transformed = html_dialog::selector(scope, node, &transformed)?;
-    let transformed = interest_invokers::selector(scope, node, &transformed)?;
-    let transformed = form_pseudo::selector(scope, node, &transformed, subject_local)?;
-    let transformed = view_transitions::selector(scope, node, &transformed)?;
+    // Which transforms can apply is a property of the text (`transform_mask`); a transform
+    // is skipped only while the text is still the caller's (a rewrite feeds the next one).
+    let mask = transform_mask(scalar);
+    let mut transformed = scalar.clone();
+    let mut rewritten = false;
+    for bit in 0..5u8 {
+        if !rewritten && mask & (1 << bit) == 0 {
+            continue;
+        }
+        let next = match bit {
+            0 => html_popover::selector(scope, node, &transformed)?,
+            1 => html_dialog::selector(scope, node, &transformed)?,
+            2 => interest_invokers::selector(scope, node, &transformed)?,
+            3 => form_pseudo::selector(scope, node, &transformed, subject_local)?,
+            _ => view_transitions::selector(scope, node, &transformed)?,
+        };
+        if next != transformed {
+            rewritten = true;
+            transformed = next;
+        }
+    }
     if transformed == *scalar {
         return Some((transformed, units, facts.unit_path));
     }

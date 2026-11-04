@@ -106,6 +106,17 @@ pub(super) fn attribute_changed<'s>(
     call(scope, element, &[kind.into(), element.into()]);
 }
 
+/// Whether [`selector`] can change `source`: an interest pseudo-class range (a property of
+/// the text, memoized by `selector_argument`).
+pub(super) fn applies(source: &str) -> bool {
+    if !source.to_ascii_lowercase().contains("interest-") {
+        return false;
+    }
+    let mut input = cssparser::ParserInput::new(source);
+    let mut parser = cssparser::Parser::new(&mut input);
+    let mut ranges = Vec::new();
+    pseudo_ranges(&mut parser, &mut ranges).is_ok() && !ranges.is_empty()
+}
 #[derive(Clone, Copy, PartialEq)]
 enum Pseudo {
     Source,

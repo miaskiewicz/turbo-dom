@@ -449,6 +449,14 @@ fn pseudo_ranges<'i, 't>(
     Ok(())
 }
 
+/// Whether [`selector`] can change `source` or throw on it: a `:modal`/`:open` range, or a
+/// parse it rejects (a property of the text, memoized by `selector_argument`).
+pub(super) fn applies(source: &str) -> bool {
+    let mut input = cssparser::ParserInput::new(source);
+    let mut parser = cssparser::Parser::new(&mut input);
+    let mut ranges = Vec::new();
+    pseudo_ranges(&mut parser, &mut ranges).is_err() || !ranges.is_empty()
+}
 /// Represent private dialog state as structural selectors within this exact DOM root, as
 /// `:popover-open` does. `:open` is the dialog/details open attribute or a control's open picker
 /// ([`user_activation_gates::open_picker`]); `:modal` is the is-modal flag, which outlives a removed `open` attribute,
