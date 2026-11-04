@@ -348,6 +348,9 @@ browser_env.js: 0.7.1 turbo-dom#279 subtree-scoped style invalidation: reused co
 browser_env.rs: 0.7.1 turbo-dom#279 __computedStyleGeneration / __computedStyleFilter / __computedStyleTouch natives
 animations.js: 0.7.1 turbo-dom#279 the effect-target index reports the targets it left and joined to invalidateAnimatedStyles
 css_live_tests.rs: 0.7.1 turbo-dom#279 style_invalidation_tests submodule; the reuse test mutates an attribute no style filter skips
+browser_env.js: 0.7.1 turbo-dom#307 rule buckets: a cascade skips style rules whose rightmost compound names no class or id the element carries; test-only __noteRuleProbe hook
+browser_env.rs: 0.7.1 turbo-dom#307 test-only __noteRuleProbe native (RULE_PROBES counter)
+css_live_tests.rs: 0.7.1 turbo-dom#307 __cssTestRuleProbes getter and the rule_bucket_tests submodule
 css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
 control_labels.rs: 0.7.0 perf turbo-dom#271 label lookups read a per-tree-version index (first element per id, label candidates per host chain) + a test-only walk counter
 "
@@ -374,6 +377,7 @@ OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
 OWNED="$OWNED activation_focus_probe.js activation_focus_chrome156.json selector_errors_probe.js selector_errors_chrome156.json"
 OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
 OWNED="$OWNED style_invalidation_probe.js style_invalidation_chrome156.json style_invalidation_tests.rs"
+OWNED="$OWNED rule_bucket_tests.rs"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
 OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"
