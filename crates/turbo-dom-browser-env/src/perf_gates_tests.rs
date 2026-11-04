@@ -378,6 +378,43 @@ fn a_new_install_never_reuses_the_previous_trees_label_index() {
     clear_interface_records(isolate);
 }
 
+/// The engine's `$c` dispatcher (every `$c.get(map, key)`, `$c.forEach(list, f)` ...) passes
+/// its arguments as array literals, not through `add`'s per-element defineProperty: that cost
+/// one runtime call per argument of every internal call (about a fifth of a form-heavy
+/// payroll file's CPU). Counted by wrapping `Object.defineProperty` before the install, so the
+/// engine captures the counter; the workload's count must stay at the literal-array level.
+#[test]
+fn internal_dispatch_defines_no_argument_rows() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        run(
+            scope,
+            "globalThis.__defines = 0; const define = Object.defineProperty; \
+             Object.defineProperty = function (o, k, d) { globalThis.__defines++; return define(o, k, d); }; 'ok'",
+        );
+        install_with_html(
+            scope,
+            "<head><style>.a{color:red;margin:1px 2px}.b .a{padding:3px}</style></head>\
+             <body><div class=b><p class=a>x</p><p class=a>y</p><span>z</span></div>",
+        );
+        let out = run(
+            scope,
+            "globalThis.__defines = 0; let n = 0; \
+             for (let i = 0; i < 50; i++) { document.body.dataset.i = i; \
+               for (const el of document.querySelectorAll('*')) n += getComputedStyle(el).color.length; } \
+             String(globalThis.__defines)",
+        );
+        let defines: u64 = out.parse().unwrap();
+        assert!(defines < 3_000, "{defines} defineProperty calls for 50 style passes");
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
 /// A selector with a `:` none of the state-dependent transforms (popover, dialog, interest,
 /// form, view transition) applies to skips them: whether each applies is a property of the
 /// selector text, kept per selector, so `matches(':focus-visible')` or `closest('li:hover')`
