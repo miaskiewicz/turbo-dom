@@ -1180,11 +1180,13 @@
       // Element-backed pseudo-elements the element does not have see no author rules.
       // Match the private selector list before touching declarations. Native parsing
       // preserves quoted delimiters that serialized text splitting loses.
-      var sheets = info && !info.authored ? [] : computedSheets(el),build=computedSheetEntries(sheets,el),layers=build.layers,matched=[],own=sheets.length?cssElementKeys(el):null;
-      for (var si=0; si<sheets.length; si++) {
+      var sheets = info && !info.authored ? [] : computedSheets(el),build=computedSheetEntries(sheets,el),layers=build.layers,matched=[];
+      var bucketOwn=sheets.length?cssElementKeys(el):null,bucketIndex=bucketOwn?cssBucketIndex(build):null,bucketOrder=bucketIndex?cssBucketCandidates(bucketIndex,bucketOwn):null;
+      if(bucketOrder){for(var bucketAt=0;bucketAt<bucketOrder.length;bucketAt++){var bucketEntry=bucketOrder[bucketAt];if(sheetRecord(sheets[bucketIndex.sheet[bucketEntry]]).disabled)continue;var bucketHit=appliedEntryMatch(el,bucketIndex.entries[bucketEntry],pseudo,matched.length);if(bucketHit)$c.push(matched,bucketHit);}}
+      else for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
         var entries = build.lists[si];
-        for (var ri=0; ri<entries.length; ri++) { if(own&&!cssEntryCandidate(entries[ri],own))continue; var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
+        for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
       }
       cascadeEntries(matched,layers,function(entry,only){applyDeclarations(declarationRecord(entry.rule.style),info&&info.accepts,only);});
     } catch(e){}
@@ -2322,18 +2324,45 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // level of that alternative's rightmost compound. Each entry keeps one such name per
   // alternative ('.a' / '#b', ASCII- and Unicode-lowercased, so quirks mode's case-insensitive
   // class and id matching is never under-approximated), or none when some alternative names
-  // none or the scan cannot read it; a cascade skips an entry none of whose names the element
-  // carries. Skipping only drops rules that cannot match, in any live state (relaxing a state
+  // none or the scan cannot read it. Each entry build indexes its entries by those names once,
+  // and a cascade visits, in document order, only the unkeyed entries and those keyed on a name
+  // the element carries. Skipping only drops rules that cannot match, in any live state (relaxing a state
   // pseudo-class keeps the names), so the matched list, its order and every volatility read
   // are unchanged. Names inside functional pseudo-classes (:is, :not, :has, :host(), ...) are
   // never keys; :host / ::slotted / ::part compounds, nesting (&), namespaces (|) and escapes
   // leave the rule unkeyed.
-  function cssEntryCandidate(entry,own){
-    var keys=entry.keys;
-    if(keys===undefined)keys=entry.keys=entry.scopes?null:cssRuleKeys($c.trim(String(entry.rule.selectorText||'')));
-    if(!keys)return true;
-    for(var index=0;index<keys.length;index++)if(own[keys[index]])return true;
-    return false;
+  // The build's bucket index, made on first use: every entry by its position in the build
+  // (sheet by sheet, in order), the sheet it came from, the positions of the unkeyed entries and,
+  // per name, the positions of the entries keyed on it (all ascending).
+  function cssBucketIndex(build){
+    var index=build.buckets;if(index)return index;
+    index=build.buckets={__proto__:null,entries:[],sheet:[],unkeyed:[],keyed:{__proto__:null}};
+    for(var si=0;si<build.lists.length;si++){
+      var entries=build.lists[si];
+      for(var ri=0;ri<entries.length;ri++){
+        var at=index.entries.length,entry=entries[ri],keys=entry.scopes?null:cssRuleKeys($c.trim(String(entry.rule.selectorText||'')));
+        $c.push(index.entries,entry);$c.push(index.sheet,si);
+        if(!keys){$c.push(index.unkeyed,at);continue;}
+        for(var ki=0;ki<keys.length;ki++){var list=index.keyed[keys[ki]];if(!list)list=index.keyed[keys[ki]]=[];if(list[list.length-1]!==at)$c.push(list,at);}
+      }
+    }
+    return index;
+  }
+  // The positions of the entries that can select an element with the names `own`, ascending
+  // and once each: the unkeyed ones merged with each of its names' lists.
+  function cssBucketCandidates(index,own){
+    var out=index.unkeyed;
+    for(var name in own){var list=index.keyed[name];if(list)out=cssMergeSorted(out,list);}
+    return out;
+  }
+  function cssMergeSorted(a,b){
+    var out=[],i=0,j=0;
+    while(i<a.length||j<b.length){
+      if(j>=b.length||i<a.length&&a[i]<b[j])$c.push(out,a[i++]);
+      else if(i>=a.length||b[j]<a[i])$c.push(out,b[j++]);
+      else{$c.push(out,a[i]);i++;j++;}
+    }
+    return out;
   }
   var cssUnkeyedCompound=/^::?(?:host|slotted|part)(?![\w-])/i;
   function cssRuleKeys(text){
