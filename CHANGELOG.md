@@ -10,9 +10,14 @@ at the time); this file reconstructs them from history.
 ### Added
 
 - turbo-dom-browser-env: `browser_env::share_document_domain(scope, document, origin)`, an embedder hook that joins a document to another document's origin (Blink's shared `SecurityOrigin` for initial `about:blank` and `about:srcdoc` children), so a `document.domain` set in any document of the cluster relaxes all of them, with Chrome 156's getter values, SecurityError refusals and origin-keyed no-op (`document_domain_chrome156.json`). Single-document embedders are unchanged (turbo-dom#284, turbo-surf#116).
+- turbo-dom-browser-env: `browser_env::MediaMode` and `set_media_mode(scope, mode)`. `Chrome` (the default, for every embedder that does not call it) keeps the live `MediaQueryList` and evaluates `@media` / `@import` media lists against the viewport. `Jsdom` is jsdom 27.4.0's behaviour, for turbo-test's vitest parity: `matchMedia`, `MediaQueryList` and `MediaQueryListEvent` are absent, and getComputedStyle applies a top-level `@media` rule only when one of its media list items is exactly `screen` (case-sensitive; nested `@media` never), and an `@import` when it has no media list or a `screen` item, as jsdom's `forEachMatchingSheetRuleOfElement` does. Switching back restores Chrome's. jsdom control: `jsdom_media_jsdom27.json` (`scripts/jsdom-media-control.cjs`).
 
 ### Fixed
 
+- **turbo-dom-browser-env: getComputedStyle never asks a page's `window.matchMedia`.** A page
+  or test that replaces `matchMedia` (a mock) changed which `@media` / `@import` rules applied;
+  the cascade now evaluates media lists against the viewport itself, as Chrome and jsdom do.
+  Chrome 156 control: `media_override_chrome156.json` (`scripts/media-chrome-control.mjs`).
 - **turbo-dom-browser-env: `getComputedStyle` returns computed values for unset properties.**
   A property no declaration sets no longer reads `''` on a connected element: it computes to
   its initial value (`background-color` `rgba(0, 0, 0, 0)`, `margin-*` / `padding-*` `0px`,

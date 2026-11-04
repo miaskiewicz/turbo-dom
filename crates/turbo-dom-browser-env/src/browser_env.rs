@@ -2058,7 +2058,20 @@ pub enum MediaMode {
 }
 
 /// Set the current window's [`MediaMode`] (installs start in [`MediaMode::Chrome`]).
-pub fn set_media_mode(_scope: &mut v8::PinScope, _mode: MediaMode) {}
+pub fn set_media_mode(scope: &mut v8::PinScope, mode: MediaMode) {
+    let id = scope
+        .get_current_context()
+        .get_slot::<DomContextId>()
+        .map_or(0, |id| id.0);
+    let _dom = DomScope::enter(id);
+    run_js(
+        scope,
+        match mode {
+            MediaMode::Chrome => "__tsNs.setMediaMode('chrome')",
+            MediaMode::Jsdom => "__tsNs.setMediaMode('jsdom')",
+        },
+    );
+}
 
 /// First connected document base attribute, read without guest getters.
 pub fn form_submission_base_href(
