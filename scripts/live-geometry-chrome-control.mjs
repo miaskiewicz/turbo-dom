@@ -485,6 +485,13 @@ const STICKY_MORE_CASES = [
     `<div class="sc" data-cid="sc" style="box-sizing:border-box;width:200px;height:80px"><div data-cid="cb" style="height:300px;position:relative"><div style="height:200px"></div><div data-cid="b" style="position:sticky;bottom:5px;height:20px;margin-top:4px"></div></div></div>`,
     [[0, 0], [0, 100], [0, 400]],
   ],
+  // The scroller's own line boxes overflow downwards: its block-end padding is scrollable
+  // overflow too (scrolled to its end, the top-stuck span reads the maximum scrollTop).
+  [
+    "lines-block-end-padding",
+    `<div class="sc" data-cid="sc" style="width:100px;height:60px">${"a<br>".repeat(8)}<span data-cid="s" style="position:sticky;top:0">st</span><br>b</div>`,
+    [[0, 0], [0, 400]],
+  ],
   [
     "block-left",
     `<div class="sc" data-cid="sc" style="width:100px;height:60px"><div data-cid="cb" style="width:400px;position:relative"><div data-cid="b" style="position:sticky;left:5px;width:50px;height:20px;margin-left:100px"></div></div></div>`,
