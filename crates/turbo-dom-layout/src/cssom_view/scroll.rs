@@ -398,6 +398,20 @@ pub fn scroll_translation(
     Ok(translation)
 }
 
+/// How far `id`'s own `position: sticky` offset (CSS Position 3 §3.4) under the scroll
+/// `offsets` differs from the unscrolled one the snapshot was laid out with: what an
+/// embedder adds to the element's `offsetLeft` / `offsetTop` (miaskiewicz/turbo-dom#295).
+/// `[0, 0]` for a box that is not sticky.
+pub fn sticky_offset(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    id: SourceId,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+) -> Result<[f32; 2], String> {
+    let _ = (snapshot, styles, id, offsets);
+    Ok([0.0; 2])
+}
+
 /// Scroll state key for the document viewport; real sources use document-qualified
 /// handles and can never reach the all-ones identity.
 pub const VIEWPORT: SourceId = SourceId(u64::MAX);

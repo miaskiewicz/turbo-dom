@@ -402,6 +402,69 @@ const VERTICAL_CASES = [
   ],
 ];
 
+
+// miaskiewicz/turbo-dom#295: inline `position: sticky` boxes (CSS Position 3 §3.4) inside
+// scrollers scrolled to several offsets. A case's `scroll` maps a cid to `[scrollLeft,
+// scrollTop]` (set in document order, outer scrollers first); `metrics: "offsets"` records
+// only offsetLeft / offsetTop / offsetWidth / offsetHeight (the scrollers are
+// `position: relative`, so they are the offsetParent and their offsets read in their
+// unscrolled content space). Fixture face: Liberation Serif, line-height 20px.
+const STICKY_CSS =
+  'body{margin:0;font:16px/20px "Liberation Serif"}.sc{position:relative;overflow:auto;margin:20px 0 0 30px;border:2px solid;padding:3px}';
+const STICKY_SPACER = `<div style="height:300px"></div>`;
+const STICKY_CASES = [
+  [
+    "top",
+    `<div class="sc" data-cid="sc" style="width:200px;height:60px"><div data-cid="cb" style="height:200px">a<br>b<br><span data-cid="s" style="position:sticky;top:5px">st<b data-cid="sb">x</b></span> c</div>${STICKY_SPACER}</div>`,
+    [[0, 0], [0, 30], [0, 100], [0, 300]],
+  ],
+  [
+    "bottom",
+    `<div class="sc" data-cid="sc" style="width:200px;height:60px"><div data-cid="cb" style="height:200px">${"a<br>".repeat(6)}<span data-cid="s" style="position:sticky;bottom:5px">st</span> c</div>${STICKY_SPACER}</div>`,
+    [[0, 0], [0, 40], [0, 100]],
+  ],
+  [
+    "left",
+    `<div class="sc" data-cid="sc" style="width:100px;white-space:nowrap"><div data-cid="cb">aaaa bbbb <span data-cid="s" style="position:sticky;left:5px">st</span> cccc dddd eeee ffff gggg hhhh iiii jjjj</div></div>`,
+    [[0, 0], [40, 0], [120, 0], [400, 0]],
+  ],
+  [
+    "left-cb-scroller",
+    `<div class="sc" data-cid="sc" style="width:100px;white-space:nowrap">aaaa bbbb <span data-cid="s" style="position:sticky;left:5px">st</span> cccc dddd eeee ffff gggg hhhh iiii jjjj</div>`,
+    [[0, 0], [120, 0], [400, 0]],
+  ],
+  [
+    "right",
+    `<div class="sc" data-cid="sc" style="width:100px;white-space:nowrap"><div data-cid="cb" style="width:400px">aaaa bbbb cccc dddd eeee ffff <span data-cid="s" style="position:sticky;right:5px">st</span> gggg</div></div>`,
+    [[0, 0], [100, 0], [400, 0]],
+  ],
+  [
+    "wrapped",
+    `<div class="sc" data-cid="sc" style="width:120px;height:60px"><div data-cid="cb" style="height:200px">aaa bbb ccc ddd <span data-cid="s" style="position:sticky;top:0">eee fff ggg hhh</span> iii</div>${STICKY_SPACER}</div>`,
+    [[0, 0], [0, 15], [0, 90]],
+  ],
+  [
+    "inline-block",
+    `<div class="sc" data-cid="sc" style="width:200px;height:60px">a <span data-cid="ib" style="display:inline-block;height:150px;vertical-align:top">x<br><span data-cid="s" style="position:sticky;top:0">st</span></span>${STICKY_SPACER}</div>`,
+    [[0, 0], [0, 50], [0, 200]],
+  ],
+  [
+    "nested",
+    `<div class="sc" data-cid="o" style="width:220px;height:100px"><div style="height:30px"></div><div class="sc" data-cid="sc" style="width:150px;height:60px;margin:0"><div data-cid="cb" style="height:200px">a<br>b<br>c<br><span data-cid="s" style="position:sticky;top:4px;left:0">st</span></div>${STICKY_SPACER}</div>${STICKY_SPACER}</div>`,
+    [[0, 0], [0, 50], [20, 50], [0, 200]],
+    ["o", "sc"],
+  ],
+  [
+    "cb-end",
+    `<div class="sc" data-cid="sc" style="width:200px;height:60px"><div data-cid="cb" style="height:40px">a<span data-cid="s" style="position:sticky;top:0">st</span></div>${STICKY_SPACER}</div>`,
+    [[0, 0], [0, 10], [0, 30], [0, 100]],
+  ],
+  [
+    "unscrolled-insets",
+    `<div class="sc" data-cid="sc" style="width:100px;height:60px"><div data-cid="cb">a<span data-cid="s" style="position:sticky;left:30px;top:22px">st</span></div><div data-cid="cr" style="width:200px">bbbb <span data-cid="r" style="position:sticky;right:10px">st</span></div>${STICKY_SPACER}</div>`,
+    [[0, 0]],
+  ],
+];
 const CASES = [
   // turbo-surf#31 C: position:absolute/fixed blockify an inline (display computes to
   // block; CSS 2.1 §9.7) and it lays out as an out-of-flow box.
@@ -842,6 +905,16 @@ const CASES = [
       })),
     ),
   ),
+  // miaskiewicz/turbo-dom#295: sticky inline boxes in scrolled scrollers.
+  ...STICKY_CASES.flatMap(([id, body, offsets, scrollers]) =>
+    offsets.map(([left, top]) => ({
+      id: `sticky-inline-${id}-${left}-${top}`,
+      html: DOC(STICKY_CSS, body),
+      fonts: true,
+      metrics: "offsets",
+      scroll: Object.fromEntries((scrollers || ["sc"]).map((cid, i, all) => [cid, i === all.length - 1 ? [left, top] : [0, 20]])),
+    })),
+  ),
 ];
 const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
@@ -868,12 +941,17 @@ for (const testCase of CASES) {
     await page.waitForFunction((sel) => document.fullscreenElement === document.querySelector(sel), target);
   }
   const { boxes, hits } = await page.evaluate(([points, metrics, scroll]) => {
-    for (const [cid, left] of Object.entries(scroll)) document.querySelector(`[data-cid="${cid}"]`).scrollLeft = left;
+    for (const [cid, offset] of Object.entries(scroll)) {
+      const el = document.querySelector(`[data-cid="${cid}"]`);
+      if (Array.isArray(offset)) [el.scrollLeft, el.scrollTop] = offset;
+      else el.scrollLeft = offset;
+    }
     const boxes = [...document.querySelectorAll("[data-cid]")].map((el) => {
       const b = el.getBoundingClientRect();
       const s = getComputedStyle(el);
       const box = { cid: el.dataset.cid, x: b.x, y: b.y, width: b.width, height: b.height, display: s.display, position: s.position };
       if (!metrics) return box;
+      if (metrics === "offsets") return { ...box, metrics: Object.fromEntries(["offsetLeft", "offsetTop", "offsetWidth", "offsetHeight"].map((k) => [k, el[k]])) };
       const keys = ["offsetLeft", "offsetTop", "offsetWidth", "offsetHeight", "clientLeft", "clientTop", "clientWidth", "clientHeight", "scrollWidth", "scrollHeight", "scrollLeft"];
       return { ...box, metrics: Object.fromEntries(keys.map((k) => [k, el[k]])) };
     });
@@ -882,7 +960,7 @@ for (const testCase of CASES) {
       return { x, y, hit: el ? el.dataset.cid || el.localName : null };
     });
     return { boxes, hits };
-  }, [testCase.hits || [], !!testCase.metrics, testCase.scroll || {}]);
+  }, [testCase.hits || [], testCase.metrics === "offsets" ? "offsets" : !!testCase.metrics, testCase.scroll || {}]);
   const { hits: _points, rebuild: _rebuild, ...rest } = testCase;
   result.push({ ...rest, measure: testCase.measure || {}, boxes, ...(hits.length ? { hits } : {}) });
 }
