@@ -109,10 +109,10 @@ fn rows(prefix: &str, value: &serde_json::Value, out: &mut Vec<(String, String)>
 /// Every control row of the cases `select` keeps, as `path: binding …, chrome …` mismatches.
 fn mismatches(select: impl Fn(&str) -> bool) -> Vec<String> {
     let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
-    assert!(control["browser"]
-        .as_str()
-        .unwrap()
-        .starts_with("Chrome/156."));
+    // Recorded by the frozen headless shell (156.0.8078.47) since turbo-dom#305, which reports
+    // itself as HeadlessChrome.
+    let browser = control["browser"].as_str().unwrap();
+    assert!(browser.starts_with("Chrome/156.") || browser.starts_with("HeadlessChrome/156."));
     assert_eq!(control["errors"], serde_json::json!([]));
     assert_eq!(
         control["probeSha256"],
@@ -155,6 +155,7 @@ fn computed_defaults_and_head_match_chrome156_control() {
                 | "pseudo-ua"
                 | "form-control-fonts"
                 | "fullscreen"
+                | "unset-properties"
         )
     });
     assert!(
@@ -246,6 +247,21 @@ fn form_control_fonts_match_chrome156_control() {
 #[test]
 fn fullscreen_matches_chrome156_control() {
     let found = mismatches(|id| id == "fullscreen");
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#305: properties no rule sets compute to Chrome's initial value, the inherited
+/// value or html.css's (body margin, p / ul / h1 margins, ul padding, li list style, h1 / b
+/// weights), with currentcolor resolved; a detached element still reads "" (case
+/// `unset-properties`).
+#[test]
+fn unset_properties_match_chrome156_control() {
+    let found = mismatches(|id| id == "unset-properties");
     assert!(
         found.is_empty(),
         "{} mismatches:\n{}",

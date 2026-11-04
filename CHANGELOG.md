@@ -13,6 +13,25 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-browser-env: `getComputedStyle` returns computed values for unset properties.**
+  A property no declaration sets no longer reads `''` on a connected element: it computes to
+  its initial value (`background-color` `rgba(0, 0, 0, 0)`, `margin-*` / `padding-*` `0px`,
+  `float` `none`, `z-index` `auto`, `flex-*`, `outline-width` `3px`, …), the parent's value
+  for inherited properties (`text-align`, `cursor`, `letter-spacing`, `list-style-*`,
+  `direction`, …) or html.css's (body's 8px margin, p / ul / h1–h6 block margins in em,
+  lists' 40px padding and disc / circle / square / decimal markers, table cells' 1px padding,
+  headings' sizes and bold weights, `b` / `strong` bolder), with `currentcolor` resolved and a
+  none-style border side 0px wide. The defaults are read lazily per property, so style
+  snapshots and their cache keys are unchanged; detached elements still read `''`. Chrome 156
+  control: the `unset-properties` case of `computed_defaults_chrome156.json` (#305).
+- **turbo-dom-browser-env: child iframe documents are real HTML documents.** A child iframe
+  document's `documentElement` / `head` / `body` are `<html>` / `<head>` / `<body>` elements
+  (`HTMLHtmlElement`, `HTMLHeadElement`, `HTMLBodyElement`; the document element's parent is
+  the document) instead of `<div>` stand-ins, a `srcdoc` is parsed as a whole document (head
+  content in `<head>`, `<html>` / `<body>` attributes kept), the document's queries see its
+  document element, its sheets' `:root` / `html` / `body` rules match, and its body takes
+  html.css's 8px margin. Chrome 156 control: `iframe_cascade_chrome156.json` `document` /
+  `blank` (#306).
 - **turbo-dom-browser-env: child iframe documents cascade their own style sheets.** A child
   iframe document's elements (`iframe.contentDocument`, its `srcdoc` markup included) compute
   styles from that document's own `<style>` / `<link>` sheets, inline styles, inheritance and

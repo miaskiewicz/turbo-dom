@@ -405,6 +405,107 @@
     var type = ''; try { type = cssApply(cssFontLower, String(cssApply(computedStyleNativeGetAttribute, el, ['type']) || ''), []); } catch(e){}
     return { 'font': '13.3333px ' + (monospaceInputTypes[type] ? 'monospace' : 'Arial') };
   }
+  // html.css font sizes / weights of headings and b / strong (turbo-dom#305).
+  var textUserAgent = (function(){
+    var table = { __proto__: null }, sizes = ['2em', '1.5em', '1.17em', '1em', '0.83em', '0.67em'];
+    for (var level = 1; level <= 6; level++) table['H' + level] = { 'font-size': sizes[level - 1], 'font-weight': 'bold' };
+    table.B = table.STRONG = { 'font-weight': 'bolder' };
+    return table;
+  })();
+  function htmlUserAgent(el, tag){ return formControlUserAgent(el, tag) || textUserAgent[tag] || null; }
+  // Computed values of properties no declaration sets (turbo-dom#305; the unset-properties case
+  // of computed_defaults_chrome156.json), read lazily per property so a snapshot stores only
+  // its declared values: [initial value, inherited]. `currentcolor` resolves to the element's
+  // color; a border side's width is 0px while its style is none / hidden.
+  var computedInitialValues = (function(){
+    var table = { __proto__: null }, add = function(inherited, pairs){ for (var i = 0; i < pairs.length; i += 2) table[pairs[i]] = [pairs[i + 1], inherited]; };
+    add(false, ['background-color', 'rgba(0, 0, 0, 0)', 'background-image', 'none', 'background-repeat', 'repeat', 'background-position', '0% 0%',
+      'outline-style', 'none', 'outline-width', '3px', 'outline-color', 'currentcolor', 'outline-offset', '0px',
+      'text-decoration-line', 'none', 'text-decoration-style', 'solid', 'text-decoration-color', 'currentcolor',
+      'float', 'none', 'clear', 'none', 'overflow-x', 'visible', 'overflow-y', 'visible', 'box-sizing', 'content-box', 'z-index', 'auto',
+      'flex-grow', '0', 'flex-shrink', '1', 'flex-basis', 'auto', 'flex-direction', 'row', 'flex-wrap', 'nowrap', 'justify-content', 'normal',
+      'align-items', 'normal', 'align-self', 'auto', 'align-content', 'normal', 'order', '0', 'row-gap', 'normal', 'column-gap', 'normal',
+      'max-width', 'none', 'max-height', 'none', 'user-select', 'auto', 'box-shadow', 'none', 'vertical-align', 'baseline', 'filter', 'none',
+      'mix-blend-mode', 'normal', 'isolation', 'auto', 'object-fit', 'fill', 'resize', 'none', 'table-layout', 'auto',
+      'transition-duration', '0s', 'transition-property', 'all', 'animation-name', 'none', 'animation-duration', '0s', 'will-change', 'auto',
+      'clip-path', 'none', 'content-visibility', 'visible', 'text-overflow', 'clip', 'touch-action', 'auto', 'scroll-behavior', 'auto', 'appearance', 'none']);
+    add(true, ['text-align', 'start', 'text-transform', 'none', 'text-indent', '0px', 'letter-spacing', 'normal', 'word-spacing', '0px',
+      'white-space-collapse', 'collapse', 'text-wrap-mode', 'wrap', 'cursor', 'auto', 'direction', 'ltr', 'writing-mode', 'horizontal-tb',
+      'pointer-events', 'auto', 'text-shadow', 'none', 'list-style-type', 'disc', 'list-style-position', 'outside', 'list-style-image', 'none',
+      'border-collapse', 'separate', 'overflow-wrap', 'normal', 'word-break', 'normal', 'tab-size', '8', 'quotes', 'auto', 'caret-color', 'currentcolor',
+      'accent-color', 'auto', 'empty-cells', 'show', 'caption-side', 'top']);
+    $c.forEach(['top', 'right', 'bottom', 'left'], function(side){
+      table['margin-' + side] = table['padding-' + side] = ['0px', false];
+      table['border-' + side + '-style'] = ['none', false]; table['border-' + side + '-color'] = ['currentcolor', false];
+      table['border-' + side + '-width'] = ['3px', false]; table[side] = ['auto', false];
+    });
+    $c.forEach(['top-left', 'top-right', 'bottom-right', 'bottom-left'], function(corner){ table['border-' + corner + '-radius'] = ['0px', false]; });
+    return table;
+  })();
+  // html.css block margins (in em of the element's font size) and list paddings / styles.
+  var blockMarginEm = { __proto__: null, P: 1, DL: 1, PRE: 1, UL: 1, OL: 1, MENU: 1, DIR: 1, BLOCKQUOTE: 1, FIGURE: 1, H1: 0.67, H2: 0.83, H3: 1, H4: 1.33, H5: 1.67, H6: 2.33 };
+  var listTags = { __proto__: null, UL: 1, OL: 1, MENU: 1, DIR: 1 };
+  var appearanceAuto = { __proto__: null, INPUT: 1, BUTTON: 1, SELECT: 1, TEXTAREA: 1, METER: 1, PROGRESS: 1 };
+  function computedPixels(value){ return cssFontString(cssFontNumber(cssApply(cssFontPrecision, value, [6]))) + 'px'; }
+  function computedNativeTag(el){ try { return el && cssApply(computedStyleNativeNamespace, el, []) === 'http://www.w3.org/1999/xhtml' ? cssApply(computedStyleNativeTag, el, []) : ''; } catch(e){ return ''; } }
+  function computedParentElement(el){ try { var context = computedFontContext(el); return context ? context[2] : null; } catch(e){ return null; } }
+  // ul / ol / menu / dir ancestors, up to 2 (html.css's disc / circle / square nesting).
+  function computedListDepth(record){ var depth = 0; for (var node = record.defaultsParent; node && depth < 2; node = computedParentElement(node)) if (listTags[computedNativeTag(node)]) depth++; return depth; }
+  function computedBlockMargin(record, tag){
+    if (listTags[tag] && listTags[computedNativeTag(record.defaultsParent)]) return '0px';
+    var size = record.fontState && typeof record.fontState.size === 'number' ? record.fontState.size : 16;
+    return computedPixels(blockMarginEm[tag] * size);
+  }
+  // html.css margins: body 8px, block margins in em, blockquote / figure 40px sides.
+  function computedUserAgentMargin(record, side, tag){
+    if (tag === 'BODY') return '8px';
+    if (blockMarginEm[tag] && (side === 'top' || side === 'bottom')) return computedBlockMargin(record, tag);
+    return (tag === 'BLOCKQUOTE' || tag === 'FIGURE') && (side === 'left' || side === 'right') ? '40px' : undefined;
+  }
+  // html.css paddings: lists' 40px inline-start, table cells' 1px.
+  function computedUserAgentPadding(record, side, tag){
+    if (tag === 'TD' || tag === 'TH') return '1px';
+    if (!listTags[tag] || side === 'top' || side === 'bottom') return undefined;
+    return (side === 'left') === (propertyValue(record, 'direction') !== 'rtl') ? '40px' : undefined;
+  }
+  function computedUserAgentDirection(record){
+    var dir = ''; try { dir = cssApply(cssFontLower, String(cssApply(computedStyleNativeGetAttribute, record.defaultsOf, ['dir']) || ''), []); } catch(e){}
+    return dir === 'rtl' || dir === 'ltr' ? dir : undefined;
+  }
+  // html.css's value of `name` for this HTML element (`tag`), or undefined.
+  function computedUserAgentDefault(record, name, tag){
+    if ($c.slice(name, 0, 7) === 'margin-') return computedUserAgentMargin(record, $c.slice(name, 7), tag);
+    if ($c.slice(name, 0, 8) === 'padding-') return computedUserAgentPadding(record, $c.slice(name, 8), tag);
+    if (name === 'list-style-type' && listTags[tag]) return tag === 'OL' ? 'decimal' : ['disc', 'circle', 'square'][computedListDepth(record)];
+    if (name === 'appearance' && appearanceAuto[tag]) return 'auto';
+    return name === 'direction' ? computedUserAgentDirection(record) : undefined;
+  }
+  // An inherited property whose initial value is currentcolor: the nearest declared value of the
+  // element's ancestors, else the element's color.
+  function computedInheritedColor(record, name){
+    for (var node = record.defaultsParent; node; node = computedParentElement(node)) {
+      var declared = $c.get($c.get(declarationRecords, computeStyleSnapshot(node, new computedSnapshotMap())).values, name);
+      if (declared) return declared.text;
+    }
+    return propertyValue(record, 'color');
+  }
+  // The parent a connected element's snapshot inherits unset properties from (null at the
+  // root), or undefined for snapshots without defaults (pseudo-elements, disconnected).
+  function defaultsParentOf(el, pseudo, connected, parent){ return connected && !pseudo && el ? parent : undefined; }
+  // The computed value of `name` for a connected element's snapshot no declaration set, or ''.
+  function computedDefault(record, name){
+    var entry = computedInitialValues[name];
+    if (!entry) return '';
+    var ua = computedUserAgentDefault(record, name, computedNativeTag(record.defaultsOf));
+    if (ua !== undefined) return ua;
+    // caret-color: auto inherits as auto and resolves to each element's own color.
+    if (entry[0] === 'currentcolor' && entry[1]) return computedInheritedColor(record, name);
+    if (entry[1] && record.defaultsParent) return propertyValue($c.get(declarationRecords, computeStyleSnapshot(record.defaultsParent, new computedSnapshotMap())), name);
+    if (entry[0] === 'currentcolor') return propertyValue(record, 'color');
+    if ($c.test(/^border-[a-z]+-width$/, name)) return $c.test(/^(none|hidden)$/, propertyValue(record, $c.replace(name, 'width', 'style'))) ? '0px' : entry[0];
+    if (entry[0] === 'auto' && $c.test(/^(top|right|bottom|left)$/, name) && propertyValue(record, 'position') !== 'static') return '';
+    return entry[0];
+  }
   // CSS Position 4: a top-layer box whose position is static / relative / sticky is absolute.
   function topLayerPosition(position){ return $c.test(/^(static|relative|sticky)$/, position) ? 'absolute' : position; }
   // Chrome 156 html.css values for a modal dialog (`dialog:modal`) and for ::backdrop; the
@@ -1066,7 +1167,7 @@
     // rule (including a universal selector) and inline value takes precedence.
     var ua = null, layer = '';
     try { if(pseudo||inFrame||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
-    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&(inFrame||cssApply(computedStyleNativeConnected,el,[]))){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
+    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&(inFrame||cssApply(computedStyleNativeConnected,el,[]))){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=htmlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
       if(!pseudo&&layer==='fullscreen')ua=$O.assign({},ua||{},fullscreenUserAgent); } catch(e){}
     if(ua){$c.forEach($O.keys(ua), function(name){setProp(name,ua[name]);});uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
     var sizeHints=!pseudo&&iframeSizeHints(el);
@@ -1247,7 +1348,8 @@
     }
     // Custom properties inherit their specified text (turbo-dom#286).
     if (connected && !pseudo && inheritParent) inheritCustomProperties(decl, parentStyle(inheritParent));
-    var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo);
+    // A connected element's unset properties compute lazily (computedDefault, turbo-dom#305).
+    var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,connected,inheritParent));
     if(el&&!pseudo)computedSnapshotSet(snapshots,el,snapshot);
     return snapshot;
   }
@@ -1984,7 +2086,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     return $c.trim(out);
   }
   var declarationRecords=cssMap('declaration'),inlineDeclarations=cssMap('inlineDeclaration'),cssPropertyCache=new Map();
-  function declarationRecord(style){var record=$c.get(declarationRecords,style);if(!record)throw new TypeError('Illegal invocation');if(record.owner){var text=$c.call(appliedInlineRead,record.owner);if(text!==record.source){record.source=text;parseDeclaration(record,text);}}if(record.refresh){var fresh=$c.get(declarationRecords,record.refresh());if(fresh){record.values=fresh.values;record.names=fresh.names;record.fontState=fresh.fontState;}}return record;}
+  function declarationRecord(style){var record=$c.get(declarationRecords,style);if(!record)throw new TypeError('Illegal invocation');if(record.owner){var text=$c.call(appliedInlineRead,record.owner);if(text!==record.source){record.source=text;parseDeclaration(record,text);}}if(record.refresh){var fresh=$c.get(declarationRecords,record.refresh());if(fresh){record.values=fresh.values;record.names=fresh.names;record.fontState=fresh.fontState;record.defaultsOf=fresh.defaultsOf;record.defaultsParent=fresh.defaultsParent;}}return record;}
   function cssString(value){if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');return String(value);}
   function cssPropertyName(name){if(name==='cssFloat')return 'float';return $c.replace($c.replace(String(name),/[A-Z]/g,function(c){return '-'+$c.toLowerCase(c);}),/^webkit-/,'-webkit-');}
   function knownProperty(name){if($c.has(cssPropertyCache,name))return $c.get(cssPropertyCache,name);var known=typeof cssNativeParse==='function'&&cssNativeParse(name,true);if(!known&&__ns.typedOmProperty)known=__ns.typedOmProperty(name);if(known||__ns.typedOmProperty)$c.set(cssPropertyCache,name,!!known);return !!known;}
@@ -2036,14 +2138,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   __ns.declarationAuthoredValue=function(style,name){var record=declarationRecord(style);if(record.fontFace||!cssShorthand)return propertyValue(record,name);name=propertyAlias(cssString(name));var value=$c.get(record.values,name);if(value)return value.pending||!value.raw?value.text:colorText(name,value.raw);return shorthandName(name)?shorthandValue(record,name):'';};
   // getPropertyValue: a shorthand serializes from its longhands (a computed declaration's own
   // shorthand entry wins); a pending longhand reads ''.
-  function propertyValue(record,name){if(!record.fontFace&&cssShorthand){name=propertyAlias(name);var value=$c.get(record.values,name);if(value)return value.text;return shorthandName(name)?shorthandValue(record,name):'';}var value=$c.get(record.values,name);return value?value.text:'';}
+  function propertyValue(record,name){if(!record.fontFace&&cssShorthand){name=propertyAlias(name);var value=$c.get(record.values,name);if(value)return value.text;var text=shorthandName(name)?shorthandValue(record,name):'';return !text&&record.defaultsOf?computedDefault(record,name):text;}var value=$c.get(record.values,name);return value?value.text:record.defaultsOf?computedDefault(record,name):'';}
   var declarationConstructor=__ns.makeNativeFunction(function(){throw new TypeError('Illegal constructor');},'CSSStyleDeclaration',0,true);
   declarationConstructor.prototype={};$O.defineProperty(declarationConstructor.prototype,'constructor',{value:declarationConstructor,writable:true,configurable:true});$O.defineProperty(declarationConstructor.prototype,Symbol.toStringTag,{value:'CSSStyleDeclaration',configurable:true});$O.defineProperty(declarationConstructor,'prototype',{writable:false});$O.defineProperty(g,'CSSStyleDeclaration',{value:declarationConstructor,writable:true,configurable:true,enumerable:false});
   var declarationPrototype=declarationConstructor.prototype;
   function declarationMember(name,get,set){var descriptor={enumerable:true,configurable:true,get:__ns.makeNativeFunction(get,'get '+name,0)};if(set)descriptor.set=__ns.makeNativeFunction(set,'set '+name,1);$O.defineProperty(declarationPrototype,name,descriptor);}
   declarationMember('length',function(){return declarationRecord(this).names.length;});
   declarationMember('parentRule',function(){return declarationRecord(this).parentRule||null;});
-  declarationMember('cssFloat',function(){var value=$c.get(declarationRecord(this).values,'float');return value?value.text:'';},function(value){setDeclaration(declarationRecord(this),'float',value,'');});
+  declarationMember('cssFloat',function(){var record=declarationRecord(this),value=$c.get(record.values,'float');return value?value.text:record.defaultsOf?computedDefault(record,'float'):'';},function(value){setDeclaration(declarationRecord(this),'float',value,'');});
   declarationMember('cssText',function(){var record=declarationRecord(this);return record.computed?'':declarationText(record);},function(value){var record=declarationRecord(this);writableDeclaration(record);parseDeclaration(record,cssString(value));commitDeclaration(record);});
   var declarationMethods={getPropertyValue:function(name){if(!arguments.length)throw new TypeError('getPropertyValue requires 1 argument');if(!$c.get(declarationRecords,this))throw new TypeError('Illegal invocation');name=cssString(name);var record=declarationRecord(this);return propertyValue(record,name);},getPropertyPriority:function(name){if(!arguments.length)throw new TypeError('getPropertyPriority requires 1 argument');var record=declarationRecord(this);name=cssString(name);if(!record.fontFace&&cssShorthand){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands)return $c.every(longhands,function(longhand){var value=$c.get(record.values,longhand);return value&&value.priority==='important';})?'important':'';}var value=$c.get(record.values,name);return value?value.priority:'';},setProperty:function(name,value,priority){if(arguments.length<2)throw new TypeError('setProperty requires 2 arguments');setDeclaration(declarationRecord(this),name,value,priority);},removeProperty:function(name){if(!arguments.length)throw new TypeError('removeProperty requires 1 argument');var record=declarationRecord(this);writableDeclaration(record);return removeDeclaration(record,cssString(name));},item:function(index){if(!arguments.length)throw new TypeError('item requires 1 argument');return declarationRecord(this).names[Number(index)>>>0]||'';}};
   $c.forEach($O.keys(declarationMethods),function(name){$O.defineProperty(declarationPrototype,name,{value:__ns.makeNativeFunction(declarationMethods[name],name,name==='setProperty'?2:1),writable:true,enumerable:true,configurable:true});});
@@ -2053,8 +2155,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   var inlineDeclarationReceiver=__ns.domAccessor('nodeType',false,'Element');
   __ns.makeInlineStyleDeclaration=function(element){$c.call(inlineDeclarationReceiver,element);var style=$c.get(inlineDeclarations,element);if(!style){style=cssDeclaration($c.call(appliedInlineRead,element),element);$c.set(inlineDeclarations,element,style);}return style;};
   var computedStyleReader=g.getComputedStyle;
-  __ns.cloneComputedStyleDeclaration=function(snapshot,element){var source=$c.get(declarationRecords,snapshot),style=cssDeclaration(''),record=$c.get(declarationRecords,style);record.values=source.values;record.names=source.names;record.readOnly=true;record.computed=true;record.fontState=source.fontState;record.refresh=function(){return computedStyleReader(element);};return style;};
-  __ns.makeComputedStyleDeclaration=function(values,element,fontState,pseudo){var style=cssDeclaration(''),record=$c.get(declarationRecords,style);$c.forEach($O.keys(values),function(name){var custom=$c.slice(name,0,2)==='--',cssName=custom?name:cssPropertyName(name),value=values[name];if(typeof value==='string'&&custom)value=$c.trim(value);if(typeof value==='string'&&value&&(custom||knownProperty(cssName)))storeDeclaration(record,cssName,value,'');});record.readOnly=true;record.computed=true;record.fontState=fontState;if(element)record.refresh=pseudo?function(){return computedStyleReader(element,'::'+pseudo);}:function(){return computedStyleReader(element);};return style;};
+  __ns.cloneComputedStyleDeclaration=function(snapshot,element){var source=$c.get(declarationRecords,snapshot),style=cssDeclaration(''),record=$c.get(declarationRecords,style);record.values=source.values;record.names=source.names;record.readOnly=true;record.computed=true;record.fontState=source.fontState;record.defaultsOf=source.defaultsOf;record.defaultsParent=source.defaultsParent;record.refresh=function(){return computedStyleReader(element);};return style;};
+  __ns.makeComputedStyleDeclaration=function(values,element,fontState,pseudo,defaultsParent){var style=cssDeclaration(''),record=$c.get(declarationRecords,style);$c.forEach($O.keys(values),function(name){var custom=$c.slice(name,0,2)==='--',cssName=custom?name:cssPropertyName(name),value=values[name];if(typeof value==='string'&&custom)value=$c.trim(value);if(typeof value==='string'&&value&&(custom||knownProperty(cssName)))storeDeclaration(record,cssName,value,'');});record.readOnly=true;record.computed=true;record.fontState=fontState;if(defaultsParent!==undefined){record.defaultsOf=element;record.defaultsParent=defaultsParent;}if(element)record.refresh=pseudo?function(){return computedStyleReader(element,'::'+pseudo);}:function(){return computedStyleReader(element);};return style;};
   var cssRuleStates=cssMap('rule');
   var cssRuleRecord=function(rule,type){var record=$c.get(cssRuleStates,rule);if(!record||type&&record.type!==type)throw new TypeError('Illegal invocation');return record;};
   function cssRuleInterface(name,parent){var ctor=__ns.makeNativeFunction(function(){throw new TypeError('Illegal constructor');},name,0,true);ctor.prototype=$O.create(parent||$O.prototype);$O.defineProperty(ctor.prototype,'constructor',{value:ctor,writable:true,configurable:true});$O.defineProperty(ctor.prototype,Symbol.toStringTag,{value:name,configurable:true});$O.defineProperty(ctor,'prototype',{writable:false});if(parent)$O.setPrototypeOf(ctor,parent.constructor);$O.defineProperty(g,name,{value:ctor,writable:true,configurable:true,enumerable:false});}
@@ -2301,6 +2403,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     }
     return best;
   }
+  // turbo-dom#306: a child iframe document's tree is detached, so its document element (the
+  // registered root, the only element there without a parent) is :root by that test.
+  var frameRootPattern=/:root(?![\w-])/gi;
+  function frameSelector(el,selector){
+    if(!frameRootCount||!cssApply(cssZoomExec,/:root(?![\w-])/i,[selector])||computedFrameRoot(el)===null)return selector;
+    return $c.replace(selector,frameRootPattern,':not(* *)');
+  }
   // The cascade record of `entry`'s style rule when it selects `el` (`pseudo`: that
   // pseudo-element of it), or null. A rule under a conditional @media makes the computation
   // volatile when its selector matches.
@@ -2308,7 +2417,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var selector=entry.rule.selectorText,matched=false,specificity=0,proximity=Infinity;
     if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
     else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
-    else{try{matched=cssApply(computedStyleNativeMatches,el,[selector]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,item);});}
+    else{try{matched=cssApply(computedStyleNativeMatches,el,[frameSelector(el,selector)]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,frameSelector(el,item));});}
     if(matched&&entry.media&&!computedMediaReads)computedVolatile=true;
     return matched&&entry.media!==2?new EntryMatch(entry,specificity,proximity,order):null;
   }
@@ -3453,13 +3562,12 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // parent's live tree, so the child realm builds + queries its own DOM without
     // scribbling into the host page. Element construction delegates to the native binding.
     var makeChildDocument = function(){
-      // Detached container elements for the child's documentElement/head/body. Plain <div>s,
-      // NOT <html>/<head>/<body>: the native binding treats those three as document
-      // singletons (createElement('head') attaches to the live documentElement), which would
-      // leak the child realm's nodes into the PARENT's serialized tree. Divs stay detached.
-      var root = d.createElement('div');
-      var head = d.createElement('div');
-      var body = d.createElement('div');
+      // The child's documentElement / head / body are real (detached) <html> / <head> /
+      // <body> elements (turbo-dom#306): Chrome's element types, html.css values (body's 8px
+      // margin) and html / body / :root rules of the child's own sheets (frameSelector).
+      var root = d.createElement('html');
+      var head = d.createElement('head');
+      var body = d.createElement('body');
       try { root.appendChild(head); root.appendChild(body); } catch(e){}
       var dl = {};
       // Walk the child's OWN detached subtree (native element-scoped querySelector isn't
@@ -3494,8 +3602,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if (sel.charAt(0) === '.'){ var cls = sel.slice(1); return function(n){ var c = attr(n,'class') || n.className || ''; return (' '+c+' ').indexOf(' '+cls+' ') >= 0; }; }
         var tag = sel.toUpperCase(); return function(n){ return String(n.tagName).toUpperCase() === tag; };
       };
+      // Queries see the document element itself, then its descendants.
+      var selfOr = function(pred, out){ if (pred(root)) out.push(root); return walkAll(root, pred, out); };
       var q1 = function(s){
-        var r = walk(root, predFor(s));
+        var pred = predFor(s), r = pred(root) ? root : walk(root, pred);
         if (r == null){ try { r = root.querySelector(s); } catch(e){} }
         return r;
       };
@@ -3509,14 +3619,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         createTextNode: function(t){ return d.createTextNode(t); },
         createComment: function(t){ return d.createComment ? d.createComment(t) : d.createTextNode(String(t)); },
         createDocumentFragment: function(){ return d.createDocumentFragment(); },
-        getElementById: function(id){ return walk(root, function(n){ return attr(n,'id') === String(id) || n.id === String(id); }); },
+        getElementById: function(id){ return selfOr(function(n){ return attr(n,'id') === String(id) || n.id === String(id); }, [])[0] || null; },
         querySelector: q1,
-        querySelectorAll: function(s){ return walkAll(root, predFor(s), []); },
-        getElementsByTagName: function(s){ return walkAll(root, predFor(String(s)), []); },
+        querySelectorAll: function(s){ return selfOr(predFor(s), []); },
+        getElementsByTagName: function(s){ return selfOr(predFor(String(s)), []); },
         addEventListener: function(t,f){ if (typeof f==='function') (dl[t]=dl[t]||[]).push(f); },
         removeEventListener: function(t,f){ var a=dl[t]; if(a){ var i=a.indexOf(f); if(i>=0) a.splice(i,1); } },
         dispatchEvent: function(ev){ if(!ev) return true; var a=dl[ev.type]; if(a) a.slice().forEach(function(f){ try{f.call(cd,ev);}catch(e){} }); return !(ev&&ev.defaultPrevented); },
       };
+      // The document element's parent is the document.
+      try { Object.defineProperty(root, 'parentNode', { get: function(){ return cd; }, configurable: true }); } catch(e){}
       return cd;
     };
     // origin (scheme://host[:port]) of a URL string; 'null' when not absolute http(s).
@@ -3558,7 +3670,23 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var defineFrameDocument = function(childDoc, childWin, hostEl){
       __ns.registerFrameRoot(childDoc.documentElement, childWin);
       var srcdoc = hostEl && hostEl.getAttribute ? hostEl.getAttribute('srcdoc') : null;
-      if (srcdoc != null) childDoc.body.innerHTML = srcdoc;
+      if (srcdoc != null) loadFrameMarkup(childDoc, String(srcdoc));
+    };
+    // A srcdoc is a whole document (turbo-dom#306): its head / body content and the html /
+    // head / body attributes move into the child document's elements.
+    // Document.parseHTMLUnsafe (installed after this bootstrap; read on the first srcdoc).
+    var frameParse = null;
+    var loadFrameMarkup = function(childDoc, markup){
+      frameParse = frameParse || g.Document.parseHTMLUnsafe;
+      var parsed = null;
+      try { parsed = frameParse.call(g.Document, markup); } catch(e){}
+      if (!parsed || !parsed.documentElement) { childDoc.body.innerHTML = markup; return; }
+      [[parsed.documentElement, childDoc.documentElement], [parsed.head, childDoc.head], [parsed.body, childDoc.body]].forEach(function(pair){
+        if (!pair[0]) return;
+        Array.prototype.forEach.call(pair[0].attributes, function(a){ try { pair[1].setAttribute(a.name, a.value); } catch(e){} });
+        if (pair[0] === parsed.documentElement) return;
+        for (var child = pair[0].firstChild; child; child = pair[0].firstChild) { pair[1].appendChild(d.importNode(child, true)); pair[0].removeChild(child); }
+      });
     };
     // An iframe resizes with the DOM (its attributes, styles, style sheets): once a child
     // window has a MediaQueryList, every DOM change re-evaluates the lists after it.
