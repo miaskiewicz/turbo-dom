@@ -525,7 +525,10 @@ fn animation_changes_do_not_reread_the_sheet_list() {
             scope,
             "<head><style>#a{color:red}</style></head><body><div id=a>x</div>",
         );
-        run(scope, "getComputedStyle(document.getElementById('a')).color");
+        run(
+            scope,
+            "getComputedStyle(document.getElementById('a')).color",
+        );
         let before = sheet_reads();
         let out = run(
             scope,
@@ -536,7 +539,10 @@ fn animation_changes_do_not_reread_the_sheet_list() {
         );
         assert_eq!(out, "1400");
         let reads = sheet_reads() - before;
-        assert!(reads <= 4, "{reads} sheet list rereads for 100 animation changes");
+        assert!(
+            reads <= 4,
+            "{reads} sheet list rereads for 100 animation changes"
+        );
         let out = run(
             scope,
             "(() => { const s = document.createElement('style'); s.textContent = '#a{color:blue}'; \

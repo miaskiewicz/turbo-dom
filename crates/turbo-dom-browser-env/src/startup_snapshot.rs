@@ -53,10 +53,28 @@ thread_local! {
 
 /// The FNV-1a offset basis the engine-source hash starts from.
 pub(crate) const SOURCES_SEED: u64 = 0xcbf2_9ce4_8422_2325;
+thread_local! {
+    /// The running engine-source hash while this thread records references (`None` otherwise).
+    static RECORDING_SOURCES: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+}
+static ENGINE_SOURCES: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(SOURCES_SEED);
 /// The hash of every engine script the last reference-recording bootstrap ran, in order
 /// ([`snapshot_references`] folds it into the blob fingerprint).
 pub(crate) fn engine_sources_hash() -> u64 {
-    SOURCES_SEED
+    ENGINE_SOURCES.load(std::sync::atomic::Ordering::Relaxed)
+}
+/// Fold one engine script into the hash while a recording bootstrap runs (every engine script
+/// passes here: `run_engine_script_with`); free otherwise.
+pub(crate) fn note_engine_source(source: &str) {
+    RECORDING_SOURCES.with(|hash| {
+        if let Some(mut value) = hash.get() {
+            for byte in source.bytes() {
+                value = (value ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
+            }
+            hash.set(Some(value));
+        }
+    });
 }
 
 /// Whether this thread is building a startup snapshot (V8 then refuses code caches).
@@ -79,7 +97,12 @@ fn record_references() {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
+        RECORDING_SOURCES.with(|hash| hash.set(Some(SOURCES_SEED)));
         bootstrap_engine(scope);
+        let sources = RECORDING_SOURCES
+            .with(|hash| hash.take())
+            .unwrap_or(SOURCES_SEED);
+        ENGINE_SOURCES.store(sources, std::sync::atomic::Ordering::Relaxed);
     }
     reset();
 }

@@ -209,7 +209,11 @@ fn the_fingerprint_follows_the_engine_scripts() {
     crate::browser_env::tests::init_v8();
     let (_, fingerprint) = snapshot_references();
     let sources = startup_snapshot::engine_sources_hash();
-    assert_ne!(sources, startup_snapshot::SOURCES_SEED, "the bootstrap's scripts are hashed");
+    assert_ne!(
+        sources,
+        startup_snapshot::SOURCES_SEED,
+        "the bootstrap's scripts are hashed"
+    );
     let offsets = [1u64, 2, 3];
     assert_ne!(
         fingerprint_of(offsets.iter().copied(), sources),

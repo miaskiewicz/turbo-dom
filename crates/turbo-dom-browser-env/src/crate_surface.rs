@@ -199,6 +199,7 @@ fn run_engine_script_with<'s>(
 ) -> Option<v8::Local<'s, v8::Value>> {
     #[cfg(test)]
     ENGINE_SCRIPTS_RUN.with(|n| n.set(n.get() + 1));
+    startup_snapshot::note_engine_source(source);
     let namespace = engine_namespace(scope)?;
     let wrapped = format!("(function({ENGINE_NAMESPACE_PARAM}){{{source}\n}})");
     let code = v8::String::new(scope, &wrapped)?;

@@ -8332,7 +8332,10 @@ pub fn snapshot_references() -> (&'static [v8::ExternalReference], u64) {
         // SAFETY: every table entry is a function pointer (`external_refs::table`).
         (unsafe { reference.pointer } as usize).wrapping_sub(anchor) as u64
     });
-    let hash = fingerprint_of(offsets, crate_surface::startup_snapshot::engine_sources_hash());
+    let hash = fingerprint_of(
+        offsets,
+        crate_surface::startup_snapshot::engine_sources_hash(),
+    );
     (references, hash)
 }
 
@@ -8344,6 +8347,9 @@ pub(crate) fn fingerprint_of(offsets: impl Iterator<Item = u64>, sources: u64) -
         for byte in offset.to_le_bytes() {
             hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
         }
+    }
+    for byte in sources.to_le_bytes() {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
     }
     hash
 }
