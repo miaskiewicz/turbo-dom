@@ -127,6 +127,32 @@ fn run_in_mode(
         let key = v8::String::new(scope, "__cssTestRuleProbes").unwrap();
         global.set(scope, key.into(), getter.into());
     }
+    if code.contains("__cssTestStyleShares") {
+        // The shared computed styles behind the test-only `__noteStyleShare` hook (turbo-dom#307).
+        fn shares(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::style_shares() as f64).into());
+        }
+        let getter = v8::Function::new(scope, shares).unwrap();
+        let key = v8::String::new(scope, "__cssTestStyleShares").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
+    if code.contains("__cssTestStyleShareOff") {
+        // Switches style sharing off (argument true) or on: the fresh-cascade oracle.
+        fn share_off(
+            scope: &mut v8::PinScope,
+            args: v8::FunctionCallbackArguments,
+            _rv: v8::ReturnValue,
+        ) {
+            super::set_style_share_off(args.get(0).boolean_value(scope));
+        }
+        let setter = v8::Function::new(scope, share_off).unwrap();
+        let key = v8::String::new(scope, "__cssTestStyleShareOff").unwrap();
+        global.set(scope, key.into(), setter.into());
+    }
     if code.contains("__fontInertDoc") {
         let document = parse_html_document(scope, "<!doctype html><body><b>inert</b>", false);
         let key = v8::String::new(scope, "__fontInertDoc").unwrap();
@@ -1779,6 +1805,9 @@ fn rule_entries_are_built_once_per_sheet_list() {
 
 #[path = "rule_bucket_tests.rs"]
 mod rule_bucket_tests;
+
+#[path = "style_sharing_tests.rs"]
+mod style_sharing_tests;
 
 #[path = "style_invalidation_tests.rs"]
 mod style_invalidation_tests;

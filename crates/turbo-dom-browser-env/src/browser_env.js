@@ -113,9 +113,13 @@
   var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
   var noteEntryBuild=g.__noteEntryBuild;delete g.__noteEntryBuild;
   var noteRuleProbe=g.__noteRuleProbe;delete g.__noteRuleProbe;
+  // Test builds only: counts shared computed styles; the differential test switches sharing off.
+  var noteStyleShare=g.__noteStyleShare;delete g.__noteStyleShare;
+  var styleShareOff=g.__styleShareOff;delete g.__styleShareOff;
   // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
   if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
+  var cssomStructureEpoch=g.__cssomStructureEpoch,bumpCssomStructure=g.__bumpCssomStructure;delete g.__cssomStructureEpoch;delete g.__bumpCssomStructure;
   // The native live-state epoch (form / popover / dialog state the tree version misses); the
   // engine's JS state stores report their changes through __tsNs.bumpStyleState.
   var styleStateEpoch=g.__styleStateEpoch,bumpStyleState=g.__bumpStyleState;delete g.__styleStateEpoch;delete g.__bumpStyleState;__tsNs.bumpStyleState=bumpStyleState;
@@ -762,12 +766,16 @@
     var version=null;try{version=computedStyleSelectorVersion(owner);}catch(e){}
     var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&typeof version==='number'&&entry.version===version&&entry.epoch===epoch&&entry.host===host)return entry.sheets;
-    var sheets=host.readSheets(),features=entry?computedListFeatures(owner,host,entry,sheets,epoch):undefined;
+    var sheets=host.readSheets();
+    // An unchanged list keeps its identity, so the entry build keyed on it is reused (#307).
+    if(entry&&entry.host===host&&computedSameList(entry.list,sheets))sheets=entry.sheets;
+    var features=entry?computedListFeatures(owner,host,entry,sheets,epoch):undefined;
     epoch=cssomEpoch();
     var keep=!!features&&entry.epoch===epoch;
     if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets,list:computedListCopy(sheets),scope:keep?entry.scope:undefined,features:keep?features:undefined});
     return sheets;
   }
+  function computedSameList(a,b){if(a.length!==b.length)return false;for(var index=0;index<a.length;index++)if(a[index]!==b[index])return false;return true;}
   function computedListCopy(sheets){var list=[];for(var index=0;index<sheets.length;index++)list[index]=sheets[index];return list;}
   // The owner's selector features after a reread: the entry's when the list is the same, the
   // extended ones when sheets were only added (computedSheetsAdded); otherwise the CSSOM epoch
@@ -992,7 +1000,7 @@
   // interest state that could match, an animated element, the fullscreen element
   // (viewport-sized), an @import's media query.
   var computedStyleCache=new computedSnapshotMap(),computedVolatile=false,computedStateRead=false;
-  function invalidateComputedStyles(){bumpCssomEpoch();}
+  function invalidateComputedStyles(){bumpCssomStructure();}
   __ns.invalidateComputedStyles=invalidateComputedStyles;
   // What a CSS animation / transition update reads beyond the element's own values
   // (animations.js cssUpdate): null when the element has no stamp (it is then never skipped).
@@ -1053,6 +1061,90 @@
     for(var index=0;index<entry.deps.length;index+=2)if(computeStyleSnapshot(entry.deps[index],snapshots)!==entry.deps[index+1])return null;
     return entry.snapshot;
   }
+  // turbo-test#227 part 2: the cascaded declarations (rules, UA tables, inline style; before
+  // inheritance, animations and used values) of an element whose computed style is volatile
+  // only after them, reused under the same key as a computed style while it holds.
+  var computedBaseCache=new computedSnapshotMap();
+  function computedBaseHit(el,key){
+    var entry=computedSnapshotGet(computedBaseCache,el);
+    if(!computedKeyEqual(entry,key))return null;
+    if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
+    if(!computedMediaUnchanged(entry.media))return null;
+    if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
+    return entry.base;
+  }
+  function computedBaseCapture(decl,priorities,uaValues){
+    var out={__proto__:null,decl:{__proto__:null},priorities:{__proto__:null},ua:null,media:{__proto__:null},volatile:computedVolatile,stateRead:computedStateRead};
+    for(var name in decl)if(typeof decl[name]!=='function'&&name!=='length')out.decl[name]=decl[name];
+    for(var name in priorities)out.priorities[name]=priorities[name];
+    if(uaValues){out.ua={__proto__:null};for(var name in uaValues)out.ua[name]=uaValues[name];}
+    if(computedMediaReads)for(var text in computedMediaReads)out.media[text]=computedMediaReads[text];
+    return out;
+  }
+  function computedBaseRestore(base,decl,priorities){
+    for(var name in base.decl)decl[name]=base.decl[name];
+    for(var name in base.priorities)priorities[name]=base.priorities[name];
+    computedMergeMedia(base.media);if(base.stateRead)computedStateRead=true;
+  }
+  // Style sharing (turbo-dom#307 part 2, after Blink's): a new element takes the cascaded
+  // declarations of a recently cascaded sibling (same parent, unchanged since: the parent's
+  // style generation) with the same signature — tag, namespace, class list, id, the values of
+  // every attribute the owner's sheets name and its UA-defaults flag — computed from the same
+  // rule-entry build. Everything after the cascaded declarations (inheritance, display
+  // blockification as a flex / grid item, fonts, animations, used values, computed defaults)
+  // still runs for the element itself. A rule that tests more than the signature (a
+  // pseudo-class: structural, :has, :hover, :lang, :dir, state; a sibling combinator) must give
+  // the element the answer it gave the sibling, and a state rule must not be able to match
+  // either of them (the relaxed test). Never shared: an element with an inline style, a form
+  // control (UA tables read its attributes and state), an <iframe> (size hints), one in the top
+  // layer or a child iframe document, one in a tree whose sheets key on the tree-wide version
+  // (#279's fallback: shadow trees, adopted sheets, @import, container queries, escapes), and a
+  // sibling whose cascade read live state or went volatile.
+  var styleShares=new computedSnapshotMap(),styleShareRefused={__proto__:null,INPUT:1,BUTTON:1,TEXTAREA:1,SELECT:1,OPTION:1,OPTGROUP:1,IFRAME:1};
+  function styleShareProbe(el){
+    if(styleShareOff&&styleShareOff())return null;
+    var parent,scope,generation,tag,namespace,id,names,context,owner;
+    try{
+      if(cssApply(computedStyleNativeGetAttribute,el,['style'])!==null)return null;
+      tag=cssApply(computedStyleNativeTag,el,[]);if(styleShareRefused[tag])return null;
+      parent=cssParentElement(el);if(!parent)return null;
+      scope=computedOwnerScope(el);if(scope<0||scope>=8)return null;
+      generation=computedStyleGeneration(parent,scope);if(typeof generation!=='number')return null;
+      owner=cssApply(computedStyleNativeOwner,el,[]);namespace=cssApply(computedStyleNativeNamespace,el,[]);
+      names=cssApply(computedStyleNativeGetAttribute,el,['class']);id=cssApply(computedStyleNativeGetAttribute,el,['id']);
+      context=computedFontContext(el);
+    }catch(e){return null;}
+    var signature=tag+'\u0001'+namespace+'\u0001'+(context&&context[4]?1:0)+'\u0001'+names+'\u0001'+id,attributes=styleShareAttributes(owner);
+    for(var index=0;index<attributes.length;index++)signature+='\u0001'+cssApply(computedStyleNativeGetAttribute,el,[attributes[index]]);
+    var sheets=computedSheets(el),build=computedSheetEntries(sheets,el);
+    var record=computedSnapshotGet(styleShares,parent);
+    if(!record||record.generation!==generation||record.build!==build){record={__proto__:null,generation:generation,build:build,signatures:{__proto__:null},count:0};computedSnapshotSet(styleShares,parent,record);}
+    var probe={__proto__:null,record:record,signature:signature,hit:null},entry=record.signatures[signature];
+    // (The record's build already holds only while its @media answers do.)
+    if(entry&&styleShareAgrees(el,entry.tests)){probe.hit=entry.base;if(noteStyleShare)noteStyleShare();}
+    return probe;
+  }
+  // The attribute names the owner's sheets name (Tree::set_style_filter's features), once each.
+  function styleShareAttributes(owner){
+    var entry=computedSnapshotGet(computedSheetLists,owner),features=entry&&entry.features;
+    if(!features)return [];
+    if(!features.shareNames){var seen={__proto__:null},list=[];for(var index=0;index<features.attributes.length;index++){var name=features.attributes[index];if(!seen[name]){seen[name]=true;$c.push(list,name);}}features.shareNames=list;}
+    return features.shareNames;
+  }
+  function styleShareAgrees(el,tests){for(var index=0;index<tests.length;index+=2)if(computedNativeMatches(el,tests[index])!==tests[index+1])return false;return true;}
+  var styleShareRisk=/:|[+~]/;
+  function styleShareStore(el,probe,base,index,order){
+    var record=probe.record,tests=[];
+    if(order)for(var at=0;at<order.length;at++){
+      var entry=index.entries[order[at]];if(entry.scopes)return;
+      var text=String(entry.rule.selectorText||'');if(!cssApply(cssZoomExec,styleShareRisk,[text]))continue;
+      $c.push(tests,text);$c.push(tests,computedNativeMatches(el,text));
+      if(cssApply(cssZoomExec,computedStatePattern,[text])){var relaxed=computedRelaxSelector(text);$c.push(tests,relaxed);$c.push(tests,computedNativeMatches(el,relaxed));}
+    }
+    if(record.count>=32){record.signatures={__proto__:null};record.count=0;}
+    if(!record.signatures[probe.signature])record.count++;
+    record.signatures[probe.signature]={__proto__:null,base:base,tests:tests};
+  }
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     if(pseudo||sink||!el||typeof el!=='object')return computeStyleFresh(el,snapshots,sink,pseudo,null);
     var local=computedSnapshotGet(snapshots,el);if(local)return local;
@@ -1060,10 +1152,19 @@
     var key=computedCacheKey(el);
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
     var deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,media={__proto__:null},snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;computedMediaReads=media;
-    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
+    var base={__proto__:null,use:key?computedBaseHit(el,key):null,out:null};
+    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps,base);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
     if(key){
       var after=computedCacheKey(el);
-      if(volatile||!computedKeyEqual(after,key)||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
+      var unchanged=computedKeyEqual(after,key)&&!(stateRead&&styleStateEpoch()!==state);
+      if(volatile||!unchanged){
+        computedSnapshotSet(computedStyleCache,el,null);
+        // turbo-test#227: a style volatile only after its cascaded declarations (a running
+        // animation or transition, the fullscreen element's viewport size) keeps them.
+        var out=base.out;
+        if(out&&unchanged&&!out.volatile)computedSnapshotSet(computedBaseCache,el,{__proto__:null,base:out,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:out.stateRead?state:null,media:out.media,probe:computedCacheProbe(el)});
+        else if(!base.use)computedSnapshotSet(computedBaseCache,el,null);
+      }
       else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps});
     }
     return snapshot;
@@ -1113,7 +1214,7 @@
     if(!could)return;
     if(unkeyed)computedVolatile=true;else computedStateRead=true;
   }
-  function computeStyleFresh(el,snapshots,sink,pseudo,deps){
+  function computeStyleFresh(el,snapshots,sink,pseudo,deps,base){
     var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
     if(noteCascadeRun)noteCascadeRun();
     // Percentage lookup may visit several ancestors before font inheritance asks
@@ -1171,6 +1272,12 @@
     // rule (including a universal selector) and inline value takes precedence.
     var ua = null, layer = '';
     try { if(pseudo||inFrame||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
+    // The cascaded declarations come from this element's earlier computation (turbo-test#227)
+    // or a same-signature sibling's (turbo-dom#307), else from the rules below.
+    var reused=base?base.use:null,share=!reused&&base&&!pseudo&&!sink&&!inFrame&&layer===''?styleShareProbe(el):null;
+    if(share&&share.hit)reused=share.hit;
+    if(reused)computedBaseRestore(reused,decl,priorities),uaValues=reused.ua;
+    else {
     try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&(inFrame||cssApply(computedStyleNativeConnected,el,[]))){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=htmlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
       if(!pseudo&&layer==='fullscreen')ua=$O.assign({},ua||{},fullscreenUserAgent); } catch(e){}
     if(ua){$c.forEach($O.keys(ua), function(name){setProp(name,ua[name]);});uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
@@ -1197,6 +1304,8 @@
     // beat every author one.
     var important = info ? info.important : !pseudo && layer === 'fullscreen' ? fullscreenImportant : null;
     if (important) $c.forEach($O.keys(important), function(name){ setProp(name, important[name], true); });
+    if(base&&!pseudo&&!sink){base.out=computedBaseCapture(decl,priorities,uaValues);if(share&&!base.out.volatile&&!base.out.stateRead)styleShareStore(el,share,base.out,bucketIndex,bucketOrder);}
+    }
     if (sink) { var cascaded = { __proto__: null }; $c.forEach($O.keys(decl),function(name){ if (typeof decl[name] === 'string' && ($c.slice(name,0, 2) === '--' || name === $c.toLowerCase(name))) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
     // Inherited values come from the composed parent's snapshot in this read, so
     // CSSOM edits to document sheets reach descendants. Native cascade only adds
@@ -2144,7 +2253,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
   function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries)$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
   function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}'));$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1)return;var name=$c.trim($c.slice(part,0,index));if(!record.fontFace&&!$c.startsWith(name,'--')&&!knownProperty(name))return;var value=$c.trim($c.slice(part,index+1)),important=$c.test(/\s*!important\s*$/i,value);if(important)value=$c.trim($c.replace(value,/\s*!important\s*$/i,''));if(!record.fontFace&&!$c.startsWith(name,'--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=$c.get(record.values,name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
-  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');if(!record.owner)invalidateComputedStyles();}
+  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');if(!record.owner)bumpCssomEpoch();}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);$c.call(appliedInlineWrite,record.owner,record.source);}}
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
   function removeDeclaration(record,name){if(!record.fontFace){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands){var removed=false;$c.forEach(longhands,function(longhand){if($c.delete(record.values,longhand)){$c.splice(record.names,$c.indexOf(record.names,longhand),1);removed=true;}});if(removed)commitDeclaration(record);return '';}}var previous=$c.get(record.values,name);if(!previous)return '';$c.delete(record.values,name);$c.splice(record.names,$c.indexOf(record.names,name),1);commitDeclaration(record);return previous.text;}
@@ -2289,7 +2398,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // shared by every sheet of one computation; `el` checks @supports selector() conditions.
   function cssLayerChild(node,name){var child=name===null?null:node.named[name];if(!child){child={__proto__:null,named:$O.create(null),children:[],rank:0};if(name!==null)node.named[name]=child;$c.push(node.children,child);}return child;}
   function cssLayerPath(node,name){var parts=cssParts(name,'.');for(var index=0;index<parts.length;index++)node=cssLayerChild(node,$c.trim(parts[index]));return node;}
-  function cssLayerTree(){return {__proto__:null,named:$O.create(null),children:[],rank:0};}
+  function cssLayerTree(){return {__proto__:null,named:$O.create(null),children:[],rank:0,root:true};}
+  // An entry's layer rank; an unlayered entry kept from an earlier build (computedSheetEntries)
+  // holds that build's root, so every root ranks as the current one.
+  function cssLayerRank(layer,layers){return layer.root?layers.rank:layer.rank;}
   // Sub-layers precede their layer's own rules; the root (unlayered rules) comes last.
   function cssLayerRanks(root){var next=0;(function visit(node){for(var index=0;index<node.children.length;index++)visit(node.children[index]);node.rank=next++;})(root);}
   var cssSupportsCache=$O.create(null);
@@ -2327,11 +2439,31 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var outerMedia=computedMediaReads,outerVolatile=computedVolatile,media={__proto__:null},layers=cssLayerTree(),lists=[];
     computedMediaReads=media;computedVolatile=false;
     var volatile=false;
-    try{for(var si=0;si<sheets.length;si++)$c.push(lists,appliedSheetEntries(sheets[si],el,layers));volatile=computedVolatile;}
+    try{var seen=new Set();for(var si=0;si<sheets.length;si++)$c.push(lists,computedOneSheetEntries(sheets[si],el,layers,seen));volatile=computedVolatile;}
     finally{computedMediaReads=outerMedia;computedVolatile=outerVolatile||volatile;computedMergeMedia(media);}
     build={__proto__:null,epoch:epoch,media:media,layers:layers,lists:lists};
     if(!volatile&&sheets.length)computedSnapshotSet(computedEntryBuilds,sheets,build);
     return build;
+  }
+  // One sheet's rule entries, kept across entry builds (an emotion test run adds a <style> per
+  // rule, so every build would otherwise re-walk every earlier sheet) while no CSSOM change but a
+  // declaration write happened and its @media answers hold. Only a sheet of unlayered rules
+  // without @import is kept: a layer joins the build's layer tree, an import the build's seen set.
+  var computedSheetCache=new computedSnapshotMap();
+  function computedOneSheetEntries(sheet,el,layers,seen){
+    if($c.has(seen,sheet))return [];
+    var kept=computedSnapshotGet(computedSheetCache,sheet);
+    var structure=cssomStructureEpoch();
+    if(kept&&kept.epoch===structure&&computedMediaUnchanged(kept.media)){$c.add(seen,sheet);computedMergeMedia(kept.media);return kept.list;}
+    var outer=computedMediaReads,media={__proto__:null},volatile=computedVolatile,layersBefore=layers.children.length,list;
+    computedMediaReads=media;computedVolatile=false;
+    try{list=appliedSheetEntries(sheet,el,layers,undefined,seen);}
+    finally{var went=computedVolatile;computedMediaReads=outer;computedVolatile=volatile||went;computedMergeMedia(media);}
+    var keep=!went&&layers.children.length===layersBefore,rules=cssItems(sheetRecord(sheet).rules);
+    for(var at=0;keep&&at<rules.length;at++)if(cssRuleRecord(rules[at]).type===3)keep=false;
+    for(var index=0;keep&&index<list.length;index++)if(list[index].layer!==layers)keep=false;
+    computedSnapshotSet(computedSheetCache,sheet,keep?{__proto__:null,epoch:structure,media:media,list:list}:null);
+    return list;
   }
   // Rule buckets (turbo-dom#307): a style rule can select an element only when, for some
   // alternative of its selector list, the element carries every class and id named at the top
@@ -2348,13 +2480,24 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // The build's bucket index, made on first use: every entry by its position in the build
   // (sheet by sheet, in order), the sheet it came from, the positions of the unkeyed entries and,
   // per name, the positions of the entries keyed on it (all ascending).
+  // The last index made is extended instead when its build's lists are a prefix of the new
+  // one's (a sheet appended: an emotion test run adds a <style> per rule); the earlier build
+  // then drops it and indexes afresh if it is used again.
+  var cssLastBuckets=null;
   function cssBucketIndex(build){
     var index=build.buckets;if(index)return index;
-    index=build.buckets={__proto__:null,entries:[],sheet:[],unkeyed:[],keyed:{__proto__:null}};
-    for(var si=0;si<build.lists.length;si++){
+    var start=0,last=cssLastBuckets;
+    if(last&&last.build.buckets===last.index&&last.build.lists.length<build.lists.length){
+      start=last.build.lists.length;
+      for(var at=0;at<start;at++)if(last.build.lists[at]!==build.lists[at]){start=0;break;}
+    }
+    if(start){index=last.index;last.build.buckets=null;}
+    else index={__proto__:null,entries:[],sheet:[],unkeyed:[],keyed:{__proto__:null}};
+    build.buckets=index;cssLastBuckets={__proto__:null,build:build,index:index};
+    for(var si=start;si<build.lists.length;si++){
       var entries=build.lists[si];
       for(var ri=0;ri<entries.length;ri++){
-        var at=index.entries.length,entry=entries[ri],keys=entry.scopes?null:cssRuleKeys($c.trim(String(entry.rule.selectorText||'')));
+        var at=index.entries.length,entry=entries[ri],keys=entry.bucketKeys;if(keys===undefined)keys=entry.bucketKeys=entry.scopes?null:cssRuleKeys($c.trim(String(entry.rule.selectorText||'')));
         $c.push(index.entries,entry);$c.push(index.sheet,si);
         if(!keys){$c.push(index.unkeyed,at);continue;}
         for(var ki=0;ki<keys.length;ki++){var list=index.keyed[keys[ki]];if(!list)list=index.keyed[keys[ki]]=[];if(list[list.length-1]!==at)$c.push(list,at);}
@@ -2430,7 +2573,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   AppliedContext.prototype=$O.create(null);
   function ScopeFrame(root,limit,owner){this.root=root;this.limit=limit;this.owner=owner;}
   ScopeFrame.prototype=$O.create(null);
-  function AppliedEntry(rule,layer,media,scopes){this.rule=rule;this.layer=layer;this.media=media;this.scopes=scopes;}
+  function AppliedEntry(rule,layer,media,scopes){this.rule=rule;this.layer=layer;this.media=media;this.scopes=scopes;this.bucketKeys=undefined;}
   AppliedEntry.prototype=$O.create(null);
   function EntryMatch(entry,specificity,proximity,order){this.entry=entry;this.specificity=specificity;this.proximity=proximity;this.order=order;}
   EntryMatch.prototype=$O.create(null);
@@ -2535,9 +2678,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // unlayered ones first); within a layer by specificity, @scope proximity, then document order.
   function cascadeEntries(records,layers,apply){
     cssLayerRanks(layers);
-    var sorted=layerSorted(records,function(a,b){var x=a.entry.layer.rank,y=b.entry.layer.rank;return x!==y?x>y:!cascadeWeaker(a,b);});
+    var sorted=layerSorted(records,function(a,b){var x=cssLayerRank(a.entry.layer,layers),y=cssLayerRank(b.entry.layer,layers);return x!==y?x>y:!cascadeWeaker(a,b);});
     for(var index=0;index<sorted.length;index++)apply(sorted[index].entry,false);
-    sorted=layerSorted(records,function(a,b){var x=a.entry.layer.rank,y=b.entry.layer.rank;return x!==y?x<y:!cascadeWeaker(a,b);});
+    sorted=layerSorted(records,function(a,b){var x=cssLayerRank(a.entry.layer,layers),y=cssLayerRank(b.entry.layer,layers);return x!==y?x<y:!cascadeWeaker(a,b);});
     for(var index=0;index<sorted.length;index++)apply(sorted[index].entry,true);
   }
   // A stable insertion sort (`after(a, b)`: a goes after b).
