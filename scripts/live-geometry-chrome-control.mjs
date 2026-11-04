@@ -122,6 +122,25 @@ const QUIRKS_CASES = [
   ["br", `<div data-cid="d">a<br><br>b</div><div data-cid="s"><span style="font-size:10px">a<br><br>b</span></div>`],
 ];
 
+// miaskiewicz/turbo-dom#282: Chrome's quirks.css gives <form> `margin-block-end: 1em`
+// (only in a BackCompat document): [id suffix, body]. The `standards-` twins are the
+// same bodies under a doctype.
+const QFORM_CSS = 'body{margin:0;font-family:"Fira Code";font-size:16px}';
+const QH = (cid, h = 10) => `<div data-cid="${cid}" style="height:${h}px"></div>`;
+const QFORM_CASES = [
+  ["block", `<form data-cid="f">${QH("a")}</form>${QH("b")}`],
+  ["font-size", `<form data-cid="f" style="font-size:20px">${QH("a")}</form>${QH("b")}`],
+  ["author-margin", `<form data-cid="f" style="margin-bottom:3px">${QH("a")}</form>${QH("b")}`],
+  ["two-forms", `<form data-cid="f">${QH("a")}</form><form data-cid="g">${QH("c")}</form>${QH("b")}`],
+  ["in-div", `<div data-cid="d"><form data-cid="f">${QH("a")}</form></div>${QH("b")}`],
+  ["nested-div", `<form data-cid="f"><div data-cid="d"><form data-cid="g">${QH("a")}</form></div>${QH("c")}</form>${QH("b")}`],
+  ["then-p", `<form data-cid="f">${QH("a")}</form><p data-cid="p" style="height:10px"></p>`],
+  ["table-cell", `<table data-cid="t"><tr><td data-cid="c"><form data-cid="f">${QH("a")}</form></td><td data-cid="e">${QH("h", 40)}</td></tr></table>${QH("b")}`],
+  ["table-cell-text", `<table data-cid="t"><tr><td data-cid="c" style="width:20px"><form data-cid="f">${QH("a")}</form>x</td></tr></table>${QH("b")}`],
+  ["then-text", `<div data-cid="w"><form data-cid="f">${QH("a")}</form>x</div>${QH("b")}`],
+  ["empty", `<form data-cid="f"></form>${QH("b")}`],
+];
+
 // An 8x6 PNG (the live test harness resolves every PNG `data:` URI to it).
 const PNG8X6 =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=";
@@ -650,6 +669,10 @@ const CASES = [
     html: `<style>${QUIRKS_CSS}</style>${body}`,
     fonts: true,
   })),
+  ...QFORM_CASES.flatMap(([id, body]) => [
+    { id: `quirks-form-${id}`, html: `<style>${QFORM_CSS}</style>${body}`, fonts: true },
+    { id: `quirks-form-standards-${id}`, html: DOC(QFORM_CSS, body), fonts: true },
+  ]),
   {
     id: "quirks-strut-standards-control",
     html: DOC(QUIRKS_CSS, QUIRKS_CASES[0][1]),
