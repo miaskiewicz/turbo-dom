@@ -79,14 +79,18 @@
     if (!html(element) || local(element) !== "input") throw new ErrorType("Illegal invocation");
     apply(checked.set, element, [state]);
   }
-  const row = (array, item) =>
-    define(array, array.length, {
-      __proto__: null,
-      value: item,
-      writable: true,
-      enumerable: true,
-      configurable: true,
-    });
+  // One reused null-prototype row descriptor (no literal per row); cleared after each define.
+  const rowDescriptor = Object.create(null);
+  rowDescriptor.value = undefined;
+  rowDescriptor.writable = true;
+  rowDescriptor.enumerable = true;
+  rowDescriptor.configurable = true;
+  const row = (array, item) => {
+    rowDescriptor.value = item;
+    define(array, array.length, rowDescriptor);
+    rowDescriptor.value = undefined;
+    return array;
+  };
   function listed(form) {
     const rows = forms.formControls(form),
       result = [];

@@ -126,7 +126,9 @@
   const collectionDefine=Object.defineProperty, collectionApply=Reflect.apply;
   const collectionMapGet=Map.prototype.get, collectionMapHas=Map.prototype.has, collectionMapSet=Map.prototype.set;
   const collectionValues=Array.prototype.values, collectionEntries=Array.prototype.entries, collectionKeys=Array.prototype.keys, collectionForEach=Array.prototype.forEach;
-  const collectionOwn=(rows,index,value)=>collectionDefine(rows,index,{__proto__:null,value,writable:true,configurable:true,enumerable:true});
+  // One reused null-prototype row descriptor (no literal per row); cleared after each define.
+  const collectionRow=Object.create(null); collectionRow.value=undefined; collectionRow.writable=true; collectionRow.configurable=true; collectionRow.enumerable=true;
+  const collectionOwn=(rows,index,value)=>{collectionRow.value=value;collectionDefine(rows,index,collectionRow);collectionRow.value=undefined;};
   const copyRows=(rows,match)=>{const result=[];for(let index=0;index<rows.length;index++){const value=rows[index];if(!match||match(value))collectionOwn(result,result.length,value);}return result;};
   function descendants(receiver, match) {
     const result = [];
