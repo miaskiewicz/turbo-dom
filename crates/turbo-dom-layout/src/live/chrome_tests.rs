@@ -637,6 +637,6 @@ fn quirks_form_case(id: &str) -> bool {
 #[test]
 fn quirks_mode_forms_take_a_block_end_margin_like_chrome_156() {
     let (compared, failures) = compare_cases(quirks_form_case);
-    assert_eq!(compared, 88, "every quirks-form-* box is compared");
+    assert_eq!(compared, 148, "every quirks-form-* box is compared");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

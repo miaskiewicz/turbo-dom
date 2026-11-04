@@ -139,6 +139,11 @@ const QFORM_CASES = [
   ["table-cell-text", `<table data-cid="t"><tr><td data-cid="c" style="width:20px"><form data-cid="f">${QH("a")}</form>x</td></tr></table>${QH("b")}`],
   ["then-text", `<div data-cid="w"><form data-cid="f">${QH("a")}</form>x</div>${QH("b")}`],
   ["empty", `<form data-cid="f"></form>${QH("b")}`],
+  ["empty-in-div", `<div data-cid="d"><form data-cid="f"></form></div>${QH("b")}`],
+  ["empty-in-div-then-box", `<div data-cid="d"><form data-cid="f"></form></div>${QH("a")}<form data-cid="g"></form>${QH("b")}`],
+  ["empty-in-cell", `<table data-cid="t"><tr><td data-cid="c" style="vertical-align:top"><form data-cid="f"></form>${QH("a")}</td><td data-cid="e">${QH("h", 40)}</td></tr></table>${QH("b")}`],
+  ["empty-in-cell-div", `<table data-cid="t"><tr><td data-cid="c" style="vertical-align:top"><div data-cid="d"><form data-cid="f"></form></div>${QH("a")}</td><td data-cid="e">${QH("h", 40)}</td></tr></table>${QH("b")}`],
+  ["empty-in-cell-middle", `<table data-cid="t"><tr><td data-cid="c"><form data-cid="f"></form>${QH("a")}</td><td data-cid="e">${QH("h", 40)}</td></tr></table>${QH("b")}`],
 ];
 
 // An 8x6 PNG (the live test harness resolves every PNG `data:` URI to it).
