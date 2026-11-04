@@ -314,6 +314,18 @@ fn form_controls_paint_chrome_native_appearance() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// miaskiewicz/turbo-dom#283: any author border declaration (the shorthand, a width equal
+/// to the UA's, a style, a colour, one side's colour, `border: none`) on a `<button>` or an
+/// `<input>` button type turns its native appearance off: the CSS border and background
+/// paint, with and without an author background, in the PNG and SVG screenshots.
+#[test]
+fn an_author_border_turns_a_buttons_native_appearance_off_like_chrome_156() {
+    let pick = |id: &str| id.starts_with("author-border-");
+    let mut failures = differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// miaskiewicz/turbo-dom#257: `inset` / `outset` borders shade their sides like Chrome
 /// (darkened top and left of an inset border, lightened bottom and right; a colour too
 /// dark to darken lightened instead), in the PNG and SVG screenshots.

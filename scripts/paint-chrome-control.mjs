@@ -806,6 +806,43 @@ const CASES = [
     html: DOC(html),
     probes: probes.map(([dx, dy]) => [20 + dx, 20 + dy]),
   })),
+  // miaskiewicz/turbo-dom#283 (`author-border-*`): any author border declaration on a
+  // button (or an <input> button type) turns its native appearance off, so the CSS
+  // border paints, even one equal to the UA's (`border-width:2px`); with and without an
+  // author background. 42x22 border-box controls at (20, 20), no text; probes are
+  // box-relative (corners, edges, the 1px / 2px / 3px rings, the face).
+  ...(() => {
+    const BORDERS = [
+      ["shorthand", "border:3px solid #ff0000"],
+      ["width", "border-width:2px"],
+      ["width-4", "border-width:4px"],
+      ["style", "border-style:solid"],
+      ["color", "border-color:#0000ff"],
+      ["none", "border:none"],
+      ["top-color", "border-top-color:#0000ff"],
+    ];
+    const probes = [[0, 0], [20, 0], [20, 1], [20, 2], [20, 3], [0, 11], [1, 11], [2, 11], [3, 11], [20, 11], [41, 11], [40, 11], [39, 11], [20, 21], [20, 20], [20, 19], [41, 21]];
+    const control = (tag, style) =>
+      tag === "button"
+        ? `<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px;${style}"></button>`
+        : `<input data-cid="m" type="${tag}" value="" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px;${style}">`;
+    const cases = [];
+    for (const [kind, border] of BORDERS) {
+      for (const [bgKind, bg] of [["", ""], ["-bg", ";background-color:#ffff00"]]) {
+        cases.push([`button-${kind}${bgKind}`, control("button", border + bg)]);
+      }
+    }
+    for (const tag of ["button", "submit", "reset"]) {
+      for (const [kind, border] of [BORDERS[0], BORDERS[1], BORDERS[3]]) {
+        cases.push([`input-${tag}-${kind}`, control(tag, border)]);
+      }
+    }
+    return cases.map(([kind, html]) => ({
+      id: `author-border-${kind}`,
+      html: DOC(html),
+      probes: probes.map(([dx, dy]) => [20 + dx, 20 + dy]),
+    }));
+  })(),
   // miaskiewicz/turbo-dom#256 (`cascade-bg-*`): the `background` shorthand sets every
   // background longhand at its own cascade position, so it and the longhands cascade by
   // origin, `!important`, specificity and order like any declarations: an author shorthand
