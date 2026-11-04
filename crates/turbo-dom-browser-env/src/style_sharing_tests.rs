@@ -183,16 +183,17 @@ fn form_controls_never_share() {
 }
 
 /// A sibling whose state rule cannot match the source but can match it (relaxed: the state
-/// pseudo-class taken as matching) cascades itself, so its style follows that state later.
+/// pseudo-class taken as matching) cascades itself, so its style follows that state later: a
+/// fieldset turns :invalid when a descendant control does, which moves neither its tree
+/// generation nor its own key.
 #[test]
 fn a_possible_state_match_cascades_itself() {
     let value = run(
-        "<!doctype html><html><head><style>.a { color: rgb(1, 1, 1) } .a:first-child:popover-open { color: rgb(2, 2, 2) }</style></head><body><section id=p><div></div></section></body>",
+        "<!doctype html><html><head><style>.a { color: rgb(1, 1, 1) } .a:first-child:invalid { color: rgb(2, 2, 2) }</style></head><body><section id=p><fieldset class=a id=late><input id=i></fieldset><fieldset class=a id=source><input></fieldset></section></body>",
         r#"(()=>{
-      const p=document.getElementById('p'),source=document.createElement('div');source.className='a';source.popover='manual';p.appendChild(source);getComputedStyle(source).color;
-      p.firstElementChild.remove();
-      const late=document.createElement('div');late.className='a';late.popover='manual';p.prepend(late);
-      const before=getComputedStyle(late).color;late.showPopover();
+      const late=document.getElementById('late'),source=document.getElementById('source');
+      getComputedStyle(source).color;const before=getComputedStyle(late).color;
+      document.getElementById('i').required=true;
       return JSON.stringify([before,getComputedStyle(late).color]);
     })()"#,
     );
