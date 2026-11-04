@@ -163,6 +163,7 @@
   // Bounded stylesheet and inline computed-value resolution supports style/visibility reads.
   // Returned declarations refresh on public reads; internal ancestor values use private
   // snapshots from the current calculation.
+  function inheritCustomProperties(decl,parent){var record=declarationRecords.get(parent);if(!record)return;$c.forEach(record.names,function(name){if($c.slice(name,0,2)==='--'&&decl[name]==null)decl[name]=cssMapGet(record.values,name).text;});}
   function computedSnapshotValue(style,name){var record=declarationRecords.get(style),value=record&&cssMapGet(record.values,name);return value?value.text:'';}
   // Keep inherited unitless line-height as a factor: its public computed px value
   // alone cannot describe inheritance after a descendant changes font-size.
@@ -999,6 +1000,8 @@
       var inset = 'calc(100% - ' + cssFontString(cssFontNumber(cssApply(cssFontPrecision, 2 * fontState.size + 6, [6]))) + 'px)';
       $c.forEach(['max-width', 'max-height'], function(name){ if (decl[name] == null) decl[name] = decl[camel(name)] = inset; });
     }
+    // Custom properties inherit their specified text (turbo-dom#286).
+    if (connected && !pseudo && inheritParent) inheritCustomProperties(decl, parentStyle(inheritParent));
     var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo);
     if(el&&!pseudo)computedSnapshotSet(snapshots,el,snapshot);
     return snapshot;
@@ -1564,7 +1567,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   __ns.makeInlineStyleDeclaration=function(element){$c.call(inlineDeclarationReceiver,element);var style=$c.get(inlineDeclarations,element);if(!style){style=cssDeclaration($c.call(appliedInlineRead,element),element);$c.set(inlineDeclarations,element,style);}return style;};
   var computedStyleReader=g.getComputedStyle;
   __ns.cloneComputedStyleDeclaration=function(snapshot,element){var source=$c.get(declarationRecords,snapshot),style=cssDeclaration(''),record=$c.get(declarationRecords,style);record.values=source.values;record.names=source.names;record.readOnly=true;record.computed=true;record.fontState=source.fontState;record.refresh=function(){return computedStyleReader(element);};return style;};
-  __ns.makeComputedStyleDeclaration=function(values,element,fontState,pseudo){var style=cssDeclaration(''),record=$c.get(declarationRecords,style);$c.forEach($O.keys(values),function(name){var cssName=cssPropertyName(name),value=values[name];if(typeof value==='string'&&value&&knownProperty(cssName))storeDeclaration(record,cssName,value,'');});record.readOnly=true;record.computed=true;record.fontState=fontState;if(element)record.refresh=pseudo?function(){return computedStyleReader(element,'::'+pseudo);}:function(){return computedStyleReader(element);};return style;};
+  __ns.makeComputedStyleDeclaration=function(values,element,fontState,pseudo){var style=cssDeclaration(''),record=$c.get(declarationRecords,style);$c.forEach($O.keys(values),function(name){var custom=$c.slice(name,0,2)==='--',cssName=custom?name:cssPropertyName(name),value=values[name];if(typeof value==='string'&&custom)value=$c.trim(value);if(typeof value==='string'&&value&&(custom||knownProperty(cssName)))storeDeclaration(record,cssName,value,'');});record.readOnly=true;record.computed=true;record.fontState=fontState;if(element)record.refresh=pseudo?function(){return computedStyleReader(element,'::'+pseudo);}:function(){return computedStyleReader(element);};return style;};
   var cssRuleStates=cssMap('rule');
   var cssRuleRecord=function(rule,type){var record=$c.get(cssRuleStates,rule);if(!record||type&&record.type!==type)throw new TypeError('Illegal invocation');return record;};
   function cssRuleInterface(name,parent){var ctor=__ns.makeNativeFunction(function(){throw new TypeError('Illegal constructor');},name,0,true);ctor.prototype=$O.create(parent||$O.prototype);$O.defineProperty(ctor.prototype,'constructor',{value:ctor,writable:true,configurable:true});$O.defineProperty(ctor.prototype,Symbol.toStringTag,{value:name,configurable:true});$O.defineProperty(ctor,'prototype',{writable:false});if(parent)$O.setPrototypeOf(ctor,parent.constructor);$O.defineProperty(g,name,{value:ctor,writable:true,configurable:true,enumerable:false});}

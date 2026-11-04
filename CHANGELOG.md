@@ -13,6 +13,9 @@ at the time); this file reconstructs them from history.
   text in `style.setProperty` / `getPropertyValue` / `cssText`; only colour properties
   canonicalize hex colours to `rgb()` (turbo-dom#285, Chrome 156 control
   `custom_property_colors_chrome156.json`).
+- turbo-dom-browser-env: `getComputedStyle(el).getPropertyValue('--x')` returns the custom
+  property's specified text from inline styles, style attributes and stylesheets, inherited
+  down the tree like Chrome (turbo-dom#286, `computed_custom_properties_chrome156.json`).
 
 ## [0.7.0] — <date TBD at tag>
 
