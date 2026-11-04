@@ -3,7 +3,12 @@
   const ns = __tsNs;
   const native = g.__documentBasicsNative;
   delete g.__documentBasicsNative;
-  const getRecord=g.__getCollectionRecord, setRecord=g.__setCollectionRecord;
+  const nativeGetRecord=g.__getCollectionRecord, nativeSetRecord=g.__setCollectionRecord;
+  // This realm's records, memoized in JS: a read of one of its own collections makes no
+  // native call (another realm's collection still reads the V8-private record).
+  const ownRecords=new WeakMap(), ownRecordGet=WeakMap.prototype.get, ownRecordSet=WeakMap.prototype.set;
+  const getRecord=object=>{const own=typeof object==='object'&&object!==null?apply(ownRecordGet,ownRecords,[object]):undefined;return own!==undefined?own:nativeGetRecord(object);};
+  const setRecord=(object,record)=>{apply(ownRecordSet,ownRecords,[object,record]);return nativeSetRecord(object,record);};
   delete g.__getCollectionRecord; delete g.__setCollectionRecord;
   const make = ns.makeNativeFunction;
   const type = Object.getOwnPropertyDescriptor(g.Node.prototype, 'nodeType').get;
@@ -154,7 +159,7 @@
     const record = receiver => { const value = getRecord(receiver); if (!value || !(value.kind===name || name==='HTMLCollection'&&(value.kind==='HTMLFormControlsCollection'||value.kind==='HTMLOptionsCollection') || name==='NodeList'&&value.kind==='RadioNodeList')) throw new TypeError('Illegal invocation'); return value.read; };
     property(proto, 'length', function () { return record(this)().length; });
     method(proto, 'item', function (index) { if (!arguments.length) throw new TypeError('item requires 1 argument'); return record(this)()[(+index) >>> 0] || null; }, 1);
-    Object.defineProperty(proto, Symbol.iterator, { value: make(function () { if(name==='HTMLCollection'&&formIteratorRead){const target=formIteratorRead(this);if(target)return collectionApply(collectionValues,target,[]);}record(this); return collectionApply(collectionValues,this,[]); }, 'values', 0), writable: true, configurable: true });
+    Object.defineProperty(proto, Symbol.iterator, { value: make(function () { const own=typeof this==='object'&&this!==null&&apply(ownRecordGet,ownRecords,[this])!==undefined;if(!own&&name==='HTMLCollection'&&formIteratorRead){const target=formIteratorRead(this);if(target)return collectionApply(collectionValues,target,[]);}record(this); return collectionApply(collectionValues,this,[]); }, 'values', 0), writable: true, configurable: true });
     return { proto, record };
   }
   const collection = collectionInterface('HTMLCollection');
@@ -204,13 +209,16 @@
   }
   ns.internalsLiveCollection = live;
   ns.formCollectionFactory={live,getRecord,setIterator:read=>{formIteratorRead=read;}};
+  let epoch = null;
   const caches = new WeakMap(), cacheGet=WeakMap.prototype.get.bind(caches),cacheSet=WeakMap.prototype.set.bind(caches);
   function cached(receiver, key, read, namedProperties = true) {
     let cache = cacheGet(receiver);
     if (!cache) { cache = new Map(); cacheSet(receiver, cache); }
     if (!collectionApply(collectionMapHas,cache,[key])) {
-      let stamp = null, rows = null;
-      const current = () => { const next = native('stamp', receiver); if(next !== stamp) { rows = read(); stamp = next; } return rows; };
+      // Rows re-read only after the engine's mutation epoch moved (no native call per read).
+      if (epoch === null) epoch = native('epoch');
+      let seen = -1, rows = null;
+      const current = () => { const next = epoch[0]; if (next !== seen) { rows = read(); seen = next; } return rows; };
       collectionApply(collectionMapSet,cache,[key,live(current,namedProperties)]);
     }
     return collectionApply(collectionMapGet,cache,[key]);

@@ -532,7 +532,39 @@ thread_local! {
     static TREE_SERIAL: std::cell::Cell<u64> = const { std::cell::Cell::new(1) };
 }
 
+thread_local! {
+    /// The mutation epoch (0.7.1): one f64 the engine bumps on every tree write or new tree on
+    /// this thread, shared with document_basics.js as a Float64Array so a cached live
+    /// collection re-reads its rows only after a mutation, with no native call per read.
+    static MUTATION_EPOCH: v8::SharedRef<v8::BackingStore> =
+        v8::ArrayBuffer::new_backing_store_from_boxed_slice(vec![0u8; 8].into_boxed_slice())
+            .make_shared();
+}
+
+/// Advance the mutation epoch: every cached live collection re-reads its rows on next use.
+fn bump_mutation_epoch() {
+    MUTATION_EPOCH.with(|store| {
+        let mut bytes = [0u8; 8];
+        for (byte, cell) in bytes.iter_mut().zip(store.iter()) {
+            *byte = cell.get();
+        }
+        let next = (f64::from_ne_bytes(bytes) + 1.0).to_ne_bytes();
+        for (cell, byte) in store.iter().zip(next) {
+            cell.set(byte);
+        }
+    });
+}
+
+/// A Float64Array view of the mutation epoch for this isolate.
+fn mutation_epoch_view<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+) -> Option<v8::Local<'s, v8::Float64Array>> {
+    let buffer = MUTATION_EPOCH.with(|store| v8::ArrayBuffer::with_backing_store(scope, store));
+    v8::Float64Array::new(scope, buffer, 0, 1)
+}
+
 fn next_tree_serial() -> u64 {
+    bump_mutation_epoch();
     TREE_SERIAL.with(|serial| {
         let next = serial.get();
         serial.set(next + 1);
@@ -1574,7 +1606,9 @@ fn with_tree_mut<R>(f: impl FnOnce(&mut Tree) -> R) -> Option<R> {
                 s.tree.stop_recording();
             }
             s.ownership_dirty = true;
-            f(&mut s.tree)
+            let result = f(&mut s.tree);
+            bump_mutation_epoch();
+            result
         })
     })
 }

@@ -548,6 +548,12 @@ pub fn dispatch<'s>(
 ) {
     count_crossing();
     let operation = args.get(0).to_rust_string_lossy(scope);
+    if operation == "epoch" {
+        if let Some(view) = mutation_epoch_view(scope) {
+            rv.set(view.into());
+        }
+        return;
+    }
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return type_error(scope);
     };
@@ -601,18 +607,12 @@ pub fn dispatch<'s>(
             })
             .unwrap_or_default();
             // Built whole: no element store reaches a page-patched Array.prototype setter.
-            let rows: Vec<v8::Local<v8::Value>> =
-                rows.into_iter().map(|row| wrap(scope, row).into()).collect();
+            let rows: Vec<v8::Local<v8::Value>> = rows
+                .into_iter()
+                .map(|row| wrap(scope, row).into())
+                .collect();
             rv.set(v8::Array::new_with_elements(scope, &rows).into());
         }
-        "stamp" => {
-            let stamp =
-                with_tree(|tree| format!("{}:{}", DOM_ID.with(|id| id.get()), tree.version))
-                    .unwrap_or_default();
-            // invariant: engine-built name, far below V8's string length limit
-            rv.set(v8::String::new(scope, &stamp).unwrap().into());
-        }
-
         "state" if kind == 9 => {
             let existing = DOM.with(|dom| {
                 dom.borrow()

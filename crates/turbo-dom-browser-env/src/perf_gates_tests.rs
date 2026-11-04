@@ -486,7 +486,10 @@ fn hot_engine_getters_cost_one_native_crossing() {
         );
         assert_eq!(out, "1000");
         let used = crossings() - before;
-        assert!(used <= 1100, "{used} crossings for 1000 document.body reads");
+        assert!(
+            used <= 1100,
+            "{used} crossings for 1000 document.body reads"
+        );
 
         // A control round (the same mutations, no `children`) prices the mutations alone.
         let before = crossings();
@@ -495,7 +498,10 @@ fn hot_engine_getters_cost_one_native_crossing() {
             "for (let i = 0; i < 300; i++) d.append(document.createElement('p')); 'ok'",
         );
         let control = crossings() - before;
-        run(scope, "d.querySelectorAll('p').forEach(p => p.remove()); 'ok'");
+        run(
+            scope,
+            "d.querySelectorAll('p').forEach(p => p.remove()); 'ok'",
+        );
         let before = crossings();
         let out = run(
             scope,
@@ -505,7 +511,10 @@ fn hot_engine_getters_cost_one_native_crossing() {
         assert_eq!(out, "300");
         let used = crossings() - before - control;
         // two getter reads + one length read per round, the list re-read once per mutation.
-        assert!(used <= 300 * 5, "{used} crossings for 300 mutate+children rounds over the control");
+        assert!(
+            used <= 300 * 5,
+            "{used} crossings for 300 mutate+children rounds over the control"
+        );
         let out = run(
             scope,
             "const cc = d.children; const q = [cc[0].localName, cc[2].localName, cc.length]; \
@@ -610,7 +619,10 @@ fn hot_computed_style_and_collection_paths_build_no_null_proto_literals() {
             (count > 0).then(|| format!("{marker} x{count}"))
         })
         .collect();
-    assert!(left.is_empty(), "per-call null-prototype literals left: {left:?}");
+    assert!(
+        left.is_empty(),
+        "per-call null-prototype literals left: {left:?}"
+    );
 }
 
 /// 0.7.1 item 2: a cached live collection (`childNodes`, `children`, `getElementsBy*`)
@@ -625,7 +637,10 @@ fn live_collection_reads_between_mutations_cross_nothing() {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
-        install_with_html(scope, "<body><ul id=u><li>a</li><li>b</li><li class=k>c</li></ul>");
+        install_with_html(
+            scope,
+            "<body><ul id=u><li>a</li><li>b</li><li class=k>c</li></ul>",
+        );
         run(
             scope,
             "globalThis.u = document.getElementById('u'); globalThis.nodes = u.childNodes; \
@@ -640,7 +655,10 @@ fn live_collection_reads_between_mutations_cross_nothing() {
         );
         assert_eq!(out, "9000");
         let used = crossings() - before;
-        assert!(used <= 10, "{used} crossings for 1000 rounds of reads with no mutation");
+        assert!(
+            used <= 10,
+            "{used} crossings for 1000 rounds of reads with no mutation"
+        );
         let out = run(
             scope,
             "const r = [nodes === u.childNodes, kids === u.children]; const li = document.createElement('li'); \
@@ -650,7 +668,10 @@ fn live_collection_reads_between_mutations_cross_nothing() {
              const other = document.implementation.createHTMLDocument('o'); other.body.append(document.adoptNode(u)); \
              u.append(other.createElement('i')); r.push(nodes.length, kids[0].localName); JSON.stringify(r)",
         );
-        assert_eq!(out, r#"[true,true,4,true,2,true,3,3,"b",0,0,0,null,0,1,"i"]"#);
+        assert_eq!(
+            out,
+            r#"[true,true,4,true,2,true,3,3,"b",0,0,0,null,0,1,"i"]"#
+        );
         reset();
     }
     clear_interface_records(isolate);
