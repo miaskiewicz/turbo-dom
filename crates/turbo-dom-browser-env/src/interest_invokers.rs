@@ -157,6 +157,8 @@ fn pseudo_ranges<'i, 't>(
 /// Represent the private interest state as structural selectors within the anchor's root,
 /// exactly as `:popover-open` does.
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     if !source.to_ascii_lowercase().contains("interest-") {
         return Some(source.to_owned());
     }

@@ -3346,6 +3346,9 @@ thread_local! {
 pub(super) struct SelectorWork {
     pub(super) grammar_parses: std::cell::Cell<usize>,
     pub(super) rewrites: std::cell::Cell<usize>,
+    /// State-dependent selector transforms run (popover, dialog, interest, form, view
+    /// transition): each parses the selector.
+    pub(super) transforms: std::cell::Cell<usize>,
 }
 #[cfg(test)]
 thread_local! {
@@ -3425,10 +3428,10 @@ fn selector_argument<'s>(
     #[cfg(test)]
     SELECTOR_WORK.with(|work| work.rewrites.set(work.rewrites.get() + 1));
     let scalar = &facts.scalar;
+    let subject_local = matches!(operation, "matches" | "webkitMatchesSelector" | "closest");
     let transformed = html_popover::selector(scope, node, scalar)?;
     let transformed = html_dialog::selector(scope, node, &transformed)?;
     let transformed = interest_invokers::selector(scope, node, &transformed)?;
-    let subject_local = matches!(operation, "matches" | "webkitMatchesSelector" | "closest");
     let transformed = form_pseudo::selector(scope, node, &transformed, subject_local)?;
     let transformed = view_transitions::selector(scope, node, &transformed)?;
     if transformed == *scalar {

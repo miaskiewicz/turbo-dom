@@ -510,6 +510,8 @@ fn pseudo_ranges<'i, 't>(
 /// as `:popover-open` and `:modal` do: `:active-view-transition` is every active transition
 /// root, `:active-view-transition-type(a, b)` those whose types contain `a` or `b`.
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     if !source
         .to_ascii_lowercase()
         .contains("active-view-transition")

@@ -803,6 +803,8 @@ fn pseudo_ranges<'i, 't>(
 /// Represent private native state as structural selectors within this exact DOM
 /// root. No attributes, styles or nodes are inserted into the guest's tree.
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     let mut input = cssparser::ParserInput::new(source);
     let mut parser = cssparser::Parser::new(&mut input);
     let mut ranges = Vec::new();

@@ -455,6 +455,8 @@ fn pseudo_ranges<'i, 't>(
 /// and the document's fullscreen element (Chrome 156). `:fullscreen` and its prefixed forms
 /// match in the selector engine (`Tree::fullscreen_stack`, miaskiewicz/turbo-dom#58).
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     let mut input = cssparser::ParserInput::new(source);
     let mut parser = cssparser::Parser::new(&mut input);
     let mut ranges = Vec::new();

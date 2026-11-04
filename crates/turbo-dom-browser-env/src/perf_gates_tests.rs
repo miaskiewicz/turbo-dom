@@ -345,3 +345,38 @@ fn label_lookups_walk_the_tree_once_per_version() {
     }
     clear_interface_records(isolate);
 }
+
+/// A selector with a `:` none of the state-dependent transforms (popover, dialog, interest,
+/// form, view transition) applies to skips them: whether each applies is a property of the
+/// selector text, kept per selector, so `matches(':focus-visible')` or `closest('li:hover')`
+/// on every pointer event parses it once, not five times per call. A transform that applies
+/// still runs on every call (its answer reads live state).
+#[test]
+fn transforms_that_cannot_apply_are_skipped_per_selector() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<body><ul><li id=a>a</li><li id=b><input id=i disabled></li></ul>");
+        let before = SELECTOR_WORK.with(|work| work.transforms.get());
+        let out = run(
+            scope,
+            "const a = document.getElementById('a'), i = document.getElementById('i'); let n = 0; \
+             for (let k = 0; k < 100; k++) { n += a.matches('li:first-child') ? 1 : 0; n += a.matches(':focus-visible') ? 1 : 0; } String(n)",
+        );
+        assert_eq!(out, "100");
+        let skipped = SELECTOR_WORK.with(|work| work.transforms.get()) - before;
+        assert!(skipped <= 10, "{skipped} transform runs for 200 calls of two transform-free selectors");
+        let before = SELECTOR_WORK.with(|work| work.transforms.get());
+        let out = run(
+            scope,
+            "let m = 0; for (let k = 0; k < 10; k++) { m += i.matches(':disabled') ? 1 : 0; i.disabled = k % 2 === 0; } String(m)",
+        );
+        assert_eq!(out, "6");
+        assert!(SELECTOR_WORK.with(|work| work.transforms.get()) - before >= 10, "a transform that applies runs every call");
+        reset();
+    }
+    clear_interface_records(isolate);
+}
