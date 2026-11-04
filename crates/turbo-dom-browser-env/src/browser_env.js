@@ -192,10 +192,13 @@
   function FontState(active,family,size,sizeText,style,weight,stretch,caps,line,rootSize){this.active=active;this.family=family;this.size=size;this.sizeText=sizeText;this.style=style;this.weight=weight;this.stretch=stretch;this.caps=caps;this.line=line;this.rootSize=rootSize;}
   FontState.prototype=$O.create(null);
   var fontNormalLine=new FontLine('normal',0,undefined);
+  // A child iframe document's root element is its own root (turbo-dom#299).
+  function computedFontRoot(element,parent,root){return !parent&&computedFrameRoot(element)===element?element:root;}
   function computedFonts(decl,element,parentStyle,connected,pseudo,parentSnapshot){
     var context=computedFontContext(element),parent=context&&context[2],root=context&&context[3];
     // A pseudo-element's parent is its originating element (or its parent pseudo-element).
     if(pseudo&&context){parent=element;root=null;}
+    else root=computedFontRoot(element,parent,root);
     var initialFamily=context?context[0]:'',initialSize=context?context[1]:16;
     var inherited=parent?declarationRecords.get(parentSnapshot||parentStyle(parent)).fontState:null;
     var initial=new FontState(undefined,initialFamily,initialSize,undefined,'normal','400','100%','normal',fontNormalLine,initialSize);
@@ -252,6 +255,9 @@
     return state;
   }
   if (typeof g.getComputedStyle === 'undefined') g.getComputedStyle = function computeStyle(el){
+    // @media evaluates against the viewport of the element's document (turbo-dom#299): a
+    // child iframe document's window, whichever window's getComputedStyle reads it.
+    if(frameRootCount){var view=computedFrameView(el);if(view!==mediaView){var args=arguments;return __ns.withMediaView(view,function(){return cssApply(computeStyle,g,args);});}}
     var pseudo=computedPseudoTarget(arguments[1]);
     // An invalid pseudo-element reads as an empty declaration (turbo-dom#47).
     if(pseudo===null)return __ns.makeComputedStyleDeclaration({},null,null);
@@ -610,6 +616,38 @@
   // The owner's sheet list, reread only when its tree version or the CSSOM epoch moved: every
   // element of one cascade (the read element and each ancestor) shares it.
   var computedSheetLists=new computedSnapshotMap();
+  // turbo-dom#299: a child iframe document's tree is a detached subtree of this tree
+  // (makeChildDocument) registered with its window. Its elements cascade like connected ones,
+  // from the <style> / <link> sheets of that subtree only, with @media evaluated against the
+  // child window's viewport (computeStyle picks the element's view).
+  var frameRoots=new computedSnapshotMap(),frameSheetLists=new computedSnapshotMap(),frameRootCount=0,frameRootOptions={composed:true},frameFirstChild=null,frameNextSibling=null;
+  __ns.registerFrameRoot=function(root,win){if(!computedSnapshotGet(frameRoots,root))frameRootCount++;computedSnapshotSet(frameRoots,root,win);};
+  // The registered child-document root `el` belongs to (null for every element of the page).
+  function computedFrameRoot(el){
+    if(!frameRootCount||!el||typeof el!=='object')return null;
+    var root=null;try{root=cssApply(computedStyleNativeRoot,el,[frameRootOptions]);}catch(e){return null;}
+    return root&&computedSnapshotGet(frameRoots,root)?root:null;
+  }
+  function computedFrameView(el){var root=computedFrameRoot(el);return root?computedSnapshotGet(frameRoots,root):null;}
+  // Connected for the cascade: in the page's document, or in a child iframe document.
+  function computedConnected(el){return !!cssApply(computedStyleNativeConnected,el,[])||computedFrameRoot(el)!==null;}
+  function frameCollectSheets(node,out){
+    for(var child=cssApply(frameFirstChild,node,[]);child;child=cssApply(frameNextSibling,child,[])){
+      var sheet=null;try{sheet=cssApply(currentSheetGetter,child,[]);}catch(e){}
+      if(sheet)out[out.length]=sheet;
+      frameCollectSheets(child,out);
+    }
+  }
+  // The child document's sheets in tree order, reread when its tree or the CSSOM moved.
+  function frameSheets(root){
+    if(!frameFirstChild){frameFirstChild=__ns.domAccessor('firstChild',false,'Node');frameNextSibling=__ns.domAccessor('nextSibling',false,'Node');}
+    var version=null;try{version=computedStyleSelectorVersion(root);}catch(e){}
+    var entry=computedSnapshotGet(frameSheetLists,root);
+    if(entry&&entry.version===version&&entry.epoch===cssomEpoch())return entry.sheets;
+    var sheets=[];frameCollectSheets(root,sheets);
+    computedSnapshotSet(frameSheetLists,root,{__proto__:null,version:version,epoch:cssomEpoch(),sheets:sheets});
+    return sheets;
+  }
   function computedOwnerSheets(owner,host){
     var version=null;try{version=computedStyleSelectorVersion(owner);}catch(e){}
     var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
@@ -654,9 +692,17 @@
     if(entry&&entry.sheets===sheets)entry.styleSelectors=found;
     return found;
   }
+  // A tree other than the document's: a shadow tree (no document sheets) or a child iframe
+  // document (its own sheets); null for the document tree and other detached elements.
+  function computedScopeSheets(el,owner){
+    if(cssApply(computedStyleNativeRoot,el,[])===owner)return null;
+    if(cssApply(computedStyleNativeConnected,el,[]))return [];
+    var frameRoot=computedFrameRoot(el);
+    return frameRoot?frameSheets(frameRoot):null;
+  }
   function computedSheets(el){
     var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
-    if(owner&&cssApply(computedStyleNativeRoot,el,[])!==owner&&cssApply(computedStyleNativeConnected,el,[]))return [];
+    var scoped=owner&&computedScopeSheets(el,owner);if(scoped)return scoped;
     // A live list refreshes on every indexed/length read. Refresh its private
     // backing array once per computation; retained declarations still recompute.
     var ownerRecord=owner&&collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
@@ -725,7 +771,7 @@
   }
   // What the key cannot see: the element's top layer and font context.
   function computedCacheProbe(el){
-    var connected=false;try{connected=cssApply(computedStyleNativeConnected,el,[]);}catch(e){}
+    var connected=false;try{connected=computedConnected(el);}catch(e){}
     var layer='';try{if(connected)layer=computedTopLayer(el);}catch(e){}
     var context=null;try{context=computedFontContext(el);}catch(e){}
     return context?[layer,context[0],context[1],context[2],context[3],context[4]]:[layer];
@@ -811,15 +857,17 @@
     // A disconnected element has no style (turbo-dom#67): every value reads "" until it is
     // connected again (the declaration stays live). Typed OM's cascade read (`sink`) still
     // reports the cascaded values.
+    // An element of a child iframe document (turbo-dom#299) cascades as connected.
+    var inFrame = !!el && computedFrameRoot(el) !== null;
     if (!pseudo && !sink && el) {
       var attached = true;
-      try { attached = __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
+      try { attached = inFrame || __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
       if (!attached) { var empty = __ns.makeComputedStyleDeclaration({},el,null); computedSnapshotSet(snapshots,el,empty); return empty; }
     }
     // A pseudo-element of a disconnected (or <video>/<audio> child) element has no style.
     if (pseudo) {
       var live = false;
-      try { live = __ns.domAccessor('isConnected',false,'Node').call(el) && !computedMediaChild(el); } catch(e) {}
+      try { live = computedConnected(el) && !computedMediaChild(el); } catch(e) {}
       if (!live) return __ns.makeComputedStyleDeclaration({},el,null,pseudo);
     }
     var camel = function(p){ return $c.replace(p,/-([a-z])/g, function(_,c){ return $c.toUpperCase(c); }); };
@@ -857,8 +905,8 @@
     // Measured Chrome button defaults are UA declarations: every matching author
     // rule (including a universal selector) and inline value takes precedence.
     var ua = null, layer = '';
-    try { if(pseudo||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
-    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
+    try { if(pseudo||inFrame||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
+    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&(inFrame||cssApply(computedStyleNativeConnected,el,[]))){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
       if(!pseudo&&layer==='fullscreen')ua=$O.assign({},ua||{},fullscreenUserAgent); } catch(e){}
     if(ua){$c.forEach($O.keys(ua), function(name){setProp(name,ua[name]);});uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
     var sizeHints=!pseudo&&iframeSizeHints(el);
@@ -909,7 +957,7 @@
     var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},inheritedValue,snapshots,ownDisplay):null;
     if(animated)for(var ai=0;ai<animated.length;ai++)if(!priorities[animated[ai][0]])setProp(animated[ai][0],animated[ai][1]);
     var color = decl.color || '';
-    if (!color && !pseudo) { try { color = __ns.cascadeProp.call(el, 'color'); } catch(e) {} }
+    if (!color && !pseudo && !inFrame) { try { color = __ns.cascadeProp.call(el, 'color'); } catch(e) {} }
     // A highlight in highlight-inheritance mode inherits color / background-color from the
     // parent's highlight, or takes the initial values (turbo-dom#47).
     var highlightParent = undefined;
@@ -930,7 +978,7 @@
       color = inheritParent ? inheritedValue('color') : 'rgb(0, 0, 0)';
     }
     var connected = false;
-    try { connected = __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
+    try { connected = inFrame || __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
     // Children of <video> / <audio> are outside the flat tree: Chrome computes no style for them.
     if (connected && computedMediaChild(el)) connected = false;
     setProp('color', connected ? normalizeComputedColor(color) : '');
@@ -942,7 +990,7 @@
     // elements keep "" like every other default above.
     var cascadedValue = function(name){
       var value = decl[name];
-      if ((value == null || value === '') && !pseudo && el && typeof __ns.cascadeProp === 'function') { try { value = __ns.cascadeProp.call(el, name) || ''; } catch(e){ value = ''; } }
+      if ((value == null || value === '') && !pseudo && !inFrame && el && typeof __ns.cascadeProp === 'function') { try { value = __ns.cascadeProp.call(el, name) || ''; } catch(e){ value = ''; } }
       return value == null ? '' : $c.trim(String(value));
     };
     var keyword = function(value){ var key = $c.toLowerCase(value); return $c.test(/^(inherit|initial|unset|revert|revert-layer)$/, key) ? key : ''; };
@@ -3060,7 +3108,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           if (!tag) return null;
           tag=cssTagUpper(tag);if(tag!=='STYLE'&&tag!=='LINK')return null;
           var cached=elementSheets.get(this);
-          if (!cssApply(sheetConnected,this,[])) {if(cached)detachSheet(cached.sheet);elementSheets.delete(this);return null;}
+          // A child iframe document's <style> / <link> has a sheet (turbo-dom#299).
+          if (!computedConnected(this)) {if(cached)detachSheet(cached.sheet);elementSheets.delete(this);return null;}
           if(tag==='LINK')return cached?cached.sheet:null;
           if(!cssApply(inlineSheetAllowed,this,[])){if(cached)detachSheet(cached.sheet);elementSheets.set(this,{sheet:null,text:null});return null;}
           var text=cssApply(sheetTextContent,this,[])||'';
@@ -3336,13 +3385,18 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       });
     };
 
-    // A child window's matchMedia and getComputedStyle's @media evaluate against its own
-    // viewport (turbo-dom#288); the binding's own matchMedia only (a replaced one is kept).
+    // A child window's matchMedia evaluates against its own viewport (turbo-dom#288); the
+    // binding's own matchMedia only (a replaced one is kept). getComputedStyle evaluates @media
+    // against the read element's document's viewport (computeStyle, turbo-dom#299).
     var defineFrameMedia = function(childWin){
       if (typeof __ns.matchMedia !== 'function' || !__ns.withMediaView) return;
-      var make = __ns.makeNativeFunction, computed = g.getComputedStyle;
-      childWin.matchMedia = make(function matchMedia(query){ return __ns.matchMedia(query, childWin); }, 'matchMedia', 1);
-      childWin.getComputedStyle = make(function getComputedStyle(element){ var args = arguments; return __ns.withMediaView(childWin, function(){ return Reflect.apply(computed, g, args); }); }, 'getComputedStyle', 1);
+      childWin.matchMedia = __ns.makeNativeFunction(function matchMedia(query){ return __ns.matchMedia(query, childWin); }, 'matchMedia', 1);
+    };
+    // The child document cascades its own sheets (turbo-dom#299); a srcdoc is its markup.
+    var defineFrameDocument = function(childDoc, childWin, hostEl){
+      __ns.registerFrameRoot(childDoc.documentElement, childWin);
+      var srcdoc = hostEl && hostEl.getAttribute ? hostEl.getAttribute('srcdoc') : null;
+      if (srcdoc != null) childDoc.body.innerHTML = srcdoc;
     };
     // An iframe resizes with the DOM (its attributes, styles, style sheets): once a child
     // window has a MediaQueryList, every DOM change re-evaluates the lists after it.
@@ -3395,6 +3449,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       });
       defineFrameViewport(childWin, hostEl, parentWin);
       defineFrameMedia(childWin);
+      defineFrameDocument(childDoc, childWin, hostEl);
       childWin.window = childWin; childWin.self = childWin; childWin.globalThis = childWin;
       childDoc.defaultView = childWin;
       // parentView: what the child holds to reach the parent (child.parent / child.top /

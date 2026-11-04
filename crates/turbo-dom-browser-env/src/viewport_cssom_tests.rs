@@ -3,7 +3,8 @@
 //! viewport: custom properties keep their authored colours (`custom_property_colors_*`),
 //! `getComputedStyle` reports custom properties (`computed_custom_properties_*`),
 //! `matchMedia` is a live `MediaQueryList` (`match_media_*`) and a child iframe window
-//! reports its content box (`iframe_viewport_*`).
+//! reports its content box (`iframe_viewport_*`); turbo-dom#299: a child iframe document
+//! cascades its own sheets (`iframe_cascade_*`).
 use super::*;
 use sha2::{Digest, Sha256};
 
@@ -127,5 +128,19 @@ fn iframe_media_matches_chrome156_control() {
     check(
         include_str!("iframe_media_chrome156.json"),
         include_str!("iframe_media_probe.js"),
+    );
+}
+
+/// turbo-dom#299: a child iframe document cascades its own style sheets (`srcdoc` and
+/// injected `<style>`s, inline styles, inheritance and custom properties within the child
+/// document, @supports / @layer / specificity) with @media evaluated against the iframe's
+/// viewport, whichever window's getComputedStyle reads the element; the parent document's
+/// rules never select child elements, and a child window reading a parent element uses the
+/// parent's viewport.
+#[test]
+fn iframe_cascade_matches_chrome156_control() {
+    check(
+        include_str!("iframe_cascade_chrome156.json"),
+        include_str!("iframe_cascade_probe.js"),
     );
 }
