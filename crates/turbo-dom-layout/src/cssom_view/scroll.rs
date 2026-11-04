@@ -241,6 +241,7 @@ pub fn scroll_metrics(
         // Flow content's ending padding/margin contributes to scroll containers (on
         // both axes, a clip axis included: miaskiewicz/turbo-dom#180), while
         // out-of-flow boxes and transforms contribute only their edges.
+        [right, bottom] = own_line_extent((fragment, id, used), scroll_container, [right, bottom]);
         if let Some(metrics) = fragment.used_box {
             if metrics.position != Position::Absolute && metrics.position != Position::Fixed {
                 // An RTL box's inline end is its left side (miaskiewicz/turbo-dom#190).
@@ -272,6 +273,33 @@ pub fn scroll_metrics(
         max_y: f64::from((bottom - padding.y - padding.height).max(0.0)),
         min_x: f64::from((start - padding.x).min(0.0)),
     })
+}
+
+/// The scrollable extent `[right, bottom]` grown by `fragment` when it is one of scroll
+/// container `id`'s own line boxes (not a nested block's): its edges plus the
+/// container's end padding count (Chrome 156: `sticky-inline-left-cb-scroller-*`,
+/// miaskiewicz/turbo-dom#295). No clipping box sits between a container and its own
+/// line boxes (`id` is the line's last source ancestor), so neither axis is blocked.
+fn own_line_extent(
+    (fragment, id, used): (
+        &crate::layout_snapshot::SnapshotFragment,
+        SourceId,
+        crate::layout_snapshot::UsedBoxMetrics,
+    ),
+    scroll_container: bool,
+    [right, bottom]: [f32; 2],
+) -> [f32; 2] {
+    if !scroll_container
+        || fragment.kind != GeometryKind::TextLineContainer
+        || fragment.source_ancestors.last() != Some(&id)
+    {
+        return [right, bottom];
+    }
+    let rect = fragment.rect;
+    [
+        right.max(rect.x + rect.width + used.padding.right),
+        bottom.max(rect.y + rect.height + used.padding.bottom),
+    ]
 }
 
 /// Whether a fragment belongs to the element's scrollable overflow: every
@@ -395,7 +423,149 @@ pub fn scroll_translation(
     // The initial containing block scrolls with the identity viewport matrix.
     translation[0] += viewport[0] as f32;
     translation[1] += viewport[1] as f32;
-    Ok(translation)
+    // Sticky boxes move against the scroll (#295).
+    let [x, y] = sticky_translation(
+        snapshot,
+        styles,
+        (id, &fragment.source_ancestors, containing),
+        offsets,
+    )?;
+    Ok([translation[0] - x, translation[1] - y])
+}
+
+/// How far `id`'s own `position: sticky` offset (CSS Position 3 §3.4) under the scroll
+/// `offsets` moves its `offsetLeft` / `offsetTop` from the unscrolled ones
+/// [`super::metrics::offset_position`] answers (miaskiewicz/turbo-dom#295): what an
+/// embedder adds to them (whole pixels: the snapped scrolled position less the snapped
+/// unscrolled one, like Chrome 156). `[0, 0]` for a box that is not sticky.
+pub fn sticky_offset(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    id: SourceId,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+) -> Result<[f32; 2], String> {
+    let [dx, dy] = sticky_shift(snapshot, styles, id, offsets)?;
+    if dx == 0.0 && dy == 0.0 {
+        return Ok([0.0; 2]);
+    }
+    let (x, y) = super::metrics::offset_origin(snapshot, styles, id)?;
+    let snap = |v: f32| (v + 0.5).floor();
+    Ok([snap(x + dx) - snap(x), snap(y + dy) - snap(y)])
+}
+
+/// How far `id`'s own sticky shift under the scroll `offsets` differs from the
+/// unscrolled one layout applied (CSS pixels; `[0, 0]` for a box that is not sticky).
+fn sticky_shift(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    id: SourceId,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+) -> Result<[f32; 2], String> {
+    let Some(&(node, constraint)) = snapshot.sticky_constraint(id) else {
+        return Ok([0.0; 2]);
+    };
+    // Its border box (an inline's fragments' union) as laid out, less layout's shift.
+    let [dx, dy] = constraint.applied;
+    let rect = snapshot
+        .fragments()
+        .iter()
+        .filter(|fragment| fragment.layout_node_id == node)
+        .map(|fragment| fragment.rect)
+        .fold(None, |union: Option<[f32; 4]>, r| {
+            let own = [r.x, r.y, r.x + r.width, r.y + r.height];
+            Some(union.map_or(own, |u| {
+                [
+                    u[0].min(own[0]),
+                    u[1].min(own[1]),
+                    u[2].max(own[2]),
+                    u[3].max(own[3]),
+                ]
+            }))
+        })
+        .ok_or("native sticky fragment missing")?;
+    let rect = [rect[0] - dx, rect[1] - dy, rect[2] - dx, rect[3] - dy];
+    let cb = sticky_containing_block(snapshot, styles, &constraint)?;
+    // The scrollport: the scroll container's content box, else the viewport.
+    let (view, scrolled) = if let Some(scroller) = constraint.scroller {
+        let (box_, source) = layout_box(snapshot, scroller)?;
+        (content_edges(box_), source)
+    } else {
+        let (width, height) = snapshot.viewport();
+        ([0.0, 0.0, width, height], VIEWPORT)
+    };
+    let [x, y] = offsets.get(&scrolled).copied().unwrap_or([0.0; 2]);
+    let view = shifted(view, x as f32, y as f32);
+    let [x, y] = constraint.shift(rect, cb, view);
+    Ok([x - dx, y - dy])
+}
+
+/// The border-box fragment of layout node `node` and its source.
+fn layout_box(
+    snapshot: &LayoutSnapshot,
+    node: crate::layout::fragment::NodeId,
+) -> Result<(&crate::layout_snapshot::SnapshotFragment, SourceId), String> {
+    snapshot
+        .fragments()
+        .iter()
+        .find(|fragment| {
+            fragment.layout_node_id == node && fragment.kind == GeometryKind::BorderBox
+        })
+        .map(|fragment| (fragment, fragment.source_id.unwrap_or(VIEWPORT)))
+        .ok_or_else(|| "native sticky containing box missing".to_string())
+}
+
+/// A box's content box `[x0, y0, x1, y1]` (an anonymous box's own rect).
+fn content_edges(fragment: &crate::layout_snapshot::SnapshotFragment) -> [f32; 4] {
+    let r = fragment
+        .used_box
+        .map_or(fragment.rect, |used| used.content_rect(fragment.rect));
+    [r.x, r.y, r.x + r.width, r.y + r.height]
+}
+
+fn shifted(edges: [f32; 4], x: f32, y: f32) -> [f32; 4] {
+    [edges[0] + x, edges[1] + y, edges[2] + x, edges[3] + y]
+}
+
+/// The content box a sticky box stays inside: its containing block's; when that is
+/// its scroll container, the box's whole scrollable content (Chrome 156:
+/// `sticky-inline-left-cb-scroller-*`).
+fn sticky_containing_block(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    constraint: &crate::layout::sticky::StickyConstraint,
+) -> Result<[f32; 4], String> {
+    let (box_, source) = layout_box(snapshot, constraint.containing_block)?;
+    let mut cb = content_edges(box_);
+    if constraint.scroller == Some(constraint.containing_block) {
+        let scroll = scroll_metrics(snapshot, styles, source)?;
+        let padding = box_.used_box.map_or(0.0, |used| used.padding.horizontal());
+        let padding_v = box_.used_box.map_or(0.0, |used| used.padding.vertical());
+        cb[2] = cb[2].max(cb[0] + scroll.width as f32 - padding);
+        cb[3] = cb[3].max(cb[1] + scroll.height as f32 - padding_v);
+    }
+    Ok(cb)
+}
+
+/// The sticky offsets `fragment`'s box moves by under the scroll `offsets`: its own
+/// (`id`'s) and its sticky ancestors' up to its containing one (`containing`).
+fn sticky_translation(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    (id, ancestors, containing): (SourceId, &[SourceId], Option<usize>),
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+) -> Result<[f32; 2], String> {
+    let mut total = [0.0; 2];
+    let reached = ancestors
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| containing.is_none_or(|index| *i <= index))
+        .map(|(_, ancestor)| *ancestor);
+    for source in reached.chain([id]) {
+        let [x, y] = sticky_shift(snapshot, styles, source, offsets)?;
+        total[0] += x;
+        total[1] += y;
+    }
+    Ok(total)
 }
 
 /// Scroll state key for the document viewport; real sources use document-qualified

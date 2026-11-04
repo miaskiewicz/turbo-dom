@@ -228,15 +228,34 @@ pub fn offset_position(
     styles: &super::scroll::SourceStyles,
     id: SourceId,
 ) -> Result<OffsetPosition, String> {
+    let (left, top, parent) = offset_unsnapped(snapshot, styles, id)?;
+    Ok(OffsetPosition {
+        left: offset_integer(left)?,
+        top: offset_integer(top)?,
+        parent,
+    })
+}
+
+/// `id`'s offsetLeft / offsetTop before snapping to whole pixels (a sticky box's
+/// scrolled offsets snap their sum; miaskiewicz/turbo-dom#295).
+pub(crate) fn offset_origin(
+    snapshot: &LayoutSnapshot,
+    styles: &super::scroll::SourceStyles,
+    id: SourceId,
+) -> Result<(f32, f32), String> {
+    offset_unsnapped(snapshot, styles, id).map(|(left, top, _)| (left, top))
+}
+
+fn offset_unsnapped(
+    snapshot: &LayoutSnapshot,
+    styles: &super::scroll::SourceStyles,
+    id: SourceId,
+) -> Result<(f32, f32, Option<SourceId>), String> {
     let source = snapshot.source(id).ok_or("native offset source missing")?;
     let style = styles
         .get(&id)
         .ok_or("native offset computed style missing")?;
-    let zero = OffsetPosition {
-        left: 0,
-        top: 0,
-        parent: None,
-    };
+    let zero = (0.0, 0.0, None);
     if source.excluded_from_layout
         || style.style.get("display") == Some("contents")
         || style.tag == "body"
@@ -251,11 +270,7 @@ pub fn offset_position(
         .ok_or("native offset requires inline border provenance")?;
     let used = border.used_box.ok_or("native offset used box missing")?;
     if used.position == crate::layout::value::Position::Fixed {
-        return Ok(OffsetPosition {
-            left: offset_integer(border.rect.x)?,
-            top: offset_integer(border.rect.y)?,
-            parent: None,
-        });
+        return Ok((border.rect.x, border.rect.y, None));
     }
     let mut next = style.parent;
     while let Some(parent) = next {
@@ -312,19 +327,11 @@ pub fn offset_position(
                         },
                 )
             };
-            return Ok(OffsetPosition {
-                left: offset_integer(border.rect.x - x)?,
-                top: offset_integer(border.rect.y - y)?,
-                parent: Some(parent),
-            });
+            return Ok((border.rect.x - x, border.rect.y - y, Some(parent)));
         }
         next = parent_style.parent;
     }
-    Ok(OffsetPosition {
-        left: offset_integer(border.rect.x)?,
-        top: offset_integer(border.rect.y)?,
-        parent: None,
-    })
+    Ok((border.rect.x, border.rect.y, None))
 }
 
 #[cfg(test)]

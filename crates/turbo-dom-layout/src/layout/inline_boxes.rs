@@ -1041,6 +1041,7 @@ mod defensive_contract_tests {
             table_rows: None,
             dropped_end_margins: std::collections::HashSet::new(),
             sticky_pending: Vec::new(),
+            sticky: crate::layout::sticky::StickyState::default(),
             writing: crate::layout::writing::WritingMode::default(),
         };
         let edge = super::super::inline::PlacedInlineEdge {
