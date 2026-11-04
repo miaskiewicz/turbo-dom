@@ -600,12 +600,10 @@ pub fn dispatch<'s>(
                     .collect()
             })
             .unwrap_or_default();
-            let array = v8::Array::new(scope, rows.len() as i32);
-            for (index, row) in rows.into_iter().enumerate() {
-                let value = wrap(scope, row);
-                array.set_index(scope, index as u32, value.into());
-            }
-            rv.set(array.into());
+            // Built whole: no element store reaches a page-patched Array.prototype setter.
+            let rows: Vec<v8::Local<v8::Value>> =
+                rows.into_iter().map(|row| wrap(scope, row).into()).collect();
+            rv.set(v8::Array::new_with_elements(scope, &rows).into());
         }
         "stamp" => {
             let stamp =
