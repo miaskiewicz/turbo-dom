@@ -147,7 +147,8 @@ fn form_validity_selectors_ignore_presentational_writes() {
         return JSON.stringify({max:g.max,before,after});"#,
     );
     assert_eq!(value["max"], 0, "{value}");
-    assert_eq!(value["before"], "|rgb(0, 0, 0)");
+    // An unset margin-left computes to its initial 0px, like Chrome 156 (turbo-dom#305).
+    assert_eq!(value["before"], "0px|rgb(0, 0, 0)");
     assert_eq!(value["after"], "4px|rgb(0, 0, 255)");
 }
 
