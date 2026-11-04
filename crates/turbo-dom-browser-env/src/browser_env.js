@@ -597,15 +597,23 @@
     var version=null;try{version=computedStyleSelectorVersion(owner);}catch(e){}
     var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&typeof version==='number'&&entry.version===version&&entry.epoch===epoch&&entry.host===host)return entry.sheets;
-    var sheets=host.readSheets(),same=!!entry&&entry.host===host&&computedSameSheets(entry.list,sheets),features=same?entry.features:undefined;
-    if(entry&&!same){
-      features=entry.host===host&&entry.epoch===epoch?computedSheetsAdded(owner,entry,sheets):null;
-      if(features){computedSnapshotSet(computedEntryBuilds,sheets,null);try{computedStyleFilter(owner,features);}catch(e){}}
-      else{bumpCssomEpoch();epoch=cssomEpoch();}
-    }
-    var keep=!!features&&entry.epoch===epoch,list=[];for(var index=0;index<sheets.length;index++)list[index]=sheets[index];
-    if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets,list:list,scope:keep?entry.scope:undefined,features:keep?features:undefined});
+    var sheets=host.readSheets(),features=entry?computedListFeatures(owner,host,entry,sheets,epoch):undefined;
+    epoch=cssomEpoch();
+    var keep=!!features&&entry.epoch===epoch;
+    if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets,list:computedListCopy(sheets),scope:keep?entry.scope:undefined,features:keep?features:undefined});
     return sheets;
+  }
+  function computedListCopy(sheets){var list=[];for(var index=0;index<sheets.length;index++)list[index]=sheets[index];return list;}
+  // The owner's selector features after a reread: the entry's when the list is the same, the
+  // extended ones when sheets were only added (computedSheetsAdded); otherwise the CSSOM epoch
+  // advances and there are none.
+  function computedListFeatures(owner,host,entry,sheets,epoch){
+    if(entry.host===host&&computedSameSheets(entry.list,sheets))return entry.features;
+    var features=entry.host===host&&entry.epoch===epoch?computedSheetsAdded(owner,entry,sheets):null;
+    if(!features){bumpCssomEpoch();return undefined;}
+    computedSnapshotSet(computedEntryBuilds,sheets,null);
+    try{computedStyleFilter(owner,features);}catch(e){}
+    return features;
   }
   // Sheets added to an analysed list (emotion appends a <style> per rule; MUI's cache
   // prepends): like Chrome's rule-set invalidation, the elements the added rules can select
@@ -616,20 +624,26 @@
   // fallback; answers the owner's selector features with the added ones, or null.
   function computedSheetsAdded(owner,entry,sheets){
     if(entry.scope===undefined||entry.scope<0||entry.scope>=8||!entry.features)return null;
-    var old=entry.list,at=0,added=[];
-    for(var index=0;index<sheets.length;index++){if(at<old.length&&sheets[index]===old[at])at++;else $c.push(added,sheets[index]);}
-    if(at!==old.length)return null;
+    var added=computedAddedSheets(entry.list,sheets);
+    if(!added)return null;
     var features=computedFeatureLists(),targets=[];
-    for(var kind in features)for(var fi=0;fi<entry.features[kind].length;fi++)$c.push(features[kind],entry.features[kind][fi]);
+    computedMergeFeatures(features,entry.features);
     for(var si=0;si<added.length;si++){
       var memo=computedSheetScope(added[si]);
       if(computedScopeJoin(entry.scope,memo.scope)!==entry.scope)return null;
-      for(var kind2 in features)for(var fj=0;fj<memo.features[kind2].length;fj++)$c.push(features[kind2],memo.features[kind2][fj]);
+      computedMergeFeatures(features,memo.features);
       if(!computedRuleTargets(sheetRecord(added[si]).rules,owner,targets))return null;
     }
     try{computedStyleTouch(targets);}catch(e){return null;}
     return features;
   }
+  // The sheets of `sheets` not in `old`, when `old` is still listed in order; else null.
+  function computedAddedSheets(old,sheets){
+    var at=0,added=[];
+    for(var index=0;index<sheets.length;index++){if(at<old.length&&sheets[index]===old[at])at++;else $c.push(added,sheets[index]);}
+    return at===old.length?added:null;
+  }
+  function computedMergeFeatures(into,from){for(var kind in into)for(var index=0;index<from[kind].length;index++)$c.push(into[kind],from[kind][index]);}
   var computedUserActionPseudo=/:(?:hover|active|focus|focus-visible|focus-within|target|target-within|visited|link|any-link)(?![\w-])/gi;
   var computedPseudoElement=/::[\w-]+(?:\([^)]*\))?|:(?:before|after|first-line|first-letter)(?![\w-])/gi;
   function computedRuleTargets(rules,root,targets){
@@ -677,21 +691,46 @@
     for(var index=0;index<text.length;index++){
       var c=text[index];
       if(c==='\\')return 8;
-      if(c==='"'||c==="'"){index++;while(index<text.length&&text[index]!==c)index++;continue;}
-      if(c==='['){var close=index;while(close<text.length&&text[close]!==']')close++;if(close>=text.length)return 8;var attribute=$c.slice(text,index,close+1);if(cssApply(cssZoomExec,computedStyleAttributeSelector,[attribute]))return -1;var attributeName=cssApply(cssZoomExec,/^\[\s*(?:[\w*-]*\|)?([\w-]+)/,[attribute]);if(!attributeName)return 8;$c.push(features.attributes,$c.toLowerCase(attributeName[1]));index=close;continue;}
-      if(c==='.'||c==='#'){var ident=cssApply(cssZoomExec,computedIdent,[$c.slice(text,index+1)]);if(ident){$c.push(c==='.'?features.classes:features.ids,ident[0]);index+=ident[0].length;}continue;}
-      if(c==='+'||c==='~'){scope|=1;continue;}
-      if(c!==':')continue;
-      var element=text[index+1]===':';if(element)index++;
-      var name=$c.toLowerCase(cssApply(cssZoomExec,/^[A-Za-z0-9_-]*/,[$c.slice(text,index+1)])[0]);
-      index+=name.length;
-      if(element||cssApply(cssZoomExec,computedOwnPseudo,[name]))continue;
-      if(cssApply(cssZoomExec,computedForwardPseudo,[name]))scope|=1;
-      else if(cssApply(cssZoomExec,computedBackwardPseudo,[name]))scope|=2;
-      else if(cssApply(cssZoomExec,computedFormPseudo,[name]))scope|=4;
-      else return 8;
+      if(c==='"'||c==="'")index=computedStringEnd(text,index);
+      else if(c==='['){index=computedAttributeEnd(text,index,features);if(index<0)return index===-1?-1:8;}
+      else if(c==='.'||c==='#')index=computedFeatureEnd(text,index,features);
+      else if(c==='+'||c==='~')scope|=1;
+      else if(c===':'){var pseudo=computedPseudoAt(text,index);if(pseudo.scope===8)return 8;scope|=pseudo.scope;index=pseudo.end;}
     }
     return scope;
+  }
+  // The document's own `name` method, else the element prototype's (the document query methods).
+  function computedOwnValue(document,proto,name){var descriptor=Object.getOwnPropertyDescriptor(document,name);if(!descriptor)descriptor=Object.getOwnPropertyDescriptor(proto,name);return descriptor.value;}
+  function computedStringEnd(text,index){var quote=text[index];index++;while(index<text.length&&text[index]!==quote)index++;return index;}
+  // The index of the `]` closing the attribute selector at `index` (its name joins
+  // `features`), -1 for one naming `style`, -2 for one the scan cannot read.
+  function computedAttributeEnd(text,index,features){
+    var close=index;while(close<text.length&&text[close]!==']')close++;
+    if(close>=text.length)return -2;
+    var attribute=$c.slice(text,index,close+1);
+    if(cssApply(cssZoomExec,computedStyleAttributeSelector,[attribute]))return -1;
+    var name=cssApply(cssZoomExec,/^\[\s*(?:[\w*-]*\|)?([\w-]+)/,[attribute]);
+    if(!name)return -2;
+    $c.push(features.attributes,$c.toLowerCase(name[1]));
+    return close;
+  }
+  // The index of the last character of the class or id name at `index` (it joins `features`).
+  function computedFeatureEnd(text,index,features){
+    var ident=cssApply(cssZoomExec,computedIdent,[$c.slice(text,index+1)]);
+    if(!ident)return index;
+    $c.push(text[index]==='.'?features.classes:features.ids,ident[0]);
+    return index+ident[0].length;
+  }
+  // The pseudo-class or pseudo-element at `index`: its scope bits (8: no node scope) and the
+  // index of its name's last character.
+  function computedPseudoAt(text,index){
+    var element=text[index+1]===':';if(element)index++;
+    var name=$c.toLowerCase(cssApply(cssZoomExec,/^[A-Za-z0-9_-]*/,[$c.slice(text,index+1)])[0]),scope=8;
+    if(element||cssApply(cssZoomExec,computedOwnPseudo,[name]))scope=0;
+    else if(cssApply(cssZoomExec,computedForwardPseudo,[name]))scope=1;
+    else if(cssApply(cssZoomExec,computedBackwardPseudo,[name]))scope=2;
+    else if(cssApply(cssZoomExec,computedFormPseudo,[name]))scope=4;
+    return {__proto__:null,scope:scope,end:index+name.length};
   }
   function computedRulesScope(rules,features){
     var items=cssItems(rules),scope=0;
@@ -722,22 +761,22 @@
   // unnamed classes, ids and attributes move none.
   function computedOwnerScope(el){
     var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return -1;}
-    if(!owner)return -1;
-    var adopted=adoptionStates&&$c.get(adoptionStates,owner);
-    if(adopted&&adopted.target&&adopted.target.length)return -1;
+    if(!owner||computedAdopted(owner))return -1;
     var ownerRecord=collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
     if(!host)return 0;
     var sheets=computedOwnerSheets(owner,host),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&entry.sheets===sheets&&entry.scope!==undefined)return entry.scope;
-    var scope=0,features=computedFeatureLists();
-    for(var si=0;si<sheets.length&&scope>=0;si++){
-      var memo=computedSheetScope(sheets[si]);scope=computedScopeJoin(scope,memo.scope);
-      for(var kind in features)for(var fi=0;fi<memo.features[kind].length;fi++)$c.push(features[kind],memo.features[kind][fi]);
-    }
+    var features=computedFeatureLists(),scope=computedSheetsScope(sheets,features);
     try{computedStyleFilter(owner,scope>=0&&scope<8?features:null);}catch(e){}
     if(entry&&entry.sheets===sheets){entry.scope=scope;entry.features=features;}
     return scope;
   }
+  function computedSheetsScope(sheets,features){
+    var scope=0;
+    for(var si=0;si<sheets.length&&scope>=0;si++){var memo=computedSheetScope(sheets[si]);scope=computedScopeJoin(scope,memo.scope);computedMergeFeatures(features,memo.features);}
+    return scope;
+  }
+  function computedAdopted(owner){var adopted=adoptionStates&&$c.get(adoptionStates,owner);return !!(adopted&&adopted.target&&adopted.target.length);}
   function computedSheets(el){
     var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
     if(owner&&cssApply(computedStyleNativeRoot,el,[])!==owner&&cssApply(computedStyleNativeConnected,el,[]))return [];
@@ -3457,7 +3496,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     });
     computedStyleNativeMatches=Object.getOwnPropertyDescriptor(prototypes.Element,'matches').value;
     computedStyleNativeQueryAll=Object.getOwnPropertyDescriptor(prototypes.Element,'querySelectorAll').value;
-    computedStyleNativeDocumentQueryAll=(Object.getOwnPropertyDescriptor(d,'querySelectorAll')||Object.getOwnPropertyDescriptor(elementProto,'querySelectorAll')).value;
+    computedStyleNativeDocumentQueryAll=computedOwnValue(d,elementProto,'querySelectorAll');
     computedStyleNativeGetAttribute=Object.getOwnPropertyDescriptor(prototypes.Element,'getAttribute').value;
     computedStyleNativeRoot=Object.getOwnPropertyDescriptor(prototypes.Node,'getRootNode').value;
     ['querySelector','querySelectorAll','append','prepend','replaceChildren'].forEach(function(name){
