@@ -1514,7 +1514,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // The longhands a valid shorthand value sets: [[name, text, pending], ...], or null.
   function expandShorthandValue(name,value){var flat=cssShorthand('expand',name,value);if(!flat)return null;var out=[];for(var index=0;index<flat.length;index+=4)$c.push(out,[flat[index],flat[index+1],flat[index+2]===null?null:[flat[index+2],flat[index+3]]]);return out;}
   __ns.readDeclarationText=function(style){return declarationText(declarationRecord(style));};
-  function colorText(name,text){if(!$c.test(/(?:^color$|color$)/,name))return text;var match=$c.exec(/^#([\da-f]{3}|[\da-f]{6})$/i,text);if(!match)return text;var hex=match[1];if(hex.length===3)hex=$c.replace(hex,/./g,function(c){return c+c;});return 'rgb('+parseInt($c.slice(hex,0,2),16)+', '+parseInt($c.slice(hex,2,4),16)+', '+parseInt($c.slice(hex,4,6),16)+')';}
+  function colorText(name,text){if($c.slice(name,0,2)==='--'||!$c.test(/(?:^color$|color$)/,name))return text;var match=$c.exec(/^#([\da-f]{3}|[\da-f]{6})$/i,text);if(!match)return text;var hex=match[1];if(hex.length===3)hex=$c.replace(hex,/./g,function(c){return c+c;});return 'rgb('+parseInt($c.slice(hex,0,2),16)+', '+parseInt($c.slice(hex,2,4),16)+', '+parseInt($c.slice(hex,4,6),16)+')';}
   // `raw` is the stylesheet grammar's text of a longhand set directly: the computed cascade
   // reads it (full number precision), CSSOM reads the Chrome spelling in `text`.
   function storeDeclaration(record,name,text,priority,pending,raw){if(!$c.has(record.values,name))$c.push(record.names,name);$c.set(record.values,name,{text:pending?'':colorText(name,text),priority:priority||'',pending:pending||null,raw:raw||null});}

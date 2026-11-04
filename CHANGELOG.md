@@ -7,6 +7,13 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed
+
+- turbo-dom-browser-env: custom properties (`--*`, e.g. `--theme-color`) keep their authored
+  text in `style.setProperty` / `getPropertyValue` / `cssText`; only colour properties
+  canonicalize hex colours to `rgb()` (turbo-dom#285, Chrome 156 control
+  `custom_property_colors_chrome156.json`).
+
 ## [0.7.0] — <date TBD at tag>
 
 | crate | version |
