@@ -24,9 +24,12 @@ fn shared_styles_match_fresh_cascades() {
       const pick=list=>list[rand(list.length)];
       const classes=['a','b','c','d','row','cell'],tags=['div','span','p','li','b','input','button','section'];
       const props=['display','position','color','font-size','font-weight','line-height','margin-top','padding-left','width','height','opacity','visibility','flex-grow','background-color','text-align','border-top-width','border-top-style','z-index','cursor','letter-spacing','font-family','--c','--d','zoom','content','float'];
+      // Odd rounds also use pseudo-classes outside the style filter's scopes (:has, :empty,
+      // :checked, :lang, :dir): their trees key on the tree-wide version and never share.
+      let wide=false;
       const simple=()=>pick([()=>'.'+pick(classes),()=>pick(tags),()=>'[data-k]',()=>'[data-k="1"]',()=>':first-child',()=>':last-child',
         ()=>':nth-child(2n+1)',()=>':not(.'+pick(classes)+')',()=>':is(.'+pick(classes)+')',()=>':has(> .'+pick(classes)+')',()=>':empty',
-        ()=>':checked',()=>':disabled',()=>':lang(pl)',()=>':dir(rtl)',()=>'[type=checkbox]',()=>'.'+pick(classes)+'.'+pick(classes),()=>':hover',()=>':only-child']);
+        ()=>':checked',()=>':disabled',()=>':lang(pl)',()=>':dir(rtl)',()=>'[type=checkbox]',()=>'.'+pick(classes)+'.'+pick(classes),()=>':hover',()=>':only-child',()=>':disabled:not(.a)',()=>'.'+pick(classes)+':nth-child(2)'].filter(f=>wide||!/has|empty|checked|lang|dir\(/.test(f.toString())));
       const compound=()=>{let out=pick([()=>'.'+pick(classes),()=>pick(tags),()=>'']) ();const n=rand(3);for(let i=0;i<n;i++)out+=simple()();return out||'*';};
       const complex=()=>{let out=compound();const n=rand(3);for(let i=0;i<n;i++)out=compound()+pick([' ',' > ',' + ',' ~ '])+out;return out;};
       const decl=()=>pick(['color: rgb('+rand(256)+', 1, 2)','font-size: '+(1+rand(3))+'em','margin-top: '+rand(9)+'px','padding-left: '+rand(5)+'%',
@@ -37,7 +40,7 @@ fn shared_styles_match_fresh_cascades() {
         'float: '+pick(['left','none']),'height: '+pick(['3px','50%']),'color: inherit']);
       let checks=0,shares=0,mismatches=[];
       for(let round=0;round<10;round++){
-        __cssTestStyleShareOff(false);
+        __cssTestStyleShareOff(false);wide=round%2===1;
         document.head.textContent='';document.body.textContent='';
         let css='';
         for(let i=0;i<40;i++){let text=complex();if(rand(4)===0)text+=', '+complex();try{document.body.matches(text);}catch(e){continue;}css+=text+' { '+decl()+'; '+decl()+(rand(5)===0?' !important':'')+' }\n';}

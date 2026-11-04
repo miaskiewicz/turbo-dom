@@ -1056,6 +1056,89 @@
     for(var index=0;index<entry.deps.length;index+=2)if(computeStyleSnapshot(entry.deps[index],snapshots)!==entry.deps[index+1])return null;
     return entry.snapshot;
   }
+  // turbo-test#227 part 2: the cascaded declarations (rules, UA tables, inline style; before
+  // inheritance, animations and used values) of an element whose computed style is volatile
+  // only after them, reused under the same key as a computed style while it holds.
+  var computedBaseCache=new computedSnapshotMap();
+  function computedBaseHit(el,key){
+    var entry=computedSnapshotGet(computedBaseCache,el);
+    if(!computedKeyEqual(entry,key))return null;
+    if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
+    if(!computedMediaUnchanged(entry.media))return null;
+    if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
+    return entry.base;
+  }
+  function computedBaseCapture(decl,priorities,uaValues){
+    var out={__proto__:null,decl:{__proto__:null},priorities:{__proto__:null},ua:null,media:{__proto__:null},volatile:computedVolatile,stateRead:computedStateRead};
+    for(var name in decl)if(typeof decl[name]!=='function'&&name!=='length')out.decl[name]=decl[name];
+    for(var name in priorities)out.priorities[name]=priorities[name];
+    if(uaValues){out.ua={__proto__:null};for(var name in uaValues)out.ua[name]=uaValues[name];}
+    if(computedMediaReads)for(var text in computedMediaReads)out.media[text]=computedMediaReads[text];
+    return out;
+  }
+  function computedBaseRestore(base,decl,priorities){
+    for(var name in base.decl)decl[name]=base.decl[name];
+    for(var name in base.priorities)priorities[name]=base.priorities[name];
+    computedMergeMedia(base.media);if(base.stateRead)computedStateRead=true;
+  }
+  // Style sharing (turbo-dom#307 part 2, after Blink's): a new element takes the cascaded
+  // declarations of a recently cascaded sibling (same parent, unchanged since: the parent's
+  // style generation) with the same signature — tag, namespace, class list, id, the values of
+  // every attribute the owner's sheets name and its UA-defaults flag — computed from the same
+  // rule-entry build. Everything after the cascaded declarations (inheritance, display
+  // blockification as a flex / grid item, fonts, animations, used values, computed defaults)
+  // still runs for the element itself. A rule that tests more than the signature (a
+  // pseudo-class: structural, :has, :hover, :lang, :dir, state; a sibling combinator) must give
+  // the element the answer it gave the sibling, and a state rule must not be able to match
+  // either of them (the relaxed test). Never shared: an element with an inline style, a form
+  // control (UA tables read its attributes and state), an <iframe> (size hints), one in the top
+  // layer or a child iframe document, one in a tree whose sheets key on the tree-wide version
+  // (#279's fallback: shadow trees, adopted sheets, @import, container queries, escapes), and a
+  // sibling whose cascade read live state or went volatile.
+  var styleShares=new computedSnapshotMap(),styleShareRefused={__proto__:null,INPUT:1,BUTTON:1,TEXTAREA:1,SELECT:1,OPTION:1,OPTGROUP:1,IFRAME:1};
+  function styleShareProbe(el){
+    if(styleShareOff&&styleShareOff())return null;
+    var parent,scope,generation,tag,namespace,id,names,context,owner;
+    try{
+      if(cssApply(computedStyleNativeGetAttribute,el,['style'])!==null)return null;
+      tag=cssApply(computedStyleNativeTag,el,[]);if(styleShareRefused[tag])return null;
+      parent=cssParentElement(el);if(!parent)return null;
+      scope=computedOwnerScope(el);if(scope<0||scope>=8)return null;
+      generation=computedStyleGeneration(parent,scope);if(typeof generation!=='number')return null;
+      owner=cssApply(computedStyleNativeOwner,el,[]);namespace=cssApply(computedStyleNativeNamespace,el,[]);
+      names=cssApply(computedStyleNativeGetAttribute,el,['class']);id=cssApply(computedStyleNativeGetAttribute,el,['id']);
+      context=computedFontContext(el);
+    }catch(e){return null;}
+    var signature=tag+'\u0001'+namespace+'\u0001'+(context&&context[4]?1:0)+'\u0001'+names+'\u0001'+id,attributes=styleShareAttributes(owner);
+    for(var index=0;index<attributes.length;index++)signature+='\u0001'+cssApply(computedStyleNativeGetAttribute,el,[attributes[index]]);
+    var sheets=computedSheets(el),build=computedSheetEntries(sheets,el);
+    var record=computedSnapshotGet(styleShares,parent);
+    if(!record||record.generation!==generation||record.build!==build){record={__proto__:null,generation:generation,build:build,signatures:{__proto__:null},count:0};computedSnapshotSet(styleShares,parent,record);}
+    var probe={__proto__:null,record:record,signature:signature,hit:null},entry=record.signatures[signature];
+    if(entry&&computedMediaUnchanged(entry.base.media)&&styleShareAgrees(el,entry.tests)){probe.hit=entry.base;if(noteStyleShare)noteStyleShare();}
+    return probe;
+  }
+  // The attribute names the owner's sheets name (Tree::set_style_filter's features), once each.
+  function styleShareAttributes(owner){
+    var entry=computedSnapshotGet(computedSheetLists,owner),features=entry&&entry.features;
+    if(!features)return [];
+    if(!features.shareNames){var seen={__proto__:null},list=[];for(var index=0;index<features.attributes.length;index++){var name=features.attributes[index];if(!seen[name]){seen[name]=true;$c.push(list,name);}}features.shareNames=list;}
+    return features.shareNames;
+  }
+  function styleShareAgrees(el,tests){for(var index=0;index<tests.length;index+=2)if(computedNativeMatches(el,tests[index])!==tests[index+1])return false;return true;}
+  var styleShareRisk=/:|[+~]/;
+  function styleShareStore(el,probe,base,index,order){
+    var record=probe.record,tests=[];
+    if(order)for(var at=0;at<order.length;at++){
+      var entry=index.entries[order[at]];if(entry.scopes)return;
+      var text=String(entry.rule.selectorText||'');if(!cssApply(cssZoomExec,styleShareRisk,[text]))continue;
+      $c.push(tests,text);$c.push(tests,computedNativeMatches(el,text));
+      if(cssApply(cssZoomExec,computedStatePattern,[text])){var relaxed=computedRelaxSelector(text);$c.push(tests,relaxed);$c.push(tests,computedNativeMatches(el,relaxed));}
+    }
+    if(record.count>=32){record.signatures={__proto__:null};record.count=0;}
+    if(!record.signatures[probe.signature])record.count++;
+    record.signatures[probe.signature]={__proto__:null,base:base,tests:tests};
+  }
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     if(pseudo||sink||!el||typeof el!=='object')return computeStyleFresh(el,snapshots,sink,pseudo,null);
     var local=computedSnapshotGet(snapshots,el);if(local)return local;
@@ -1063,10 +1146,19 @@
     var key=computedCacheKey(el);
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
     var deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,media={__proto__:null},snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;computedMediaReads=media;
-    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
+    var base={__proto__:null,use:key?computedBaseHit(el,key):null,out:null};
+    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps,base);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
     if(key){
       var after=computedCacheKey(el);
-      if(volatile||!computedKeyEqual(after,key)||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
+      var unchanged=computedKeyEqual(after,key)&&!(stateRead&&styleStateEpoch()!==state);
+      if(volatile||!unchanged){
+        computedSnapshotSet(computedStyleCache,el,null);
+        // turbo-test#227: a style volatile only after its cascaded declarations (a running
+        // animation or transition, the fullscreen element's viewport size) keeps them.
+        var out=base.out;
+        if(out&&unchanged&&!out.volatile)computedSnapshotSet(computedBaseCache,el,{__proto__:null,base:out,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:out.stateRead?state:null,media:out.media,probe:computedCacheProbe(el)});
+        else if(!base.use)computedSnapshotSet(computedBaseCache,el,null);
+      }
       else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps});
     }
     return snapshot;
@@ -1116,7 +1208,7 @@
     if(!could)return;
     if(unkeyed)computedVolatile=true;else computedStateRead=true;
   }
-  function computeStyleFresh(el,snapshots,sink,pseudo,deps){
+  function computeStyleFresh(el,snapshots,sink,pseudo,deps,base){
     var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
     if(noteCascadeRun)noteCascadeRun();
     // Percentage lookup may visit several ancestors before font inheritance asks
@@ -1174,6 +1266,12 @@
     // rule (including a universal selector) and inline value takes precedence.
     var ua = null, layer = '';
     try { if(pseudo||inFrame||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
+    // The cascaded declarations come from this element's earlier computation (turbo-test#227)
+    // or a same-signature sibling's (turbo-dom#307), else from the rules below.
+    var reused=base?base.use:null,share=!reused&&base&&!pseudo&&!sink&&!inFrame&&layer===''?styleShareProbe(el):null;
+    if(share&&share.hit)reused=share.hit;
+    if(reused)computedBaseRestore(reused,decl,priorities),uaValues=reused.ua;
+    else {
     try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&(inFrame||cssApply(computedStyleNativeConnected,el,[]))){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=htmlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
       if(!pseudo&&layer==='fullscreen')ua=$O.assign({},ua||{},fullscreenUserAgent); } catch(e){}
     if(ua){$c.forEach($O.keys(ua), function(name){setProp(name,ua[name]);});uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
@@ -1200,6 +1298,8 @@
     // beat every author one.
     var important = info ? info.important : !pseudo && layer === 'fullscreen' ? fullscreenImportant : null;
     if (important) $c.forEach($O.keys(important), function(name){ setProp(name, important[name], true); });
+    if(base&&!pseudo&&!sink){base.out=computedBaseCapture(decl,priorities,uaValues);if(share&&!base.out.volatile&&!base.out.stateRead)styleShareStore(el,share,base.out,bucketIndex,bucketOrder);}
+    }
     if (sink) { var cascaded = { __proto__: null }; $c.forEach($O.keys(decl),function(name){ if (typeof decl[name] === 'string' && ($c.slice(name,0, 2) === '--' || name === $c.toLowerCase(name))) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
     // Inherited values come from the composed parent's snapshot in this read, so
     // CSSOM edits to document sheets reach descendants. Native cascade only adds
