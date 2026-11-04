@@ -1,0 +1,27 @@
+{
+  "jsdom": "27.4.0",
+  "probeSha256": "25ada697ed11cff658af5f09d4f8045d6734151591fdb27b3c35a23516e85f3b",
+  "result": {
+    "a": "rgb(0, 0, 2)",
+    "b": "rgb(0, 0, 1)",
+    "c": "rgb(0, 0, 2)",
+    "d": "rgb(0, 0, 1)",
+    "e": "rgb(0, 0, 1)",
+    "f": "rgb(0, 0, 1)",
+    "g": "rgb(0, 0, 1)",
+    "h": "rgb(0, 0, 1)",
+    "j": "rgb(0, 0, 2)",
+    "k": "rgb(0, 0, 1)",
+    "m": "rgb(0, 0, 1)",
+    "n": "rgb(0, 0, 1)",
+    "i": "rgb(0, 0, 1)",
+    "l": "rgb(0, 0, 2)",
+    "o": "rgb(0, 0, 3)",
+    "matchMedia": "undefined",
+    "inWindow": [
+      false,
+      false,
+      false
+    ]
+  }
+}

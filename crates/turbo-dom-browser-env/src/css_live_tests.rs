@@ -5,6 +5,15 @@ fn run(html: &str, code: &str) -> serde_json::Value {
 }
 
 fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) -> serde_json::Value {
+    run_in_mode(html, code, fonts, MediaMode::Chrome)
+}
+
+fn run_in_mode(
+    html: &str,
+    code: &str,
+    fonts: Option<(&str, f64)>,
+    mode: MediaMode,
+) -> serde_json::Value {
     super::tests::init_v8();
     let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
@@ -14,6 +23,7 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
         assert!(set_computed_font_defaults(context, family, size));
     }
     install_with_html(scope, html);
+    set_media_mode(scope, mode);
     let global = scope.get_current_context().global(scope);
     let key = v8::String::new(scope, "document").unwrap();
     let document = global
@@ -1208,14 +1218,14 @@ fn computed_style_reuse_is_invalidated_by_every_cascade_input() {
 #[test]
 fn computed_style_reuse_follows_import_media_changes() {
     let value = run(
-        "<!doctype html><head><style id=s>@import url('child.css') screen; #t {height:17px}</style></head><body><div id=t></div></body>",
+        "<!doctype html><head><style id=s>@import url('child.css') (min-width: 600px); #t {height:17px}</style></head><body><div id=t></div></body>",
         r#"(()=>{
-          let screen=true;globalThis.matchMedia=query=>({matches:screen,media:query});
+          globalThis.innerWidth=1024;
           const sheet=document.getElementById('s').sheet,child=new CSSStyleSheet();
           __cssTestHost.attachImport(sheet.cssRules[0],child,'http://localhost/child.css','#t {width:33px;height:11px}',true);
           const t=document.getElementById('t'),retained=getComputedStyle(t),rows=[];
           const read=()=>rows.push([getComputedStyle(t).width,retained.width,retained.height]);
-          read();read();screen=false;read();screen=true;read();
+          read();read();innerWidth=500;read();innerWidth=1024;read();
           return JSON.stringify(rows);
         })()"#,
     );
@@ -1713,21 +1723,21 @@ fn inline_style_reuse_matches_the_chrome_control() {
 }
 
 /// A computation that read a rule under a conditional @media is reused while every media
-/// condition it evaluated still gives the same `matchMedia` answer (a page or test can swap
-/// `matchMedia`, so the answers are checked again, not assumed): MUI puts @media rules on most
+/// condition it evaluated still gives the same answer (the viewport can change, so the
+/// answers are checked again, not assumed): MUI puts @media rules on most
 /// elements, and never reusing those styles made every read a fresh cascade.
 #[test]
 fn media_rule_styles_are_reused_until_a_media_answer_changes() {
     let value = run(
         "<style>p{color:rgb(1, 1, 1)} @media (min-width: 600px) { p { color: rgb(2, 2, 2) } }</style><body><p id=p>p</p></body>",
         r#"(()=>{
-      let wide=true;globalThis.matchMedia=query=>({matches:query.includes('600px')?wide:false,media:query});
+      globalThis.innerWidth=1024;
       const p=document.getElementById('p');
       const first=getComputedStyle(p).color;
       const before=__cssTestCascadeRuns();
       const again=getComputedStyle(p).color;
       const reused=__cssTestCascadeRuns()-before;
-      wide=false;
+      innerWidth=500;
       const narrow=getComputedStyle(p).color;
       return JSON.stringify({first,again,reused,narrow});
     })()"#,
@@ -1746,7 +1756,7 @@ fn rule_entries_are_built_once_per_sheet_list() {
     let value = run(
         "<style>@layer base { div { color: rgb(1, 1, 1) } } @media (min-width: 1px) { .t { color: rgb(2, 2, 2) } } @supports (color: red) { .u { margin: 1px } }</style><body></body>",
         r#"(()=>{
-      globalThis.matchMedia=query=>({matches:true,media:query});
+      globalThis.innerWidth=1024;
       let parent=document.body;
       for(let i=0;i<20;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
       const t=document.createElement('p');t.className='t u';parent.appendChild(t);
@@ -1772,3 +1782,28 @@ mod rule_bucket_tests;
 
 #[path = "style_invalidation_tests.rs"]
 mod style_invalidation_tests;
+
+/// jsdom applies an @import's sheet when the import has no media list or one with a
+/// `screen` item; any other media list is skipped (no viewport evaluation).
+#[test]
+fn jsdom_media_mode_imports_follow_jsdom() {
+    let value = run_in_mode(
+        "<!doctype html><head></head><body></body>",
+        r#"(()=>{
+          globalThis.innerWidth=1024;const out={};
+          for(const [id,media] of [['a',''],['b','screen'],['c','print'],['d','(min-width: 1px)'],['e','print, screen'],['f','all']]){
+            const s=document.createElement('style');s.textContent=`@import url('${id}.css') ${media};`;document.head.append(s);
+            const div=document.createElement('div');div.id=id;document.body.append(div);
+            __cssTestHost.attachImport(s.sheet.cssRules[0],new CSSStyleSheet(),`http://localhost/${id}.css`,`#${id} {color:rgb(0, 0, 2)}`,true);
+            out[id]=getComputedStyle(div).color;
+          }
+          return JSON.stringify(out);
+        })()"#,
+        None,
+        MediaMode::Jsdom,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"a":"rgb(0, 0, 2)","b":"rgb(0, 0, 2)","c":"rgb(0, 0, 0)","d":"rgb(0, 0, 0)","e":"rgb(0, 0, 2)","f":"rgb(0, 0, 0)"})
+    );
+}

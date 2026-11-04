@@ -2046,6 +2046,33 @@ pub fn set_form_submission_blocked(scope: &mut v8::PinScope, blocked: bool) {
     });
 }
 
+/// How `window.matchMedia` and getComputedStyle's `@media` / `@import` media lists behave.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MediaMode {
+    /// Chrome's: a live `MediaQueryList` and media lists evaluated against the viewport.
+    #[default]
+    Chrome,
+    /// jsdom 27's (vitest's jsdom environment): no `matchMedia`, and a media list applies
+    /// only when one of its items is exactly `screen` (an `@import` also with no list).
+    Jsdom,
+}
+
+/// Set the current window's [`MediaMode`] (installs start in [`MediaMode::Chrome`]).
+pub fn set_media_mode(scope: &mut v8::PinScope, mode: MediaMode) {
+    let id = scope
+        .get_current_context()
+        .get_slot::<DomContextId>()
+        .map_or(0, |id| id.0);
+    let _dom = DomScope::enter(id);
+    run_js(
+        scope,
+        match mode {
+            MediaMode::Chrome => "__tsNs.setMediaMode('chrome')",
+            MediaMode::Jsdom => "__tsNs.setMediaMode('jsdom')",
+        },
+    );
+}
+
 /// First connected document base attribute, read without guest getters.
 pub fn form_submission_base_href(
     scope: &mut v8::PinScope,
