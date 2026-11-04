@@ -153,7 +153,7 @@ impl Styler<'_, '_> {
         let mut style = resolve_matched_style(parent, &declarations);
         if self.capture.quirks {
             style.set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
-            if local == "body" {
+            if matches!(local, "body" | "td" | "th") {
                 style.set(crate::style::QUIRKY_CONTAINER, "1".to_string());
             }
         }

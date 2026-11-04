@@ -16,7 +16,8 @@ at the time); this file reconstructs them from history.
 - **turbo-dom-layout: quirks-mode `<form>` margin.** A quirks-mode (`BackCompat`) document's
   forms take Chrome 156's quirks.css `margin-block-end: 1em` on the live and static HTML
   paths (an author `margin-bottom` / `margin-block-end` replaces it; at the start of a quirks
-  `<body>` an empty form's margin is ignored, as Blink's quirky container does).
+  `<body>`, `<td>` or `<th>` an empty form's margin is ignored, nested in empty boxes too,
+  as Blink's quirky containers do).
   `Cascade::with_quirks` adds the rule to a caller-built cascade (#282).
 - **turbo-dom-layout / -raster: an author border turns a control's native look off.** Any
   author `border*` declaration (the shorthand, one longhand, even a value equal to the UA's,

@@ -157,9 +157,9 @@ pub const QUIRKS_LINE_HEIGHT: &str = "-internal-quirks-line-height";
 /// against the logical longhand, as Chrome's logical property groups resolve.
 const QUIRKS_UA_CSS: &str = "form { -internal-ua-margin-block-end: 1em }";
 
-/// The internal property the quirks marking sets on a quirks-mode document's `<body>`
-/// (Blink's "quirky container"): a quirks.css margin collapsing through an empty box at
-/// the start of its content is ignored there, like Chrome 156 (miaskiewicz/turbo-dom#282).
+/// The internal property the quirks marking sets on a quirks-mode document's `<body>`,
+/// `<td>` and `<th>` (Blink's "quirky containers"): a quirks.css margin collapsing
+/// through an empty box (nested ones too) at the start of its content is ignored there, like Chrome 156 (miaskiewicz/turbo-dom#282).
 pub const QUIRKY_CONTAINER: &str = "-internal-quirky-container";
 
 static QUIRKS_UA_SHEET: std::sync::LazyLock<Stylesheet> =

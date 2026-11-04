@@ -189,7 +189,8 @@ fn mark_quirks(nodes: &mut [StyledNode]) {
             element
                 .style
                 .set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
-            if element.tag == Tag::Html("body".into()) {
+            if matches!(&element.tag, Tag::Html(name) if matches!(name.as_str(), "body" | "td" | "th"))
+            {
                 element
                     .style
                     .set(crate::style::QUIRKY_CONTAINER, "1".to_string());

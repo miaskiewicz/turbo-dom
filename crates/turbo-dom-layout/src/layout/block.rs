@@ -1839,37 +1839,60 @@ fn zero_or_auto(value: LengthPct) -> bool {
 /// (rather than the bare `margin-top`) so a child's margin escaping a
 /// borderless/paddingless parent stacks the parent against its sibling correctly.
 fn leading_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
-    lb.leading_margin_cached(memo_key(cw, fs), || leading_margin_walk(lb, bs, cw, fs))
+    if quirky_container(lb) {
+        // Rare (a quirks document's `<body>`): not memoized, its walk drops quirk margins.
+        return leading_margin_walk(lb, bs, cw, fs, true);
+    }
+    lb.leading_margin_cached(memo_key(cw, fs), || {
+        leading_margin_walk(lb, bs, cw, fs, false)
+    })
 }
 
-fn leading_margin_walk(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
+/// The leading margin walk; `quirky` while it runs at the start of a quirky container,
+/// where the quirks.css margins of the empty boxes it collapses through are ignored,
+/// however deeply nested (Chrome 156, miaskiewicz/turbo-dom#282).
+fn leading_margin_walk(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32, quirky: bool) -> f32 {
     let mut m = bs.margin.top;
     if top_margins_collapse_through(lb, bs) {
         for (child, cbs) in inflow_children(lb, cw, fs) {
-            m = collapse_margins(m, leading_margin(child, &cbs, cw, fs));
+            let leading = if quirky {
+                leading_margin_walk(child, &cbs, cw, fs, true)
+            } else {
+                leading_margin(child, &cbs, cw, fs)
+            };
+            m = collapse_margins(m, leading);
             if !self_collapsing(child, &cbs, cw) {
                 break;
             }
-            m = collapse_margins(m, start_bottom_margin(lb, child, &cbs));
+            m = collapse_margins(m, start_bottom_margin(quirky, child, &cbs));
         }
     }
     m
 }
 
-/// The bottom margin an empty child at the start of `container` adds to its leading
-/// margin: none for a quirks.css margin inside a quirky container (a quirks-mode
-/// `<body>`), which Chrome 156 ignores there (miaskiewicz/turbo-dom#282).
-fn start_bottom_margin(container: &LayoutBox, child: &LayoutBox, cbs: &BoxStyle) -> f32 {
-    let quirky = container
-        .style
-        .get(crate::style::QUIRKY_CONTAINER)
-        .is_some()
-        && super::value::quirks_margin_block_end(&child.style);
-    if quirky {
+/// Whether `lb` is a quirky container (a quirks-mode `<body>`, `<td>` or `<th>`).
+fn quirky_container(lb: &LayoutBox) -> bool {
+    lb.style.get(crate::style::QUIRKY_CONTAINER).is_some()
+}
+
+/// The bottom margin an empty child adds to a leading margin run: none for a quirks.css
+/// margin at the start of a quirky container (`quirky`), which Chrome 156 ignores there
+/// (miaskiewicz/turbo-dom#282).
+fn start_bottom_margin(quirky: bool, child: &LayoutBox, cbs: &BoxStyle) -> f32 {
+    if quirky && super::value::quirks_margin_block_end(&child.style) {
         0.0
     } else {
         cbs.margin.bottom
     }
+}
+
+/// All the margins an empty (self-collapsing) child collapses through at the start of a
+/// quirky container, its quirks.css ones ignored ([`leading_margin_walk`]).
+fn quirky_collapsed_through(kid: &LayoutBox, kbs: &BoxStyle, cw: f32, fs: f32) -> f32 {
+    collapse_margins(
+        leading_margin_walk(kid, kbs, cw, fs, true),
+        start_bottom_margin(true, kid, kbs),
+    )
 }
 
 /// Whether a block's last in-flow child's bottom margin can collapse through its bottom
@@ -1956,7 +1979,7 @@ fn layout_block_flow(
     cw: f32,
     bs: &BoxStyle,
     ctx: &mut Ctx,
-    boundaries: (bool, bool),
+    boundaries: (bool, bool, bool),
 ) -> (Vec<Fragment>, f32) {
     let fs = bs.font_size;
     let mut frags = Vec::new();
@@ -1971,6 +1994,9 @@ fn layout_block_flow(
     // its caller: the first in-flow child's, and past it each following child's while
     // the earlier ones are empty (self-collapsing; miaskiewicz/turbo-dom#76).
     let mut hoisting = boundaries.0;
+    // Whether the flow is still at the start of a quirky container (`boundaries.2`): its
+    // empty children's quirks.css margins are ignored (miaskiewicz/turbo-dom#282).
+    let mut quirky_start = boundaries.2;
     let mut empty_inline = Vec::new();
     for kid in kids {
         let kbs = resolve(kid, cw, fs);
@@ -2000,7 +2026,14 @@ fn layout_block_flow(
         // The box's leading (collapsed) top margin — suppressed while this container
         // hoists it out its own top edge (parent/child collapse), else the child's
         // `margin-top` collapsed with any margins that escape ITS borderless top.
-        let fragment = layout_flow_child(kid, &kbs, (cx, cw, fs), &mut hoisting, &mut flow, ctx);
+        let fragment = layout_flow_child(
+            kid,
+            &kbs,
+            (cx, cw, fs),
+            (&mut hoisting, &mut quirky_start),
+            &mut flow,
+            ctx,
+        );
         flush_empty_inline(&mut empty_inline, (cx, fragment.y), cw, fs, ctx, &mut frags);
         frags.push(fragment);
     }
@@ -2031,17 +2064,30 @@ fn layout_block_flow(
 /// x, width and font size). While `hoisting`, the child's leading margin was applied by
 /// this box's caller; an empty (self-collapsing) child's own margins were too, so it
 /// leaves nothing pending and the hoisting goes on past it (miaskiewicz/turbo-dom#76).
+/// While `quirky_start` (the start of a quirky container's own flow), an empty child
+/// leaves only its non-quirks.css margins pending (miaskiewicz/turbo-dom#282).
 fn layout_flow_child(
     kid: &LayoutBox,
     kbs: &BoxStyle,
     (cx, cw, fs): (f32, f32, f32),
-    hoisting: &mut bool,
+    (hoisting, quirky_start): (&mut bool, &mut bool),
     flow: &mut FlowRun,
     ctx: &mut Ctx,
 ) -> Fragment {
-    let leading = child_leading(kid, kbs, cw, fs, *hoisting);
-    let empty = *hoisting && self_collapsing(kid, kbs, cw);
+    let self_collapses = self_collapsing(kid, kbs, cw);
+    let empty = *hoisting && self_collapses;
+    let quirky_empty = *quirky_start && !*hoisting && self_collapses;
+    let leading = if quirky_empty {
+        leading_margin_walk(kid, kbs, cw, fs, true)
+    } else {
+        child_leading(kid, kbs, cw, fs, *hoisting)
+    };
+    let before = flow.pending;
     let fragment = layout_in_flow_kid(kid, leading, cx, cw, fs, flow, ctx);
+    if quirky_empty {
+        flow.pending = collapse_margins(before, quirky_collapsed_through(kid, kbs, cw, fs));
+    }
+    *quirky_start &= self_collapses;
     if empty {
         flow.pending = 0.0;
     } else {
@@ -2648,7 +2694,16 @@ fn layout_content(
             // cannot collapse through it (miaskiewicz/turbo-dom#41).
             let suppress_first = !bfc && top_margins_collapse_through(lb, bs);
             let keep_last = lb.document_root() || bfc || !bottom_margins_collapse_through(lb, bs);
-            layout_block_flow(kids, cx, cy, cw, bs, ctx, (suppress_first, keep_last))
+            let quirky = quirky_container(lb);
+            layout_block_flow(
+                kids,
+                cx,
+                cy,
+                cw,
+                bs,
+                ctx,
+                (suppress_first, keep_last, quirky),
+            )
         }
         BoxKind::Flex(kids) => super::flex::layout_flex(lb, kids, cx, cy, cw, bs.font_size, ctx),
         BoxKind::Grid(kids) => super::flex::layout_grid(lb, kids, cx, cy, cw, bs.font_size, ctx),
