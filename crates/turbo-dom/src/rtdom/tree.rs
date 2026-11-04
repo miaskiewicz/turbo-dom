@@ -699,6 +699,16 @@ pub enum Siblings {
     Both,
 }
 
+/// Each tree's `version` starts at its own base, 2^28 apart, so a version names one tree's
+/// state across every tree of the process: caches keyed on (document, version) outside the
+/// tree (the label index, XPath, CSS policy) can never mistake a new tree for an older one
+/// whose counter happened to reach the same value. The bases cycle through 2^25 slots so
+/// every version stays below 2^53 (exact as a JS number).
+fn next_version_base() -> u64 {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    (NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % (1 << 25)) << 28
+}
+
 #[derive(Default)]
 pub(crate) struct QueryCache {
     pub version: u64,
@@ -734,7 +744,7 @@ impl Tree {
             text_ov: Overlay::new(buf_len),
             shadow_root_of_host: FxHashMap::default(),
             host_of_shadow_root: FxHashMap::default(),
-            version: 0,
+            version: next_version_base(),
             selector_version: 0,
             style_gens: FxHashMap::default(),
             child_gens: FxHashMap::default(),
