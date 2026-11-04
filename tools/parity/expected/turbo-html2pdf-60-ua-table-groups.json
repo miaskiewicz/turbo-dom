@@ -1,0 +1,18 @@
+{
+  "id": "turbo-html2pdf#60",
+  "reason": "PDF/UA-1 7.2-4: each TR sits in a THead/TBody/TFoot (from thead/tbody/tfoot; TBody when the table has no row groups) inside its Table, and the rows of a table continued onto a later page get a synthetic Table there (they were loose in Document). Structure tree only: rasters are identical, template-report-ua now passes veraPDF ua1, and no output gains a failed rule.",
+  "control": "turbo-html2pdf release/0.7.0 0da75b7: crates/turbo-html2pdf-core/tests/pdf_ua.rs",
+  "changes": {
+    "html2pdf": ["template-invoice-ua.pdf", "template-report-ua.pdf"],
+    "html2pdf-svg": ["template-invoice-ua.pdf", "template-report-ua.pdf"],
+    "html2pdf-extra": [
+      "conformance-07-table.ua.pdf",
+      "conformance-29-table-valign-colspan.ua.pdf",
+      "conformance-53-table-auto-min-content.ua.pdf",
+      "conformance-54-table-border-spacing.ua.pdf",
+      "conformance-55-table-empty-row-height.ua.pdf",
+      "extra-table-caption.ua.pdf",
+      "extra-xref-anchors.ua.pdf"
+    ]
+  }
+}

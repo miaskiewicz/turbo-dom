@@ -7,6 +7,28 @@ use super::*;
 struct InterestHook(v8::Weak<v8::Function>);
 /// Whether any interest is currently shown in this context (removal hooks stay cheap).
 struct InterestEngaged(std::cell::Cell<bool>);
+impl context_rehydrate::FnSlot for InterestHook {
+    const NAME: &'static str = concat!(module_path!(), "::InterestHook");
+    fn wrap(function: v8::Weak<v8::Function>) -> Self {
+        Self(function)
+    }
+    fn weak(&self) -> &v8::Weak<v8::Function> {
+        &self.0
+    }
+}
+/// The hook's engagement state starts disengaged with it.
+pub(super) const SLOTS: &[context_rehydrate::Entry] = &[context_rehydrate::Entry {
+    set: |scope, context, value| {
+        let set = (context_rehydrate::Entry::of::<InterestHook>().set)(scope, context, value);
+        if set {
+            context.set_slot(std::rc::Rc::new(InterestEngaged(std::cell::Cell::new(
+                false,
+            ))));
+        }
+        set
+    },
+    ..context_rehydrate::Entry::of::<InterestHook>()
+}];
 
 fn engaged(scope: &mut v8::PinScope) -> bool {
     scope
@@ -84,6 +106,17 @@ pub(super) fn attribute_changed<'s>(
     call(scope, element, &[kind.into(), element.into()]);
 }
 
+/// Whether [`selector`] can change `source`: an interest pseudo-class range (a property of
+/// the text, memoized by `selector_argument`).
+pub(super) fn applies(source: &str) -> bool {
+    if !source.to_ascii_lowercase().contains("interest-") {
+        return false;
+    }
+    let mut input = cssparser::ParserInput::new(source);
+    let mut parser = cssparser::Parser::new(&mut input);
+    let mut ranges = Vec::new();
+    pseudo_ranges(&mut parser, &mut ranges).is_ok() && !ranges.is_empty()
+}
 #[derive(Clone, Copy, PartialEq)]
 enum Pseudo {
     Source,
@@ -135,6 +168,8 @@ fn pseudo_ranges<'i, 't>(
 /// Represent the private interest state as structural selectors within the anchor's root,
 /// exactly as `:popover-open` does.
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     if !source.to_ascii_lowercase().contains("interest-") {
         return Some(source.to_owned());
     }
@@ -264,9 +299,8 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(function) = dom_ownership::helper_function(scope, function) {
+        if context_rehydrate::capture::<InterestHook>(scope, function).is_some() {
             let context = scope.get_current_context();
-            context.set_slot(std::rc::Rc::new(InterestHook(function)));
             context.set_slot(std::rc::Rc::new(InterestEngaged(std::cell::Cell::new(
                 false,
             ))));

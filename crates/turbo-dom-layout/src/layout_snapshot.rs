@@ -9,8 +9,9 @@
 //! This is a provenance seam, not a complete CSSOM View implementation. In
 //! particular a text-line fragment's rectangle is its line container, not a
 //! Range rectangle. The optional text-enabled API preserves actual shaper
-//! clusters and original UTF-16 offsets; complete caret boxes, whitespace/bidi
-//! mapping, scrollbars, clipping and fragmented inline borders remain separate.
+//! clusters and original UTF-16 offsets (in bidi-reordered visual order, with each
+//! cluster's embedding level); complete caret boxes, whitespace mapping, scrollbars,
+//! clipping and fragmented inline borders remain separate.
 
 mod fixed_containing;
 mod geometry;
@@ -23,7 +24,7 @@ pub(crate) mod text;
 mod text_caret_edges;
 mod text_carets;
 mod text_finite;
-mod text_geometry;
+pub(crate) mod text_geometry;
 mod text_ranges;
 pub(crate) mod text_units;
 
@@ -101,8 +102,14 @@ pub enum SnapshotError {
     UnsupportedInlineBlockSplit,
     #[error("native ordinary inline top/bottom/middle alignment is unsupported")]
     UnsupportedInlineAlignment,
-    #[error("native ordinary inline vertical/RTL writing is unsupported")]
+    /// A vertical `writing-mode` on an ordinary inline. (A direction change, a bidi
+    /// embedding, lays out since miaskiewicz/turbo-dom#238.)
+    #[error("native ordinary inline vertical writing is unsupported")]
     UnsupportedInlineWriting,
+    /// No longer produced: media elements (miaskiewicz/turbo-dom#252) and form controls
+    /// (#239) lay out in vertical writing modes. Kept for API stability.
+    #[error("native vertical writing-mode layout of this box is unsupported")]
+    UnsupportedVerticalWriting,
     /// No longer produced: absolute/fixed inlines blockify and inline sticky boxes
     /// are laid out (turbo-dom#218). Kept for API stability.
     #[error("native ordinary inline absolute/fixed/sticky positioning is unsupported")]
@@ -180,9 +187,18 @@ pub struct LayoutSnapshot {
     html_layout_scale: Option<f32>,
     unsupported_svg_sources: std::collections::BTreeSet<SourceId>,
     unsupported_inline_sources: BTreeMap<SourceId, SnapshotError>,
+    /// The fragments of list markers (miaskiewicz/turbo-dom#128) -> their list item.
+    list_markers: BTreeMap<usize, SourceId>,
 }
 
 impl LayoutSnapshot {
+    /// The list item whose `::marker` fragment `fragment_index` is (a sourceless marker
+    /// box, its symbol shape or its text; miaskiewicz/turbo-dom#128), if it is one.
+    #[must_use]
+    pub fn list_marker_owner(&self, fragment_index: usize) -> Option<SourceId> {
+        self.list_markers.get(&fragment_index).copied()
+    }
+
     /// Global native affine coefficients retain double precision. Native box and
     /// text-selection quads additionally preserve each flat `FloatQuad` boundary;
     /// ordinary inline quads use this accumulated matrix. The legacy fragment
@@ -208,7 +224,7 @@ impl LayoutSnapshot {
 
     /// Why the native HTML inline producer cannot supply this source's geometry: it is
     /// (inside) an ordinary inline construct it does not support (top/bottom/middle
-    /// alignment, vertical/RTL writing, `sticky`, a displaced block-in-inline split).
+    /// alignment, vertical writing, `sticky`, a displaced block-in-inline split).
     /// The failure is per element: every other source of the snapshot answers
     /// (miaskiewicz/turbo-surf#31). `None` for a supported source.
     #[must_use]
@@ -591,6 +607,7 @@ fn capture_styled_with_plan(
     let range_projection =
         range_projection::collect(&fragments, &transforms, font_layout_scale.is_some());
     let source_index = sources.iter().enumerate().map(|(i, s)| (s.id, i)).collect();
+    let list_markers = sources::list_markers(&fragments, &records);
     sources::index_fragments(&mut sources, &source_index, &fragments, &records);
     let exceeded = text.as_ref().is_some_and(|text| text.exceeded);
     let text_runs = text.map_or_else(Vec::new, |text| text.collect(&galley, &fragments));
@@ -610,6 +627,7 @@ fn capture_styled_with_plan(
         html_layout_scale: font_layout_scale,
         unsupported_svg_sources,
         unsupported_inline_sources,
+        list_markers,
     };
     range_projection::place_boxes(&mut snapshot);
     Ok((snapshot, exceeded))

@@ -1,0 +1,8 @@
+{
+  "id": "turbo-html2pdf#59 (round 3)",
+  "reason": "PDF/UA-1 7.18 link tagging: an <a href> is a Link struct element holding each of its Link annotations as an OBJR kid; each annotation has a /StructParent key in the ParentTree and its target as /Contents; pages with annotations get /Tabs /S. Structure and annotation dictionaries only: rasters are identical, and veraPDF ua1 drops every 7.18 failure (extra-block-in-inline now passes; extra-xref-plain-html and extra-xref-anchors keep only their other 7.3-1 / 7.4.2-1 failures). extra-xref-anchors.ua.pdf also changes here; turbo-html2pdf-60-ua-table-groups.json already declares it.",
+  "control": "turbo-html2pdf release/0.7.0 c748d5d: crates/turbo-html2pdf-core/tests/pdf_ua.rs",
+  "changes": {
+    "html2pdf-extra": ["extra-block-in-inline.ua.pdf", "extra-xref-plain-html.ua.pdf"]
+  }
+}

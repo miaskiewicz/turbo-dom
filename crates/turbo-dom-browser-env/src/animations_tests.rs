@@ -47,7 +47,7 @@ const LOOP: &str = r#"(() => {
 
 pub(super) fn run_probe(html: &str, probe: &str, frozen: bool) -> serde_json::Value {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -92,7 +92,13 @@ pub(super) fn run_probe(html: &str, probe: &str, frozen: bool) -> serde_json::Va
 
 fn control(json: &str, probe: &str, cases: &[u8]) -> (serde_json::Value, serde_json::Value) {
     let control: serde_json::Value = serde_json::from_str(json).unwrap();
-    assert_eq!(control["browser"], "Chrome/156.0.8078.47");
+    // The frozen headless shell (the same 156.0.8078.47 build) reports itself as HeadlessChrome.
+    assert!(
+        ["Chrome/156.0.8078.47", "HeadlessChrome/156.0.8078.47"]
+            .contains(&control["browser"].as_str().unwrap()),
+        "{}",
+        control["browser"]
+    );
     assert_eq!(control["errors"], serde_json::json!([]));
     assert_eq!(
         control["probeSha256"],
@@ -147,35 +153,8 @@ fn animations_model_matches_chrome156_control() {
     let (expected, case) = control(include_str!("animations_chrome156.json"), probe, cases);
     assert_eq!(case["frozenTimeline"], true);
     let mut actual = run_probe(case["html"].as_str().unwrap(), probe, true);
-    // KNOWN_GAP: Chrome enumerates a keyframe's properties in Blink's property-set hash order;
-    // the binding uses code-point order. Pin both orders, then compare everything else.
-    assert_eq!(
-        expected["keyframeOrder"],
-        serde_json::json!([
-            "offset",
-            "easing",
-            "composite",
-            "marginLeft",
-            "color",
-            "margin",
-            "opacity",
-            "computedOffset"
-        ])
-    );
-    assert_eq!(
-        actual["keyframeOrder"],
-        serde_json::json!([
-            "offset",
-            "easing",
-            "composite",
-            "color",
-            "margin",
-            "marginLeft",
-            "opacity",
-            "computedOffset"
-        ])
-    );
-    actual["keyframeOrder"] = expected["keyframeOrder"].clone();
+    // Keyframe properties enumerate in Blink's hash-map bucket order over CSSPropertyID (turbo-dom#233).
+    assert_eq!(actual["keyframeOrder"], expected["keyframeOrder"]);
     // KNOWN_GAP: Animation.rangeStart/rangeEnd return TimelineRangeOffset objects holding a
     // Typed OM CSSUnitValue, which this binding does not implement; they are absent.
     let mut expected = expected;
@@ -262,6 +241,26 @@ fn animations_frame_clock_matches_chrome156_control() {
     );
 }
 
+// Declarative CSS animations and transitions (turbo-dom#187): CSSAnimation / CSSTransition in
+// Element/Document.getAnimations(), their timing and keyframes, playState, pause/cancel and
+// cancellation when the declaration goes away, against the frozen-timeline Chrome 156 control.
+#[test]
+fn css_animations_match_chrome156_control() {
+    let probe = include_str!("css_animations_probe.js");
+    let cases = include_bytes!("css_animations_cases.json");
+    let (expected, case) = control(include_str!("css_animations_chrome156.json"), probe, cases);
+    assert_eq!(case["frozenTimeline"], true);
+    let actual = run_probe(case["html"].as_str().unwrap(), probe, true);
+    let mut out = Vec::new();
+    mismatches(&actual, &expected, "", &mut out);
+    assert!(
+        out.is_empty(),
+        "{} mismatches:\n{}",
+        out.len(),
+        out.join("\n")
+    );
+}
+
 // Guest replacement of the realm's promise, event, timer and style globals cannot reach the
 // animation model: promises still settle, trusted events still arrive, styles still compose.
 #[test]
@@ -327,7 +326,7 @@ fn animations_request_frames_only_when_needed() {
 #[test]
 fn animations_without_frame_host_are_inactive() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

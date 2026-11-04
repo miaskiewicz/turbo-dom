@@ -32,6 +32,7 @@ pub struct PointerLockPolicy {
 
 /// The JS task that queues a trusted `pointerlockchange`/`pointerlockerror` at a document.
 struct LockEvents(v8::Weak<v8::Function>);
+fn_slots!([LockEvents]);
 
 fn with_state<R>(f: impl FnOnce(&mut State) -> R) -> Option<R> {
     DOM.with(|dom| dom.borrow_mut().as_mut().map(|dom| f(&mut dom.pointer)))
@@ -304,11 +305,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(function) = dom_ownership::helper_function(scope, function) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(LockEvents(function)));
-        }
+        context_rehydrate::capture::<LockEvents>(scope, function);
     }
     global.delete(scope, key.into());
 }

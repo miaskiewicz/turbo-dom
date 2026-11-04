@@ -9,7 +9,7 @@ use crate::browser_env::*;
 
 fn with_page(html: &str, body: impl FnOnce(&mut v8::PinScope)) {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -347,7 +347,7 @@ fn host_event_dispatch_leaves_termination_pending() {
 /// the termination fired (false once `at` is past the last script).
 fn install_terminated_at(at: usize) -> bool {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

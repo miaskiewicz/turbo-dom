@@ -59,6 +59,20 @@ pub fn elements_at_point(
         .map(|run| (run.fragment_index, run))
         .collect();
     for fragment in snapshot.fragments().iter().rev() {
+        if let Some(owner) = snapshot.list_marker_owner(fragment.index) {
+            let rect = runs
+                .get(&fragment.index)
+                .map_or(Some(fragment.rect), |run| {
+                    super::text::run_rect(snapshot, run)
+                });
+            if !seen.contains(&owner)
+                && marker_hit(snapshot, styles, offsets, point, (fragment, rect, owner))?
+            {
+                seen.insert(owner);
+                result.push(owner);
+            }
+            continue;
+        }
         if let Some(run) = runs.get(&fragment.index) {
             let Some(source) = run.source_id else {
                 continue;
@@ -149,6 +163,43 @@ pub fn elements_at_point(
     }
     Ok(result)
 }
+/// Whether `id` takes hits (`pointer-events` not `none`, `visibility: visible`).
+fn hittable(styles: &SourceStyles, id: SourceId) -> bool {
+    property(styles, id, "pointer-events") != Some("none")
+        && property(styles, id, "visibility").is_none_or(|value| value == "visible")
+}
+
+/// Whether `point` hits the list marker `fragment` (its marker box or text run `rect`):
+/// a marker has no source of its own and hits its list item `owner` (Chrome 156;
+/// miaskiewicz/turbo-dom#128).
+fn marker_hit(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+    (fragment, rect, owner): (
+        &crate::layout_snapshot::SnapshotFragment,
+        Option<Rect>,
+        SourceId,
+    ),
+) -> Result<bool, String> {
+    let Some(rect) = rect.filter(|_| hittable(styles, owner)) else {
+        return Ok(false);
+    };
+    let translation = scroll_translation(snapshot, styles, owner, offsets)?;
+    let transform = snapshot
+        .native_hit_transform(fragment.index)
+        .ok_or("native hit transform unavailable")?;
+    Ok(contains(rect, transform, translation, point)
+        && !hidden_by_clip(
+            snapshot,
+            styles,
+            (&fragment.source_ancestors, None),
+            offsets,
+            point,
+        )?)
+}
+
 /// Whether `point` is clipped away for a box with `ancestors` (and `own` box): by an
 /// ancestor's `overflow` ([`clipped`]) or the `clip: rect()` of an absolutely
 /// positioned ancestor or of the box itself (miaskiewicz/turbo-dom#28 item 1).

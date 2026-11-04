@@ -30,9 +30,11 @@ struct Snapshot {
 }
 fn snapshot(tree: &mut Tree, context: Handle) -> Result<Snapshot, &'static str> {
     let mut root = tree.attribute_owner(context).unwrap_or(context);
+    // The context's root: the document, a DocumentFragment, a shadow root (XPath's
+    // parent axis stops there like `parentNode`), or a detached subtree's top node.
     for depth in 0..=DEPTH_LIMIT {
-        if tree.shadow_host(root).is_some() || tree.node_type_id(root) == 11 {
-            return Err("XPath fragment/shadow-root contexts are unsupported");
+        if tree.shadow_host(root).is_some() {
+            break;
         }
         match tree.parent(root) {
             Some(parent) if depth < DEPTH_LIMIT => root = parent,
@@ -53,19 +55,17 @@ fn snapshot(tree: &mut Tree, context: Handle) -> Result<Snapshot, &'static str> 
             return Err("XPath tree exceeds its node/depth budget");
         }
         let kind = tree.node_type_id(node);
-        if kind == 10 {
-            continue;
-        }
         let index = nodes.len();
         nodes.push(node);
         rows.push(serde_json::Value::Null);
-        let name = (if kind == 7 {
-            tree.processing_instruction_target(node)
-        } else {
-            tree.qualified_name(node)
+        let name = (match kind {
+            7 => tree.processing_instruction_target(node),
+            10 => tree.doctype_name(node),
+            _ => tree.qualified_name(node),
         })
         .unwrap_or(match kind {
             9 => "#document",
+            11 => "#document-fragment",
             3 => "#text",
             8 => "#comment",
             _ => "",
@@ -113,7 +113,10 @@ fn snapshot(tree: &mut Tree, context: Handle) -> Result<Snapshot, &'static str> 
                 index
             ]));
         }
-        rows[index] = json!([kind, name, local, namespace, prefix, value, parent, attrs, null]);
+        // The last column marks a shadow root: the `id()` scope of its descendants.
+        let shadow = tree.shadow_host(node).is_some();
+        rows[index] =
+            json!([kind, name, local, namespace, prefix, value, parent, attrs, null, shadow]);
         let children = tree.children(node);
         if nodes.len() + stack.len() + children.len() > NODE_LIMIT {
             return Err("XPath tree exceeds its node budget");
@@ -245,7 +248,7 @@ mod tests {
     }
     fn prepared_fixture(source: &str, prepare: impl FnOnce(&mut Tree)) {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -327,7 +330,7 @@ mod tests {
         fixture(
             r#"(()=>{
           const scope=inert.getElementById('scope'),snap=inert.evaluate('p',scope,null,7),expression=inert.createExpression('p');
-          for(const [run,wanted] of [[()=>inert.evaluate('p[',scope,null,7),'SyntaxError'],[()=>inert.evaluate('p',scope,null,42),'TypeError'],[()=>inert.evaluate('count(p)',scope,null,7),'TypeError'],[()=>Document.prototype.evaluate.call({},'p',scope),'TypeError'],[()=>inert.evaluate('p',{nodeType:1}),'TypeError'],[()=>XPathExpression.prototype.evaluate.call({},scope),'TypeError'],[()=>XPathResult.prototype.snapshotItem.call({},0),'TypeError'],[()=>snap.numberValue,'TypeError'],[()=>snap.iterateNext(),'TypeError'],[()=>snap.snapshotItem(),'TypeError'],[()=>new XPathResult(),'TypeError'],[()=>expression.evaluate(inert.createDocumentFragment()),'NotSupportedError'],[()=>inert.createExpression('namespace::*'),'NotSupportedError'],[()=>inert.createExpression('$variable'),'SyntaxError'],[()=>inert.createExpression('unknown()'),'SyntaxError']]){let error;try{run()}catch(caught){error=caught.name}if(error!==wanted)throw new Error(wanted+' got '+error);}
+          for(const [run,wanted] of [[()=>inert.evaluate('p[',scope,null,7),'SyntaxError'],[()=>inert.evaluate('p',scope,null,42),'TypeError'],[()=>inert.evaluate('count(p)',scope,null,7),'TypeError'],[()=>Document.prototype.evaluate.call({},'p',scope),'TypeError'],[()=>inert.evaluate('p',{nodeType:1}),'TypeError'],[()=>XPathExpression.prototype.evaluate.call({},scope),'TypeError'],[()=>XPathResult.prototype.snapshotItem.call({},0),'TypeError'],[()=>snap.numberValue,'TypeError'],[()=>snap.iterateNext(),'TypeError'],[()=>snap.snapshotItem(),'TypeError'],[()=>new XPathResult(),'TypeError'],[()=>expression.evaluate(inert.createDocumentFragment()),'NotSupportedError'],[()=>inert.createExpression('$variable'),'SyntaxError'],[()=>inert.createExpression('unknown()'),'SyntaxError']]){let error;try{run()}catch(caught){error=caught.name}if(error!==wanted)throw new Error(wanted+' got '+error);}
           return true;
         })()"#,
         );
@@ -365,7 +368,7 @@ mod tests {
     #[test]
     fn xpath_borrowed_interfaces_accept_foreign_native_records_and_keep_result_realms() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);

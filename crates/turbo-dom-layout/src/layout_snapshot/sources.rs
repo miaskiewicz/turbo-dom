@@ -11,6 +11,9 @@ pub(crate) struct SourceRecord {
     pub(crate) id: Option<SourceId>,
     pub(crate) ancestors: Vec<SourceId>,
     pub(crate) inline_block_owners: Vec<SourceId>,
+    /// A list item's generated `::marker` box or text (sourceless; its owner is the
+    /// last of `ancestors`, miaskiewicz/turbo-dom#128).
+    pub(crate) list_marker: bool,
 }
 
 pub(crate) struct BuildSources {
@@ -33,6 +36,18 @@ impl BuildSources {
             if !record.inline_block_owners.contains(&owner) {
                 record.inline_block_owners.push(owner);
             }
+        }
+    }
+
+    /// Record `marker` as a `::marker` box/text of the list item box `owner`: sourceless,
+    /// with the item as its innermost ancestor.
+    pub(crate) fn list_marker(&mut self, marker: NodeId, owner: NodeId) {
+        // (An item outside the snapshot's identities has no record, nor does its marker.)
+        if let Some(mut record) = self.records.get(&owner).cloned() {
+            record.ancestors.extend(record.id.take());
+            record.inline_block_owners.clear();
+            record.list_marker = true;
+            self.records.insert(marker, record);
         }
     }
 
@@ -170,7 +185,8 @@ impl Walker<'_> {
         };
         let excluded = excluded
             || matches!(node, StyledNode::Element(element) if display_of(&element.style) == Display::None
-                || crate::layout::contents::suppresses_subtree(element));
+                || crate::layout::contents::suppresses_subtree(element)
+                || crate::layout::boxgen::unrendered_embed(element));
         let id = self.wanted.get(path).copied();
         let (key, kind) = node_key(node);
         self.nodes.insert(
@@ -179,6 +195,7 @@ impl Walker<'_> {
                 id,
                 ancestors: ancestors.to_vec(),
                 inline_block_owners: Vec::new(),
+                list_marker: false,
             },
         );
         if let Some(id) = id {
@@ -208,8 +225,9 @@ impl Walker<'_> {
     }
 
     fn excludes_child_content(&self, element: &crate::StyledElement) -> bool {
-        self.native_html
-            && matches!(&element.tag, crate::Tag::Html(name) if name.eq_ignore_ascii_case("iframe"))
+        (self.native_html
+            && matches!(&element.tag, crate::Tag::Html(name) if name.eq_ignore_ascii_case("iframe")))
+            || crate::layout::boxgen::media_element(element).is_some()
     }
 
     fn children(
@@ -226,7 +244,8 @@ impl Walker<'_> {
         let mut next = ancestors.to_vec();
         next.extend(id);
         // Fallback descendants remain in the DOM/source inventory, but a live
-        // embedded viewport never renders them in its parent's formatting tree.
+        // embedded viewport or a media element (miaskiewicz/turbo-dom#252) never
+        // renders them in its parent's formatting tree.
         let excluded = excluded || self.excludes_child_content(element);
         self.visit(&element.children, path, &next, excluded);
     }
@@ -243,6 +262,22 @@ fn node_key(node: &StyledNode) -> (usize, SourceKind) {
             SourceKind::Text,
         ),
     }
+}
+
+/// The fragments of list markers, each with its list item (the innermost recorded
+/// ancestor).
+pub(crate) fn list_markers(
+    fragments: &[SnapshotFragment],
+    records: &HashMap<NodeId, SourceRecord>,
+) -> BTreeMap<usize, SourceId> {
+    fragments
+        .iter()
+        .filter_map(|fragment| {
+            let record = records.get(&fragment.layout_node_id)?;
+            let owner = record.ancestors.last().filter(|_| record.list_marker)?;
+            Some((fragment.index, *owner))
+        })
+        .collect()
 }
 
 pub(crate) fn index_fragments(

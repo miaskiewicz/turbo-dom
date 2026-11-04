@@ -19,8 +19,8 @@ It depends on turbo-dom-layout with explicit features: `bundled-fonts` and
 ## Install
 
 ```toml
-turbo-dom-raster = "0.6"                                        # MSRV 1.89
-turbo-dom-raster = { version = "0.6", features = ["avif", "jxl"] }
+turbo-dom-raster = "0.7"                                        # MSRV 1.89
+turbo-dom-raster = { version = "0.7", features = ["avif", "jxl"] }
 ```
 
 ## Features
@@ -53,7 +53,9 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
   `image_urls`, `image_urls_in_css`, `stylesheet_hrefs`, and `delazy_tree` /
   `delazy_images` (fill lazy `<img>`s).
 - **Canvas:** `canvas_ops_png` / `canvas_ops_rgba` replay a 2D-canvas op log. Colours go
-  through turbo-dom's `rtdom::color::parse_color`. `measure_text` measures a text run (width, height) with the bundled or system faces.
+  through turbo-dom's `rtdom::color::parse_color`. `measure_text` measures a text run (width, height) with the bundled or system faces;
+  `measure_canvas_text(text, font)` is canvas `measureText`'s width for a CSS `font`
+  shorthand.
 - **WebGL:** `webgl_readback` and `webgl_metadata` work on a recorded call batch, backed
   by the GPU under `gpu-metal`.
 
@@ -68,6 +70,25 @@ Images follow Blink's load decision:
   cannot decode.
 
 Inline `<svg>` elements and `<img src="data:…">` paint as in Chrome (turbo-dom#25, #27).
+
+Painting follows Chrome 156 for: per-corner elliptical `border-radius` on backgrounds,
+gradients, borders (each side in its own width and colour), outer and inset box shadows,
+and `overflow` clipping (turbo-dom#253, #192); background layers with size / position /
+repeat (incl. `space` / `round`) / origin / clip, tiled from one decoded image (#248);
+inline-box decorations per line fragment with `box-decoration-break` (#244; a cloned
+box's radius, background image and inset shadow repeat on every fragment); vertical and
+upright text (#234, #239); bidi-reordered runs (#238); list markers (#128). Broken or
+unloaded `<img>`s paint their box without pixels (#243).
+
+Background layers are one repeating-pattern fragment each (`FragmentContent::Tiles`),
+painted as a pattern shader (PNG) or an SVG `<pattern>` that repeats one whole-pixel cell,
+so any number of tiles fill the box; fractional tiles blend their edge pixels like Chrome
+(#270), and a scaled or rotated box's tiles and images are drawn at device resolution
+(#269). Gradients take length, double-position and repeating stops (#264). A `transform`
+on an `<img>` itself applies (#272). Form controls paint Chrome 156's native appearance
+from turbo-dom-layout's galley boxes (#255, #257). Glyphs are rasterized with exact-area
+coverage, CoreText-like outline growth and Skia's mask pre-blend; Chrome's stem darkening
+is still missing, so small and white text differ most (open: #266).
 
 ## Gates
 

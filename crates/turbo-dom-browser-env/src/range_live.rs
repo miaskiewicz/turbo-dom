@@ -57,6 +57,63 @@ pub(super) fn register_editor(
     });
 }
 
+/// The captured-function store name of the live records a snapshot carries.
+const PERSISTED: &str = "range_live::Records";
+
+/// Keep the current context's live records (the bootstrap registers the window
+/// selection's editor record) where [`rehydrate`] finds them: the registry is an isolate
+/// slot, which a startup snapshot does not carry (turbo-dom#249). Flat `[record, editor]`
+/// pairs, `undefined` for a range record.
+pub(super) fn persist(scope: &mut v8::PinScope) {
+    let Some(records) = scope.get_slot::<Rc<Records>>().cloned() else {
+        return;
+    };
+    let mut values: Vec<v8::Local<v8::Value>> = Vec::new();
+    for entry in records.0.borrow().iter() {
+        let Some(record) = entry.record.to_local(scope) else {
+            continue;
+        };
+        let editor = match entry.editor.as_ref().and_then(|weak| weak.to_local(scope)) {
+            Some(editor) => editor.into(),
+            None => v8::undefined(scope).into(),
+        };
+        values.push(record.into());
+        values.push(editor);
+    }
+    let array = v8::Array::new_with_elements(scope, &values);
+    context_rehydrate::store(scope, PERSISTED, array.into());
+}
+
+/// Register again the live records [`persist`] kept, in a context deserialized from a
+/// startup snapshot.
+pub(super) fn rehydrate(scope: &mut v8::PinScope) {
+    let context = scope.get_current_context();
+    let Some(array) = context_rehydrate::store_object(scope, context)
+        .and_then(|store| {
+            let key = v8::String::new(scope, PERSISTED)?;
+            store.get(scope, key.into())
+        })
+        .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
+    else {
+        return;
+    };
+    for index in (0..array.length()).step_by(2) {
+        let Some(record) = array
+            .get_index(scope, index)
+            .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+        else {
+            continue;
+        };
+        match array
+            .get_index(scope, index + 1)
+            .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+        {
+            Some(editor) => register_editor(scope, record, editor),
+            None => register(scope, record),
+        }
+    }
+}
+
 pub(super) fn clear(isolate: &mut v8::Isolate) {
     isolate.remove_slot::<Rc<Records>>();
     selection::clear();
@@ -293,7 +350,7 @@ mod tests {
     #[test]
     fn live_boundaries_match_independent_chrome_mutation_control() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -326,7 +383,7 @@ mod tests {
     #[test]
     fn private_boundaries_ignore_guest_getters() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -351,7 +408,7 @@ mod tests {
     #[test]
     fn live_registry_does_not_retain_unused_boundary_records() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -382,7 +439,7 @@ mod tests {
     #[test]
     fn borrowed_range_boundaries_follow_the_associated_foreign_tree() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let main = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, main);

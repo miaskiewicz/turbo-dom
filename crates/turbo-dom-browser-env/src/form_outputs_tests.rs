@@ -23,7 +23,7 @@ fn meter_progress_and_output_reflection_match_chrome_156() {
     let cases: serde_json::Value = serde_json::from_slice(cases).unwrap();
     assert_eq!(control["result"].as_array().unwrap().len(), 1);
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

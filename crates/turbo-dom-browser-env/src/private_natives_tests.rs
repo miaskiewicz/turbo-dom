@@ -5,7 +5,7 @@ use crate::browser_env::*;
 
 fn with_page(body: impl FnOnce(&mut v8::PinScope)) {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

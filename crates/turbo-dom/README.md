@@ -10,7 +10,7 @@ from before 0.6.0; see [BENCHMARKS-history](../../docs/BENCHMARKS-history.md)).
 
 ## Where it sits
 
-The base of the turbo-dom 0.6.0 crate family
+The base of the turbo-dom crate family (0.7.0)
 ([docs/CONSOLIDATION.md](../../docs/CONSOLIDATION.md)):
 
 ```
@@ -25,7 +25,7 @@ Consumers: **turbo-test** and **turbo-surf** (through turbo-dom-browser-env and 
 ## Install
 
 ```bash
-cargo add turbo-dom        # turbo-dom = "0.6"; MSRV 1.89
+cargo add turbo-dom        # turbo-dom = "0.7"; MSRV 1.89
 ```
 
 Dependencies: html5ever / markup5ever_rcdom 0.39, cssparser 0.37, rustc-hash, smol_str,
@@ -40,6 +40,11 @@ None.
 Crate root: `Dom`, `Tree`, `Handle`, `Event`, `ParseOptions`, `NodeRef`, `DocumentExt`; the
 parser core is `turbo_dom::core` (`parse_html_document`, `parse_html_soa`,
 `parse_html_soa_with_compat_mode`, `Soa`, `Node`).
+
+Node types include `NodeType::CDataSection` (`Tree::create_cdata_section_utf16`; character
+data, serialized as escaped text in HTML). `Tree::set_processing_instructions(true)` (or the
+`parse_*_with_processing_instructions` constructors) parses `<?target data?>` as a
+ProcessingInstruction like Chrome 156; the default keeps html5lib-tests' bogus comment.
 
 ```rust
 use turbo_dom::{Dom, DocumentExt, Event};
@@ -111,7 +116,10 @@ Embedder entry points beyond the browser-facing API:
 
 - **Parsing:** `Tree::parse_with(html, ParseOptions)` (scripting flag);
   `Tree::parse_utf16` and `parse_srcdoc_utf16` keep the original UTF-16 units. `srcdoc` is
-  no-quirks, as in Chrome. `parse_with_source_positions` and
+  no-quirks, as in Chrome. `parse_utf16_with_processing_instructions` /
+  `set_processing_instructions` parse `<?target data?>` as Chrome 156 does (a
+  ProcessingInstruction; the default keeps html5lib-tests' bogus comment).
+  `parse_with_source_positions` and
   `parse_utf16_with_source_positions` record token positions, read with
   `source_position` / `source_attribute_position`.
 - **Fragments:** `Tree::create_contextual_fragment_utf16(context, units, scripting_enabled)`

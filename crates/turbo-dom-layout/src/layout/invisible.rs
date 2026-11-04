@@ -99,11 +99,11 @@ fn blank(content: &mut FragmentContent) {
         // A marker is a paged-media directive (a forced break), not paint: a hidden
         // box still breaks the page, as in Chrome.
         FragmentContent::Marker(_) => {}
-        FragmentContent::Image(_) => {
+        FragmentContent::Image(_) | FragmentContent::Tiles(_) => {
             *content = FragmentContent::Box {
                 background: None,
                 border: BorderEdges::default(),
-                border_radius: 0.0,
+                border_radius: super::fragment::BorderRadii::ZERO,
                 shadow: None,
                 gradient: None,
                 transform: None,

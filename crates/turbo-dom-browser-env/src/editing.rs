@@ -5,6 +5,7 @@ use super::*;
 
 /// The page's trusted typing entry point, captured privately at install.
 struct EditingInput(v8::Weak<v8::Function>);
+fn_slots!([EditingInput]);
 
 fn dispatch(
     scope: &mut v8::PinScope,
@@ -33,11 +34,7 @@ fn dispatch(
             {
                 return;
             }
-            if let Some(function) = dom_ownership::helper_function(scope, function) {
-                scope
-                    .get_current_context()
-                    .set_slot(std::rc::Rc::new(EditingInput(function)));
-            }
+            context_rehydrate::capture::<EditingInput>(scope, function);
         }
     }
 }

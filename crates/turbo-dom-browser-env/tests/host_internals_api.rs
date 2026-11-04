@@ -89,7 +89,7 @@ fn dictionary_links<'s>(
 #[test]
 fn host_internals_cover_native_layout_capture_and_link_discovery() {
     init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut v8::Isolate::new(snapshot_params());
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -223,4 +223,15 @@ fn host_internals_cover_native_layout_capture_and_link_discovery() {
         assert!(!is_browsing_context());
     }
     browser_env::reset();
+}
+
+/// Isolate parameters: from the startup snapshot when `TURBO_DOM_SNAPSHOT_PATH` is set
+/// (installs then take the snapshot path, turbo-dom#249).
+fn snapshot_params() -> v8::CreateParams {
+    match std::env::var_os("TURBO_DOM_SNAPSHOT_PATH")
+        .and(turbo_dom_browser_env::browser_env::snapshot_blob())
+    {
+        Some(blob) => blob.create_params(),
+        None => Default::default(),
+    }
 }

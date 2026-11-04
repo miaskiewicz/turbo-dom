@@ -1,6 +1,6 @@
 //! An injective, tokenizer-local transport for UTF-16 DOM strings. Only the
 //! scalar tokenizer sees escapes: native nodes immediately store original units.
-use super::unit_tokenizer::{BufferQueue, Tokenizer, TokenizerOpts};
+use super::unit_tokenizer::{BufferQueue, Tokenizer, TokenizerOpts, PROCESSING_INSTRUCTION};
 use super::{
     core, DoctypeData, DomString, Handle, Namespace, NewNode, NodeType, ProcessingInstructionData,
     Tree,
@@ -54,8 +54,18 @@ pub(super) fn decode(source: &str) -> Vec<u16> {
     }
     units
 }
-fn parsed(units: &[u16], context: Option<(QualName, Vec<html5ever::Attribute>)>) -> RcDom {
-    parsed_with_form(units, context, false, false, QuirksMode::NoQuirks)
+/// Does `units` contain `<?`, the only input Chrome-mode processing instructions change?
+fn mentions_processing_instruction(units: &[u16]) -> bool {
+    units.windows(2).any(|pair| pair == [0x3c, 0x3f])
+}
+fn parsed(units: &[u16], processing_instructions: bool) -> RcDom {
+    parsed_with_form(
+        units,
+        None,
+        false,
+        (false, processing_instructions),
+        QuirksMode::NoQuirks,
+    )
 }
 /// A parsed fragment's nodes under a `#document-fragment` root, like
 /// `core::parse_html_fragment_with_context` (RCDATA contexts drop U+0000 like Chrome).
@@ -63,7 +73,7 @@ fn parsed_fragment(
     units: &[u16],
     context: (QualName, Vec<html5ever::Attribute>),
     has_form_ancestor: bool,
-    scripting_enabled: bool,
+    flags: (bool, bool),
     quirks_mode: QuirksMode,
 ) -> core::Node {
     if core::is_rcdata_context(&context.0) && units.contains(&0) {
@@ -72,18 +82,12 @@ fn parsed_fragment(
                 segment,
                 context.clone(),
                 has_form_ancestor,
-                scripting_enabled,
+                flags,
                 quirks_mode,
             )
         }));
     }
-    let dom = parsed_with_form(
-        units,
-        Some(context),
-        has_form_ancestor,
-        scripting_enabled,
-        quirks_mode,
-    );
+    let dom = parsed_with_form(units, Some(context), has_form_ancestor, flags, quirks_mode);
     core::fragment_of(core::walk(&dom.document))
 }
 // The iframe srcdoc document flag: a missing or legacy doctype never selects quirks.
@@ -92,13 +96,14 @@ fn parsed_srcdoc(units: &[u16]) -> RcDom {
         iframe_srcdoc: true,
         ..Default::default()
     };
-    parsed_with_options(units, None, false, options)
+    parsed_with_options(units, None, false, options, false)
 }
+/// `flags` = (the tree builder's scripting flag, Chrome-mode processing instructions).
 fn parsed_with_form(
     units: &[u16],
     context: Option<(QualName, Vec<html5ever::Attribute>)>,
     has_form_ancestor: bool,
-    scripting_enabled: bool,
+    (scripting_enabled, processing_instructions): (bool, bool),
     quirks_mode: QuirksMode,
 ) -> RcDom {
     let options = TreeBuilderOpts {
@@ -106,13 +111,20 @@ fn parsed_with_form(
         quirks_mode,
         ..Default::default()
     };
-    parsed_with_options(units, context, has_form_ancestor, options)
+    parsed_with_options(
+        units,
+        context,
+        has_form_ancestor,
+        options,
+        processing_instructions,
+    )
 }
 fn parsed_with_options(
     units: &[u16],
     context: Option<(QualName, Vec<html5ever::Attribute>)>,
     has_form_ancestor: bool,
     options: TreeBuilderOpts,
+    processing_instructions: bool,
 ) -> RcDom {
     let sink = RcDom::default();
     let fragment = context.is_some();
@@ -138,6 +150,7 @@ fn parsed_with_options(
         core::ChromeTokens(builder),
         TokenizerOpts {
             initial_state,
+            processing_instructions,
             ..Default::default()
         },
     );
@@ -224,7 +237,7 @@ impl Tree {
             units,
             self.fragment_context(context, true),
             has_form_ancestor,
-            scripting_enabled,
+            (scripting_enabled, self.processing_instructions),
             if self.compat_mode == "BackCompat" {
                 QuirksMode::Quirks
             } else {
@@ -258,8 +271,53 @@ impl Tree {
         {
             return Self::parse(&source);
         }
-        let dom = parsed(units, None);
+        let dom = parsed(units, false);
         Self::from_units_dom(&dom)
+    }
+    /// [`Tree::parse`] in Chrome 156's processing-instruction mode: `<?target data?>`
+    /// parses as a processing instruction (see [`Tree::set_processing_instructions`]),
+    /// and the returned tree keeps the mode for its own fragment parsing. A page without
+    /// `<?` takes the lazy scalar parse unchanged (no UTF-16 copy).
+    #[must_use]
+    pub fn parse_with_processing_instructions(html: &str) -> Self {
+        if !html.contains("<?") {
+            let mut tree = Self::parse(html);
+            tree.processing_instructions = true;
+            return tree;
+        }
+        Self::parse_utf16_with_processing_instructions(&html.encode_utf16().collect::<Vec<_>>())
+    }
+    /// [`Tree::parse_with_processing_instructions`] over original DOM-string units.
+    #[must_use]
+    pub fn parse_utf16_with_processing_instructions(units: &[u16]) -> Self {
+        let mut tree = if mentions_processing_instruction(units) {
+            Self::from_units_dom(&parsed(units, true))
+        } else {
+            Self::parse_utf16(units)
+        };
+        tree.processing_instructions = true;
+        tree
+    }
+    /// Make this tree's fragment parsing (`set_inner_html_utf16`,
+    /// `insert_adjacent_html_utf16`, `create_contextual_fragment_utf16`) tokenize
+    /// `<?target data?>` like Chrome 156 (miaskiewicz/turbo-dom#135): a processing
+    /// instruction when the target is an ASCII letter followed by ASCII alphanumerics,
+    /// `-` or `_` and is not `xml` in any case, nothing when the input ends inside one,
+    /// and otherwise the bogus comment of the HTML standard. Off by default: the HTML
+    /// standard and html5lib-tests, which the conformance gates check, still make every
+    /// `<?…>` a bogus comment.
+    pub fn set_processing_instructions(&mut self, chrome: bool) {
+        self.processing_instructions = chrome;
+    }
+    /// Whether [`Tree::set_processing_instructions`] is on.
+    #[must_use]
+    pub fn processing_instructions(&self) -> bool {
+        self.processing_instructions
+    }
+    /// Whether `units` must take the UTF-16 tokenizer for this tree's
+    /// processing-instruction mode (the scalar html5ever path has no such mode).
+    fn needs_instruction_tokenizer(&self, units: &[u16]) -> bool {
+        self.processing_instructions && mentions_processing_instruction(units)
     }
     /// Parse an iframe srcdoc document: identical to [`Tree::parse_utf16`] except
     /// that the document is never in quirks mode.
@@ -343,7 +401,15 @@ impl Tree {
                 &decode(&node.public_id),
                 &decode(&node.system_id),
             ),
-            NodeType::Comment => self.create_comment_utf16(&decode(&node.value)),
+            NodeType::Comment => match node.value.strip_prefix(PROCESSING_INSTRUCTION) {
+                Some(instruction) => {
+                    let (target, data) = instruction
+                        .split_once(' ')
+                        .expect("the tokenizer ends a target with a space");
+                    self.create_processing_instruction_units(&decode(target), &decode(data))
+                }
+                None => self.create_comment_utf16(&decode(&node.value)),
+            },
             NodeType::Fragment => self.create_document_fragment(),
             _ => self.create_text_node_utf16(&decode(&node.value)),
         };
@@ -352,7 +418,7 @@ impl Tree {
     pub fn set_inner_html_utf16(&mut self, node: Handle, units: &[u16]) {
         if let Some(source) = String::from_utf16(units)
             .ok()
-            .filter(|_| !units.contains(&0xfeff))
+            .filter(|_| !units.contains(&0xfeff) && !self.needs_instruction_tokenizer(units))
         {
             self.set_inner_html(node, &source);
             return;
@@ -361,7 +427,7 @@ impl Tree {
             units,
             self.fragment_context(node, true),
             false,
-            false,
+            (false, self.processing_instructions),
             QuirksMode::NoQuirks,
         );
         let children = fragment
@@ -388,7 +454,7 @@ impl Tree {
     pub fn insert_adjacent_html_utf16(&mut self, node: Handle, position: &str, units: &[u16]) {
         if let Some(source) = String::from_utf16(units)
             .ok()
-            .filter(|_| !units.contains(&0xfeff))
+            .filter(|_| !units.contains(&0xfeff) && !self.needs_instruction_tokenizer(units))
         {
             self.insert_adjacent_html(node, position, &source);
             return;
@@ -403,7 +469,7 @@ impl Tree {
             units,
             self.fragment_context(context, true),
             false,
-            false,
+            (false, self.processing_instructions),
             QuirksMode::NoQuirks,
         );
         let children = fragment

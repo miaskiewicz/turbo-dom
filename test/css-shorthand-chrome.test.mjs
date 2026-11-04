@@ -59,3 +59,15 @@ test("the module's shorthand table (shorthandNames / longhands / canonical) is C
   assert.equal(canonical('-webkit-flex'), 'flex');
   assert.equal(longhands('color'), null);
 });
+
+test('an overflowing length reads back clamped to the largest float like Chrome 156 (#262)', () => {
+  // Chrome 156: `el.style.borderRadius = "1e39px"` (and `1` followed by 400 zeros) reads
+  // back `3.40282e+38px`, as the Rust port (crates/turbo-dom/tests/css_shorthand_api.rs).
+  const { document } = createEnvironment('<div></div>');
+  for (const value of ['1e39px', `1${'0'.repeat(400)}px`]) {
+    const el = document.createElement('div');
+    el.style.borderRadius = value;
+    assert.equal(el.style.borderTopLeftRadius, '3.40282e+38px', value);
+    assert.equal(el.style.borderRadius, '3.40282e+38px', value);
+  }
+});

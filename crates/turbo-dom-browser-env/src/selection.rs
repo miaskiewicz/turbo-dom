@@ -17,6 +17,41 @@ struct Hooks {
     input_type: v8::Weak<v8::Function>,
     removed: v8::Weak<v8::Function>,
 }
+const HOOKS_NAME: &str = concat!(module_path!(), "::Hooks");
+pub(super) const SLOTS: &[context_rehydrate::Entry] = &[context_rehydrate::Entry {
+    name: HOOKS_NAME,
+    set: |scope, context, value| {
+        let Some(mut hooks) = context_rehydrate::functions_of(scope, value) else {
+            return false;
+        };
+        let (Some(removed), Some(input_type), Some(textarea), Some(focus)) =
+            (hooks.pop(), hooks.pop(), hooks.pop(), hooks.pop())
+        else {
+            return false;
+        };
+        context.set_slot(std::rc::Rc::new(Hooks {
+            focus,
+            textarea,
+            input_type,
+            removed,
+        }));
+        true
+    },
+    get: |scope, context| {
+        let Some(hooks) = context.get_slot::<Hooks>() else {
+            return Vec::new();
+        };
+        context_rehydrate::locals(
+            scope,
+            &[
+                &hooks.focus,
+                &hooks.textarea,
+                &hooks.input_type,
+                &hooks.removed,
+            ],
+        )
+    },
+}];
 
 thread_local! {
     /// (DOM id, control) pairs with live value ranges (OpaqueRange) awaiting removal.
@@ -1075,7 +1110,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let Some((record, static_record)) = range_contents::accessors(scope) else {
         return;
     };
-    let Some(native) = v8::Function::new(scope, dispatch) else {
+    let Some(native) = v8::Function::new(scope, ext!(FunctionCallback, dispatch)) else {
         return;
     };
     let Some(initializer) = super::engine_expression(scope, include_str!("selection.js"))
@@ -1112,6 +1147,11 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     if let Some(sync) = sync {
         range_contents::set_selection_sync(scope, sync);
     }
+    let stored: Vec<v8::Local<v8::Value>> = [focus, textarea, input_type, removed]
+        .into_iter()
+        .flatten()
+        .map(Into::into)
+        .collect();
     let focus = focus.and_then(|focus| dom_ownership::helper_function(scope, focus));
     let textarea = textarea.and_then(|textarea| dom_ownership::helper_function(scope, textarea));
     let input_type = input_type.and_then(|hook| dom_ownership::helper_function(scope, hook));
@@ -1127,6 +1167,8 @@ pub(super) fn install(scope: &mut v8::PinScope) {
                 input_type,
                 removed,
             }));
+        let stored = v8::Array::new_with_elements(scope, &stored);
+        context_rehydrate::store(scope, HOOKS_NAME, stored.into());
     }
 }
 
@@ -1138,7 +1180,7 @@ pub(super) mod tests {
     /// private selection/popover scheduler and the probe's own setTimeout; returns its JSON.
     pub(in super::super) fn run_probe(probe: &str, html: &str) -> serde_json::Value {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

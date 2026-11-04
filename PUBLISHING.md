@@ -57,6 +57,11 @@ graph and consumer setup: [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md).
    `cargo package -p turbo-dom-browser-env --no-verify --exclude-lockfile` (it cannot
    resolve until turbo-dom-v8 is on crates.io); `python3 crates/turbo-dom-v8/scripts/release.py
    --out <dir>` for the fork. Every crate must stay under crates.io's 10 MB compressed limit.
+   Record the release's public Rust API diff against the previous release in
+   `tools/release/public-api-X.Y.Z.txt` (`cargo public-api -sss`, CI's features; the
+   header names the tool version and both revisions) and make the CHANGELOG's
+   "Breaking changes" match it. 0.7.0 also keeps its review-round mutation audit in
+   `tools/release/mutation-audit-0.7.0.md`.
 6. Commit without bypassing the configured pre-commit coverage/conformance gate, push
    the release PR, and wait for every CI job to pass on that exact head revision.
 
@@ -70,7 +75,14 @@ Pushing a `v*` tag is the publish trigger and requires explicit release authoriz
 `publish.yml` then runs, in order:
 
 1. **ci** — the full CI workflow on the tag (napi binaries for linux x64 glibc/musl,
-   linux arm64, macOS arm64 and windows x64 are uploaded by its build matrix).
+   linux arm64, macOS arm64 and windows x64 are uploaded by its build matrix). Linux
+   binaries build on `ubuntu-22.04` / `ubuntu-22.04-arm` (glibc 2.35), never
+   `ubuntu-latest`: `scripts/check-glibc-ceiling.sh` fails any linux-gnu `.node` that needs
+   a `GLIBC_` version above 2.35 (0.6.0 was built on 26.04 / glibc 2.43 and broke 24.04
+   consumers). The guard names the expected addons and fails on a missing file, an
+   `readelf` failure or a binary with no `GLIBC_` symbols, so it never passes vacuously.
+   It uses `readelf -W --dyn-syms -V`, which reads the arm64 addon on the x64 npm runner
+   (`objdump -T` fails there with "file format not recognized").
 2. **preflight** — `check-versions.py --tag vX.Y.Z` (the tag equals every manifest
    version) and `check-no-selector-dual.sh`.
 3. **crates** (sequential, `CARGO_REGISTRY_TOKEN`):
@@ -84,9 +96,14 @@ Pushing a `v*` tag is the publish trigger and requires explicit release authoriz
      turbo-dom-raster -> turbo-dom-browser-env. A version already on crates.io is
      skipped; each published crate is awaited in the index before the next starts, so
      the next one's packaged-consumer verification resolves it.
-4. **npm** (`NPM_TOKEN`, after crates) — bundles all platform binaries into the one
-   scoped package (no per-platform subpackages), rebuilds both WASM targets through
-   `prepublishOnly` and publishes; skipped when that version is already on npm.
+4. **npm** (`NPM_TOKEN`, after crates) — bundles the ci job's napi artifacts into the
+   one scoped package (no per-platform subpackages). It fails unless all five addons are
+   there (linux x64 gnu/musl, linux arm64 gnu, darwin arm64, win32 x64) and no other
+   `.node` is in the package root. It builds no native addon: it runs only
+   `build:wasm:pkg` and `build:wasm:web`, never `prepublishOnly`, which would rebuild the
+   linux-x64 addon over the CI-built one. It reruns the glibc guard on the two linux-gnu
+   addons that ship, then runs `npm publish --ignore-scripts`. The job is skipped when that
+   version is already on npm.
 
 A failed run is resumed by re-running the failed jobs: every publish step is guarded
 against an existing version. Verify npm's `latest` version and tarball contents (platform

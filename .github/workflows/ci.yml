@@ -25,6 +25,14 @@ on:
         type: boolean
         default: false
 
+# A newer push to a PR supersedes its running CI: pull_request runs share one group per PR
+# and cancel. Every other run (main pushes, tag runs, publish.yml's workflow_call) gets a
+# group of its own (the run id), so it is never cancelled, and never dropped as a pending
+# run that a newer run in the same group replaced.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -46,7 +54,10 @@ jobs:
       fail-fast: false
       matrix:
         # aarch64-apple-darwin only in the release run (inputs.darwin, see `on`).
-        include: ${{ fromJSON(inputs.darwin && '[{"os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-latest","target":"x86_64-unknown-linux-musl"},{"os":"ubuntu-24.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"macos-latest","target":"aarch64-apple-darwin"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]' || '[{"os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-latest","target":"x86_64-unknown-linux-musl"},{"os":"ubuntu-24.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]') }}
+        # Linux binaries build on ubuntu-22.04 (glibc 2.35): a binary needs at least the glibc it
+        # was linked against, and ubuntu-latest (26.04, glibc 2.43) broke consumers on 24.04.
+        # The glibc ceiling guard below enforces it.
+        include: ${{ fromJSON(inputs.darwin && '[{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-musl"},{"os":"ubuntu-22.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"macos-latest","target":"aarch64-apple-darwin"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]' || '[{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-musl"},{"os":"ubuntu-22.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -77,6 +88,19 @@ jobs:
         env:
           RUSTFLAGS: "-C strip=symbols"
         run: npx napi build --platform --release --target ${{ matrix.target }}
+
+      # Names the expected addon explicitly, so a missing or misnamed .node fails the guard
+      # instead of an unmatched glob passing it.
+      - name: glibc ceiling guard (linux addon runs on glibc >= 2.35)
+        if: contains(matrix.target, 'linux-gnu')
+        shell: bash
+        run: |
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-gnu) node=turbo-dom-parser.linux-x64-gnu.node ;;
+            aarch64-unknown-linux-gnu) node=turbo-dom-parser.linux-arm64-gnu.node ;;
+            *) echo "::error::no expected addon name for ${{ matrix.target }}"; exit 1 ;;
+          esac
+          bash scripts/check-glibc-ceiling.sh "$node"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -336,6 +360,17 @@ jobs:
         run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo test -p turbo-dom-browser-env --config "$V8_PATCH" --features "${ENV_V8_FEATURE}"
       - name: turbo-dom-browser-env tests (host-internals, test-support)
         run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo test -p turbo-dom-browser-env --config "$V8_PATCH" --features "${ENV_V8_FEATURE}host-internals,test-support"
+      - name: turbo-dom-browser-env tests (split install path, turbo-dom#249)
+        # The same suite with every install taken as bootstrap_engine + attach_document.
+        env:
+          TURBO_DOM_ATTACH_PATH: "1"
+        run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo test -p turbo-dom-browser-env --config "$V8_PATCH" --features "${ENV_V8_FEATURE}host-internals,test-support"
+      - name: turbo-dom-browser-env tests (startup snapshot install path, turbo-dom#249)
+        # The same suite with every test isolate made from the startup snapshot and every
+        # install taken as rehydrate + attach_document (0 engine scripts, asserted per install).
+        env:
+          TURBO_DOM_SNAPSHOT_PATH: "1"
+        run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo test -p turbo-dom-browser-env --config "$V8_PATCH" --features "${ENV_V8_FEATURE}host-internals,test-support"
       - name: turbo-dom-browser-env clippy (crate is lint-exempt by design; deny new warnings)
         if: matrix.variant == 'default'
         run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo clippy -p turbo-dom-browser-env --config "$V8_PATCH" --all-targets --features host-internals,test-support -- -D warnings
@@ -383,7 +418,7 @@ jobs:
         run: python -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'
       - name: turbo-dom-v8 regenerates to the pinned tree
         run: python crates/turbo-dom-v8/scripts/generate.py --download --check
-      - name: Release helper self-tests (scripts/publish-crates.py)
+      - name: Script self-tests (publish-crates.py, check-baseline-red.py, check-glibc-ceiling.sh)
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Parity harness self-test (no addons)
         run: python -m unittest discover -s tools/parity -p 'test_*.py'
@@ -490,7 +525,11 @@ jobs:
           - { crate: turbo-dom-raster,      floor: 100, features: '' }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features avif', label: turbo-dom-raster-avif }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features jxl', label: turbo-dom-raster-jxl }
-          - { crate: turbo-dom-browser-env, floor: 97.6, features: '--features host-internals,test-support' }
+          # timeout: tarpaulin's --timeout bounds a WHOLE test binary's run, not one test. The
+          # browser-env lib binary (~555 V8 tests) takes ~600s instrumented on ubuntu-latest, so the
+          # old 600 cut it off mid-run ("Timed out waiting for test response" on whichever test was
+          # running at exactly +600s; turbo-dom#235). Not a hang.
+          - { crate: turbo-dom-browser-env, floor: 97.6, features: '--features host-internals,test-support', timeout: 2400 }
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -517,7 +556,7 @@ jobs:
         run: >-
           cargo tarpaulin --engine llvm -p ${{ matrix.crate }} ${{ matrix.features }}
           --include-files '${{ matrix.files || format('crates/{0}/src/*', matrix.crate) }}'
-          --timeout 600 --out Json --out Stdout --output-dir coverage/${{ matrix.label || matrix.crate }}
+          --timeout ${{ matrix.timeout || 600 }} --out Json --out Stdout --output-dir coverage/${{ matrix.label || matrix.crate }}
           --fail-under ${{ matrix.floor }}
       - uses: actions/upload-artifact@v4
         if: always()

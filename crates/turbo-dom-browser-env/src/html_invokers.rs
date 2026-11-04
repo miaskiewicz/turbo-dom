@@ -4,6 +4,7 @@ use super::*;
 
 struct InvokerActivation(v8::Weak<v8::Function>);
 struct ActivationTarget(v8::Weak<v8::Function>);
+fn_slots!([InvokerActivation, ActivationTarget]);
 
 fn dispatch<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -141,13 +142,10 @@ pub(super) fn install(scope: &mut v8::PinScope) {
             .get(scope, key.into())
             .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
         {
-            if let Some(function) = dom_ownership::helper_function(scope, function) {
-                let context = scope.get_current_context();
-                if name == "__captureInvokerActivation" {
-                    context.set_slot(std::rc::Rc::new(InvokerActivation(function)));
-                } else {
-                    context.set_slot(std::rc::Rc::new(ActivationTarget(function)));
-                }
+            if name == "__captureInvokerActivation" {
+                context_rehydrate::capture::<InvokerActivation>(scope, function);
+            } else {
+                context_rehydrate::capture::<ActivationTarget>(scope, function);
             }
         }
         global.delete(scope, key.into());
@@ -162,7 +160,7 @@ mod tests {
     /// popover scheduler shares, and return the resolved JSON value.
     fn run_probe(probe: &str) -> serde_json::Value {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

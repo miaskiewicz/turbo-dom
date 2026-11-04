@@ -44,6 +44,7 @@ CRATE_SRC=crates/turbo-dom-browser-env/src
 EXCLUDES="bin bundler.rs coverage.rs coverage_branch.rs esm_cjs.rs graph.rs launcher.rs napi_host.rs runner.rs transform.rs runtime.js lib.rs"
 # Moved files edited semantically after the move (path: reason).
 SEMANTIC_EDITS="
+xpath_provider/README.md: 0.7.0 turbo-dom#185 documents fragment/shadow-root contexts and the empty namespace axis
 cssom_parser.rs: zoom_value + helpers moved to turbo_dom::rtdom::css_values (re-exported here)
 interceptor_mode.rs: frame read placed behind the native-sdk-frame-read feature scaffolding
 browser_env.rs: module docs name the turbo-dom crate and drop the retired TURBO_RUST_DOM gate; P5b turbo-dom#20 native functions take a call-without-new message, named definers pass V8's should-throw mode; P5b turbo-surf#32 installs html_image.js + its tests; P5b-X2 turbo-dom#24 clones keep the custom element state; P5b-X3 turbo-surf#36 computed-defaults control test module; P5b-X5 turbo-dom#43 setters are [CEReactions] scopes and fragment-parser setters report their parsed elements; P5b-X5 turbo-dom#44 validate_namespace_name splits strictly on ':'; P5b-X6 turbo-dom#66 shadow-events and turbo-dom#74 html-track control test modules; P5b-X6 turbo-dom#66 dispatchEvent builds the shadow-crossing event path; P5b-X6 turbo-dom#74 <track> wraps as HTMLTrackElement and installs html_track.js
@@ -77,7 +78,7 @@ event_listeners.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException (the ca
 range_contents.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException (the capture hook no longer swaps it)
 animations.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
 document_legacy.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
-document_xpath.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+document_xpath.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install; 0.7.0 turbo-dom#185 fragment/shadow-root contexts, topmost-ancestor root, empty namespace axis
 edit_context.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
 element_internals.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
 file_inputs.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
@@ -177,7 +178,7 @@ event_handlers.rs: P5-cov-browser-env turbo-dom#152 an inline handler's form own
 html_text.rs: P5-cov-browser-env turbo-dom#154 content of a closed <details> has an empty innerText (rendered with its contents skipped)
 html_text.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
 animations.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
-document_xpath.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+document_xpath.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d); 0.7.0 turbo-dom#185 snapshots fragment/shadow-root/detached roots and doctypes
 html_invokers.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
 interest_invokers.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
 pointer_events.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
@@ -275,14 +276,85 @@ browser_env.rs: D15 namespace_lookup_on_non_element_nodes_matches_chrome156 cont
 browser_env.rs: turbo-test#204 wrappers carry a tree generation next to their DOM id (owner_tag/tagged_owner); handle_of refuses a wrapper of a discarded tree or a handle its tree never minted
 document_basics.rs: turbo-test#204 adoption tags moved wrappers with the target tree's generation
 dom_ownership.rs: turbo-test#204 ownership grouping skips wrappers of a discarded tree
+browser_env.rs: turbo-dom#186 XML documents (xml_documents module, parse_xml_document_units, XMLSerializer install; innerHTML / outerHTML of XML documents serialize and parse XML); CDATA sections are named #cdata-section, cloned / imported and read as character data
+document_basics.rs: turbo-dom#186 createCDATASection natives (isXML, createCDATA); adoption copies CDATA sections
+document_basics.js: turbo-dom#186 createCDATASection creates CDATA sections in XML documents (Chrome's NotSupportedError / InvalidCharacterError messages otherwise)
+template_contents.rs: turbo-dom#186 HTML serialization writes a CDATA section as escaped text
+animations.js: 0.7.0 turbo-dom#187 CSSAnimation / CSSTransition for declarative animations and transitions, created on style resolution; composite order transitions, CSS animations, script; transition-property all, none under display:none ancestors; 0.7.0 turbo-dom#233 getKeyframes() property order = Blink's hash-map bucket order over Chrome 156 CSSPropertyIDs (scripts/blink-property-ids.py), boundary keyframes per GetComputedKeyframes
+browser_env.js: 0.7.0 turbo-dom#187 private ns.cssKeyframes export of @keyframes rule records for CSS animations
+animations_tests.rs: 0.7.0 turbo-dom#187 css_animations Chrome 156 control test; control() accepts the frozen headless shell's HeadlessChrome product name; turbo-dom#233 the keyframe order matches Chrome exactly (KNOWN_GAP removed)
+browser_env.rs: 0.7.0 turbo-dom#135 installed (page loads and source-position installs included) and parsed documents parse HTML processing instructions like Chrome 156 (Tree::set_processing_instructions / parse_utf16_with_processing_instructions)
+sanitizer.rs: 0.7.0 turbo-dom#135 parseHTML documents parse processing instructions like Chrome; Document-level processing instructions are kept, like comments
+sanitizer.js: 0.7.0 turbo-dom#135 a safe setHTML dictionary without processing-instruction lists allows none (Chrome 156)
+edge_probes_tests.rs: 0.7.0 turbo-dom#135 html_processing_instructions and page_processing_instructions Chrome 156 control tests; the sanitizer probe's processing-instruction KNOWN_GAP rows are gone
+browser_env.rs: 0.7.0 turbo-dom#249 the install splits into bootstrap_engine + attach_document (TURBO_DOM_ATTACH_PATH), install scripts are counted for the test gate, and turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+realm_ownership.rs: 0.7.0 turbo-dom#249 DocumentGraph::retire_nodes drops a replaced tree's node records when a document is attached
+custom_elements.rs: 0.7.0 turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+document_legacy.rs: 0.7.0 turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+event_listeners.rs: 0.7.0 turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+html_popover.rs: 0.7.0 turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+mutation_observers.rs: 0.7.0 turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+range_contents.rs: 0.7.0 turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+script_state.rs: 0.7.0 turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+select_element.rs: 0.7.0 turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+selection.rs: 0.7.0 turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+trusted_types.rs: 0.7.0 turbo-dom#249 native callbacks are registered as V8 external references through ext! (startup snapshot)
+browser_env.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+custom_elements.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+document_legacy.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+editing.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+element_internals.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+event_listeners.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+file_inputs.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+focus_group.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+form_pseudo.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+html_invokers.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+interest_invokers.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+pointer_events.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+range_contents.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+select_element.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+selection.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+user_activation_gates.rs: 0.7.0 turbo-dom#249 function-holding context slots register with the rehydrate registry (fn_slots!) and are captured through context_rehydrate::capture/store (startup snapshot)
+browser_env.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+collection_records.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+document_legacy.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+html_popover.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+realm_ownership.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+template_contents.rs: 0.7.0 turbo-dom#249 snapshot rehydrate: native install halves split out for startup_snapshot::rehydrate, template data keyed through template_data while a snapshot is built
+dom_isolation.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+frame_tokens_tests.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+html_meta_tests.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+iframe_credentialless_tests.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+mutation_observers_tests.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+shadow_slots_tests.rs: 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+range_live.rs: 0.7.0 turbo-dom#249 step 5: the live-range registry is persisted into a snapshot and re-registered on rehydrate
+browser_env.rs: 0.7.0 turbo-dom#249 step 5: snapshot_blob / install_from_snapshot / TURBO_DOM_SNAPSHOT_PATH install path; 0.7.0 turbo-dom#249 step 5: test isolates come from tests::new_isolate (the startup snapshot under TURBO_DOM_SNAPSHOT_PATH) or tests::plain_isolate for bootstrap-configuring tests
+custom_elements.rs: 0.7.0 turbo-dom#249 step 5: constructor delegates are template_data keys while a snapshot is built
+mutation_observers.rs: 0.7.0 turbo-dom#249 step 5: the delivery function's pending array is template data via template_data
+html_popover.rs: 0.7.0 turbo-dom#249 step 5: the flush function's data is template data via template_data
+collection_records.rs: 0.7.0 turbo-dom#249 step 5: a snapshot isolate adopts the snapshot's record key in whichever context first needs it
+reference_target.rs: 0.7.0 turbo-dom#249 step 5: ensure_key for snapshot rehydrate
+dom_ownership.rs: 0.7.0 turbo-dom#249 step 5: GC_EPOCH visible to the sweep test
+browser_env.js: turbo-dom#254 CSSGroupingRule / CSSConditionRule and the @container / @media / @supports / @layer / @scope / @starting-style rule interfaces (attributes, insertRule / deleteRule, normalized container query)
+css_admission_tests.rs: turbo-dom#254 grouping / condition rules vs their Chrome 156 control
+browser_env.rs: 0.7.0 R1 #13 run_js compiles through run_engine_script_cached (only fixed engine scripts reach the bytecode cache); R1 #14 the selector memo skips selectors over 512 units and is cleared by each install and reset
+browser_env.js: 0.7.0 R1 #15 the node-intrinsics probe div is released after use, so no closure carries it into a startup snapshot
+realm_ownership.rs: 0.7.0 R1 #15 retire_nodes leaves only the document in its own ownership component
+browser_env.js: 0.7.0 turbo-dom#273 getComputedStyle applies style rules nested in @supports / @layer / @media / @scope (condition evaluation, cascade-layer order), never @container / @starting-style
+css_admission_tests.rs: 0.7.0 turbo-dom#273 grouping-rule cascade vs its Chrome 156 control
+browser_env.js: 0.7.0 turbo-dom#275 the computed-style cascade orders rules by Selectors 4 specificity; turbo-dom#276 @scope proximity, :scope bound to the scoping root, & as :where(:scope)
+browser_env.rs: 0.7.0 turbo-dom#275 __parseCssNative 'specificity' mode (the cascade parser's complex selectors with their specificity)
+css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
+control_labels.rs: 0.7.0 perf turbo-dom#271 label lookups read a per-tree-version index (first element per id, label candidates per host chain) + a test-only walk counter
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
 OWNED="$OWNED patched_builtins_members_probe.js patched_builtins_members_chrome156.json patched_builtins_sweep_probe.js patched_builtins_sweep_chrome156.json patched_builtins_sweep_known.txt"
-OWNED="$OWNED canvas_style_probe.js canvas_style_chrome156.json canvas_style_tests.rs canvas_state_probe.js canvas_state_chrome156.json"
+OWNED="$OWNED canvas_style_probe.js canvas_style_chrome156.json canvas_style_tests.rs canvas_state_probe.js canvas_state_chrome156.json canvas_measure_text_probe.js canvas_measure_text_chrome156.json canvas_measure_text_tests.rs canvas_text.rs canvas_text_metrics_interface_probe.js canvas_text_metrics_interface_chrome156.json canvas_text_attributes_probe.js canvas_text_attributes_chrome156.json canvas_spacing_units_probe.js canvas_spacing_units_chrome156.json canvas_ic_unit_probe.js canvas_ic_unit_chrome156.json"
 OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_mathml_element_probe.js svg_mathml_element_cases.json svg_mathml_element_chrome156.json svg_mathml_element_tests.rs"
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
-OWNED="$OWNED dom_ownership_alloc_tests.rs dom_ownership_scale_tests.rs"
+OWNED="$OWNED dom_ownership_alloc_tests.rs dom_ownership_scale_tests.rs perf_gates_tests.rs"
+OWNED="$OWNED install_split_tests.rs external_refs.rs startup_snapshot.rs startup_snapshot_tests.rs context_rehydrate.rs context_rehydrate_tests.rs snapshot_rehydrate_tests.rs template_data.rs"
 OWNED="$OWNED engine_namespace_tests.rs engine_namespace_probe.js window_interface_probe.js window_interface_chrome156.json window_interface.js"
 OWNED="$OWNED native_guards_probe.js native_guards_chrome156.json native_guards_tests.rs close_watchers_probe.js close_watchers_chrome156.json close_watchers_tests.rs host_api_tests.rs stale_nodes_tests.rs"
 OWNED="$OWNED edge_probes_tests.rs harness_tests.rs termination_tests.rs shadow_slots_edges_probe.js shadow_slots_edges_chrome156.json dom_mutation_validity_probe.js dom_mutation_validity_chrome156.json selector_edges_probe.js selector_edges_chrome156.json sanitizer_edges_probe.js sanitizer_edges_chrome156.json document_edges_probe.js document_edges_chrome156.json receivers_edges_probe.js receivers_edges_chrome156.json event_receivers_edges_probe.js event_receivers_edges_chrome156.json"
@@ -298,7 +370,14 @@ OWNED="$OWNED activation_focus_probe.js activation_focus_chrome156.json selector
 OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
 OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
+OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"
+OWNED="$OWNED css_animations_cases.json css_animations_chrome156.json css_animations_probe.js processing_instructions_chrome156.json processing_instructions_probe.js page_processing_instructions_chrome156.json"
 OWNED="$OWNED page_patched_intrinsics_probe.js captured_intrinsics.js"
+OWNED="$OWNED xml_documents.rs xml_documents.js xml_documents_tests.rs xml_documents_probe.js xml_documents_chrome156.json xml_inner_html_probe.js xml_inner_html_chrome156.json"
+OWNED="$OWNED css_grouping_rules_probe.js css_grouping_rules_chrome156.json"
+OWNED="$OWNED css_grouping_cascade_probe.js css_grouping_cascade_chrome156.json"
+OWNED="$OWNED css_cascade_specificity_probe.js css_cascade_specificity_chrome156.json"
+OWNED="$OWNED inline_style_reuse_probe.js inline_style_reuse_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

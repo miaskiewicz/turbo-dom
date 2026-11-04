@@ -22,10 +22,16 @@ tokens, nesting 32, and 200,000 snapshot reads per evaluation. Traversal execute
 inside V8 and remains interruptible by the embedding runtime's guest watchdog.
 Limits fail with `NotSupportedError`; they do not change the document.
 
-Namespace-axis result nodes and fragment/shadow-root contexts are explicitly
-unsupported. DOM XPath variables and extension functions are syntax errors. The
-native HTML document binding supplies its existing namespace-aware foreign nodes;
-this does not add an XML parser. The separate turbo-surf view crate's deliberately
+Contexts inside a DocumentFragment, a shadow root or a detached subtree evaluate
+like Chrome 156: `/` is the context's highest `parentNode` ancestor (the fragment
+or shadow root), `id()` in a shadow tree searches that shadow root and elsewhere
+the context's owner document (for a fragment or a detached node too, so never
+the fragment or the detached subtree itself), and the namespace axis is empty (turbo-dom#185; `xpath_contexts_chrome156.json`). A
+fragment or shadow root itself as the context throws `NotSupportedError`, as in
+Chrome. DOM XPath variables and extension functions are syntax errors. The
+native document binding supplies the nodes: HTML documents with their
+namespace-aware foreign elements, and XML documents from the binding's own XML
+parser (`DOMParser` XML types, turbo-dom#186; `xml_documents.rs`). The separate turbo-surf view crate's deliberately
 minimal XPath helper is unchanged.
 
 Eight deterministic Rust/V8 fixtures cover the authored Chrome 155 path/scalar/

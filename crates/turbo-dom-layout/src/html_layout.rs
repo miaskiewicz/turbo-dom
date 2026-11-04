@@ -53,12 +53,16 @@ pub struct HtmlOptions<'a> {
     pub markers: Option<MarkerClassifier<'a>>,
     /// See [`LayoutOptions::atomic_internal_links`].
     pub atomic_internal_links: bool,
+    /// See [`LayoutOptions::flatten_inline_elements`].
+    pub flatten_inline_elements: bool,
     /// Accept `cmyk(...)` colours (style and layout).
     pub accept_cmyk: bool,
     /// Author CSS that precedes the document's own `<style>` sheets — e.g. the bodies
     /// of its `<link rel="stylesheet">` sheets, fetched by the caller (the engine does
     /// no I/O). The `extra_css` argument of the drive entries comes after them.
     pub linked_css: &'a str,
+    /// See [`LayoutOptions::uncapped_images`].
+    pub uncapped_images: bool,
 }
 
 impl HtmlOptions<'_> {
@@ -76,8 +80,10 @@ impl HtmlOptions<'_> {
     fn layout(&self) -> LayoutOptions {
         LayoutOptions {
             atomic_internal_links: self.atomic_internal_links,
+            flatten_inline_elements: self.flatten_inline_elements,
             accept_cmyk: self.accept_cmyk,
             first_node_id: 0,
+            uncapped_images: self.uncapped_images,
         }
     }
 }
@@ -153,13 +159,31 @@ fn style_document(
         view: view.strip_non_visual(true),
         roots: Roots::Document,
     };
-    style_input(
+    let mut styled = style_input(
         &input,
         &cascade,
         &StyleOptions {
             accept_cmyk: options.accept_cmyk,
         },
-    )
+    );
+    // A BackCompat document takes the quirks-mode line height quirk, as the live style
+    // pass marks it (miaskiewicz/turbo-dom#238 item 2, #190).
+    if tree.compat_mode() == "BackCompat" {
+        mark_quirks(&mut styled);
+    }
+    styled
+}
+
+/// Mark every element of `nodes` (deep) with [`crate::style::QUIRKS_LINE_HEIGHT`].
+fn mark_quirks(nodes: &mut [StyledNode]) {
+    for node in nodes {
+        if let StyledNode::Element(element) = node {
+            element
+                .style
+                .set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
+            mark_quirks(&mut element.children);
+        }
+    }
 }
 
 /// Propagate the canvas background (CSS Backgrounds 3 §2.11.2): the root element's
@@ -337,11 +361,12 @@ pub struct CidBox {
 /// the source element's `attrs`, so we build the box tree once to map
 /// `node_id → data-cid`, then walk the laid-out [`Fragment`] galley and emit the
 /// first (outermost, border-box) fragment for each mapped id. The map is exact —
-/// no document-order fallback is needed — with one honest limitation: a
-/// `display:inline` element is flattened into anonymous inline runs during box
-/// generation and does not keep its own box/attrs, so a `data-cid` is only
-/// resolved on box-generating elements (block, `inline-block`, flex/grid/table
-/// items, replaced `<img>`). Tag the box-generating element under test.
+/// no document-order fallback is needed. A `display:inline` element is an inline box
+/// (miaskiewicz/turbo-dom#245) and reports the union of its line fragments, like
+/// `getBoundingClientRect()`. With [`HtmlOptions::flatten_inline_elements`] only one
+/// with a background, box shadow, padding, border or horizontal margin keeps its box
+/// (miaskiewicz/turbo-dom#244); any other is flattened into anonymous inline runs and
+/// its `data-cid` resolves to nothing.
 ///
 /// Like `getBoundingClientRect()`, it also reports the boxes the render leaves out
 /// because they paint nothing at any size: an absolutely positioned box whose
@@ -405,11 +430,22 @@ pub fn layout_boxes_tree(
     // Box generation is deterministic (monotonic pre-order ids), so the ids in this
     // tree match the ones the layout below stamps on the fragments.
     let mut cids: HashMap<u32, String> = HashMap::new();
-    let (boxes, _, _) = crate::layout::boxgen::build_box_tree_with(
+    let (boxes, recorded, _) = crate::layout::boxgen::build_box_tree_with(
         &styled,
-        crate::layout::geometry_build_options(&layout_options),
+        crate::layout::boxgen::BuildOptions {
+            record_sources: true,
+            ..crate::layout::geometry_build_options(&layout_options)
+        },
     );
     collect_cids(&boxes, &mut cids);
+    // The elements with no box of their own are the inline boxes kept through line
+    // layout (miaskiewicz/turbo-dom#244): their box is the union of their fragments.
+    let inline: HashMap<u32, String> = recorded
+        .elements
+        .iter()
+        .filter(|(id, _)| !cids.contains_key(&id.0))
+        .filter_map(|(id, &h)| Some((id.0, view.attr(h, "data-cid")?.to_string())))
+        .collect();
 
     let resolver = DataUriImages(data_images);
     let ctx = ImageCtx {
@@ -428,7 +464,50 @@ pub fn layout_boxes_tree(
     let mut out = Vec::new();
     let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
     collect_boxes(&root, &cids, &mut seen, &mut out);
+    let mut unions: Vec<(u32, CidBox)> = Vec::new();
+    collect_inline_boxes(&root, &inline, &mut unions);
+    out.extend(unions.into_iter().map(|(_, b)| b));
     out
+}
+
+/// Each `inline` box's union of its fragments (`getBoundingClientRect()` of an inline
+/// box), in galley order.
+fn collect_inline_boxes(
+    frag: &Fragment,
+    inline: &HashMap<u32, String>,
+    out: &mut Vec<(u32, CidBox)>,
+) {
+    let id = frag.node_id.0;
+    if let Some(cid) = inline.get(&id) {
+        let (x, y, width, height) = transformed_rect(frag);
+        match out.iter_mut().find(|(seen, _)| *seen == id) {
+            Some((_, b)) => {
+                let (right, bottom) = (
+                    (b.x + b.width).max(x + width),
+                    (b.y + b.height).max(y + height),
+                );
+                b.x = b.x.min(x);
+                b.y = b.y.min(y);
+                b.width = right - b.x;
+                b.height = bottom - b.y;
+            }
+            None => out.push((
+                id,
+                CidBox {
+                    cid: cid.clone(),
+                    x,
+                    y,
+                    width,
+                    height,
+                },
+            )),
+        }
+        // Its children are its background layers, which extend over its whole strip.
+        return;
+    }
+    for c in &frag.children {
+        collect_inline_boxes(c, inline, out);
+    }
 }
 
 /// Walk the box tree, recording `node_id → data-cid` for every box that carries
@@ -518,10 +597,22 @@ fn collect_data_uri_images(view: &TreeView, nodes: &[Handle], out: &mut HashMap<
 /// Decode this element's `<img src="data:...">` into `out` (keyed by `src`), if it is
 /// an `img` with an as-yet-unseen, decodable data URI.
 fn record_img_data_uri(view: &TreeView, h: Handle, out: &mut HashMap<String, Vec<u8>>) {
-    if !is_plain(view, h, "img") {
+    // An `<img src>` or a `<video poster>` (miaskiewicz/turbo-dom#252).
+    // An `<input type=image src>` too (miaskiewicz/turbo-dom#258).
+    let image_input = || {
+        is_plain(view, h, "input")
+            && view
+                .attr(h, "type")
+                .is_some_and(|t| t.eq_ignore_ascii_case("image"))
+    };
+    let attr = if is_plain(view, h, "img") || image_input() {
+        "src"
+    } else if is_plain(view, h, "video") {
+        "poster"
+    } else {
         return;
-    }
-    let Some(src) = view.attr(h, "src").filter(|s| s.starts_with("data:")) else {
+    };
+    let Some(src) = view.attr(h, attr).filter(|s| s.starts_with("data:")) else {
         return;
     };
     if !out.contains_key(src) {
@@ -726,6 +817,29 @@ mod tests {
     }
 
     #[test]
+    fn layout_boxes_loads_an_image_inputs_data_uri() {
+        // miaskiewicz/turbo-dom#258: an `<input type=image>` shows its `src` like an
+        // `<img>` (Chrome 156 `input-image-src`: the 8x6 PNG, no control frame); a
+        // `type=Image` matches ASCII case-insensitively, any other input loads nothing.
+        let png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=";
+        let html = format!(
+            r#"<html><body><input data-cid="i" type="Image" src="{png}"><input data-cid="t" type="text" src="{png}" style="width:0;height:0;padding:0;border:0"><div data-cid="d" src="{png}" style="height:10px"></div></body></html>"#
+        );
+        let mut diags = Diagnostics::default();
+        let boxes = layout_boxes(&html, "", 600.0, 800.0, &FontRegistry::new(), &mut diags)
+            .expect("layout_boxes");
+        let size = |cid: &str| {
+            let b = boxes.iter().find(|b| b.cid == cid).expect("box");
+            (b.width, b.height)
+        };
+        assert_eq!(size("i"), (8.0, 6.0));
+        assert_eq!(size("t"), (0.0, 0.0));
+        // Any other element with a `src` is not a replaced image (live fixture
+        // `src-not-image`): a block fills the 584px body.
+        assert_eq!(size("d"), (584.0, 10.0));
+    }
+
+    #[test]
     fn layout_boxes_reports_transformed_bounding_box() {
         // `getBoundingClientRect` parity: a `scale(2)` about `top left` reports the
         // scaled 200x80 border box at the origin (not the untransformed 100x40).
@@ -748,9 +862,9 @@ mod tests {
     }
 
     #[test]
-    fn layout_boxes_ignores_untagged_and_inline_flattened() {
-        // No data-cid anywhere -> empty; an inline element's data-cid is dropped
-        // by inline flattening (documented limitation).
+    fn layout_boxes_ignores_untagged_and_reports_inline_boxes() {
+        // No data-cid anywhere -> empty; an inline element is an inline box
+        // (miaskiewicz/turbo-dom#245), reported as its fragments' union.
         let mut diags = Diagnostics::default();
         let plain = layout_boxes(
             "<body><div>x</div></body>",
@@ -771,9 +885,12 @@ mod tests {
             &mut diags,
         )
         .expect("layout_boxes");
-        assert!(
-            inline.is_empty(),
-            "inline span's data-cid is flattened away"
+        // Its edges need a face: with no font at all it has none to measure.
+        let faces = FontRegistry::new().select(&["serif"], 400, false).is_some();
+        let want: &[&str] = if faces { &["s"] } else { &[] };
+        assert_eq!(
+            inline.iter().map(|b| b.cid.as_str()).collect::<Vec<_>>(),
+            want
         );
     }
 

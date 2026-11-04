@@ -168,8 +168,8 @@ fn live_dimension(value: LengthPct, basis: Option<f32>, frame: f32) -> Option<f3
 fn live_base(iw: f32, ih: f32, width: Option<f32>, height: Option<f32>) -> (f32, f32) {
     match (width, height) {
         (Some(w), Some(h)) => (w, h),
-        (Some(w), None) => (w, scale_other(w, iw, ih)),
-        (None, Some(h)) => (scale_other(h, ih, iw), h),
+        (Some(w), None) => (w, scale_other_live(w, iw, ih)),
+        (None, Some(h)) => (scale_other_live(h, ih, iw), h),
         (None, None) => (iw, ih),
     }
 }
@@ -206,12 +206,12 @@ fn constrain_live(w: f32, h: f32, auto_w: bool, auto_h: bool, limits: Limits) ->
     let height = h.clamp(limits.min_h, limits.max_h);
     match (auto_w, auto_h) {
         (true, false) => (
-            scale_other(height, h, w).clamp(limits.min_w, limits.max_w),
+            scale_other_live(height, h, w).clamp(limits.min_w, limits.max_w),
             height,
         ),
         (false, true) => (
             width,
-            scale_other(width, w, h).clamp(limits.min_h, limits.max_h),
+            scale_other_live(width, w, h).clamp(limits.min_h, limits.max_h),
         ),
         _ => (width, height),
     }
@@ -247,6 +247,25 @@ pub(crate) fn box_intrinsic(
 ) -> Option<Intrinsic> {
     let from_image = style.get("image-orientation").map(str::trim) != Some("none");
     Some(resolver.intrinsic(name)?.displayed(from_image))
+}
+
+/// A replaced `<img>`'s intrinsic size and whether its image loaded: the resolver's,
+/// else its [`ImageSource::fallback`](super::boxgen::ImageSource::fallback) (Chrome's
+/// broken-image size, miaskiewicz/turbo-dom#243). `None` when neither applies (the
+/// box lays out its alt text instead).
+pub(crate) fn replaced_intrinsic(
+    resolver: &dyn ImageResolver,
+    src: &super::boxgen::ImageSource,
+    style: &ComputedStyle,
+) -> Option<(Intrinsic, bool)> {
+    let loaded = (!src.name.is_empty())
+        .then(|| box_intrinsic(resolver, &src.name, style))
+        .flatten();
+    if let Some(intrinsic) = loaded {
+        return Some((intrinsic, true));
+    }
+    let (width, height) = src.fallback?;
+    Some((Intrinsic::new(width, height, true), false))
 }
 
 /// The placement an intrinsic-sized image emits (the resolver name plus its
@@ -295,18 +314,56 @@ fn resolve_dim(v: LengthPct, basis: Option<f32>) -> Option<f32> {
 
 /// The dependent axis when one axis is fixed at `given`: `given * (other /
 /// base)`, preserving aspect ratio. Falls back to `given` for a degenerate
-/// (zero) base so the result stays finite.
+/// (zero) base so the result stays finite, except that a 0x0 image (an `<img>` that
+/// represents nothing, miaskiewicz/turbo-dom#243) has no ratio and keeps its 0.
 fn scale_other(given: f32, base: f32, other: f32) -> f32 {
     if base > 0.0 {
         given * other / base
-    } else {
+    } else if other > 0.0 {
         given
+    } else {
+        0.0
     }
 }
 
+/// [`scale_other`] with Chrome 156's live semantics: a degenerate (zero) base has no
+/// aspect ratio, so the dependent axis keeps `other`, its intrinsic size (a
+/// `height=0` canvas sized `height: 30px` keeps its intrinsic width,
+/// miaskiewicz/turbo-dom#252; a 0x0 `<img>` keeps its 0, #243).
+fn scale_other_live(given: f32, base: f32, other: f32) -> f32 {
+    if base > 0.0 {
+        given * other / base
+    } else {
+        other
+    }
+}
+
+// Whether the running layout sizes images without the overflow caps
+// ([`crate::LayoutOptions::uncapped_images`]): installed for the entry's duration as
+// a scoped thread-local, like the `cmyk(...)` switch; off everywhere else.
+thread_local!(static UNCAPPED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) });
+
+/// Restores the previous cap policy when dropped.
+pub(crate) struct UncappedScope(bool);
+
+impl Drop for UncappedScope {
+    fn drop(&mut self) {
+        UNCAPPED.with(|flag| flag.set(self.0));
+    }
+}
+
+/// Size images without (`true`) or with the overflow caps until the guard drops.
+pub(crate) fn uncapped_scope(uncapped: bool) -> UncappedScope {
+    UncappedScope(UNCAPPED.with(|flag| flag.replace(uncapped)))
+}
+
 /// Clamp a box to the width and (when known) height caps, preserving aspect
-/// ratio by scaling both axes by the tighter of the two fit ratios.
+/// ratio by scaling both axes by the tighter of the two fit ratios; uncapped, the box
+/// keeps its CSS size.
 fn apply_caps(w: f32, h: f32, ctx: &SizeCtx) -> (f32, f32) {
+    if UNCAPPED.with(std::cell::Cell::get) {
+        return (w, h);
+    }
     let max_w = ctx.cb_width;
     let max_h = ctx.body_height.map(|bh| bh * MAX_HEIGHT_FRACTION);
     let scale = fit_scale(w, h, max_w, max_h);

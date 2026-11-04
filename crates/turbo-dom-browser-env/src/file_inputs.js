@@ -115,7 +115,7 @@
     setRecord(list, state);
     return list;
   };
-  const replaceFiles = (list, files) => { const rows = listRecord(list).files; rows.length = 0; for (let at = 0; at < files.length; at++) push(rows, files[at]); };
+  const replaceFiles = (list, files) => { ns.bumpStyleState(); const rows = listRecord(list).files; rows.length = 0; for (let at = 0; at < files.length; at++) push(rows, files[at]); };
 
   // Per-input selected files: a FileList the input owns, or one adopted from `files = list`.
   const elementState = (element) => {
@@ -126,7 +126,7 @@
   };
   const selected = (element) => { const state = record(element); return state && state.fileList ? listRecord(state.fileList).files : null; };
   const ownList = (element) => { const state = elementState(element); if (!state.fileList) state.fileList = createFileList([]); return state.fileList; };
-  const clearSelection = (element) => { const files = selected(element); if (files) files.length = 0; };
+  const clearSelection = (element) => { ns.bumpStyleState(); const files = selected(element); if (files) files.length = 0; };
 
   const inputPrototype = g.HTMLInputElement.prototype;
   getter(inputPrototype, 'files', function () {
@@ -136,7 +136,7 @@
     apply(checkInput, this, []);
     if (value === null || value === undefined) return;
     if (!record(value) || record(value).kind !== 'FileList') throw new TypeErrorValue(failure('set', 'HTMLInputElement', 'files') + "Failed to convert value to 'FileList'.");
-    if (fileState(this)) elementState(this).fileList = value;
+    if (fileState(this)) { ns.bumpStyleState(); elementState(this).fileList = value; }
   });
   getter(inputPrototype, 'webkitEntries', function () { apply(checkInput, this, []); return freeze([]); });
 
@@ -167,7 +167,7 @@
   native('type-hook', (element) => {
     if (!isInput(element)) return;
     if (fileState(element)) ns.resetControlValue(element);
-    else { const state = record(element); if (state && state.fileList) state.fileList = null; }
+    else { const state = record(element); if (state && state.fileList) { ns.bumpStyleState(); state.fileList = null; } }
   });
   // A file control contributes each selected File, or one empty octet-stream File.
   ns.registerFileEntries((element) => {

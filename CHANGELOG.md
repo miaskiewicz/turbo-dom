@@ -7,6 +7,610 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+## [0.7.0] — <date TBD at tag>
+
+| crate | version |
+|---|---|
+| `turbo-dom` (+ npm `@miaskiewicz/turbo-dom`, `turbo-dom-parser`) | 0.7.0 |
+| `turbo-dom-layout` | 0.7.0 |
+| `turbo-dom-raster` | 0.7.0 |
+| `turbo-dom-browser-env` | 0.7.0 |
+| `turbo-dom-v8` | 150.4.0 (unchanged) |
+
+### Highlights
+
+- **Writing modes and bidi in layout.** `vertical-rl` / `vertical-lr` lay out through a
+  logical-coordinate layer (block, inline, flex, grid, table, floats, absolute boxes,
+  upright CJK, orthogonal items; #234, #239), and inline layout is full UAX #9 bidi with
+  Blink's caret adjustment, `bdo` / `bdi`, `dir=auto` and RTL scrolling (#190, #238).
+- **Chrome's line box model everywhere.** The PDF metric path (`layout_html` /
+  `layout_boxes`) aligns lines on one baseline with the block strut and treats inline
+  elements as inline boxes (#245); `line-height` below the font's content area is honoured
+  (#178); text advances are 1/64px LayoutUnits on every path (#241, #246); `hyphens: auto`
+  for English (#213); list markers (#128).
+- **Painting.** Full `border-radius` model and `overflow` clipping (#253), background
+  size / position / repeat / origin / clip (#248), inline-box decorations in static
+  screenshots (#244), inset box shadows (#192); `<img>` is inline (#242), unloaded images
+  are replaced boxes (#243), media elements are replaced boxes (#252).
+- **browser-env.** XML documents, CDATA sections and `XMLSerializer` (#186); HTML
+  processing instructions like Chrome (#135); CSS animations / transitions in
+  `getAnimations()` (#187, #233); XPath in fragments / shadow roots (#185); real canvas
+  `measureText` (#237); CSSOM grouping / condition rule interfaces (#254).
+- **Performance.** Two rounds of browser-env work on a React/MUI payroll suite (bytecode
+  cache, subject-local form pseudo-classes, state-keyed computed-style reuse, once-per-change
+  CSS animation update, selector memo, Smi owner tags, observer-less flush): one modal test
+  file went from 444 s to 263 s of CPU.
+- **CI.** Linux binaries build on ubuntu-22.04 with a glibc 2.35 ceiling guard: 0.6.0's
+  Linux addons were linked against glibc 2.43 and failed to load on Ubuntu 24.04.
+
+### Breaking changes
+
+Rust API changes, per crate. The npm package's JS API is unchanged.
+
+**turbo-dom**
+
+- `NodeType` has a new variant `CDataSection` (= 4, #186). An exhaustive `match` on
+  `NodeType` needs an arm; treat it like `Text` for character data (it is character data
+  for `nodeValue`, `textContent`, `CharacterData` edits and `:empty`, and serializes as
+  escaped text in HTML serialization).
+- `SelectorError` has a new variant `UnknownPseudoClass(String)`, which names the
+  rejected pseudo-class as written (a functional one ends in `()`). The cascade grammar
+  (`parse_for_cascade`) used to return `Invalid("unknown pseudo-class")` and now returns
+  this, so its message reads e.g. `unknown pseudo-class ':-webkit-bogus'`
+  (turbo-surf#117). An exhaustive `match` needs an arm. Chrome-visible `querySelector`
+  `SyntaxError` text is unchanged.
+
+**turbo-dom-layout**
+
+- `FragmentContent::TextLine` gains `vertical: bool` (#234) and `upright: bool` (#239):
+  a vertical run's glyphs are in the line's own frame, turned a quarter clockwise into the
+  fragment; upright glyphs paint turned back about their pen. Patterns that list every
+  field need `..`; painters that ignore them paint vertical text horizontally.
+- `GlyphRun` gains `upright: bool` (#239).
+- `InlineEdge` gains `clone_advance: Option<f32>` (`box-decoration-break: clone`, #244);
+  `PlacedInlineEdge` gains `decorated: bool` (#238); `GlyphSourceCluster` and
+  `layout_snapshot::SourceClusterBox` gain `bidi_level: u8` and `paragraph_level: u8`
+  (#238), and `SourceClusterBox` / `SnapshotTextRun` gain `vertical: bool` (#239).
+  Struct literals must set them (`None` / `true` / `0` reproduce the old LTR,
+  horizontal behaviour).
+- `InlineEdge` also gains `rtl: bool` and `bidi: UnicodeBidi` (#238; `false` /
+  `UnicodeBidi::Normal` for an LTR box with no embedding), `InlineRun` gains
+  `upright: UprightText` (#239; `UprightText::of(style)`, or `UprightText::None` for
+  horizontal text), `BoxStyle` gains `rtl: bool` (`direction: rtl`, #190; `false` =
+  LTR), and `boxgen::ImageSource` gains `fallback: Option<(u32, u32)>` (the broken-image
+  intrinsic size, #243; `None` keeps the old behaviour). Struct literals must set them.
+- `WordBreaking` gains `auto: Option<AutoHyphens>` (#213); build it with
+  `WordBreaking::with_auto_hyphens` or set `auto: None`.
+- `cssom_view::scroll::ScrollMetrics` gains `min_x: f64` (#190): `0` for an LTR box,
+  `-(scrollWidth - clientWidth)` for an RTL one, whose offsets run `min_x..=0`.
+- `SnapshotError::UnsupportedVerticalWriting` (#234) is a new variant (a box in a vertical
+  writing mode the native layout could not lay out; since #239 nothing raises it, the variant stays).
+  `UnsupportedInlineWriting` is no longer raised (the variant stays): a direction change
+  lays out with bidi (#238) and an inline in another writing mode is an atomic inline (#239).
+- `LayoutOptions` and `HtmlOptions` gain a required `flatten_inline_elements: bool`
+  (#245). `false` (Chrome's model: inline elements are inline boxes) is the `Default`; `true` keeps the pre-0.7 flattened inline model on the
+  PDF path (lines still take the baseline / strut model) for consumers whose output
+  contracts assume no inline-box fragments (turbo-html2pdf's link annotations and PDF/UA
+  tags). Struct literals must add the field.
+- `border-radius` follows Chrome 156's full model (#253):
+  - `FragmentContent::Box::border_radius` is a `BorderRadii` (four physical corners, each
+    an elliptical `CornerRadii { h, v }` in px, already scaled by the overlap rule) instead
+    of one `f32`. `BorderRadii::as_uniform()` returns the old scalar when every corner is
+    the same circle, `BorderRadii::from(f32)` / `uniform(r)` build one, and `inset` gives
+    the padding / content edge radii. A consumer that paints one radius (html2pdf's PDF
+    emitter) can keep its path for `as_uniform()` and must draw the corners otherwise.
+  - `BoxStyle::border_radius` is `[CornerRadius; 4]` (specified `h` / `v` per corner)
+    instead of one `LengthPct`; `layout::value::resolve_radii` resolves it.
+  - `Fragment` has a new `overflow_clip: Option<OverflowClip>` field: the padding box (with
+    the inner radii) that a box's `overflow` other than `visible` clips its descendants
+    to. `Fragment::new` sets it to `None`; struct literals must add it.
+  - `ClipRect` gains `radii: BorderRadii` (#248, #253; it was `radius: f32` during
+    development): background layers clip to the painting area's per-corner inner radii.
+    Struct literals must add it (`BorderRadii::default()` for square corners).
+- `NodeSources` (from `layout_recorded`) gains `list_markers` (#128); struct literals must
+  add it.
+- `FragmentContent` has a new variant `Tiles(TilePattern)` (0.7.0 round-2 review,
+  finding 1): a background layer is one repeating-pattern fragment over its painting area
+  (under the clipped layer container) instead of one `Image` / gradient `Box` fragment per
+  tile, so a fine grid over a tall page is no longer cut off (the round-1 65536-tile cap
+  painted only the top ~870px of a 4px grid on a 1200x5000 page). `TilePattern` carries
+  the tile's content, one tile's origin (its phase), its size and its step per axis (`0`:
+  not repeated); `TilePattern::tiles(region)` yields the snapped tile rectangles meeting a
+  region and `period()` the whole-pixel period when there is one. An exhaustive `match`
+  needs an arm; a painter tiles it (turbo-dom-raster: a pattern shader in PNG, `<pattern>`
+  in SVG) or walks `tiles` over what it paints. Tile edges snap with `floor(v + 0.5)`
+  (was `round`, which differs on negative halves).
+- `BoxStyle::background_gradient` is a `layout::value::GradientSpec` (#264) instead of a
+  `LinearGradient`: the stops keep their specified positions (`StopSpec { color, pos:
+  Option<LengthPct> }`) and `repeating`, and `GradientSpec::resolve(width, height)` gives
+  the painted `LinearGradient` for a box or a background tile (CSS colour stop fixup,
+  repeating gradients unrolled, stops cut to `0..=1`). `LinearGradient` is unchanged.
+- `LayoutOptions` and `HtmlOptions` gain `uncapped_images: bool` (0.7.0 round-2 review,
+  finding 2): `true` sizes `<img>` boxes by CSS alone, like Chrome (turbo-dom-raster sets
+  it); the `false` default keeps html2pdf's paged-media caps (100% of the containing
+  block's width, 60% of the body height). Struct literals must add the field.
+
+**turbo-dom-browser-env**
+
+- Node wrappers' owner tag (internal field 1) is a Smi indexing a per-thread
+  (DOM id, tree generation) table instead of a two-word BigInt (a08365a). Only code that
+  reads wrapper internal fields directly (`host-internals` embedders) can observe it;
+  stale wrappers from a discarded tree are still refused (turbo-test#204).
+- The crate now depends on `turbo-dom-layout` (bundled fonts) for canvas text
+  measurement (#237).
+
+**turbo-dom-raster, turbo-dom-parser:** no breaking Rust API changes (raster only adds
+`measure_canvas_text`; the parser's Rust API is unchanged).
+
+The full item-level diff against 0.6.0 (`cargo public-api`, CI's features) is in
+`tools/release/public-api-0.7.0.txt`.
+
+### Behaviour changes
+
+- The `background` shorthand cascades as its longhands (#256): each longhand takes the
+  shorthand's cascade position, so origin, `!important`, specificity and order decide it
+  (an author `background: yellow` now beats the UA button `background-color`, as in
+  Chrome). A `background` value Chrome's grammar rejects is dropped whole, and a failed
+  `var()` in a shorthand unsets its longhands (also `border-radius`, which used to fall
+  back to `inherit`).
+- CSSOM shorthands clamp an overflowing length like Chrome (#262, both runtimes: Rust
+  `rtdom::css_shorthand` behind browser-env's `CSSStyleDeclaration`, and npm `el.style`):
+  a dimension past `f32`'s range such as `1e39px` now reads `3.40282e+38px` (it read
+  `0px`).
+
+Chrome 156-matching changes that move layout, screenshot or PDF output. Every corpus
+output change is declared in `tools/parity/expected/` (checkpoint `b-0.7.0`).
+
+- **Line boxes on the PDF path (#245):** `layout_html` / `layout_boxes` stack lines on one
+  baseline with the block strut and every font box and atom, at unscaled metrics, and
+  BackCompat documents get the quirks-mode line strut. The standards control line height
+  goes from 36.92px to Chrome's 39px.
+- **No line-height floor (#178):** a `line-height` smaller than the font's ascent +
+  descent is honoured (lines overlap, as in Chrome); only lines holding an atom keep the
+  floor their baseline placement needs.
+- **1/64px text advances (#241, #246):** max-/min-content and the static (PDF /
+  screenshot) path add text advances in LayoutUnits with Blink's device-scale advances
+  (`FontFace::blink_advances`); shrink-to-fit boxes and glyph positions move by up to
+  1/64px. Blink font-cache sizes (`unsigned(size*100)/100`), split legacy-kern pairs and
+  kerning across spaces (#191, #236).
+- **`<img>` is inline by default (#242)** (the UA sheet has `img { display: inline }`), an
+  atomic replaced box on every path.
+- **Unloaded / broken `<img>` (#243):** an undecodable source is a replaced box with the
+  broken-image icon's 16x16 intrinsic size (0x0 with `alt=""`); with alt text it shows the
+  text in a shrink-to-fit box; a 0x0 `<img>` has no aspect ratio.
+- **Replaced media (#252):** `<canvas>`, `<video>`, `<audio controls>`, `<object>` and
+  `<embed src>` are inline replaced boxes with Chrome's default sizes (300x150, audio
+  300x54); `<audio>` without controls is `display: none`.
+- **Tiled backgrounds (#248):** a background image tiles at its `background-size` from the
+  padding box instead of stretching over the content box.
+- **Overflow clipping (#253):** screenshots clip the descendants of every box whose
+  `overflow` is not `visible` (rounded by the inner radii); they were never clipped.
+- **Borders:** each side paints in its own width and colour (it was one stroke in the
+  widest side's colour), and a box in a vertical writing mode paints its borders on the
+  physical sides (#253).
+- **`dir` / `direction` (#190, #238):** `dir=rtl|ltr` maps to `direction`, which inherits;
+  RTL block containers place children from the right; `text-align: start|end` follow the
+  direction; inline content is bidi-reordered; RTL viewports and scrollers scroll from
+  the right.
+- **Inline boxes in static screenshots (#244):** decorated inlines keep their box and
+  paint per line fragment.
+- **`hyphens: auto` (#213):** English content now hyphenates (new default feature
+  `hyphenation`); build with `default-features = false` (and `bundled-fonts` as needed)
+  to keep `auto` acting as `manual`.
+- **List markers (#128):** `display: list-item` boxes now generate `::marker` boxes.
+- **Generic font families on macOS (#259, #260):** under both system-font policies
+  `sans-serif` resolves to Helvetica (it fell through to Helvetica Neue: Helvetica.ttc
+  names its family only in platform records), and the HTML policy's `monospace` is Courier
+  (was Menlo; the PDF policy keeps Courier New). Bare `FontRegistry::new()` stays on the
+  bundled faces.
+- **Size and layout containment (#265):** `container-type: inline-size | size` and
+  `contain: inline-size | size | layout | content | strict` size contained axes as if
+  the box had no content and establish an independent formatting context; an
+  inline-flex / inline-grid sits on its first item's first text line (else its border-box
+  bottom), contained or not, and layout containment drops an inline-block's content
+  baseline.
+- **HTML processing instructions in browser-env (#135):** documents installed or parsed
+  by browser-env make `<?target data?>` a ProcessingInstruction, not a bogus comment.
+
+### Added
+
+- Form controls paint Chrome 156's native appearance (#255): text fields, textareas and
+  menu lists a 1px `#767676` rounded frame on white (a menu list its chevron), buttons and
+  colour wells the frame on `#efefef` (a colour well its value's swatch), checkboxes /
+  radio buttons Chrome's glyphs (checked included), range sliders their track and thumb.
+  Drawn with ordinary galley boxes in `turbo-dom-layout`, so PNG / SVG screenshots (and
+  PDFs) show it; `appearance: none`, an author border / background and vertical writing
+  modes keep the CSS painting. An `appearance: none` checkbox / radio has no size.
+- Menu lists centre their label (their baseline follows) and colour wells sit 4px above
+  their content-box bottom on the line, like Chrome (#255); the `form-*` live-geometry
+  control compares their full boxes.
+- `inset` / `outset` borders shade each side with Blink's dark / light colours on the
+  physical sides (computed at style resolution, so PNG, SVG and PDF agree); the UA button
+  border is Chrome's 2px black `outset`; the menu-list chevron is the turned L of a 7px
+  square (#257).
+- `<input type=image>` is a replaced image control without the control frame: its `src`
+  (data URIs too on the static path), else its alt text (`alt`, else `value`, else
+  "Submit") in a box that takes `width` / `height` (#258).
+
+**turbo-dom**
+
+- `NodeType::CDataSection` and `Tree::create_cdata_section_utf16` (#186).
+- Chrome-mode processing instructions (#135): `Tree::set_processing_instructions`,
+  `Tree::processing_instructions`, `Tree::parse_with_processing_instructions`,
+  `Tree::parse_utf16_with_processing_instructions`,
+  `Tree::parse_utf16_with_source_positions_and_processing_instructions`. The default mode
+  and the html5lib-tests gates keep the bogus comment.
+- `css_shorthand::LENGTH_UNITS` is public (#237).
+
+**turbo-dom-layout**
+
+- Vertical writing modes (#234, #239): a logical-coordinate layer for writing-mode roots;
+  vertical flex / grid / table, atoms, `<img>`, floats, absolute boxes and `direction: rtl`
+  inside vertical roots; orthogonal flex / grid items and table cells; upright text
+  (`text-orientation: mixed` CJK and `upright`); the ideographic central baseline;
+  `<svg>` / `<iframe>` / media default sizes; Range rects and carets in vertical text;
+  form controls (Chrome's `html.css` UA, font-derived intrinsic sizes) lay out vertically
+  too (#239).
+- UAX #9 bidi inline layout (#238): `layout::inline::bidi` (`UnicodeBidi`,
+  `first_strong_rtl`, `is_formatting`), `FontFace::shape_in` / `measure_in`, Blink's caret
+  adjustment at run boundaries, `bdo` / `bdi` / `[dir]` UA rules, `dir=auto`,
+  `unicode-bidi: plaintext`; RTL root viewport scrolling and RTL static positions;
+  `scroll::inline_alignment`.
+- The quirks-mode line height quirk on the live, static and PDF paths (#190, #238, #245).
+- List markers (#128): counters, counter styles, `disc` / `circle` / `square`,
+  `list-style-position`; `LayoutSnapshot::list_marker_owner`; `NodeSources::list_markers`
+  (html2pdf tags a marker as the PDF/UA `Lbl`).
+- `hyphens: auto` for `en` / `en-*` (not en-GB) behind the default `hyphenation` feature
+  (#213): `AutoHyphens`, `WordBreaking::with_auto_hyphens`.
+- `border-radius` (#253): `BorderRadii`, `CornerRadii`, `CornerRadius`, `OverflowClip`,
+  `layout::value::resolve_radii`.
+- Backgrounds (#248): `background-size` / `-position` / `-repeat` (incl. `space` /
+  `round`) / `-origin` / `-clip` from longhands or the shorthand, on block and inline
+  boxes; `ClipRect::radii`; `TilePattern`; `GradientSpec` / `StopSpec`.
+- `UnicodeBidi`, `UprightText`, `style::QUIRKS_LINE_HEIGHT`, `FontFace::is_fixed_pitch`,
+  `test_support::cascaded`.
+- Inline boxes on the static path (#244): decorated inlines, `box-decoration-break:
+  slice | clone`, per-fragment inline background images / gradients.
+- `LayoutOptions::flatten_inline_elements` / `HtmlOptions::flatten_inline_elements` (#245).
+- Canvas text (#191, #236, #237): `FontFace::canvas_text_metrics[_with]`,
+  `CanvasTextMetrics`, `CanvasTextOptions`, `CanvasShaping`, `measure_canvas`,
+  `measure_canvas_text`, `x_height_px`, `cap_height_px`, `ideographic_advance_px`,
+  `blink_advances`, `blink_glyph_advance`, `blink_device_glyph_advance`,
+  `blink_font_size`, `guessed_rtl`.
+- `FontFace::from_web_font_bytes` (#240): loads an `@font-face` web font and hides the
+  legacy `kern` tables Chrome ignores in web fonts (CFF outlines, Apple version 1.0).
+- Replaced `<canvas>` / `<video>` / `<audio>` / `<object>` / `<embed>` (#252).
+- A stretched table cell's used content box takes its row height (#251).
+- `test_support::ic_fixture_face` and the Noto Hebrew / Arabic and U+6C34 fixture faces
+  (`assets/fonts/NOTICE.md`).
+
+**turbo-dom-raster**
+
+- Inset `box-shadow` (#192); per-corner elliptical radii for backgrounds, gradients,
+  borders, shadows and `overflow` clipping (#253); background layers with tiling and
+  clipping, painted from one tile pattern per layer (a pattern shader in PNG, a
+  `<pattern>` in SVG; no tile cap) (#248, 0.7.0 round-2 review): both painters repeat one
+  whole-pixel cell of the snapped tiles, so fractional tiles paint alike in PNG and SVG and
+  millions of them fill the box, and a scaled or rotated box's tiles are drawn at device
+  resolution, filtered and anti-aliased (0.7.0 round-3 review); fractional `repeat`/`round` tiles are one tile image repeated every tile size, blending the pixels their edges cross like Chrome (#270); an image under a scale is resampled at the device resolution (#269), and a `transform` on an `<img>` itself is applied in layout, paint and `getBoundingClientRect` (#272); inline-box decorations per line fragment
+  (#244); vertical and upright text (#234, #239); bidi-reordered runs (#238); list
+  markers (#128); the `coretext` canvas painter selects the bold / italic face (#236);
+  `measure_canvas_text(text, font)` (#237).
+
+**turbo-dom-browser-env**
+
+- XML documents (#186): `parse_xml_document_units` (DOMParser's `application/xml`,
+  `text/xml`, `image/svg+xml`, `application/xhtml+xml`, with Chrome's `<parsererror>`
+  document and error positions, via the `xml` crate; it returns `ParsedXmlDocument
+  { document, well_formed }`, `well_formed` false when Chrome's `<parsererror>` document
+  was produced), `XMLSerializer`,
+  `createCDATASection`, XML `innerHTML` / `outerHTML`. Internal DTD subsets apply their
+  ATTLIST defaults (attributes and namespace declarations, also on elements an entity
+  spells; #261) and the `xmlns` attributes of entity-expanded elements stay on their own
+  elements. A default inserts each entity's replacement text once, verbatim (as Chrome
+  does), as a specified value does (#268); specified and defaulted values share an
+  expansion budget of 10x the source plus 1 MB ("Entity too big" past it), so attribute
+  values cannot amplify.
+- HTML processing instructions in every installed or parsed document (#135).
+- `CSSAnimation` / `CSSTransition` in `getAnimations()` (#187), `transition-property:
+  all`, no CSS animations under `display: none` ancestors; `getKeyframes()` property order
+  as Blink's hash-map buckets (#233).
+- XPath in DocumentFragment / shadow-root contexts and the (empty) namespace axis (#185).
+- Canvas text (#237): `measureText` returns a real `TextMetrics` (it was a `len*6` stub),
+  measured with turbo-dom-layout against the host's `FontRegistry` (`set_canvas_fonts`;
+  bundled faces otherwise); `letterSpacing`, `wordSpacing` (every CSS length unit),
+  `fontKerning`, `fontStretch`, `textRendering`; the `TextMetrics` interface.
+- CSSOM rule interfaces (#254): `CSSGroupingRule`, `CSSConditionRule`, `CSSContainerRule`
+  (`containerName`, `containerQuery`), `CSSMediaRule`, `CSSSupportsRule`,
+  `CSSLayerBlockRule`, `CSSLayerStatementRule`, `CSSScopeRule`, `CSSStartingStyleRule`.
+- Opt-in startup snapshot install (#249): `snapshot_blob()` (a per-process V8 startup
+  snapshot of the bootstrapped window, built from the process's own V8, plus its external
+  reference table; `SnapshotBlob::create_params()`) and `install_from_snapshot(html)`,
+  which creates and owns the isolate and returns a `SnapshotWindow` (isolate + context).
+  The existing `install*` functions are unchanged.
+- Startup snapshots for embedders with their own startup context (#249, turbo-test):
+  `snapshot_blob_with(prelude)` builds a blob whose default context ran the embedder's
+  `prelude` alone and whose context `SNAPSHOT_WINDOW_CONTEXT` ran the prelude, then the
+  engine bootstrap (`v8::Context::from_snapshot`); `set_snapshot_install(true)` makes
+  installs into such a context rehydrate the window, as `TURBO_DOM_SNAPSHOT_PATH` does.
+
+### Fixed
+
+Detail per fix (each backed by a Chrome 156 control):
+
+- turbo-dom-layout and turbo-dom-raster implement `border-radius` like Chrome 156 (#253):
+  per-corner longhands and the `border-radius` shorthand's 1-4 values with `h / v`
+  elliptical radii (expanded in cascade order), percentages against the border box's own
+  width / height (`50%` on a non-square box is an ellipse, it was a pill), the overlap
+  scale-down, the flow-relative `border-{start,end}-{start,end}-radius` corners under
+  `direction: rtl` and vertical writing modes, and inner radii at the padding / content
+  edges. The PNG and SVG screenshots use them for backgrounds and gradients, borders (the
+  ring between the outer and inner outlines, each side in its own width and colour, sides
+  meeting on the corner diagonals; it was one stroke in the widest side's colour), outer
+  and inset shadows, #248's background layers (clipped to the rounded painting area) and
+  `overflow` clipping, which the screenshots now apply to every box whose `overflow` is not
+  `visible` (descendants were never clipped). A box laid out in a vertical writing mode
+  also paints its borders on the right physical sides (they were the logical ones).
+- turbo-dom-layout places background images and gradients like Chrome 156 (#248):
+  `background-size` (lengths, `%`, `auto`, `cover`, `contain`), `-position` (1-4 values),
+  `-repeat` (`repeat-x` / `-y`, two values; `space` / `round` tile like `repeat`),
+  `-origin` and `-clip` (the colour too), from the longhands or the `background`
+  shorthand, on block and inline boxes, in PNG, SVG and PDF. A background image was
+  stretched over the content box; it now tiles at its size from the padding box, which
+  changes the tools/parity image pages' `.bg` boxes (declared in
+  `tools/parity/expected/turbo-dom-248-background-layers.json`). Layers clip to the
+  rounded painting area, per corner since #253.
+- turbo-dom-raster's static screenshots (PNG and SVG) paint inline boxes like Chrome 156
+  (#244): an inline with a background, box shadow, padding, border or horizontal margin
+  keeps its box through turbo-dom-layout's static line layout and paints per line fragment
+  (`box-decoration-break: slice`: the start edge on the first fragment, the end edge on the
+  last, also across bidi-split fragments), its edges push its neighbours and count toward a
+  shrink-to-fit container's max-content width, and `layout_boxes` reports the union of its
+  fragments. `box-decoration-break: clone` repeats both edges on every fragment (they take
+  line space), and an inline box's background image / gradient spans its fragments' strip
+  (sliced) or each fragment (cloned), stretched like a block's. Plain inlines still flatten into their parent's run; the tools/parity corpora
+  hold no such inline in a static render, so no checkpoint output changes.
+- turbo-dom-layout implements `hyphens: auto` for English (`lang=en` / `en-US` / other `en-*`
+  regions; not en-GB): words break at the en-US Knuth-Liang points (the `hyphenation`
+  crate's embedded TeX `hyph-en-us` patterns, behind the new default-on `hyphenation`
+  feature, ~90 KB) under `hyphenate-limit-chars` (default 5 / 2 / 2), and a taken break
+  draws a hyphen. Like Chrome 156, each text node's letters hyphenate on their own, a
+  capitalized word, a word with a soft hyphen, `hyphens: manual | none` and unset or
+  unsupported languages are left alone, and a paragraph's last word is not hyphenated on a line with earlier
+  content. A word ending at a soft hyphen now also counts its hyphen when it has
+  `overflow-wrap` opportunities. `WordBreaking` gains `auto: Option<AutoHyphens>` and
+  `with_auto_hyphens`. Chrome on macOS hyphenates with the system dictionary, whose points
+  differ for some words. Control: `tests/fixtures/hyphens`
+  (`scripts/fixture-font-chrome-controls.mjs`) (#213).
+- turbo-dom-layout generates list markers (`::marker`) like Chrome 156: `list-item` counters
+  (`<ol start reversed>`, `<li value>`, `<ol|ul|li type>`), the `list-style-type` counter
+  styles (decimal, decimal-leading-zero, lower/upper-alpha/-latin, lower/upper-roman,
+  lower-greek, strings, none) and the `disc` / `circle` / `square` shapes,
+  `list-style-position` (and the `list-style` shorthand), the outside marker box beside the
+  item's first line box. turbo-dom-raster paints them (PNG and SVG), and
+  `cssom_view::hit::elements_at_point` hits a marker's list item (#128;
+  `scripts/list-marker-chrome-control.mjs`). The UA sheet gains Chrome's list-style-type
+  defaults and zero block margins for nested lists. `layout_recorded`'s `NodeSources` gains
+  `list_markers` (marker box / text id -> its list item's box), since a marker has no source
+  element (html2pdf tags it as the PDF/UA `Lbl`).
+- turbo-dom-raster paints inset `box-shadow`s (PNG and SVG) inside the padding box, over the
+  background and under the border, with offset, spread and blur, like Chrome 156 (#192).
+- HTML processing instructions like Chrome 156 (turbo-dom#135): `Tree::parse_utf16_with_processing_instructions`
+  and `Tree::set_processing_instructions` make the UTF-16 tokenizer parse `<?target data?>` as a
+  ProcessingInstruction (ASCII-name target other than `xml`; nothing when the input ends inside
+  one; otherwise the standard's bogus comment). turbo-dom-browser-env turns it on for every
+  document it installs or parses (loaded pages included; `parse_utf16_with_source_positions_and_processing_instructions`
+  for the source-position parse), so innerHTML / insertAdjacentHTML / createContextualFragment /
+  setHTML[Unsafe] / Document.parseHTML[Unsafe] match Chrome; a safe `setHTML` dictionary without
+  processing-instruction lists drops them and the sanitizer keeps Document-level ones, like
+  Chrome. The default mode and the conformance gates keep html5lib-tests' bogus comment.
+- Text: Blink font-cache sizes, device-size advances, legacy kern-table pairs split across
+  both glyphs, kerning across collapsible spaces, canvas `fillText` pen advances and canvas
+  weight / style face matching (#191, #236; host-font Times control on macOS).
+- Web fonts: a CFF web font's legacy `kern` table (and an Apple version 1.0 table) is no
+  longer applied, via `FontFace::from_web_font_bytes` (#240).
+- browser-env `innerHTML` / `outerHTML` of XML documents serialize and parse XML (#186).
+- An empty inline box in a bidi-reordered line goes with the item after it (1e34d4c).
+- The orthogonal table width (#250) already matched Chrome once #241 landed; its test mask
+  is gone.
+- Gradient colour stops at lengths (`#ccc 1px`, `5em`, `calc()`) and double-position
+  stops place like Chrome on the gradient line of the box or tile they paint, and
+  `repeating-linear-gradient(...)` repeats (it painted once) (#264; Chrome cases
+  `gradient-*`). Only `%` positions were read; a length stop spread evenly instead.
+- From the 0.7.0 round-2 review: a background layer paints every tile however many there
+  are (one pattern fragment, painted by a pattern shader / `<pattern>`; Chrome case
+  `bg-tiles-fill-a-big-box`); a raster screenshot's `<img>` is no longer squeezed to its
+  column (a `display:block; width:40000px` image is 40000px wide, as in Chrome); every
+  image is resampled with one kernel (the triangle filter, over the part of the box the
+  canvas shows) instead of a box-size-dependent nearest / bilinear choice; the
+  `background` shorthand keeps `0 0` as two position values (it collapsed equal lengths to
+  one, centring the y axis); the `overflow-glyph-ink-*` edge probes the round-1 fix
+  dropped are back, compared within measured anti-aliasing tolerances.
+- turbo-dom-raster, from the 0.7.0 round-1 review: an image or background tile far larger
+  than the canvas (a 40000px `background-size`) is drawn from its own pixels through a
+  scale transform instead of being resized to its layout size (it allocated ~6.4 GB); an
+  inset box shadow's scratch layers cover its padding box, not the whole canvas; the tile
+  memo shares its pixmap instead of copying it per tile; `overflow` clips glyph ink that
+  reaches past its line box (a 40px "gy" in a 10px line); SVG gradient and shadow ids are
+  unique for boxes at one origin. turbo-dom-layout gives inline boxes their
+  `border-radius` (on the fragment's own edges: every fragment's with
+  `box-decoration-break: clone`); Chrome 156 controls `inline-clone-*` and
+  `overflow-glyph-ink-*`. The paint control's `?` probes now compare Chrome's RGB.
+- turbo-dom-browser-env `getComputedStyle` applies style rules nested in grouping rules
+  like Chrome 156 (#273): `@supports` children when the condition holds (declarations,
+  `selector()`, `not` / `and` / `or`), `@layer` children in cascade-layer order (layer
+  statements, nested / dotted / anonymous layers; unlayered rules beat layered ones for
+  normal declarations and lose to them for `!important`), `@media` children when the query
+  matches (a matching rule under a conditional query is never reused from the snapshot
+  cache) and `@scope` children within the scoping root and limit (prelude-less `@scope`
+  scopes to the owner's parent). `@container` and `@starting-style` children never apply.
+  Before, a grouping rule's prelude was used as a selector and its children were skipped.
+  Chrome control `css_grouping_cascade_chrome156.json`.
+- turbo-dom-browser-env `getComputedStyle` orders matched rules like Chrome 156 (#275,
+  #276): by Selectors 4 specificity (turbo-dom's cascade parser; a selector list counts its
+  most specific matching selector) within a cascade layer, then by `@scope` proximity (the
+  nearer scoping root wins), then document order. Before, rules applied in document order
+  only. Inside `@scope`, `:scope` binds to the scoping root (`:scope + i` no longer matches
+  outside the scope), `&` is `:where(:scope)`, and a selector without them adds no
+  specificity. Chrome control `css_cascade_specificity_chrome156.json`.
+- Background layers in vertical writing modes (#274, #277, #278): a block or inline box
+  laid out in a vertical space builds its layers over its physical shape, so percentage /
+  keyword positions and percentage sizes no longer resolve against the swapped size; a
+  layer container's `clip` maps with its fragment; `Fragment::translate` (flex items,
+  floats, table cells, html2pdf pagination) and the orthogonal-flow mapping move a
+  `Tiles` pattern's origin, so tiles keep their phase.
+- Grid items (#267, round-3 review): a fixed-width grid item keeps its width on the HTML
+  path (it stretched to the grid), grid leaves hand taffy their border-box size / min /
+  max, and the relabel / measure memos key on the exact probe width.
+- Form-control boxes match Chrome 156 absolutely (#263): the 187x38 vs 182x36 textarea gap
+  was the control capture's host font, so no layout change; the tests now compare whole
+  boxes in Fira Code.
+- The static path's LTR-embed-in-RTL glyph (#247) was Noto Sans Hebrew's RTL GPOS offset,
+  painted at pen + offset like Chrome; the test compares pen positions and is no longer
+  held out.
+- Glyph rasterization (#266, partly): turbo-dom-raster paints glyph runs with exact-area
+  coverage instead of tiny-skia's 4x supersampling, grows and lifts the outline by
+  0.005 x size px (CoreText font smoothing), places pens at Skia's quarter-pixel x /
+  whole-pixel y and applies Skia's luminance mask pre-blend; the SVG painter emits the
+  same grown outline. The mean residual against the `glyph_coverage` control falls from
+  22-59 to 4-21. Still open: stem darkening at small sizes and for white text (#266).
+- From the 0.7.0 review rounds, each against a Chrome 156 control:
+  - layout: `text-orientation: mixed` reads a table generated from UAX #50
+    (`scripts/gen-vertical-orientation.py`, UCD 16.0.0); list `start` / `value` parse as
+    32-bit integers and ordinals clamp like Chrome's `ClampAdd`, and reversed lists count
+    with a stack; textarea `rows` / `cols` and input `size` past `i32` fall back to the
+    default; range inputs parse HTML floats, clamp `max` to `min`, never divide by zero and
+    snap their value to the `step`; an infinite `border-radius` clamps to a LayoutUnit
+    (a pill, not NaN radii);
+  - browser-env: kept CSS animations follow `animation-*` and `@keyframes` changes except
+    what script overrode, a `display: none` element starts no transition (hiding cancels
+    running ones), and transitions compare computed values (`red` / `#f00`); an `@import`
+    passed to `CSSGroupingRule.insertRule` is a `HierarchyRequestError` however it is
+    spelled; XML entity nesting stays at depth 10 (billion laughs is rejected with
+    "Entity too big", as in Chrome);
+  - startup snapshot (#249): no shell node wrapper is retained in the blob, and a build
+    failure before `create_blob` logs and returns no blob instead of aborting.
+
+### Performance
+
+turbo-dom-browser-env, measured on a React/MUI payroll suite (turbo-test 0.7.0 work).
+Every item is gated by a deterministic counter test, not wall-clock.
+
+- A CSS animation / transition update's display:none ancestor check (`rendered`) resolves
+  each ancestor once per read through one snapshot map. It called the public
+  getComputedStyle per ancestor, so every reused ancestor revalidated its whole ancestor
+  chain: O(depth^2) style lookups per read after a DOM change (1978 at depth 40). MUI's
+  TextareaAutosize in a Dialog (standalone-chat-app FeedbackDialog under turbo-test): worker
+  CPU 5.2 s to 2.4 s.
+- A cascade reads the owner's sheet list once per tree version and CSSOM epoch instead of
+  once per element it resolves (24 reads for one read at depth 20).
+- turbo-dom-browser-env keeps a process-wide V8 bytecode cache of its engine scripts: every
+  page install (turbo-test installs one per test file) compiled each engine script from source,
+  ~8-9% of a real app suite's CPU. The cache is produced after the script ran (so it holds the
+  lazily compiled functions) and is replaced when V8 rejects it. Only the binding's own fixed
+  engine scripts are cached: the public `run_engine_script`, which serves embedder sources,
+  compiles without it, so the cache stays bounded.
+- `matches()` / `closest()` classify the form-state pseudo-classes (`:disabled`, `:checked`,
+  `:invalid`, ...) only for the elements their answer can read: the subject's inclusive
+  ancestors (with their preceding siblings for `+` / `~`) and, for the validity classes, each
+  form / fieldset ancestor's controls. They classified every element of the tree in JS on each
+  call; user-event asks `matches(':disabled')` on every pointer step and MUI's rules ask
+  `:invalid` per input, so large forms were quadratic (turbo-test 0.7.0 perf work).
+  `:has()`, `:indeterminate` and `querySelector[All]` still classify the whole tree.
+- `getComputedStyle` reuses a computed style whose rules read live form / popover / dialog
+  state (`:invalid`, `:checked`, `:placeholder-shown`, `:popover-open`, `:modal`, `:open`, ...).
+  Such a style was never reused before. It is now keyed on a native live-state epoch, which every
+  change the tree version misses bumps: control values, option selectedness, custom and user
+  validity, `indeterminate`, ElementInternals validity, file selections, the popover stack,
+  modal dialogs and an opened picker. View-transition and interest state stay unreused.
+- The CSS animation / transition model (`animations.js` `cssUpdate`) runs once per style change
+  of an element, not on every computed-style read. A running animation recomputes the style on
+  each read, and the update (with `rendered()`'s ancestor walk) was 54% of the CPU of a
+  React/MUI modal test file. Its result is unchanged, and the `css_animations` Chrome controls
+  are unchanged. Gates: deterministic fresh-cascade and update-pass counters
+  (`computed_style_state_rules_reuse_gate`, `css_animation_update_runs_once_per_style_change_gate`).
+- turbo-dom-browser-env's selector-taking DOM methods (`querySelector[All]`, `matches`,
+  `closest`, ...) parse each selector string's grammar once (a per-thread memo, bounded in
+  entries, holding only selectors up to 512 UTF-16 units and cleared by each install).
+  A selector without a `:` skips the five node-dependent pseudo-class rewrite passes, and
+  the SyntaxError message is built only when a selector is rejected (same exact message as
+  before). On form-heavy files this took ~9% of CPU.
+- Node wrappers carry their owner tag (DOM id + tree generation) as a small integer that
+  indexes a per-thread table, instead of a two-word BigInt that was allocated per wrapper and
+  decoded on every native call (`handle_of`, `tagged_owner` and the ownership reconcile were
+  3-5% each). Table entries are never reused, so wrappers from a discarded tree are still
+  refused (turbo-test#204).
+- The mutation fanout builds a V8 record object only when something reads it: a
+  MutationObserver, a custom element definition or the host's trusted document consumer.
+  A page that is recording mutations for script preparation, with nothing observing them,
+  no longer allocates one per mutation (4-5% on React-heavy files).
+
+- Loaded pages without `<?` keep the scalar html5ever parse (2b62721, #135).
+- Measured: 9731a05 took the payroll `EditExpenseModal` test file from 444 s to 263 s of
+  CPU; 3c979fe alone took 147 payroll files from 37.1 to 33.3 CPU-s.
+- V8 startup snapshot install (#249): `install_from_snapshot` deserializes a
+  bootstrapped window and rehydrates it instead of running the ~50 engine scripts of a
+  bootstrap. Install cost on darwin-arm64 (release, min / median of 30): fresh isolate +
+  `install_with_html` 21.04 / 22.63 ms, `install_from_snapshot` 4.99 /
+  5.38 ms (isolate included); the blob is built once per process (171 ms). The
+  install is split into `bootstrap_engine` + `attach_document`; the external reference
+  registry, the context-slot / isolate-key / live-range rehydrate and context-independent
+  template data (`template_data`, also for the custom-element constructors, popover flush
+  and mutation-observer delivery functions) make a deserialized context behave like an
+  installed one. CI runs the browser-env suite on three paths: default,
+  `TURBO_DOM_ATTACH_PATH=1` and `TURBO_DOM_SNAPSHOT_PATH=1` (test isolates from the blob,
+  each install asserted to run 0 engine scripts).
+
+### CI
+
+- Linux napi binaries and the publish jobs build on `ubuntu-22.04` / `ubuntu-22.04-arm`
+  (glibc 2.35) instead of `ubuntu-latest` (26.04, glibc 2.43), and
+  `scripts/check-glibc-ceiling.sh` fails any `linux-gnu` `.node` that needs a `GLIBC_`
+  symbol above 2.35 (d548cae). The guard never passes vacuously: a missing file or an
+  unmatched glob, a `readelf` failure and a binary with no `GLIBC_` symbols all fail
+  (self-test `scripts/test_check_glibc_ceiling.py`), and CI and publish name the expected
+  x64 and arm64 addons. It reads symbols with `readelf -W --dyn-syms -V`, which handles any
+  ELF machine, so the x64 publish runner can check the arm64 addon (`objdump -T` there
+  fails with "file format not recognized").
+- The npm publish job ships the `.node` files the CI napi matrix built and guarded. It
+  builds only the WASM targets, and no longer runs `prepublishOnly`, which rebuilt the
+  linux-x64 addon on the publish runner.
+- The browser-env coverage job's tarpaulin `--timeout` is sized for the whole test binary
+  (it bounds a binary run, not one test; #235).
+- Superseded `pull_request` CI runs are cancelled (one concurrency group per PR).
+  `workflow_call` (publish), tag and `main` runs each get their own group (the run id), so
+  they are never cancelled or dropped while pending (5f8407b).
+- Every parity expected-diff entry names committed Chrome evidence (self-tested). The
+  turbo-surf 0.7.0 numbers are in `tools/parity/evidence/`, and embedded-font-range-* is a
+  declared known gap.
+- Every in-repo Chrome control launches the frozen Chrome 156 shell with
+  `--use-mock-keychain --password-store=basic`.
+
+### Downstream notes
+
+**turbo-surf**
+
+- `DOMParser` / XHR XML responses should call `turbo_dom_browser_env::parse_xml_document_units`
+  (they threw for XML types), and the sanitizer's XML `KNOWN_GAP` can be removed (#186).
+- Call `set_canvas_fonts(context, registry)` with the live layout's `FontRegistry` (system
+  fonts plus fetched `@font-face` faces) so `measureText` matches the page (#237).
+- Load `@font-face` faces with `FontFace::from_web_font_bytes` (#240).
+- Handle `TextLine::vertical` / `upright` and `SnapshotError::UnsupportedVerticalWriting`;
+  re-check static corpora for #243 / #248 (declared in `tools/parity/expected/`).
+
+**turbo-html2pdf**
+
+- Compile breaks: `FragmentContent::Box::border_radius` (use `BorderRadii::as_uniform()`
+  for the single-radius PDF path, draw corners otherwise), `ClipRect::radii`,
+  `Fragment::overflow_clip`, `BoxStyle::border_radius`, `TextLine { vertical, upright }`,
+  `InlineEdge::clone_advance`, `PlacedInlineEdge::decorated`,
+  `GlyphSourceCluster::{bidi_level, paragraph_level}`, `WordBreaking::auto`,
+  `NodeSources::list_markers`, `LayoutOptions` / `HtmlOptions::flatten_inline_elements`.
+- Set `flatten_inline_elements: true` to keep link annotations and PDF/UA tags on the
+  pre-0.7 inline model; line boxes still change (#245, declared in `b-0.7.0`).
+- Tag list markers via `NodeSources::list_markers` as PDF/UA `Lbl` (#128).
+- Use `FontFace::from_web_font_bytes` for `@font-face` faces (#240).
+
 ## [0.6.0] — turbo-dom consolidation
 
 turbo-dom becomes the home of the shared browser engine of turbo-html2pdf, turbo-test

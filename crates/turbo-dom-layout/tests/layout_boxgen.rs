@@ -41,6 +41,26 @@ fn as_lines(kind: &BoxKind) -> Vec<InlineItem> {
     }
 }
 
+/// A line run's content items: an inline element is an inline box whose start and end
+/// `Boundary` items bracket its content (miaskiewicz/turbo-dom#245).
+fn content(items: Vec<InlineItem>) -> Vec<InlineItem> {
+    items
+        .into_iter()
+        .filter(|item| !matches!(item, InlineItem::Boundary { .. }))
+        .collect()
+}
+
+/// Whether `items` are the start and end edges of one inline box around `inner`.
+fn bracketed(items: &[InlineItem], inner: usize) -> bool {
+    matches!(
+        (items.first(), items.last()),
+        (
+            Some(InlineItem::Boundary { start: true, node_id: a, .. }),
+            Some(InlineItem::Boundary { start: false, node_id: b, .. }),
+        ) if a == b
+    ) && items.len() == inner + 2
+}
+
 #[test]
 fn text_only_flow_is_inline_context() {
     let root = build_box_tree(&[txt("hello world")]);
@@ -66,7 +86,12 @@ fn mixed_block_inline_wraps_anonymous_block() {
     let root = build_box_tree(&nodes);
     let boxes = as_block(&root.kind);
     assert_eq!(boxes.len(), 2);
-    assert_eq!(as_lines(&boxes[0].kind).len(), 2); // before + mid in one anon block
+    let run = as_lines(&boxes[0].kind);
+    assert_eq!(content(run.clone()).len(), 2); // before + mid in one anon block
+    assert!(
+        bracketed(&run[1..], 1),
+        "the span is an inline box around mid"
+    );
     assert_eq!(boxes[1].display, Display::Block);
     assert_eq!(as_lines(&boxes[1].kind).len(), 1); // the <p>'s text
 }
@@ -91,17 +116,19 @@ fn inline_block_becomes_atomic() {
 #[test]
 fn block_nested_in_inline_splits_the_inline() {
     // A block inside an inline splits it (CSS 2.2 §9.2.1.1; miaskiewicz/turbo-dom#101):
-    // the flow becomes a block context of the block alone (the empty runs around it
-    // generate nothing) ...
+    // the flow becomes a block context of the block between the inline box's two
+    // parts, each an anonymous line box holding only its edge ...
     let nodes = vec![el(
         "span",
         &[("display", "inline")],
         vec![el("div", &[], vec![txt("d")])],
     )];
     let boxes = as_block(&build_box_tree(&nodes).kind);
-    assert_eq!(boxes.len(), 1);
-    assert_eq!(boxes[0].display, Display::Block);
-    assert_eq!(as_lines(&boxes[0].kind).len(), 1);
+    assert_eq!(boxes.len(), 3);
+    assert!(content(as_lines(&boxes[0].kind)).is_empty());
+    assert_eq!(boxes[1].display, Display::Block);
+    assert_eq!(as_lines(&boxes[1].kind).len(), 1);
+    assert!(content(as_lines(&boxes[2].kind)).is_empty());
     // ... and the inline content around it goes to anonymous line boxes before and
     // after it, in order; an absolutely positioned box stays in its run.
     let nodes = vec![el(
@@ -116,12 +143,14 @@ fn block_nested_in_inline_splits_the_inline() {
     )];
     let boxes = as_block(&build_box_tree(&nodes).kind);
     assert_eq!(boxes.len(), 3);
-    let before = as_lines(&boxes[0].kind);
+    assert!(bracketed(&as_lines(&boxes[0].kind), 2));
+    assert!(bracketed(&as_lines(&boxes[2].kind), 1));
+    let before = content(as_lines(&boxes[0].kind));
     assert_eq!(before.len(), 2);
     assert!(matches!(&before[0], InlineItem::Text { text, .. } if text.as_str() == "a"));
     assert!(matches!(before[1], InlineItem::Atomic(_)));
     assert_eq!(boxes[1].display, Display::Block);
-    let after = as_lines(&boxes[2].kind);
+    let after = content(as_lines(&boxes[2].kind));
     assert!(matches!(&after[..], [InlineItem::Text { text, .. }] if text.as_str() == "b"));
 }
 
@@ -136,7 +165,8 @@ fn inline_element_drops_hidden_child() {
         ],
     )];
     let items = as_lines(&build_box_tree(&nodes).kind).clone();
-    assert_eq!(items.len(), 1); // only "vis"
+    assert!(bracketed(&items, 1)); // the span around only "vis"
+    assert!(matches!(&items[1], InlineItem::Text { text, .. } if text.as_str() == "vis"));
 }
 
 #[test]
@@ -210,15 +240,22 @@ fn node_ids_are_preorder() {
     }
 }
 
+/// A block styled by the real cascade from one author declaration block.
+fn cascaded_div(declarations: &str) -> StyledNode {
+    StyledNode::Element(StyledElement {
+        tag: Tag::Html("div".into()),
+        attrs: vec![],
+        style: turbo_dom_layout::test_support::cascaded(declarations),
+        children: vec![],
+        source: None,
+    })
+}
+
 #[test]
 fn background_shorthand_url_becomes_image_source() {
-    // No `background-image` longhand: the url is scanned out of the `background`
-    // shorthand's tokens (a non-replaced image source painted behind the box).
-    let root = build_box_tree(&[el(
-        "div",
-        &[("background", "url(bg.png) no-repeat")],
-        vec![],
-    )]);
+    // The cascade expands the `background` shorthand into `background-image`
+    // (miaskiewicz/turbo-dom#256): a non-replaced image source painted behind the box.
+    let root = build_box_tree(&[cascaded_div("background: url(bg.png) no-repeat")]);
     let div = &as_block(&root.kind)[0];
     let img = div.image.as_ref().expect("background image source");
     assert_eq!(img.name, "bg.png");
@@ -313,42 +350,31 @@ fn input_button_value_renders_as_text() {
             .any(|it| matches!(it, InlineItem::Text { text, .. } if text.contains("Go")));
         assert!(has_go, "{ty} input value should render as text");
     }
-    // a text input's value is NOT drawn as content (it's an editable field).
+    // a text field shows its value too, as Chrome 156 does (miaskiewicz/turbo-dom#239).
     let root = build_box_tree(&[input("text")]);
     let lines = as_lines(&as_block(&root.kind)[0].kind);
     assert!(
-        lines.is_empty(),
-        "text input value is not flowed as content"
+        lines
+            .iter()
+            .any(|it| matches!(it, InlineItem::Text { text, .. } if text.contains("Go"))),
+        "text input value is flowed as its content"
     );
 }
 
 #[test]
-fn background_image_longhand_wins_over_the_shorthand() {
+fn background_image_and_shorthand_cascade_in_order() {
+    // miaskiewicz/turbo-dom#256: the later of the shorthand and the longhand wins, and
+    // the image source is the first layer's url.
     let root = build_box_tree(&[
-        el(
-            "div",
-            &[
-                ("background-image", "url( 'long.png' )"),
-                ("background", "url(short.png) no-repeat"),
-            ],
-            vec![],
-        ),
-        el(
-            "div",
-            &[
-                ("background-image", "none"),
-                ("background", "url(short.png) no-repeat"),
-            ],
-            vec![],
-        ),
+        cascaded_div("background-image: url( 'long.png' ); background: url(short.png) no-repeat"),
+        cascaded_div("background: url(short.png) no-repeat; background-image: url( 'long.png' )"),
+        cascaded_div("background: url(short.png); background-image: none"),
+        cascaded_div("background: url(a.png), url(b.png) red"),
     ]);
     let divs = as_block(&root.kind);
-    let img = divs[0].image.as_ref().expect("longhand image source");
-    assert_eq!(img.name, "long.png");
-    assert!(!img.replaced);
-    assert_eq!(
-        divs[1].image.as_ref().unwrap().name,
-        "short.png",
-        "a non-url longhand falls through"
-    );
+    let name = |i: usize| divs[i].image.as_ref().map(|img| img.name.clone());
+    assert_eq!(name(0).as_deref(), Some("short.png"));
+    assert_eq!(name(1).as_deref(), Some("long.png"));
+    assert_eq!(name(2), None);
+    assert_eq!(name(3).as_deref(), Some("a.png"));
 }

@@ -1,0 +1,2669 @@
+{
+ "generator": "scripts/list-marker-chrome-control.mjs",
+ "chrome": "156.0.8078.47",
+ "playwright_core": "1.61.0",
+ "viewport": [
+  800,
+  600
+ ],
+ "cases": [
+  {
+   "id": "decimal",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li><li data-cid=\"c\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      32,
+      26,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       29,
+       43,
+       40
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      32,
+      44,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       47,
+       43,
+       58
+      ],
+      "count": 33
+     }
+    }
+   ]
+  },
+  {
+   "id": "ol-start",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\" start=\"9\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       32,
+       11,
+       43,
+       22
+      ],
+      "count": 43
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      24,
+      26,
+      24,
+      18
+     ],
+     "ink": {
+      "box": [
+       25,
+       29,
+       43,
+       40
+      ],
+      "count": 66
+     }
+    }
+   ]
+  },
+  {
+   "id": "ol-reversed",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\" reversed><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li><li data-cid=\"c\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 33
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      32,
+      26,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       29,
+       43,
+       40
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      32,
+      44,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       47,
+       43,
+       58
+      ],
+      "count": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "ol-reversed-start",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\" reversed start=\"10\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      24,
+      8,
+      24,
+      18
+     ],
+     "ink": {
+      "box": [
+       25,
+       11,
+       43,
+       22
+      ],
+      "count": 66
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      32,
+      26,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       32,
+       29,
+       43,
+       40
+      ],
+      "count": 43
+     }
+    }
+   ]
+  },
+  {
+   "id": "li-value",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\">item</li><li data-cid=\"b\" value=\"20\">item</li><li data-cid=\"c\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      24,
+      26,
+      24,
+      18
+     ],
+     "ink": {
+      "box": [
+       25,
+       29,
+       43,
+       40
+      ],
+      "count": 66
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      24,
+      44,
+      24,
+      18
+     ],
+     "ink": {
+      "box": [
+       25,
+       47,
+       43,
+       58
+      ],
+      "count": 58
+     }
+    }
+   ]
+  },
+  {
+   "id": "ol-negative-start",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\" start=\"-2\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      26.671875,
+      8,
+      21.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       27,
+       11,
+       43,
+       22
+      ],
+      "count": 40
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      26.671875,
+      26,
+      21.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       27,
+       29,
+       43,
+       40
+      ],
+      "count": 40
+     }
+    }
+   ]
+  },
+  {
+   "id": "ol-start-out-of-range",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\" start=\"3000000000\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li></ol><ol style=\"margin:0\" start=\"-2147483649\"><li data-cid=\"c\">item</li></ol><ol style=\"margin:0\" start=\"2147483647\"><li data-cid=\"d\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "d",
+     "rect": [
+      48,
+      62,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      32,
+      26,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       29,
+       43,
+       40
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      32,
+      44,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       47,
+       43,
+       58
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "d",
+     "rect": [
+      -40,
+      62,
+      88,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       65,
+       43,
+       76
+      ],
+      "count": 179
+     }
+    }
+   ]
+  },
+  {
+   "id": "li-value-out-of-range",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\">item</li><li data-cid=\"b\" value=\"2147483648\">item</li><li data-cid=\"c\" value=\"-2147483648\">item</li><li data-cid=\"d\" value=\"-99999999999\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "d",
+     "rect": [
+      48,
+      62,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      32,
+      26,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       29,
+       43,
+       40
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      -45.328125,
+      44,
+      93.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       47,
+       43,
+       58
+      ],
+      "count": 203
+     }
+    },
+    {
+     "cid": "d",
+     "rect": [
+      -45.328125,
+      62,
+      93.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       65,
+       43,
+       76
+      ],
+      "count": 179
+     }
+    }
+   ]
+  },
+  {
+   "id": "ol-start-i32-max-clamps",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:lower-alpha\" start=\"2147483646\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li><li data-cid=\"c\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      -7.84375,
+      8,
+      55.84375,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       10,
+       43,
+       22
+      ],
+      "count": 158
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      -11.40625,
+      26,
+      59.40625,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       28,
+       43,
+       40
+      ],
+      "count": 158
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      -11.40625,
+      44,
+      59.40625,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       46,
+       43,
+       58
+      ],
+      "count": 158
+     }
+    }
+   ]
+  },
+  {
+   "id": "ol-reversed-i32-min-clamps",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\" reversed start=\"-2147483647\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li><li data-cid=\"c\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      -45.328125,
+      8,
+      93.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       11,
+       43,
+       22
+      ],
+      "count": 179
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      -45.328125,
+      26,
+      93.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       29,
+       43,
+       40
+      ],
+      "count": 203
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      -45.328125,
+      44,
+      93.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       0,
+       47,
+       43,
+       58
+      ],
+      "count": 203
+     }
+    }
+   ]
+  },
+  {
+   "id": "li-outside-list",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><div><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li></div>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      8,
+      8,
+      784,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      8,
+      26,
+      784,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      -9,
+      8,
+      7,
+      18
+     ],
+     "ink": null
+    },
+    {
+     "cid": "b",
+     "rect": [
+      -9,
+      26,
+      7,
+      18
+     ],
+     "ink": null
+    }
+   ]
+  },
+  {
+   "id": "nested-ol",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\">x<ol><li data-cid=\"b\">item</li><li data-cid=\"c\">item</li></ol></li><li data-cid=\"d\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      54
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      88,
+      26,
+      704,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      88,
+      44,
+      704,
+      18
+     ]
+    },
+    {
+     "cid": "d",
+     "rect": [
+      48,
+      62,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      72,
+      26,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       73,
+       29,
+       83,
+       40
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      72,
+      44,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       73,
+       47,
+       83,
+       58
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "d",
+     "rect": [
+      32,
+      62,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       65,
+       43,
+       76
+      ],
+      "count": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "ol-type-attribute",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\" type=\"a\"><li data-cid=\"a\">item</li></ol><ol style=\"margin:0\" type=\"I\"><li data-cid=\"b\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32.890625,
+      8,
+      15.109375,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       14,
+       43,
+       22
+      ],
+      "count": 34
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      34.671875,
+      26,
+      13.328125,
+      18
+     ],
+     "ink": {
+      "box": [
+       35,
+       29,
+       43,
+       40
+      ],
+      "count": 30
+     }
+    }
+   ]
+  },
+  {
+   "id": "decimal-leading-zero",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:decimal-leading-zero\" start=\"9\"><li data-cid=\"i0\">item</li><li data-cid=\"i1\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "i0",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "i0",
+     "rect": [
+      24,
+      8,
+      24,
+      18
+     ],
+     "ink": {
+      "box": [
+       24,
+       11,
+       43,
+       22
+      ],
+      "count": 78
+     }
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      24,
+      26,
+      24,
+      18
+     ],
+     "ink": {
+      "box": [
+       25,
+       29,
+       43,
+       40
+      ],
+      "count": 66
+     }
+    }
+   ]
+  },
+  {
+   "id": "lower-alpha",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:lower-alpha\" start=\"26\"><li data-cid=\"i0\">item</li><li data-cid=\"i1\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "i0",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "i0",
+     "rect": [
+      32.890625,
+      8,
+      15.109375,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       14,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      25.796875,
+      26,
+      22.203125,
+      18
+     ],
+     "ink": {
+      "box": [
+       26,
+       32,
+       43,
+       40
+      ],
+      "count": 65
+     }
+    }
+   ]
+  },
+  {
+   "id": "upper-alpha",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:upper-alpha\" start=\"1\"><li data-cid=\"i0\">item</li><li data-cid=\"i1\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "i0",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "i0",
+     "rect": [
+      28.4375,
+      8,
+      19.5625,
+      18
+     ],
+     "ink": {
+      "box": [
+       29,
+       11,
+       43,
+       22
+      ],
+      "count": 47
+     }
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      29.328125,
+      26,
+      18.671875,
+      18
+     ],
+     "ink": {
+      "box": [
+       30,
+       29,
+       43,
+       40
+      ],
+      "count": 59
+     }
+    }
+   ]
+  },
+  {
+   "id": "lower-latin",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:lower-latin\" start=\"702\"><li data-cid=\"i0\">item</li><li data-cid=\"i1\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "i0",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "i0",
+     "rect": [
+      25.796875,
+      8,
+      22.203125,
+      18
+     ],
+     "ink": {
+      "box": [
+       26,
+       14,
+       43,
+       22
+      ],
+      "count": 57
+     }
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      18.6875,
+      26,
+      29.3125,
+      18
+     ],
+     "ink": {
+      "box": [
+       19,
+       32,
+       43,
+       40
+      ],
+      "count": 96
+     }
+    }
+   ]
+  },
+  {
+   "id": "lower-roman",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:lower-roman\" start=\"3\"><li data-cid=\"i0\">item</li><li data-cid=\"i1\">item</li><li data-cid=\"i2\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "i0",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "i2",
+     "rect": [
+      48,
+      44,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "i0",
+     "rect": [
+      26.65625,
+      8,
+      21.34375,
+      18
+     ],
+     "ink": {
+      "box": [
+       27,
+       11,
+       43,
+       22
+      ],
+      "count": 68
+     }
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      28.59375,
+      26,
+      19.40625,
+      18
+     ],
+     "ink": {
+      "box": [
+       29,
+       29,
+       43,
+       40
+      ],
+      "count": 50
+     }
+    },
+    {
+     "cid": "i2",
+     "rect": [
+      33.03125,
+      44,
+      14.96875,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       50,
+       43,
+       58
+      ],
+      "count": 30
+     }
+    }
+   ]
+  },
+  {
+   "id": "upper-roman",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:upper-roman\" start=\"1999\"><li data-cid=\"i0\">item</li><li data-cid=\"i1\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "i0",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "i0",
+     "rect": [
+      -38.234375,
+      8,
+      86.234375,
+      18
+     ],
+     "ink": {
+      "box": [
+       1,
+       11,
+       43,
+       22
+      ],
+      "count": 159
+     }
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      11.546875,
+      26,
+      36.453125,
+      18
+     ],
+     "ink": {
+      "box": [
+       12,
+       29,
+       43,
+       40
+      ],
+      "count": 152
+     }
+    }
+   ]
+  },
+  {
+   "id": "roman-out-of-range",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:upper-roman\" start=\"3999\"><li data-cid=\"i0\">item</li><li data-cid=\"i1\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "i0",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "i0",
+     "rect": [
+      -66.6875,
+      8,
+      114.6875,
+      18
+     ],
+     "ink": {
+      "box": [
+       1,
+       11,
+       43,
+       22
+      ],
+      "count": 159
+     }
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      8,
+      26,
+      40,
+      18
+     ],
+     "ink": {
+      "box": [
+       8,
+       29,
+       43,
+       40
+      ],
+      "count": 151
+     }
+    }
+   ]
+  },
+  {
+   "id": "alpha-zero",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:lower-alpha\" start=\"0\"><li data-cid=\"i0\">item</li><li data-cid=\"i1\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "i0",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "i0",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       32,
+       11,
+       43,
+       22
+      ],
+      "count": 39
+     }
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      32.890625,
+      26,
+      15.109375,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       32,
+       43,
+       40
+      ],
+      "count": 34
+     }
+    }
+   ]
+  },
+  {
+   "id": "type-none",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-type:none\" start=\"1\"><li data-cid=\"i0\">item</li><li data-cid=\"i1\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "i0",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "i1",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": []
+  },
+  {
+   "id": "type-string",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ul style=\"margin:0;list-style-type:'-> '\"><li data-cid=\"a\">item</li></ul>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      29.640625,
+      8,
+      18.359375,
+      18
+     ],
+     "ink": {
+      "box": [
+       30,
+       13,
+       43,
+       20
+      ],
+      "count": 23
+     }
+    }
+   ]
+  },
+  {
+   "id": "ul-disc",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ul style=\"margin:0\"><li data-cid=\"a\">item</li><li data-cid=\"b\">item</li></ul>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      31,
+      8,
+      7,
+      18
+     ],
+     "ink": {
+      "box": [
+       32,
+       15,
+       37,
+       20
+      ],
+      "count": 21
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      31,
+      26,
+      7,
+      18
+     ],
+     "ink": {
+      "box": [
+       32,
+       33,
+       37,
+       38
+      ],
+      "count": 21
+     }
+    }
+   ]
+  },
+  {
+   "id": "ul-nested",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ul style=\"margin:0\"><li data-cid=\"a\">x<ul><li data-cid=\"b\">y<ul><li data-cid=\"c\">item</li></ul></li></ul></li></ul>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      54
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      88,
+      26,
+      704,
+      36
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      128,
+      44,
+      664,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      31,
+      8,
+      7,
+      18
+     ],
+     "ink": {
+      "box": [
+       32,
+       15,
+       37,
+       20
+      ],
+      "count": 21
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      71,
+      26,
+      7,
+      18
+     ],
+     "ink": {
+      "box": [
+       71,
+       32,
+       78,
+       39
+      ],
+      "count": 20
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      111,
+      44,
+      7,
+      18
+     ],
+     "ink": {
+      "box": [
+       112,
+       51,
+       117,
+       56
+      ],
+      "count": 25
+     }
+    }
+   ]
+  },
+  {
+   "id": "symbol-circle",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ul style=\"margin:0;list-style-type:circle\"><li data-cid=\"a\">item</li></ul>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      31,
+      8,
+      7,
+      18
+     ],
+     "ink": {
+      "box": [
+       31,
+       14,
+       38,
+       21
+      ],
+      "count": 20
+     }
+    }
+   ]
+  },
+  {
+   "id": "symbol-square",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ul style=\"margin:0;list-style-type:square\"><li data-cid=\"a\">item</li></ul>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      31,
+      8,
+      7,
+      18
+     ],
+     "ink": {
+      "box": [
+       32,
+       15,
+       37,
+       20
+      ],
+      "count": 25
+     }
+    }
+   ]
+  },
+  {
+   "id": "symbol-large",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ul style=\"margin:0;font-size:30px\"><li data-cid=\"a\">item</li></ul><ul style=\"margin:0;font-size:30px;list-style-type:circle\"><li data-cid=\"b\">item</li></ul><ul style=\"margin:0;font-size:30px;list-style-type:square\"><li data-cid=\"c\">item</li></ul>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      34
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      42,
+      744,
+      34
+     ]
+    },
+    {
+     "cid": "c",
+     "rect": [
+      48,
+      76,
+      744,
+      34
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      22,
+      8,
+      11,
+      34
+     ],
+     "ink": {
+      "box": [
+       23,
+       21,
+       32,
+       30
+      ],
+      "count": 69
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      22,
+      42,
+      11,
+      34
+     ],
+     "ink": {
+      "box": [
+       22,
+       54,
+       33,
+       65
+      ],
+      "count": 28
+     }
+    },
+    {
+     "cid": "c",
+     "rect": [
+      22,
+      76,
+      11,
+      34
+     ],
+     "ink": {
+      "box": [
+       23,
+       89,
+       32,
+       98
+      ],
+      "count": 81
+     }
+    }
+   ]
+  },
+  {
+   "id": "symbol-small",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ul style=\"margin:0;font-size:10px\"><li data-cid=\"a\">item</li></ul>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      11
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      34,
+      8,
+      5,
+      11
+     ],
+     "ink": {
+      "box": [
+       35,
+       12,
+       38,
+       15
+      ],
+      "count": 9
+     }
+    }
+   ]
+  },
+  {
+   "id": "inside-decimal",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-position:inside\"><li data-cid=\"a\" data-text>item</li><li data-cid=\"b\" data-text>   item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      16,
+      17
+     ],
+     "ink": {
+      "box": [
+       49,
+       11,
+       59,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      16,
+      17
+     ],
+     "ink": {
+      "box": [
+       49,
+       29,
+       59,
+       40
+      ],
+      "count": 31
+     }
+    }
+   ],
+   "texts": [
+    {
+     "cid": "a",
+     "x": 64
+    },
+    {
+     "cid": "b",
+     "x": 64
+    }
+   ]
+  },
+  {
+   "id": "inside-disc",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ul style=\"margin:0;list-style:inside\"><li data-cid=\"a\" data-text>item</li><li data-cid=\"b\" data-text style=\"font-size:24px\">item</li></ul>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      27
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      47,
+      8,
+      7,
+      17
+     ],
+     "ink": {
+      "box": [
+       48,
+       15,
+       53,
+       20
+      ],
+      "count": 21
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      47,
+      26,
+      9,
+      26
+     ],
+     "ink": {
+      "box": [
+       48,
+       36,
+       55,
+       43
+      ],
+      "count": 45
+     }
+    }
+   ],
+   "texts": [
+    {
+     "cid": "a",
+     "x": 70
+    },
+    {
+     "cid": "b",
+     "x": 80
+    }
+   ]
+  },
+  {
+   "id": "inside-square",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ul style=\"margin:0;list-style:square inside\"><li data-cid=\"a\" data-text>item</li></ul>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      47,
+      8,
+      7,
+      17
+     ],
+     "ink": {
+      "box": [
+       48,
+       15,
+       53,
+       20
+      ],
+      "count": 25
+     }
+    }
+   ],
+   "texts": [
+    {
+     "cid": "a",
+     "x": 70
+    }
+   ]
+  },
+  {
+   "id": "inside-block-child",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;list-style-position:inside\"><li data-cid=\"a\"><div data-cid=\"d\">item</div></li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      36
+     ]
+    },
+    {
+     "cid": "d",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      12,
+      17
+     ],
+     "ink": {
+      "box": [
+       49,
+       11,
+       59,
+       22
+      ],
+      "count": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "first-line-in-paragraph",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\"><p data-cid=\"p\">item</p></li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      16,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "p",
+     "rect": [
+      48,
+      16,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      16,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       19,
+       43,
+       30
+      ],
+      "count": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "first-line-after-block",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\"><div style=\"height:30px\"></div>item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      48
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      38,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       41,
+       43,
+       52
+      ],
+      "count": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "first-line-baseline",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\"><span style=\"font-size:30px\">item</span></li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      34
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      21,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       24,
+       43,
+       35
+      ],
+      "count": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "marker-font-size",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\" style=\"font-size:30px\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      34
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      18,
+      8,
+      30,
+      34
+     ],
+     "ink": {
+      "box": [
+       20,
+       15,
+       39,
+       35
+      ],
+      "count": 86
+     }
+    }
+   ]
+  },
+  {
+   "id": "empty-item",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\"></li><li data-cid=\"b\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      32,
+      26,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       29,
+       43,
+       40
+      ],
+      "count": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "block-only-item",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\"><div data-cid=\"d\" style=\"width:10px;height:10px;background:#0000ff\"></div></li><li data-cid=\"b\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "d",
+     "rect": [
+      48,
+      8,
+      10,
+      10
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      32,
+      26,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       29,
+       43,
+       40
+      ],
+      "count": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "item-padding-border",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0\"><li data-cid=\"a\" style=\"padding-left:10px;border-left:3px solid #0000ff\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "item-wraps",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;width:100px\"><li data-cid=\"a\">one two three four five six</li></ol>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      100,
+      36
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "marker-color",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px;color:#ff0000}</style><ol style=\"margin:0;color:#0000ff\"><li data-cid=\"a\">item</li></ol><ul style=\"margin:0;color:#0000ff\"><li data-cid=\"b\">item</li></ul>",
+   "boxes": [
+    {
+     "cid": "a",
+     "rect": [
+      48,
+      8,
+      744,
+      18
+     ]
+    },
+    {
+     "cid": "b",
+     "rect": [
+      48,
+      26,
+      744,
+      18
+     ]
+    }
+   ],
+   "markers": [
+    {
+     "cid": "a",
+     "rect": [
+      32,
+      8,
+      16,
+      18
+     ],
+     "ink": {
+      "box": [
+       33,
+       11,
+       43,
+       22
+      ],
+      "count": 31
+     }
+    },
+    {
+     "cid": "b",
+     "rect": [
+      31,
+      26,
+      7,
+      18
+     ],
+     "ink": {
+      "box": [
+       32,
+       33,
+       37,
+       38
+      ],
+      "count": 21
+     }
+    }
+   ]
+  }
+ ]
+}

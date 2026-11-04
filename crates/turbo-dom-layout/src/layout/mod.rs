@@ -3,19 +3,25 @@
 //! fragmenter (Stage 4) paginates. Block and table flow and inline/text layout
 //! are owned here; flex delegates to `taffy` (§5.3 decision).
 
+pub(crate) mod background;
 pub mod block;
 pub mod boxgen;
 pub(crate) mod contents;
 pub mod flex;
+pub(crate) mod form_controls;
+mod form_paint;
 pub mod fragment;
 pub mod imgsize;
 pub mod inline;
 pub(crate) mod inline_boxes;
 mod invisible;
+pub(crate) mod list_marker;
 mod svg_numbers;
 pub(crate) mod svg_viewport;
 pub mod table;
 pub mod value;
+mod vertical_orientation;
+pub(crate) mod writing;
 
 use crate::error::Diagnostics;
 use crate::image::{ImageResolver, NoImages};
@@ -42,6 +48,24 @@ pub struct LayoutOptions {
     /// A consumer laying several flows out into one document gives each a disjoint
     /// range (see [`NodeSources::next`]) so ids are unique per render.
     pub first_node_id: u32,
+    /// Flatten inline elements into their text runs instead of laying them out as
+    /// inline boxes. Off by default: inline elements are inline boxes, as in Chrome 156
+    /// (their border / padding / margin edges, inline-box fragments, their fonts'
+    /// metrics in the line box and the quirks-mode line height quirk;
+    /// miaskiewicz/turbo-dom#245). On, the lines keep Chrome's line box model
+    /// (baseline alignment and the block strut) but an inline element without
+    /// decoration (background, box shadow, padding, border, horizontal margin;
+    /// miaskiewicz/turbo-dom#244) contributes no edges, no fragment and no font
+    /// metrics of its own; it is the pre-0.7 PDF
+    /// inline model, for a consumer whose output contracts assume no inline-box
+    /// fragments (html2pdf's link annotations and PDF/UA tags, #210), and does not
+    /// match Chrome for inline boxes.
+    pub flatten_inline_elements: bool,
+    /// Size `<img>` boxes by CSS alone, as Chrome 156 does (the raster screenshots;
+    /// 0.7.0 round-2 review, finding 2). Off by default: html2pdf's paged-media
+    /// overflow caps apply (an image shrinks to 100% of its containing block's width
+    /// and, with a page body height, 60% of it).
+    pub uncapped_images: bool,
 }
 
 /// Where each box of a [`layout_recorded`] galley came from.
@@ -64,6 +88,10 @@ pub struct NodeSources {
     /// source element and is no structure of its own (PDF/UA: its rows belong to the
     /// table).
     pub table_grids: HashSet<NodeId>,
+    /// A list item's `::marker` boxes and text (miaskiewicz/turbo-dom#128) -> the list
+    /// item's box. A marker has no source element, so without this it reads like an
+    /// anonymous block (PDF/UA: it is the item's `Lbl`).
+    pub list_markers: HashMap<NodeId, NodeId>,
 }
 
 /// A galley plus the [`NodeSources`] of its boxes.
@@ -154,6 +182,7 @@ pub fn layout_in_viewport(
     diags: &mut Diagnostics,
 ) -> Fragment {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
+    let _caps = imgsize::uncapped_scope(options.uncapped_images);
     let (tree, _, _) = boxgen::build_box_tree_with(styled, build_options(options, false));
     let mut galley =
         block::layout_tree_in_viewport(&tree, (cb_width, viewport_height), fonts, images, diags);
@@ -174,6 +203,7 @@ pub(crate) fn layout_geometry(
     diags: &mut Diagnostics,
 ) -> Fragment {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
+    let _caps = imgsize::uncapped_scope(options.uncapped_images);
     let build = geometry_build_options(options);
     let (tree, _, _) = boxgen::build_box_tree_with(styled, build);
     let mut galley = block::layout_tree_in_viewport(&tree, viewport, fonts, images, diags);
@@ -220,6 +250,7 @@ pub fn layout_recorded_in_viewport(
     diags: &mut Diagnostics,
 ) -> LaidOut {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
+    let _caps = imgsize::uncapped_scope(options.uncapped_images);
     let (tree, recorded, count) = boxgen::build_box_tree_with(styled, build_options(options, true));
     let (mut galley, rows) =
         block::layout_tree_recorded(&tree, (cb_width, viewport_height), fonts, images, diags);
@@ -238,6 +269,11 @@ pub fn layout_recorded_in_viewport(
             texts: shift_map(recorded.texts),
             table_rows: rows.into_iter().map(shift).collect(),
             table_grids: recorded.table_grids.into_iter().map(shift).collect(),
+            list_markers: recorded
+                .list_markers
+                .into_iter()
+                .map(|(marker, owner)| (shift(marker), shift(owner)))
+                .collect(),
         },
     }
 }
@@ -246,6 +282,7 @@ pub fn layout_recorded_in_viewport(
 fn build_options(options: &LayoutOptions, record_sources: bool) -> boxgen::BuildOptions {
     boxgen::BuildOptions {
         atomic_internal_links: options.atomic_internal_links,
+        flatten_inline_elements: options.flatten_inline_elements,
         record_sources,
         keep_zero_area_clips: false,
     }

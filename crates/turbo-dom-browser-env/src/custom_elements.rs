@@ -121,9 +121,11 @@ fn construct(
         type_error(scope, "Illegal constructor");
         return;
     }
-    // `constructor` below builds every such function with its delegate as the data.
-    let delegate =
-        v8::Local::<v8::Function>::try_from(args.data()).expect("the delegate is the data");
+    // `constructor` below builds every such function with its delegate as the data (a
+    // `template_data` key while a startup snapshot is built, turbo-dom#249).
+    let delegate = template_data::of_call(scope, &args)
+        .and_then(|data| v8::Local::<v8::Function>::try_from(data).ok())
+        .expect("the delegate is the data");
     let prototype = args
         .this()
         .get_prototype(scope)
@@ -166,8 +168,11 @@ fn constructor(
     let delegate = v8::Local::<v8::Function>::try_from(args.get(0))
         .expect("custom_elements.js passes its construction delegate");
     let name = args.get(1).to_rust_string_lossy(scope);
-    if let Some(function) = v8::Function::builder(construct)
-        .data(delegate.into())
+    // The bootstrap builds one per HTML element interface: the data must not pin the
+    // delegate, a closure of this context, into a snapshot's startup part (turbo-dom#249).
+    let data = template_data::key(scope, delegate.into()).expect("a fresh table slot");
+    if let Some(function) = v8::Function::builder(ext!(FunctionCallback, construct))
+        .data(data)
         .length(0)
         .build(scope)
     {
@@ -314,6 +319,7 @@ fn defining(
 struct MutationHook(v8::Weak<v8::Function>);
 struct CloneHook(v8::Weak<v8::Function>);
 struct ParsedHook(v8::Weak<v8::Function>);
+fn_slots!([ErrorHook, MutationHook, CloneHook, ParsedHook]);
 
 fn mutation_hook<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -327,7 +333,9 @@ fn mutation_hook<'s>(
 #[derive(Default)]
 struct ReactionFrames(RefCell<Vec<Rc<ReactionQueue>>>);
 struct ReactionQueue {
-    events: v8::Weak<v8::Array>,
+    /// The frame's queued mutation events, created when the first one can be queued (a
+    /// custom element definition exists): most frames never queue one.
+    events: RefCell<Option<v8::Weak<v8::Array>>>,
     order: RefCell<Option<v8::Weak<v8::Array>>>,
     callbacks: RefCell<Option<v8::Weak<v8::Map>>>,
     collecting: std::cell::Cell<bool>,
@@ -335,7 +343,7 @@ struct ReactionQueue {
 pub(super) struct ReactionScope<'s> {
     frames: Rc<ReactionFrames>,
     entry: Rc<ReactionQueue>,
-    queue: v8::Local<'s, v8::Array>,
+    _scope: std::marker::PhantomData<v8::Local<'s, v8::Array>>,
 }
 impl Drop for ReactionScope<'_> {
     fn drop(&mut self) {
@@ -357,9 +365,8 @@ pub(super) fn reactions<'s>(scope: &mut v8::PinScope<'s, '_>) -> ReactionScope<'
             scope.set_slot(frames.clone());
             frames
         });
-    let queue = v8::Array::new(scope, 0);
     let entry = Rc::new(ReactionQueue {
-        events: v8::Weak::new(scope, queue),
+        events: RefCell::new(None),
         order: RefCell::new(None),
         callbacks: RefCell::new(None),
         collecting: std::cell::Cell::new(false),
@@ -368,7 +375,39 @@ pub(super) fn reactions<'s>(scope: &mut v8::PinScope<'s, '_>) -> ReactionScope<'
     ReactionScope {
         frames,
         entry,
-        queue,
+        _scope: std::marker::PhantomData,
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    static REACTION_QUEUES_BUILT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Reaction queues frames have created on this thread (the perf gate in `perf_gates_tests`).
+#[cfg(test)]
+pub(super) fn reaction_queues_built() -> usize {
+    REACTION_QUEUES_BUILT.with(std::cell::Cell::get)
+}
+
+impl ReactionQueue {
+    /// The frame's queued events, if any were queued.
+    fn queued<'s>(&self, scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8::Array>> {
+        self.events
+            .borrow()
+            .as_ref()
+            .and_then(|weak| weak.to_local(scope))
+    }
+    /// The frame's event queue, created on first use.
+    fn queue<'s>(&self, scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Array> {
+        if let Some(queue) = self.queued(scope) {
+            return queue;
+        }
+        #[cfg(test)]
+        REACTION_QUEUES_BUILT.with(|built| built.set(built.get() + 1));
+        let queue = v8::Array::new(scope, 0);
+        *self.events.borrow_mut() = Some(v8::Weak::new(scope, queue));
+        queue
     }
 }
 fn react(
@@ -430,18 +469,17 @@ fn react(
 }
 impl ReactionScope<'_> {
     pub(super) fn flush(&self, scope: &mut v8::PinScope) {
-        if self.queue.length() == 0 {
+        let Some(queue) = self.entry.queued(scope).filter(|queue| queue.length() > 0) else {
             return;
-        }
+        };
         let order = v8::Array::new(scope, 0);
         let callbacks = v8::Map::new(scope);
         *self.entry.order.borrow_mut() = Some(v8::Weak::new(scope, order));
         *self.entry.callbacks.borrow_mut() = Some(v8::Weak::new(scope, callbacks));
         self.entry.collecting.set(true);
         let mut index = 0;
-        while index < self.queue.length() && !scope.is_execution_terminating() {
-            if let Some(event) = self
-                .queue
+        while index < queue.length() && !scope.is_execution_terminating() {
+            if let Some(event) = queue
                 .get_index(scope, index)
                 .and_then(|value| value.to_object(scope))
             {
@@ -532,14 +570,11 @@ pub(super) fn mutation(scope: &mut v8::PinScope, event: v8::Local<v8::Object>) {
     if scope.get_slot::<DefinitionsActive>().is_none() {
         return;
     }
-    let queue = scope.get_slot::<Rc<ReactionFrames>>().and_then(|frames| {
-        frames
-            .0
-            .borrow()
-            .last()
-            .and_then(|entry| entry.events.to_local(scope))
-    });
-    if let Some(queue) = queue {
+    let entry = scope
+        .get_slot::<Rc<ReactionFrames>>()
+        .and_then(|frames| frames.0.borrow().last().cloned());
+    if let Some(entry) = entry {
+        let queue = entry.queue(scope);
         append(scope, queue, event.into());
     } else {
         deliver_mutation(scope, event);
@@ -599,7 +634,7 @@ pub(super) fn parsed_fragment(
 pub(super) fn event_mark(scope: &mut v8::PinScope) -> Option<u32> {
     let frames = scope.get_slot::<Rc<ReactionFrames>>()?.clone();
     let entry = frames.0.borrow().last().cloned()?;
-    entry.events.to_local(scope).map(|queue| queue.length())
+    Some(entry.queued(scope).map_or(0, |queue| queue.length()))
 }
 /// The HTML fragment parser created `nodes` (innerHTML / outerHTML / insertAdjacentHTML /
 /// setHTMLUnsafe): their upgrades are queued before the setter's removals queue
@@ -628,13 +663,10 @@ pub(super) fn parser_inserted(
     let values = nodes.iter().map(|node| (*node).into()).collect::<Vec<_>>();
     let values = v8::Array::new_with_elements(scope, &values);
     set_prop(scope, event, "nodes", values.into());
-    let queue = scope.get_slot::<Rc<ReactionFrames>>().and_then(|frames| {
-        frames
-            .0
-            .borrow()
-            .last()
-            .and_then(|entry| entry.events.to_local(scope))
-    });
+    let queue = scope
+        .get_slot::<Rc<ReactionFrames>>()
+        .and_then(|frames| frames.0.borrow().last().cloned())
+        .map(|entry| entry.queue(scope));
     match (queue, mark) {
         (Some(queue), Some(mark)) if mark < queue.length() => {
             // Shift the setter's own mutations up one slot and deliver this event first.
@@ -766,7 +798,7 @@ fn bind_native<F>(scope: &mut v8::PinScope, global: v8::Local<v8::Object>, name:
 where
     F: v8::MapFnTo<v8::FunctionCallback>,
 {
-    if let Some(function) = v8::FunctionTemplate::builder(callback)
+    if let Some(function) = v8::FunctionTemplate::builder(ext!(FunctionCallback, callback))
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .build(scope)
         .get_function(scope)
@@ -798,23 +830,14 @@ pub(super) fn install(scope: &mut v8::PinScope) {
             .get(scope, key.into())
             .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
         {
-            let Some(function) = dom_ownership::helper_function(scope, function) else {
-                return;
+            let captured = match family {
+                0 => context_rehydrate::capture::<MutationHook>(scope, function),
+                1 => context_rehydrate::capture::<CloneHook>(scope, function),
+                2 => context_rehydrate::capture::<ErrorHook>(scope, function),
+                _ => context_rehydrate::capture::<ParsedHook>(scope, function),
             };
-            let context = scope.get_current_context();
-            match family {
-                0 => {
-                    context.set_slot(Rc::new(MutationHook(function)));
-                }
-                1 => {
-                    context.set_slot(Rc::new(CloneHook(function)));
-                }
-                2 => {
-                    context.set_slot(Rc::new(ErrorHook(function)));
-                }
-                _ => {
-                    context.set_slot(Rc::new(ParsedHook(function)));
-                }
+            if captured.is_none() {
+                return;
             }
         }
         global.delete(scope, key.into());
@@ -849,7 +872,7 @@ mod tests {
 
     fn check_chrome_probe_with_consumers(probe: &str, oracle: &str, consumers: bool) {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -948,7 +971,7 @@ mod tests {
         );
         let cases: serde_json::Value = serde_json::from_slice(CASES).unwrap();
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1039,7 +1062,7 @@ mod tests {
     #[test]
     fn already_queued_callbacks_stop_when_the_definition_realm_retires() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1071,7 +1094,7 @@ mod tests {
     #[test]
     fn retired_definition_context_retains_registry_but_suppresses_automatic_lifecycle() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let main = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, main);
@@ -1153,7 +1176,7 @@ mod tests {
     #[test]
     fn global_registry_associations_are_primitive_and_parsed_tracking_stays_private() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1176,7 +1199,7 @@ mod tests {
     #[test]
     fn pages_without_custom_definitions_do_not_record_or_budget_plain_dom_mutations() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1192,7 +1215,7 @@ mod tests {
     #[test]
     fn custom_move_and_adoption_payloads_ignore_guest_object_prototype_setters() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1210,7 +1233,7 @@ mod tests {
     #[test]
     fn interrupted_definition_and_reaction_scopes_recover_without_guest_finally() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1235,7 +1258,7 @@ mod tests {
     #[test]
     fn installed_document_without_custom_definitions_releases_context() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let context = {
             v8::scope!(let scope,&mut isolate);
             let context = v8::Context::new(scope, Default::default());
@@ -1253,7 +1276,7 @@ mod tests {
     #[test]
     fn custom_element_private_records_retain_live_nodes_and_collect_unused_cycles() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let (context, weak_context, weak_node, weak_constructor, weak_shadow) = {
             v8::scope!(let scope,&mut isolate);
             let context = v8::Context::new(scope, Default::default());
@@ -1303,7 +1326,7 @@ mod tests {
     #[test]
     fn native_construction_preserves_existing_nodes_and_nested_stack_identity() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1346,7 +1369,7 @@ mod tests {
     #[test]
     fn interrupted_native_construction_unwinds_without_guest_finally() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -1383,4 +1406,9 @@ mod tests {
             .is_true());
         reset();
     }
+}
+
+/// Is a custom element definition active on this isolate (so mutations queue reactions)?
+pub(super) fn reactions_active(scope: &mut v8::PinScope) -> bool {
+    scope.get_slot::<DefinitionsActive>().is_some()
 }

@@ -5,6 +5,7 @@ use super::*;
 
 struct FileHost(v8::Weak<v8::Function>);
 struct TypeHook(v8::Weak<v8::Function>);
+fn_slots!([FileHost, TypeHook]);
 
 fn dispatch<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -43,11 +44,7 @@ fn dispatch<'s>(
         // "type-hook", the last operation file_inputs.js calls.
         _ => {
             if let Ok(hook) = v8::Local::<v8::Function>::try_from(args.get(1)) {
-                if let Some(hook) = dom_ownership::helper_function(scope, hook) {
-                    scope
-                        .get_current_context()
-                        .set_slot(std::rc::Rc::new(TypeHook(hook)));
-                }
+                context_rehydrate::capture::<TypeHook>(scope, hook);
             }
         }
     }
@@ -105,11 +102,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
-        if let Some(capture) = dom_ownership::helper_function(scope, capture) {
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(FileHost(capture)));
-        }
+        context_rehydrate::capture::<FileHost>(scope, capture);
     }
     global.delete(scope, key.into());
     // Runners that define File before the binding (turbo-test's runtime) capture it now.

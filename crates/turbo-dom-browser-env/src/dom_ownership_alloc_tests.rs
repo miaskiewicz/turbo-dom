@@ -47,7 +47,7 @@ fn object<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v
 #[test]
 fn pinning_call_owners_does_not_allocate_and_pins_each_owner_document_once() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());

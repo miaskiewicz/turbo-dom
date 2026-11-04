@@ -7,7 +7,7 @@ use crate::browser_env::*;
 /// Install `html` into a fresh context, run `body` with the scope, then reset.
 fn with_page(html: &str, body: impl FnOnce(&mut v8::PinScope)) {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -218,7 +218,7 @@ fn native_document_census() {
     crate::browser_env::tests::init_v8();
     reset();
     assert_eq!(native_document_count_for_testing(), 0);
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -372,7 +372,7 @@ fn form_entry_list_transactions_and_formdata_dispatch() {
 fn form_host_callbacks_without_a_document() {
     crate::browser_env::tests::init_v8();
     reset();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

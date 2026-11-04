@@ -11,7 +11,7 @@
 //!   ([`turbo_dom_layout::image::probe`]) for raster formats, the rasterized 1x size
 //!   for SVG — answered through [`ImageResolver::intrinsic`](turbo_dom_layout::ImageResolver::intrinsic),
 //!   so nothing is re-encoded to PNG for sizing.
-//! - **PNG paint**: scale the RGBA into the fragment box ([`DecodedImage::scaled_pixmap`]).
+//! - **PNG paint**: scale the RGBA into the fragment box ([`DecodedImage::scaled_window`]).
 //! - **SVG paint**: embed a base64 PNG `data:` URI ([`data_uri`]) — universally
 //!   renderable regardless of the source format.
 
@@ -600,22 +600,102 @@ impl DecodedImage {
         })
     }
 
-    /// Resize into a `w × h` premultiplied pixmap ready to `draw_pixmap` into the
-    /// fragment box. `None` on a degenerate target size.
-    pub fn scaled_pixmap(&self, w: u32, h: u32) -> Option<Pixmap> {
-        // `None` for a zero-size target.
-        let mut pm = Pixmap::new(w, h)?;
-        if self.width == 0 || self.height == 0 {
+    /// The pixels `(x, y, width, height)` of this image resized to `size`, as a
+    /// premultiplied pixmap of the window's size: the one resampling kernel of every
+    /// image the painter draws (the triangle filter of `image::imageops::resize`, pixel
+    /// for pixel; 0.7.0 round-2 review, finding 21). Only the window is computed, so a
+    /// layout box far larger than the canvas costs the canvas's pixels. `None` on a
+    /// degenerate size or window, or a window outside `size`.
+    pub fn scaled_window(&self, size: (u32, u32), window: (u32, u32, u32, u32)) -> Option<Pixmap> {
+        let (x0, y0, w, h) = window;
+        let inside = u64::from(x0) + u64::from(w) <= u64::from(size.0)
+            && u64::from(y0) + u64::from(h) <= u64::from(size.1);
+        if self.width == 0 || self.height == 0 || !inside {
             return None;
         }
-        let src = image::RgbaImage::from_raw(self.width, self.height, self.rgba.clone())?;
-        let scaled = image::imageops::resize(&src, w, h, image::imageops::FilterType::Triangle);
-        for (src, dst) in scaled.pixels().zip(pm.pixels_mut()) {
-            let [r, g, b, a] = src.0;
-            // premul(c,a) ≤ a always, so the premultiplied invariant holds.
-            *dst = PremultipliedColorU8::from_rgba(premul(r, a), premul(g, a), premul(b, a), a)?;
+        // `None` for an empty window.
+        let mut pm = Pixmap::new(w, h)?;
+        let columns: Vec<Taps> = (x0..x0 + w)
+            .map(|x| Taps::new(x, size.0, self.width))
+            .collect();
+        let from = columns[0].first as usize;
+        let to = columns.iter().map(Taps::end).max().unwrap_or(from);
+        let stride = self.width as usize * 4;
+        let mut row = vec![[0.0_f32; 4]; to - from];
+        for (out_y, y) in (y0..y0 + h).enumerate() {
+            // The vertical pass over the source columns the window reads, kept in f32.
+            // Each cell sums its taps in source order, as `resize` does.
+            let taps = Taps::new(y, size.1, self.height);
+            row.fill([0.0; 4]);
+            for (i, &weight) in taps.weights.iter().enumerate() {
+                let at = (taps.first as usize + i) * stride;
+                let source = &self.rgba[at + from * 4..at + to * 4];
+                for (cell, px) in row.iter_mut().zip(source.as_chunks::<4>().0) {
+                    cell[0] += f32::from(px[0]) * weight;
+                    cell[1] += f32::from(px[1]) * weight;
+                    cell[2] += f32::from(px[2]) * weight;
+                    cell[3] += f32::from(px[3]) * weight;
+                }
+            }
+            let out = &mut pm.pixels_mut()[out_y * w as usize..][..w as usize];
+            for (dst, taps) in out.iter_mut().zip(&columns) {
+                let mut sum = [0.0_f32; 4];
+                let cells = &row[taps.first as usize - from..][..taps.weights.len()];
+                for (cell, &weight) in cells.iter().zip(&taps.weights) {
+                    sum[0] += cell[0] * weight;
+                    sum[1] += cell[1] * weight;
+                    sum[2] += cell[2] * weight;
+                    sum[3] += cell[3] * weight;
+                }
+                let [r, g, b, a] = sum.map(|v| v.clamp(0.0, 255.0).round() as u8);
+                // premul(c,a) ≤ a always, so the premultiplied invariant holds.
+                *dst =
+                    PremultipliedColorU8::from_rgba(premul(r, a), premul(g, a), premul(b, a), a)?;
+            }
         }
         Some(pm)
+    }
+}
+
+/// The source pixels one output pixel of a resize reads and their normalized triangle
+/// weights (`image::imageops`' `Triangle` filter: support 1, widened by the
+/// downscale ratio).
+struct Taps {
+    first: u32,
+    weights: Vec<f32>,
+}
+
+impl Taps {
+    /// Output pixel `out` of a resize from `src` to `dst` pixels along one axis.
+    fn new(out: u32, dst: u32, src: u32) -> Taps {
+        let ratio = src as f32 / dst as f32;
+        let sratio = ratio.max(1.0);
+        let centre = (out as f32 + 0.5) * ratio;
+        let first = ((centre - sratio).floor() as i64).clamp(0, i64::from(src) - 1);
+        let end = ((centre + sratio).ceil() as i64).clamp(first + 1, i64::from(src));
+        let centre = centre - 0.5;
+        let mut weights: Vec<f32> = (first..end)
+            .map(|i| {
+                let x = ((i as f32 - centre) / sratio).abs();
+                if x < 1.0 {
+                    1.0 - x
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+        let sum: f32 = weights.iter().sum();
+        for weight in &mut weights {
+            *weight /= sum;
+        }
+        Taps {
+            first: first as u32,
+            weights,
+        }
+    }
+
+    fn end(&self) -> usize {
+        self.first as usize + self.weights.len()
     }
 }
 
@@ -634,7 +714,7 @@ pub fn data_uri(img: &DecodedImage) -> Option<String> {
 
 /// Standard base64 (RFC 4648, `+/`, `=` padding). Hand-rolled to keep the crate
 /// dependency-light; only the SVG data-URI path uses it.
-fn base64(data: &[u8]) -> String {
+pub(crate) fn base64(data: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
@@ -981,7 +1061,7 @@ mod tests {
             intrinsic: Intrinsic::new(1, 1, true),
             placeholder: false,
         };
-        let pm = red.scaled_pixmap(2, 3).unwrap();
+        let pm = red.scaled_window((2, 3), (0, 0, 2, 3)).unwrap();
         assert_eq!((pm.width(), pm.height()), (2, 3));
         let p = pm.pixel(1, 2).unwrap();
         assert_eq!(
@@ -989,8 +1069,8 @@ mod tests {
             [128, 0, 0, 128],
             "premultiplied"
         );
-        assert!(red.scaled_pixmap(0, 3).is_none());
-        assert!(red.scaled_pixmap(3, 0).is_none());
+        assert!(red.scaled_window((0, 3), (0, 0, 0, 3)).is_none());
+        assert!(red.scaled_window((3, 0), (0, 0, 3, 0)).is_none());
         for (width, height) in [(0, 0), (0, 5), (5, 0)] {
             let empty = DecodedImage {
                 width,
@@ -999,8 +1079,62 @@ mod tests {
                 intrinsic: Intrinsic::new(2, 2, true),
                 placeholder: false,
             };
-            assert!(empty.scaled_pixmap(4, 4).is_none(), "{width}x{height}");
+            assert!(
+                empty.scaled_window((4, 4), (0, 0, 4, 4)).is_none(),
+                "{width}x{height}"
+            );
         }
+    }
+
+    #[test]
+    fn a_scaled_window_is_that_part_of_image_resizes_triangle_output() {
+        // 0.7.0 round-2 review, finding 21: the painter's one kernel is the triangle
+        // filter of `image::imageops::resize`, pixel for pixel, for any window.
+        let (w, h) = (7, 5);
+        let rgba: Vec<u8> = (0..w * h * 4).map(|i| (i * 37 % 251) as u8).collect();
+        let img = DecodedImage {
+            width: w,
+            height: h,
+            rgba: rgba.clone(),
+            intrinsic: Intrinsic::new(w, h, true),
+            placeholder: false,
+        };
+        let src = image::RgbaImage::from_raw(w, h, rgba).unwrap();
+        for size in [(3, 2), (7, 5), (16, 11), (5, 9)] {
+            let whole = image::imageops::resize(
+                &src,
+                size.0,
+                size.1,
+                image::imageops::FilterType::Triangle,
+            );
+            for window in [
+                (0, 0, size.0, size.1),
+                (1, 1, size.0 - 1, size.1 - 1),
+                (2, 0, 1, 2),
+            ] {
+                let pm = img.scaled_window(size, window).unwrap();
+                for y in 0..window.3 {
+                    for x in 0..window.2 {
+                        let [r, g, b, a] = whole.get_pixel(window.0 + x, window.1 + y).0;
+                        let p = pm.pixel(x, y).unwrap();
+                        assert_eq!(
+                            [p.red(), p.green(), p.blue(), p.alpha()],
+                            [
+                                super::premul(r, a),
+                                super::premul(g, a),
+                                super::premul(b, a),
+                                a
+                            ],
+                            "{size:?} {window:?} ({x},{y})"
+                        );
+                    }
+                }
+            }
+        }
+        // A window past the image's size, or an empty one, has no pixels.
+        assert!(img.scaled_window((3, 2), (2, 0, 2, 2)).is_none());
+        assert!(img.scaled_window((3, 2), (0, 1, 3, 2)).is_none());
+        assert!(img.scaled_window((3, 2), (0, 0, 0, 2)).is_none());
     }
 
     #[test]

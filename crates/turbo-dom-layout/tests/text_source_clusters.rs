@@ -32,6 +32,7 @@ fn run(registry: &FontRegistry, id: u32, text: &str) -> Piece {
         forced_newlines: false,
         text_transform: turbo_dom_layout::text::TextTransform::default(),
         word_breaking: turbo_dom_layout::layout::inline::WordBreaking::default(),
+        upright: turbo_dom_layout::layout::inline::UprightText::None,
     })
 }
 
@@ -942,7 +943,7 @@ fn source_scoped_cluster_geometry_retains_original_ownership_and_full_query_resu
 }
 
 #[test]
-fn html_negative_leading_keeps_native_font_boxes_without_changing_pdf_line_height() {
+fn negative_leading_is_honoured_by_every_paragraph_policy() {
     use turbo_dom_layout::layout::inline::layout_html_paragraph_in_with_sources;
     let fonts = FontRegistry::new();
     let Piece::Run(mut text) = run(&fonts, 71, "ab") else {
@@ -977,7 +978,8 @@ fn html_negative_leading_keeps_native_font_boxes_without_changing_pdf_line_heigh
     );
     assert_eq!(html.layout.lines[0].height, 4.0);
     assert!(html.font_boxes[0][0].baseline < html.font_boxes[0][0].ascent);
-    assert!(pdf.lines[0].height > html.layout.lines[0].height);
+    // Chrome honours a line-height below the content area on every path (#178).
+    assert_eq!(pdf.lines[0].height, 4.0);
     assert_eq!(pdf.lines[0].height, traced_pdf.layout.lines[0].height);
     assert_eq!(
         pdf.lines[0].runs[0].glyphs,

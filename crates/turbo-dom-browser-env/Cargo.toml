@@ -1,6 +1,6 @@
 [package]
 name = "turbo-dom-browser-env"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 rust-version = "1.91"
 description = "Browser environment over turbo-dom: the native rtdom <-> V8 DOM binding (window, document, CSSOM, forms, events) used by turbo-test and turbo-surf."
@@ -11,15 +11,23 @@ keywords = ["dom", "v8", "browser", "testing"]
 categories = ["web-programming", "development-tools::testing"]
 
 [dependencies]
+rustc-hash = "2"
 # V8 bindings: turbo-dom's rusty_v8 fork (crates/turbo-dom-v8), which carries the
 # interceptor ShouldThrowOnError fix. `~150.4` admits fork patch releases only.
 v8 = { package = "turbo-dom-v8", version = "~150.4" }
 # The DOM itself. The alias keeps the `turbo_dom_parser::` paths the binding uses.
-turbo-dom-parser = { package = "turbo-dom", path = "../turbo-dom", version = "0.6.0" }
+turbo-dom-parser = { package = "turbo-dom", path = "../turbo-dom", version = "0.7.0" }
+# The shared text stack (font registry, Blink-exact canvas text measurement) behind
+# canvas measureText (turbo-dom#237). Bundled faces only: the host adds the page's
+# @font-face faces and the system fonts it wants with `set_canvas_fonts`.
+turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.7.0", default-features = false, features = ["bundled-fonts"] }
 # CSS Syntax, selector and declaration validation for the CSSOM facade.
 lightningcss = { version = "1.0.0-alpha.71", default-features = false }
 cssparser = "0.37"
 serde_json = "1"
+# XML documents (DOMParser XML types): its well-formedness error messages and
+# positions match Chrome 156's control (src/xml_documents_chrome156.json).
+xml = "1.4"
 url = "2.5"
 # Public-suffix registry for document.domain's top-level-domain check (Blink
 # includes private registries such as github.io).
@@ -44,6 +52,8 @@ test-support = []
 
 [dev-dependencies]
 sha2 = "0.10"
+# The repo's fixture fonts (test_support::fixture_fonts) for the measureText control.
+turbo-dom-layout = { path = "../turbo-dom-layout", features = ["test-support"] }
 
 [[test]]
 name = "host_internals_api"

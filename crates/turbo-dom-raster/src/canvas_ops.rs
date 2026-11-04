@@ -29,9 +29,12 @@ pub(crate) enum Op {
     FillStyle(Rgba),
     StrokeStyle(Rgba),
     GlobalAlpha(f32),
-    /// `font` shorthand, reduced to the pixel size + the family fallback list.
+    /// `font` shorthand, reduced to the pixel size, the weight and style, and the
+    /// family fallback list.
     Font {
         size_px: f32,
+        weight: u16,
+        italic: bool,
         families: Vec<String>,
     },
     FillRect(f32, f32, f32, f32),
@@ -125,7 +128,13 @@ fn push_tuple(v: &serde_json::Value, out: &mut Vec<Op>) {
     }
     if let Some(f) = t.get(4).and_then(serde_json::Value::as_str) {
         let (size_px, families) = parse_font(f);
-        out.push(Op::Font { size_px, families });
+        let (weight, italic) = parse_font_style(f);
+        out.push(Op::Font {
+            size_px,
+            weight,
+            italic,
+            families,
+        });
     }
     if let Some(a) = t.get(7).and_then(serde_json::Value::as_f64) {
         out.push(Op::GlobalAlpha((a as f32).clamp(0.0, 1.0)));
@@ -223,6 +232,32 @@ pub(crate) fn parse_font(shorthand: &str) -> (f32, Vec<String>) {
     (size_px, families)
 }
 
+/// The `font` shorthand's weight and style: the tokens before the size. `bold` is 700, a
+/// number 1..=1000 is itself, `italic`/`oblique` select the italic face; `normal` and
+/// everything else (`small-caps`, stretch keywords) leave 400 upright. `bolder`/`lighter`
+/// resolve against the 400 initial weight (700 / 100), as on a canvas, whose font has no
+/// inherited weight.
+pub(crate) fn parse_font_style(shorthand: &str) -> (u16, bool) {
+    let mut weight = 400;
+    let mut italic = false;
+    for tok in shorthand.split_whitespace() {
+        if font_size_px(tok).is_some() {
+            break;
+        }
+        match tok {
+            "bold" | "bolder" => weight = 700,
+            "lighter" => weight = 100,
+            "italic" | "oblique" => italic = true,
+            _ => {
+                if let Some(w) = tok.parse::<u16>().ok().filter(|w| (1..=1000).contains(w)) {
+                    weight = w;
+                }
+            }
+        }
+    }
+    (weight, italic)
+}
+
 /// Find the first `NNpx`/`NNpt` size token, returning `(px, tail_after_token)`.
 fn split_font_size(shorthand: &str) -> Option<(f32, &str)> {
     // Iterate with byte offsets so the family tail is sliced from the same string;
@@ -298,16 +333,17 @@ impl Matrix {
     }
 }
 
-/// Resolve the bundled font face for a canvas `font` family list. Cached: the
+/// Resolve the bundled font face for a canvas `font` family list, weight and style
+/// (CSS font matching within the family, so 700 and 400 pick distinct faces). Cached: the
 /// bundled registry is parsed once and cloned (faces are `Arc`-shared, so the
 /// clone is cheap) — canvas text never uses system fonts (deterministic/offline).
 /// Always a face: this crate enables turbo-dom-layout's `bundled-fonts`, and
 /// `FontRegistry::select` falls back to the first bundled face when no family matches.
-pub(crate) fn resolve_face(families: &[String]) -> FontFace {
+pub(crate) fn resolve_face(families: &[String], weight: u16, italic: bool) -> FontFace {
     static BUNDLED: std::sync::LazyLock<FontRegistry> = std::sync::LazyLock::new(FontRegistry::new);
     let refs: Vec<&str> = families.iter().map(String::as_str).collect();
     BUNDLED
-        .select(&refs, 400, false)
+        .select(&refs, weight, italic)
         .cloned()
         .expect("the bundled faces are registered")
 }
@@ -361,6 +397,8 @@ pub(crate) struct State {
     line_width: f32,
     pub(crate) font_px: f32,
     pub(crate) font_families: Vec<String>,
+    pub(crate) font_weight: u16,
+    pub(crate) font_italic: bool,
 }
 
 impl Default for State {
@@ -374,6 +412,8 @@ impl Default for State {
             line_width: 1.0,
             font_px: 10.0,
             font_families: vec!["sans-serif".to_string()],
+            font_weight: 400,
+            font_italic: false,
         }
     }
 }
@@ -403,8 +443,15 @@ pub(crate) fn run(ops: &[Op], backend: &mut dyn CanvasBackend) {
             Op::FillStyle(c) => st.fill = *c,
             Op::StrokeStyle(c) => st.stroke = *c,
             Op::GlobalAlpha(a) => st.alpha = *a,
-            Op::Font { size_px, families } => {
+            Op::Font {
+                size_px,
+                weight,
+                italic,
+                families,
+            } => {
                 st.font_px = *size_px;
+                st.font_weight = *weight;
+                st.font_italic = *italic;
                 st.font_families.clone_from(families);
             }
             Op::FillRect(x, y, w, h) => {
@@ -567,7 +614,7 @@ fn arc_into(
 /// each glyph's outline into device-space subpaths (flattened) at baseline `(x, y)`.
 /// Empty when no glyph has an outline (spaces, an empty string).
 pub(crate) fn glyph_subpaths(st: &State, text: &str, x: f32, y: f32) -> Vec<SubPath> {
-    let face = resolve_face(&st.font_families);
+    let face = resolve_face(&st.font_families, st.font_weight, st.font_italic);
     // Non-zero: `ttf-parser` rejects a `head` whose units-per-em is outside 16..=16384.
     let scale = st.font_px / f32::from(face.units_per_em());
     let ttf = crate::glyph::outline_face(&face);
@@ -576,18 +623,34 @@ pub(crate) fn glyph_subpaths(st: &State, text: &str, x: f32, y: f32) -> Vec<SubP
         subs: Vec::new(),
         cur: Vec::new(),
     };
-    let mut pen_x = x;
-    for g in face.shape(text) {
-        let pen = crate::glyph::Pen {
-            origin_x: pen_x + g.x_offset as f32 * scale,
-            baseline_y: y - g.y_offset as f32 * scale,
-            scale,
-        };
-        crate::glyph::trace_glyph(&ttf, g.glyph_id, pen, &mut sink);
-        sink.flush();
-        pen_x += g.x_advance as f32 * scale;
+    // Blink's canvas pen: word by word (a space is a word of its own, so no kerning pair
+    // crosses it) with 16.16 glyph advances, exactly the `measureText` width.
+    let mut pen_x = f64::from(x);
+    for word in canvas_words(text) {
+        let glyphs = face.shape(word);
+        let advances = face.blink_advances(&glyphs, st.font_px, 1.0);
+        for (g, advance) in glyphs.iter().zip(advances) {
+            let pen = crate::glyph::Pen {
+                origin_x: pen_x as f32 + g.x_offset as f32 * scale,
+                baseline_y: y - g.y_offset as f32 * scale,
+                scale,
+            };
+            crate::glyph::trace_glyph(&ttf, g.glyph_id, pen, &mut sink);
+            sink.flush();
+            pen_x += advance;
+        }
     }
     sink.subs
+}
+
+/// The words Blink's canvas shapes separately: each run between spaces, and each U+0020.
+fn canvas_words(text: &str) -> impl Iterator<Item = &str> {
+    text.split_inclusive(' ')
+        .flat_map(|word| match word.strip_suffix(' ') {
+            Some(head) => [head, " "],
+            None => [word, ""],
+        })
+        .filter(|word| !word.is_empty())
 }
 
 /// A [`crate::glyph::Tracer`] that flattens each glyph contour to a polyline and
@@ -746,6 +809,8 @@ mod tests {
                 Op::FillStyle(Rgba::new(0, 0, 255, 255)),
                 Op::Font {
                     size_px: 12.0,
+                    weight: 700,
+                    italic: false,
                     families: vec!["Arial".into()]
                 },
                 Op::GlobalAlpha(0.25),
@@ -755,6 +820,23 @@ mod tests {
         );
         let clamped = parse_ops(r#"[["restore",[],null,null,null,null,null,7]]"#).unwrap();
         assert_eq!(clamped, [Op::GlobalAlpha(1.0), Op::Restore]);
+    }
+
+    #[test]
+    fn font_shorthand_weight_and_style_precede_the_size() {
+        assert_eq!(parse_font_style("16px Inter"), (400, false));
+        assert_eq!(parse_font_style("italic bold 16px Inter"), (700, true));
+        assert_eq!(parse_font_style("oblique bolder 16px Inter"), (700, true));
+        assert_eq!(parse_font_style("lighter 16px Inter"), (100, false));
+        assert_eq!(parse_font_style("normal 650 12pt serif"), (650, false));
+        // Out-of-range numbers are not weights; tokens after the size are family names.
+        assert_eq!(parse_font_style("0 1001 16px bold"), (400, false));
+        assert_eq!(parse_font_style("bold"), (700, false));
+        // The weight picks the face: Inter Bold is wider than Inter Regular.
+        let regular = resolve_face(&["Inter".to_string()], 400, false);
+        let bold = resolve_face(&["Inter".to_string()], 700, false);
+        assert_eq!((regular.weight(), bold.weight()), (400, 700));
+        assert!(resolve_face(&["Inter".to_string()], 400, true).is_italic());
     }
 
     #[test]
@@ -1117,7 +1199,7 @@ mod tests {
             font_families: vec!["serif".to_string()],
             ..State::default()
         };
-        let face = resolve_face(&st.font_families);
+        let face = resolve_face(&st.font_families, 400, false);
         let shaped = face.shape("q\u{301}x");
         assert!(
             shaped.iter().any(|g| g.x_offset != 0 || g.y_offset != 0),

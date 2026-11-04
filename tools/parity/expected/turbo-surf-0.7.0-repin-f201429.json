@@ -1,0 +1,49 @@
+{
+  "id": "turbo-surf release/0.7.0 repin to turbo-dom f201429 (#239 form controls, #253 overflow radii) + surf #105/#128/#129 and UA button padding",
+  "reason": "Measured with a real turbo-surf napi addon at release/0.7.0 3eb9682 (turbo-dom f201429) against b-0.7.0 (turbo-dom e425311), same host, frozen Chrome 156.0.8078.47 for the checks; no structural regression. Static PNGs move toward Chrome: extra-percent-height now pixel-identical to Chrome (was a 25 px band off), conformance-62 overflow clip (34k -> 242 px from Chrome), border-cascade / react-* buttons take Chrome width (form-control UA padding, #239; surf no longer overrides it), embedded-font-range-* button text. Their SVGs follow. 21 image SVGs change serialization only (repeated tiles emitted as <use>; rasterized old vs new are pixel-identical in Chrome, img-svg-fractional differs only by tile-seam antialiasing). Live declarative_shadow_page: document height 317.9 -> 310.5 and last span y 291.4 -> 282 (Chrome: 305 / 277).",
+  "control": "tools/parity/evidence/turbo-surf-0.7.0-repin-f201429.md; crates/turbo-dom-raster/tests/fixtures/paint_chrome156.json; crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json",
+  "changes": {
+    "surf-extra": [
+      "static-extra-img-avif.svg",
+      "static-extra-img-jpeg-corrupt.svg",
+      "static-extra-img-jpeg-exif-orient6.svg",
+      "static-extra-img-png-truncated.svg",
+      "static-extra-percent-height.png",
+      "static-extra-percent-height.svg"
+    ],
+    "surf": [
+      "live-turbo-surf__rust__crates__turbo-surf-render__src__declarative_shadow_page.html",
+      "static-image-matrix__img-gif-animated.svg",
+      "static-image-matrix__img-gif-offset-frame.svg",
+      "static-image-matrix__img-gif.svg",
+      "static-image-matrix__img-jpeg-baseline.svg",
+      "static-image-matrix__img-jpeg-cmyk.svg",
+      "static-image-matrix__img-jpeg-gray.svg",
+      "static-image-matrix__img-jpeg-progressive.svg",
+      "static-image-matrix__img-png-16bit.svg",
+      "static-image-matrix__img-png-gray-alpha.svg",
+      "static-image-matrix__img-png-gray.svg",
+      "static-image-matrix__img-png-interlaced.svg",
+      "static-image-matrix__img-png-palette-trns.svg",
+      "static-image-matrix__img-svg-fractional.svg",
+      "static-image-matrix__img-svg-small.svg",
+      "static-image-matrix__img-svg-viewbox-only.svg",
+      "static-image-matrix__img-webp-lossless.svg",
+      "static-image-matrix__img-webp-lossy.svg",
+      "static-turbo-html2pdf__benches__conformance__fixtures__62-overflow-hidden-clip-box.png",
+      "static-turbo-html2pdf__benches__conformance__fixtures__62-overflow-hidden-clip-box.svg",
+      "static-turbo-surf__harness__detection__fixtures__border-cascade.png",
+      "static-turbo-surf__harness__detection__fixtures__border-cascade.svg",
+      "static-turbo-surf__harness__detection__fixtures__embedded-font-range-block-only.png",
+      "static-turbo-surf__harness__detection__fixtures__embedded-font-range-block-only.svg",
+      "static-turbo-surf__harness__detection__fixtures__embedded-font-range-mixed.png",
+      "static-turbo-surf__harness__detection__fixtures__embedded-font-range-mixed.svg",
+      "static-turbo-surf__rust__crates__turbo-surf-render__tests__fixtures__react-document-hydration.png",
+      "static-turbo-surf__rust__crates__turbo-surf-render__tests__fixtures__react-document-hydration.svg",
+      "static-turbo-surf__rust__crates__turbo-surf-render__tests__fixtures__react-streaming-hydration.png",
+      "static-turbo-surf__rust__crates__turbo-surf-render__tests__fixtures__react-streaming-hydration.svg",
+      "static-turbo-surf__rust__crates__turbo-surf-render__tests__fixtures__react-transition-suspense.png",
+      "static-turbo-surf__rust__crates__turbo-surf-render__tests__fixtures__react-transition-suspense.svg"
+    ]
+  }
+}

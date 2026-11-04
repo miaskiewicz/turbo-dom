@@ -1,6 +1,7 @@
 {
  "id": "turbo-dom#176",
  "reason": "The static (snapshot) layout path now expands the `font` shorthand (turbo-dom d660013). Image-matrix pages set `font:14px sans-serif` on body: captions now render at 14px instead of the 16px default, shifting images up ~6.4px. embedded-font-range buttons set `font:inherit` and now inherit the body font. Chrome 156 honours both declarations; the live path already did, so every live output is unchanged. R3 repin of turbo-surf to turbo-dom d660013.",
+ "control": "crates/turbo-dom-layout/tests/layout_inline.rs (font_shorthand_line_height_sets_the_line_pitch: Chrome 156 stacks `font: 16px/20px serif` lines 20px apart)",
  "changes": {
   "surf": [
    "static-image-matrix__img-gif-animated.png",

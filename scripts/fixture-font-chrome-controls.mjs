@@ -18,9 +18,16 @@
 //   inline-borders/probe.js        -> inline-borders/chrome156.json        200x200
 //   text-breaks/probe.js           -> text-breaks/chrome156.json           800x600
 //   inline-sticky/probe.js         -> inline-sticky/chrome156.json         400x300
+//   line-height/probe.js           -> line-height/chrome156.json           400x300
+//   hyphens/probe.js               -> hyphens/chrome156.json               800x600
+//   crates/turbo-dom-browser-env/src/canvas_measure_text_probe.js
+//                                  -> canvas_measure_text_chrome156.json   800x600
+//   text-advances/probe.js         -> text-advances/chrome156.json         800x600
+//   bidi/probe.js                  -> bidi/chrome156.json                  800x600
 //
 // Usage: node scripts/fixture-font-chrome-controls.mjs [--chrome PATH] [--only PROBE]
-//   --chrome defaults to the Playwright-cached Chrome for Testing 156.
+//   --chrome defaults to the frozen Chrome 156.0.8078.47 headless shell (launched with a
+//   mock keychain, so it never prompts for the macOS keychain).
 // Needs playwright-core: PLAYWRIGHT_CORE=/path/to/node_modules/playwright-core (default: a
 // sibling turbo-surf checkout's node_modules/playwright-core).
 import { createHash } from "node:crypto";
@@ -39,7 +46,7 @@ const chromePath =
   values.chrome ||
   join(
     homedir(),
-    "Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+    ".cache/turbo-consolidation/chrome156/chrome-headless-shell-mac-arm64/chrome-headless-shell",
   );
 const playwrightCore =
   process.env.PLAYWRIGHT_CORE || resolve(repo, "../turbo-surf/node_modules/playwright-core");
@@ -61,6 +68,11 @@ const FACES = [
   ["Inter", "inter/Inter-BoldItalic.otf", 700, "italic"],
   ["Fira Code", "fira-code/FiraCode-Regular.ttf", 400, "normal"],
   ["Fira Code", "fira-code/FiraCode-Bold.ttf", 700, "normal"],
+  // Hebrew / Arabic glyphs for the bidi control (miaskiewicz/turbo-dom#238).
+  ["Noto Sans Hebrew", "noto-sans-hebrew/NotoSansHebrew-Regular.ttf", 400, "normal"],
+  ["Noto Sans Arabic", "noto-sans-arabic/NotoSansArabic-Regular.ttf", 400, "normal"],
+  // test_support::ic_fixture_face(): U+6C34 at 0.9em, for the CSS `ic` unit (turbo-dom#237).
+  ["Ic Fixture", "ic-fixture/IcFixture.ttf", 400, "normal"],
 ];
 const fontFiles = {};
 const css = FACES.map(([family, file, weight, style]) => {
@@ -80,7 +92,38 @@ const CONTROLS = [
   ["inline-borders/probe.js", "inline-borders/chrome156.json", [200, 200]],
   ["text-breaks/probe.js", "text-breaks/chrome156.json", [800, 600]],
   ["inline-sticky/probe.js", "inline-sticky/chrome156.json", [400, 300]],
+  ["line-height/probe.js", "line-height/chrome156.json", [400, 300]],
+  ["hyphens/probe.js", "hyphens/chrome156.json", [800, 600]],
+  ["text-advances/probe.js", "text-advances/chrome156.json", [800, 600]],
+  ["bidi/probe.js", "bidi/chrome156.json", [800, 600]],
+  // A repo-relative path names a control outside the layout fixtures (turbo-dom#237).
+  [
+    "crates/turbo-dom-browser-env/src/canvas_measure_text_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_measure_text_chrome156.json",
+    [800, 600],
+  ],
+  [
+    "crates/turbo-dom-browser-env/src/canvas_text_metrics_interface_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_text_metrics_interface_chrome156.json",
+    [800, 600],
+  ],
+  [
+    "crates/turbo-dom-browser-env/src/canvas_text_attributes_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_text_attributes_chrome156.json",
+    [800, 600],
+  ],
+  [
+    "crates/turbo-dom-browser-env/src/canvas_spacing_units_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_spacing_units_chrome156.json",
+    [800, 600],
+  ],
+  [
+    "crates/turbo-dom-browser-env/src/canvas_ic_unit_probe.js",
+    "crates/turbo-dom-browser-env/src/canvas_ic_unit_chrome156.json",
+    [800, 600],
+  ],
 ];
+const located = (path) => (path.startsWith("crates/") ? join(repo, path) : join(fixtures, path));
 
 const server = createServer((_, res) => {
   res.writeHead(200, { "content-type": "text/html" });
@@ -91,11 +134,11 @@ const url = `http://127.0.0.1:${server.address().port}/`;
 try {
   for (const [probe, out, [width, height]] of CONTROLS) {
     if (values.only && probe !== values.only) continue;
-    const source = readFileSync(join(fixtures, probe));
+    const source = readFileSync(located(probe));
     const browser = await chromium.launch({
       executablePath: chromePath,
       headless: true,
-      args: ["--force-device-scale-factor=2", `--window-size=${width},${height}`],
+      args: ["--use-mock-keychain", "--password-store=basic", "--force-device-scale-factor=2", `--window-size=${width},${height}`],
     });
     const context = await browser.newContext({ viewport: null });
     const page = await context.newPage();
@@ -125,7 +168,7 @@ try {
     const [w, h] = environment.viewport;
     if (w !== width || h !== height || environment.deviceScaleFactor !== 2)
       throw new Error(`${out}: environment ${JSON.stringify(environment)}`);
-    writeFileSync(join(fixtures, out), `${JSON.stringify(control, null, 2)}\n`);
+    writeFileSync(located(out), `${JSON.stringify(control, null, 2)}\n`);
     console.log(`${out}: ${control.browser}, ${errors.length} errors`);
     await browser.close();
   }

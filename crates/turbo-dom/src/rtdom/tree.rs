@@ -24,6 +24,8 @@ pub enum NodeType {
     Element = 1,
     Attribute = 2,
     Text = 3,
+    /// An XML document's CDATA section (only XML parsing and `createCDATASection` make one).
+    CDataSection = 4,
     ProcessingInstruction = 7,
     Comment = 8,
     Document = 9,
@@ -130,6 +132,7 @@ enum NewNode {
         owner: Option<Handle>,
     },
     Text(DomString),
+    CData(DomString),
     Comment(DomString),
     ProcessingInstruction(Box<ProcessingInstructionData>),
     Doctype(Box<DoctypeData>),
@@ -155,6 +158,7 @@ impl NewNode {
             NewNode::Element { .. } => NodeType::Element,
             NewNode::Attribute { .. } => NodeType::Attribute,
             NewNode::Text(_) => NodeType::Text,
+            NewNode::CData(_) => NodeType::CDataSection,
             NewNode::Comment(_) => NodeType::Comment,
             NewNode::ProcessingInstruction(_) => NodeType::ProcessingInstruction,
             NewNode::Doctype(_) => NodeType::Doctype,
@@ -180,7 +184,7 @@ impl NewNode {
     fn char_data(&self) -> &str {
         match self {
             NewNode::ProcessingInstruction(value) => &value.data,
-            NewNode::Text(s) | NewNode::Comment(s) => s,
+            NewNode::Text(s) | NewNode::CData(s) | NewNode::Comment(s) => s,
             _ => unreachable!("char_data of a non-character node"),
         }
     }
@@ -532,6 +536,9 @@ impl NodeArena {
 mod parser_positions;
 #[path = "parser_units.rs"]
 mod parser_units;
+#[cfg(test)]
+#[path = "processing_instructions_tests.rs"]
+mod processing_instructions_tests;
 pub use parser_positions::SourcePosition;
 #[allow(clippy::pedantic)]
 #[path = "unit_tokenizer/mod.rs"]
@@ -574,6 +581,8 @@ pub struct Tree {
     source_positions: FxHashMap<Handle, SourcePosition>,
     source_attribute_positions: FxHashMap<Handle, FxHashMap<Box<[u16]>, SourcePosition>>,
     compat_mode: &'static str,
+    /// Chrome-mode processing instructions in fragment parsing (`parser_units.rs`).
+    processing_instructions: bool,
     buf_len: u32,
     new_nodes: NodeArena,
     next_handle: u32,
@@ -593,6 +602,10 @@ pub struct Tree {
     shadow_root_of_host: FxHashMap<Handle, Handle>,
     host_of_shadow_root: FxHashMap<Handle, Handle>,
     pub version: u64,
+    /// `version` without the `style` attribute changes: everything a selector or another
+    /// element's cascade reads moves it, except an element's inline style, which selectors
+    /// see only through attribute selectors naming `style` (embedders check for those).
+    pub selector_version: u64,
     /// version-keyed query result cache (mirrors JS cachedQSA / Document.__version).
     pub(crate) qcache: RefCell<QueryCache>,
     /// selector-string → parsed selector-list cache. A `matches()` driven over an
@@ -655,6 +668,7 @@ impl Tree {
             source_positions: FxHashMap::default(),
             source_attribute_positions: FxHashMap::default(),
             compat_mode,
+            processing_instructions: false,
             buf_len,
             new_nodes: NodeArena::Dense(Vec::new()),
             next_handle: buf_len,
@@ -668,6 +682,7 @@ impl Tree {
             shadow_root_of_host: FxHashMap::default(),
             host_of_shadow_root: FxHashMap::default(),
             version: 0,
+            selector_version: 0,
             qcache: RefCell::new(QueryCache::default()),
             parse_cache: RefCell::new(FxHashMap::default()),
             css_cache: RefCell::new(crate::rtdom::cascade::CssCache::default()),
@@ -1387,7 +1402,10 @@ impl Tree {
         }
         if !matches!(
             nt,
-            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction
+            NodeType::Text
+                | NodeType::CDataSection
+                | NodeType::Comment
+                | NodeType::ProcessingInstruction
         ) {
             return None;
         }
@@ -1416,6 +1434,7 @@ impl Tree {
             nt,
             NodeType::Attribute
                 | NodeType::Text
+                | NodeType::CDataSection
                 | NodeType::Comment
                 | NodeType::ProcessingInstruction
         ) {
@@ -1433,7 +1452,9 @@ impl Tree {
             // separately-documented reasons — keep them as separate, commented arms.
             #[allow(clippy::match_same_arms)]
             match self.node_type(c) {
-                NodeType::Text => out.push_str(&self.node_value(c).unwrap_or_default()),
+                NodeType::Text | NodeType::CDataSection => {
+                    out.push_str(&self.node_value(c).unwrap_or_default());
+                }
                 NodeType::Comment => {}
                 // A <template>'s content is stored as a synthetic `content` fragment
                 // child, but in the DOM it lives in `template.content`, NOT among the
@@ -1449,6 +1470,21 @@ impl Tree {
     // ------------------------------------------------------------- mutations
     fn bump(&mut self) {
         self.version += 1;
+        self.selector_version += 1;
+    }
+
+    /// [`Self::bump`] for an attribute change: a `style` attribute moves `version` only.
+    fn bump_attribute(&mut self, name: &str) {
+        if name == "style" {
+            self.version += 1;
+        } else {
+            self.bump();
+        }
+    }
+
+    /// Whether any element of the tree hosts a shadow root.
+    pub fn has_shadow_roots(&self) -> bool {
+        !self.shadow_root_of_host.is_empty()
     }
 
     fn record_event(
@@ -1600,7 +1636,7 @@ impl Tree {
         self.attribute_units
             .remove(&(h, changed.ns.clone(), changed.local.clone()));
         self.sync_attribute_node(h, &changed);
-        self.bump();
+        self.bump_attribute(name);
         self.record_attributes(h, &changed.local_name, old, changed.namespace.as_deref());
         self.record_old_units(old_units);
         self.record_native_attribute_names(&changed);
@@ -1621,7 +1657,7 @@ impl Tree {
             self.attribute_units
                 .remove(&(h, removed.ns.clone(), removed.local.clone()));
         }
-        self.bump();
+        self.bump_attribute(name);
         if let Some(removed) = removed {
             self.record_attributes(h, &removed.local_name, old, removed.namespace.as_deref());
             self.record_old_units(old_units);
@@ -1805,7 +1841,10 @@ impl Tree {
         }
         if matches!(
             nt,
-            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction
+            NodeType::Text
+                | NodeType::CDataSection
+                | NodeType::Comment
+                | NodeType::ProcessingInstruction
         ) {
             let old = if self.is_recording() {
                 self.node_value(h)
@@ -1861,7 +1900,10 @@ impl Tree {
             self.set_attribute_value(h, text);
             return;
         }
-        if nt != NodeType::Text && nt != NodeType::Comment {
+        if !matches!(
+            nt,
+            NodeType::Text | NodeType::CDataSection | NodeType::Comment
+        ) {
             return;
         }
         let old = if self.is_recording() {
@@ -2609,6 +2651,39 @@ mod tests {
         assert_eq!(tree.get_attribute(div, "class"), Some("card"));
         // original buffer attr still readable through overlay
         assert_eq!(tree.get_attribute(div, "id"), Some("a"));
+    }
+
+    /// `selector_version` moves with every mutation but a `style` attribute change: an
+    /// element's inline style is read by selectors only through attribute selectors naming it,
+    /// so an embedder that checks for those can keep other elements' computed styles across an
+    /// inline style write (`version` still moves).
+    #[test]
+    fn selector_version_skips_style_attribute_changes_only() {
+        let mut tree = t("<div id=a><p></p></div>");
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
+        let (v0, s0) = (tree.version, tree.selector_version);
+        tree.set_attribute(div, "style", "width: 1px");
+        assert!(tree.version > v0);
+        assert_eq!(tree.selector_version, s0);
+        let v1 = tree.version;
+        tree.remove_attribute(div, "style");
+        assert!(tree.version > v1);
+        assert_eq!(tree.selector_version, s0);
+        tree.set_attribute(div, "class", "card");
+        assert!(tree.selector_version > s0);
+        let s1 = tree.selector_version;
+        tree.remove_attribute(div, "class");
+        assert!(tree.selector_version > s1);
+        let s2 = tree.selector_version;
+        let p = tree.create_element("p");
+        tree.append_child(div, p);
+        assert!(tree.selector_version > s2);
+        assert!(!tree.has_shadow_roots());
+        tree.attach_shadow(div);
+        assert!(tree.has_shadow_roots());
     }
 
     #[test]

@@ -2,6 +2,7 @@
 
 struct RangeAccessor(v8::Weak<v8::Function>);
 struct RangeExceptionUpdater(v8::Weak<v8::Function>);
+fn_slots!([RangeAccessor, RangeExceptionUpdater]);
 
 fn contextual_fragment<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -89,12 +90,7 @@ pub(super) fn capture(scope: &mut v8::PinScope) {
     else {
         return;
     };
-    let Some(accessor) = super::dom_ownership::helper_function(scope, function) else {
-        return;
-    };
-    scope
-        .get_current_context()
-        .set_slot(std::rc::Rc::new(RangeAccessor(accessor)));
+    super::context_rehydrate::capture::<RangeAccessor>(scope, function);
 }
 
 pub(super) fn install(scope: &mut v8::PinScope) {
@@ -115,11 +111,16 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
     {
         // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
-        let convert = v8::Function::new(scope, super::trusted_types::convert_call).unwrap();
+        let convert = v8::Function::new(
+            scope,
+            ext!(FunctionCallback, super::trusted_types::convert_call),
+        )
+        .unwrap();
         // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
-        let static_accessor = v8::Function::new(scope, static_record).unwrap();
+        let static_accessor =
+            v8::Function::new(scope, ext!(FunctionCallback, static_record)).unwrap();
         // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
-        let parser = v8::Function::new(scope, contextual_fragment).unwrap();
+        let parser = v8::Function::new(scope, ext!(FunctionCallback, contextual_fragment)).unwrap();
         let receiver = v8::undefined(scope);
         if let Some(updater) = initializer
             .call(
@@ -135,12 +136,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
             )
             .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
         {
-            let Some(updater) = super::dom_ownership::helper_function(scope, updater) else {
-                return;
-            };
-            scope
-                .get_current_context()
-                .set_slot(std::rc::Rc::new(RangeExceptionUpdater(updater)));
+            super::context_rehydrate::capture::<RangeExceptionUpdater>(scope, updater);
         }
     }
 }
@@ -167,7 +163,7 @@ pub(super) fn accessors<'s>(
 ) -> Option<(v8::Local<'s, v8::Function>, v8::Local<'s, v8::Function>)> {
     let accessor = scope.get_current_context().get_slot::<RangeAccessor>()?;
     let accessor = super::dom_ownership::local(scope, &accessor.0);
-    let static_accessor = v8::Function::new(scope, static_record)?;
+    let static_accessor = v8::Function::new(scope, ext!(FunctionCallback, static_record))?;
     Some((accessor, static_accessor))
 }
 
@@ -211,7 +207,7 @@ mod tests {
     #[test]
     fn borrowed_static_range_accessors_keep_foreign_native_boundary_owners() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let main = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, main);
@@ -247,7 +243,7 @@ mod tests {
 
     fn check_script(source: &str, refresh: Option<&str>) {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -309,7 +305,7 @@ mod tests {
     #[test]
     fn range_contents_and_boundaries_match_authored_chrome155_control() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

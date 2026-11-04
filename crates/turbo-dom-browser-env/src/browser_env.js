@@ -5,7 +5,7 @@
   var $apply=Reflect.apply,$gopd=Object.getOwnPropertyDescriptor,$def=Object.defineProperty,$create=Object.create;
   var $wmGet=WeakMap.prototype.get,$wmSet=WeakMap.prototype.set,$lower=String.prototype.toLowerCase;
   var $jsonStringifyNative=JSON.stringify,$JSON=JSON,$jsonStringify=function(value){return $apply($jsonStringifyNative,$JSON,[value]);};
-  var $fromCodePoint=String.fromCodePoint,$imul=Math.imul,$Mround=Math.round;
+  var $fromCodePoint=String.fromCodePoint,$imul=Math.imul,$Mround=Math.round,$Mmin=Math.min;
   var $call=function(f,receiver,...rest){return $apply(f,receiver,rest);};
   // Element attribute natives for the reflected members (miaskiewicz/turbo-dom#199).
   // Captured once the Element interface is defined (below), before any page script runs.
@@ -94,14 +94,24 @@
     for(var i=0;i<names.length;i++)out[names[i]]=dispatch(names[i]);
     return out;
   })();
-  var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
+  var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot,computedStyleNativeQueryAll;
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
+  var canvasMeasureTextNative=g.__canvasMeasureTextNative;delete g.__canvasMeasureTextNative;
+  var canvasLengthUnitNative=g.__canvasLengthUnitNative;delete g.__canvasLengthUnitNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
+  var computedStyleSelectorVersion=g.__computedStyleSelectorVersion;delete g.__computedStyleSelectorVersion;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
+  var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
+  var noteEntryBuild=g.__noteEntryBuild;delete g.__noteEntryBuild;
+  // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
+  if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
+  // The native live-state epoch (form / popover / dialog state the tree version misses); the
+  // engine's JS state stores report their changes through __tsNs.bumpStyleState.
+  var styleStateEpoch=g.__styleStateEpoch,bumpStyleState=g.__bumpStyleState;delete g.__styleStateEpoch;delete g.__bumpStyleState;__tsNs.bumpStyleState=bumpStyleState;
   var cssFontNumber=Number,cssFontString=String,cssFontFinite=Number.isFinite,cssFontPrecision=Number.prototype.toPrecision,cssFontLower=String.prototype.toLowerCase;
   var prepareInlineHandler=g.__prepareInlineHandler,noteInlineHandler=g.__noteInlineHandler;delete g.__prepareInlineHandler;delete g.__noteInlineHandler;
   var collectionGet=g.__getCollectionRecord,collectionSet=g.__setCollectionRecord;
@@ -572,16 +582,63 @@
   // adopted sheets, for elements of the document tree. A shadow tree is its own style scope:
   // document rules never select its elements (turbo-dom#68; its own rules come from the
   // native shadow-scoped cascade).
+  // The owner's sheet list, reread only when its tree version or the CSSOM epoch moved: every
+  // element of one cascade (the read element and each ancestor) shares it.
+  var computedSheetLists=new computedSnapshotMap();
+  function computedOwnerSheets(owner,host){
+    var version=null;try{version=computedStyleSelectorVersion(owner);}catch(e){}
+    var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
+    if(entry&&typeof version==='number'&&entry.version===version&&entry.epoch===epoch&&entry.host===host)return entry.sheets;
+    var sheets=host.readSheets();
+    if(typeof version==='number')computedSnapshotSet(computedSheetLists,owner,{__proto__:null,version:version,epoch:epoch,host:host,sheets:sheets});
+    return sheets;
+  }
+  // Whether a cascade of `el` can read another element's inline style: a rule of its sheets
+  // with an attribute selector naming `style` (directly, through a combinator, inside :has()),
+  // an @container query, or sheets the scan does not see (adopted ones). Scanned once per
+  // sheet list; any match, even in a string, only keeps the plain tree version.
+  var computedStyleAttributeSelector=/\[\s*(?:[\w*-]*\|)?style(?![\w-])|@container/i;
+  // Selector and prelude text only (no declaration is serialized), nested rules included; an
+  // @import's sheet is not walked, so an @import counts as a match.
+  function computedRulesReadStyle(rules){
+    var items=cssItems(rules);
+    for(var i=0;i<items.length;i++){
+      var record=cssRuleRecord(items[i]);
+      if(record.type===3||record.kind==='container')return true;
+      var text=record.type===1?record.selectorText:record.prelude;
+      if(text&&cssApply(cssZoomExec,computedStyleAttributeSelector,[String(text)]))return true;
+      if(record.cssRules&&computedRulesReadStyle(record.cssRules))return true;
+    }
+    return false;
+  }
+  function computedInlineSensitive(el){
+    var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return true;}
+    if(!owner)return true;
+    var adopted=adoptionStates&&$c.get(adoptionStates,owner);
+    if(adopted&&adopted.target&&adopted.target.length)return true;
+    var ownerRecord=collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
+    if(!host)return false;
+    return computedOwnerSheetsReadStyle(owner,host);
+  }
+  // The sheet scan of computedInlineSensitive, memoized on the owner's sheet-list entry.
+  function computedOwnerSheetsReadStyle(owner,host){
+    var sheets=computedOwnerSheets(owner,host),entry=computedSnapshotGet(computedSheetLists,owner);
+    if(entry&&entry.sheets===sheets&&entry.styleSelectors!==undefined)return entry.styleSelectors;
+    var found=false;
+    try{for(var si=0;si<sheets.length&&!found;si++)found=computedRulesReadStyle(sheetRecord(sheets[si]).rules);}catch(e){found=true;}
+    if(entry&&entry.sheets===sheets)entry.styleSelectors=found;
+    return found;
+  }
   function computedSheets(el){
     var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
     if(owner&&cssApply(computedStyleNativeRoot,el,[])!==owner&&cssApply(computedStyleNativeConnected,el,[]))return [];
     // A live list refreshes on every indexed/length read. Refresh its private
     // backing array once per computation; retained declarations still recompute.
     var ownerRecord=owner&&collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
-    var sheets = host ? host.readSheets() : [];
+    var sheets = host ? computedOwnerSheets(owner,host) : [];
     // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
     var adopted=adoptionStates&&$c.get(adoptionStates,owner);
-    if(adopted&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
+    if(adopted&&adopted.target&&adopted.target.length&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
     return sheets;
   }
   // The selector text of every enabled style rule that can select `el`.
@@ -589,13 +646,8 @@
     var out=[],sheets=[];try{sheets=computedSheets(el);}catch(e){}
     for (var si=0; si<sheets.length; si++) {
       if(sheetRecord(sheets[si]).disabled)continue;
-      var rules = appliedSheetRuleRecords(sheets[si]);
-      for (var ri=0; ri<rules.length; ri++) {
-        var rule=rules[ri];
-        if(rule.type===1){$c.push(out, rule.selectorText);continue;}
-        var txt = String(cssRuleText(rule) || ''), br = $c.indexOf(txt, '{');
-        if (br >= 0) $c.push(out, $c.trim($c.slice(txt, 0, br)));
-      }
+      var entries = appliedSheetEntries(sheets[si],el,cssLayerTree());
+      for (var ri=0; ri<entries.length; ri++) if(entries[ri].media!==2) $c.push(out, entries[ri].rule.selectorText);
     }
     return out;
   }
@@ -609,17 +661,42 @@
   // bumps it; native and shared by every realm, since a realm reads other realms' elements and
   // an edit runs in the realm owning the sheet — turbo-dom#113), the element's owner document,
   // its top-layer state (popover / modal / fullscreen), its font context (host defaults, composed parent) and, recursively, every ancestor snapshot
-  // it read. A computation that read something outside the key is volatile and never reused:
-  // a rule whose selector depends on live form / popover / dialog state and could match, an
-  // animated element, the fullscreen element (viewport-sized), an @import's media query.
-  var computedStyleCache=new computedSnapshotMap(),computedVolatile=false;
+  // it read. A computation whose rules read live form / popover / dialog state (a selector with
+  // :invalid, :checked, :popover-open, :modal, ... that matches or could match) is also keyed on
+  // the native live-state epoch, which every such state change bumps. A computation that read
+  // something outside the key is volatile and never reused: a rule over view-transition or
+  // interest state that could match, an animated element, the fullscreen element
+  // (viewport-sized), an @import's media query.
+  var computedStyleCache=new computedSnapshotMap(),computedVolatile=false,computedStateRead=false;
   function invalidateComputedStyles(){bumpCssomEpoch();}
   __ns.invalidateComputedStyles=invalidateComputedStyles;
+  // What a CSS animation / transition update reads beyond the element's own values
+  // (animations.js cssUpdate): null when the element has no stamp (it is then never skipped).
+  // An animation starting or ending on a target also drops reuse (the targets' values change)
+  // without changing any cascaded value; the stamp discounts this realm's such bumps (another
+  // realm's only cause an extra update, never a missed one).
+  var animatedStyleBumps=0;
+  __ns.invalidateAnimatedStyles=function(){animatedStyleBumps++;bumpCssomEpoch();};
+  // An element's computed `display` (animations.js `rendered`): resolved through `snapshots`,
+  // one map shared by a whole ancestor walk, so each ancestor resolves (or revalidates its
+  // reuse) once per walk instead of once per level, and no declaration object is made.
+  __ns.computedDisplay=function(el,snapshots){return computedSnapshotValue(computeStyleSnapshot(el,snapshots),'display');};
+  __ns.computedSnapshots=function(){return new computedSnapshotMap();};
+  __ns.computedStyleStamp=function(el){var key=computedCacheKey(el);return key?[key.full,key.epoch-animatedStyleBumps,styleStateEpoch(),key.owner]:null;};
+  // The key's `version` is the tree's selector version (Tree::selector_version: inline style
+  // writes do not move it) plus the element's own inline style text, unless a cascade of the
+  // element can read other elements' inline styles (computedInlineSensitive) or the tree has
+  // a shadow root (whose own sheets are not scanned): then the plain tree version. Ancestors'
+  // inline styles reach it through the parent snapshots it depends on. `full` (the plain
+  // version) is what `rendered` and the animation stamp read.
   function computedCacheKey(el){
-    var version;try{version=computedStyleVersion(el);}catch(e){return null;}
-    if(typeof version!=='number')return null;
+    var version,full;try{full=computedStyleVersion(el);version=computedStyleSelectorVersion(el);}catch(e){return null;}
+    if(typeof full!=='number'||typeof version!=='number')return null;
     var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
-    return {__proto__:null,epoch:cssomEpoch(),version:version,owner:owner};
+    var inline=null;
+    if(computedInlineSensitive(el))version=full;
+    else{try{inline=$c.call(appliedInlineRead,el);}catch(e){version=full;inline=null;}}
+    return {__proto__:null,epoch:cssomEpoch(),version:version,full:full,inline:inline,owner:owner};
   }
   // What the key cannot see: the element's top layer and font context.
   function computedCacheProbe(el){
@@ -629,9 +706,13 @@
     return context?[layer,context[0],context[1],context[2],context[3],context[4]]:[layer];
   }
   function computedProbeEqual(a,b){if(a.length!==b.length)return false;for(var index=0;index<a.length;index++)if(a[index]!==b[index])return false;return true;}
+  // Whether a cache entry (or a recomputed key) has `key`'s epoch, versions and owner.
+  function computedKeyEqual(entry,key){return !!entry&&entry.epoch===key.epoch&&entry.version===key.version&&entry.inline===key.inline&&entry.owner===key.owner;}
   function computedCacheHit(el,key,snapshots){
     var entry=computedSnapshotGet(computedStyleCache,el);
-    if(!entry||entry.epoch!==key.epoch||entry.version!==key.version||entry.owner!==key.owner)return null;
+    if(!computedKeyEqual(entry,key))return null;
+    if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
+    if(!computedMediaUnchanged(entry.media))return null;
     if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
     for(var index=0;index<entry.deps.length;index+=2)if(computeStyleSnapshot(entry.deps[index],snapshots)!==entry.deps[index+1])return null;
     return entry.snapshot;
@@ -639,21 +720,23 @@
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     if(pseudo||sink||!el||typeof el!=='object')return computeStyleFresh(el,snapshots,sink,pseudo,null);
     var local=computedSnapshotGet(snapshots,el);if(local)return local;
+    if(noteStyleLookup)noteStyleLookup();
     var key=computedCacheKey(el);
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
-    var deps=[],outer=computedVolatile,snapshot,volatile;computedVolatile=false;
-    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;}finally{computedVolatile=outer;}
+    var deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,media={__proto__:null},snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;computedMediaReads=media;
+    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
     if(key){
       var after=computedCacheKey(el);
-      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.owner!==key.owner)computedSnapshotSet(computedStyleCache,el,null);
-      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,owner:key.owner,probe:computedCacheProbe(el),deps:deps});
+      if(volatile||!computedKeyEqual(after,key)||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
+      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps});
     }
     return snapshot;
   }
-  // Selector-dependent volatility: the pseudo-classes whose truth is live binding state (form
+  // Selector-dependent state: the pseudo-classes whose truth is live binding state (form
   // control state, open popovers, modal dialogs, active view transitions, interest invokers)
-  // rather than the tree. A rule using one makes
-  // the computation volatile when it matches, or when it could match in another state: its
+  // rather than the tree. A rule using one makes the computation state-dependent (keyed on the
+  // live-state epoch; volatile for view-transition and interest state, which bump no epoch)
+  // when it matches, or when it could match in another state: its
   // selector with every such pseudo-class (and every non-matching-list function containing one)
   // relaxed to `:is(*)` matches. Relaxing only widens a selector, so a rule that cannot match
   // even relaxed cannot match in any state.
@@ -680,13 +763,19 @@
     }
     return out;
   }
+  var computedUnkeyedState=/:(?:active-view-transition|active-view-transition-type|interest-source|interest-target)(?![\w-])/i;
   function computedStateVolatile(el,selector,matched){
     if(computedVolatile||!cssApply(cssZoomExec,computedStatePattern,[selector]))return;
-    if(matched){computedVolatile=true;return;}
-    var relaxed=computedRelaxed[selector];
-    if(relaxed===undefined){if(computedRelaxedCount>=4096){computedRelaxed={__proto__:null};computedRelaxedCount=0;}relaxed=computedRelaxed[selector]=computedRelaxSelector(selector);computedRelaxedCount++;}
-    var could=true;try{could=!!cssApply(computedStyleNativeMatches,el,[relaxed]);}catch(e){}
-    if(could)computedVolatile=true;
+    var unkeyed=!!cssApply(cssZoomExec,computedUnkeyedState,[selector]);
+    if(!unkeyed&&computedStateRead)return;
+    var could=matched;
+    if(!could){
+      var relaxed=computedRelaxed[selector];
+      if(relaxed===undefined){if(computedRelaxedCount>=4096){computedRelaxed={__proto__:null};computedRelaxedCount=0;}relaxed=computedRelaxed[selector]=computedRelaxSelector(selector);computedRelaxedCount++;}
+      could=true;try{could=!!cssApply(computedStyleNativeMatches,el,[relaxed]);}catch(e){}
+    }
+    if(!could)return;
+    if(unkeyed)computedVolatile=true;else computedStateRead=true;
   }
   function computeStyleFresh(el,snapshots,sink,pseudo,deps){
     var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
@@ -737,7 +826,8 @@
     var setProp = function(name, val, important){ name = $c.trim(String(name)); if (!name) return; if(important!==undefined){if(priorities[name]&&!important)return;priorities[name]=important;} if(uaValues&&typeof val==='string'&&$c.test(/^revert$/i,$c.trim(val))&&uaValues[name]!==undefined)val=uaValues[name]; if (typeof val === 'string' && $c.slice(name,0, 2) !== '--'){ var t = $c.trim(val); if (t[0] === '#') val = normColor(t); else if (t === '0' && $c.test(LEN_PROP,name)) val = '0px'; else if ($c.indexOf(val,',') >= 0) val = cssPrelude(val,true); } decl[name] = val; decl[camel(name)] = val; $c.forEach(staleShorthands(name),function(shorthand){ if (shorthand !== expandingShorthand) { delete decl[shorthand]; delete decl[camel(shorthand)]; } }); if (sink) sink.order[name] = ++sink.count;
       if (typeof val === 'string') { var outer = expandingShorthand; expandingShorthand = name; try { expandShorthand(name, val, function(property,value){setProp(property,value,important);}); } finally { expandingShorthand = outer; } }
     };
-    function applyDeclarations(record,accepts){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;setProp(name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
+    // `only`: true applies just the !important declarations, false just the normal ones.
+    function applyDeclarations(record,accepts,only){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;if(only!==undefined&&only!==(value.priority==='important'))continue;setProp(name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
     var info=pseudo&&pseudo!=='backdrop'&&pseudo!=='before'&&pseudo!=='after'?computedPseudoInfo(el,pseudo,parentStyle):null;
     // Measured Chrome button defaults are UA declarations: every matching author
     // rule (including a universal selector) and inline value takes precedence.
@@ -748,29 +838,15 @@
     if(ua){$c.forEach($O.keys(ua), function(name){setProp(name,ua[name]);});uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
     try {
       // Element-backed pseudo-elements the element does not have see no author rules.
-      var sheets = info && !info.authored ? [] : computedSheets(el);
+      // Match the private selector list before touching declarations. Native parsing
+      // preserves quoted delimiters that serialized text splitting loses.
+      var sheets = info && !info.authored ? [] : computedSheets(el),build=computedSheetEntries(sheets,el),layers=build.layers,matched=[];
       for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
-        var rules = appliedSheetRuleRecords(sheets[si]);
-        for (var ri=0; ri<rules.length; ri++) {
-          var rule=rules[ri],matched=false;
-          if(pseudo&&rule.type===1){
-            try{matched=pseudoRuleMatches(el,rule.selectorText,pseudo);}catch(e){}
-          }else if(rule.type===1){
-            // Match the private selector list before touching declarations. Native
-            // parsing preserves quoted delimiters that serialized text splitting loses.
-            try{matched=cssApply(computedStyleNativeMatches,el,[rule.selectorText]);}catch(e){}
-            if(!pseudo)computedStateVolatile(el,rule.selectorText,matched);
-          }else{
-            var txt = String(cssRuleText(rule) || ''); var br = $c.indexOf(txt, '{'); if (br < 0) continue;
-            var sel = $c.trim($c.slice(txt, 0, br)),parts = $c.split(sel, ',');
-            if(pseudo){try{matched=pseudoRuleMatches(el,sel,pseudo);}catch(e){}parts=[];}
-            for (var pi=0; pi<parts.length; pi++){ var s = $c.trim(parts[pi]); if (!s) continue; try { if (cssApply(computedStyleNativeMatches,el,[s])) { matched = true; } } catch(e){} computedStateVolatile(el,s,matched); if (matched) break; }
-          }
-          if (!matched) continue;
-          applyDeclarations(declarationRecord(rule.style),info&&info.accepts);
-        }
+        var entries = build.lists[si];
+        for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
       }
+      cascadeEntries(matched,layers,function(entry,only){applyDeclarations(declarationRecord(entry.rule.style),info&&info.accepts,only);});
     } catch(e){}
     // overlay inline style (own props React/components set: background, height, display, ...)
     var st = !pseudo && el && __ns.makeInlineStyleDeclaration(el);
@@ -1456,7 +1532,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
   function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries)$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
   function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}'));$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1)return;var name=$c.trim($c.slice(part,0,index));if(!record.fontFace&&!$c.startsWith(name,'--')&&!knownProperty(name))return;var value=$c.trim($c.slice(part,index+1)),important=$c.test(/\s*!important\s*$/i,value);if(important)value=$c.trim($c.replace(value,/\s*!important\s*$/i,''));if(!record.fontFace&&!$c.startsWith(name,'--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=$c.get(record.values,name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
-  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');invalidateComputedStyles();}
+  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');if(!record.owner)invalidateComputedStyles();}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);$c.call(appliedInlineWrite,record.owner,record.source);}}
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
   function removeDeclaration(record,name){if(!record.fontFace){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands){var removed=false;$c.forEach(longhands,function(longhand){if($c.delete(record.values,longhand)){$c.splice(record.names,$c.indexOf(record.names,longhand),1);removed=true;}});if(removed)commitDeclaration(record);return '';}}var previous=$c.get(record.values,name);if(!previous)return '';$c.delete(record.values,name);$c.splice(record.names,$c.indexOf(record.names,name),1);commitDeclaration(record);return previous.text;}
@@ -1499,16 +1575,49 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   $c.forEach(['type','parentRule','parentStyleSheet'],function(name){cssRuleMember('CSSRule',name,function(){return cssRuleRecord(this)[name];});});
   function cssRuleText(record){if(record.type===1||record.type===5){var text=declarationText(declarationRecord(record.style));return (record.type===1?record.selectorText:record.prelude)+' {'+(text?' '+text+' ':' ')+'}';}
     // Chrome 156: grouping rules and @keyframes list one child rule per line (turbo-dom#134).
-    if((record.grouping||record.type===7)&&record.cssRules){var rules=cssItems(record.cssRules),out=record.prelude+(record.type===7?' { \n':' {\n');for(var index=0;index<rules.length;index++)out+='  '+cssRuleText(cssRuleRecord(rules[index]))+'\n';return out+'}';}
+    if((record.grouping||record.type===7)&&record.cssRules){var rules=cssItems(record.cssRules),out=(record.kind?groupPrelude(record):record.prelude)+(record.type===7?' { \n':' {\n');for(var index=0;index<rules.length;index++)out+='  '+cssRuleText(cssRuleRecord(rules[index]))+'\n';return out+'}';}
     return record.cssText;}
   __ns.readCssRuleText=function(rule){return cssRuleText(cssRuleRecord(rule));};
   cssRuleMember('CSSRule','cssText',function(){return cssRuleText(cssRuleRecord(this));},function(value){cssRuleRecord(this);if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');String(value);});
   cssRuleMember('CSSStyleRule','selectorText',function(){return cssRuleRecord(this,1).selectorText;},function(value){var record=cssRuleRecord(this,1);if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');var parsed=parseCssRules(String(value)+' {}',record.parentStyleSheet,record.parentRule);if(parsed.length===1&&cssRuleRecord(parsed[0]).type===1)record.selectorText=cssRuleRecord(parsed[0],1).selectorText;});
   cssRuleMember('CSSStyleRule','style',function(){return cssRuleRecord(this,1).style;},function(value){var record=cssRuleRecord(this,1);if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');record.style.cssText=String(value);});
   $c.forEach(['href','media','styleSheet'],function(name){cssRuleMember('CSSImportRule',name,function(){return cssRuleRecord(this,3)[name];});});
+  // Grouping / condition rules (turbo-dom#254): Chrome 156's interface per at-rule. `kind`
+  // is the at-keyword; the attributes read the (native-normalized) prelude.
+  var groupingInterfaces={media:'CSSMediaRule',supports:'CSSSupportsRule',container:'CSSContainerRule',layer:'CSSLayerBlockRule','layer-statement':'CSSLayerStatementRule',scope:'CSSScopeRule','starting-style':'CSSStartingStyleRule'};
+  cssRuleInterface('CSSGroupingRule',g.CSSRule.prototype);cssRuleInterface('CSSConditionRule',g.CSSGroupingRule.prototype);
+  $c.forEach(['CSSContainerRule','CSSMediaRule','CSSSupportsRule'],function(name){cssRuleInterface(name,g.CSSConditionRule.prototype);});
+  $c.forEach(['CSSLayerBlockRule','CSSScopeRule','CSSStartingStyleRule'],function(name){cssRuleInterface(name,g.CSSGroupingRule.prototype);});
+  cssRuleInterface('CSSLayerStatementRule',g.CSSRule.prototype);
+  var conditionKinds={media:1,supports:1,container:1};
+  function groupRecord(rule,kinds){var record=$c.get(cssRuleStates,rule);if(!record||!record.kind||(kinds?!kinds[record.kind]:record.kind==='layer-statement'))throw new TypeError('Illegal invocation');return record;}
+  function preludeRest(record){return $c.trim($c.replace(record.prelude,/^@[a-z-]+/i,''));}
+  function mediaList(record){if(!record.mediaList)record.mediaList=makeMedia(preludeRest(record));return record.mediaList;}
+  function containerParts(record){var rest=preludeRest(record),match=$c.exec(/^([^\s(]+)\s*([\s\S]*)$/,rest),parts=match&&$c.toLowerCase(match[1])!=='not'?[match[1],match[2]]:['',rest];parts[1]=containerQueryText(parts[1]);return parts;}
+  // Size queries serialize like media features (Chrome: `(min-width: 200px)`); a query the
+  // media grammar rejects (style(), scroll-state()) keeps its authored text.
+  function containerQueryText(query){if(!query||typeof cssNativeParse!=='function')return query;var text=cssNativeParse(query,'media');return text&&text!=='not all'?text:query;}
+  function scopeParts(record){var match=$c.exec(/^(?:\(([\s\S]*?)\))?\s*(?:to\s*\(([\s\S]*)\))?$/i,preludeRest(record));return match?[match[1]===undefined?null:$c.trim(match[1]),match[2]===undefined?null:$c.trim(match[2])]:[null,null];}
+  function groupPrelude(record){if(record.kind==='media')return '@media '+conditionText(record);if(record.kind==='container')return '@container '+$c.trim($c.join(containerParts(record),' '));return record.prelude;}
+  function conditionText(record){if(record.kind==='media')return $c.join(mediaRecord(mediaList(record)).items,', ');if(record.kind==='container')return $c.trim($c.join(containerParts(record),' '));return preludeRest(record);}
+  cssRuleMember('CSSGroupingRule','cssRules',function(){return groupRecord(this).cssRules;});
+  cssRuleMember('CSSConditionRule','conditionText',function(){return conditionText(groupRecord(this,conditionKinds));});
+  cssRuleMember('CSSContainerRule','containerName',function(){return containerParts(groupRecord(this,{container:1}))[0];});
+  cssRuleMember('CSSContainerRule','containerQuery',function(){return containerParts(groupRecord(this,{container:1}))[1];});
+  cssRuleMember('CSSContainerRule','conditions',function(){var parts=containerParts(groupRecord(this,{container:1})),condition={};condition.name=parts[0];condition.query=parts[1];return [condition];});
+  cssRuleMember('CSSMediaRule','media',function(){return mediaList(groupRecord(this,{media:1}));},function(value){mediaList(groupRecord(this,{media:1})).mediaText=value;});
+  cssRuleMember('CSSLayerBlockRule','name',function(){return preludeRest(groupRecord(this,{layer:1}));});
+  cssRuleMember('CSSLayerStatementRule','nameList',function(){return $c.map(cssParts(preludeRest(groupRecord(this,{'layer-statement':1})),','),function(name){return $c.trim(name);});});
+  cssRuleMember('CSSScopeRule','start',function(){return scopeParts(groupRecord(this,{scope:1}))[0];});
+  cssRuleMember('CSSScopeRule','end',function(){return scopeParts(groupRecord(this,{scope:1}))[1];});
+  function insertGroupRule(rule,record,text,index){var list=cssItems(record.cssRules),i=index===undefined?0:Number(index)>>>0;if(i>list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');text=cssString(text);var source=cssNativeParse(text,false,true),parsed=source===null?cssList():parseCssRules(source,record.parentStyleSheet,rule,true);// An @import (Chrome: an import rule, however the text spells it: comments, case) is a hierarchy error.
+  var imported=$c.test(/^\s*@import\b/i,text)||source!==null&&$c.test(/^\s*@import\b/i,source)||parsed.length===1&&cssItems(parsed)[0].type===3;if(imported)throw new __ns.DOMException('Imports are not allowed in a grouping rule','HierarchyRequestError');if(parsed.length!==1)throw new __ns.DOMException('Expected one CSS rule','SyntaxError');$c.splice(list,i,0,cssItems(parsed)[0]);return i;}
+  function deleteGroupRule(record,index){var list=cssItems(record.cssRules),i=Number(index)>>>0;if(i>=list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');detachCssRule(list[i]);$c.splice(list,i,1);}
+  cssMethod(g.CSSGroupingRule.prototype,'insertRule',1,function(text,index){var record=groupRecord(this);if(!arguments.length)throw new TypeError("Failed to execute 'insertRule' on 'CSSGroupingRule': 1 argument required, but only 0 present.");return insertGroupRule(this,record,text,index);});
+  cssMethod(g.CSSGroupingRule.prototype,'deleteRule',1,function(index){var record=groupRecord(this);if(!arguments.length)throw new TypeError("Failed to execute 'deleteRule' on 'CSSGroupingRule': 1 argument required, but only 0 present.");deleteGroupRule(record,index);});
   var cssRuleConstants={STYLE_RULE:1,CHARSET_RULE:2,IMPORT_RULE:3,MEDIA_RULE:4,FONT_FACE_RULE:5,PAGE_RULE:6,KEYFRAMES_RULE:7,KEYFRAME_RULE:8,MARGIN_RULE:9,NAMESPACE_RULE:10,COUNTER_STYLE_RULE:11,SUPPORTS_RULE:12,FONT_FEATURE_VALUES_RULE:14};
   $c.forEach($O.keys(cssRuleConstants),function(name){$c.forEach([g.CSSRule,g.CSSRule.prototype],function(owner){$O.defineProperty(owner,name,{value:cssRuleConstants[name],enumerable:true,configurable:true});});});
-  function finishCssRule(rule){var record={__proto__:null};$c.forEach(['type','parentRule','parentStyleSheet','cssText','selectorText','href','media','styleSheet','prelude','grouping'],function(name){if($O.hasOwn(rule,name)){record[name]=rule[name];delete rule[name];}});if(rule.style){record.style=rule.style;if(record.type===1)delete rule.style;}if(rule.cssRules)record.cssRules=rule.cssRules;$c.set(cssRuleStates,rule,record);$O.setPrototypeOf(rule,record.type===1?g.CSSStyleRule.prototype:record.type===3?g.CSSImportRule.prototype:g.CSSRule.prototype);return rule;}
+  function finishCssRule(rule){var record={__proto__:null};$c.forEach(['type','parentRule','parentStyleSheet','cssText','selectorText','href','media','styleSheet','prelude','grouping','kind'],function(name){if($O.hasOwn(rule,name)){record[name]=rule[name];delete rule[name];}});if(rule.style){record.style=rule.style;if(record.type===1)delete rule.style;}if(rule.cssRules){record.cssRules=rule.cssRules;if(record.kind)delete rule.cssRules;}$c.set(cssRuleStates,rule,record);var kind=record.kind&&groupingInterfaces[record.kind];$O.setPrototypeOf(rule,kind?g[kind].prototype:record.type===1?g.CSSStyleRule.prototype:record.type===3?g.CSSImportRule.prototype:g.CSSRule.prototype);return rule;}
   var parseCssRules = function(text, sheet, parent, validated){
     text=String(text);if(!validated&&typeof cssNativeParse==='function')text=cssNativeParse(text);
     var out=cssList(), start=0, depth=0, quote='', escaped=false, comment=false, open=-1;
@@ -1523,7 +1632,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if(head){
           var isAt=head[0]==='@',rule={};
           rule.parentStyleSheet=sheet;rule.parentRule=parent||null;
-          if(isAt){rule.prelude=head;rule.type=$c.test(/^@media\b/i,head)?4:$c.test(/^@supports\b/i,head)?12:$c.test(/^@font-face\b/i,head)?5:$c.test(/^@(-webkit-)?keyframes\b/i,head)?7:0;rule.grouping=$c.test(/^@(media|supports|container|scope|starting-style|layer)\b/i,head);rule.cssText=head+($c.trim(body)?' { '+$c.trim(body)+' }':' { }');if(rule.type===5)rule.style=cssDeclaration(body,null,rule,false,true);else if(!$c.test(/^@(property|view-transition)\b/i,head))rule.cssRules=parseCssRules(body,sheet,rule,true);}
+          if(isAt){rule.prelude=head;rule.type=$c.test(/^@media\b/i,head)?4:$c.test(/^@supports\b/i,head)?12:$c.test(/^@font-face\b/i,head)?5:$c.test(/^@(-webkit-)?keyframes\b/i,head)?7:0;rule.grouping=$c.test(/^@(media|supports|container|scope|starting-style|layer)\b/i,head);if(rule.grouping)rule.kind=$c.toLowerCase($c.exec(/^@([a-z-]+)/i,head)[1]);rule.cssText=head+($c.trim(body)?' { '+$c.trim(body)+' }':' { }');if(rule.type===5)rule.style=cssDeclaration(body,null,rule,false,true);else if(!$c.test(/^@(property|view-transition)\b/i,head))rule.cssRules=parseCssRules(body,sheet,rule,true);}
           else {rule.type=1;rule.selectorText=cssPrelude(head,true);rule.style=cssDeclaration(body,null,rule);rule.cssText=head+' { '+$c.trim(body)+' }';}
           $c.push(cssItems(out),finishCssRule(rule));
         }
@@ -1531,7 +1640,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       } else if(c===';'&&depth===0){
         var statement=$c.trim($c.slice(text,start,i)),imported=$c.exec(/^@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*(.*)$/i,statement);
         if(imported){var rule={};rule.type=3;rule.href=imported[1];rule.media=makeMedia(imported[2]||'');rule.styleSheet=null;rule.parentStyleSheet=sheet;rule.parentRule=parent||null;rule.cssText=statement+';';$c.push(cssItems(out),finishCssRule(rule));}
-        else if($c.test(/^@layer\s/i,statement)){var layer={};layer.type=0;layer.parentStyleSheet=sheet;layer.parentRule=parent||null;layer.cssText=statement+';';$c.push(cssItems(out),finishCssRule(layer));}start=i+1;
+        else if($c.test(/^@layer\s/i,statement)){var layer={};layer.type=0;layer.kind='layer-statement';layer.prelude=statement;layer.parentStyleSheet=sheet;layer.parentRule=parent||null;layer.cssText=statement+';';$c.push(cssItems(out),finishCssRule(layer));}start=i+1;
       }
     }
     return out;
@@ -1561,13 +1670,170 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   cssMember(styleSheetConstructor.prototype,'media',function(){return sheetRecord(this).media;},function(value){mediaRecord(sheetRecord(this).media).items=mediaQueries(value);});
   cssMember(styleSheetConstructor.prototype,'disabled',function(){return sheetRecord(this).disabled;},function(value){sheetRecord(this).disabled=!!value;});
   cssMember(sheetConstructor.prototype,'ownerRule',function(){return sheetRecord(this).ownerRule;});
-  function appliedSheetRuleRecords(sheet,seen){seen=seen||new Set();if($c.has(seen,sheet))return [];$c.add(seen,sheet);var out=[];for(var $ruleList=cssItems(sheetRecord(sheet).rules),$ruleAt=0,rule;$ruleAt<$ruleList.length&&((rule=$ruleList[$ruleAt]),true);$ruleAt++){var record=cssRuleRecord(rule);if(record.type===3){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||g.matchMedia(record.media.mediaText).matches))$c.apply(out.push,out,appliedSheetRuleRecords(record.styleSheet,seen));}else $c.push(out,record);}return out;}
+  // The style rules of `sheet` (and its @import sheets) that apply, each with its grouping
+  // context (turbo-dom#273): children of @media (matching), @supports (true), @layer and
+  // @scope rules apply; @container (no size container is ever established here) and
+  // @starting-style (steady state) children never do. `layers` is the cascade-layer tree
+  // shared by every sheet of one computation; `el` checks @supports selector() conditions.
+  function cssLayerChild(node,name){var child=name===null?null:node.named[name];if(!child){child={__proto__:null,named:$O.create(null),children:[],rank:0};if(name!==null)node.named[name]=child;$c.push(node.children,child);}return child;}
+  function cssLayerPath(node,name){var parts=cssParts(name,'.');for(var index=0;index<parts.length;index++)node=cssLayerChild(node,$c.trim(parts[index]));return node;}
+  function cssLayerTree(){return {__proto__:null,named:$O.create(null),children:[],rank:0};}
+  // Sub-layers precede their layer's own rules; the root (unlayered rules) comes last.
+  function cssLayerRanks(root){var next=0;(function visit(node){for(var index=0;index<node.children.length;index++)visit(node.children[index]);node.rank=next++;})(root);}
+  var cssSupportsCache=$O.create(null);
+  function cssSupportsDeclaration(inner){var parts=cssParts(inner,':'),name=$c.trim(parts[0]),record={__proto__:null};if(parts.length<2||!name)return false;parseDeclaration(record,name+': '+$c.trim($c.slice(inner,parts[0].length+1)));return record.names.length>0;}
+  function cssSupportsTerm(term,el){
+    if(term[0]==='('&&term[term.length-1]===')'){var inner=$c.trim($c.slice(term,1,term.length-1));return inner[0]==='('||$c.test(/^not\s/i,inner)?cssSupportsCondition(inner,el):cssSupportsDeclaration(inner);}
+    var selector=$c.exec(/^selector\(([\s\S]*)\)$/i,term);if(!selector)return false;
+    try{cssApply(computedStyleNativeMatches,el,[selector[1]]);return true;}catch(e){return false;}
+  }
+  // A <supports-condition>: `not <term>`, or terms joined by one of `and` / `or`.
+  function cssSupportsCondition(text,el){
+    var tokens=$c.filter(cssParts($c.trim(text),' '),function(token){return token!=='';});
+    if(tokens.length===2&&$c.toLowerCase(tokens[0])==='not')return !cssSupportsTerm(tokens[1],el);
+    var value=cssSupportsTerm(tokens[0],el),operator=tokens.length>1?$c.toLowerCase(tokens[1]):'';
+    for(var index=1;index<tokens.length;index+=2){if($c.toLowerCase(tokens[index])!==operator||operator!=='and'&&operator!=='or'||index+1>=tokens.length)return false;var next=cssSupportsTerm(tokens[index+1],el);value=operator==='and'?value&&next:value||next;}
+    return value;
+  }
+  // A condition is fixed for the engine, so it is evaluated once per text.
+  function cssSupportsMatches(text,el){var cached=cssSupportsCache[text];if(cached===undefined)cached=cssSupportsCache[text]=cssSupportsCondition(text,el);return cached;}
+  // 0: unconditional; 1: under @media that matches now; 2: under @media that does not.
+  // The media conditions the current computation evaluated, with their answers (null: not
+  // tracking): a reused computed style is reused only while each still answers the same.
+  var computedMediaReads=null;
+  function cssMediaState(record,state){var text=conditionText(record);if(state===2||text==='not all')return 2;if(text===''||text==='all')return state;var matches=!!g.matchMedia(text).matches;if(computedMediaReads&&computedMediaReads[text]===undefined)computedMediaReads[text]=matches;return matches?1:2;}
+  // The rule entries of a sheet list (its style rules under their grouping rules, the layer
+  // tree they rank in, the @media answers they were built with): built once per list, CSSOM
+  // epoch and media answers, and shared by every element computed meanwhile. The build reads
+  // no element (an @supports answer is cached by text). A build that went volatile (an
+  // @import under a media query) is not kept.
+  var computedEntryBuilds=new computedSnapshotMap();
+  function computedSheetEntries(sheets,el){
+    var epoch=cssomEpoch(),build=computedSnapshotGet(computedEntryBuilds,sheets);
+    if(build&&build.epoch===epoch&&computedMediaUnchanged(build.media)){computedMergeMedia(build.media);return build;}
+    if(noteEntryBuild&&sheets.length)noteEntryBuild();
+    var outerMedia=computedMediaReads,outerVolatile=computedVolatile,media={__proto__:null},layers=cssLayerTree(),lists=[];
+    computedMediaReads=media;computedVolatile=false;
+    var volatile=false;
+    try{for(var si=0;si<sheets.length;si++)$c.push(lists,appliedSheetEntries(sheets[si],el,layers));volatile=computedVolatile;}
+    finally{computedMediaReads=outerMedia;computedVolatile=outerVolatile||volatile;computedMergeMedia(media);}
+    build={__proto__:null,epoch:epoch,media:media,layers:layers,lists:lists};
+    if(!volatile&&sheets.length)computedSnapshotSet(computedEntryBuilds,sheets,build);
+    return build;
+  }
+  function computedMergeMedia(reads){if(computedMediaReads&&reads)for(var text in reads)if(computedMediaReads[text]===undefined)computedMediaReads[text]=reads[text];}
+  function computedMediaUnchanged(reads){
+    if(!reads)return true;
+    try{for(var text in reads)if(!!g.matchMedia(text).matches!==reads[text])return false;}catch(e){return false;}
+    return true;
+  }
+  function appliedImport(record,el,context,out){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||g.matchMedia(record.media.mediaText).matches))appliedSheetEntries(record.styleSheet,el,context.layers,out,context.seen);}
+  // The context of a grouping rule's children, or null when they never apply.
+  function groupContext(record,kind,el,context){
+    if(kind==='container'||kind==='starting-style'||kind==='supports'&&!cssSupportsMatches(preludeRest(record),el))return null;
+    var inner={__proto__:null,layers:context.layers,seen:context.seen,owner:context.owner,layer:context.layer,media:context.media,scopes:context.scopes};
+    if(kind==='layer'){var name=preludeRest(record);inner.layer=name?cssLayerPath(context.layer,name):cssLayerChild(context.layer,null);}
+    else if(kind==='media')inner.media=cssMediaState(record,context.media);
+    else if(kind==='scope'){var parts=scopeParts(record),frame={__proto__:null,root:parts[0],limit:parts[1],owner:context.owner};inner.scopes=context.scopes?$c.concat(context.scopes,[frame]):[frame];}
+    return inner;
+  }
+  function appliedGroupRules(list,el,context,out){
+    for(var $ruleList=cssItems(list),$ruleAt=0,rule;$ruleAt<$ruleList.length&&((rule=$ruleList[$ruleAt]),true);$ruleAt++){
+      var record=cssRuleRecord(rule),kind=record.kind;
+      if(record.type===3){appliedImport(record,el,context,out);continue;}
+      if(kind==='layer-statement'){var names=cssParts(preludeRest(record),',');for(var index=0;index<names.length;index++)cssLayerPath(context.layer,$c.trim(names[index]));continue;}
+      if(!kind){if(record.type===1)$c.push(out,{__proto__:null,rule:record,layer:context.layer,media:context.media,scopes:context.scopes});continue;}
+      var inner=groupContext(record,kind,el,context);
+      if(inner)appliedGroupRules(record.cssRules,el,inner,out);
+    }
+  }
+  function appliedSheetEntries(sheet,el,layers,out,seen){seen=seen||new Set();out=out||[];if($c.has(seen,sheet))return out;$c.add(seen,sheet);var record=sheetRecord(sheet);appliedGroupRules(record.rules,el,{__proto__:null,layers:layers,seen:seen,owner:record.ownerNode,layer:layers,media:0,scopes:null},out);return out;}
+  // @scope (turbo-dom#273): is `el` in the scope of `frame` — an inclusive ancestor matches
+  // <scope-start> (the owner node's parent for a prelude-less @scope) and no element from `el`
+  // up to that root (exclusive) matches <scope-end>.
+  var scopeParent=null;
+  function cssParentElement(node){if(!scopeParent)scopeParent=__ns.domAccessor('parentElement',false,'Node');return cssApply(scopeParent,node,[]);}
+  function cssScopeRootMatches(frame,node){return frame.root===null?!!frame.owner&&node===cssParentElement(frame.owner):computedNativeMatches(node,frame.root);}
+  function cssScopeLimited(el,frame,root){if(frame.limit===null)return false;for(var node=el;node!==root;node=cssParentElement(node))if(computedNativeMatches(node,frame.limit))return true;return false;}
+  function cssInScope(el,frame){
+    for(var root=el;root;root=cssParentElement(root))if(cssScopeRootMatches(frame,root)&&!cssScopeLimited(el,frame,root))return true;
+    return false;
+  }
+  // A selector list's complex selectors with their Selectors 4 specificity (turbo-dom#275),
+  // from the native cascade parser: [text, a, b, c, ...], or null when the list is invalid.
+  // Memoized per selector text (DOM-independent), cleared when it grows past 4096 entries.
+  var cssSpecificityCache=$O.create(null),cssSpecificityCount=0;
+  function cssSelectorItems(text){
+    var items=cssSpecificityCache[text];
+    if(items===undefined){if(cssSpecificityCount>=4096){cssSpecificityCache=$O.create(null);cssSpecificityCount=0;}items=cssNativeParse(text,'specificity')||null;cssSpecificityCache[text]=items;cssSpecificityCount++;}
+    return items;
+  }
+  function cssSpecificityAt(items,index){return $Mmin(items[index+1],1023)*1048576+$Mmin(items[index+2],1023)*1024+$Mmin(items[index+3],1023);}
+  // The specificity of the most specific selector of `selector` that `test(itemText)` accepts
+  // (a one-selector list needs no test: the rule already matched), or -1.
+  function cssMatchedSpecificity(selector,test){
+    var items=cssSelectorItems(selector),best=-1;if(!items)return 0;
+    if(items.length===4)return cssSpecificityAt(items,0);
+    for(var index=0;index<items.length;index+=4){var value=cssSpecificityAt(items,index);if(value>best&&test(items[index]))best=value;}
+    return best;
+  }
+  // Does the scoping root `root` select `el` by `item`, a selector with :scope (the root)?
+  function cssScopeSelects(root,el,item){
+    if(root===el)return computedNativeMatches(el,item);
+    var list;try{list=cssApply(computedStyleNativeQueryAll,root,[item]);}catch(e){return false;}
+    for(var index=0;index<list.length;index++)if(list[index]===el)return true;
+    return false;
+  }
+  // The best [specificity, proximity] for which a selector of a scoped rule selects `el`
+  // (turbo-dom#276), or null. A selector with :scope binds it to the scoping root; & stands
+  // for :where(:scope); any other selector is relative to the root (its descendants, with no
+  // added specificity). Proximity counts the generations from the root to `el`.
+  function cssScopedMatch(el,entry){
+    var scopes=entry.scopes,frame=scopes[scopes.length-1],best=null;
+    for(var index=0;index<scopes.length-1;index++)if(!cssInScope(el,scopes[index]))return null;
+    var items=cssSelectorItems($c.replace(entry.rule.selectorText,/&/g,':where(:scope)'));if(!items)return null;
+    for(var root=el,hops=0;root;root=cssParentElement(root),hops++){
+      if(!cssScopeRootMatches(frame,root)||cssScopeLimited(el,frame,root))continue;
+      for(var at=0;at<items.length;at+=4){
+        var item=items[at],value=cssSpecificityAt(items,at);
+        if(best&&value<=best[0])continue;
+        if($c.test(/:scope\b/i,item)?cssScopeSelects(root,el,item):root!==el&&computedNativeMatches(el,item))best=[value,hops];
+      }
+    }
+    return best;
+  }
+  // The cascade record of `entry`'s style rule when it selects `el` (`pseudo`: that
+  // pseudo-element of it), or null. A rule under a conditional @media makes the computation
+  // volatile when its selector matches.
+  function appliedEntryMatch(el,entry,pseudo,order){
+    var selector=entry.rule.selectorText,matched=false,specificity=0,proximity=Infinity;
+    if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
+    else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
+    else{try{matched=cssApply(computedStyleNativeMatches,el,[selector]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,item);});}
+    if(matched&&entry.media&&!computedMediaReads)computedVolatile=true;
+    return matched&&entry.media!==2?{__proto__:null,entry:entry,specificity:specificity,proximity:proximity,order:order}:null;
+  }
+  // Is `a` weaker than `b` once their layers tie: lower specificity, then farther from its
+  // scoping root, then earlier.
+  function cascadeWeaker(a,b){return a.specificity!==b.specificity?a.specificity<b.specificity:a.proximity!==b.proximity?a.proximity>b.proximity:a.order<b.order;}
+  // Apply matched records weakest first, so the winner is applied last: normal declarations by
+  // layer order (the unlayered ones last), then !important ones in reverse layer order (the
+  // unlayered ones first); within a layer by specificity, @scope proximity, then document order.
+  function cascadeEntries(records,layers,apply){
+    cssLayerRanks(layers);
+    var sorted=layerSorted(records,function(a,b){var x=a.entry.layer.rank,y=b.entry.layer.rank;return x!==y?x>y:!cascadeWeaker(a,b);});
+    for(var index=0;index<sorted.length;index++)apply(sorted[index].entry,false);
+    sorted=layerSorted(records,function(a,b){var x=a.entry.layer.rank,y=b.entry.layer.rank;return x!==y?x<y:!cascadeWeaker(a,b);});
+    for(var index=0;index<sorted.length;index++)apply(sorted[index].entry,true);
+  }
+  // A stable insertion sort (`after(a, b)`: a goes after b).
+  function layerSorted(entries,after){var out=[];for(var index=0;index<entries.length;index++){var at=out.length;while(at>0&&after(out[at-1],entries[index]))at--;$c.splice(out,at,0,entries[index]);}return out;}
   function readableSheet(sheet){var record=sheetRecord(sheet);if(!record.originClean)throw new __ns.DOMException('Cannot access rules of a cross-origin stylesheet','SecurityError');return record;}
   var cssStyleSheetRulesGetter=__ns.makeNativeFunction(function(){return readableSheet(this).rules;},'get cssRules',0);
   $O.defineProperty(sheetConstructor.prototype,'cssRules',{get:cssStyleSheetRulesGetter,enumerable:true,configurable:true});
   cssMember(sheetConstructor.prototype,'rules',function(){return readableSheet(this).rules;});
 
-  function detachCssRule(rule,parent){var record=cssRuleRecord(rule);record.parentStyleSheet=null;record.parentRule=parent||null;if(rule.cssRules)for(var $childList=cssItems(rule.cssRules),$childAt=0;$childAt<$childList.length;$childAt++)detachCssRule($childList[$childAt],rule);}
+  function detachCssRule(rule,parent){var record=cssRuleRecord(rule);record.parentStyleSheet=null;record.parentRule=parent||null;if(record.cssRules)for(var $childList=cssItems(record.cssRules),$childAt=0;$childAt<$childList.length;$childAt++)detachCssRule($childList[$childAt],rule);}
   function replaceSheetRules(sheet,record,text,keepImports){invalidateComputedStyles();var parsed=cssItems(parseCssRules(cssString(text),sheet,null));if(!keepImports)parsed=$c.filter(parsed,function(rule){return cssRuleRecord(rule).type!==3;});var list=cssItems(record.rules);for(var $ruleAt=0;$ruleAt<list.length;$ruleAt++)detachCssRule(list[$ruleAt]);list.length=0;for(var $parsedAt=0;$parsedAt<parsed.length;$parsedAt++)$c.push(list,parsed[$parsedAt]);}
   function insertSheetRule(sheet,text,index){invalidateComputedStyles();var record=readableSheet(sheet),list=cssItems(record.rules),i=index===undefined?0:Number(index)>>>0;if(record.replacing)throw new __ns.DOMException('The sheet is being replaced','NotAllowedError');if(i>list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');var source=cssNativeParse(cssString(text),false,true),parsed=source===null?cssList():parseCssRules(source,sheet,null,true);if(parsed.length!==1)throw new __ns.DOMException('Expected one CSS rule','SyntaxError');var rule=cssItems(parsed)[0],type=cssRuleRecord(rule).type;if(type===3&&record.constructed)throw new __ns.DOMException('Cannot insert an import into a constructed sheet','SyntaxError');if(type===3&&$c.some($c.slice(list,0,i),function(prior){return cssRuleRecord(prior).type!==3;}))throw new __ns.DOMException('Imports must precede style rules','HierarchyRequestError');if(type!==3&&$c.some($c.slice(list,i),function(next){return cssRuleRecord(next).type===3;}))throw new __ns.DOMException('Style rules must follow imports','HierarchyRequestError');$c.splice(list,i,0,rule);return i;}
   function deleteSheetRule(sheet,index){invalidateComputedStyles();var record=readableSheet(sheet),list=cssItems(record.rules),i=Number(index)>>>0;if(record.replacing)throw new __ns.DOMException('The sheet is being replaced','NotAllowedError');if(i>=list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');detachCssRule(list[i]);$c.splice(list,i,1);}
@@ -1715,7 +1981,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var fileControls = null;
     __ns.registerFileControls = function(hooks){ fileControls = hooks; delete __ns.registerFileControls; };
     var fileValueDelete = WeakMap.prototype.delete, fileValueApply = Reflect.apply;
-    __ns.resetControlValue = function(element){ fileValueApply(fileValueDelete, controlValues, [element]); };
+    __ns.resetControlValue = function(element){ bumpStyleState(); fileValueApply(fileValueDelete, controlValues, [element]); };
     // Captured natives: the value paths never reach a page-replaced builtin (turbo-dom#199).
     // The binding's own native accessors, captured at install.
     var valueLocalName, valueNamespace, valueTextContent, valueTextContentSet;
@@ -1740,7 +2006,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         var oldValue=selectionApply(valDesc.get,this,[]);
         v = v == null ? '' : String(v);
         if (reflectedValue(this)) $setAttr(this, 'value', v);
-        else $c.set(controlValues,this, validForType(this, v));
+        else { bumpStyleState(); $c.set(controlValues,this, validForType(this, v)); }
         selectionValueChanged(this,oldValue,selectionApply(valDesc.get,this,[]));
       }
     };
@@ -1956,7 +2222,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.defineProperty(op, 'selected', { configurable: true, get: function(){
         var sel = ownerSelect(this); return sel ? $c.indexOf(selectionOf(sel), this) >= 0 : isSelected(this);
       }, set: function(v){
-        v = !!v; $c.set(optionStates,this, v);
+        bumpStyleState(); v = !!v; $c.set(optionStates,this, v);
         var sel = ownerSelect(this);
         if (sel && v) {
           $c.delete(emptySelects,sel);
@@ -1979,14 +2245,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.defineProperty(sp, 'selectedOptions', { configurable: true, get: function(){ var list = selection.selectionOf(this); list.item = function(i){ return this[i] || null; }; return list; } });
       Object.defineProperty(sp, 'selectedIndex', { configurable: true,
         get: function(){ var chosen = selection.selectionOf(this); return chosen.length ? opts(this).indexOf(chosen[0]) : -1; },
-        set: function(idx){ var o = opts(this), index = Number(idx) >> 0;
+        set: function(idx){ var o = opts(this), index = Number(idx) >> 0; bumpStyleState();
           $c.add(selection.emptySelects,this);
           for (var i=0;i<o.length;i++) { $c.set(selection.optionStates,o[i], i === index); }
           if (index >= 0 && index < o.length) $c.delete(selection.emptySelects,this);
         } });
       Object.defineProperty(sp, 'value', { configurable: true,
         get: function(){ var chosen = selection.selectionOf(this); return chosen.length ? chosen[0].value : ''; },
-        set: function(v){ var o = opts(this), s = String(v), hit = false;
+        set: function(v){ var o = opts(this), s = String(v), hit = false; bumpStyleState();
           $c.add(selection.emptySelects,this);
           for (var i=0;i<o.length;i++){ var m = !hit && o[i].value === s; $c.set(selection.optionStates,o[i], m); if (m) hit = true; }
           if (hit) $c.delete(selection.emptySelects,this);
@@ -2004,6 +2270,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var resetControlDelete=WeakMap.prototype.delete,resetSelectDelete=WeakSet.prototype.delete;
     __ns.formSelectedOptions=function(element){return selection.selectionOf(element);};
     __ns.formResetControl=function(element){
+      bumpStyleState();
       formValueApply(resetControlDelete,controlValues,[element]);
       if(fileControls)fileControls.reset(element);
       if(formValueApply(sheetTagName,element,[])==='INPUT')checkedNative(2,element);
@@ -2165,6 +2432,63 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           } });
       });
     };
+    // TextMetrics (turbo-dom#237, canvas_text_metrics_interface_chrome156.json): a global,
+    // non-constructible interface whose fields are enumerable prototype getters over the
+    // instance's measured values; they throw "Illegal invocation" on any other receiver.
+    var __tmFields = ['width','actualBoundingBoxLeft','actualBoundingBoxRight','fontBoundingBoxAscent',
+      'fontBoundingBoxDescent','actualBoundingBoxAscent','actualBoundingBoxDescent','hangingBaseline',
+      'alphabeticBaseline','ideographicBaseline'];
+    var __tmValues = new WeakMap();
+    var TextMetrics = function TextMetrics(){
+      throw new TypeError(new.target ? "Failed to construct 'TextMetrics': Illegal constructor" : 'Illegal constructor');
+    };
+    var __tmProto = TextMetrics.prototype;
+    __tmFields.forEach(function(name, index){
+      var holder = {};
+      Object.defineProperty(holder, name, { get: function(){
+        var values = __tmValues.get(this);
+        if (!values) throw new TypeError('Illegal invocation');
+        return values[index];
+      } });
+      var get = Object.getOwnPropertyDescriptor(holder, name).get;
+      Object.defineProperty(get, 'name', { value: 'get ' + name });
+      Object.defineProperty(__tmProto, name, { get: get, enumerable: true, configurable: true });
+    });
+    Object.defineProperty(__tmProto, 'constructor', { value: TextMetrics, writable: true, configurable: true });
+    Object.defineProperty(__tmProto, Symbol.toStringTag, { value: 'TextMetrics', configurable: true });
+    Object.defineProperty(TextMetrics, 'prototype', { writable: false, enumerable: false, configurable: false });
+    Object.defineProperty(g, 'TextMetrics', { value: TextMetrics, writable: true, enumerable: false, configurable: true });
+    var __textMetrics = function(values){
+      var metrics = Object.create(__tmProto);
+      __tmValues.set(metrics, values);
+      return metrics;
+    };
+    // Text attributes (turbo-dom#237, canvas_text_attributes_chrome156.json): letterSpacing /
+    // wordSpacing take a CSS length (any <length> unit Chrome parses; no percentage, unitless
+    // number, calc() or padding) and
+    // read back lowercased with the number reserialized; the enum attributes accept only
+    // their exact values. An invalid assignment is ignored. measureText passes them on.
+    var __cvLength = /^([+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?)([a-z]+)$/i;
+    var __cvEnums = {
+      fontKerning: ['auto', 'normal', 'none'],
+      fontStretch: ['ultra-condensed', 'extra-condensed', 'condensed', 'semi-condensed', 'normal',
+        'semi-expanded', 'expanded', 'extra-expanded', 'ultra-expanded'],
+      textRendering: ['auto', 'optimizeSpeed', 'optimizeLegibility', 'geometricPrecision']
+    };
+    var __cvText = function(ctx){
+      var state = { letterSpacing: '0px', wordSpacing: '0px', fontKerning: 'auto', fontStretch: 'normal', textRendering: 'auto' };
+      Object.keys(state).forEach(function(name){
+        var allowed = __cvEnums[name];
+        Object.defineProperty(ctx, name, { configurable: true, enumerable: true,
+          get: function(){ return state[name]; },
+          set: function(value){
+            var text = String(value);
+            if (allowed) { if (allowed.indexOf(text) >= 0) state[name] = text; return; }
+            var length = __cvLength.exec(text);
+            if (length && canvasLengthUnitNative(length[2])) state[name] = String(Number(length[1])) + length[2].toLowerCase();
+          } });
+      });
+    };
     var mkCanvasCtx = function(canvas){
       var noop = function(){};
       var paint = function(){ var p = { addColorStop: noop }; __cvPaints.add(p); return p; };
@@ -2194,7 +2518,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           return { data: data, width: w, height: h, colorSpace: 'srgb' };
         },
         createImageData: function(w,h){ if (w && w.width != null) { h = w.height; w = w.width; } return { data: new Uint8ClampedArray(Math.max(0,(w||0)*(h||0)*4)), width: w||0, height: h||0, colorSpace: 'srgb' }; },
-        measureText: function(s){ this._ops.push(['measureText', String(s||''), this.font]); var wdt = (String(s||'').length)*6; return { width: wdt, actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2, actualBoundingBoxLeft: 0, actualBoundingBoxRight: wdt, fontBoundingBoxAscent: 8, fontBoundingBoxDescent: 2 }; },
+        // measureText (turbo-dom#237, canvas_measure_text_chrome156.json): turbo-dom-layout
+        // measures the run in the host's fonts like Chrome 156; Chrome 156 leaves the
+        // emHeight* fields undefined.
+        measureText: function(s){
+          var text = String(s);
+          this._ops.push(['measureText', text, this.font]);
+          var m = canvasMeasureTextNative(text, String(this.font), String(this.textAlign), String(this.textBaseline), String(this.direction),
+            this.letterSpacing, this.wordSpacing, this.fontKerning, this.textRendering);
+          // Native order -> the TextMetrics field order.
+          return __textMetrics([m[0], m[1], m[2], m[5], m[6], m[3], m[4], m[7], m[8], m[9]]);
+        },
         isPointInPath: function(){ return false; }, isPointInStroke: function(){ return false; },
         lineWidth: 1, lineCap: 'butt', lineJoin: 'miter',
         miterLimit: 10, lineDashOffset: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0,
@@ -2202,6 +2536,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         globalAlpha: 1, globalCompositeOperation: 'source-over', imageSmoothingEnabled: true, imageSmoothingQuality: 'low'
       };
       __cvStyles(ctx, canvas);
+      __cvText(ctx);
       // Record-only paint/path methods: log the call (args + relevant paint state) so the
       // readback hash reflects what was drawn, but perform no rasterization.
       var recorded = ['fillRect','clearRect','strokeRect','beginPath','closePath','moveTo','lineTo',
@@ -2219,7 +2554,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       // still log their call first, so the raster replay keeps its own matching stack.
       var drawingState = ['fillStyle','strokeStyle','shadowColor','globalAlpha','globalCompositeOperation',
         'lineWidth','lineCap','lineJoin','miterLimit','lineDashOffset','shadowBlur','shadowOffsetX',
-        'shadowOffsetY','font','textAlign','textBaseline','direction','imageSmoothingEnabled','imageSmoothingQuality'];
+        'shadowOffsetY','font','textAlign','textBaseline','direction','imageSmoothingEnabled','imageSmoothingQuality',
+        'letterSpacing','wordSpacing','fontKerning','fontStretch','textRendering'];
       var recordSave = ctx.save, recordRestore = ctx.restore;
       ctx.save = function(){
         recordSave.apply(this, arguments);
@@ -2402,6 +2738,12 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var documentSheetsQuery=d.querySelectorAll,documentSheetOf=function(element){var owner=$gopd($O.getPrototypeOf(element),'sheet');return owner&&owner.get?$apply(owner.get,element,[]):element.sheet;};
     var documentSheets=cssList('StyleSheetList',function(){var list=[],els=$apply(documentSheetsQuery,d,['style,link']);for(var i=0;i<els.length;i++){var sheet=documentSheetOf(els[i]);if(sheet)$c.push(list,sheet);}return list;});
     documentCSSRecord.cssHost.readSheets=function(){return cssRecord(documentSheets).items;};
+    // Private @keyframes export for CSS animations (turbo-dom#187): name -> [{selector, values:[[longhand, text]]}],
+    // read from the rule records (never page-visible properties); a later rule of a name wins.
+    __ns.cssKeyframes=function(){var out={__proto__:null},sheets=cssRecord(documentSheets).items;
+      function frames(record){var list=[],kids=cssItems(record.cssRules);for(var k=0;k<kids.length;k++){var kid=cssRuleRecord(kids[k]);if(kid.type!==1)continue;var decl=declarationRecord(kid.style),values=[];for(var n=0;n<decl.names.length;n++)$c.push(values,[decl.names[n],cssMapGet(decl.values,decl.names[n]).text]);$c.push(list,{selector:kid.selectorText,values:values});}return list;}
+      function visit(rules){var items=cssItems(rules);for(var i=0;i<items.length;i++){var record=cssRuleRecord(items[i]),name;if(record.type===7&&record.cssRules&&(name=$c.exec(/^@(?:-webkit-)?keyframes\s+["']?([^"']+?)["']?\s*$/i,record.prelude)))out[name[1]]=frames(record);}}
+      for(var s=0;s<sheets.length;s++){var sheet=sheetRecord(sheets[s]);if(!sheet.disabled)visit(sheet.rules);}return out;};
     __ns.styleSheetList=function(refresh){return cssList('StyleSheetList',refresh);};
     try { Object.defineProperty(d, 'styleSheets', { configurable: true, get: function(){return documentSheets;} }); } catch(e){}
 
@@ -2957,6 +3299,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         }
       });
     });
+    // The probe served only the reads above: closures of this scope outlive the install, and a
+    // startup snapshot must hold no shell node wrapper (round-1 review #15).
+    probe=null;
     // HTMLOrSVGElement (turbo-dom#87): focus() / blur() brand-check their interface. An SVG or
     // MathML element takes script focus when connected, rendered and given a valid tabindex (or,
     // in SVG, when it is an <a> with an href / xlink:href).
@@ -2988,6 +3333,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.keys(operations).forEach(function(name){Object.defineProperty(entry[1],name,{value:__ns.makeNativeFunction(operations[name],name,0),writable:true,configurable:true,enumerable:true});});
     });
     computedStyleNativeMatches=Object.getOwnPropertyDescriptor(prototypes.Element,'matches').value;
+    computedStyleNativeQueryAll=Object.getOwnPropertyDescriptor(prototypes.Element,'querySelectorAll').value;
     computedStyleNativeGetAttribute=Object.getOwnPropertyDescriptor(prototypes.Element,'getAttribute').value;
     computedStyleNativeRoot=Object.getOwnPropertyDescriptor(prototypes.Node,'getRootNode').value;
     ['querySelector','querySelectorAll','append','prepend','replaceChildren'].forEach(function(name){

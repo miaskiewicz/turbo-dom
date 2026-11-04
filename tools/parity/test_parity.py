@@ -18,6 +18,67 @@ _SPEC = importlib.util.spec_from_file_location("parity", HERE / "parity.py")
 parity = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(parity)
 SHA = re.compile(r"^[0-9a-f]{64}$")
+REPO = HERE.parent.parent
+# A repo path in an expected file's `control`: crates/..., scripts/..., tools/..., ...
+CONTROL_PATH = re.compile(
+    r"(?<![\w/.-])((?:crates|scripts|tools|src|test|tests|harness|docs)/[\w./{},*-]*[\w}*])"
+)
+# A control that lives in a sibling repo names it first, then a path in it
+# ("turbo-html2pdf crates/.../pagination_chrome156.json", "turbo-surf rust/crates/...").
+EXTERNAL_CONTROL = re.compile(r"^(turbo-html2pdf|turbo-surf|turbo-test) ")
+# A file path in a sibling repo: at least one directory and a file name with an extension.
+EXTERNAL_PATH = re.compile(r"(?<![\w/.-])(?:[\w.-]+/)+[\w{},*-]*[\w}]\.[A-Za-z]\w*\b")
+CRATE_NAME = re.compile(r"^crates/([\w-]+)/")
+
+
+def _expand_braces(path):
+    match = re.search(r"\{([^}]*)\}", path)
+    if not match:
+        return [path]
+    head, tail = path[: match.start()], path[match.end() :]
+    return [x for alt in match.group(1).split(",") for x in _expand_braces(head + alt + tail)]
+
+
+def _wildcard_only(path):
+    """True if some segment of some alternative of PATH is nothing but wildcards."""
+    return any(
+        not segment.replace("*", "")
+        for alt in _expand_braces(path)
+        for segment in alt.split("/")
+    )
+
+
+def _control_path_exists(path, crates=()):
+    """True if PATH (a glob) names a file of this repo, or of one of CRATES for a
+    crate-relative path (a control names the crate first: "crates/X/... (scripts/...)")."""
+    roots = [REPO, *(REPO / "crates" / name for name in crates)]
+    return all(
+        any(any(root.glob(alt)) for root in roots) for alt in _expand_braces(path)
+    )
+
+
+def _control_errors(control):
+    """Why CONTROL is not checkable evidence ([] if it is)."""
+    if not re.search(r"\S", control):
+        return ["no control"]
+    if control.startswith("none ("):
+        return []
+    if EXTERNAL_CONTROL.match(control):
+        rest = control[EXTERNAL_CONTROL.match(control).end() :]
+        if not any(not _wildcard_only(p) for p in EXTERNAL_PATH.findall(rest)):
+            return [f"sibling-repo control names no file path: {control!r}"]
+        return []
+    paths = CONTROL_PATH.findall(control)
+    if not paths:
+        return [f"control names no committed path: {control!r}"]
+    crates = sorted({m.group(1) for p in paths if (m := CRATE_NAME.match(p))})
+    errors = []
+    for ref in paths:
+        if _wildcard_only(ref):
+            errors.append(f"control path {ref} is wildcard-only")
+        elif not _control_path_exists(ref, crates):
+            errors.append(f"control path {ref} missing")
+    return errors
 
 
 class Workspace:
@@ -204,6 +265,48 @@ class CommittedDataTest(unittest.TestCase):
                 self.assertIn(corpus, parity.CORPORA, path)
                 for key in keys:
                     self.assertRegex(key, r"\S", f"{path}: {corpus}/{key!r}")
+
+    def test_every_expected_control_names_committed_evidence(self):
+        # The Chrome control behind an expected change must be checkable from the tree:
+        # a committed fixture/script/test of this repo, a named sibling repo, or "none (...)"
+        # for a change with no behaviour change. Prose like "see the notes" is not evidence.
+        for path in sorted((HERE / "expected").glob("*.json")):
+            control = json.loads(path.read_text()).get("control", "")
+            self.assertRegex(control, r"\S", f"{path}: no control")
+            self.assertEqual(_control_errors(control), [], f"{path}: {control!r}")
+
+    def test_control_path_helpers(self):
+        self.assertEqual(_expand_braces("a/{b,c}.json"), ["a/b.json", "a/c.json"])
+        self.assertTrue(_control_path_exists("tools/parity/{parity,test_parity}.py"))
+        self.assertFalse(_control_path_exists("tools/parity/{parity,nope}.py"))
+        # Crate-relative paths resolve under the crate the control names, never any crate.
+        browser_env = "crates/turbo-dom-browser-env/src/html_image_chrome156.json"
+        crate_script = "scripts/select-element-chrome-control.mjs"
+        self.assertFalse(_control_path_exists(crate_script))
+        self.assertTrue(_control_path_exists(crate_script, ["turbo-dom-browser-env"]))
+        self.assertFalse(_control_path_exists(crate_script, ["turbo-dom-raster"]))
+        self.assertEqual(_control_errors(f"{browser_env} ({crate_script})"), [])
+        self.assertTrue(_control_errors(f"crates/turbo-dom-raster/Cargo.toml ({crate_script})"))
+        self.assertTrue(_control_errors(crate_script))
+
+    def test_control_rejects_unchecked_evidence(self):
+        ok = "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json"
+        self.assertEqual(_control_errors(ok), [])
+        self.assertEqual(_control_errors("none (no behaviour change)"), [])
+        self.assertEqual(
+            _control_errors("turbo-html2pdf crates/turbo-html2pdf-core/tests/pdf_ua.rs"), []
+        )
+        # A sibling repo must be followed by a path in it, not prose.
+        for bare in ("turbo-surf ", "turbo-surf see the notes", "turbo-html2pdf release/0.7.0 x"):
+            self.assertTrue(_control_errors(bare), bare)
+        # Prose, missing files and wildcard-only paths are not evidence.
+        self.assertTrue(_control_errors("see the notes"))
+        self.assertTrue(_control_errors("crates/turbo-dom/tests/fixtures/nope_chrome156.json"))
+        for wild in ("crates/*", "scripts/*", "crates/turbo-dom/*/*", "tools/{parity,*}"):
+            self.assertTrue(_control_errors(wild), wild)
+        # A glob with a literal part still names something checkable.
+        self.assertEqual(_control_errors("crates/turbo-dom/tests/fixtures/*_chrome156.json"), [])
+        self.assertEqual(CONTROL_PATH.findall("x crates/a/b.json (y); see notes"), ["crates/a/b.json"])
 
 
 if __name__ == "__main__":

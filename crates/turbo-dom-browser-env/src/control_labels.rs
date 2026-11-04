@@ -1,16 +1,78 @@
 //! Label associations use the actual light-tree root, never guest selectors.
 use super::*;
+#[cfg(test)]
+thread_local! {
+    static WALK_STEPS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+/// Nodes the label lookups have walked on this thread (the perf gate in `perf_gates_tests`).
+#[cfg(test)]
+pub(super) fn walk_steps() -> usize {
+    WALK_STEPS.with(std::cell::Cell::get)
+}
+#[cfg(test)]
+fn walked() {
+    WALK_STEPS.with(|steps| steps.set(steps.get() + 1));
+}
+#[cfg(not(test))]
+fn walked() {}
 fn rows(root: Handle) -> Vec<Handle> {
     with_tree(|tree| {
         let mut pending = vec![root];
         let mut result = Vec::new();
         while let Some(node) = pending.pop() {
+            walked();
             result.push(node);
             pending.extend(tree.children(node).into_iter().rev());
         }
         result
     })
     .unwrap_or_default()
+}
+/// The label lookups' index for one tree version of the current document: each root's
+/// first element per id (in `rows` order) and, per (outer root, host chain), the label
+/// elements `labels` visits, in its order. Any DOM change moves the version and drops it.
+#[derive(Default)]
+struct LabelIndex {
+    key: Option<(u64, u64)>,
+    ids: std::collections::HashMap<Handle, std::collections::HashMap<Vec<u16>, Handle>>,
+    labels: std::collections::HashMap<(Handle, Vec<Handle>), std::rc::Rc<Vec<Handle>>>,
+}
+thread_local! {
+    static LABEL_INDEX: std::cell::RefCell<LabelIndex> = std::cell::RefCell::new(LabelIndex::default());
+}
+/// The index, emptied when the current document or its tree version changed.
+fn with_index<R>(f: impl FnOnce(&mut LabelIndex) -> R) -> R {
+    let key = (
+        DOM_ID.with(std::cell::Cell::get),
+        with_tree(|tree| tree.version).unwrap_or(u64::MAX),
+    );
+    LABEL_INDEX.with(|index| {
+        let mut index = index.borrow_mut();
+        if index.key != Some(key) {
+            *index = LabelIndex {
+                key: Some(key),
+                ..LabelIndex::default()
+            };
+        }
+        f(&mut index)
+    })
+}
+/// The first node in `rows(root)` order whose `id` is `id`.
+fn first_with_id(root: Handle, id: &[u16]) -> Option<Handle> {
+    if let Some(found) = with_index(|index| index.ids.get(&root).map(|ids| ids.get(id).copied())) {
+        return found;
+    }
+    let mut ids = std::collections::HashMap::new();
+    for node in rows(root) {
+        if let Some(value) =
+            with_tree(|tree| tree.get_attribute_ns_utf16(node, None, "id")).flatten()
+        {
+            ids.entry(value).or_insert(node);
+        }
+    }
+    let found = ids.get(id).copied();
+    with_index(|index| index.ids.insert(root, ids));
+    found
 }
 fn root(mut node: Handle) -> Handle {
     with_tree(|tree| {
@@ -83,12 +145,7 @@ fn association(scope: &mut v8::PinScope, label: Handle) -> Option<(Handle, Handl
         if id.is_empty() {
             return None;
         }
-        let target = rows(root(label)).into_iter().find(|node| {
-            with_tree(|tree| {
-                tree.get_attribute_ns_utf16(*node, None, "id").as_deref() == Some(id.as_slice())
-            })
-            .unwrap_or(false)
-        })?;
+        let target = first_with_id(root(label), &id)?;
         let actual = reference_target::resolve(scope, target, false)?;
         return labelable(scope, actual).then_some((target, actual));
     }
@@ -113,10 +170,19 @@ pub(super) fn labels(scope: &mut v8::PinScope, host: Handle) -> Vec<Handle> {
         chain.push(next);
         outer = root(next);
     }
+    let key = (outer, chain.clone());
+    if let Some(candidates) = with_index(|index| index.labels.get(&key).cloned()) {
+        return candidates
+            .iter()
+            .copied()
+            .filter(|label| association(scope, *label).map(|(_, actual)| actual) == Some(host))
+            .collect();
+    }
     let order = with_tree(|tree| {
         let mut order = Vec::new();
         let mut pending = vec![outer];
         while let Some(node) = pending.pop() {
+            walked();
             order.push(node);
             pending.extend(tree.children(node).into_iter().rev());
             if chain.contains(&node) {
@@ -128,10 +194,24 @@ pub(super) fn labels(scope: &mut v8::PinScope, host: Handle) -> Vec<Handle> {
         order
     })
     .unwrap_or_default();
-    // Like Chrome, the root of a detached tree is never one of its own labels.
-    order
-        .into_iter()
-        .skip(1)
+    // Like Chrome, the root of a detached tree is never one of its own labels. Only label
+    // elements can be associated (`association`), so only they are kept for this version.
+    let candidates = std::rc::Rc::new(
+        order
+            .into_iter()
+            .skip(1)
+            .filter(|node| {
+                with_tree(|tree| {
+                    tree.namespace_id(*node) == 0 && tree.local_name(*node) == Some("label")
+                })
+                .unwrap_or(false)
+            })
+            .collect::<Vec<_>>(),
+    );
+    with_index(|index| index.labels.insert(key, candidates.clone()));
+    candidates
+        .iter()
+        .copied()
         .filter(|label| association(scope, *label).map(|(_, actual)| actual) == Some(host))
         .collect()
 }

@@ -49,7 +49,7 @@ fn serialize_node(tree: &Tree, h: Handle, depth: usize, out: &mut String) {
                 serialize_node(tree, c, depth + 1, out);
             }
         }
-        NodeType::Text => {
+        NodeType::Text | NodeType::CDataSection => {
             indent(depth, out);
             out.push('"');
             out.push_str(&tree.node_value(h).unwrap_or_default());

@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn draining_observer_events_does_not_dirty_native_ownership_graphs() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -29,7 +29,7 @@ fn draining_observer_events_does_not_dirty_native_ownership_graphs() {
 #[test]
 fn trusted_document_consumer_runs_after_observer_fanout_and_supports_nested_mutations() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -80,7 +80,7 @@ fn trusted_document_consumer_runs_after_observer_fanout_and_supports_nested_muta
 #[test]
 fn observer_records_and_static_lists_bypass_page_intrinsic_hooks() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
@@ -133,7 +133,7 @@ fn observer_records_and_static_lists_bypass_page_intrinsic_hooks() {
 #[test]
 fn native_mutation_observers_match_authored_chrome_control() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     {
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());

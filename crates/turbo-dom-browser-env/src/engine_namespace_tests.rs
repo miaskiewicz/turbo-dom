@@ -4,7 +4,7 @@ use super::*;
 
 fn with_page(body: impl FnOnce(&mut v8::PinScope)) {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -108,7 +108,7 @@ fn window_has_chromes_window_interface_chain() {
 #[test]
 fn embedder_window_template_keeps_its_interface_and_gets_the_chain() {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
     v8::scope!(let scope, isolate);
     let constructor = v8::FunctionTemplate::new(
         scope,
@@ -144,4 +144,77 @@ fn embedder_window_template_keeps_its_interface_and_gets_the_chain() {
         r#"[true,true,"Window","WindowProperties",true,true,1,0,false,1]"#
     );
     reset();
+}
+
+fn wrapped_engine_source(source: &str) -> String {
+    format!("(function({ENGINE_NAMESPACE_PARAM}){{{source}\n}})")
+}
+
+fn run_and_consumes(source: &str) -> (String, Vec<bool>) {
+    let mut value = String::new();
+    engine_code_cache::CONSUMED.with(|consumed| consumed.borrow_mut().clear());
+    with_page(|scope| {
+        engine_code_cache::CONSUMED.with(|consumed| consumed.borrow_mut().clear());
+        value = run_engine_script_cached(scope, source)
+            .unwrap()
+            .to_rust_string_lossy(scope);
+    });
+    let consumed = engine_code_cache::CONSUMED.with(|consumed| consumed.take());
+    (value, consumed)
+}
+
+// Every page runs the same engine scripts: the second page compiles them from the bytecode the
+// first produced instead of parsing the source again.
+#[test]
+fn engine_scripts_reuse_bytecode_across_pages() {
+    let source = "return 'cached ' + (() => 6 * 7)();";
+    let key = engine_code_cache::key(&wrapped_engine_source(source));
+    assert!(engine_code_cache::get(key).is_none());
+    assert_eq!(run_and_consumes(source), ("cached 42".to_owned(), vec![]));
+    assert!(engine_code_cache::get(key).is_some());
+    assert_eq!(
+        run_and_consumes(source),
+        ("cached 42".to_owned(), vec![true])
+    );
+}
+
+// Data V8 rejects (another build, a hash collision) still runs the script, and the cache is
+// replaced by a usable one.
+#[test]
+fn rejected_engine_bytecode_is_replaced() {
+    let source = "return 'rejected ' + 1;";
+    let key = engine_code_cache::key(&wrapped_engine_source(source));
+    engine_code_cache::insert(key, vec![0; 64]);
+    assert_eq!(
+        run_and_consumes(source),
+        ("rejected 1".to_owned(), vec![false])
+    );
+    assert_ne!(*engine_code_cache::get(key).unwrap(), vec![0; 64]);
+    assert_eq!(
+        run_and_consumes(source),
+        ("rejected 1".to_owned(), vec![true])
+    );
+}
+
+// The public entry point serves embedder sources, which can differ on every call: it never
+// grows the process-wide bytecode cache (round-1 review #13). Only the binding's own fixed
+// engine scripts are cached.
+#[test]
+fn public_engine_scripts_do_not_grow_the_bytecode_cache() {
+    let sources: Vec<String> = (0..64)
+        .map(|n| format!("return 'embedder {n} ' + (() => {n} * 2)();"))
+        .collect();
+    with_page(|scope| {
+        for (n, source) in sources.iter().enumerate() {
+            let value = run_engine_script(scope, source).unwrap();
+            assert_eq!(
+                value.to_rust_string_lossy(scope),
+                format!("embedder {n} {}", n * 2)
+            );
+        }
+    });
+    for source in &sources {
+        let key = engine_code_cache::key(&wrapped_engine_source(source));
+        assert!(engine_code_cache::get(key).is_none(), "{source} was cached");
+    }
 }

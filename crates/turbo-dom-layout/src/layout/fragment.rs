@@ -58,9 +58,11 @@ pub enum FragmentContent {
     Box {
         background: Option<Rgba>,
         border: BorderEdges,
-        /// `border-radius` resolved to px (0 = square corners). Clamped to half the
-        /// box's shorter side at layout, so `50%` on a square is a full circle.
-        border_radius: f32,
+        /// The used `border-*-radius` of each corner in px (horizontal and vertical:
+        /// elliptical corners), percentages resolved against the border box and scaled
+        /// down by the overlap rule at layout (miaskiewicz/turbo-dom#253; it was one
+        /// `f32`). [`BorderRadii::ZERO`] = square corners.
+        border_radius: BorderRadii,
         /// `box-shadow` (first/topmost layer), painted behind the box by the raster
         /// so overlay cards/modals read as raised chrome. `None` = no shadow.
         shadow: Option<BoxShadow>,
@@ -81,6 +83,14 @@ pub enum FragmentContent {
         face: FontFace,
         font_size: f32,
         color: Rgba,
+        /// Laid out in a vertical writing mode (miaskiewicz/turbo-dom#234): the glyph
+        /// positions stay in the line's own frame (`x` along the inline axis, `y` down
+        /// from the line-over edge) and the run paints turned a quarter clockwise, a
+        /// glyph at `(x, y)` landing at `(frag.x + frag.width - y, frag.y + x)`.
+        vertical: bool,
+        /// The glyphs stand upright (miaskiewicz/turbo-dom#239): in a `vertical` run
+        /// each glyph turns back a quarter about its pen, so it paints unturned there.
+        upright: bool,
     },
     /// A classified marker element ([`MarkerKind`]) kept opaque for the consumer
     /// (html2pdf's paged-media directives: the fragmenter/emitter read it).
@@ -92,6 +102,95 @@ pub enum FragmentContent {
     /// intrinsic pixel size (diagnostic / round-trip), and whether it carries an
     /// alpha channel (so an `SMask` is emitted).
     Image(ImagePlacement),
+    /// A background layer's tiles, all of them (0.7.0 round-2 review, finding 1: one
+    /// fragment per tile truncated a fine grid on a tall page). The fragment's box is
+    /// the area the tiles are laid out over; painters tile [`TilePattern::tile`] across
+    /// it (a pattern shader, an SVG `<pattern>`) or walk [`TilePattern::tiles`] over
+    /// the part they paint.
+    Tiles(TilePattern),
+}
+
+/// A repeating background tile: [`TilePattern::tile`] painted `tile_width x
+/// tile_height` with one tile at `(x, y)` and the others every `step_x` / `step_y` px
+/// along each axis (`0` = not repeated on that axis). Each tile snaps to whole pixels
+/// (`floor(v + 0.5)` of its edges), so neighbours meet without a seam; tiles are at
+/// least 1px.
+#[derive(Debug, Clone)]
+pub struct TilePattern {
+    /// What one tile paints: a background image ([`FragmentContent::Image`]) or a
+    /// gradient box ([`FragmentContent::Box`]).
+    pub tile: Box<FragmentContent>,
+    /// One tile's unsnapped origin (absolute px).
+    pub x: f32,
+    pub y: f32,
+    pub tile_width: f32,
+    pub tile_height: f32,
+    pub step_x: f32,
+    pub step_y: f32,
+}
+
+/// `v` snapped to the pixel grid: the same at every whole-pixel offset (unlike
+/// `f32::round` on negative halves).
+fn snap(v: f32) -> f32 {
+    (v + 0.5).floor()
+}
+
+/// The starts along one axis of tiles every `step` px from `start` (0: one tile only)
+/// that can meet `(from, len)`: from the last one at or before `from`.
+pub(crate) fn axis_starts(
+    start: f32,
+    step: f32,
+    (from, len): (f32, f32),
+) -> impl Iterator<Item = f32> {
+    let (first, count) = if step > 0.0 {
+        // The offset reduced modulo the step, so a huge position keeps its phase.
+        let first = from - (from - start).rem_euclid(step);
+        (first, ((from + len - first) / step).ceil().max(0.0) as u64)
+    } else {
+        (start, 1)
+    };
+    (0..count).map(move |i| first + i as f32 * step)
+}
+
+impl TilePattern {
+    /// The snapped rectangles `(x, y, width, height)` of the tiles that meet `region`
+    /// (absolute px), row by row. There are about `region` area / tile area of them.
+    pub fn tiles(
+        &self,
+        region: (f32, f32, f32, f32),
+    ) -> impl Iterator<Item = (f32, f32, f32, f32)> + '_ {
+        let (rx, ry, rw, rh) = region;
+        let meets = move |start: f32, size: f32, from: f32, len: f32| {
+            start < from + len && start + size > from
+        };
+        axis_starts(self.y, self.step_y, (ry, rh))
+            .filter(move |&ty| meets(ty, self.tile_height, ry, rh))
+            .flat_map(move |ty| {
+                axis_starts(self.x, self.step_x, (rx, rw))
+                    .filter(move |&tx| meets(tx, self.tile_width, rx, rw))
+                    .map(move |tx| {
+                        let (x0, y0) = (snap(tx), snap(ty));
+                        let w = snap(tx + self.tile_width) - x0;
+                        let h = snap(ty + self.tile_height) - y0;
+                        (x0, y0, w, h)
+                    })
+            })
+    }
+
+    /// The pattern's period in whole pixels when every tile snaps to the same size the
+    /// same distance apart (whole-pixel steps, and whole-pixel tiles on each repeated
+    /// axis): `(step_x, step_y)`, `0` on an axis that does not repeat. `None` otherwise
+    /// (the snapped tiles alternate sizes, so a painter walks [`TilePattern::tiles`]).
+    #[must_use]
+    pub fn period(&self) -> Option<(f32, f32)> {
+        let whole = |v: f32| v.fract() == 0.0;
+        let axis =
+            |step: f32, tile: f32| (step == 0.0 || (whole(step) && whole(tile))).then_some(step);
+        Some((
+            axis(self.step_x, self.tile_width)?,
+            axis(self.step_y, self.tile_height)?,
+        ))
+    }
 }
 
 /// A resolved `box-shadow` layer (§CSS backgrounds §7). Geometry is px in the
@@ -162,6 +261,165 @@ pub struct ImagePlacement {
     pub orientation: crate::image::Orientation,
 }
 
+/// One corner's used radii in px: `h` along the horizontal axis, `v` along the vertical
+/// one. Either at zero makes the corner square.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct CornerRadii {
+    pub h: f32,
+    pub v: f32,
+}
+
+impl CornerRadii {
+    /// A circular corner of radius `r`.
+    #[must_use]
+    pub const fn circle(r: f32) -> CornerRadii {
+        CornerRadii { h: r, v: r }
+    }
+
+    /// Whether the corner is visibly rounded (both radii over half a pixel).
+    #[must_use]
+    pub fn is_rounded(self) -> bool {
+        self.h > 0.5 && self.v > 0.5
+    }
+}
+
+/// A box's four used corner radii (CSS Backgrounds 3 §5, as Chrome 156 paints them):
+/// physical corners, each elliptical, already scaled so adjacent radii never overlap
+/// (miaskiewicz/turbo-dom#253).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct BorderRadii {
+    pub top_left: CornerRadii,
+    pub top_right: CornerRadii,
+    pub bottom_right: CornerRadii,
+    pub bottom_left: CornerRadii,
+}
+
+impl From<f32> for BorderRadii {
+    /// Every corner circular with radius `r` (the pre-#253 single scalar).
+    fn from(r: f32) -> BorderRadii {
+        BorderRadii::uniform(r)
+    }
+}
+
+impl BorderRadii {
+    /// Square corners.
+    pub const ZERO: BorderRadii = BorderRadii::uniform(0.0);
+
+    /// Every corner circular with radius `r`.
+    #[must_use]
+    pub const fn uniform(r: f32) -> BorderRadii {
+        let c = CornerRadii::circle(r);
+        BorderRadii {
+            top_left: c,
+            top_right: c,
+            bottom_right: c,
+            bottom_left: c,
+        }
+    }
+
+    /// The corners in CSS order: top-left, top-right, bottom-right, bottom-left.
+    #[must_use]
+    pub fn corners(&self) -> [CornerRadii; 4] {
+        [
+            self.top_left,
+            self.top_right,
+            self.bottom_right,
+            self.bottom_left,
+        ]
+    }
+
+    /// The radii from corners in CSS order (see [`Self::corners`]).
+    #[must_use]
+    pub fn from_corners(
+        [top_left, top_right, bottom_right, bottom_left]: [CornerRadii; 4],
+    ) -> Self {
+        BorderRadii {
+            top_left,
+            top_right,
+            bottom_right,
+            bottom_left,
+        }
+    }
+
+    /// Whether any corner is visibly rounded ([`CornerRadii::is_rounded`]).
+    #[must_use]
+    pub fn is_rounded(&self) -> bool {
+        self.corners().into_iter().any(CornerRadii::is_rounded)
+    }
+
+    /// `Some(r)` when every corner is the same circle of radius `r` (what a painter
+    /// limited to one radius, such as the pre-#253 `f32`, can draw exactly).
+    #[must_use]
+    pub fn as_uniform(&self) -> Option<f32> {
+        let r = self.top_left.h;
+        self.corners()
+            .into_iter()
+            .all(|c| c == CornerRadii::circle(r))
+            .then_some(r)
+    }
+
+    /// Scale every radius down by one factor so the radii along each side of a
+    /// `width` x `height` box fit it (CSS Backgrounds 3 §5.5 "Overlapping Curves").
+    #[must_use]
+    pub fn fit(self, width: f32, height: f32) -> BorderRadii {
+        let [tl, tr, br, bl] = self.corners();
+        let ratio = |side: f32, a: f32, b: f32| {
+            if a + b > 0.0 {
+                side.max(0.0) / (a + b)
+            } else {
+                f32::INFINITY
+            }
+        };
+        let f = ratio(width, tl.h, tr.h)
+            .min(ratio(width, bl.h, br.h))
+            .min(ratio(height, tl.v, bl.v))
+            .min(ratio(height, tr.v, br.v));
+        if f >= 1.0 {
+            return self;
+        }
+        self.map(|c| CornerRadii {
+            h: c.h * f,
+            v: c.v * f,
+        })
+    }
+
+    /// The radii of an edge `top` / `right` / `bottom` / `left` px inside this one (the
+    /// padding edge from the border edge, the content edge from the padding edge): each
+    /// radius less the adjacent side's inset, floored at zero (CSS Backgrounds 3 §5.2).
+    #[must_use]
+    pub fn inset(self, top: f32, right: f32, bottom: f32, left: f32) -> BorderRadii {
+        let shrink = |c: CornerRadii, h: f32, v: f32| CornerRadii {
+            h: (c.h - h).max(0.0),
+            v: (c.v - v).max(0.0),
+        };
+        BorderRadii {
+            top_left: shrink(self.top_left, left, top),
+            top_right: shrink(self.top_right, right, top),
+            bottom_right: shrink(self.bottom_right, right, bottom),
+            bottom_left: shrink(self.bottom_left, left, bottom),
+        }
+    }
+
+    /// Apply `f` to every corner.
+    #[must_use]
+    pub fn map(self, f: impl Fn(CornerRadii) -> CornerRadii) -> BorderRadii {
+        BorderRadii::from_corners(self.corners().map(f))
+    }
+}
+
+/// The region an `overflow` other than `visible` clips a box's descendants to (CSS
+/// Overflow 3 §3): its padding box with the inner corner radii, in px from the fragment's
+/// border-box top-left. An axis whose overflow is `visible` (beside `clip`) is not clipped:
+/// its extent is unbounded (miaskiewicz/turbo-dom#253).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct OverflowClip {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    pub radii: BorderRadii,
+}
+
 /// The region an absolutely positioned box's `clip: rect()` keeps (CSS 2.1 §11.1.2), in
 /// px from the fragment's border-box top-left (so it moves with the fragment). The box
 /// and every descendant fragment paint only inside it; it may be empty (paints nothing)
@@ -172,6 +430,10 @@ pub struct ClipRect {
     pub y: f32,
     pub width: f32,
     pub height: f32,
+    /// The region's corner radii ([`BorderRadii::ZERO`] = square): a background layer
+    /// clipped to a rounded box's clip area (miaskiewicz/turbo-dom#248; per corner and
+    /// elliptical since #253).
+    pub radii: BorderRadii,
 }
 
 /// Break hints attached to a fragment, consumed by the fragmenter.
@@ -226,6 +488,10 @@ pub struct Fragment {
     /// The box's `clip: rect()` region (`None` = unclipped): painters clip this fragment
     /// and its subtree to it.
     pub clip: Option<ClipRect>,
+    /// The region the box's `overflow` clips its descendants to (`None` = `visible`):
+    /// painters clip the children, not the box's own background and border
+    /// (miaskiewicz/turbo-dom#253).
+    pub overflow_clip: Option<OverflowClip>,
     /// The box's CSS `opacity` (`0..=1`, `1` = opaque): painters composite this
     /// fragment and its whole subtree as one group at this alpha. Below `1` it also
     /// makes a stacking context ([`Fragment::stacks_as_positioned`]).
@@ -255,6 +521,7 @@ impl Fragment {
             z_index: None,
             is_positioned: false,
             clip: None,
+            overflow_clip: None,
             opacity: 1.0,
         }
     }
@@ -316,6 +583,11 @@ impl Fragment {
     pub fn translate(&mut self, dx: f32, dy: f32) {
         self.x += dx;
         self.y += dy;
+        // A tile pattern's origin is absolute too (miaskiewicz/turbo-dom#274).
+        if let FragmentContent::Tiles(pattern) = &mut self.content {
+            pattern.x += dx;
+            pattern.y += dy;
+        }
         for child in &mut self.children {
             child.translate(dx, dy);
         }

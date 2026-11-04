@@ -653,7 +653,7 @@ fn check_pseudo(pseudo: &mut Pseudo) -> Result<(), SelectorError> {
     match pseudo {
         Pseudo::Unknown(unknown) => *pseudo = cascade_pseudo(unknown)?,
         // a DOM-API extension (the JS runtime's `:selected`); not a CSS pseudo-class
-        Pseudo::Selected => return Err(invalid("unknown pseudo-class")),
+        Pseudo::Selected => return Err(SelectorError::UnknownPseudoClass("selected".into())),
         Pseudo::Is(list) | Pseudo::Where(list) => forgive(list),
         Pseudo::Not(list) | Pseudo::NthChildOf(_, _, list) | Pseudo::NthLastChildOf(_, _, list) => {
             // never empty: the shared parser makes a pseudo with an empty, unplaceable or
@@ -811,7 +811,10 @@ fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
         ("active-view-transition-type", Some(list)) if is_ident_list(list) => {
             Ok(Pseudo::unknown(lower.as_str(), arg))
         }
-        _ => Err(invalid("unknown pseudo-class")),
+        _ => Err(SelectorError::UnknownPseudoClass(match arg {
+            Some(_) => format!("{}()", unknown.name),
+            None => unknown.name.clone(),
+        })),
     }
 }
 
@@ -1366,9 +1369,36 @@ mod tests {
         ] {
             assert!(parse_for_cascade(bad).is_err(), "{bad} should be invalid");
         }
+        // turbo-surf#117: the error names the pseudo-class it rejected, as written
+        for (bad, message) in [
+            ("a:bogus", "invalid selector: unknown pseudo-class ':bogus'"),
+            (
+                "a:-WebKit-Bogus",
+                "invalid selector: unknown pseudo-class ':-WebKit-Bogus'",
+            ),
+            (
+                "a:bogus(x)",
+                "invalid selector: unknown pseudo-class ':bogus()'",
+            ),
+            (
+                "option:selected",
+                "invalid selector: unknown pseudo-class ':selected'",
+            ),
+        ] {
+            assert_eq!(
+                parse_for_cascade(bad).unwrap_err().to_string(),
+                message,
+                "{bad}"
+            );
+        }
         assert_eq!(
-            parse_for_cascade("a:bogus").unwrap_err().to_string(),
-            "invalid selector: unknown pseudo-class"
+            parse_for_cascade("a:bogus").unwrap_err(),
+            SelectorError::UnknownPseudoClass("bogus".into())
+        );
+        // every other rejection keeps its fixed reason
+        assert_eq!(
+            parse_for_cascade("a::bogus").unwrap_err().to_string(),
+            "invalid selector: unknown pseudo-element"
         );
         let list = parse_for_cascade(" a , b.c ").unwrap();
         let texts: Vec<&str> = list.selectors().iter().map(CascadeSelector::text).collect();

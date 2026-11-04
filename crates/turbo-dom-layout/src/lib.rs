@@ -41,8 +41,9 @@ pub use html_layout::{
 };
 pub use image::{ImageResolver, NoImages};
 pub use layout::fragment::{
-    BoxShadow, BreakMeta, ClipRect, Fragment, FragmentContent, GradientStop, ImagePlacement,
-    LinearGradient, NodeId, PositionedGlyph, RepeatKind, Transform2D,
+    BorderRadii, BoxShadow, BreakMeta, ClipRect, CornerRadii, Fragment, FragmentContent,
+    GradientStop, ImagePlacement, LinearGradient, NodeId, OverflowClip, PositionedGlyph,
+    RepeatKind, TilePattern, Transform2D,
 };
 pub use layout::value::{BreakRule, Rgba};
 pub use layout::{
@@ -56,5 +57,8 @@ pub use style::{
     TreeView,
 };
 pub use tag::{Attr, MarkerClassifier, MarkerKind, Tag};
-pub use text::{layout_text, Align, FontFace, FontRegistry, LineBox, TextStyle, WhiteSpace};
+pub use text::{
+    layout_text, Align, CanvasShaping, CanvasTextMetrics, CanvasTextOptions, FontFace,
+    FontRegistry, LineBox, TextStyle, WhiteSpace,
+};
 pub use turbo_dom;

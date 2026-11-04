@@ -23,6 +23,7 @@
 mod avif;
 mod canvas_ops;
 mod glyph;
+mod glyph_raster;
 mod image_paint;
 mod jxl;
 mod paint_canvas;
@@ -32,7 +33,11 @@ mod paint_canvas_coretext;
 mod paint_canvas_gpu;
 mod paint_png;
 mod paint_svg;
+mod rrect;
 mod style_extract;
+mod tile_cell;
+#[cfg(test)]
+mod vertical_upright_tests;
 #[cfg(feature = "gpu-metal")]
 mod webgl;
 
@@ -319,6 +324,18 @@ pub fn measure_text(text: &str, family_css: &str, size_px: f32, system_fonts: bo
     (face.measure(text, size_px, 0.0), size_px * 1.2)
 }
 
+/// Canvas `measureText(text).width` under a canvas `font` shorthand (`"italic bold 16px
+/// Inter, serif"`), as Chrome 156 measures it: the shorthand's size, weight, style and
+/// family list resolve a face from the bundled set the canvas painter draws with (700 and
+/// 400 are distinct faces), and the text is measured word by word with Blink's 16.16 glyph
+/// advances ([`FontFace::measure_canvas`](turbo_dom_layout::FontFace::measure_canvas)).
+#[must_use]
+pub fn measure_canvas_text(text: &str, font: &str) -> f64 {
+    let (size_px, families) = canvas_ops::parse_font(font);
+    let (weight, italic) = canvas_ops::parse_font_style(font);
+    canvas_ops::resolve_face(&families, weight, italic).measure_canvas(text, size_px)
+}
+
 /// The colour to fill the whole image with before painting: the canvas background
 /// turbo-dom-layout's HTML drive propagated from the root element (or `<body>`) onto
 /// the galley root, composited over the white initial canvas; white when the page
@@ -397,14 +414,15 @@ fn lay_out(
     turbo_dom_layout::set_media_viewport_height(height as f32);
     let mut diags = Diagnostics::default();
     let resolver = image_paint::AssetResolver(images);
-    // No page-height basis in a viewport render — only the 100%-width cap applies
-    // (images shrink to fit their column, keeping aspect ratio).
+    // No page-height basis in a viewport render (and no caps: `uncapped_images`).
     let image_ctx = ImageCtx {
         resolver: &resolver,
         body_height: None,
     };
+    // Images size by CSS alone, like Chrome (no paged-media caps).
     let options = HtmlOptions {
         linked_css: external_css,
+        uncapped_images: true,
         ..HtmlOptions::default()
     };
     // The initial containing block is the viewport: `position: fixed` boxes and

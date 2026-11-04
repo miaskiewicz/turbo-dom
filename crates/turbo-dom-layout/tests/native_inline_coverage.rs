@@ -28,6 +28,9 @@ fn source_pieces(fonts: &FontRegistry, contributes: bool, line_height: Option<f3
         baseline_shift: 0.0,
         contributes_metrics: contributes,
         valign: VAlign::Super,
+        rtl: false,
+        bidi: turbo_dom_layout::layout::inline::UnicodeBidi::Normal,
+        clone_advance: None,
     };
     let mut end = edge.clone();
     end.start = false;
@@ -56,6 +59,7 @@ fn source_pieces(fonts: &FontRegistry, contributes: bool, line_height: Option<f3
             forced_newlines: false,
             text_transform: turbo_dom_layout::text::TextTransform::default(),
             word_breaking: turbo_dom_layout::layout::inline::WordBreaking::default(),
+            upright: turbo_dom_layout::layout::inline::UprightText::None,
         }),
         Piece::Edge(end),
     ]

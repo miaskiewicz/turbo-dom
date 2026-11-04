@@ -6,7 +6,7 @@ fn run(html: &str, code: &str) -> serde_json::Value {
 
 fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) -> serde_json::Value {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -62,6 +62,46 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
         }
         let getter = v8::Function::new(scope, cascade_runs).unwrap();
         let key = v8::String::new(scope, "__cssTestCascadeRuns").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
+    if code.contains("__cssTestCssUpdates") {
+        // The CSS animation / transition update passes behind the test-only
+        // `__noteCssUpdatePass` hook (never page-visible).
+        fn css_updates(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::css_update_passes() as f64).into());
+        }
+        let getter = v8::Function::new(scope, css_updates).unwrap();
+        let key = v8::String::new(scope, "__cssTestCssUpdates").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
+    if code.contains("__cssTestStyleLookups") {
+        // The computed-style cache lookups behind the test-only `__noteStyleLookup` hook.
+        fn style_lookups(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::style_lookups() as f64).into());
+        }
+        let getter = v8::Function::new(scope, style_lookups).unwrap();
+        let key = v8::String::new(scope, "__cssTestStyleLookups").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
+    if code.contains("__cssTestEntryBuilds") {
+        // The cascade rule-entry list builds behind the test-only `__noteEntryBuild` hook.
+        fn entry_builds(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::entry_builds() as f64).into());
+        }
+        let getter = v8::Function::new(scope, entry_builds).unwrap();
+        let key = v8::String::new(scope, "__cssTestEntryBuilds").unwrap();
         global.set(scope, key.into(), getter.into());
     }
     if code.contains("__fontInertDoc") {
@@ -718,7 +758,7 @@ fn computed_font_context_follows_actual_owner_preferences_adoption_and_retiremen
         serde_json::from_str(&value.to_rust_string_lossy(scope)).unwrap()
     }
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let parent = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, parent);
@@ -1173,6 +1213,134 @@ fn computed_style_reuse_follows_import_media_changes() {
     );
 }
 
+// A reused computed style that read live form / popover / dialog state is keyed on the binding's
+// state epoch: every state change that can flip :placeholder-shown, :valid / :invalid,
+// :indeterminate, :checked (options), :out-of-range, :user-invalid, a form-associated custom
+// element's validity, :popover-open or :modal drops it, also when
+// the state is read through :has() or a sibling combinator. Each target is read (and so cached)
+// before every flip; a retained declaration re-reads live.
+#[test]
+fn computed_style_reuse_follows_form_popover_and_dialog_state() {
+    let value = run(
+        "<!doctype html><head><style>#v:placeholder-shown {color:rgb(1, 0, 0)} #f:has(:invalid) #fl {color:rgb(2, 0, 0)} #v:invalid + #vl {color:rgb(3, 0, 0)} #cv:invalid {color:rgb(4, 0, 0)} #ind:indeterminate + #indl {color:rgb(5, 0, 0)} #o2:checked {color:rgb(6, 0, 0)} #s:has(#o2:checked) + #sl {color:rgb(7, 0, 0)} #n:out-of-range {color:rgb(8, 0, 0)} #f2 :user-invalid {color:rgb(9, 0, 0)} #fc:invalid {color:rgb(10, 0, 0)} body:has(:popover-open) #pl {color:rgb(12, 0, 0)} body:has(:modal) #ml {color:rgb(13, 0, 0)}</style></head><body><form id=f><input id=v required placeholder=p><span id=vl>vl</span><span id=fl>fl</span></form><input id=cv><input type=checkbox id=ind><span id=indl>i</span><select id=s><option id=o1>a</option><option id=o2>b</option></select><span id=sl>s</span><input id=n type=number min=0 max=5><form id=f2><input id=u required></form><x-fc id=fc></x-fc><div popover=manual id=p>p</div><span id=pl>pl</span><dialog id=d>d</dialog><span id=ml>ml</span></body>",
+        r#"(()=>{
+          const $=id=>document.getElementById(id),retained={},rows=[];
+          customElements.define('x-fc',class extends HTMLElement{static formAssociated=true;constructor(){super();this.i=this.attachInternals();}});
+          const ids=['v','vl','fl','cv','indl','o2','sl','n','u','fc','pl','ml'];
+          for(const id of ids){retained[id]=getComputedStyle($(id));retained[id].color;getComputedStyle($(id)).color;}
+          const read=()=>{const row=[];for(const id of ids){const fresh=getComputedStyle($(id)).color,again=getComputedStyle($(id)).color,live=retained[id].color;row.push(fresh===again&&again===live?+fresh.slice(4).split(",")[0]:[fresh,again,live]);}return row;};
+          rows.push(['initial'].concat(read()));
+          const step=(name,flip)=>{read();flip();rows.push([name].concat(read()));};
+          step('value',()=>{$('v').value='x';});step('value-cleared',()=>{$('v').value='';});
+          step('custom-validity',()=>$('cv').setCustomValidity('bad'));step('custom-validity-cleared',()=>$('cv').setCustomValidity(''));
+          step('indeterminate',()=>{$('ind').indeterminate=true;});step('indeterminate-cleared',()=>{$('ind').indeterminate=false;});
+          step('option-selected',()=>{$('o2').selected=true;});step('selected-index',()=>{$('s').selectedIndex=0;});step('select-value',()=>{$('s').value='b';});
+          step('out-of-range',()=>{$('n').value='9';});step('in-range',()=>{$('n').value='3';});
+          step('user-validity',()=>$('f2').requestSubmit());step('user-validity-reset',()=>$('f2').reset());
+          step('internals-invalid',()=>$('fc').i.setValidity({customError:true},'bad'));step('internals-valid',()=>$('fc').i.setValidity({}));
+          step('popover-open',()=>$('p').showPopover());step('popover-closed',()=>$('p').hidePopover());
+          step('modal',()=>$('d').showModal());step('modal-closed',()=>$('d').close());
+          return JSON.stringify(rows);
+        })()"#,
+    );
+    // Each row: the step, then the red channel of each target's color (rgb(N, 0, 0) is the Nth
+    // rule; 0 = no state rule applies), in the order v vl fl cv indl o2 sl n u fc pl ml.
+    assert_eq!(
+        value,
+        serde_json::json!([
+            ["initial", 1, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["value", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["value-cleared", 1, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["custom-validity", 1, 3, 2, 4, 0, 0, 0, 0, 0, 0, 0, 0],
+            [
+                "custom-validity-cleared",
+                1,
+                3,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            ["indeterminate", 1, 3, 2, 0, 5, 0, 0, 0, 0, 0, 0, 0],
+            ["indeterminate-cleared", 1, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["option-selected", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["selected-index", 1, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["select-value", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["out-of-range", 1, 3, 2, 0, 0, 6, 7, 8, 0, 0, 0, 0],
+            ["in-range", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["user-validity", 1, 3, 2, 0, 0, 6, 7, 0, 9, 0, 0, 0],
+            ["user-validity-reset", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["internals-invalid", 1, 3, 2, 0, 0, 6, 7, 0, 0, 10, 0, 0],
+            ["internals-valid", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["popover-open", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 12, 0],
+            ["popover-closed", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0],
+            ["modal", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 13],
+            ["modal-closed", 1, 3, 2, 0, 0, 6, 7, 0, 0, 0, 0, 0]
+        ])
+    );
+}
+
+// Perf gate: getComputedStyle reuses a computed style that read live form / popover / dialog
+// state until that state (or anything else in the key) changes. Rows of controls styled by
+// :disabled / :invalid / :has(:checked) rules re-read 5 times cost no fresh cascade after the
+// first pass; a state flip recomputes, then reads settle again. Deterministic (a count of fresh
+// computed-style calculations, not wall-clock).
+#[test]
+fn computed_style_state_rules_reuse_gate() {
+    let value = run(
+        "<!doctype html><head><style>button:disabled {opacity:0.5} input:invalid {color:rgb(1, 0, 0)} .row:has(:checked) {color:rgb(2, 0, 0)} .row:has(:popover-open) span {color:rgb(3, 0, 0)} dialog:modal + span {color:rgb(4, 0, 0)}</style></head><body></body>",
+        r#"(()=>{
+          const runs=__cssTestCascadeRuns;
+          for(let i=0;i<20;i++){const row=document.createElement('div');row.className='row';row.innerHTML='<input required><input type=checkbox><button disabled>b</button><span>t</span><dialog>d</dialog><span>m</span>';document.body.appendChild(row);}
+          const all=[...document.querySelectorAll('.row, .row *')];
+          const pass=()=>{const out=[];for(const el of all){const style=getComputedStyle(el);out.push(style.color+'/'+style.opacity);}return out.join();};
+          let mark=runs();const first=pass(),warm=runs()-mark;
+          mark=runs();let same=true;for(let i=0;i<5;i++)same=pass()===first&&same;const repeated=runs()-mark;
+          all[2].checked=true;mark=runs();const flipped=pass();const recomputed=runs()-mark;
+          mark=runs();pass();pass();const settled=runs()-mark;
+          return JSON.stringify({warm:warm>0,same,repeated,changed:flipped!==first,recomputed:recomputed>0,settled});
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"warm": true, "same": true, "repeated": 0, "changed": true, "recomputed": true, "settled": 0})
+    );
+}
+
+// Perf gate (turbo-test#187 follow-up): the CSS animation / transition update runs once per
+// style change of an element, not once per computed-style read. An element with a running
+// animation recomputes its style on every read (the timeline moves), but its CSS animation /
+// transition update reads only the cascade, so 50 reads of an unchanged element run no update
+// pass; a style change runs one and starts its transition exactly as before.
+#[test]
+fn css_animation_update_runs_once_per_style_change_gate() {
+    let value = run(
+        "<!doctype html><head><style>#t {transition:opacity 100s linear, color 100s linear;opacity:1} #t.dim {opacity:0.5} @keyframes spin {from {width:10px} to {width:20px}} #a {animation:spin 100s linear}</style></head><body><div id=p><div id=t>t</div><div id=a>a</div></div></body>",
+        r#"(()=>{
+          const passes=__cssTestCssUpdates,t=document.getElementById('t'),a=document.getElementById('a');
+          t.animate([{height:'1px'},{height:'2px'}],{duration:100000});
+          const read=()=>[getComputedStyle(t).opacity,getComputedStyle(t).height!=='',getComputedStyle(a).width!==''];
+          const first=read();let mark=passes();
+          for(let i=0;i<50;i++)read();const repeated=passes()-mark;
+          t.className='dim';mark=passes();read();const changed=passes()-mark;
+          const kinds=t.getAnimations().map(animation=>animation.constructor.name+':'+(animation.transitionProperty||''));
+          mark=passes();for(let i=0;i<50;i++)read();const settled=passes()-mark;
+          const animations=a.getAnimations().map(animation=>animation.constructor.name+':'+animation.animationName);
+          return JSON.stringify({first,repeated,changed:changed>0,kinds,settled,animations});
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"first": ["1", true, true], "repeated": 0, "changed": true, "kinds": ["CSSTransition:opacity", "Animation:"], "settled": 0, "animations": ["CSSAnimation:spin"]})
+    );
+}
+
 // turbo-dom#113: the reuse key covers CSSOM edits made in another realm. A live declaration one
 // realm returned for an element of another realm's document re-reads after that document's
 // sheet is edited (a declaration write, an inserted rule), in both directions, while repeated
@@ -1181,7 +1349,7 @@ fn computed_style_reuse_follows_import_media_changes() {
 #[test]
 fn computed_style_reuse_follows_cssom_edits_in_another_realm() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let parent = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, parent);
@@ -1289,4 +1457,248 @@ fn adopted_style_sheets_reject_non_objects_like_chrome156() {
     let d = "d:TypeError:Failed to set the 'adoptedStyleSheets' property on 'Document': The provided value cannot be converted to a sequence.";
     let s = "s:TypeError:Failed to set the 'adoptedStyleSheets' property on 'ShadowRoot': The provided value cannot be converted to a sequence.";
     assert_eq!(value, serde_json::json!([d, d, d, d, s, s, s, s]));
+}
+
+/// A transitioned element's style read after a DOM change checks whether the element is
+/// rendered (no display:none ancestor). That check resolves each ancestor once per read, not
+/// once per ancestor per level: a read stays linear in the tree depth (MUI's
+/// TextareaAutosize reads its textarea's style between mutations inside a deep dialog).
+#[test]
+fn rendered_check_of_a_transition_read_is_linear_in_depth() {
+    let value = run(
+        "<style>.t{transition:opacity 1s}</style><body></body>",
+        r#"(()=>{
+      const depth=40;let parent=document.body;
+      for(let i=0;i<depth;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const el=document.createElement('div');el.className='t';parent.appendChild(el);
+      const other=document.createElement('span');document.body.appendChild(other);
+      getComputedStyle(el).opacity;
+      const counts=[];
+      for(let i=0;i<3;i++){
+        other.style.width=i+'px';
+        const before=__cssTestStyleLookups();
+        const opacity=getComputedStyle(el).opacity;
+        counts.push(__cssTestStyleLookups()-before);
+        if(opacity!=='1')throw Error('opacity '+opacity);
+      }
+      return JSON.stringify({depth,max:Math.max(...counts)});
+    })()"#,
+    );
+    let depth = value["depth"].as_u64().unwrap();
+    let max = value["max"].as_u64().unwrap();
+    assert!(max > 0, "the hook counts lookups");
+    assert!(
+        max <= 8 * (depth + 2),
+        "{max} style lookups for one read at depth {depth}"
+    );
+}
+
+/// One computed-style read after a DOM change cascades the element and each ancestor afresh;
+/// they all read the same document sheet list, so the list is read once per tree version and
+/// CSSOM epoch, not once per element.
+#[test]
+fn a_cascade_reads_the_document_sheet_list_once_per_version() {
+    let value = run(
+        "<style>.t{color:red}</style><body></body>",
+        r#"(()=>{
+      let parent=document.body;
+      for(let i=0;i<20;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const el=document.createElement('div');el.className='t';parent.appendChild(el);
+      const read=__cssTestHost.readSheets;let reads=0;
+      __cssTestHost.readSheets=function(){reads++;return read.apply(this,arguments);};
+      document.body.setAttribute('data-x','1');
+      const color=getComputedStyle(el).color;
+      const first=reads;
+      const s=document.createElement('style');s.textContent='.t{color:blue}';document.head.appendChild(s);
+      const after=getComputedStyle(el).color;
+      return JSON.stringify({color,first,after});
+    })()"#,
+    );
+    assert_eq!(value["color"], "rgb(255, 0, 0)");
+    assert_eq!(value["after"], "rgb(0, 0, 255)", "a new sheet is seen");
+    assert!(value["first"].as_u64().unwrap() <= 2, "{value}");
+}
+
+/// An inline style write to one element keeps every other element's computed style reused:
+/// computed values read an element's own declarations and its parent's, and selectors see
+/// inline styles only through attribute selectors naming `style`. MUI's TextareaAutosize
+/// writes a hidden textarea's style between reads of its visible textarea's style, inside a
+/// deep dialog: those reads must not cascade the textarea and all its ancestors again.
+#[test]
+fn an_inline_style_write_keeps_unrelated_computed_styles() {
+    let value = run(
+        "<style>.t{color:red} div{margin:0}</style><body></body>",
+        r#"(()=>{
+      let parent=document.body;
+      for(let i=0;i<30;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const target=document.createElement('textarea');target.className='t';parent.appendChild(target);
+      const hidden=document.createElement('textarea');parent.appendChild(hidden);
+      getComputedStyle(target).color;
+      const runs=[];
+      for(let i=0;i<5;i++){
+        hidden.style.width=i+'px';
+        const before=__cssTestCascadeRuns();
+        const color=getComputedStyle(target).color;
+        runs.push(__cssTestCascadeRuns()-before);
+        if(color!=='rgb(255, 0, 0)')throw Error(color);
+      }
+      return JSON.stringify({max:Math.max(...runs),hidden:getComputedStyle(hidden).width});
+    })()"#,
+    );
+    assert_eq!(
+        value["hidden"], "4px",
+        "the written element's own style follows"
+    );
+    assert_eq!(value["max"], 0, "{value}");
+}
+
+/// What an inline style write still changes, beyond its element: inherited values below it,
+/// and every element an attribute selector naming `style` (directly, through a combinator or
+/// inside `:has()`) can reach. Same values as a fresh cascade (Chrome's: inline styles are
+/// the element's own declarations and the `style` attribute's value for selectors).
+#[test]
+fn an_inline_style_write_updates_inheritance_and_style_attribute_selectors() {
+    let value = run(
+        "<style>[style*=\"orange\"] + p{color:blue} section:has(> [style*=\"gold\"]){color:green}</style><body><div id=a><span id=s>x</span></div><b id=b></b><p id=p>p</p><section id=sec><i id=i></i></section></body>",
+        r#"(()=>{
+      const a=document.getElementById('a'),s=document.getElementById('s'),b=document.getElementById('b'),p=document.getElementById('p'),sec=document.getElementById('sec'),i=document.getElementById('i');
+      const read=()=>[getComputedStyle(s).color,getComputedStyle(p).color,getComputedStyle(sec).color,getComputedStyle(a).color].join('|');
+      const out=[read()];
+      a.style.color='rgb(1, 2, 3)'; out.push(read());
+      b.setAttribute('style','background:orange'); out.push(read());
+      i.style.outlineColor='gold'; out.push(read());
+      a.removeAttribute('style'); b.removeAttribute('style'); i.removeAttribute('style'); out.push(read());
+      return JSON.stringify(out);
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            "rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)",
+            "rgb(1, 2, 3)|rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(1, 2, 3)",
+            "rgb(1, 2, 3)|rgb(0, 0, 255)|rgb(0, 0, 0)|rgb(1, 2, 3)",
+            "rgb(1, 2, 3)|rgb(0, 0, 255)|rgb(0, 128, 0)|rgb(1, 2, 3)",
+            "rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)|rgb(0, 0, 0)"
+        ])
+    );
+}
+
+/// A page with a shadow tree keeps the plain version: a shadow tree's own sheets (`::slotted`,
+/// `:host`) are outside the document sheets an embedder can check for `style` selectors.
+#[test]
+fn an_inline_style_write_in_a_shadow_page_still_updates_slotted_rules() {
+    let value = run(
+        "<body><div id=host><span id=light>x</span></div><em id=e></em></body>",
+        r#"(()=>{
+      const host=document.getElementById('host'),light=document.getElementById('light');
+      const root=host.attachShadow({mode:'open'});
+      root.innerHTML='<style>::slotted([style*="lime"]){color:rgb(9, 9, 9)}</style><slot></slot>';
+      const before=getComputedStyle(light).color;
+      light.style.backgroundColor='lime';
+      return JSON.stringify([before,getComputedStyle(light).color]);
+    })()"#,
+    );
+    assert_eq!(value, serde_json::json!(["rgb(0, 0, 0)", "rgb(9, 9, 9)"]));
+}
+
+/// An adopted sheet's attribute selector naming `style` still follows inline writes: the
+/// sheet scan does not read adopted sheets, so their presence keeps the plain version. Same
+/// values as a fresh cascade.
+#[test]
+fn style_attribute_selectors_in_adopted_sheets_still_follow_inline_writes() {
+    let value = run(
+        "<body><em id=e></em><q id=q>q</q></body>",
+        r#"(()=>{
+      const e=document.getElementById('e'),q=document.getElementById('q');
+      const sheet=new CSSStyleSheet();sheet.replaceSync('[style*="teal"] + q { color: rgb(0, 128, 128) }');
+      document.adoptedStyleSheets=[sheet];
+      const out=[getComputedStyle(q).color];
+      e.style.borderColor='teal';
+      out.push(getComputedStyle(q).color);
+      e.removeAttribute('style');
+      out.push(getComputedStyle(q).color);
+      return JSON.stringify(out);
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!(["rgb(0, 0, 0)", "rgb(0, 128, 128)", "rgb(0, 0, 0)"])
+    );
+}
+
+/// The inline-style reuse cases (inheritance below a written element, `[style*=] + p`,
+/// `:has(> [style*=])`, attribute removal, an unrelated element's writes deep in the tree, an
+/// adopted sheet's and a shadow tree's `::slotted` `style` selectors), reads interleaved with
+/// the writes, against the Chrome 156 control (`scripts/css-probe-chrome-control.mjs`).
+#[test]
+fn inline_style_reuse_matches_the_chrome_control() {
+    use sha2::{Digest, Sha256};
+    let source = include_str!("inline_style_reuse_probe.js");
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("inline_style_reuse_chrome156.json")).unwrap();
+    assert_eq!(
+        fixture["probeSha256"],
+        format!("{:x}", Sha256::digest(source.as_bytes()))
+    );
+    assert_eq!(fixture["browser"], "Chrome/156.0.8078.47");
+    let actual = run(
+        "<!doctype html><html><head></head><body></body></html>",
+        source,
+    );
+    assert_eq!(actual, fixture["result"]);
+}
+
+/// A computation that read a rule under a conditional @media is reused while every media
+/// condition it evaluated still gives the same `matchMedia` answer (a page or test can swap
+/// `matchMedia`, so the answers are checked again, not assumed): MUI puts @media rules on most
+/// elements, and never reusing those styles made every read a fresh cascade.
+#[test]
+fn media_rule_styles_are_reused_until_a_media_answer_changes() {
+    let value = run(
+        "<style>p{color:rgb(1, 1, 1)} @media (min-width: 600px) { p { color: rgb(2, 2, 2) } }</style><body><p id=p>p</p></body>",
+        r#"(()=>{
+      let wide=true;globalThis.matchMedia=query=>({matches:query.includes('600px')?wide:false,media:query});
+      const p=document.getElementById('p');
+      const first=getComputedStyle(p).color;
+      const before=__cssTestCascadeRuns();
+      const again=getComputedStyle(p).color;
+      const reused=__cssTestCascadeRuns()-before;
+      wide=false;
+      const narrow=getComputedStyle(p).color;
+      return JSON.stringify({first,again,reused,narrow});
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"first":"rgb(2, 2, 2)","again":"rgb(2, 2, 2)","reused":0,"narrow":"rgb(1, 1, 1)"})
+    );
+}
+
+/// The document's rule entries (style rules under their grouping rules, layers and @media
+/// answers) are built once per sheet list, CSSOM epoch and media answers, not once per element
+/// whose style is computed: a read after a DOM change cascades the element and each ancestor.
+#[test]
+fn rule_entries_are_built_once_per_sheet_list() {
+    let value = run(
+        "<style>@layer base { div { color: rgb(1, 1, 1) } } @media (min-width: 1px) { .t { color: rgb(2, 2, 2) } } @supports (color: red) { .u { margin: 1px } }</style><body></body>",
+        r#"(()=>{
+      globalThis.matchMedia=query=>({matches:true,media:query});
+      let parent=document.body;
+      for(let i=0;i<20;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
+      const t=document.createElement('p');t.className='t u';parent.appendChild(t);
+      const first=getComputedStyle(t).color;
+      document.body.setAttribute('data-x','1');
+      const before=__cssTestEntryBuilds();
+      const color=getComputedStyle(t).color, margin=getComputedStyle(t).marginTop, inherited=getComputedStyle(parent).color;
+      const builds=__cssTestEntryBuilds()-before;
+      const sheet=document.querySelector('style').sheet;sheet.insertRule('.t { color: rgb(3, 3, 3) }', sheet.cssRules.length);
+      return JSON.stringify({first,color,margin,inherited,builds,after:getComputedStyle(t).color});
+    })()"#,
+    );
+    assert_eq!(value["first"], "rgb(2, 2, 2)");
+    assert_eq!(value["color"], "rgb(2, 2, 2)");
+    assert_eq!(value["margin"], "1px");
+    assert_eq!(value["inherited"], "rgb(1, 1, 1)");
+    assert_eq!(value["after"], "rgb(3, 3, 3)", "a CSSOM change rebuilds");
+    assert!(value["builds"].as_u64().unwrap() <= 1, "{value}");
 }

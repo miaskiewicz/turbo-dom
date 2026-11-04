@@ -127,21 +127,75 @@ pub fn fixture_fonts() -> FontRegistry {
             700,
             false,
         ),
+        // Hebrew and Arabic glyphs for the bidi controls (miaskiewicz/turbo-dom#238),
+        // named explicitly in a `font-family` list (no generic).
+        (
+            "Noto Sans Hebrew",
+            "",
+            "noto-sans-hebrew/NotoSansHebrew-Regular.ttf",
+            400,
+            false,
+        ),
+        (
+            "Noto Sans Arabic",
+            "",
+            "noto-sans-arabic/NotoSansArabic-Regular.ttf",
+            400,
+            false,
+        ),
     ];
     let mut registry = FontRegistry::new();
     for &(family, generic, file, weight, italic) in FACES {
         let face = FontFace::from_bytes(font_bytes(file), family, weight, italic)
             .unwrap_or_else(|| panic!("{file} parses"));
-        registry.add(face.with_family(generic));
+        if !generic.is_empty() {
+            registry.add(face.with_family(generic));
+        }
         registry.add(face);
     }
     registry
+}
+
+/// `Ic Fixture` (`ic-fixture/IcFixture.ttf`, written by `scripts/make-ic-fixture-font.py`):
+/// a box-glyph face mapping U+6C34 to a 0.9em advance, for the CSS `ic` unit (the fixture
+/// faces above have no CJK glyph). Chrome loads the same file through `@font-face`.
+#[must_use]
+pub fn ic_fixture_face() -> FontFace {
+    FontFace::from_bytes(
+        font_bytes("ic-fixture/IcFixture.ttf"),
+        "Ic Fixture",
+        400,
+        false,
+    )
+    .expect("IcFixture.ttf parses")
 }
 
 /// Build a [`ComputedStyle`] from `(property, value)` pairs.
 #[must_use]
 pub fn style(pairs: &[(&str, &str)]) -> ComputedStyle {
     ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))
+}
+
+/// The computed style of an element whose author declarations are `declarations` (one
+/// block, in source order), cascaded like a real rule: shorthands set their longhands
+/// (miaskiewicz/turbo-dom#256), later and `!important` declarations win.
+#[must_use]
+pub fn cascaded(declarations: &str) -> ComputedStyle {
+    use crate::style::MatchedDeclaration;
+    use crate::style::{parse_declarations, resolve_matched_style, CascadeOrigin};
+    let matched: Vec<_> = parse_declarations(declarations)
+        .into_iter()
+        .enumerate()
+        .map(|(order, declaration)| MatchedDeclaration {
+            declaration,
+            origin: CascadeOrigin::Author,
+            scope_depth: 0,
+            inline: false,
+            specificity: (0, 1, 0),
+            order,
+        })
+        .collect();
+    resolve_matched_style(&ComputedStyle::default(), &matched)
 }
 
 /// Tree literals: nested element/text values that build a turbo-dom [`Tree`].

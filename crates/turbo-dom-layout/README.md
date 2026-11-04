@@ -29,8 +29,8 @@ match. Origin: turbo-html2pdf-core 0.3.9's layout half plus turbo-surf's CSSOM-V
 ## Install
 
 ```toml
-turbo-dom-layout = "0.6"                                            # bundled fonts on
-turbo-dom-layout = { version = "0.6", default-features = false }   # caller fonts only
+turbo-dom-layout = "0.7"                                            # bundled fonts on
+turbo-dom-layout = { version = "0.7", default-features = false }   # caller fonts only
 ```
 
 MSRV 1.89.
@@ -40,6 +40,7 @@ MSRV 1.89.
 | feature | default | what it does |
 |---|---|---|
 | `bundled-fonts` | on | embeds Inter / Roboto, Liberation Serif / PT Serif, Fira Code / IBM Plex Mono (OFL, see `assets/fonts/NOTICE.md`) so documents lay out with zero caller fonts |
+| `hyphenation` | on | `hyphens: auto` dictionary hyphenation for `lang=en` / `en-*` (not en-GB): embeds the en-US Knuth-Liang patterns (TeX `hyph-en-us`, ~90 KB, `hyphenation` crate). Off, `hyphens: auto` acts as `manual` |
 | `svg` | off | the PDF SVG pipeline: `image::probe` / `image::decode` route `image/svg+xml` through the shared rasterizer at 2x (implies `svg-rasterize`) |
 | `svg-rasterize` | off | the shared SVG rasterizer alone (`svg::rasterize`, resvg `=0.45.1`, pinned: 0.46+ changes raster output) without routing `probe`/`decode` through it — what turbo-dom-raster enables |
 | `perf` | off | hot-path counters (`perf` module, `hot!` macro) |
@@ -72,11 +73,38 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
 - **Layout** (`layout`): `layout`, `layout_with_options`, `layout_with_images`,
   `layout_in_viewport`, `layout_recorded` / `layout_recorded_in_viewport` (`LaidOut` +
   `NodeSources`: box → source node, for PDF/UA tagging and links). Options are in
-  `LayoutOptions`. The galley types are `Fragment`, `FragmentContent`, `ImagePlacement`,
+  `LayoutOptions` (`flatten_inline_elements: true` keeps the pre-0.7 flattened inline
+  model on the PDF path; off, inline elements are inline boxes like Chrome). The galley types are `Fragment`, `FragmentContent`, `ImagePlacement`,
   `ClipRect`, `BoxShadow`, `LinearGradient`, `Transform2D` and `BreakMeta`.
+  `display: list-item` boxes get their `::marker` as Chrome 156 generates it: `list-item`
+  counters (`<ol start reversed>`, `<li value>`, the `type` attribute), the `list-style-type`
+  counter styles / strings / `disc` `circle` `square` shapes, and `list-style-position`
+  (an outside marker beside the first line box). A marker is sourceless: in the galley it
+  is a `Box` / `TextLine` fragment under its list item (`NodeSources::list_markers` maps it
+  to the item's box; html2pdf tags it `Lbl`), in a snapshot `LayoutSnapshot::list_marker_owner` names its item, which it hits.
+- **Writing modes and bidi.** `vertical-rl` / `vertical-lr` lay out through a logical
+  layer (block, inline, flex, grid, table, floats, absolute boxes, orthogonal items, upright
+  text, the central baseline, form controls; `TextLine::vertical` / `upright`; nothing
+  raises `SnapshotError::UnsupportedVerticalWriting` since turbo-dom#239).
+  Inline layout is UAX #9 bidi (`layout::inline::bidi`) with Blink's caret adjustment; RTL
+  boxes and viewports scroll from the right (`ScrollMetrics::min_x`).
+- **Painting inputs.** `BorderRadii` (per-corner elliptical radii, `as_uniform()` for a
+  single-radius consumer), `Fragment::overflow_clip`, background layers with
+  size / position / repeat / origin / clip (`ClipRect::radii`), inline-box fragments with
+  `box-decoration-break` (backgrounds in vertical spaces resolve against the physical box),
+  `TilePattern` (one repeating-pattern fragment per background layer) and `GradientSpec`
+  (length / double-position / repeating stops). Form controls get Chrome 156's native
+  appearance as ordinary galley boxes (`appearance: none` opts out), and `<input
+  type=image>` is a replaced image control.
+- **Containment.** `container-type` and `contain` (`size` / `inline-size` / `layout` /
+  `content` / `strict`) size contained axes as if empty and establish an independent
+  formatting context.
 - **Text** (`text`): `FontRegistry` (`new`, `FontRegistry::system(SystemFontPolicy)` for the
   process-wide installed fonts), `FontFace`, `layout_text`, `TextStyle`, `LineBox`, `Align`,
-  `WhiteSpace`. `cmap` provides the reverse cmap for text extraction.
+  `WhiteSpace`. `FontFace::from_web_font_bytes` loads an `@font-face` face like Chrome
+  (ignoring the legacy `kern` tables Chrome ignores); `FontFace::canvas_text_metrics[_with]`
+  is canvas `measureText`; text advances are Blink's 1/64px LayoutUnit advances
+  (`blink_advances`). `cmap` provides the reverse cmap for text extraction.
 - **Images** (`image`): `ImageResolver` / `NoImages`, `probe` (header size and EXIF
   orientation for PNG / JPEG / GIF / WebP / BMP / ICO / AVIF / JPEG XL, and SVG under
   `svg`), `probe_natural` (`naturalWidth/Height`), `PngFrame` (the one PNG decode),
@@ -123,8 +151,19 @@ python3 scripts/check-baseline-red.py scripts/baseline-red/turbo-dom-layout-no-d
   `serif` / `sans-serif` / `monospace`), never with host fonts. Their expected values come
   from Chrome 156 with the same files loaded through `@font-face`
   (`scripts/fixture-font-chrome-controls.mjs`). Only the tests of the host-font policy
-  itself (`native_serif_policy`, `original_text_units`) read installed fonts, and they are
-  macOS-only.
+  itself (`native_serif_policy`, `native_generic_families`, `original_text_units`) read
+  installed fonts, and they are macOS-only.
+- **Generic families: bundled vs host.** `FontRegistry::new()` alone resolves the generics
+  to the bundled faces (`sans-serif` = Inter: at 16px a 20px `line-height: normal` line
+  (ascent 16 + descent 4) and "Hello world" 85.41px wide), not to Chrome's host faces, so
+  text laid out without system fonts is taller and wider than Chrome's and can wrap
+  earlier (a 120px block). Chrome 156 on macOS uses Helvetica (an 18px line, 79.14px); on
+  Linux fontconfig's sans face (Liberation Sans / DejaVu Sans). For Chrome parity load the
+  host fonts: under both `SystemFontPolicy::Default` (`load_system_fonts`, PDF / raster)
+  and `Html` the macOS `sans-serif` is Helvetica, `serif` Times New Roman (PDF) / Times
+  (HTML) and `monospace` Courier New (PDF) / Courier (HTML, #260), checked against Chrome 156 by
+  `tests/native_generic_families.rs` (`scripts/native-generic-families-chrome-control.mjs`,
+  miaskiewicz/turbo-dom#259).
 - **Chrome 156 controls.** Fixtures in `tests/fixtures/*_chrome15x.json` are recorded by the
   repository's `scripts/*-chrome-control.mjs`:
   - `html-document` (document styling and table / block layout);

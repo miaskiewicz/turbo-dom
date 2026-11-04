@@ -124,15 +124,22 @@ pub(super) fn child_list(
         .unwrap_or_default();
     let native_event = event;
     shadow_slots::mutation(scope, &native_event);
-    let event = payload(scope, &native_event);
-    custom_elements::mutation(scope, event);
-    for observer in observers {
-        if let Some(queue) = function(scope, observer, "queue") {
-            let receiver = v8::undefined(scope);
-            queue.call(scope, receiver.into(), &[event.into()]);
+    let consumer = consumer(scope);
+    if !observers.is_empty() || custom_elements::reactions_active(scope) || consumer.is_some() {
+        #[cfg(test)]
+        PAYLOADS_BUILT.with(|built| built.set(built.get() + 1));
+        let event = payload(scope, &native_event);
+        custom_elements::mutation(scope, event);
+        for observer in observers {
+            if let Some(queue) = function(scope, observer, "queue") {
+                let receiver = v8::undefined(scope);
+                queue.call(scope, receiver.into(), &[event.into()]);
+            }
+        }
+        if let Some(consumer) = consumer {
+            consume(scope, consumer, event);
         }
     }
-    consume(scope, event);
     script_state::inactive_mutation(&native_event);
 }
 
@@ -207,28 +214,27 @@ pub fn remove_mutation_consumer(scope: &mut v8::PinScope, document: v8::Local<v8
     document.delete_private(scope, private);
 }
 
-fn consume(scope: &mut v8::PinScope, event: v8::Local<v8::Object>) {
-    let Some(root) = with_tree(Tree::root) else {
-        return;
-    };
-    let graph = DOM.with(|dom| dom.borrow().as_ref()?.ownership.clone());
-    let Some(graph) = graph else {
-        return;
-    };
+/// The current document's trusted consumer (`install_mutation_consumer`), if one is
+/// installed and its document wrapper is alive.
+fn consumer<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8::Function>> {
+    let root = with_tree(Tree::root)?;
+    let graph = DOM.with(|dom| dom.borrow().as_ref()?.ownership.clone())?;
     let document = {
         let graph = graph.borrow();
         if !graph.context_alive() || graph.cached() == 0 {
-            return;
+            return None;
         }
         graph.lookup(scope, root.raw())
-    };
-    let Some(document) = document else {
-        return;
-    };
-    let Some(consumer) = function(scope, document, "consumer") else {
-        return;
-    };
-    let Some(context) = document.get_creation_context(scope) else {
+    }?;
+    function(scope, document, "consumer")
+}
+
+fn consume(
+    scope: &mut v8::PinScope,
+    consumer: v8::Local<v8::Function>,
+    event: v8::Local<v8::Object>,
+) {
+    let Some(context) = consumer.get_creation_context(scope) else {
         return;
     };
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -238,7 +244,9 @@ fn consume(scope: &mut v8::PinScope, event: v8::Local<v8::Object>) {
 
 fn deliver(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v8::ReturnValue) {
     registry(scope).notification.borrow_mut().take();
-    let Ok(pending) = v8::Local::<v8::Array>::try_from(args.data()) else {
+    let Some(pending) = template_data::of_call(scope, &args)
+        .and_then(|data| v8::Local::<v8::Array>::try_from(data).ok())
+    else {
         return;
     };
     let private = key(scope, "signal-slots");
@@ -299,8 +307,11 @@ fn notification<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8
         }
     }
     let pending = v8::Array::new(scope, 0);
-    let notification = v8::Function::builder(deliver)
-        .data(pending.into())
+    // Not a context object as template data: a snapshot's startup part would copy it
+    // (turbo-dom#249).
+    let data = template_data::key(scope, pending.into())?;
+    let notification = v8::Function::builder(ext!(FunctionCallback, deliver))
+        .data(data)
         .build(scope)?;
     notification.set_private(scope, private, pending.into());
     *registry.notification.borrow_mut() = Some(v8::Weak::new(scope, notification));
@@ -497,9 +508,49 @@ fn other_document_recording() -> bool {
     })
 }
 
+#[cfg(test)]
+thread_local! {
+    static PAYLOADS_BUILT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Record objects `flush` has built on this thread (the perf gate in `perf_gates_tests`).
+#[cfg(test)]
+pub(super) fn payloads_built() -> usize {
+    PAYLOADS_BUILT.with(std::cell::Cell::get)
+}
+
+/// Deliver every document's pending mutation events. The native consumers (slot assignment,
+/// script preparation) see each event; the record object the JS consumers (observers, custom
+/// element reactions, the trusted document consumer) read is built only when one of them is
+/// present, so a recording page without observers pays no V8 allocation per mutation
+/// (turbo-dom 0.7.0 perf item 6).
 pub(super) fn flush(scope: &mut v8::PinScope) {
     form_checked_state::owner_changes();
     if !recording() && !other_document_recording() || scope.is_execution_terminating() {
+        return;
+    }
+    let current = DOM_ID.with(std::cell::Cell::get);
+    let mut ids = OTHER_DOMS.with(|doms| doms.borrow().keys().copied().collect::<Vec<_>>());
+    ids.push(current);
+    // Claim every document's pending batch before invoking any consumer. A
+    // consumer can query another document, which reenters this fanout. Leaving
+    // its old events in Tree would move them into the inner CE reaction scope
+    // and run adoption callbacks before ownerDocument has been updated.
+    let batches = ids
+        .into_iter()
+        .filter_map(|id| {
+            let _owner = DomScope::enter(id);
+            let events = DOM
+                .with(|dom| {
+                    dom.borrow_mut()
+                        .as_mut()
+                        .map(|state| state.tree.take_mutation_events_utf16())
+                })
+                .unwrap_or_default();
+            (!events.is_empty()).then_some((id, events))
+        })
+        .collect::<Vec<_>>();
+    if batches.is_empty() {
         return;
     }
     let observers = scope
@@ -514,53 +565,52 @@ pub(super) fn flush(scope: &mut v8::PinScope) {
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
-    let current = DOM_ID.with(std::cell::Cell::get);
-    let mut ids = OTHER_DOMS.with(|doms| doms.borrow().keys().copied().collect::<Vec<_>>());
-    ids.push(current);
-    // Claim every document's pending batch before invoking any consumer. A
-    // consumer can query another document, which reenters this fanout. Leaving
-    // its old events in Tree would move them into the inner CE reaction scope
-    // and run adoption callbacks before ownerDocument has been updated.
-    let batches = ids
-        .into_iter()
-        .map(|id| {
-            let _owner = DomScope::enter(id);
-            let events = DOM
-                .with(|dom| {
-                    dom.borrow_mut()
-                        .as_mut()
-                        .map(|state| state.tree.take_mutation_events_utf16())
-                })
-                .unwrap_or_default();
-            (id, events)
-        })
-        .collect::<Vec<_>>();
     for (id, events) in batches {
         let _owner = DomScope::enter(id);
         for native_event in events {
             shadow_slots::mutation(scope, &native_event.event);
-            let event = payload(scope, &native_event.event);
-            for (name, units) in [
-                ("oldValue", &native_event.old_value),
-                ("attributeName", &native_event.attribute_name),
-                ("attributeNamespace", &native_event.attribute_namespace),
-            ] {
-                let value = match units {
-                    Some(units) => unit_string(scope, units).into(),
-                    None => v8::null(scope).into(),
-                };
-                set_prop(scope, event, name, value);
+            let consumer = consumer(scope);
+            if !observers.is_empty()
+                || custom_elements::reactions_active(scope)
+                || consumer.is_some()
+            {
+                deliver_event(scope, &native_event, &observers, consumer);
             }
-            custom_elements::mutation(scope, event);
-            for observer in &observers {
-                if let Some(queue) = function(scope, *observer, "queue") {
-                    let receiver = v8::undefined(scope);
-                    queue.call(scope, receiver.into(), &[event.into()]);
-                }
-            }
-            consume(scope, event);
             script_state::inactive_mutation(&native_event.event);
         }
+    }
+}
+
+/// Build one event's record object and hand it to the JS consumers.
+fn deliver_event(
+    scope: &mut v8::PinScope,
+    native_event: &turbo_dom_parser::rtdom::tree::Utf16MutationEvent,
+    observers: &[v8::Local<v8::Object>],
+    consumer: Option<v8::Local<v8::Function>>,
+) {
+    #[cfg(test)]
+    PAYLOADS_BUILT.with(|built| built.set(built.get() + 1));
+    let event = payload(scope, &native_event.event);
+    for (name, units) in [
+        ("oldValue", &native_event.old_value),
+        ("attributeName", &native_event.attribute_name),
+        ("attributeNamespace", &native_event.attribute_namespace),
+    ] {
+        let value = match units {
+            Some(units) => unit_string(scope, units).into(),
+            None => v8::null(scope).into(),
+        };
+        set_prop(scope, event, name, value);
+    }
+    custom_elements::mutation(scope, event);
+    for observer in observers {
+        if let Some(queue) = function(scope, *observer, "queue") {
+            let receiver = v8::undefined(scope);
+            queue.call(scope, receiver.into(), &[event.into()]);
+        }
+    }
+    if let Some(consumer) = consumer {
+        consume(scope, consumer, event);
     }
 }
 

@@ -1,0 +1,338 @@
+//! turbo-dom#249 Phase C steps 3-4: a context deserialized from the startup snapshot,
+//! rehydrated (context slots, DOM state, isolate state) and given a document behaves like a
+//! normally installed one.
+use super::*;
+use std::borrow::Cow;
+
+const PAGE: &str = "<!doctype html><title>t</title><style>#a{color:rgb(1, 2, 3)} .x{display:inline-block}</style><body><div id=a class=x>hi</div><form><input id=req required></form><template id=t><b>c</b></template>";
+
+/// Sync DOM, events, custom elements, form validity, computed style; then the
+/// MutationObserver records once microtasks ran.
+const SMOKE: &str = r"
+globalThis.__log = [];
+const a = document.getElementById('a');
+const p = document.createElement('p');
+p.textContent = 'new';
+a.appendChild(p);
+__log.push(document.querySelectorAll('#a > p').length, a.innerHTML, document.title);
+let seen = [];
+a.addEventListener('click', e => seen.push('a:' + e.target.localName + ':' + e.eventPhase), true);
+p.addEventListener('click', e => seen.push('p:' + e.eventPhase));
+document.body.addEventListener('click', e => seen.push('body:' + e.eventPhase));
+p.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+__log.push(seen.join());
+class XEl extends HTMLElement {
+  connectedCallback() { this.dataset.up = 'yes'; }
+  get kind() { return 'x-el'; }
+}
+const early = document.createElement('x-el');
+document.body.appendChild(early);
+__log.push(early.kind === undefined, document.querySelectorAll(':defined').length > 0);
+customElements.define('x-el', XEl);
+__log.push(early.kind, early.dataset.up, early instanceof XEl, early.matches(':defined'));
+const req = document.getElementById('req');
+__log.push(req.matches(':invalid'), document.querySelector('form').checkValidity());
+req.value = 'v';
+__log.push(req.matches(':valid'), req.validity.valid);
+const cs = getComputedStyle(a);
+__log.push(cs.color, cs.display);
+globalThis.__records = [];
+new MutationObserver(rs => { for (const r of rs) __records.push(r.type + ':' + r.addedNodes.length + ':' + (r.attributeName || '')); })
+  .observe(document.body, {childList: true, subtree: true, attributes: true});
+a.setAttribute('title', 'z');
+document.body.appendChild(document.createComment('c'));
+__log.push(__records.length);
+// Every engine function belongs to this realm (a snapshot that duplicated the context
+// would hand out functions of the copy, whose Function.prototype differs).
+let foreign = 0;
+const isProto = Object.prototype.isPrototypeOf, F = Function.prototype;
+const fn = f => { if (typeof f === 'function' && !Reflect.apply(isProto, F, [f])) foreign++; };
+const walk = o => { for (const k of Reflect.ownKeys(o)) { let d; try { d = Object.getOwnPropertyDescriptor(o, k); } catch { continue; } if (!d) continue; fn(d.value); fn(d.get); fn(d.set); } };
+walk(globalThis); walk(document); walk(a); walk(p);
+for (const k of Reflect.ownKeys(globalThis)) { let v; try { v = globalThis[k]; } catch { continue; } if (typeof v === 'function' && v.prototype && typeof v.prototype === 'object') walk(v.prototype); }
+__log.push(foreign);
+const t = document.getElementById('t');
+__log.push(t.content.firstChild.localName, t.content.ownerDocument !== document, t.content.ownerDocument.createElement('i').ownerDocument === t.content.ownerDocument);
+const host = document.createElement('div');
+host.innerHTML = '<span slot=s>slotted</span>';
+document.body.appendChild(host);
+const root = host.attachShadow({mode: 'open'});
+root.innerHTML = '<slot name=s></slot>';
+__log.push(root.querySelector('slot').assignedNodes()[0].textContent, host.shadowRoot === root);
+const range = document.createRange();
+range.selectNodeContents(a);
+getSelection().addRange(range);
+__log.push(String(getSelection()), range.toString(), a.classList.contains('x'));
+JSON.stringify(__log)
+";
+
+fn eval(scope: &mut v8::PinScope, source: &str) -> String {
+    v8::tc_scope!(let scope, scope);
+    let code = v8::String::new(scope, source).unwrap();
+    match v8::Script::compile(scope, code, None).and_then(|script| script.run(scope)) {
+        Some(value) => value.to_rust_string_lossy(scope),
+        None => {
+            let exception = scope.exception().unwrap();
+            let line = scope.message().map(|m| m.get_line_number(scope));
+            panic!(
+                "threw {} at {line:?}",
+                exception.to_rust_string_lossy(scope)
+            );
+        }
+    }
+}
+
+fn smoke(scope: &mut v8::PinScope) -> (String, String) {
+    let log = eval(scope, SMOKE);
+    scope.perform_microtask_checkpoint();
+    (log, eval(scope, "JSON.stringify(__records)"))
+}
+
+#[test]
+fn a_rehydrated_snapshot_context_behaves_like_an_installed_one() {
+    crate::browser_env::tests::init_v8();
+    let expected = {
+        let isolate = &mut v8::Isolate::new(Default::default());
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, PAGE);
+        let result = smoke(scope);
+        reset();
+        result
+    };
+    assert_eq!(
+        expected.0,
+        r#"[1,"hi<p>new</p>","t","a:p:1,p:2,body:3",true,true,"x-el","yes",true,true,true,false,true,true,"rgb(1, 2, 3)","inline-block",0,0,"b",true,true,"slotted",true,"hi\nnew\n\n","hinew",true]"#
+    );
+    assert_eq!(
+        expected.1,
+        r#"["attributes:0:title","childList:1:","childList:1:"]"#
+    );
+
+    let blob = startup_snapshot::build().expect("every callback is registered");
+    let params = v8::CreateParams::default()
+        .snapshot_blob(blob.data)
+        .external_references(Cow::Borrowed(blob.references));
+    let isolate = &mut v8::Isolate::new(params);
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);
+    startup_snapshot::rehydrate(scope);
+    attach_document(scope, Tree::parse_with_processing_instructions(PAGE));
+    assert_eq!(
+        ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get),
+        before,
+        "rehydrate + attach ran an engine script"
+    );
+    assert_eq!(smoke(scope), expected);
+    reset();
+}
+
+/// Rehydrating needs a context made from the snapshot: a bare context has no window
+/// document to rehydrate, and gets no DOM.
+#[test]
+fn rehydrating_a_bare_context_installs_no_dom() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    assert!(!startup_snapshot::rehydrate(scope));
+    assert!(with_tree(|tree| tree.root()).is_none());
+    reset();
+}
+
+const SMOKE_LOG: &str = r#"[1,"hi<p>new</p>","t","a:p:1,p:2,body:3",true,true,"x-el","yes",true,true,true,false,true,true,"rgb(1, 2, 3)","inline-block",0,0,"b",true,true,"slotted",true,"hi\nnew\n\n","hinew",true]"#;
+const SMOKE_RECORDS: &str = r#"["attributes:0:title","childList:1:","childList:1:"]"#;
+
+fn expected() -> (String, String) {
+    (SMOKE_LOG.to_owned(), SMOKE_RECORDS.to_owned())
+}
+
+/// The public opt-in: `install_from_snapshot` makes and owns the isolate, runs no engine
+/// script, and its window behaves like an installed one.
+#[test]
+fn install_from_snapshot_owns_its_isolate_and_runs_no_engine_script() {
+    crate::browser_env::tests::init_v8();
+    let blob = snapshot_blob().expect("the process blob builds");
+    assert!(
+        std::ptr::eq(blob, snapshot_blob().unwrap()),
+        "cached per process"
+    );
+    let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);
+    let mut window = install_from_snapshot(PAGE).expect("a blob");
+    assert_eq!(
+        ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get),
+        before,
+        "install_from_snapshot ran an engine script"
+    );
+    let (isolate, context) = window.parts();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Local::new(scope, context);
+        let scope = &mut v8::ContextScope::new(scope, context);
+        assert_eq!(smoke(scope), expected());
+    }
+    assert!(window.context() == window.context());
+    let _ = window.isolate();
+    reset();
+}
+
+/// A second context of a snapshot isolate (an independent document) rehydrates too: the
+/// collection-record key the snapshot carried is handed out once per isolate, so both
+/// contexts share it, and the first window keeps working.
+#[test]
+fn a_second_snapshot_context_in_one_isolate_rehydrates() {
+    crate::browser_env::tests::init_v8();
+    SNAPSHOT_PATH_FOR_TEST.with(|on| on.set(true));
+    let blob = snapshot_blob().expect("the process blob builds");
+    let isolate = &mut v8::Isolate::new(blob.create_params());
+    v8::scope!(let scope, isolate);
+    let first = v8::Context::new(scope, Default::default());
+    {
+        let scope = &mut v8::ContextScope::new(scope, first);
+        install_with_html(scope, PAGE);
+    }
+    let second = v8::Context::new(scope, Default::default());
+    {
+        let scope = &mut v8::ContextScope::new(scope, second);
+        install_independent_html(scope, PAGE);
+        assert_eq!(smoke(scope), expected());
+    }
+    {
+        let scope = &mut v8::ContextScope::new(scope, first);
+        assert_eq!(smoke(scope), expected());
+    }
+    SNAPSHOT_PATH_FOR_TEST.with(|on| on.set(false));
+    reset();
+}
+
+/// The custom-element constructors the bootstrap makes (one per HTML element interface)
+/// call this realm's construction delegate: a snapshot that copied the delegate through
+/// the template data would construct with the copy's registry, which knows no definition.
+#[test]
+fn custom_element_constructors_of_a_snapshot_context_use_its_registry() {
+    crate::browser_env::tests::init_v8();
+    const PROBE: &str = "class Y extends HTMLElement {} customElements.define('y-el', Y); \
+        class Z extends HTMLParagraphElement {} customElements.define('z-el', Z, {extends: 'p'}); \
+        const y = new Y(), z = new Z(); \
+        JSON.stringify([y.localName, y instanceof Y, z.localName, z.getAttribute('is'), z instanceof Z, document.createElement('y-el') instanceof Y])";
+    let blob = snapshot_blob().expect("the process blob builds");
+    let isolate = &mut v8::Isolate::new(blob.create_params());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    assert!(
+        install_snapshot_context(scope, Tree::parse_with_processing_instructions(PAGE)).is_ok()
+    );
+    assert_eq!(eval(scope, PROBE), r#"["y-el",true,"p",null,true,true]"#);
+    reset();
+}
+
+/// Whether `value` is a node wrapper whose internal fields `strip_wrappers` cleared (a
+/// wrapper of the build's shell tree that survived into the blob).
+fn stale_wrapper(scope: &mut v8::PinScope, value: v8::Local<v8::Value>) -> bool {
+    let Ok(object) = v8::Local::<v8::Object>::try_from(value) else {
+        return false;
+    };
+    object.internal_field_count() >= 2
+        && object
+            .get_internal_field(scope, 0)
+            .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())
+            .is_some_and(|field| field.is_undefined())
+}
+
+/// Only the document wrapper outlives the snapshot build (round-1 review #15): every other
+/// shell node wrapper is released before serialization, so no engine closure can hand a
+/// stripped wrapper to page script. The rehydrated window keeps node identity for the
+/// document, its head, body, root element and template contents, none of which is a stripped
+/// wrapper, and every captured engine helper is rehydrated and works through its page API.
+#[test]
+fn no_shell_node_wrapper_survives_into_the_snapshot() {
+    crate::browser_env::tests::init_v8();
+    assert!(startup_snapshot::build().is_some(), "the blob builds");
+    assert_eq!(
+        startup_snapshot::RETAINED_FOR_TEST.with(std::cell::Cell::get),
+        Some(0),
+        "a shell node wrapper is reachable from the snapshotted context"
+    );
+    let blob = snapshot_blob().expect("the process blob builds");
+    let isolate = &mut v8::Isolate::new(blob.create_params());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    assert!(
+        install_snapshot_context(scope, Tree::parse_with_processing_instructions(PAGE)).is_ok()
+    );
+    assert_eq!(
+        eval(
+            scope,
+            "{ const t = document.getElementById('t'); JSON.stringify([\
+             document === window.document, document.body === document.body, document.head === document.head, \
+             document.documentElement === document.documentElement, t.content === t.content, \
+             document.body.parentNode === document.documentElement, document.head.parentNode === document.documentElement, \
+             document.documentElement.parentNode === document, document.body.ownerDocument === document, \
+             document.doctype === document.firstChild, document.body.firstChild === document.getElementById('a'), \
+             t.content.firstChild === t.content.firstChild, document.body.localName, document.head.childNodes.length]) }"
+        ),
+        "[true,true,true,true,true,true,true,true,true,true,true,true,\"body\",2]"
+    );
+    for node in [
+        "document",
+        "document.doctype",
+        "document.documentElement",
+        "document.head",
+        "document.body",
+        "document.getElementById('t').content",
+    ] {
+        let value = eval_value(scope, node);
+        assert!(!stale_wrapper(scope, value), "{node} is a stripped wrapper");
+    }
+    // The captured engine helpers are internal (their natives assume engine-shaped
+    // arguments), so they are called through the page APIs that use them: the smoke covers
+    // events, custom elements, form validity, computed style, templates, shadow slots,
+    // selection and ranges, and the whole suite runs on this path under
+    // TURBO_DOM_SNAPSHOT_PATH=1. Every one of them is back after rehydration.
+    for entry in context_rehydrate::entries() {
+        let stored = context_rehydrate::store_object(scope, context)
+            .and_then(|store| {
+                let key = v8::String::new(scope, entry.name)?;
+                store.get(scope, key.into())
+            })
+            .is_some_and(|value| !value.is_undefined());
+        if stored {
+            assert!(
+                !(entry.get)(scope, context).is_empty(),
+                "{} not rehydrated",
+                entry.name
+            );
+        }
+    }
+    assert_eq!(smoke(scope), expected());
+    reset();
+}
+
+fn eval_value<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v8::Value> {
+    let code = v8::String::new(scope, source).unwrap();
+    v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+}
+
+/// A context that is not from the snapshot keeps the usual install on the snapshot path.
+#[test]
+fn the_snapshot_path_installs_a_plain_context_as_usual() {
+    crate::browser_env::tests::init_v8();
+    SNAPSHOT_PATH_FOR_TEST.with(|on| on.set(true));
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, PAGE);
+    assert_eq!(smoke(scope), expected());
+    SNAPSHOT_PATH_FOR_TEST.with(|on| on.set(false));
+    reset();
+}

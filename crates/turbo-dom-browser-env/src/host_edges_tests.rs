@@ -6,7 +6,7 @@ use crate::browser_env::*;
 
 fn with_page(html: &str, body: impl FnOnce(&mut v8::PinScope)) {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -150,8 +150,8 @@ fn native_storage_collection_enforces_its_budgets() {
     });
 }
 
-/// The XPath snapshot's budgets: shadow-root / fragment contexts, context depth, tree
-/// size and depth, and text / attribute bytes each raise their own NotSupportedError.
+/// The XPath snapshot's budgets: context depth, tree size and depth, and text / attribute
+/// bytes each raise their own NotSupportedError; shadow-root / fragment contexts evaluate (#185).
 #[test]
 fn xpath_snapshot_budgets_raise_not_supported_errors() {
     with_page("<!doctype html><body>", |scope| {
@@ -164,7 +164,7 @@ fn xpath_snapshot_budgets_raise_not_supported_errors() {
                 scope,
                 "(() => { const host = document.body.appendChild(document.createElement('div')); const root = host.attachShadow({mode: 'open'}); root.innerHTML = '<b>x</b>'; const fragment = document.createDocumentFragment(); fragment.append(document.createElement('i')); return [fail(root.firstChild), fail(fragment.firstChild), fail(host)]; })()"
             ),
-            r#"["NotSupportedError: XPath fragment/shadow-root contexts are unsupported","NotSupportedError: XPath fragment/shadow-root contexts are unsupported","ok"]"#
+            r#"["ok","ok","ok"]"#
         );
         // 128 ancestors above the context are within budget, 129 are not.
         assert_eq!(
@@ -259,7 +259,7 @@ mod frame_read {
     #[test]
     fn exported_frame_read_agrees_with_the_accessor() {
         crate::browser_env::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

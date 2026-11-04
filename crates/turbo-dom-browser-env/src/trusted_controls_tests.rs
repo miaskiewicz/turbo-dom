@@ -154,7 +154,7 @@ const DRIVER: &str = r#"(() => {
 /// Run `probe` with the driver above and a virtual-clock task queue standing in for timers.
 fn run_probe(probe: &str) -> serde_json::Value {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -254,7 +254,7 @@ fn run_host_script(source: &str) -> serde_json::Value {
         "(async () => {{ const host = {{ dismiss: __testLightDismiss, dispatch: __testDispatch, close: __testCloseRequest, activate: __testActivate }}; {source} }})()"
     );
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

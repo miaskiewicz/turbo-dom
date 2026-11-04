@@ -108,7 +108,9 @@ fn event_target<'s>(
 }
 fn flush(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v8::ReturnValue) {
     // `queue` builds each flush function with its [owner, node, task, record] array as data.
-    let data = v8::Local::<v8::Array>::try_from(args.data()).expect("the flush data is an array");
+    let data = template_data::of_call(scope, &args)
+        .and_then(|data| v8::Local::<v8::Array>::try_from(data).ok())
+        .expect("the flush data is an array");
     let owner = data
         .get_index(scope, 0)
         .and_then(|value| value.integer_value(scope))
@@ -204,8 +206,11 @@ fn queue<'s>(
         scope,
         &[owner.into(), handle.into(), task.into(), record.into()],
     );
-    let Some(function) = v8::FunctionTemplate::builder(flush)
-        .data(data.into())
+    // Not a context object as template data: a snapshot's startup part would copy it
+    // (turbo-dom#249).
+    let data = template_data::key(scope, data.into()).expect("a fresh table slot");
+    let Some(function) = v8::FunctionTemplate::builder(ext!(FunctionCallback, flush))
+        .data(data)
         .constructor_behavior(v8::ConstructorBehavior::Throw)
         .build(scope)
         .get_function(scope)
@@ -310,6 +315,7 @@ fn hide_from<'s>(
             .open
             .retain(|entry| entry.node != node)
     });
+    bump_style_state();
     user_activation_gates::popover_hidden(node);
     if events {
         queue(scope, node, true, false, source);
@@ -395,6 +401,7 @@ fn show_steps<'s>(
             mode: mode.clone(),
         })
     });
+    bump_style_state();
     if mode != "manual" {
         user_activation_gates::popover_shown(node);
     }
@@ -533,6 +540,11 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__popoverNative", dispatch);
     run_js(scope, include_str!("html_popover.js"));
+    capture(scope);
+}
+/// Retain the window's `ToggleEvent` and timer: the install's native half, which a context
+/// deserialized from a startup snapshot redoes (turbo-dom#249).
+pub(super) fn capture(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     let key = v8::String::new(scope, "ToggleEvent").unwrap();
     if let Some(constructor) = global
@@ -680,6 +692,15 @@ pub(super) fn capture_scheduler(scope: &mut v8::PinScope) {
     }
 }
 
+/// Whether [`selector`] can change `source` or throw on it: it has a popover pseudo-class
+/// (a property of the text, memoized by `selector_argument`).
+pub(super) fn applies(source: &str) -> bool {
+    let mut input = cssparser::ParserInput::new(source);
+    let mut parser = cssparser::Parser::new(&mut input);
+    let mut ranges = Vec::new();
+    let _ = pseudo_ranges(&mut parser, &mut ranges);
+    !ranges.is_empty()
+}
 pub(super) fn selector_root(tree: &Tree, mut node: Handle) -> Handle {
     while let Some(parent) = tree.parent(node) {
         node = parent;
@@ -791,6 +812,8 @@ fn pseudo_ranges<'i, 't>(
 /// Represent private native state as structural selectors within this exact DOM
 /// root. No attributes, styles or nodes are inserted into the guest's tree.
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     let mut input = cssparser::ParserInput::new(source);
     let mut parser = cssparser::Parser::new(&mut input);
     let mut ranges = Vec::new();
@@ -845,7 +868,7 @@ mod tests {
     #[test]
     fn post_install_schedulers_follow_their_native_context_document() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let parent = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, parent);
@@ -890,7 +913,7 @@ mod tests {
     }
     fn fixture(source: &str) {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

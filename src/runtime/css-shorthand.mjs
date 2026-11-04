@@ -14,6 +14,8 @@ import { SHORTHAND_TABLE, LONGHAND_ALIASES } from './css-shorthand-table.mjs';
 
 // ---------------------------------------------------------------- numbers ----
 const f32 = Math.fround;
+/** The largest finite f32. */
+const F32_MAX = 3.4028234663852886e38;
 /** Blink's CSS number serialization: six significant digits (printf `%g`). */
 export function cssNumber(value) {
   const v = f32(value);
@@ -583,7 +585,14 @@ function read(tokens, state, close) {
         out.push({ kind: 'percentage', value, text: `${cssNumber(Number(token.raw))}%` });
         break;
       }
-      case 'dimension': out.push({ kind: 'dimension', value: f32(token.value), unit: token.unit.toLowerCase(), text: `${cssNumber(token.value)}${token.unit.toLowerCase()}` }); break;
+      case 'dimension': {
+        // A length past f32's range (`1e39px`) is the largest float, as Chrome clamps it
+        // (`3.40282e+38px`), never infinite (#262; the Rust port's tokenizer likewise).
+        const number = Math.max(-F32_MAX, Math.min(F32_MAX, token.value));
+        const unit = token.unit.toLowerCase();
+        out.push({ kind: 'dimension', value: f32(number), unit, text: `${cssNumber(number)}${unit}` });
+        break;
+      }
       case 'hash': out.push({ kind: 'hash', value: token.value, text: `#${token.value}` }); break;
       case 'string': out.push({ kind: 'string', value: token.value, text: quoted(token.value) }); break;
       case 'url': out.push({ kind: 'url', value: token.value, text: `url(${quoted(token.value)})` }); break;

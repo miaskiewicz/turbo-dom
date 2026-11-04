@@ -31,7 +31,7 @@
 //   --out    defaults to crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json.
 // Needs playwright-core: PLAYWRIGHT_CORE=/path/to/node_modules/playwright-core (default: a
 // sibling turbo-surf checkout's node_modules/playwright-core).
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -599,6 +599,48 @@ const CASES = [
   ].map(([id, cond], i) => `@supports ${cond}{#${id}{width:${10 + i}px}}`).join("")),
     "abcdefghijkl".split("").map((id) => `<div id="${id}" data-cid="${id}"></div>`).join("")) },
 ];
+// miaskiewicz/turbo-dom#238 item 2: the quirks-mode line height quirk on the static HTML
+// path (the same cases as the live control's `quirks-strut-*`, #190). No doctype =
+// BackCompat; laid out with the repo's Fira Code through @font-face.
+const fira = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/fira-code/FiraCode-Regular.ttf")).toString("base64");
+const FIRA = `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}`;
+const QUIRKS_CSS = 'body{margin:0;font-family:"Fira Code";font-size:16px}div{font-size:30px}';
+const IB = (h) => `<span style="display:inline-block;width:10px;height:${h}px"></span>`;
+const QUIRKS_CASES = [
+  ["atom-only", `<div data-cid="d">${IB(30)}</div><div data-cid="e">${IB(10)}</div>`],
+  ["text-line", `<div data-cid="d">${IB(10)}x</div><div data-cid="e"> ${IB(10)} </div>`],
+  ["span-text", `<div data-cid="d"><span style="font-size:10px">x</span></div><div data-cid="e" style="line-height:50px"><span style="font-size:10px">x</span></div>`],
+  [
+    "span-decorations",
+    `<div data-cid="p"><span style="padding-left:5px">${IB(10)}</span></div>` +
+      `<div data-cid="b"><span style="border:1px solid">${IB(10)}</span></div>` +
+      `<div data-cid="m"><span style="margin-left:4px;font-size:10px">${IB(10)}</span></div>` +
+      `<div data-cid="v"><span style="padding-top:3px">${IB(10)}</span></div>`,
+  ],
+  ["br", `<div data-cid="d">a<br><br>b</div><div data-cid="s"><span style="font-size:10px">a<br><br>b</span></div>`],
+];
+CASES.push(
+  ...QUIRKS_CASES.map(([id, body]) => ({ id: `quirks-strut-${id}`, html: `<style>${FIRA}${QUIRKS_CSS}</style>${body}`, measure: "xywh" })),
+  { id: "quirks-strut-standards-control", html: DOC(S(FIRA + QUIRKS_CSS), QUIRKS_CASES[0][1]), measure: "xywh" },
+);
+// 0.7.0 layout coverage (#232): positioned auto margins with an auto size, a plaintext
+// paragraph led by an atom, an inline-block's baseline through a nested atom and inline
+// `position: sticky` around a `<br>`. Text is Fira Code / Noto Sans Hebrew through
+// @font-face; only atoms are measured, along the axis the case is about.
+const hebrew = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/noto-sans-hebrew/NotoSansHebrew-Regular.ttf")).toString("base64");
+const HEB = `@font-face{font-family:"Noto Sans Hebrew";src:url(data:font/ttf;base64,${hebrew})}`;
+const TEXT_CSS = `${FIRA}${HEB}body{margin:0;font-family:"Fira Code","Noto Sans Hebrew";font-size:16px;line-height:24px}`;
+const HE = "אבג";
+const T = (id, body, measure = "xyw") => ({ id: `cov-${id}`, html: DOC(S(TEXT_CSS), body), measure });
+const IBX = (cid, w = 10) => `<span data-cid="${cid}" style="display:inline-block;width:${w}px;height:10px"></span>`;
+CASES.push(
+  { id: "cov-abs-auto-margins-auto-width", html: DOC(S("body{margin:0}"), `<div data-cid="p" style="position:relative;width:200px;height:100px"><div data-cid="a" style="position:absolute;left:10px;right:20px;margin:0 auto;height:10px"></div></div>`) },
+  { id: "cov-abs-auto-margins-auto-height", html: DOC(S("body{margin:0}"), `<div data-cid="p" style="position:relative;width:200px;height:100px"><div data-cid="a" style="position:absolute;top:10px;bottom:20px;margin:auto 0;width:10px"></div></div>`) },
+  T("plaintext-leading-atom", `<div data-cid="d" style="unicode-bidi:plaintext;width:200px">${IBX("i")}${HE} abc</div>`, "x"),
+  T("inline-block-nested-atom-baseline", `<div data-cid="d">x<span data-cid="o" style="display:inline-block">a<span data-cid="n" style="display:inline-block;padding-bottom:7px">b</span></span>${IBX("z")}</div>`, "y"),
+  T("sticky-span-br", `<div data-cid="d" style="width:300px;padding-left:40px">${IBX("a")}<span style="position:sticky;right:1200px">ab<br>${IBX("b")}</span></div>`),
+);
+
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
 function onePixel(png) {
   let off = 8;
@@ -618,12 +660,13 @@ function onePixel(png) {
   return `#${hex(raw[1])}${hex(raw[2])}${hex(raw[3])}`;
 }
 
-const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+const browser = await chromium.launch({ executablePath: chromePath, headless: true, args: ["--use-mock-keychain", "--password-store=basic"] });
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 const result = [];
 for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
+  await page.evaluate(() => document.fonts.ready);
   const probe = await page.evaluate(() => {
     const r = (n) => Math.round(n * 1000) / 1000;
     const boxes = [...document.querySelectorAll("[data-cid]")].map((el) => {

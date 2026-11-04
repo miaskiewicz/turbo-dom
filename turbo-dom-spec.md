@@ -244,12 +244,13 @@ per file. This is the construction-cost win and it compounds per test file.
 
 Headless runners have no layout, so stop pretending (and stop lying):
 
-- `getBoundingClientRect()` → zeros by default. Opt-in fake layout model only if a test
-  asks (separate module).
+- `getBoundingClientRect()` → a synthetic, stable non-zero size (positions stay 0) since
+  v0.2.3: honest zeros deadlocked React's measure → setState → re-measure loops.
 - `getComputedStyle` is a **partial cascade** (since v0.1.29): it resolves REAL injected
   `<style>` rules + inline styles with specificity/source order, shadow-root scoping with
   `:host`/`::slotted`, and inheritance into shadow content — but never invents a value
-  (unmatched props read `''`). Still no layout/`@media`/state/pseudo-element realism.
+  (unmatched props read `''`). Still no layout, at-rule blocks (`@media`/`@supports`/`@layer`),
+  state or pseudo-element rules, unit conversion or `var()` resolution.
 - No reflow.
 - **Honest absence over plausible lie:** prefer a `getComputedStyle` that clearly signals
   "layout not available; opt in with X" over one that returns 30%-correct values that pass

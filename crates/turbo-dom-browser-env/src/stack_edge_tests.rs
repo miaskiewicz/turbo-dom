@@ -7,7 +7,7 @@ use crate::browser_env::*;
 #[test]
 fn natives_at_the_stack_edge_throw_range_error_like_chrome156() {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

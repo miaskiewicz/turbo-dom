@@ -1,0 +1,1346 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.47 Safari/537.36",
+    "viewport": [
+      800,
+      600
+    ],
+    "deviceScaleFactor": 2
+  },
+  "probeSha256": "043d87b112e8e73f49ab295af3c70fcf6d40f19fbe11866c5602993a62063700",
+  "collectorSha256": "2f5a925a1dbb59b545e09fc9b6cba62e93f4069e7565830dc4e606de85940bf6",
+  "fontFiles": {
+    "liberation-serif/LiberationSerif-Regular.ttf": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4",
+    "liberation-serif/LiberationSerif-Bold.ttf": "443a4dbd694b6e4689925947b456e0532e10b19c90fa32eb39ea6c2cd9db9ebd",
+    "liberation-serif/LiberationSerif-Italic.ttf": "de18fe26337e03241952dca46398d5b66f3c5738d080bfd284f66e67b926f597",
+    "liberation-serif/LiberationSerif-BoldItalic.ttf": "4b2635d2ec4d992373dcae577c742a98ecfd841ffc1b8a103b5f10db163dbc7a",
+    "inter/Inter-Regular.otf": "d4f2b9e148059a15f014cb0f0b8fea8cd11bfa447dd483bedf1b0adc0e2ba799",
+    "inter/Inter-Bold.otf": "9fc6261e817d0b1b2bf1953d8799bb1c837d11aeebbf83ae352e7b4d6de6425d",
+    "inter/Inter-Italic.otf": "3bdf49f72ad2f2959a2619ceef700784504f6d17f502e2e2bc6edce5d43ca631",
+    "inter/Inter-BoldItalic.otf": "84e07cd77951a855c668f71e63af261f42d019dc80e963326b4c560b1fca8dcd",
+    "fira-code/FiraCode-Regular.ttf": "5992ab9640e2df491b2f609467b1de60e8bc39b2c28db184342a0592d98f6117",
+    "fira-code/FiraCode-Bold.ttf": "41f6554e845e2f5b70adad3950122334b866aac436793b7742ade600067701be"
+  },
+  "errors": [],
+  "result": {
+    "initial": [
+      "0px",
+      "0px",
+      "auto",
+      "normal",
+      "auto"
+    ],
+    "inContext": [
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "lengths": {
+      "letterSpacing": [
+        "2px",
+        "2px",
+        "7px",
+        "1.5px",
+        "-1px",
+        "7px",
+        "0px",
+        "1em",
+        "0.5rem",
+        "7px",
+        "7px",
+        "7px",
+        "7px",
+        "1pt",
+        "1in",
+        "4px",
+        "0.5px",
+        "10px",
+        "7px",
+        "7px",
+        "7px",
+        "7px",
+        "7px",
+        "7px",
+        "7px",
+        "1ex",
+        "1ch",
+        "1vw"
+      ],
+      "wordSpacing": [
+        "2px",
+        "2px",
+        "7px",
+        "1.5px",
+        "-1px",
+        "7px",
+        "0px",
+        "1em",
+        "0.5rem",
+        "7px",
+        "7px",
+        "7px",
+        "7px",
+        "1pt",
+        "1in",
+        "4px",
+        "0.5px",
+        "10px",
+        "7px",
+        "7px",
+        "7px",
+        "7px",
+        "7px",
+        "7px",
+        "7px",
+        "1ex",
+        "1ch",
+        "1vw"
+      ]
+    },
+    "enums": {
+      "fontKerning": [
+        "auto",
+        "normal",
+        "none",
+        "auto",
+        "auto",
+        "auto"
+      ],
+      "fontStretch": [
+        "ultra-condensed",
+        "extra-condensed",
+        "condensed",
+        "semi-condensed",
+        "normal",
+        "semi-expanded",
+        "expanded",
+        "extra-expanded",
+        "ultra-expanded",
+        "normal",
+        "normal",
+        "normal"
+      ],
+      "textRendering": [
+        "auto",
+        "optimizeSpeed",
+        "optimizeLegibility",
+        "geometricPrecision",
+        "auto",
+        "auto"
+      ]
+    },
+    "restored": [
+      "3px",
+      "none"
+    ],
+    "widths": [
+      [
+        "16px Inter",
+        "{}",
+        "AVATAR Wave",
+        [
+          106.0859375,
+          -0.4062492251396179,
+          105.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{}",
+        "To fi ffi",
+        [
+          52.5625,
+          -0.7656235694885254,
+          51.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{}",
+        "a b  c",
+        [
+          41.421875,
+          -0.7031236886978149,
+          40.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{}",
+        "AVATAR Wave",
+        [
+          99.5078125,
+          -0.15625,
+          98.953125
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{}",
+        "To fi ffi",
+        [
+          49.2421875,
+          -0.2890625,
+          48.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{}",
+        "a b  c",
+        [
+          34.203125,
+          -0.5625,
+          33.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"2px\"}",
+        "AVATAR Wave",
+        [
+          128.0859375,
+          -0.4062492251396179,
+          125.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"2px\"}",
+        "To fi ffi",
+        [
+          70.5625,
+          -0.7656235694885254,
+          67.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"2px\"}",
+        "a b  c",
+        [
+          53.421875,
+          -0.7031236886978149,
+          50.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"2px\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"2px\"}",
+        "AVATAR Wave",
+        [
+          121.5078125,
+          -0.15625,
+          118.953125
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"2px\"}",
+        "To fi ffi",
+        [
+          67.2421875,
+          -0.2890625,
+          64.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"2px\"}",
+        "a b  c",
+        [
+          46.203125,
+          -0.5625,
+          43.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"2px\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"-1.5px\"}",
+        "AVATAR Wave",
+        [
+          89.5859375,
+          -0.4062492251396179,
+          90.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"-1.5px\"}",
+        "To fi ffi",
+        [
+          39.0625,
+          -0.7656235694885254,
+          39.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"-1.5px\"}",
+        "a b  c",
+        [
+          32.421875,
+          -0.7031236886978149,
+          33.14060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"-1.5px\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"-1.5px\"}",
+        "AVATAR Wave",
+        [
+          83.0078125,
+          -0.15625,
+          83.953125
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"-1.5px\"}",
+        "To fi ffi",
+        [
+          35.7421875,
+          -0.2890625,
+          36.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"-1.5px\"}",
+        "a b  c",
+        [
+          25.203125,
+          -0.5625,
+          26.2109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"-1.5px\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"0.25em\"}",
+        "AVATAR Wave",
+        [
+          150.0859375,
+          -0.4062492251396179,
+          145.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"0.25em\"}",
+        "To fi ffi",
+        [
+          88.5625,
+          -0.7656235694885254,
+          83.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"0.25em\"}",
+        "a b  c",
+        [
+          65.421875,
+          -0.7031236886978149,
+          60.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"0.25em\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"0.25em\"}",
+        "AVATAR Wave",
+        [
+          143.5078125,
+          -0.15625,
+          138.953125
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"0.25em\"}",
+        "To fi ffi",
+        [
+          85.2421875,
+          -0.2890625,
+          80.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"0.25em\"}",
+        "a b  c",
+        [
+          58.203125,
+          -0.5625,
+          53.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"0.25em\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"5px\"}",
+        "AVATAR Wave",
+        [
+          111.0859375,
+          -0.4062492251396179,
+          110.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"5px\"}",
+        "To fi ffi",
+        [
+          62.5625,
+          -0.7656235694885254,
+          61.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"5px\"}",
+        "a b  c",
+        [
+          56.421875,
+          -0.7031236886978149,
+          55.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"5px\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"5px\"}",
+        "AVATAR Wave",
+        [
+          104.5078125,
+          -0.15625,
+          103.953125
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"5px\"}",
+        "To fi ffi",
+        [
+          59.2421875,
+          -0.2890625,
+          58.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"5px\"}",
+        "a b  c",
+        [
+          49.203125,
+          -0.5625,
+          48.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"5px\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"-2px\"}",
+        "AVATAR Wave",
+        [
+          104.0859375,
+          -0.4062492251396179,
+          103.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"-2px\"}",
+        "To fi ffi",
+        [
+          48.5625,
+          -0.7656235694885254,
+          47.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"-2px\"}",
+        "a b  c",
+        [
+          35.421875,
+          -0.7031236886978149,
+          34.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"-2px\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"-2px\"}",
+        "AVATAR Wave",
+        [
+          97.5078125,
+          -0.15625,
+          96.953125
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"-2px\"}",
+        "To fi ffi",
+        [
+          45.2421875,
+          -0.2890625,
+          44.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"-2px\"}",
+        "a b  c",
+        [
+          28.203125,
+          -0.5625,
+          27.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"-2px\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"1em\"}",
+        "AVATAR Wave",
+        [
+          122.0859375,
+          -0.4062492251396179,
+          121.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"1em\"}",
+        "To fi ffi",
+        [
+          84.5625,
+          -0.7656235694885254,
+          83.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"1em\"}",
+        "a b  c",
+        [
+          89.421875,
+          -0.7031236886978149,
+          88.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"wordSpacing\":\"1em\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"1em\"}",
+        "AVATAR Wave",
+        [
+          115.5078125,
+          -0.15625,
+          114.953125
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"1em\"}",
+        "To fi ffi",
+        [
+          81.2421875,
+          -0.2890625,
+          80.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"1em\"}",
+        "a b  c",
+        [
+          82.203125,
+          -0.5625,
+          81.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"wordSpacing\":\"1em\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"1px\",\"wordSpacing\":\"3px\"}",
+        "AVATAR Wave",
+        [
+          120.0859375,
+          -0.4062492251396179,
+          118.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"1px\",\"wordSpacing\":\"3px\"}",
+        "To fi ffi",
+        [
+          67.5625,
+          -0.7656235694885254,
+          65.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"1px\",\"wordSpacing\":\"3px\"}",
+        "a b  c",
+        [
+          56.421875,
+          -0.7031236886978149,
+          54.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"letterSpacing\":\"1px\",\"wordSpacing\":\"3px\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"1px\",\"wordSpacing\":\"3px\"}",
+        "AVATAR Wave",
+        [
+          113.5078125,
+          -0.15625,
+          111.953125
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"1px\",\"wordSpacing\":\"3px\"}",
+        "To fi ffi",
+        [
+          64.2421875,
+          -0.2890625,
+          62.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"1px\",\"wordSpacing\":\"3px\"}",
+        "a b  c",
+        [
+          49.203125,
+          -0.5625,
+          47.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"letterSpacing\":\"1px\",\"wordSpacing\":\"3px\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontKerning\":\"none\"}",
+        "AVATAR Wave",
+        [
+          112.3515625,
+          -0.4062492251396179,
+          111.57029724121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontKerning\":\"none\"}",
+        "To fi ffi",
+        [
+          54.4375,
+          -0.7656235694885254,
+          53.49217987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontKerning\":\"none\"}",
+        "a b  c",
+        [
+          41.421875,
+          -0.7031236886978149,
+          40.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontKerning\":\"none\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontKerning\":\"none\"}",
+        "AVATAR Wave",
+        [
+          107.96875,
+          -0.15625,
+          107.4140625
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontKerning\":\"none\"}",
+        "To fi ffi",
+        [
+          50.6484375,
+          -0.2890625,
+          50.34375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontKerning\":\"none\"}",
+        "a b  c",
+        [
+          34.203125,
+          -0.5625,
+          33.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontKerning\":\"none\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontKerning\":\"normal\"}",
+        "AVATAR Wave",
+        [
+          106.0859375,
+          -0.4062492251396179,
+          105.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontKerning\":\"normal\"}",
+        "To fi ffi",
+        [
+          52.5625,
+          -0.7656235694885254,
+          51.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontKerning\":\"normal\"}",
+        "a b  c",
+        [
+          41.421875,
+          -0.7031236886978149,
+          40.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontKerning\":\"normal\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontKerning\":\"normal\"}",
+        "AVATAR Wave",
+        [
+          99.21875,
+          -0.15625,
+          98.6640625
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontKerning\":\"normal\"}",
+        "To fi ffi",
+        [
+          49.2421875,
+          -0.2890625,
+          48.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontKerning\":\"normal\"}",
+        "a b  c",
+        [
+          34.203125,
+          -0.5625,
+          33.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontKerning\":\"normal\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"optimizeSpeed\"}",
+        "AVATAR Wave",
+        [
+          106.0859375,
+          -0.4062492251396179,
+          105.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"optimizeSpeed\"}",
+        "To fi ffi",
+        [
+          52.5625,
+          -0.7656235694885254,
+          51.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"optimizeSpeed\"}",
+        "a b  c",
+        [
+          41.421875,
+          -0.7031236886978149,
+          40.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"optimizeSpeed\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"optimizeSpeed\"}",
+        "AVATAR Wave",
+        [
+          99.5078125,
+          -0.15625,
+          98.953125
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"optimizeSpeed\"}",
+        "To fi ffi",
+        [
+          49.2421875,
+          -0.2890625,
+          48.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"optimizeSpeed\"}",
+        "a b  c",
+        [
+          34.203125,
+          -0.5625,
+          33.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"optimizeSpeed\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"optimizeLegibility\"}",
+        "AVATAR Wave",
+        [
+          106.0859375,
+          -0.4062492251396179,
+          105.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"optimizeLegibility\"}",
+        "To fi ffi",
+        [
+          52.5625,
+          -0.7656235694885254,
+          51.617183685302734
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"optimizeLegibility\"}",
+        "a b  c",
+        [
+          41.421875,
+          -0.7031236886978149,
+          40.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"optimizeLegibility\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"optimizeLegibility\"}",
+        "AVATAR Wave",
+        [
+          99.21875,
+          -0.15625,
+          98.6640625
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"optimizeLegibility\"}",
+        "To fi ffi",
+        [
+          49.2421875,
+          -0.2890625,
+          48.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"optimizeLegibility\"}",
+        "a b  c",
+        [
+          34.203125,
+          -0.5625,
+          33.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"optimizeLegibility\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"geometricPrecision\"}",
+        "AVATAR Wave",
+        [
+          106.0859375,
+          -0.4062492251396179,
+          105.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"geometricPrecision\"}",
+        "To fi ffi",
+        [
+          52.5625,
+          -0.7656235694885254,
+          51.617183685302734
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"geometricPrecision\"}",
+        "a b  c",
+        [
+          41.421875,
+          -0.7031236886978149,
+          40.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"textRendering\":\"geometricPrecision\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"geometricPrecision\"}",
+        "AVATAR Wave",
+        [
+          99.21875,
+          -0.15625,
+          98.6640625
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"geometricPrecision\"}",
+        "To fi ffi",
+        [
+          49.2421875,
+          -0.2890625,
+          48.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"geometricPrecision\"}",
+        "a b  c",
+        [
+          34.203125,
+          -0.5625,
+          33.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"textRendering\":\"geometricPrecision\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontStretch\":\"condensed\"}",
+        "AVATAR Wave",
+        [
+          106.0859375,
+          -0.4062492251396179,
+          105.30467224121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontStretch\":\"condensed\"}",
+        "To fi ffi",
+        [
+          52.5625,
+          -0.7656235694885254,
+          51.61717987060547
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontStretch\":\"condensed\"}",
+        "a b  c",
+        [
+          41.421875,
+          -0.7031236886978149,
+          40.64060974121094
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"fontStretch\":\"condensed\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontStretch\":\"condensed\"}",
+        "AVATAR Wave",
+        [
+          99.5078125,
+          -0.15625,
+          98.953125
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontStretch\":\"condensed\"}",
+        "To fi ffi",
+        [
+          49.2421875,
+          -0.2890625,
+          48.9375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontStretch\":\"condensed\"}",
+        "a b  c",
+        [
+          34.203125,
+          -0.5625,
+          33.7109375
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"fontStretch\":\"condensed\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"font\":\"20px \\\"Liberation Serif\\\"\",\"letterSpacing\":\"1em\"}",
+        "AVATAR Wave",
+        [
+          344.384765625,
+          -0.1953125,
+          323.69140625
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"font\":\"20px \\\"Liberation Serif\\\"\",\"letterSpacing\":\"1em\"}",
+        "To fi ffi",
+        [
+          241.552734375,
+          -0.361328125,
+          221.171875
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"font\":\"20px \\\"Liberation Serif\\\"\",\"letterSpacing\":\"1em\"}",
+        "a b  c",
+        [
+          162.75390625,
+          -0.703125,
+          142.138671875
+        ]
+      ],
+      [
+        "16px Inter",
+        "{\"font\":\"20px \\\"Liberation Serif\\\"\",\"letterSpacing\":\"1em\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"font\":\"20px \\\"Liberation Serif\\\"\",\"letterSpacing\":\"1em\"}",
+        "AVATAR Wave",
+        [
+          344.384765625,
+          -0.1953125,
+          323.69140625
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"font\":\"20px \\\"Liberation Serif\\\"\",\"letterSpacing\":\"1em\"}",
+        "To fi ffi",
+        [
+          241.552734375,
+          -0.361328125,
+          221.171875
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"font\":\"20px \\\"Liberation Serif\\\"\",\"letterSpacing\":\"1em\"}",
+        "a b  c",
+        [
+          162.75390625,
+          -0.703125,
+          142.138671875
+        ]
+      ],
+      [
+        "16px \"Liberation Serif\"",
+        "{\"font\":\"20px \\\"Liberation Serif\\\"\",\"letterSpacing\":\"1em\"}",
+        "",
+        [
+          0,
+          0,
+          0
+        ]
+      ]
+    ],
+    "emAtAssignment": [
+      "1em",
+      95.21484375
+    ]
+  }
+}

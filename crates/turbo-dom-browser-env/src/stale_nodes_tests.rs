@@ -78,7 +78,7 @@ fn next_file(scope: &mut v8::PinScope) {
 
 fn stale_reads() -> serde_json::Value {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -105,7 +105,7 @@ fn wrappers_from_a_reset_tree_throw_illegal_invocation() {
 #[test]
 fn the_new_tree_is_untouched_by_stale_wrappers() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -135,7 +135,7 @@ fn the_new_tree_is_untouched_by_stale_wrappers() {
 #[test]
 fn a_handle_past_the_end_of_its_tree_throws_instead_of_aborting() {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

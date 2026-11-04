@@ -4,7 +4,7 @@ use crate::browser_env::crate_surface::harness_tests::thrown;
 #[test]
 fn replaced_document_preserves_traversal_and_equality_on_all_native_node_kinds() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -41,7 +41,7 @@ fn replaced_document_preserves_traversal_and_equality_on_all_native_node_kinds()
 #[test]
 fn first_native_wrapping_does_not_call_page_modified_projection_intrinsics() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -79,7 +79,7 @@ fn first_native_wrapping_does_not_call_page_modified_projection_intrinsics() {
 #[test]
 fn parser_created_controls_use_private_projectors_despite_page_constructor_getters() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -129,7 +129,7 @@ fn parser_created_controls_use_private_projectors_despite_page_constructor_gette
 #[test]
 fn interrupted_native_wrapping_leaves_no_unprojected_cached_object() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -160,7 +160,7 @@ fn interrupted_native_wrapping_leaves_no_unprojected_cached_object() {
 #[test]
 fn html_namespace_local_names_and_foreign_control_brands_match_chrome() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

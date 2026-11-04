@@ -35,7 +35,7 @@ fn wrap_while_terminating(
 /// `after`'s JSON.
 fn terminated(html: &str, source: &str, after: &str) -> String {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -127,7 +127,7 @@ fn termination_in_a_setter_reaction_keeps_the_mutation() {
 #[test]
 fn install_while_terminating_unwinds() {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -156,7 +156,7 @@ fn install_while_terminating_unwinds() {
 #[test]
 fn install_into_a_frozen_namespace_degrades_without_panicking() {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -185,7 +185,7 @@ fn at_checkpoint(
     after: &str,
 ) -> String {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -276,7 +276,7 @@ fn watchdog_checkpoints_unwind_and_leave_a_working_document() {
 #[test]
 fn dispatch_skips_collected_callbacks_and_drops_listeners_of_aborted_signals() {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -341,7 +341,7 @@ fn dispatch_skips_collected_callbacks_and_drops_listeners_of_aborted_signals() {
 #[test]
 fn every_captured_node_intrinsic_is_a_function_after_install() {
     crate::browser_env::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

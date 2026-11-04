@@ -122,7 +122,8 @@ fn append(
 fn kind(content: &FragmentContent) -> GeometryKind {
     match content {
         FragmentContent::Box { .. } => GeometryKind::BorderBox,
-        FragmentContent::Image(_) => GeometryKind::ImagePaint,
+        // A background layer's tiles paint an image (or gradient) across their box.
+        FragmentContent::Image(_) | FragmentContent::Tiles(_) => GeometryKind::ImagePaint,
         FragmentContent::TextLine { .. } => GeometryKind::TextLineContainer,
         FragmentContent::Marker(_) => GeometryKind::Marker,
     }

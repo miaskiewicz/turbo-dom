@@ -65,6 +65,13 @@ fn put(
     let private = key(scope, name)?;
     (object.set_private(scope, private, value.into()) == Some(true)).then_some(())
 }
+/// Drop `document`'s associated template-contents document (a startup snapshot keeps no
+/// inert document: its native tree does not outlive the build; turbo-dom#249).
+pub(super) fn forget_associated(scope: &mut v8::PinScope, document: v8::Local<v8::Object>) {
+    if let Some(private) = key(scope, "turbo.template.associated-document") {
+        document.delete_private(scope, private);
+    }
+}
 fn template(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> bool {
     let _owner = DomScope::for_object(scope, object);
     handle_of(scope, object)
@@ -277,6 +284,19 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let root = with_tree(Tree::root).expect("install runs on an installed document");
     let document = wrap(scope, root);
     realize(scope, document);
+}
+/// [`install`]'s native half, for a document deserialized from a startup snapshot
+/// (turbo-dom#249): the template contents keys and the enabled flag. Its contents are
+/// realized when a document is attached.
+pub(super) fn rehydrate(scope: &mut v8::PinScope) {
+    if capture_keys(scope).is_none() {
+        return;
+    }
+    DOM.with(|dom| {
+        if let Some(dom) = dom.borrow_mut().as_mut() {
+            dom.template_contents.enabled = true
+        }
+    });
 }
 pub(super) fn set_html<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -565,7 +585,8 @@ pub(super) fn serialize_with<'s>(
                     shadow(scope, node, options, &mut pending, &mut out);
                 }
             }
-            3 => {
+            // Chrome's HTML serialization writes a CDATA section as escaped text.
+            3 | 4 => {
                 let value = with_tree(|tree| tree.node_value_utf16(handle))
                     .flatten()
                     .unwrap_or_default();
@@ -647,7 +668,7 @@ mod tests {
     #[test]
     fn legacy_void_elements_serialize_without_end_tags() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -662,7 +683,7 @@ mod tests {
     #[test]
     fn context_free_template_private_keys_do_not_retain_realms() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let weak = {
             v8::scope!(let scope,&mut isolate);
             let context = v8::Context::new(scope, Default::default());
@@ -678,7 +699,7 @@ mod tests {
     #[test]
     fn interrupted_template_private_lookup_does_not_allocate_or_publish() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -697,7 +718,7 @@ mod tests {
     #[test]
     fn associated_template_document_uses_new_owner_realm_after_foreign_adoption() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let main = v8::Context::new(scope, Default::default());
         let foreign = v8::Context::new(scope, Default::default());
@@ -737,7 +758,7 @@ mod tests {
     #[test]
     fn template_native_graph_retains_connected_and_held_content_then_collects_cycles() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let (context, weak_host, weak_content, weak_child) = {
             v8::scope!(let scope,&mut isolate);
             let context = v8::Context::new(scope, Default::default());
@@ -829,7 +850,7 @@ mod tests {
     #[test]
     fn native_template_lifecycle_queues_parsing_and_handler_activation_match_chrome() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -856,7 +877,7 @@ mod tests {
     #[test]
     fn native_template_ownership_clone_adoption_and_source_match_independent_chrome() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope,isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);

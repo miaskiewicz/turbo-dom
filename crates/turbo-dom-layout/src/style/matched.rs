@@ -93,7 +93,8 @@ pub fn resolve_matched_style(
     )
 }
 
-/// The same legacy attribute hints (`bgcolor`, `width`, `height`, `color`, `align`) the
+/// The same legacy attribute hints (`bgcolor`, `width`, `height`, `color`, `align`, a
+/// list's `type`) the
 /// ordinary tree cascade applies, for an element named `local` (`None` = a marker)
 /// with `attrs`. Embedders can assign these the owning element's scope and an early
 /// author source order.
@@ -106,7 +107,7 @@ pub fn presentational_declarations(local: Option<&str>, attrs: &[Attr]) -> Vec<D
 }
 
 /// The attributes [`presentational_declarations`] reads.
-const HINT_ATTRIBUTES: [&str; 5] = ["bgcolor", "width", "height", "color", "align"];
+const HINT_ATTRIBUTES: [&str; 6] = ["bgcolor", "width", "height", "color", "align", "type"];
 
 /// [`presentational_declarations`] of a live element `h` named `local`, reading its
 /// attributes by qualified name (the live-DOM input, [`crate::live`]).
@@ -124,10 +125,66 @@ pub(crate) fn presentational_declarations_of(
             })
         })
         .collect();
-    declarations_of(Subject {
+    let mut declarations = declarations_of(Subject {
         tag: Some(local),
         attrs: Attrs::List(&attrs),
+    });
+    declarations.extend(dir_auto_declaration(tree, h));
+    declarations
+}
+
+/// The `direction` an element with `dir=auto` takes: right-to-left when the first
+/// strong character of its text is, skipping `<bdi>`, `<script>`, `<style>`,
+/// `<textarea>` and descendants with their own valid `dir` (HTML's auto
+/// directionality; Chrome 156, miaskiewicz/turbo-dom#238). `None` without `dir=auto`.
+pub(crate) fn dir_auto_declaration(
+    tree: &turbo_dom::Tree,
+    h: turbo_dom::Handle,
+) -> Option<Declaration> {
+    let auto = tree
+        .get_attribute(h, "dir")
+        .is_some_and(|value| value.trim().eq_ignore_ascii_case("auto"));
+    if !auto {
+        return None;
+    }
+    let rtl = first_strong_in(tree, h).unwrap_or(false);
+    Some(Declaration {
+        property: "direction".to_string(),
+        value: if rtl { "rtl" } else { "ltr" }.to_string(),
+        important: false,
     })
+}
+
+fn first_strong_in(tree: &turbo_dom::Tree, h: turbo_dom::Handle) -> Option<bool> {
+    let mut child = tree.first_child(h);
+    while let Some(node) = child {
+        let found = match tree.node_type(node) {
+            turbo_dom::rtdom::tree::NodeType::Text => tree
+                .node_value(node)
+                .and_then(|text| crate::layout::inline::bidi::first_strong_rtl(&text)),
+            turbo_dom::rtdom::tree::NodeType::Element if !skips_auto_direction(tree, node) => {
+                first_strong_in(tree, node)
+            }
+            _ => None,
+        };
+        if found.is_some() {
+            return found;
+        }
+        child = tree.next_sibling(node);
+    }
+    None
+}
+
+fn skips_auto_direction(tree: &turbo_dom::Tree, h: turbo_dom::Handle) -> bool {
+    let own_dir = tree.get_attribute(h, "dir").is_some_and(|value| {
+        ["ltr", "rtl", "auto"]
+            .iter()
+            .any(|keyword| value.trim().eq_ignore_ascii_case(keyword))
+    });
+    own_dir
+        || tree
+            .local_name(h)
+            .is_some_and(|name| matches!(name, "bdi" | "script" | "style" | "textarea"))
 }
 
 fn declarations_of(subject: Subject) -> Vec<Declaration> {

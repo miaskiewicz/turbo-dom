@@ -26,6 +26,10 @@ pub struct ScrollMetrics {
     pub scroll_y: bool,
     pub max_x: f64,
     pub max_y: f64,
+    /// The smallest horizontal offset: `0` in an LTR box, `-(scrollWidth -
+    /// clientWidth)` in an RTL one, whose content overflows to the left and whose
+    /// offsets run `min_x..=0` like Chrome 156 (miaskiewicz/turbo-dom#190).
+    pub min_x: f64,
 }
 fn overflow_value(value: &str) -> Option<&'static str> {
     ["visible", "clip", "hidden", "scroll", "auto"]
@@ -81,13 +85,25 @@ fn rounded(value: f32) -> Result<i32, String> {
     }
     Ok(value.round() as i32)
 }
+/// Whether `source`'s first border box is an ordinary inline box's fragment.
+fn inline_box(snapshot: &LayoutSnapshot, source: &crate::layout_snapshot::SnapshotSource) -> bool {
+    source.fragment_indices.iter().any(|&i| {
+        let fragment = &snapshot.fragments()[i];
+        fragment.kind == GeometryKind::BorderBox
+            && fragment.used_box.is_some_and(|used| used.inline_fragment)
+    })
+}
+
 pub fn scroll_metrics(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     id: SourceId,
 ) -> Result<ScrollMetrics, String> {
     let source = snapshot.source(id).ok_or("native scroll source missing")?;
+    // An inline box (no box of its own to scroll) reads zero, like a box-less element
+    // (CSSOM View `scrollWidth` / `scrollHeight`; Chrome 156, miaskiewicz/turbo-dom#239).
     if source.excluded_from_layout
+        || inline_box(snapshot, source)
         || styles
             .get(&id)
             .is_some_and(|entry| entry.style.get("display") == Some("contents"))
@@ -99,6 +115,7 @@ pub fn scroll_metrics(
             scroll_y: false,
             max_x: 0.0,
             max_y: 0.0,
+            min_x: 0.0,
         });
     }
     if snapshot.unsupported_svg_source_geometry(id) {
@@ -117,14 +134,15 @@ pub fn scroll_metrics(
         .ok_or("native scroll computed style missing")?;
     let x = overflow(&own.style, "overflow-x");
     let y = overflow(&own.style, "overflow-y");
-    if own.style.get("direction") == Some("rtl")
-        || own
-            .style
-            .get("writing-mode")
-            .is_some_and(|v| v != "horizontal-tb")
-    {
-        return Err("native scroll RTL/vertical writing provenance pending".into());
-    }
+    // A vertical-rl box's block flow, like an RTL box's inline flow, starts at its
+    // right edge (miaskiewicz/turbo-dom#234).
+    let rtl = match crate::layout::writing::WritingMode::of(&own.style) {
+        crate::layout::writing::WritingMode::HorizontalTb => {
+            own.style.get("direction") == Some("rtl")
+        }
+        crate::layout::writing::WritingMode::VerticalRl => true,
+        crate::layout::writing::WritingMode::VerticalLr => false,
+    };
     let matrix = snapshot
         .native_world_transform(first.index)
         .ok_or("native scroll transform unavailable")?;
@@ -143,19 +161,26 @@ pub fn scroll_metrics(
                 ((-matrix[1] * x + matrix[0] * y) / determinant) as f32,
             ]
         });
-        [
+        (
+            [
+                points
+                    .iter()
+                    .map(|point| point[0])
+                    .fold(f32::NEG_INFINITY, f32::max),
+                points
+                    .iter()
+                    .map(|point| point[1])
+                    .fold(f32::NEG_INFINITY, f32::max),
+            ],
             points
                 .iter()
                 .map(|point| point[0])
-                .fold(f32::NEG_INFINITY, f32::max),
-            points
-                .iter()
-                .map(|point| point[1])
-                .fold(f32::NEG_INFINITY, f32::max),
-        ]
+                .fold(f32::INFINITY, f32::min),
+        )
     };
     let scroll_container = permits_scroll(x) || permits_scroll(y);
     let mut right = padding.x + padding.width;
+    let mut left = padding.x;
     let mut bottom = padding.y + padding.height;
     for &index in &source.descendant_fragment_indices {
         let fragment = &snapshot.fragments()[index];
@@ -193,20 +218,22 @@ pub fn scroll_metrics(
                 blocked_y |= clips(overflow(&ancestor.style, "overflow-y"));
             }
         }
-        let transformed = projected(fragment);
+        let (transformed, leftmost) = projected(fragment);
         let rect = fragment.rect;
         // An absolute / fixed box's untransformed rect is not scrollable overflow; a
         // flow box's is (miaskiewicz/turbo-dom#147, Chrome 156).
         let out_of_flow = fragment.used_box.is_some_and(|metrics| {
             matches!(metrics.position, Position::Absolute | Position::Fixed)
         });
-        let untransformed = if out_of_flow {
-            [f32::NEG_INFINITY; 2]
+        let (untransformed, untransformed_left) = if out_of_flow {
+            ([f32::NEG_INFINITY; 2], f32::INFINITY)
         } else {
-            [rect.x + rect.width, rect.y + rect.height]
+            ([rect.x + rect.width, rect.y + rect.height], rect.x)
         };
         if !blocked_x {
             right = right.max(transformed[0]).max(untransformed[0]);
+            // The left extent only matters to an RTL box (see `start` below).
+            left = left.min(leftmost).min(untransformed_left);
         }
         if !blocked_y {
             bottom = bottom.max(transformed[1]).max(untransformed[1]);
@@ -216,9 +243,11 @@ pub fn scroll_metrics(
         // out-of-flow boxes and transforms contribute only their edges.
         if let Some(metrics) = fragment.used_box {
             if metrics.position != Position::Absolute && metrics.position != Position::Fixed {
+                // An RTL box's inline end is its left side (miaskiewicz/turbo-dom#190).
                 if !blocked_x && scroll_container {
                     right =
                         right.max(rect.x + rect.width + metrics.margin.right + used.padding.right);
+                    left = left.min(rect.x - metrics.margin.left - used.padding.left);
                 }
                 if !blocked_y && scroll_container {
                     bottom = bottom
@@ -227,13 +256,21 @@ pub fn scroll_metrics(
             }
         }
     }
+    // An RTL box scrolls from its right edge: its left overflow is reached through
+    // negative offsets and its right overflow is unreachable (Chrome 156).
+    let (start, end) = if rtl {
+        (left, padding.x + padding.width)
+    } else {
+        (padding.x, right)
+    };
     Ok(ScrollMetrics {
-        width: rounded(right - padding.x)?,
+        width: rounded(end - start)?,
         height: rounded(bottom - padding.y)?,
         scroll_x: permits_scroll(x),
         scroll_y: permits_scroll(y),
-        max_x: f64::from((right - padding.x - padding.width).max(0.0)),
+        max_x: f64::from((end - padding.x - padding.width).max(0.0)),
         max_y: f64::from((bottom - padding.y - padding.height).max(0.0)),
+        min_x: f64::from((start - padding.x).min(0.0)),
     })
 }
 
@@ -418,8 +455,21 @@ pub fn element_scroller(styles: &SourceStyles, id: SourceId) -> bool {
             || permits_scroll(overflow(&entry.style, "overflow-y")))
 }
 
+/// Whether the viewport is right-to-left: the root's used direction, which for HTML is
+/// its `<body>` child's when it has one (CSS Writing Modes 3 §8; Chrome 156,
+/// miaskiewicz/turbo-dom#238).
+fn viewport_rtl(styles: &SourceStyles, root: SourceId) -> bool {
+    let body = styles
+        .values()
+        .find(|entry| entry.parent == Some(root) && entry.tag.eq_ignore_ascii_case("body"));
+    body.or_else(|| styles.get(&root))
+        .is_some_and(|entry| has_value(&entry.style, "direction", "rtl"))
+}
+
 /// Viewport scrollable overflow: the initial containing block plus every
-/// in-flow or absolute descendant edge not owned by a nested clipping box.
+/// in-flow or absolute descendant edge not owned by a nested clipping box. An RTL
+/// viewport's overflow extends left instead (offsets `min_x..=0`), its content past
+/// the right edge unreachable, as an LTR one's past the left edge.
 pub fn viewport_metrics(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
@@ -429,7 +479,9 @@ pub fn viewport_metrics(
     let source = snapshot
         .source(root)
         .ok_or("native scroll source missing")?;
+    let rtl = viewport_rtl(styles, root);
     let mut right = size[0];
+    let mut left = 0.0f32;
     let mut bottom = size[1];
     for &index in source
         .fragment_indices
@@ -474,6 +526,13 @@ pub fn viewport_metrics(
                 .map(|point| if axis == 0 { point.x } else { point.y })
                 .fold(f32::NEG_INFINITY, f32::max)
         };
+        let quad_left = || {
+            fragment
+                .quad
+                .iter()
+                .map(|point| point.x)
+                .fold(f32::INFINITY, f32::min)
+        };
         let flow = fragment
             .used_box
             .filter(|_| position != Some(Position::Absolute))
@@ -486,25 +545,35 @@ pub fn viewport_metrics(
                         | Display::InlineFlex
                         | Display::InlineGrid
                 );
+                let inline_end = if rtl {
+                    used.margin.left
+                } else {
+                    used.margin.right
+                };
                 [
-                    if inline_level { used.margin.right } else { 0.0 },
+                    if inline_level { inline_end } else { 0.0 },
                     used.margin.bottom,
                 ]
             });
         if !blocked[0] {
-            right = right.max(quad(0) + flow[0]);
+            if rtl {
+                left = left.min(quad_left() - flow[0]);
+            } else {
+                right = right.max(quad(0) + flow[0]);
+            }
         }
         if !blocked[1] {
             bottom = bottom.max(quad(1) + flow[1]);
         }
     }
     Ok(ScrollMetrics {
-        width: rounded(right)?,
+        width: rounded(right - left)?,
         height: rounded(bottom)?,
         scroll_x: true,
         scroll_y: true,
         max_x: f64::from((right - size[0]).max(0.0)),
         max_y: f64::from((bottom - size[1]).max(0.0)),
+        min_x: f64::from(left),
     })
 }
 
@@ -527,6 +596,20 @@ pub fn alignment(block: u32, mode: u32) -> Result<[Align; 3], String> {
         (0, 3) | (2, _) => [Align::None, Align::Closest, Align::Closest],
         (1, _) => [Align::None, Align::Center, Align::Closest],
         _ => return Err("native scroll alignment is invalid".into()),
+    })
+}
+
+/// The inline-axis behaviors of an RTL scroller: its inline start is its right edge,
+/// so `start` and `end` swap (Chrome 156, miaskiewicz/turbo-dom#190).
+#[must_use]
+pub fn inline_alignment(behaviors: [Align; 3], rtl: bool) -> [Align; 3] {
+    if !rtl {
+        return behaviors;
+    }
+    behaviors.map(|behavior| match behavior {
+        Align::Start => Align::End,
+        Align::End => Align::Start,
+        other => other,
     })
 }
 
@@ -813,6 +896,25 @@ mod tests {
                 ["scrollWidth", "scrollHeight", "maxX", "maxY"].map(|k| want[k].as_i64().unwrap()),
                 "{id}: {cid} scroll extents"
             );
+            // An RTL scroller's offsets run 0..-(scrollWidth - clientWidth), and a set
+            // offset reads back clamped to them (turbo-surf's clamp; miaskiewicz/turbo-dom#190).
+            let min = if got.scroll_x { snap(got.min_x) } else { 0.0 };
+            assert_eq!(
+                min as i64,
+                want["minX"].as_i64().unwrap_or(0),
+                "{id}: {cid} minimum scroll offset"
+            );
+            if let Some(set) = case.json["scroll"].get(cid) {
+                let read = set[0]
+                    .as_f64()
+                    .unwrap()
+                    .clamp(min, max(got.max_x, got.scroll_x) as f64);
+                assert_eq!(
+                    read as i64,
+                    want["scrollLeft"].as_i64().unwrap_or(0),
+                    "{id}: {cid} scrollLeft read back"
+                );
+            }
             // An element without a box scrolls in neither axis.
             let boxed = want["scrollWidth"].as_i64() != Some(0);
             assert_eq!(
@@ -885,9 +987,11 @@ mod tests {
                 i64::from(got.width),
                 i64::from(got.height),
                 snap(got.max_x) as i64,
-                snap(got.max_y) as i64
+                snap(got.max_y) as i64,
+                snap(got.min_x) as i64,
             ],
-            ["scrollWidth", "scrollHeight", "maxX", "maxY"].map(|k| want[k].as_i64().unwrap()),
+            ["scrollWidth", "scrollHeight", "maxX", "maxY", "minX"]
+                .map(|k| want[k].as_i64().unwrap_or(0)),
             "{id}"
         );
         assert!(got.scroll_x && got.scroll_y);
@@ -991,7 +1095,26 @@ mod tests {
 
     fn assert_translated(id: &str) {
         let case = case(id);
-        let offsets = case.offsets();
+        // The embedder clamps a set offset to the scroller's range first.
+        let offsets: BTreeMap<_, _> = case
+            .offsets()
+            .into_iter()
+            .map(|(source, [x, y])| {
+                let m = if source == VIEWPORT {
+                    viewport_metrics(&case.snapshot, &case.styles, case.root(), [1280.0, 800.0])
+                } else {
+                    scroll_metrics(&case.snapshot, &case.styles, source)
+                }
+                .unwrap();
+                (
+                    source,
+                    [
+                        x.clamp(snap(m.min_x), snap(m.max_x)),
+                        y.clamp(0.0, snap(m.max_y)),
+                    ],
+                )
+            })
+            .collect();
         for want in case.json["boxes"].as_array().unwrap() {
             let cid = want["cid"].as_str().unwrap();
             let [dx, dy] =
@@ -1016,9 +1139,47 @@ mod tests {
         assert_translated("translation-transformed-scroller");
     }
 
+    /// miaskiewicz/turbo-dom#190: an RTL scroller overflows to the left; its negative
+    /// offsets move its boxes right.
+    #[test]
+    fn rtl_scrollers_scroll_from_the_right_like_chrome_156() {
+        assert_extents("rtl-scroll-origin");
+        assert_translated("rtl-scroll-origin");
+        assert_extents("rtl-into-view");
+    }
+
+    /// miaskiewicz/turbo-dom#238 item 3: an RTL root (the body's direction, CSS Writing
+    /// Modes 3 §8) lays the initial containing block's content from the right; the
+    /// viewport's offsets run `0..=-(scrollWidth - innerWidth)` and move the boxes right.
+    #[test]
+    fn rtl_root_viewport_scrolls_from_the_right_like_chrome_156() {
+        for id in [
+            "rtl-viewport-root",
+            "rtl-viewport-root-scrolled",
+            "rtl-viewport-root-clamped",
+            "rtl-viewport-root-style",
+            "rtl-viewport-body-only",
+            "rtl-viewport-body-ltr",
+        ] {
+            assert_viewport(id);
+            assert_translated(id);
+        }
+    }
+
     #[test]
     fn scroll_into_view_offsets_match_chrome_156() {
-        let case = case("into-view");
+        assert_into_view("into-view");
+    }
+
+    /// miaskiewicz/turbo-dom#190: in an RTL scroller the inline start is the right edge
+    /// and the offsets are negative.
+    #[test]
+    fn rtl_scroll_into_view_offsets_match_chrome_156() {
+        assert_into_view("rtl-into-view");
+    }
+
+    fn assert_into_view(id: &str) {
+        let case = case(id);
         let scroller = case.id("s");
         let metrics = scroll_metrics(&case.snapshot, &case.styles, scroller).unwrap();
         let port = case.bounds("s");
@@ -1031,14 +1192,19 @@ mod tests {
             ];
             // Chrome clamps the starting offsets first, as the embedder does.
             let from = [
-                from[0].clamp(0.0, snap(metrics.max_x)),
+                from[0].clamp(snap(metrics.min_x), snap(metrics.max_x)),
                 from[1].clamp(0.0, snap(metrics.max_y)),
             ];
             let mode = want["mode"].as_u64().unwrap() as u32;
+            let rtl = case.styles[&scroller].style.get("direction") == Some("rtl");
             let behaviors = [
-                alignment(want["inline"].as_u64().unwrap() as u32, mode).unwrap(),
+                inline_alignment(
+                    alignment(want["inline"].as_u64().unwrap() as u32, mode).unwrap(),
+                    rtl,
+                ),
                 alignment(want["block"].as_u64().unwrap() as u32, mode).unwrap(),
             ];
+            let min = [snap(metrics.min_x), 0.0];
             let max = [snap(metrics.max_x), snap(metrics.max_y)];
             let start = [bounds.x - port.x, bounds.y - port.y];
             let length = [bounds.width, bounds.height];
@@ -1052,7 +1218,7 @@ mod tests {
                         f64::from(visible[axis]),
                         behaviors[axis],
                     )
-                    .clamp(0.0, max[axis]),
+                    .clamp(min[axis], max[axis]),
                 )
             });
             let chrome = [
@@ -1100,18 +1266,10 @@ mod tests {
     #[test]
     fn unsupported_scroll_geometry_is_an_error_not_a_guess() {
         let (tree, snapshot, styles) = laid_out(
-            "<body><div id=r style='direction:rtl;overflow:auto'></div><div id=v style='writing-mode:vertical-rl;overflow:auto'></div><div id=z style='transform:scale(0);overflow:auto'></div><svg><rect id=s width=5 height=5></rect></svg><span id=i>x</span></body>",
+            "<body><div id=z style='transform:scale(0);overflow:auto'></div><svg><rect id=s width=5 height=5></rect></svg><span id=i>x</span></body>",
         );
         let id = |selector| crate::live::testing::id(&tree, selector);
         let error = |selector| scroll_metrics(&snapshot, &styles, id(selector)).unwrap_err();
-        assert_eq!(
-            error("#r"),
-            "native scroll RTL/vertical writing provenance pending"
-        );
-        assert_eq!(
-            error("#v"),
-            "native scroll RTL/vertical writing provenance pending"
-        );
         assert_eq!(
             error("#z"),
             "native scroll degenerate-container relative transform provenance pending"

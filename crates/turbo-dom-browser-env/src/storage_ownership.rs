@@ -272,7 +272,7 @@ mod contracts {
     }
     fn run(body: impl FnOnce(&mut v8::OwnedIsolate, &v8::Global<v8::Context>)) {
         tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
         let context = {
             v8::scope!(let scope, &mut isolate);
@@ -607,7 +607,7 @@ mod contracts {
                     .unwrap();
                 NativeNodePin::capture(scope, node).unwrap()
             };
-            let mut foreign = v8::Isolate::new(Default::default());
+            let mut foreign = crate::browser_env::tests::new_isolate();
             {
                 v8::scope!(let scope,&mut foreign);
                 let context = v8::Context::new(scope, Default::default());
@@ -626,7 +626,7 @@ mod contracts {
     fn isolate_slot_disposal_clears_job_that_outlives_isolate_without_explicit_cleanup() {
         tests::init_v8();
         let pin = {
-            let mut isolate = v8::Isolate::new(Default::default());
+            let mut isolate = crate::browser_env::tests::new_isolate();
             let pin = {
                 v8::scope!(let scope,&mut isolate);
                 let context = v8::Context::new(scope, Default::default());

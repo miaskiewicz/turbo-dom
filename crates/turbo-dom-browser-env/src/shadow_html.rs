@@ -660,7 +660,7 @@ mod tests {
     #[test]
     fn shadow_root_state_html_serialization_and_declarative_parsing_match_chrome156() {
         super::super::tests::init_v8();
-        let isolate = &mut v8::Isolate::new(Default::default());
+        let isolate = &mut crate::browser_env::tests::new_isolate();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
@@ -682,7 +682,7 @@ mod tests {
     #[test]
     fn unreferenced_closed_root_init_survives_collection_for_clone_and_serialization() {
         super::super::tests::init_v8();
-        let mut isolate = v8::Isolate::new(Default::default());
+        let mut isolate = crate::browser_env::tests::new_isolate();
         let context = {
             v8::scope!(let scope, &mut isolate);
             let context = v8::Context::new(scope, Default::default());

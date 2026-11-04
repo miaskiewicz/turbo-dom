@@ -3,7 +3,7 @@ use crate::browser_env::crate_surface::harness_tests::thrown;
 
 fn evaluate(probe: &str) -> serde_json::Value {
     tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -76,6 +76,36 @@ fn implicit_color_inheritance_follows_cssom_mutations_like_chrome156() {
 }
 
 #[test]
+fn grouping_and_condition_rules_match_chrome156_cssom() {
+    // turbo-dom#254: @container / @media / @supports / @layer / @scope / @starting-style
+    // rules expose their own interfaces, attributes, child lists and insertRule / deleteRule.
+    let probe = include_str!("css_grouping_rules_probe.js");
+    let expected = fixture(include_str!("css_grouping_rules_chrome156.json"), probe);
+    let actual = evaluate(probe);
+    for key in [
+        "rules",
+        "mutations",
+        "interfaces",
+        "illegal",
+        "inserted",
+        "mediaRows",
+    ] {
+        let (expected, actual) = (
+            expected[key].as_array().unwrap(),
+            actual[key].as_array().unwrap(),
+        );
+        assert_eq!(expected.len(), actual.len(), "{key}");
+        let diverged: Vec<_> = expected
+            .iter()
+            .zip(actual)
+            .filter(|(expected, actual)| expected != actual)
+            .map(|(expected, actual)| format!("chrome {expected}\n  ours {actual}"))
+            .collect();
+        assert!(diverged.is_empty(), "{key}:\n{}", diverged.join("\n"));
+    }
+}
+
+#[test]
 fn implicit_visibility_inheritance_reads_the_edited_rule() {
     let value = evaluate(
         r#"(()=>{
@@ -93,4 +123,45 @@ fn implicit_visibility_inheritance_reads_the_edited_rule() {
         value,
         serde_json::json!(["hidden", "visible", "collapse", "visible"])
     );
+}
+
+#[test]
+fn cascade_specificity_and_scope_proximity_like_chrome156() {
+    // turbo-dom#275: rules are ordered by Selectors 4 specificity (the most specific matching
+    // selector of a list) before order of appearance. turbo-dom#276: @scope proximity breaks
+    // specificity ties, and :scope / & bind to the scoping root (& with zero specificity).
+    let probe = include_str!("css_cascade_specificity_probe.js");
+    let expected = fixture(
+        include_str!("css_cascade_specificity_chrome156.json"),
+        probe,
+    );
+    let actual = evaluate(probe);
+    let (expected, actual) = (expected.as_array().unwrap(), actual.as_array().unwrap());
+    assert_eq!(expected.len(), actual.len());
+    let diverged: Vec<_> = expected
+        .iter()
+        .zip(actual)
+        .filter(|(expected, actual)| expected != actual)
+        .map(|(expected, actual)| format!("chrome {expected}\n  ours {actual}"))
+        .collect();
+    assert!(diverged.is_empty(), "{}", diverged.join("\n"));
+}
+
+#[test]
+fn style_rules_in_grouping_rules_cascade_like_chrome156() {
+    // turbo-dom#273: getComputedStyle applies style rules nested in @supports (condition
+    // evaluated), @layer (layer order; unlayered beats layered for normal declarations, the
+    // reverse for !important), @media and @scope; never @container or @starting-style.
+    let probe = include_str!("css_grouping_cascade_probe.js");
+    let expected = fixture(include_str!("css_grouping_cascade_chrome156.json"), probe);
+    let actual = evaluate(probe);
+    let (expected, actual) = (expected.as_array().unwrap(), actual.as_array().unwrap());
+    assert_eq!(expected.len(), actual.len());
+    let diverged: Vec<_> = expected
+        .iter()
+        .zip(actual)
+        .filter(|(expected, actual)| expected != actual)
+        .map(|(expected, actual)| format!("chrome {expected}\n  ours {actual}"))
+        .collect();
+    assert!(diverged.is_empty(), "{}", diverged.join("\n"));
 }

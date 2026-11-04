@@ -4,7 +4,10 @@ use super::block::Ctx;
 use super::boxgen::InlineItem;
 use super::fragment::{Fragment, FragmentContent, NodeId};
 use super::inline::{InlineEdge, ParagraphLayout};
-use super::value::{resolve_box_style, BorderEdges, BoxStyle, Display, Edges, ResolveCtx};
+use super::value::{
+    resolve_box_style, BorderEdges, BoxStyle, CornerRadius, Display, Edges, ResolveCtx,
+};
+use super::writing::WritingMode;
 use crate::layout_snapshot::UsedBoxMetrics;
 use crate::ComputedStyle;
 use std::collections::HashMap;
@@ -13,7 +16,7 @@ pub(crate) fn atomic_element(element: &crate::StyledElement) -> bool {
     matches!(&element.tag,crate::Tag::Html(name) if matches!(name.as_str(),"img"|"canvas"|"iframe"|"object"|"embed"|"input"|"select"|"textarea"|"button"|"video"|"audio"|"svg"))
 }
 /// The elements whose ordinary inline layout the native inline producer does not
-/// support (top/bottom/middle alignment, vertical/RTL writing, a displaced
+/// support (top/bottom/middle alignment, vertical writing, a displaced
 /// inline split around a block, a displaced block split out of an inline), each
 /// with its reason. The rest of the document lays out as usual: the snapshot fails
 /// these elements' geometry reads only (miaskiewicz/turbo-surf#31), not the whole
@@ -22,45 +25,68 @@ pub(crate) fn unsupported(
     nodes: &[crate::StyledNode],
 ) -> Vec<(&crate::StyledElement, crate::layout_snapshot::SnapshotError)> {
     let mut out = Vec::new();
-    collect_unsupported(nodes, false, &mut out);
+    collect_unsupported(nodes, (false, false, WritingMode::HorizontalTb), &mut out);
     out
 }
 type Unsupported<'a> = Vec<(
     &'a crate::StyledElement,
     crate::layout_snapshot::SnapshotError,
 )>;
+/// `(inside an ordinary inline, the parent is RTL, the parent's writing mode)`.
+type Context = (bool, bool, WritingMode);
 fn collect_unsupported<'a>(
     nodes: &'a [crate::StyledNode],
-    inside: bool,
+    context: Context,
     out: &mut Unsupported<'a>,
 ) {
     for node in nodes {
         if let crate::StyledNode::Element(element) = node {
-            element_unsupported(element, inside, out);
+            element_unsupported(element, context, out);
         }
     }
 }
 fn element_unsupported<'a>(
     element: &'a crate::StyledElement,
-    inside: bool,
+    (inside, parent_rtl, parent): Context,
     out: &mut Unsupported<'a>,
 ) {
+    let rtl = is_rtl(&element.style);
     let display = super::value::display_of(&element.style);
     if display == Display::None || matches!(&element.tag,crate::Tag::Html(name) if name=="br") {
         return;
     }
     if element.style.get("display") == Some("contents") {
-        return collect_unsupported(&element.children, inside, out);
+        return collect_unsupported(&element.children, (inside, parent_rtl, parent), out);
     }
     let ordinary = ordinary_inline(element, display);
+    let mode = WritingMode::of(&element.style);
     match validate_rendered_element(element, display, inside, ordinary) {
         Err(error) => out.push((element, error)),
         Ok(()) => collect_unsupported(
             &element.children,
-            inline_context(display, inside, ordinary),
+            (inline_context(display, inside, ordinary), rtl, mode),
             out,
         ),
     }
+}
+/// A character `text-orientation: mixed` sets upright: its Unicode
+/// `Vertical_Orientation` (UAX #50) is U or Tu (the generated
+/// [`super::vertical_orientation::UPRIGHT`] table).
+pub(super) fn sets_upright(c: char) -> bool {
+    in_ranges(super::vertical_orientation::UPRIGHT, c)
+}
+
+/// A character that takes the previous character's orientation instead of its own: a
+/// combining mark, variation selector, ZWJ, emoji modifier or tag (its
+/// `Grapheme_Cluster_Break` is `Extend`, `ZWJ` or `SpacingMark`), so a sequence is not split.
+pub(super) fn inherits_orientation(c: char) -> bool {
+    in_ranges(super::vertical_orientation::INHERIT, c)
+}
+
+fn in_ranges(ranges: &[(u32, u32)], c: char) -> bool {
+    let c = u32::from(c);
+    let i = ranges.partition_point(|&(_, last)| last < c);
+    ranges.get(i).is_some_and(|&(first, _)| first <= c)
 }
 fn validate_rendered_element(
     element: &crate::StyledElement,
@@ -162,16 +188,10 @@ fn validate_inline_style(
     ) {
         return Err(SnapshotError::UnsupportedInlineAlignment);
     }
-    if unsupported_writing(style) {
-        return Err(SnapshotError::UnsupportedInlineWriting);
-    }
     Ok(())
 }
-fn unsupported_writing(style: &ComputedStyle) -> bool {
-    style.get("direction") == Some("rtl")
-        || style
-            .get("writing-mode")
-            .is_some_and(|value| value != "horizontal-tb")
+fn is_rtl(style: &ComputedStyle) -> bool {
+    style.get("direction").map(str::trim) == Some("rtl")
 }
 
 fn style(style: &ComputedStyle, font: f32, width: f32, scale: Option<f32>) -> BoxStyle {
@@ -205,10 +225,14 @@ pub(super) fn edge(
         .select(&families, used.font_weight, used.italic)?
         .clone();
     let border = used.border.widths();
-    let advance = if start {
-        used.margin.left + border.left + used.padding.left
+    let left = used.margin.left + border.left + used.padding.left;
+    let right = used.padding.right + border.right + used.margin.right;
+    // An RTL box starts at its right side (miaskiewicz/turbo-dom#238).
+    let rtl = is_rtl(source);
+    let (advance, other) = if start == rtl {
+        (right, left)
     } else {
-        used.padding.right + border.right + used.margin.right
+        (left, right)
     };
     Some(InlineEdge {
         node_id,
@@ -220,7 +244,18 @@ pub(super) fn edge(
         contributes_metrics: true,
         valign: used.vertical_align,
         baseline_shift: 0.0,
+        rtl,
+        bidi: super::inline::UnicodeBidi::parse(source.get("unicode-bidi")),
+        clone_advance: cloned(source).then_some(other),
     })
+}
+
+/// Whether the box's fragments each repeat its decoration
+/// (`box-decoration-break: clone`, or the `-webkit-` alias).
+pub(super) fn cloned(source: &ComputedStyle) -> bool {
+    ["box-decoration-break", "-webkit-box-decoration-break"]
+        .iter()
+        .any(|property| source.get(property).map(str::trim) == Some("clone"))
 }
 
 pub(super) struct SourcePlacement {
@@ -332,14 +367,13 @@ pub(super) fn positions(items: &[InlineItem], font: f32, width: f32, ctx: &Ctx) 
         },
         stack: Vec::new(),
     };
-    if ctx.html_font_metrics {
-        for item in items {
-            source.item(item, font, width, ctx);
-        }
+    for item in items {
+        source.item(item, font, width, ctx);
     }
     source.placement
 }
-pub(super) fn strut(bs: &BoxStyle, ctx: &Ctx) -> Option<(f32, f32)> {
+/// The block's strut `(ascent, descent)`, about the central baseline when `central`.
+pub(super) fn strut(bs: &BoxStyle, ctx: &Ctx, central: bool) -> Option<(f32, f32)> {
     let families = bs
         .font_families
         .iter()
@@ -348,9 +382,14 @@ pub(super) fn strut(bs: &BoxStyle, ctx: &Ctx) -> Option<(f32, f32)> {
     let face = ctx.fonts.select(&families, bs.font_weight, bs.italic)?;
     let scale = ctx.html_font_scale.unwrap_or(1.0);
     let font = face.html_metrics(bs.font_size * scale);
+    let (ascent, descent) = if central {
+        super::inline::central_metrics(font.ascent / scale, font.descent / scale, scale)
+    } else {
+        (font.ascent / scale, font.descent / scale)
+    };
     Some(super::inline::native_font_height(
-        font.ascent / scale,
-        font.descent / scale,
+        ascent,
+        descent,
         bs.line_height
             .unwrap_or((font.ascent + font.descent + font.line_gap) / scale),
         0.0,
@@ -362,11 +401,7 @@ pub(super) fn native_atoms(
     pieces: &mut [super::inline::Piece],
     atoms: &[Fragment],
     baselines: &HashMap<NodeId, f32>,
-    native: bool,
 ) {
-    if !native {
-        return;
-    }
     for piece in pieces {
         if let super::inline::Piece::Atom(atom) = piece {
             let shift = baselines
@@ -502,7 +537,7 @@ fn empty_fragment(
         FragmentContent::Box {
             background: None,
             border: BorderEdges::default(),
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: None,
             gradient: None,
             transform: None,
@@ -523,6 +558,9 @@ struct InlineFragments<'a, 'b> {
     ctx: &'a mut Ctx<'b>,
     origin: (f32, f32, f32),
     offsets: &'a HashMap<NodeId, (f32, f32)>,
+    /// The inline boxes whose content area centres on the line's central baseline
+    /// ([`super::writing::central_baseline`]).
+    central: std::collections::HashSet<NodeId>,
 }
 impl InlineFragments<'_, '_> {
     fn line(&mut self, line: &super::inline::InlineLine, cx: f32, cy: f32) {
@@ -555,7 +593,7 @@ impl InlineFragments<'_, '_> {
         self.open.push(Open {
             edge: placed.edge.clone(),
             x: placed.x,
-            first: true,
+            first: placed.decorated,
             paused: false,
         });
     }
@@ -569,7 +607,7 @@ impl InlineFragments<'_, '_> {
         };
         let value = self.open.remove(index);
         if !value.paused {
-            self.flush(&value, placed.x + placed.edge.advance, true);
+            self.flush(&value, placed.x + placed.edge.advance, placed.decorated);
         }
         if let Some(parent) = self.open.last_mut().filter(|parent| parent.paused) {
             parent.x = placed.x + placed.edge.advance;
@@ -593,7 +631,8 @@ impl InlineFragments<'_, '_> {
         if empty_tail(value, end, used) {
             return;
         }
-        let mut part = fragment(value, used, end, last, self.origin, self.ctx);
+        let central = self.central.contains(&value.edge.node_id);
+        let mut part = fragment(value, used, (end, last, central), self.origin, self.ctx);
         let (dx, dy) = self.offsets.get(&part.node_id).copied().unwrap_or_default();
         part.translate(dx, dy);
         if skip_empty_part(&part, value, last, used) {
@@ -626,6 +665,17 @@ pub(super) fn fragments(
             _ => None,
         })
         .collect::<HashMap<_, _>>();
+    let central = items
+        .iter()
+        .filter_map(|item| match item {
+            InlineItem::Boundary {
+                node_id,
+                style,
+                start: true,
+            } if super::writing::central_baseline(ctx.writing, style) => Some(*node_id),
+            _ => None,
+        })
+        .collect();
     let mut builder = InlineFragments {
         styles,
         open: Vec::new(),
@@ -633,11 +683,143 @@ pub(super) fn fragments(
         ctx,
         origin: (origin.0, origin.1, 0.0),
         offsets,
+        central,
     };
     for line in &layout.lines {
         builder.line(line, origin.0, origin.1);
     }
-    builder.out
+    let InlineFragments {
+        mut out,
+        styles,
+        ctx,
+        ..
+    } = builder;
+    let sources = items
+        .iter()
+        .filter_map(|item| match item {
+            InlineItem::Boundary {
+                node_id,
+                style: source,
+                start: true,
+            } => Some((*node_id, source)),
+            _ => None,
+        })
+        .collect::<HashMap<_, _>>();
+    for (id, source) in sources {
+        background_layers(&mut out, (id, source, &styles[&id]), ctx);
+    }
+    out
+}
+
+/// Move an inline box's background image and gradient (and a colour clipped short of
+/// the border box) off its line fragments onto background layers
+/// (miaskiewicz/turbo-dom#244, #248). The positioning area is the box's strip: every
+/// fragment's origin box laid end to end in line order (`box-decoration-break: slice`),
+/// or the fragment's own (`clone`); each fragment paints its layers clipped to its own
+/// clip box. The fragments' vertical padding bounds a `content-box` area (their
+/// horizontal padding is not recorded per fragment).
+fn background_layers(
+    out: &mut [Fragment],
+    (id, source, used): (NodeId, &ComputedStyle, &BoxStyle),
+    ctx: &Ctx,
+) {
+    use super::background::{
+        area_radius, area_rect, border_overlay, color_layer, props, Area, Source,
+    };
+    let image = super::boxgen::background_image(source).and_then(|name| {
+        let intrinsic = super::imgsize::box_intrinsic(ctx.images.resolver, &name, source)?;
+        Some(super::imgsize::placement_of(name, intrinsic))
+    });
+    let props = props(source, used.font_size);
+    let gradient = used.background_gradient.is_some();
+    let colour = used.background.is_some() && props.clip != Area::Border;
+    if image.is_none() && !gradient && !colour {
+        return;
+    }
+    let cloned = cloned(source);
+    let parts: Vec<usize> = (0..out.len()).filter(|&i| out[i].node_id == id).collect();
+    // Each fragment's padding: all of it when cloned, else the start side on the first
+    // fragment and the end side on the last.
+    let padding = |n: usize| {
+        let (first, last) = (cloned || n == 0, cloned || n + 1 == parts.len());
+        let (left, right) = if used.rtl {
+            (last, first)
+        } else {
+            (first, last)
+        };
+        super::value::Edges {
+            left: if left { used.padding.left } else { 0.0 },
+            right: if right { used.padding.right } else { 0.0 },
+            ..used.padding
+        }
+    };
+    let mut areas = Vec::new();
+    for (n, &index) in parts.iter().enumerate() {
+        let frag = &out[index];
+        if let FragmentContent::Box { border, .. } = &frag.content {
+            let rect = (frag.x, frag.y, frag.width, frag.height);
+            let pad = padding(n);
+            areas.push((
+                index,
+                area_rect(rect, border, &pad, props.origin),
+                area_rect(rect, border, &pad, props.clip),
+                pad,
+            ));
+        }
+    }
+    let total: f32 = areas.iter().map(|(_, origin, _, _)| origin.2).sum();
+    let mut offset = 0.0;
+    for (index, origin, paint, pad) in areas {
+        let strip = if cloned {
+            origin
+        } else {
+            (origin.0 - offset, origin.1, total, origin.3)
+        };
+        offset += origin.2;
+        let frag = &mut out[index];
+        if let FragmentContent::Box {
+            background,
+            gradient,
+            border,
+            border_radius,
+            ..
+        } = &mut frag.content
+        {
+            let radius = area_radius(*border_radius, border, &pad, props.clip);
+            let mut layers = Vec::new();
+            if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
+                layers.push(color_layer(id, color, paint, radius));
+            }
+            // A layer's gradient resolves against its tile (miaskiewicz/turbo-dom#264).
+            let sources = gradient
+                .take()
+                .and(used.background_gradient.clone())
+                .map(Source::Gradient)
+                .into_iter()
+                .chain(image.clone().map(Source::Image));
+            // Built over the fragment's physical shape in vertical text
+            // (miaskiewicz/turbo-dom#278).
+            let rect = (frag.x, frag.y, frag.width, frag.height);
+            for source in sources {
+                layers.extend(super::block::space_layer(
+                    ctx.writing,
+                    rect,
+                    (id, &props, &source),
+                    (strip, paint, radius),
+                ));
+            }
+            if !layers.is_empty() {
+                // The border paints over the background layers.
+                layers.push(border_overlay(
+                    id,
+                    rect,
+                    std::mem::take(border),
+                    *border_radius,
+                ));
+            }
+            frag.children.extend(layers);
+        }
+    }
 }
 
 fn skip_empty_part(part: &Fragment, value: &Open, last: bool, used: &BoxStyle) -> bool {
@@ -673,7 +855,7 @@ fn append_part(
         inherited.content = FragmentContent::Box {
             background: None,
             border: BorderEdges::default(),
-            border_radius: 0.0,
+            border_radius: super::fragment::BorderRadii::ZERO,
             shadow: None,
             gradient: None,
             transform: None,
@@ -698,22 +880,30 @@ fn append_part(
 fn fragment(
     open: &Open,
     used: &BoxStyle,
-    end: f32,
-    last: bool,
+    (end, last, central): (f32, bool, bool),
     origin: (f32, f32, f32),
     ctx: &mut Ctx,
 ) -> Fragment {
     let scale = ctx.html_font_scale.unwrap_or(1.0);
     let font = open.edge.face.html_metrics(open.edge.font_size * scale);
     let content_height = (font.ascent + font.descent) / scale;
+    let ascent = if central {
+        super::inline::central_metrics(font.ascent / scale, font.descent / scale, scale).0
+    } else {
+        font.ascent / scale
+    };
     let mut border = used.border;
     let mut padding = used.padding;
+    // `[top-left, top-right, bottom-right, bottom-left]`: a fragment without an edge has
+    // square corners on that side (with `clone` every fragment has both edges).
+    let mut corners = used.border_radius;
     let x = open.x
         + if open.first {
             used.margin.left
         } else {
             border.left.width = 0;
             padding.left = 0.0;
+            (corners[0], corners[3]) = (CornerRadius::ZERO, CornerRadius::ZERO);
             0.0
         };
     let end = end
@@ -722,13 +912,14 @@ fn fragment(
         } else {
             border.right.width = 0;
             padding.right = 0.0;
+            (corners[1], corners[2]) = (CornerRadius::ZERO, CornerRadius::ZERO);
             0.0
         };
     let border_width = border.widths();
     let height = content_height + padding.vertical() + border_width.vertical();
     let width = (end - x).max(0.0);
     let shift = open.edge.baseline_shift;
-    let y = origin.1 + origin.2 - shift - font.ascent / scale - padding.top - border_width.top;
+    let y = origin.1 + origin.2 - shift - ascent - padding.top - border_width.top;
     if let Some(metrics) = &mut ctx.used_metrics {
         metrics.entry(open.edge.node_id).or_insert(UsedBoxMetrics {
             inline_fragment: true,
@@ -750,9 +941,12 @@ fn fragment(
         FragmentContent::Box {
             background: used.background,
             border,
-            border_radius: 0.0,
+            border_radius: super::value::resolve_radii(&corners, width, height),
             shadow: used.box_shadow,
-            gradient: used.background_gradient.clone(),
+            gradient: used
+                .background_gradient
+                .as_ref()
+                .and_then(|g| g.resolve(width, height)),
             transform: None,
         },
     )
@@ -761,6 +955,55 @@ fn fragment(
 #[cfg(test)]
 mod defensive_contract_tests {
     use super::*;
+
+    #[test]
+    fn upright_characters_follow_unicode_vertical_orientation() {
+        // R2 #8 (UAX #50 Vertical_Orientation 16.0): U / Tu upright, R / Tr turned.
+        let cp = |c: u32| sets_upright(char::from_u32(c).unwrap());
+        // Halfwidth kana and Hangul are R.
+        for r in [0xFF61, 0xFF65, 0xFF9F, 0xFFA0, 0xFFDC] {
+            assert!(!cp(r), "{r:04X} is R");
+        }
+        // ©, ®, enclosed alphanumerics, geometric shapes, miscellaneous symbols and
+        // dingbats (to U+2767), emoji and their skin-tone modifiers are U.
+        for u in [
+            0xA9, 0xAE, 0x2460, 0x24FF, 0x25A0, 0x25FF, 0x2600, 0x2767, 0x2776, 0x1F468, 0x1F3FB,
+            0x6C34, 0x3042, 0xAC00,
+        ] {
+            assert!(cp(u), "{u:04X} is U");
+        }
+        // The rest of Dingbats from U+2768 (ornamental brackets) on, and Latin, are R.
+        for r in [0x2768, 0x2794, 0x27BF, 0x61, 0x2010, 0xFE0F, 0x200D] {
+            assert!(!cp(r), "{r:04X} is R");
+        }
+    }
+
+    #[test]
+    fn marks_selectors_and_zwj_take_the_previous_orientation() {
+        use super::super::inline::UprightText;
+        let inherits = |c: u32| inherits_orientation(char::from_u32(c).unwrap());
+        // ZWJ, variation selectors (and the supplement), combining marks (U+20DD is U on
+        // its own), a spacing mark, emoji modifiers and tags.
+        for c in [
+            0x200D, 0xFE0E, 0xFE0F, 0xE0100, 0x0301, 0x20DD, 0x0903, 0x1F3FB, 0xE0020,
+        ] {
+            assert!(inherits(c), "{c:04X} inherits");
+        }
+        for c in [0x61, 0xA9, 0x1F468, 0x200C - 1] {
+            assert!(!inherits(c), "{c:04X} has its own");
+        }
+        let mixed = UprightText::Mixed;
+        // After a turned `a`, U+20DD (U alone) turns; after an upright `©`, a variation
+        // selector (R alone) stands; at a run's start a character has its own.
+        assert!(!mixed.sets_after('\u{20DD}', Some(false)));
+        assert!(mixed.sets_after('\u{FE0F}', Some(true)));
+        assert!(mixed.sets_after('\u{20DD}', None));
+        // The character after a ZWJ keeps its own (Chrome: `© ZWJ a` turns the `a`).
+        assert!(!mixed.sets_after('a', Some(true)));
+        // `upright` and `sideways` ignore the sequence.
+        assert!(UprightText::All.sets_after('a', Some(false)));
+        assert!(!UprightText::None.sets_after('\u{FE0F}', Some(true)));
+    }
 
     #[test]
     fn unmatched_closing_marker_does_not_create_an_element_fragment() {
@@ -798,6 +1041,7 @@ mod defensive_contract_tests {
             table_rows: None,
             dropped_end_margins: std::collections::HashSet::new(),
             sticky_pending: Vec::new(),
+            writing: crate::layout::writing::WritingMode::default(),
         };
         let edge = super::super::inline::PlacedInlineEdge {
             edge: InlineEdge {
@@ -810,8 +1054,12 @@ mod defensive_contract_tests {
                 baseline_shift: 0.0,
                 contributes_metrics: true,
                 valign: super::super::value::VAlign::Baseline,
+                rtl: false,
+                bidi: super::super::inline::UnicodeBidi::Normal,
+                clone_advance: None,
             },
             x: 20.0,
+            decorated: true,
         };
         let offsets = HashMap::new();
         let mut projection = InlineFragments {
@@ -821,6 +1069,7 @@ mod defensive_contract_tests {
             ctx: &mut ctx,
             origin: (0.0, 0.0, 18.0),
             offsets: &offsets,
+            central: std::collections::HashSet::new(),
         };
         projection.end(&edge);
         assert!(projection.out.is_empty());

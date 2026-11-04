@@ -7,7 +7,16 @@ surface with **no JavaScript DOM implementation**:
 - `window`, `document`, nodes, ranges and selection;
 - CSSOM, forms, events;
 - custom elements, shadow DOM, view transitions;
-- canvas state, Trusted Types and the rest of the surface.
+- canvas state and text metrics, Trusted Types and the rest of the surface;
+- XML documents (`DOMParser` XML types, CDATA sections, `XMLSerializer`), HTML processing
+  instructions, XPath (fragment and shadow-root contexts included), CSS animations and
+  transitions in `getAnimations()`, the CSSOM grouping / condition rule interfaces
+  (`CSSContainerRule`, `CSSMediaRule`, `CSSLayerBlockRule`, …).
+- a `getComputedStyle` cascade that orders rules by Selectors 4 specificity, cascade
+  layer and `@scope` proximity, and applies the rules nested in `@media`, `@supports`,
+  `@layer` and `@scope` (`@container` / `@starting-style` children never apply);
+- XML internal DTD subsets: ATTLIST defaults (attributes and namespace declarations),
+  with entity expansion bounded like Chrome ("Entity too big").
 
 Behaviour is held to Chrome by committed Chrome 155/156 controls asserted in the crate's
 tests. The crate ships its engine JS (`src/*.js`, run in V8) and production JSON with it.
@@ -29,9 +38,9 @@ so turbo-test and turbo-surf share one published crate. `scripts/verify-copied.s
 
 ```toml
 [dependencies]
-turbo-dom-browser-env = "0.6"                       # embedders: features = ["host-internals"]
+turbo-dom-browser-env = "0.7"                       # embedders: features = ["host-internals"]
 [dev-dependencies]
-turbo-dom-browser-env = { version = "0.6", features = ["test-support"] }
+turbo-dom-browser-env = { version = "0.7", features = ["test-support"] }
 ```
 
 MSRV 1.91. The crate links `turbo-dom-v8` `~150.4`, which downloads the prebuilt rusty_v8
@@ -63,9 +72,9 @@ return.
 | seeding documents | `install_with_html`, `try_install_with_html` (`Err(SetupTerminated)` when a watchdog terminated setup), `install_html`, `install_with_html_source_positions`, `install_with_utf16_source_positions`, `install_independent_html`, `install_independent_html_units`, `install_independent_utf16_source_positions`, `install_independent_srcdoc_units` (never quirks) |
 | serializing | `document_html()` |
 | event loop | `flush_ownership(scope)` between tasks (wrapper ownership is reconciled in batches, so building n nodes is O(n)) |
-| realms and frames | `register_dom_exception`, `capture_window_event_interfaces`, `retire_custom_element_context`, `set_computed_font_defaults` |
+| realms and frames | `register_dom_exception`, `capture_window_event_interfaces`, `retire_custom_element_context`, `set_computed_font_defaults`, `set_canvas_fonts` (canvas `measureText` fonts: the page's loaded `@font-face` faces + system fonts as a turbo-dom-layout `FontRegistry`; bundled faces otherwise) |
 | engine namespace | `engine_namespace(scope)` (the realm's internal state object, held in a V8 private: page script cannot reach it), `run_engine_script(scope, source)` (runs `source` as a function body whose `__tsNs` parameter is that namespace; `ENGINE_NAMESPACE_PARAM`) |
-| embedding hooks (turbo-surf) | the other `pub fn`s: form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import, node nonces |
+| embedding hooks (turbo-surf) | the other `pub fn`s: form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import (`parse_xml_document_units` parses `DOMParser`'s XML types into an `XMLDocument`, `<parsererror>` documents included, and returns it as `ParsedXmlDocument { document, well_formed }` so an embedder can tell a malformed source without inspecting the tree), node nonces |
 
 Also in the crate:
 - `css_snapshot::{SheetSnapshot, RuleSnapshot}` is the JSON contract of the private
@@ -82,13 +91,62 @@ Also in the crate:
   `KEY_ORDER_PROBE_JS`), plus `FILES` and `frame_read_should_throw`. The files ship in
   the package; consumers reference the constants and never copy the files.
 
+**Install phases (turbo-dom#249).** Inside, an install has two parts. The engine bootstrap
+(`bootstrap_engine`) does the tree-independent work: templates, natives and the engine
+scripts (about 50 `run_engine_script` calls). The document attach (`attach_document`) does
+the per-document work: parser scripts, declarative shadow roots, nonces, checkedness,
+template contents and inline handlers. The attach runs no engine script. By default every
+`install_*` call still runs the original interleaved install. Setting
+`TURBO_DOM_ATTACH_PATH=1` makes each install bootstrap the empty shell and then attach the
+parsed document.
+
+**Startup snapshot install (turbo-dom#249, opt-in).** `snapshot_blob()` builds, once per
+process and from the process's own V8, a startup snapshot whose default context is the
+bootstrapped shell, plus the external reference table every isolate made from it needs
+(`SnapshotBlob::create_params()`). The blob is never shipped: it is tied to the V8 build
+and flags. `install_from_snapshot(html)` creates and owns an isolate from the blob,
+rehydrates what the snapshot cannot carry (context slots, isolate keys, the live-range
+registry, the window document's native state) and attaches the document. It returns a
+`SnapshotWindow` (isolate + context). It runs no engine script, so per install it costs a
+deserialization and a parse instead of a bootstrap. The existing `install*` functions are
+unchanged. Embedder capabilities (activation host, timers, fonts, …) are registered on
+the new context as after any install. Only the window document's wrapper is carried in
+the blob: the build releases every other shell node wrapper and checks none is still
+reachable. When the build fails (that check, a callback missing from the reference table,
+a panic), a line is logged and `snapshot_blob()` / `install_from_snapshot` return `None`,
+so the embedder keeps the normal install. Bootstrap options cannot apply to a snapshot
+context: a test namespace, deferred key order, an embedder global template, or page script
+run before the install. Embedders that use them keep the normal install.
+
+Measured on darwin-arm64, release build, min / median of 30
+(`cargo run --release -p turbo-dom-browser-env --example snapshot_install_cost`):
+
+| | min | median |
+|---|---|---|
+| fresh isolate + `install_with_html` | 21.04 ms | 22.63 ms |
+| `install_from_snapshot` (isolate included) | 4.99 ms | 5.38 ms |
+| one-time `snapshot_blob()` build | 171 ms | |
+
+An embedder that bakes its own startup context (turbo-test's framework layer) uses
+`snapshot_blob_with(prelude)`: the blob's default context ran `prelude` alone (the
+embedder's window-free contexts), and context `SNAPSHOT_WINDOW_CONTEXT` ran `prelude`, then
+the engine bootstrap (`v8::Context::from_snapshot`). With `set_snapshot_install(true)`, an
+install into a window context rehydrates instead of running the engine scripts; installs
+into any other context are unchanged. The prelude must hand V8 no native callback.
+
+`TURBO_DOM_SNAPSHOT_PATH=1` makes the test isolates come from the blob and routes every
+install into a snapshot context through the same rehydrate + attach. Each such install
+asserts that it ran 0 engine scripts. CI runs the whole suite on all three paths
+(default, `TURBO_DOM_ATTACH_PATH`, `TURBO_DOM_SNAPSHOT_PATH`). Tests that configure the
+bootstrap itself use a plain isolate on every path.
+
 `tests/public_api.rs`, `tests/host_internals_api.rs` and `tests/test_support_api.rs` pin
 every item that turbo-test and turbo-surf call, from outside the crate.
 
 ## Gates
 
 - Line coverage **97.6%** floor in the `host-internals,test-support` configuration
-  (blocking). This is the accepted bar for 0.6.0; the remaining lines are on the
+  (blocking). This is the accepted bar since 0.6.0; the remaining lines are on the
   post-release list. Measurement history is in docs/CONSOLIDATION.md "Coverage".
 - CI `v8 + browser-env` job: tests in the default configuration and with
   `host-internals,test-support`, plus clippy with `-D warnings` (new warnings only).
@@ -108,6 +166,8 @@ every item that turbo-test and turbo-surf call, from outside the crate.
 export RUSTY_V8_ARCHIVE=/path/to/librusty_v8_release_<target>.a   # v150.4.0
 cargo test -p turbo-dom-browser-env
 cargo test -p turbo-dom-browser-env --features host-internals,test-support
+TURBO_DOM_ATTACH_PATH=1 cargo test -p turbo-dom-browser-env --features host-internals,test-support   # split install path
+TURBO_DOM_SNAPSHOT_PATH=1 cargo test -p turbo-dom-browser-env --features host-internals,test-support   # startup snapshot path
 ```
 
 **Chrome controls.** Every `src/*_chrome15x.json` file is Chrome's own result for the
@@ -127,6 +187,7 @@ directory:
 | `scripts/view-transitions-chrome-control.mjs`, `scripts/shadow-html-chrome-control.mjs` | `view_transitions_chrome156.json`; shadow-root / HTML serialization / sanitizer controls |
 | `scripts/invokers-chrome-control.mjs`, `scripts/editing-input-chrome-control.mjs`, `scripts/trusted-input-chrome-control.mjs` | invokers/popover, editing, pointer and other trusted-input controls; `canvas_style_chrome156.json` (2D context `fillStyle` / `strokeStyle` / `shadowColor`, `currentcolor`), `canvas_state_chrome156.json` (2D context `save()` / `restore()` drawing-state stack); the edge probes of `edge_probes_tests.rs` (`shadow_slots_edges`, `dom_mutation_validity`, `selector_edges`, `sanitizer_edges`, `document_edges`, `receivers_edges`) |
 | `scripts/image-srcset-chrome-control.mjs` | `html_image_srcset_chrome156.json` (Playwright, DPR 1 / 2, local image server; cases from `scripts/make-image-srcset-cases.py`) |
+| `scripts/xml-documents-chrome-control.mjs` | `xml_documents_chrome156.json` (XML documents, `<parsererror>`, CDATA sections, `XMLSerializer`; Playwright with `--chrome` the frozen headless shell) |
 | `scripts/document-legacy-chrome-control.mjs` | `document_legacy_chrome156.json` (loopback HTTP/HTTPS cases) |
 | `scripts/trusted-types-control/` | Trusted Types controls (`trusted_types*_chrome155.json`); `cdp-connection.mjs` is shared with the document-legacy collector |
 
@@ -134,8 +195,10 @@ The `--runner` collectors drive turbo-surf's `harness/detection/chrome-cdp-trace
 Pass its absolute path. A refreshed control changes the oracle, so commit it together
 with the probe change that needed it.
 
-Layout-dependent reads (geometry, fonts) belong to the embedder: this crate has no
-layout. turbo-surf answers them with turbo-dom-layout, whose tests use fixture fonts.
+Layout-dependent reads (geometry) belong to the embedder: this crate lays nothing out.
+turbo-surf answers them with turbo-dom-layout, whose tests use fixture fonts. The one
+exception is canvas `measureText`, which measures with turbo-dom-layout's text stack
+(a dependency since 0.7.0) against the fonts the host passes to `set_canvas_fonts`.
 
 ## Links
 

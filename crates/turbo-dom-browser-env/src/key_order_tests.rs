@@ -104,7 +104,7 @@ fn interface_key_order_matches_chrome156_control() {
             Sha256::digest(include_str!("key_order_probe.js").as_bytes())
         )
     );
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -130,7 +130,7 @@ fn interface_key_order_matches_chrome156_control() {
 #[test]
 fn deferred_key_order_finishes_like_an_install() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -181,7 +181,7 @@ fn plan_moves_only_the_out_of_order_suffix() {
 #[test]
 fn termination_during_key_order_is_not_lost() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -207,7 +207,7 @@ fn termination_during_key_order_is_not_lost() {
 #[test]
 fn deferred_key_order_moves_track_constants_like_chrome156() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -253,7 +253,7 @@ fn deferred_key_order_moves_track_constants_like_chrome156() {
 #[test]
 fn reinstall_into_an_arranged_realm_keeps_track_key_order_like_chrome156() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
@@ -299,7 +299,7 @@ fn eval(scope: &mut v8::PinScope, source: &str) -> String {
 #[test]
 fn page_reaches_no_engine_shims_chrome_lacks() {
     super::tests::init_v8();
-    let isolate = &mut v8::Isolate::new(Default::default());
+    let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

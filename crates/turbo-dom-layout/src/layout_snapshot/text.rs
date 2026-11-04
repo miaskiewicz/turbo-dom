@@ -24,6 +24,10 @@ pub struct SnapshotTextRun {
     pub source_ancestors: Vec<SourceId>,
     pub glyphs: Vec<SnapshotTextGlyph>,
     pub font_box: SourceFontBox,
+    /// The run lies in a vertical line (its fragment's `TextLine::vertical`): its glyph
+    /// clusters and font box are in the line's own frame, turned a quarter clockwise
+    /// into the fragment (miaskiewicz/turbo-dom#239, [`super::text_geometry::turn`]).
+    pub vertical: bool,
 }
 
 pub(crate) struct CapturedRun {
@@ -93,11 +97,16 @@ impl TextCapture {
     ) {
         let snapshot = &fragments[*index];
         *index += 1;
-        if let (Some(capture), FragmentContent::TextLine { glyphs, .. }) =
-            (self.runs.get(&fragment.node_id), &fragment.content)
+        if let (
+            Some(capture),
+            FragmentContent::TextLine {
+                glyphs, vertical, ..
+            },
+        ) = (self.runs.get(&fragment.node_id), &fragment.content)
         {
             debug_assert_eq!(capture.clusters.len(), glyphs.len());
             out.push(SnapshotTextRun {
+                vertical: *vertical,
                 font_box: capture.font_box,
                 fragment_index: snapshot.index,
                 source_id: snapshot.source_id,
@@ -141,6 +150,8 @@ mod tests {
         GlyphSourceCluster {
             collapsed_whitespace: false,
             right_to_left: false,
+            bidi_level: 0,
+            paragraph_level: 0,
             byte_start: 0,
             byte_end: 1,
             utf16_start: 0,

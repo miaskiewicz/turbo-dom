@@ -544,6 +544,23 @@ fn degenerate_zero_dimension_falls_back_to_given() {
 }
 
 #[test]
+fn zero_by_zero_intrinsic_keeps_its_zero_width() {
+    // A 0x0 image (one that represents nothing, miaskiewicz/turbo-dom#243) has no
+    // aspect ratio: an explicit height leaves its width at 0.
+    use turbo_dom_layout::image::Intrinsic;
+    let style = ComputedStyle::from_pairs([("height", "50px")]);
+    let bs = box_style(&style);
+    let ctx = SizeCtx {
+        style: &bs,
+        cb_width: 1000.0,
+        cb_height: None,
+        body_height: None,
+    };
+    let sized = size_replaced("x".into(), Intrinsic::new(0, 0, false), &ctx);
+    assert_eq!((sized.width, sized.height), (0.0, 50.0));
+}
+
+#[test]
 fn height_cap_inactive_without_body_height() {
     let style = empty_style();
     let bs = box_style(&style);
@@ -597,13 +614,21 @@ fn box_kids(
     }
 }
 
-/// Whether any box in the tree records a replaced image named `name`.
+/// Whether any box in the tree records a replaced image named `name`. An `<img>` is
+/// inline by default (miaskiewicz/turbo-dom#242), so it is an atomic item of a line box.
 fn tree_has_replaced_image(b: &turbo_dom_layout::layout::boxgen::LayoutBox, name: &str) -> bool {
+    use turbo_dom_layout::layout::boxgen::{BoxKind, InlineItem};
     let here = b
         .image
         .as_ref()
         .is_some_and(|s| s.replaced && s.name == name);
-    here || box_kids(b).iter().any(|k| tree_has_replaced_image(k, name))
+    let atoms = match &b.kind {
+        BoxKind::Lines(items) => items
+            .iter()
+            .any(|it| matches!(it, InlineItem::Atomic(k) if tree_has_replaced_image(k, name))),
+        _ => false,
+    };
+    here || atoms || box_kids(b).iter().any(|k| tree_has_replaced_image(k, name))
 }
 
 #[test]
@@ -935,4 +960,50 @@ fn flex_row_item_wrapping_img_natural_width_uses_intrinsic() {
         w >= 2.0,
         "row-flex wrapped img should keep intrinsic width, got {w}"
     );
+}
+
+#[test]
+fn uncapped_images_keep_their_css_size_like_chrome() {
+    // 0.7.0 round-2 review, finding 2: the raster screenshot (`uncapped_images`) sizes
+    // a 400px-wide image (and a 40000px CSS width) by CSS alone, as Chrome 156 does;
+    // the default keeps html2pdf's 100%-width cap.
+    use turbo_dom_layout::{
+        layout_html_tree_in_viewport, parse_html_tree, FontRegistry, HtmlOptions,
+    };
+    let resolver = MapResolver::new(vec![("w.png", png_wide()), ("t.png", png_tall())]);
+    let images = ImageCtx {
+        resolver: &resolver,
+        body_height: Some(1000.0),
+    };
+    let html = "<body style=margin:0><img src=w.png style=display:block>\
+                <img src=t.png style=display:block;width:40000px;height:40000px>";
+    let sizes = |uncapped_images| {
+        let options = HtmlOptions {
+            uncapped_images,
+            ..HtmlOptions::default()
+        };
+        let g = layout_html_tree_in_viewport(
+            &parse_html_tree(html),
+            "",
+            (200.0, 1000.0),
+            &FontRegistry::new(),
+            &images,
+            &options,
+            &mut Diagnostics::default(),
+        );
+        let mut out = Vec::new();
+        collect_image_sizes(&g, &mut out);
+        out
+    };
+    assert_eq!(sizes(true), [(400.0, 100.0), (40000.0, 40000.0)]);
+    assert_eq!(sizes(false), [(200.0, 50.0), (200.0, 200.0)]);
+}
+
+fn collect_image_sizes(f: &turbo_dom_layout::Fragment, out: &mut Vec<(f32, f32)>) {
+    if matches!(f.content, FragmentContent::Image(_)) {
+        out.push((f.width, f.height));
+    }
+    for c in &f.children {
+        collect_image_sizes(c, out);
+    }
 }
