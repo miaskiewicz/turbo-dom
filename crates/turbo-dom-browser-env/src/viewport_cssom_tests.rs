@@ -106,3 +106,14 @@ fn match_media_matches_chrome156_control() {
         include_str!("match_media_probe.js"),
     );
 }
+
+/// turbo-dom#288: a child iframe window's innerWidth / innerHeight are the iframe's live
+/// content box (default 300x150, `width` / `height` attributes, CSS sizes, border-box
+/// sizing); its outerWidth / outerHeight are the top-level window's.
+#[test]
+fn iframe_viewport_matches_chrome156_control() {
+    check(
+        include_str!("iframe_viewport_chrome156.json"),
+        include_str!("iframe_viewport_probe.js"),
+    );
+}
