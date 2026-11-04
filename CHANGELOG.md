@@ -24,6 +24,14 @@ at the time); this file reconstructs them from history.
   none-style border side 0px wide. The defaults are read lazily per property, so style
   snapshots and their cache keys are unchanged; detached elements still read `''`. Chrome 156
   control: the `unset-properties` case of `computed_defaults_chrome156.json` (#305).
+- **turbo-dom-browser-env: child iframe documents are real HTML documents.** A child iframe
+  document's `documentElement` / `head` / `body` are `<html>` / `<head>` / `<body>` elements
+  (`HTMLHtmlElement`, `HTMLHeadElement`, `HTMLBodyElement`; the document element's parent is
+  the document) instead of `<div>` stand-ins, a `srcdoc` is parsed as a whole document (head
+  content in `<head>`, `<html>` / `<body>` attributes kept), the document's queries see its
+  document element, its sheets' `:root` / `html` / `body` rules match, and its body takes
+  html.css's 8px margin. Chrome 156 control: `iframe_cascade_chrome156.json` `document` /
+  `blank` (#306).
 - **turbo-dom-browser-env: child iframe documents cascade their own style sheets.** A child
   iframe document's elements (`iframe.contentDocument`, its `srcdoc` markup included) compute
   styles from that document's own `<style>` / `<link>` sheets, inline styles, inheritance and

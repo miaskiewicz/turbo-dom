@@ -2243,6 +2243,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     }
     return best;
   }
+  // turbo-dom#306: a child iframe document's tree is detached, so its document element (the
+  // registered root, the only element there without a parent) is :root by that test.
+  var frameRootPattern=/:root(?![\w-])/gi;
+  function frameSelector(el,selector){
+    if(!frameRootCount||!cssApply(cssZoomExec,/:root(?![\w-])/i,[selector])||computedFrameRoot(el)===null)return selector;
+    return $c.replace(selector,frameRootPattern,':not(* *)');
+  }
   // The cascade record of `entry`'s style rule when it selects `el` (`pseudo`: that
   // pseudo-element of it), or null. A rule under a conditional @media makes the computation
   // volatile when its selector matches.
@@ -2250,7 +2257,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var selector=entry.rule.selectorText,matched=false,specificity=0,proximity=Infinity;
     if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
     else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
-    else{try{matched=cssApply(computedStyleNativeMatches,el,[selector]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,item);});}
+    else{try{matched=cssApply(computedStyleNativeMatches,el,[frameSelector(el,selector)]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,frameSelector(el,item));});}
     if(matched&&entry.media&&!computedMediaReads)computedVolatile=true;
     return matched&&entry.media!==2?new EntryMatch(entry,specificity,proximity,order):null;
   }
@@ -3393,13 +3400,12 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // parent's live tree, so the child realm builds + queries its own DOM without
     // scribbling into the host page. Element construction delegates to the native binding.
     var makeChildDocument = function(){
-      // Detached container elements for the child's documentElement/head/body. Plain <div>s,
-      // NOT <html>/<head>/<body>: the native binding treats those three as document
-      // singletons (createElement('head') attaches to the live documentElement), which would
-      // leak the child realm's nodes into the PARENT's serialized tree. Divs stay detached.
-      var root = d.createElement('div');
-      var head = d.createElement('div');
-      var body = d.createElement('div');
+      // The child's documentElement / head / body are real (detached) <html> / <head> /
+      // <body> elements (turbo-dom#306): Chrome's element types, html.css values (body's 8px
+      // margin) and html / body / :root rules of the child's own sheets (frameSelector).
+      var root = d.createElement('html');
+      var head = d.createElement('head');
+      var body = d.createElement('body');
       try { root.appendChild(head); root.appendChild(body); } catch(e){}
       var dl = {};
       // Walk the child's OWN detached subtree (native element-scoped querySelector isn't
@@ -3434,8 +3440,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if (sel.charAt(0) === '.'){ var cls = sel.slice(1); return function(n){ var c = attr(n,'class') || n.className || ''; return (' '+c+' ').indexOf(' '+cls+' ') >= 0; }; }
         var tag = sel.toUpperCase(); return function(n){ return String(n.tagName).toUpperCase() === tag; };
       };
+      // Queries see the document element itself, then its descendants.
+      var selfOr = function(pred, out){ if (pred(root)) out.push(root); return walkAll(root, pred, out); };
       var q1 = function(s){
-        var r = walk(root, predFor(s));
+        var pred = predFor(s), r = pred(root) ? root : walk(root, pred);
         if (r == null){ try { r = root.querySelector(s); } catch(e){} }
         return r;
       };
@@ -3449,14 +3457,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         createTextNode: function(t){ return d.createTextNode(t); },
         createComment: function(t){ return d.createComment ? d.createComment(t) : d.createTextNode(String(t)); },
         createDocumentFragment: function(){ return d.createDocumentFragment(); },
-        getElementById: function(id){ return walk(root, function(n){ return attr(n,'id') === String(id) || n.id === String(id); }); },
+        getElementById: function(id){ return selfOr(function(n){ return attr(n,'id') === String(id) || n.id === String(id); }, [])[0] || null; },
         querySelector: q1,
-        querySelectorAll: function(s){ return walkAll(root, predFor(s), []); },
-        getElementsByTagName: function(s){ return walkAll(root, predFor(String(s)), []); },
+        querySelectorAll: function(s){ return selfOr(predFor(s), []); },
+        getElementsByTagName: function(s){ return selfOr(predFor(String(s)), []); },
         addEventListener: function(t,f){ if (typeof f==='function') (dl[t]=dl[t]||[]).push(f); },
         removeEventListener: function(t,f){ var a=dl[t]; if(a){ var i=a.indexOf(f); if(i>=0) a.splice(i,1); } },
         dispatchEvent: function(ev){ if(!ev) return true; var a=dl[ev.type]; if(a) a.slice().forEach(function(f){ try{f.call(cd,ev);}catch(e){} }); return !(ev&&ev.defaultPrevented); },
       };
+      // The document element's parent is the document.
+      try { Object.defineProperty(root, 'parentNode', { get: function(){ return cd; }, configurable: true }); } catch(e){}
       return cd;
     };
     // origin (scheme://host[:port]) of a URL string; 'null' when not absolute http(s).
@@ -3498,7 +3508,23 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var defineFrameDocument = function(childDoc, childWin, hostEl){
       __ns.registerFrameRoot(childDoc.documentElement, childWin);
       var srcdoc = hostEl && hostEl.getAttribute ? hostEl.getAttribute('srcdoc') : null;
-      if (srcdoc != null) childDoc.body.innerHTML = srcdoc;
+      if (srcdoc != null) loadFrameMarkup(childDoc, String(srcdoc));
+    };
+    // A srcdoc is a whole document (turbo-dom#306): its head / body content and the html /
+    // head / body attributes move into the child document's elements.
+    // Document.parseHTMLUnsafe (installed after this bootstrap; read on the first srcdoc).
+    var frameParse = null;
+    var loadFrameMarkup = function(childDoc, markup){
+      frameParse = frameParse || g.Document.parseHTMLUnsafe;
+      var parsed = null;
+      try { parsed = frameParse.call(g.Document, markup); } catch(e){}
+      if (!parsed || !parsed.documentElement) { childDoc.body.innerHTML = markup; return; }
+      [[parsed.documentElement, childDoc.documentElement], [parsed.head, childDoc.head], [parsed.body, childDoc.body]].forEach(function(pair){
+        if (!pair[0]) return;
+        Array.prototype.forEach.call(pair[0].attributes, function(a){ try { pair[1].setAttribute(a.name, a.value); } catch(e){} });
+        if (pair[0] === parsed.documentElement) return;
+        for (var child = pair[0].firstChild; child; child = pair[0].firstChild) { pair[1].appendChild(d.importNode(child, true)); pair[0].removeChild(child); }
+      });
     };
     // An iframe resizes with the DOM (its attributes, styles, style sheets): once a child
     // window has a MediaQueryList, every DOM change re-evaluates the lists after it.
