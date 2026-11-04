@@ -576,6 +576,37 @@ pub fn dispatch<'s>(
             let data = dom_units(scope, args.get(4)).expect("string data");
             replace_character_data(scope, handle, offset as usize, count as usize, &data);
         }
+        "body" if kind == 9 => {
+            // HTML's body element: the document element's first html body/frameset child.
+            let found = with_tree(|tree| {
+                let root = tree
+                    .children(handle)
+                    .into_iter()
+                    .find(|node| tree.node_type_id(*node) == 1)?;
+                tree.children(root).into_iter().find(|node| {
+                    tree.node_type_id(*node) == 1
+                        && tree.namespace_id(*node) == 0
+                        && matches!(tree.local_name(*node), Some("body" | "frameset"))
+                })
+            })
+            .flatten();
+            rv.set(wrap_opt(scope, found));
+        }
+        "elementChildren" if matches!(kind, 1 | 9 | 11) => {
+            let rows: Vec<Handle> = with_tree(|tree| {
+                tree.children(handle)
+                    .into_iter()
+                    .filter(|node| tree.node_type_id(*node) == 1)
+                    .collect()
+            })
+            .unwrap_or_default();
+            let array = v8::Array::new(scope, rows.len() as i32);
+            for (index, row) in rows.into_iter().enumerate() {
+                let value = wrap(scope, row);
+                array.set_index(scope, index as u32, value.into());
+            }
+            rv.set(array.into());
+        }
         "stamp" => {
             let stamp =
                 with_tree(|tree| format!("{}:{}", DOM_ID.with(|id| id.get()), tree.version))

@@ -54,9 +54,11 @@
     define(constructor.prototype, "labels", {
       get: make(
         function () {
-          if (!html(this) || local(this) !== tag) throw new ErrorType("Illegal invocation");
-          if (tag === "input" && forms.bridge("labels-hidden", this)) return null;
-          return forms.bridge("labels-list", this);
+          // One native crossing: brand check, hidden input's null, the cached live list.
+          // A non-node receiver gets no answer from the bridge (never undefined otherwise).
+          const list = forms.bridge("labels", this, tag);
+          if (list === undefined) throw new ErrorType("Illegal invocation");
+          return list;
         },
         "get labels",
         0,

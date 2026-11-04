@@ -5524,6 +5524,32 @@ fn invalid_form_action(raw: &str) -> String {
     result.push_str(suffix);
     result
 }
+fn labels_factory_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Private> {
+    // invariant: engine-built name, far below V8's string length limit
+    let name = v8::String::new(scope, "turbo.forms.labels-factory").unwrap();
+    v8::Private::for_api(scope, Some(name))
+}
+
+/// Set `rv` to the control's live `labels` list from form_collections.js's factory (it
+/// caches the list on the element), called in the element's creation context.
+fn labels_list(scope: &mut v8::PinScope, node: v8::Local<v8::Object>, rv: &mut v8::ReturnValue) {
+    let Some(context) = node.get_creation_context(scope) else {
+        return;
+    };
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let global = context.global(scope);
+    let key = labels_factory_key(scope);
+    if let Some(callback) = global
+        .get_private(scope, key)
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    {
+        let receiver = v8::undefined(scope);
+        if let Some(value) = callback.call(scope, receiver.into(), &[node.into()]) {
+            rv.set(value);
+        }
+    }
+}
+
 fn form_controls_native(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
@@ -5535,23 +5561,16 @@ fn form_controls_native(
         return;
     };
     if operation == "install-labels" || operation == "labels-list" {
-        let Some(context) = node.get_creation_context(scope) else {
-            return;
-        };
-        let scope = &mut v8::ContextScope::new(scope, context);
-        let global = context.global(scope);
-        let name = v8::String::new(scope, "turbo.forms.labels-factory").unwrap();
-        let key = v8::Private::for_api(scope, Some(name));
         if operation == "install-labels" {
+            let Some(context) = node.get_creation_context(scope) else {
+                return;
+            };
+            let scope = &mut v8::ContextScope::new(scope, context);
+            let global = context.global(scope);
+            let key = labels_factory_key(scope);
             global.set_private(scope, key, args.get(2));
-        } else if let Some(callback) = global
-            .get_private(scope, key)
-            .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-        {
-            let receiver = v8::undefined(scope);
-            if let Some(value) = callback.call(scope, receiver.into(), &[node.into()]) {
-                rv.set(value);
-            }
+        } else {
+            labels_list(scope, node, &mut rv);
         }
         return;
     }
@@ -5572,9 +5591,6 @@ fn form_controls_native(
         return;
     };
     match operation.as_str() {
-        "labels-hidden" => {
-            rv.set(v8::Boolean::new(scope, control_labels::hidden(handle)).into());
-        }
         "labels-rows" => {
             let rows = control_labels::labels(scope, handle);
             let array = v8::Array::new(scope, rows.len() as i32);
@@ -5599,6 +5615,37 @@ fn form_controls_native(
             }
             if let Some(value) = node.get_private(scope, key) {
                 rv.set(value);
+            }
+        }
+        "labels" => {
+            // The whole `labels` getter in one crossing (0.7.1): brand check, the hidden
+            // input's null, then the element's one live list (made once by the JS factory).
+            let tag = args.get(2).to_rust_string_lossy(scope);
+            let branded = with_tree(|tree| {
+                tree.node_type_id(handle) == 1
+                    && tree.namespace_id(handle) == 0
+                    && tree.local_name(handle) == Some(tag.as_str())
+            })
+            .unwrap_or(false);
+            if !branded {
+                let message = v8::String::new(scope, "Illegal invocation").unwrap();
+                let error = v8::Exception::type_error(scope, message);
+                scope.throw_exception(error);
+                return;
+            }
+            if tag == "input" && control_labels::hidden(handle) {
+                rv.set(v8::null(scope).into());
+                return;
+            }
+            let name = v8::String::new(scope, "turbo.forms.private.control-labels").unwrap();
+            let key = v8::Private::for_api(scope, Some(name));
+            let cached = node
+                .get_private(scope, key)
+                .filter(|value| !value.is_undefined());
+            if let Some(value) = cached {
+                rv.set(value);
+            } else {
+                labels_list(scope, node, &mut rv);
             }
         }
         "html-element" => {

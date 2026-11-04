@@ -221,7 +221,7 @@
   for (const owner of ['Element', 'Document', 'DocumentFragment']) property(g[owner].prototype, 'children', function () {
     check(this, owner === 'Element' ? [1] : owner === 'Document' ? [9] : [11]);
     const receiver = this;
-    return cached(receiver, 'children', () => copyRows(call(rawChildren, receiver),node=>call(type, node)===1));
+    return cached(receiver, 'children', () => native('elementChildren', receiver));
   });
   for (const owner of ['Document', 'Element', 'DocumentFragment']) {
     const proto = g[owner].prototype;
@@ -306,7 +306,7 @@
   }
   property(g.Document.prototype, 'documentElement', function () { check(this, [9]); return documentElementOf(this); });
   property(g.Document.prototype, 'head', function () { check(this, [9]); const root=documentElementOf(this); return root ? firstChild(root, node => call(type, node) === 1 && local(node) === 'head' && call(namespace, node) === html) : null; });
-  property(g.Document.prototype, 'body', function () { check(this, [9]); const root=documentElementOf(this); return root ? firstChild(root, node => { if (call(type, node) !== 1 || call(namespace, node) !== html) return false; const name = local(node); return name === 'body' || name === 'frameset'; }) : null; }, function (value) {
+  property(g.Document.prototype, 'body', function () { return native('body', this); }, function (value) {
     check(this,[9]); if (!value || call(type, value)!==1 || !['body','frameset'].includes(value.localName) || call(namespace, value)!==html) throw new ns.DOMException('The new body is not a body or frameset element','HierarchyRequestError');
     const current=this.body;if(value===current)return;if(current)current.parentNode.replaceChild(value,current);else if(this.documentElement)this.documentElement.appendChild(value);else throw new ns.DOMException('The document has no document element','HierarchyRequestError');
   });
