@@ -86,10 +86,15 @@
       }
       add(out,$apply(strings.slice,text,[at]));return out;
     };
-    var dispatch=function(name){return function(receiver){var rest=[];for(var i=1;i<arguments.length;i++)add(rest,arguments[i]);var t=null;
+    // The arguments after the receiver. Array literals define their elements (no Array.prototype
+    // index setter runs), so the common arities skip `add`'s per-element defineProperty, which
+    // made every $c call cost a runtime call per argument.
+    var restOf=function(args,a,b,c){var n=args.length;if(n<=1)return [];if(n===2)return [a];if(n===3)return [a,b];if(n===4)return [a,b,c];var rest=[];for(var i=1;i<n;i++)add(rest,args[i]);return rest;};
+    var withReceiver=function(receiver,rest){var n=rest.length;if(n===0)return [receiver];if(n===1)return [receiver,rest[0]];if(n===2)return [receiver,rest[0],rest[1]];if(n===3)return [receiver,rest[0],rest[1],rest[2]];var args=[];add(args,receiver);for(var k=0;k<n;k++)add(args,rest[k]);return args;};
+    var dispatch=function(name){return function(receiver,a,b,c){var rest=restOf(arguments,a,b,c);var t=null;
       if(typeof receiver==='string'){if(name==='replace')return replace(receiver,rest[0],rest[1]);if(name==='split'&&rest[0] instanceof RegExpType)return split(receiver,rest[0],rest[1]);t=strings;}
       else if(typeof receiver==='function'){if(name==='call')return $apply(receiver,rest[0],$apply(arrays.slice,null,[rest,1]));if(name==='apply')return $apply(receiver,rest[0],rest[1]==null?[]:rest[1]);}
-      else if(isArray(receiver)){if(arrays[name]){var args=[];add(args,receiver);for(var k=0;k<rest.length;k++)add(args,rest[k]);return $apply(arrays[name],null,args);}}
+      else if(isArray(receiver)){if(arrays[name])return $apply(arrays[name],null,withReceiver(receiver,rest));}
       else if(receiver instanceof MapType)t=maps;else if(receiver instanceof WeakMapType)t=weakMaps;else if(receiver instanceof SetType)t=sets;else if(receiver instanceof WeakSetType)t=weakSets;else if(receiver instanceof RegExpType){if(name==='test')return $apply(exec,receiver,rest)!==null;t=regexps;}
       if(t&&t[name])return $apply(t[name],receiver,rest);
       return $apply(receiver[name],receiver,rest);};};
