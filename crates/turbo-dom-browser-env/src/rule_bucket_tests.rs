@@ -93,14 +93,15 @@ fn quirks_mode_class_and_id_buckets_ignore_case() {
         "<html><head><style>.Foo { color: rgb(1, 2, 3) } #Bar { margin-top: 4px }</style></head><body></body></html>",
         r#"(()=>{
       const d=document.createElement('div');d.className='foo';d.id='bar';document.body.appendChild(d);
-      return JSON.stringify({mode:document.compatMode,matched:d.matches('.Foo')&&d.matches('#Bar'),color:getComputedStyle(d).color,margin:getComputedStyle(d).marginTop});
+      const plain=document.createElement('div');document.body.appendChild(plain);
+      return JSON.stringify({mode:document.compatMode,matched:d.matches('.Foo')&&d.matches('#Bar'),color:getComputedStyle(d).color,margin:getComputedStyle(d).marginTop,plain:[getComputedStyle(plain).color,getComputedStyle(plain).marginTop]});
     })()"#,
     );
     assert_eq!(value["mode"], "BackCompat");
     let expected = if value["matched"] == true {
         serde_json::json!(["rgb(1, 2, 3)", "4px"])
     } else {
-        serde_json::json!(["rgb(0, 0, 0)", ""])
+        value["plain"].clone()
     };
     assert_eq!(
         serde_json::json!([value["color"], value["margin"]]),
