@@ -1589,14 +1589,28 @@ impl Tree {
     /// Whether the subtree of `h` holds a form-associated (or possibly form-associated custom)
     /// element, or one naming its form owner.
     fn has_form_content(&self, h: Handle) -> bool {
-        let mut pending = vec![h];
-        while let Some(node) = pending.pop() {
+        // Pre-order walk over the sibling links: no per-node child list.
+        let mut node = h;
+        loop {
             if self.is_form_element(node) || self.get_attribute(node, "form").is_some() {
                 return true;
             }
-            pending.extend(self.children(node));
+            if let Some(child) = self.first_child(node) {
+                node = child;
+                continue;
+            }
+            loop {
+                if node == h {
+                    return false;
+                }
+                if let Some(next) = self.next_sibling(node) {
+                    node = next;
+                    break;
+                }
+                // invariant: `node` is a descendant of `h`, so it has a parent
+                node = self.parent(node).expect("a descendant of the walk root");
+            }
         }
-        false
     }
 
     fn is_form_element(&self, h: Handle) -> bool {
@@ -3056,6 +3070,15 @@ mod tests {
         let g3 = reader(&tree);
         tree.set_node_value(text, "y");
         assert_eq!(reader(&tree), g3.max(tree.style_generation(span, OWN)));
+        let plain = tree.create_element("div");
+        tree.set_inner_html(plain, "<p><b></b></p><i></i>");
+        let g4 = reader(&tree);
+        tree.append_child(p, plain);
+        assert_eq!(
+            reader(&tree),
+            g4.max(tree.style_generation(span, OWN)),
+            "no control below"
+        );
         let control = tree.create_element("x-control");
         let wrapper = tree.create_element("div");
         tree.append_child(wrapper, control);
