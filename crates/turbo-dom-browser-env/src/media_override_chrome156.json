@@ -1,0 +1,34 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "probeSha256": "5f1416e03a1218e9900af08f0a448d40328127f5c3badf906193c8efe54a517d",
+  "collectorSha256": "20f101985cf532bc5b21c87d1836b52574cfc981e75a670281049791e9ae24c5",
+  "flags": [
+    "--use-mock-keychain",
+    "--password-store=basic"
+  ],
+  "errors": [],
+  "result": {
+    "before": [
+      "2px",
+      "rgb(0, 0, 1)",
+      "0px"
+    ],
+    "mocked": [
+      "2px",
+      "rgb(0, 0, 1)",
+      "0px"
+    ],
+    "added": [
+      "2px",
+      "rgb(0, 0, 1)",
+      "4px"
+    ],
+    "calls": 0,
+    "restored": true
+  }
+}

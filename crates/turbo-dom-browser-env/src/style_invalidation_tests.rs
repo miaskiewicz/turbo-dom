@@ -180,7 +180,7 @@ fn unnamed_class_and_attribute_writes_recascade_nothing() {
 fn an_added_sheet_recascades_only_what_it_selects() {
     let value = gate(
         ".t{color:red}",
-        r#"globalThis.matchMedia=query=>({matches:true,media:query});
+        r#"globalThis.innerWidth=1024;
         const g=__gate(()=>{},1);
         const add=(css,first)=>{const s=document.createElement('style');s.textContent=css;first?document.head.prepend(s):document.head.append(s);};
         let before=__cssTestCascadeRuns();

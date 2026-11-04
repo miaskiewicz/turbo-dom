@@ -30,6 +30,11 @@ fn control(json: &str, probe: &str) -> serde_json::Value {
 /// FIFO task queue; `__resize` plays the collector: it sets the new viewport, dispatches
 /// `resize` on the window and then calls `__resizeDone(id)`.
 fn run(probe: &str) -> serde_json::Value {
+    run_in(probe, None)
+}
+
+/// [`run`] with the embedder's media mode set after install (`None` keeps the default).
+fn run_in(probe: &str, mode: Option<MediaMode>) -> serde_json::Value {
     super::tests::init_v8();
     let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
@@ -47,6 +52,9 @@ fn run(probe: &str) -> serde_json::Value {
          globalThis.__resize=json=>{const {id,width,height}=JSON.parse(json);\
          __tasks.push(()=>{innerWidth=width;innerHeight=height;dispatchEvent(new Event('resize'));__tasks.push(()=>__resizeDone(id));});};",
     );
+    if let Some(mode) = mode {
+        set_media_mode(scope, mode);
+    }
     let code = format!(
         "Promise.resolve().then(()=>({})).then(JSON.stringify)",
         probe.trim().trim_end_matches(';')
@@ -143,4 +151,96 @@ fn iframe_cascade_matches_chrome156_control() {
         include_str!("iframe_cascade_chrome156.json"),
         include_str!("iframe_cascade_probe.js"),
     );
+}
+
+/// The 0.7.1 app regressions: getComputedStyle evaluates @media against the viewport and
+/// never asks a page's replacement `window.matchMedia` (a test mock), like Chrome; rules
+/// added while the mock is installed are evaluated the same way.
+#[test]
+fn media_override_matches_chrome156_control() {
+    check(
+        include_str!("media_override_chrome156.json"),
+        include_str!("media_override_probe.js"),
+    );
+    let explicit = run_in(
+        include_str!("media_override_probe.js"),
+        Some(MediaMode::Chrome),
+    );
+    assert_eq!(
+        explicit,
+        control(
+            include_str!("media_override_chrome156.json"),
+            include_str!("media_override_probe.js")
+        )
+    );
+}
+
+/// The jsdom 27.4.0 control's result, after checking it was recorded from `probe`.
+fn jsdom_control(json: &str, probe: &str) -> serde_json::Value {
+    let control: serde_json::Value = serde_json::from_str(json).unwrap();
+    assert_eq!(control["jsdom"], "27.4.0");
+    assert_eq!(
+        control["probeSha256"],
+        format!("{:x}", Sha256::digest(probe.as_bytes()))
+    );
+    control["result"].clone()
+}
+
+/// MediaMode::Jsdom (turbo-test's default, for vitest parity): no matchMedia /
+/// MediaQueryList, and a top-level @media rule applies only when its media list has an item
+/// that is exactly `screen`, as jsdom 27.4.0's getComputedStyle does.
+#[test]
+fn jsdom_media_mode_matches_jsdom27_control() {
+    let probe = include_str!("jsdom_media_probe.js");
+    let expected = jsdom_control(include_str!("jsdom_media_jsdom27.json"), probe);
+    assert_eq!(run_in(probe, Some(MediaMode::Jsdom)), expected);
+    // Chrome's answers differ (the default mode), so the mode is what changed them.
+    assert_ne!(run(probe), expected);
+}
+
+/// Switching modes on a live window re-cascades: Jsdom removes matchMedia and its
+/// interfaces, Chrome restores the binding's own and evaluates @media again.
+#[test]
+fn media_mode_switches_back_and_forth() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_independent_html(
+        scope,
+        "<!doctype html><html><head><style>@media (min-width: 1px) { #t { color: rgb(0, 0, 2) } }</style></head><body><div id=t></div></body></html>",
+    );
+    run_js_string(
+        scope,
+        "globalThis.innerWidth=1024;globalThis.innerHeight=768",
+    );
+    let read = "[typeof matchMedia, typeof MediaQueryList, typeof MediaQueryListEvent, getComputedStyle(document.getElementById('t')).color].join()";
+    let chrome = run_js_string(scope, read);
+    set_media_mode(scope, MediaMode::Jsdom);
+    let jsdom = run_js_string(scope, read);
+    set_media_mode(scope, MediaMode::Jsdom);
+    let again = run_js_string(scope, read);
+    set_media_mode(scope, MediaMode::Chrome);
+    let back = run_js_string(scope, read);
+    let list = run_js_string(
+        scope,
+        "String(matchMedia('(min-width: 1px)') instanceof MediaQueryList)",
+    );
+    reset();
+    assert_eq!(chrome, "function,function,function,rgb(0, 0, 2)");
+    assert_eq!(jsdom, "undefined,undefined,undefined,rgb(0, 0, 0)");
+    assert_eq!(again, jsdom);
+    assert_eq!(back, chrome);
+    assert_eq!(list, "true");
+    assert_eq!(MediaMode::default(), MediaMode::Chrome);
+}
+
+fn run_js_string(scope: &mut v8::PinScope, source: &str) -> String {
+    let code = v8::String::new(scope, source).unwrap();
+    v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope)
 }
