@@ -6708,13 +6708,31 @@ fn dom_accessor_dispatch(
         return;
     };
     let scope = &mut v8::ContextScope::new(scope, context);
-    // invariant: natives run under the DomScope of an installed DOM
-    let template = DOM.with(|d| d.borrow().as_ref().unwrap().el_template.clone());
-    let template = dom_ownership::local(scope, template);
-    // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
-    let raw = template.new_instance(scope).unwrap();
-    #[cfg(test)]
-    RAW_VIEWS_BUILT.with(|built| built.set(built.get() + 1));
+    let pool_key = (
+        DOM_ID.with(|id| id.get()),
+        DOM.with(|d| d.borrow().as_ref().map_or(0, |state| state.serial)),
+    );
+    let pooled = RAW_VIEWS.with(|views| {
+        let mut views = views.borrow_mut();
+        if views.0 != pool_key {
+            *views = (pool_key, Vec::new());
+        }
+        views.1.pop()
+    });
+    let mut kept = pooled.and_then(|weak| weak.to_local(scope).map(|raw| (raw, weak)));
+    let raw = match &kept {
+        Some((raw, _)) => *raw,
+        None => {
+            // invariant: natives run under the DomScope of an installed DOM
+            let template = DOM.with(|d| d.borrow().as_ref().unwrap().el_template.clone());
+            let template = dom_ownership::local(scope, template);
+            // invariant: engine template instantiation (stack_edge_tests covers stack exhaustion)
+            let raw = template.new_instance(scope).unwrap();
+            #[cfg(test)]
+            RAW_VIEWS_BUILT.with(|built| built.set(built.get() + 1));
+            raw
+        }
+    };
     let handle = v8::Integer::new_from_unsigned(scope, handle.raw());
     raw.set_internal_field(0, handle.into());
     let owner = owner_tag(scope, DOM_ID.with(|id| id.get()));
@@ -6726,12 +6744,31 @@ fn dom_accessor_dispatch(
     } else if let Some(value) = raw.get(scope, key.into()) {
         rv.set(value);
     }
+    // Back to the pool (a reentrant dispatch took another): the view is the caller's again
+    // only if the tree it was made for is still current. A pooled view keeps its weak handle.
+    let weak = kept
+        .take()
+        .map_or_else(|| v8::Weak::new(scope, raw), |(_, weak)| weak);
+    RAW_VIEWS.with(|views| {
+        let mut views = views.borrow_mut();
+        if views.0 == pool_key && views.1.len() < 8 {
+            views.1.push(weak);
+        }
+    });
 }
 
 #[cfg(test)]
 thread_local! {
     /// Raw views `dom_accessor_dispatch` instantiated (the perf gate in `perf_gates_tests`).
     pub(super) static RAW_VIEWS_BUILT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+thread_local! {
+    /// `dom_accessor_dispatch`'s raw template views for one (DOM id, tree serial): reused
+    /// across calls instead of a template instance per call, taken while a call uses one (a
+    /// reentrant dispatch takes another). Weak: a view nothing uses is collectable, and none
+    /// outlives its isolate.
+    static RAW_VIEWS: RefCell<((u64, u64), Vec<v8::Weak<v8::Object>>)> = RefCell::new(((u64::MAX, 0), Vec::new()));
 }
 
 fn make_dom_accessor(
