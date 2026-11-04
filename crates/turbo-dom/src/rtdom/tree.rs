@@ -899,7 +899,7 @@ impl Tree {
             return None;
         }
         let c = self.buf.first_child[h.idx()];
-        (c >= 0).then(|| Handle(c as u32))
+        (c >= 0).then_some(Handle(c as u32))
     }
 
     /// [`Self::next_sibling`] without allocating the parent's child list.
@@ -910,7 +910,7 @@ impl Tree {
             return list.get(at + 1).copied();
         }
         let next = self.buf.next_sib[h.idx()];
-        (next >= 0).then(|| Handle(next as u32))
+        (next >= 0).then_some(Handle(next as u32))
     }
 
     /// Visit each child handle WITHOUT allocating a `Vec` — walks the child overlay
