@@ -1064,6 +1064,32 @@
     if(!computedMediaUnchanged(entry.media))return null;
     if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
     for(var index=0;index<entry.deps.length;index+=2)if(computeStyleSnapshot(entry.deps[index],snapshots)!==entry.deps[index+1])return null;
+    computedMarkStable(el,entry);
+    return entry.snapshot;
+  }
+  // The stable-entry fast path. Everything the cache key and the dependency walk read moves the
+  // element's tree version (any DOM, inline-override, form or custom state change), its
+  // selector version (also an animation joining or leaving an element, which moves its style
+  // generation but not the tree version), the CSSOM epoch (sheets, rules, adoption, animation
+  // model changes) or the live-state epoch; @media
+  // answers and the probe (top layer, font context) are checked as on a full hit. An entry
+  // validated at a world stamp (tree and selector versions, CSSOM and state epochs) whose dependencies were
+  // all stable entries at the same stamp therefore stays valid while the stamp holds: a read
+  // then skips recomputing the key and revalidating the ancestor chain (once per property read
+  // and per ancestor, which made testing-library's role / visibility queries quadratic in
+  // depth). A dependency on a volatile style (a running transition) never marks it stable.
+  function computedWorldStamp(el){var full,selector;try{full=computedStyleVersion(el);selector=computedStyleSelectorVersion(el);}catch(e){return null;}return typeof full==='number'&&typeof selector==='number'?[full,selector,cssomEpoch(),styleStateEpoch()]:null;}
+  function computedStampEqual(a,b){return !!a&&!!b&&a[0]===b[0]&&a[1]===b[1]&&a[2]===b[2]&&a[3]===b[3];}
+  function computedMarkStable(el,entry){
+    var stamp=computedWorldStamp(el);entry.stable=null;if(!stamp)return;
+    for(var index=0;index<entry.deps.length;index+=2){var dep=computedSnapshotGet(computedStyleCache,entry.deps[index]);if(!dep||dep.snapshot!==entry.deps[index+1]||!computedStampEqual(dep.stable,computedWorldStamp(entry.deps[index])))return;}
+    entry.stable=stamp;
+  }
+  function computedStableHit(el){
+    var entry=computedSnapshotGet(computedStyleCache,el);
+    if(!entry||!entry.stable||!computedStampEqual(entry.stable,computedWorldStamp(el)))return null;
+    if(!computedMediaUnchanged(entry.media))return null;
+    if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
     return entry.snapshot;
   }
   // turbo-test#227 part 2: the cascaded declarations (rules, UA tables, inline style; before
@@ -1154,9 +1180,10 @@
     if(pseudo||sink||!el||typeof el!=='object')return computeStyleFresh(el,snapshots,sink,pseudo,null);
     var local=computedSnapshotGet(snapshots,el);if(local)return local;
     if(noteStyleLookup)noteStyleLookup();
+    var stable=computedStableHit(el);if(stable){computedSnapshotSet(snapshots,el,stable);return stable;}
     var key=computedCacheKey(el);
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
-    var deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,media={__proto__:null},snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;computedMediaReads=media;
+    var before=key?computedWorldStamp(el):null,deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,media={__proto__:null},snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;computedMediaReads=media;
     var base={__proto__:null,use:key?computedBaseHit(el,key):null,out:null};
     try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps,base);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
     if(key){
@@ -1170,7 +1197,7 @@
         if(out&&unchanged&&!out.volatile)computedSnapshotSet(computedBaseCache,el,{__proto__:null,base:out,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:out.stateRead?state:null,media:out.media,probe:computedCacheProbe(el)});
         else if(!base.use)computedSnapshotSet(computedBaseCache,el,null);
       }
-      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps});
+      else{var stored={__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps,stable:null};computedSnapshotSet(computedStyleCache,el,stored);if(computedStampEqual(before,computedWorldStamp(el)))computedMarkStable(el,stored);}
     }
     return snapshot;
   }
