@@ -3254,6 +3254,39 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // origin (scheme://host[:port]) of a URL string; 'null' when not absolute http(s).
     var originOf = function(u){ try { var m=/^(https?:\/\/[^\/]+)/i.exec(String(u||'')); return m?m[1]:'null'; } catch(e){ return 'null'; } };
 
+    // An iframe's content box on `axis` ('width' / 'height'): its used CSS size (less padding
+    // and border under border-box sizing), else its `width` / `height` attribute, else Chrome's
+    // 300x150 default (turbo-dom#288).
+    var framePx = function(style, name){ var match = /^(-?\d+(?:\.\d+)?)px$/.exec(String(style.getPropertyValue(name) || '').trim()); return match ? +match[1] : null; };
+    var frameAttribute = function(hostEl, axis){
+      if (!hostEl || !hostEl.getAttribute) return null;
+      var text = hostEl.getAttribute(axis) || (typeof hostEl[axis] === 'string' ? hostEl[axis] : '');
+      var match = /^\s*(\d+(?:\.\d+)?)/.exec(text);
+      return match ? +match[1] : null;
+    };
+    // Under border-box sizing the content box excludes padding and border.
+    var frameBoxExtras = function(style, axis){
+      if (String(style.getPropertyValue('box-sizing')).trim() !== 'border-box') return 0;
+      var sides = axis === 'width' ? ['left', 'right'] : ['top', 'bottom'];
+      return sides.reduce(function(sum, side){ return sum + (framePx(style, 'padding-' + side) || 0) + (framePx(style, 'border-' + side + '-width') || 0); }, 0);
+    };
+    var frameContentSize = function(hostEl, axis){
+      var style = null;
+      try { style = hostEl && g.getComputedStyle(hostEl); } catch(e){}
+      var size = style ? framePx(style, axis) : null, fallback = axis === 'width' ? 300 : 150, attribute = frameAttribute(hostEl, axis);
+      // The cascade reports the UA 300x150 default where Chrome maps the attribute as a
+      // presentational hint (below author CSS); an attribute then wins over that default.
+      if (attribute !== null && (size === null || size === fallback)) return attribute;
+      return size === null ? fallback : Math.max(0, size - frameBoxExtras(style, axis));
+    };
+    // A child window's viewport is its iframe's content box; its outer size is the top window's.
+    var defineFrameViewport = function(childWin, hostEl, parentWin){
+      [['innerWidth', function(){ return frameContentSize(hostEl, 'width'); }], ['innerHeight', function(){ return frameContentSize(hostEl, 'height'); }],
+       ['outerWidth', function(){ return parentWin.outerWidth; }], ['outerHeight', function(){ return parentWin.outerHeight; }]].forEach(function(pair){
+        try { Object.defineProperty(childWin, pair[0], { get: pair[1], set: function(value){ Object.defineProperty(childWin, pair[0], { value: value, writable: true, configurable: true, enumerable: true }); }, configurable: true, enumerable: true }); } catch(e){}
+      });
+    };
+
     // Build (once) a bridged child realm for the <iframe> `hostEl`. `parentWin` defaults
     // to the top window `g`. Returns the child window; also sets hostEl.contentWindow /
     // contentDocument. Reused by turbo-surf's render tier for the reCAPTCHA bframe.
@@ -3294,6 +3327,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           deliver(childWin, mkMsgEvent(msg, parentOrigin, parentView, ports));
         },
       });
+      defineFrameViewport(childWin, hostEl, parentWin);
       childWin.window = childWin; childWin.self = childWin; childWin.globalThis = childWin;
       childDoc.defaultView = childWin;
       // parentView: what the child holds to reach the parent (child.parent / child.top /

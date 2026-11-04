@@ -24,6 +24,10 @@ at the time); this file reconstructs them from history.
   that flipped. The JS cascade's `@media` / `@import` media evaluate the same way while
   `matchMedia` is the binding's own; without an embedder viewport the size features never
   match (turbo-dom#287, `match_media_chrome156.json`).
+- turbo-dom-browser-env: a child iframe window's `innerWidth` / `innerHeight` report the
+  iframe's live content box (CSS size less padding and border under `border-box`, else the
+  `width` / `height` attribute, else 300x150) and `outerWidth` / `outerHeight` the top-level
+  window's, like Chrome (turbo-dom#288, `iframe_viewport_chrome156.json`).
 
 ## [0.7.0] — <date TBD at tag>
 
