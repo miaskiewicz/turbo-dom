@@ -18048,6 +18048,600 @@
    ]
   },
   {
+   "id": "currentcolor-shorthand",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px solid;color:#ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 44,
+     "y": 34,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "currentcolor-initial-black",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px solid\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 44,
+     "y": 34,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "currentcolor-explicit-shorthand",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px solid currentColor;color:#0000ff\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 34,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "currentcolor-explicit-longhand",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px solid #00ff00;border-color:currentcolor;color:#ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 44,
+     "y": 34,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "currentcolor-per-side",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;color:#ff0000;border-top:4px solid;border-right:4px solid #00ff00;border-bottom:4px solid #00ff00;border-bottom-color:currentcolor;border-left:4px solid #0000ff;border-left-color:currentColor\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 44,
+     "y": 34,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "currentcolor-outset",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px outset;color:#ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "W",
+     "rgb": [
+      238,
+      238,
+      238
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      238,
+      238,
+      238
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "?",
+     "rgb": [
+      154,
+      154,
+      154
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      154,
+      154,
+      154
+     ]
+    },
+    {
+     "x": 44,
+     "y": 34,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "currentcolor-inherited",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"color:#0000ff\"><div data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;width:40px;height:20px;border:4px solid\"></div></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 34,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "currentcolor-button",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><button data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:48px;height:28px;border:4px solid\"></button></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "?",
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 44,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    }
+   ]
+  },
+  {
+   "id": "currentcolor-button-color",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><button data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:48px;height:28px;border:4px solid;color:#0000ff\"></button></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 20,
+     "y": 20,
+     "width": 48,
+     "height": 28
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 21,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 34,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 46,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 66,
+     "y": 34,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 34,
+     "class": "W",
+     "rgb": [
+      239,
+      239,
+      239
+     ]
+    }
+   ]
+  },
+  {
    "id": "border-inset-field",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><input data-cid=\"m\" style=\"position:absolute;left:20px;top:20px;font-family:'Fira Code';width:30px;height:16px;appearance:none\"></body></html>",
    "assets": [],

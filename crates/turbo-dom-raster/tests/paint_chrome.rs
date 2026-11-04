@@ -331,6 +331,18 @@ fn an_author_border_turns_a_buttons_native_appearance_off_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// miaskiewicz/turbo-dom#303: a border without a colour, or with `currentcolor` spelled
+/// out (shorthand, `border-color`, per side), paints in the element's `color` (its own,
+/// inherited, the initial black, a button's buttontext; an `outset` one shaded from it), in
+/// the PNG and SVG screenshots.
+#[test]
+fn a_currentcolor_border_paints_in_the_elements_color_like_chrome_156() {
+    let pick = |id: &str| id.starts_with("currentcolor-");
+    let mut failures = differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// miaskiewicz/turbo-dom#257: `inset` / `outset` borders shade their sides like Chrome
 /// (darkened top and left of an inset border, lightened bottom and right; a colour too
 /// dark to darken lightened instead), in the PNG and SVG screenshots.
