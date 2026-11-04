@@ -533,7 +533,39 @@ thread_local! {
     static TREE_SERIAL: std::cell::Cell<u64> = const { std::cell::Cell::new(1) };
 }
 
+thread_local! {
+    /// The mutation epoch (0.7.1): one f64 the engine bumps on every tree write or new tree on
+    /// this thread, shared with document_basics.js as a Float64Array so a cached live
+    /// collection re-reads its rows only after a mutation, with no native call per read.
+    static MUTATION_EPOCH: v8::SharedRef<v8::BackingStore> =
+        v8::ArrayBuffer::new_backing_store_from_boxed_slice(vec![0u8; 8].into_boxed_slice())
+            .make_shared();
+}
+
+/// Advance the mutation epoch: every cached live collection re-reads its rows on next use.
+fn bump_mutation_epoch() {
+    MUTATION_EPOCH.with(|store| {
+        let mut bytes = [0u8; 8];
+        for (byte, cell) in bytes.iter_mut().zip(store.iter()) {
+            *byte = cell.get();
+        }
+        let next = (f64::from_ne_bytes(bytes) + 1.0).to_ne_bytes();
+        for (cell, byte) in store.iter().zip(next) {
+            cell.set(byte);
+        }
+    });
+}
+
+/// A Float64Array view of the mutation epoch for this isolate.
+fn mutation_epoch_view<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+) -> Option<v8::Local<'s, v8::Float64Array>> {
+    let buffer = MUTATION_EPOCH.with(|store| v8::ArrayBuffer::with_backing_store(scope, store));
+    v8::Float64Array::new(scope, buffer, 0, 1)
+}
+
 fn next_tree_serial() -> u64 {
+    bump_mutation_epoch();
     TREE_SERIAL.with(|serial| {
         let next = serial.get();
         serial.set(next + 1);
@@ -1575,7 +1607,9 @@ fn with_tree_mut<R>(f: impl FnOnce(&mut Tree) -> R) -> Option<R> {
                 s.tree.stop_recording();
             }
             s.ownership_dirty = true;
-            f(&mut s.tree)
+            let result = f(&mut s.tree);
+            bump_mutation_epoch();
+            result
         })
     })
 }
@@ -5525,33 +5559,90 @@ fn invalid_form_action(raw: &str) -> String {
     result.push_str(suffix);
     result
 }
+fn labels_factory_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Private> {
+    // invariant: engine-built name, far below V8's string length limit
+    let name = v8::String::new(scope, "turbo.forms.labels-factory").unwrap();
+    v8::Private::for_api(scope, Some(name))
+}
+
+/// Set `rv` to the control's live `labels` list from form_collections.js's factory (it
+/// caches the list on the element), called in the element's creation context.
+fn labels_list(scope: &mut v8::PinScope, node: v8::Local<v8::Object>, rv: &mut v8::ReturnValue) {
+    let Some(context) = node.get_creation_context(scope) else {
+        return;
+    };
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let global = context.global(scope);
+    let key = labels_factory_key(scope);
+    if let Some(callback) = global
+        .get_private(scope, key)
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    {
+        let receiver = v8::undefined(scope);
+        if let Some(value) = callback.call(scope, receiver.into(), &[node.into()]) {
+            rv.set(value);
+        }
+    }
+}
+
+/// The whole `labels` getter in one crossing (0.7.1): brand check, the hidden input's null,
+/// then the element's one live list (made once by the JS factory, cached on the element).
+fn labels_getter(
+    scope: &mut v8::PinScope,
+    node: v8::Local<v8::Object>,
+    handle: Handle,
+    tag: &str,
+    rv: &mut v8::ReturnValue,
+) {
+    let branded = with_tree(|tree| {
+        tree.node_type_id(handle) == 1
+            && tree.namespace_id(handle) == 0
+            && tree.local_name(handle) == Some(tag)
+    })
+    .unwrap_or(false);
+    if !branded {
+        let message = v8::String::new(scope, "Illegal invocation").unwrap();
+        let error = v8::Exception::type_error(scope, message);
+        scope.throw_exception(error);
+        return;
+    }
+    if tag == "input" && control_labels::hidden(handle) {
+        rv.set(v8::null(scope).into());
+        return;
+    }
+    // invariant: engine-built name, far below V8's string length limit
+    let name = v8::String::new(scope, "turbo.forms.private.control-labels").unwrap();
+    let key = v8::Private::for_api(scope, Some(name));
+    match node
+        .get_private(scope, key)
+        .filter(|value| !value.is_undefined())
+    {
+        Some(value) => rv.set(value),
+        None => labels_list(scope, node, rv),
+    }
+}
+
 fn form_controls_native(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
+    count_crossing();
     let operation = args.get(0).to_rust_string_lossy(scope);
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return;
     };
     if operation == "install-labels" || operation == "labels-list" {
-        let Some(context) = node.get_creation_context(scope) else {
-            return;
-        };
-        let scope = &mut v8::ContextScope::new(scope, context);
-        let global = context.global(scope);
-        let name = v8::String::new(scope, "turbo.forms.labels-factory").unwrap();
-        let key = v8::Private::for_api(scope, Some(name));
         if operation == "install-labels" {
+            let Some(context) = node.get_creation_context(scope) else {
+                return;
+            };
+            let scope = &mut v8::ContextScope::new(scope, context);
+            let global = context.global(scope);
+            let key = labels_factory_key(scope);
             global.set_private(scope, key, args.get(2));
-        } else if let Some(callback) = global
-            .get_private(scope, key)
-            .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-        {
-            let receiver = v8::undefined(scope);
-            if let Some(value) = callback.call(scope, receiver.into(), &[node.into()]) {
-                rv.set(value);
-            }
+        } else {
+            labels_list(scope, node, &mut rv);
         }
         return;
     }
@@ -5572,9 +5663,6 @@ fn form_controls_native(
         return;
     };
     match operation.as_str() {
-        "labels-hidden" => {
-            rv.set(v8::Boolean::new(scope, control_labels::hidden(handle)).into());
-        }
         "labels-rows" => {
             let rows = control_labels::labels(scope, handle);
             let array = v8::Array::new(scope, rows.len() as i32);
@@ -5600,6 +5688,10 @@ fn form_controls_native(
             if let Some(value) = node.get_private(scope, key) {
                 rv.set(value);
             }
+        }
+        "labels" => {
+            let tag = args.get(2).to_rust_string_lossy(scope);
+            labels_getter(scope, node, handle, &tag, &mut rv);
         }
         "html-element" => {
             rv.set(
@@ -6657,6 +6749,7 @@ fn dom_accessor_dispatch(
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
+    count_crossing();
     let receiver = args.this();
     let (_dom, handle) = enter_node(scope, receiver);
     let mut buffer = [std::mem::MaybeUninit::<u8>::uninit(); 256];
@@ -6756,6 +6849,20 @@ fn dom_accessor_dispatch(
             views.1.push(weak);
         }
     });
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Engine-JS -> native crossings through the DOM natives the perf gates watch
+    /// (`dom_accessor_dispatch`, `document_basics::dispatch`, `form_controls_native`).
+    pub(crate) static NATIVE_CROSSINGS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Count one native crossing (tests only; the perf gate in `perf_gates_tests`).
+#[inline]
+fn count_crossing() {
+    #[cfg(test)]
+    NATIVE_CROSSINGS.with(|calls| calls.set(calls.get() + 1));
 }
 
 #[cfg(test)]

@@ -28,7 +28,10 @@
     var table=function(proto){var out={__proto__:null},keys=$own(proto);for(var i=0;i<keys.length;i++){var d=$gopd(proto,keys[i]);if(d&&typeof d.value==='function')out[keys[i]]=d.value;}return out;};
     var maps=table(Map.prototype),weakMaps=table(WeakMap.prototype),sets=table(Set.prototype),weakSets=table(WeakSet.prototype),strings=table(String.prototype),regexps=table(RegExp.prototype);
     var globalOf=$gopd(RegExp.prototype,'global').get,exec=regexps.exec;
-    var add=function(list,value){$def(list,list.length,{__proto__:null,value:value,writable:true,enumerable:true,configurable:true});};
+    // One reused null-prototype row descriptor (no literal per push; defining a data
+    // property never reenters page code). The value is cleared after each define.
+    var row=$O.create(null);row.value=undefined;row.writable=true;row.enumerable=true;row.configurable=true;
+    var add=function(list,value){row.value=value;$def(list,list.length,row);row.value=undefined;};
     var arrays={__proto__:null,
       push:function(list){for(var i=1;i<arguments.length;i++)add(list,arguments[i]);return list.length;},
       forEach:function(list,f,self){for(var i=0;i<list.length;i++)if(hasOwn(list,i))$apply(f,self,[list[i],i,list]);},
@@ -178,62 +181,72 @@
   function computedSnapshotValue(style,name){var record=declarationRecords.get(style),value=record&&cssMapGet(record.values,name);return value?value.text:'';}
   // Keep inherited unitless line-height as a factor: its public computed px value
   // alone cannot describe inheritance after a descendant changes font-size.
+  // computedFonts' static tables and fixed-shape records (no literal per computation).
+  var fontUnitScale={__proto__:null,px:1,pt:96/72,pc:16,in:96,cm:96/2.54,mm:96/25.4,q:96/101.6};
+  var fontSizeKeywords={__proto__:null,'xx-small':9,'x-small':10,small:13,medium:16,large:18,'x-large':24,'xx-large':32,'xxx-large':48};
+  var fontStretchValues={__proto__:null,'ultra-condensed':'50%','extra-condensed':'62.5%',condensed:'75%','semi-condensed':'87.5%',normal:'100%','semi-expanded':'112.5%',expanded:'125%','extra-expanded':'150%','ultra-expanded':'200%'};
+  function FontLine(kind,value,text){this.kind=kind;this.value=value;this.text=text;}
+  FontLine.prototype=$O.create(null);
+  function FontLength(number,dimension){this.number=number;this.dimension=dimension;}
+  FontLength.prototype=$O.create(null);
+  function FontState(active,family,size,sizeText,style,weight,stretch,caps,line,rootSize){this.active=active;this.family=family;this.size=size;this.sizeText=sizeText;this.style=style;this.weight=weight;this.stretch=stretch;this.caps=caps;this.line=line;this.rootSize=rootSize;}
+  FontState.prototype=$O.create(null);
+  var fontNormalLine=new FontLine('normal',0,undefined);
   function computedFonts(decl,element,parentStyle,connected,pseudo,parentSnapshot){
     var context=computedFontContext(element),parent=context&&context[2],root=context&&context[3];
     // A pseudo-element's parent is its originating element (or its parent pseudo-element).
     if(pseudo&&context){parent=element;root=null;}
     var initialFamily=context?context[0]:'',initialSize=context?context[1]:16;
     var inherited=parent?declarationRecords.get(parentSnapshot||parentStyle(parent)).fontState:null;
-    var initial={__proto__:null,rootSize:initialSize,family:initialFamily,size:initialSize,style:'normal',weight:'400',stretch:'100%',caps:'normal',line:{__proto__:null,kind:'normal',value:0}};
+    var initial=new FontState(undefined,initialFamily,initialSize,undefined,'normal','400','100%','normal',fontNormalLine,initialSize);
     inherited=inherited||initial;
     function raw(name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||$c.test(/^(inherit|unset|revert|revert-layer)$/, key)?inheritedValue:key==='initial'?initialValue:value;}
     function length(value,base,rem,typedLine){
       function term(text,scalar){
         var match=$c.exec(/^((?:\d*\.)?\d+)(px|em|rem|%|pt|pc|in|cm|mm|q)?$/i, text);if(!match)return null;
-        var number=cssFontNumber(match[1]),unit=fontLower(match[2]||''),scale={__proto__:null,px:1,pt:96/72,pc:16,in:96,cm:96/2.54,mm:96/25.4,q:96/101.6};
-        var resolved=unit==='em'?(base===null?null:number*base):unit==='rem'?(rem===null?null:number*rem):unit==='%'?(base===null?null:number*base/100):unit?number*scale[unit]:scalar||number===0?number:null;
-        return resolved!==null&&cssFontFinite(resolved)?{__proto__:null,number:resolved,dimension:unit?1:0}:null;
+        var number=cssFontNumber(match[1]),unit=fontLower(match[2]||'');
+        var resolved=unit==='em'?(base===null?null:number*base):unit==='rem'?(rem===null?null:number*rem):unit==='%'?(base===null?null:number*base/100):unit?number*fontUnitScale[unit]:scalar||number===0?number:null;
+        return resolved!==null&&cssFontFinite(resolved)?new FontLength(resolved,unit?1:0):null;
       }
-      function result(value){if(typedLine)return {__proto__:null,kind:value&&value.dimension===0?'factor':'length',value:value?value.number:null,text:source};return value&&(value.dimension===1||value.number===0)?value.number:null;}
+      function result(value){if(typedLine)return new FontLine(value&&value.dimension===0?'factor':'length',value?value.number:null,source);return value&&(value.dimension===1||value.number===0)?value.number:null;}
       var source=value;
       if(!$c.test(/^calc\(/i, value))return result(term(value,false));
       var expression=$c.replace($c.replace(value, /calc\(/gi,'('), /\s+/g,''),tokens=[],cursor=0,tokenPattern=/(?:\d*\.)?\d+(?:[a-z]+|%)?|[()+*/-]/gi,tokenMatch;
       tokenPattern.lastIndex=0;while((tokenMatch=$c.exec(tokenPattern,expression))!==null)$c.push(tokens,tokenMatch[0]);
       if($c.join(tokens, '')!==expression)return result(null);
       function atom(){var token=tokens[cursor++];if(token==='+'||token==='-'){var signed=atom();if(signed&&token==='-')signed.number=-signed.number;return signed;}if(token==='('){var grouped=sum();return tokens[cursor++]===')'?grouped:null;}return term(token||'',true);}
-      function product(){var value=atom();while(tokens[cursor]==='*'||tokens[cursor]==='/'){var operator=tokens[cursor++],right=atom();if(!value||!right||operator==='/'&&(right.number===0||right.dimension!==0)||operator==='*'&&value.dimension+right.dimension>1)return null;value={__proto__:null,number:operator==='*'?value.number*right.number:value.number/right.number,dimension:operator==='*'?value.dimension+right.dimension:value.dimension};}return value;}
-      function sum(){var value=product();while(tokens[cursor]==='+'||tokens[cursor]==='-'){var operator=tokens[cursor++],right=product();if(!value||!right||value.dimension!==right.dimension)return null;value={__proto__:null,number:operator==='+'?value.number+right.number:value.number-right.number,dimension:value.dimension};}return value;}
+      function product(){var value=atom();while(tokens[cursor]==='*'||tokens[cursor]==='/'){var operator=tokens[cursor++],right=atom();if(!value||!right||operator==='/'&&(right.number===0||right.dimension!==0)||operator==='*'&&value.dimension+right.dimension>1)return null;value=new FontLength(operator==='*'?value.number*right.number:value.number/right.number,operator==='*'?value.dimension+right.dimension:value.dimension);}return value;}
+      function sum(){var value=product();while(tokens[cursor]==='+'||tokens[cursor]==='-'){var operator=tokens[cursor++],right=product();if(!value||!right||value.dimension!==right.dimension)return null;value=new FontLength(operator==='+'?value.number+right.number:value.number-right.number,value.dimension);}return value;}
       var calculated=sum();return result(cursor===tokens.length&&calculated&&cssFontFinite(calculated.number)?calculated:null);
     }
     function pixels(value){return cssFontString(cssFontNumber(cssApply(cssFontPrecision,value,[6])))+'px';}
     var rootSize=inherited.rootSize===undefined?initialSize:inherited.rootSize;
     var sizeValue=raw('font-size',inherited.size===null?inherited.sizeText:inherited.size,initialSize),size=typeof sizeValue==='number'?sizeValue:length(sizeValue,inherited.size,rootSize);
-    var sizeKeywords={__proto__:null,'xx-small':9,'x-small':10,small:13,medium:16,large:18,'x-large':24,'xx-large':32,'xxx-large':48};
     var sizeKey=typeof sizeValue==='string'?fontLower(sizeValue):sizeValue;
-    if(size===null){if(sizeKey==='smaller')size=inherited.size===null?null:inherited.size/1.2;else if(sizeKey==='larger')size=inherited.size===null?null:inherited.size*1.2;else if(sizeKeywords[sizeKey])size=sizeKeywords[sizeKey]*initialSize/16;}
+    if(size===null){if(sizeKey==='smaller')size=inherited.size===null?null:inherited.size/1.2;else if(sizeKey==='larger')size=inherited.size===null?null:inherited.size*1.2;else if(fontSizeKeywords[sizeKey])size=fontSizeKeywords[sizeKey]*initialSize/16;}
     if(size!==null&&size<0)size=0;
     var family=raw('font-family',inherited.family,initial.family),style=raw('font-style',inherited.style,initial.style),weight=cssFontString(raw('font-weight',inherited.weight,initial.weight));
     var styleKey=fontLower(style);if($c.test(/^(normal|italic|oblique)$/, styleKey))style=styleKey;
     var weightKey=fontLower(weight);if($c.test(/^(normal|bold|bolder|lighter)$/, weightKey))weight=weightKey;
     family=$c.join($c.map(cssParts(family,','), function(part){var name=$c.trim(part),key=fontLower(name);return $c.test(/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded|math|emoji|fangsong)$/, key)?key:name;}), ', ');
     if(weight==='normal')weight='400';else if(weight==='bold')weight='700';else if(weight==='bolder')weight=cssFontNumber(inherited.weight)<350?'400':cssFontNumber(inherited.weight)<550?'700':'900';else if(weight==='lighter')weight=cssFontNumber(inherited.weight)<550?'100':cssFontNumber(inherited.weight)<750?'400':'700';
-    var stretch=raw('font-stretch',inherited.stretch,initial.stretch),stretchValues={__proto__:null,'ultra-condensed':'50%','extra-condensed':'62.5%',condensed:'75%','semi-condensed':'87.5%',normal:'100%','semi-expanded':'112.5%',expanded:'125%','extra-expanded':'150%','ultra-expanded':'200%'};
-    stretch=stretchValues[fontLower(stretch)]||stretch;
+    var stretch=raw('font-stretch',inherited.stretch,initial.stretch);
+    stretch=fontStretchValues[fontLower(stretch)]||stretch;
     var caps=raw('font-variant-caps',raw('font-variant',inherited.caps,initial.caps),initial.caps);
     var capsKey=fontLower(caps);if($c.test(/^(normal|small-caps|all-small-caps|petite-caps|all-petite-caps|unicase|titling-caps)$/, capsKey))caps=capsKey;
     var lineValue=decl['line-height'],lineKey=typeof lineValue==='string'?fontLower(lineValue):lineValue,line;
     if(!lineValue||$c.test(/^(inherit|unset|revert|revert-layer)$/, lineKey))line=inherited.line;
     else if($c.test(/^(normal|initial)$/, lineKey))line=initial.line;
-    else if($c.test(/^(?:\d*\.)?\d+$/, lineValue))line={__proto__:null,kind:'factor',value:cssFontNumber(lineValue)};
+    else if($c.test(/^(?:\d*\.)?\d+$/, lineValue))line=new FontLine('factor',cssFontNumber(lineValue),undefined);
     else line=length(lineValue,size,rootSize,true);
-    if(line.value!==null&&line.value<0)line={__proto__:null,kind:line.kind,value:0};
+    if(line.value!==null&&line.value<0)line=new FontLine(line.kind,0,undefined);
     var available=!!(connected&&context&&context[4]&&(parent?inherited.active:root===element));
-    var state={__proto__:null,active:available,family:family,size:size,sizeText:cssFontString(sizeValue),style:style,weight:weight,stretch:stretch,caps:caps,line:line,rootSize:root===element?size:rootSize};
+    var state=new FontState(available,family,size,cssFontString(sizeValue),style,weight,stretch,caps,line,root===element?size:rootSize);
     var lineText=line.kind==='normal'?'normal':line.value===null?line.text:line.kind==='factor'&&size===null?cssFontString(line.value):pixels(line.kind==='factor'?line.value*size:line.value);
     var values={'font-family':family,'font-size':size===null?cssFontString(sizeValue):pixels(size),'font-style':style,'font-weight':weight,'font-stretch':stretch,'font-variant-caps':caps,'line-height':lineText};
     var shorthand=[];
     if(style!=='normal')$c.push(shorthand, style);if(caps!=='normal')$c.push(shorthand, caps);if(weight!=='400')$c.push(shorthand, weight);
-    if(stretch!=='100%'){var stretchName=$c.find($O.keys(stretchValues),function(key){return stretchValues[key]===stretch;});$c.push(shorthand, stretchName||stretch);}
+    if(stretch!=='100%'){var stretchName=$c.find($O.keys(fontStretchValues),function(key){return fontStretchValues[key]===stretch;});$c.push(shorthand, stretchName||stretch);}
     $c.push(shorthand, values['font-size']);if(lineText!=='normal')$c.push(shorthand, '/ '+lineText);$c.push(shorthand, family);values.font=$c.join(shorthand, ' ');
     $c.forEach($O.keys(values), function(name){var value=available?values[name]:'';decl[name]=value;decl[$c.replace(name, /-([a-z])/g,function(_,letter){return $c.toUpperCase(letter);})]=value;});
     return state;
@@ -1986,13 +1999,22 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     return true;
   }
   function appliedImport(record,el,context,out){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||mediaMatches(record.media.mediaText)))appliedSheetEntries(record.styleSheet,el,context.layers,out,context.seen);}
+  // The cascade's fixed-shape records (no null-prototype literal per rule or element).
+  function AppliedContext(layers,seen,owner,layer,media,scopes){this.layers=layers;this.seen=seen;this.owner=owner;this.layer=layer;this.media=media;this.scopes=scopes;}
+  AppliedContext.prototype=$O.create(null);
+  function ScopeFrame(root,limit,owner){this.root=root;this.limit=limit;this.owner=owner;}
+  ScopeFrame.prototype=$O.create(null);
+  function AppliedEntry(rule,layer,media,scopes){this.rule=rule;this.layer=layer;this.media=media;this.scopes=scopes;}
+  AppliedEntry.prototype=$O.create(null);
+  function EntryMatch(entry,specificity,proximity,order){this.entry=entry;this.specificity=specificity;this.proximity=proximity;this.order=order;}
+  EntryMatch.prototype=$O.create(null);
   // The context of a grouping rule's children, or null when they never apply.
   function groupContext(record,kind,el,context){
     if(kind==='container'||kind==='starting-style'||kind==='supports'&&!cssSupportsMatches(preludeRest(record),el))return null;
-    var inner={__proto__:null,layers:context.layers,seen:context.seen,owner:context.owner,layer:context.layer,media:context.media,scopes:context.scopes};
+    var inner=new AppliedContext(context.layers,context.seen,context.owner,context.layer,context.media,context.scopes);
     if(kind==='layer'){var name=preludeRest(record);inner.layer=name?cssLayerPath(context.layer,name):cssLayerChild(context.layer,null);}
     else if(kind==='media')inner.media=cssMediaState(record,context.media);
-    else if(kind==='scope'){var parts=scopeParts(record),frame={__proto__:null,root:parts[0],limit:parts[1],owner:context.owner};inner.scopes=context.scopes?$c.concat(context.scopes,[frame]):[frame];}
+    else if(kind==='scope'){var parts=scopeParts(record),frame=new ScopeFrame(parts[0],parts[1],context.owner);inner.scopes=context.scopes?$c.concat(context.scopes,[frame]):[frame];}
     return inner;
   }
   function appliedGroupRules(list,el,context,out){
@@ -2000,12 +2022,12 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var record=cssRuleRecord(rule),kind=record.kind;
       if(record.type===3){appliedImport(record,el,context,out);continue;}
       if(kind==='layer-statement'){var names=cssParts(preludeRest(record),',');for(var index=0;index<names.length;index++)cssLayerPath(context.layer,$c.trim(names[index]));continue;}
-      if(!kind){if(record.type===1)$c.push(out,{__proto__:null,rule:record,layer:context.layer,media:context.media,scopes:context.scopes});continue;}
+      if(!kind){if(record.type===1)$c.push(out,new AppliedEntry(record,context.layer,context.media,context.scopes));continue;}
       var inner=groupContext(record,kind,el,context);
       if(inner)appliedGroupRules(record.cssRules,el,inner,out);
     }
   }
-  function appliedSheetEntries(sheet,el,layers,out,seen){seen=seen||new Set();out=out||[];if($c.has(seen,sheet))return out;$c.add(seen,sheet);var record=sheetRecord(sheet);appliedGroupRules(record.rules,el,{__proto__:null,layers:layers,seen:seen,owner:record.ownerNode,layer:layers,media:0,scopes:null},out);return out;}
+  function appliedSheetEntries(sheet,el,layers,out,seen){seen=seen||new Set();out=out||[];if($c.has(seen,sheet))return out;$c.add(seen,sheet);var record=sheetRecord(sheet);appliedGroupRules(record.rules,el,new AppliedContext(layers,seen,record.ownerNode,layers,0,null),out);return out;}
   // @scope (turbo-dom#273): is `el` in the scope of `frame` — an inclusive ancestor matches
   // <scope-start> (the owner node's parent for a prelude-less @scope) and no element from `el`
   // up to that root (exclusive) matches <scope-end>.
@@ -2069,7 +2091,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
     else{try{matched=cssApply(computedStyleNativeMatches,el,[selector]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,item);});}
     if(matched&&entry.media&&!computedMediaReads)computedVolatile=true;
-    return matched&&entry.media!==2?{__proto__:null,entry:entry,specificity:specificity,proximity:proximity,order:order}:null;
+    return matched&&entry.media!==2?new EntryMatch(entry,specificity,proximity,order):null;
   }
   // Is `a` weaker than `b` once their layers tie: lower specificity, then farther from its
   // scoping root, then earlier.

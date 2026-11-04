@@ -455,3 +455,224 @@ fn dom_accessor_dispatch_reuses_raw_views() {
     }
     clear_interface_records(isolate);
 }
+
+fn crossings() -> usize {
+    NATIVE_CROSSINGS.with(std::cell::Cell::get)
+}
+
+/// 0.7.1 item 1: the engine-JS getters dom-testing-library reads hardest (`document.body`,
+/// `children`, `labels`) cost about one native crossing per read, not a JS walk of projected
+/// accessor round trips. Identity, liveness and brand checks are unchanged.
+#[test]
+fn hot_engine_getters_cost_one_native_crossing() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<body><div id=d>t<b></b>u<i></i><!--c--><s></s></div><label for=x>L</label><input id=x>",
+        );
+        run(
+            scope,
+            "globalThis.d = document.getElementById('d'); globalThis.x = document.getElementById('x'); 'ok'",
+        );
+        let before = crossings();
+        let out = run(
+            scope,
+            "const b = document.body; let n = 0; for (let i = 0; i < 1000; i++) n += document.body === b ? 1 : 0; String(n)",
+        );
+        assert_eq!(out, "1000");
+        let used = crossings() - before;
+        assert!(
+            used <= 1100,
+            "{used} crossings for 1000 document.body reads"
+        );
+
+        // A control round (the same mutations, no `children`) prices the mutations alone.
+        let before = crossings();
+        run(
+            scope,
+            "for (let i = 0; i < 300; i++) d.append(document.createElement('p')); 'ok'",
+        );
+        let control = crossings() - before;
+        run(
+            scope,
+            "d.querySelectorAll('p').forEach(p => p.remove()); 'ok'",
+        );
+        let before = crossings();
+        let out = run(
+            scope,
+            "let k = 0; for (let i = 0; i < 300; i++) { d.append(document.createElement('p')); \
+             const c = d.children; k += c === d.children && c.length === 4 + i ? 1 : 0; } String(k)",
+        );
+        assert_eq!(out, "300");
+        let used = crossings() - before - control;
+        // two getter reads + one length read per round, the list re-read once per mutation.
+        assert!(
+            used <= 300 * 5,
+            "{used} crossings for 300 mutate+children rounds over the control"
+        );
+        let out = run(
+            scope,
+            "const cc = d.children; const q = [cc[0].localName, cc[2].localName, cc.length]; \
+             d.firstElementChild.remove(); q.push(cc[0].localName, cc.length, [...cc].length); \
+             d.querySelectorAll('p').forEach(p => p.remove()); q.push(cc.length); JSON.stringify(q)",
+        );
+        assert_eq!(out, r#"["b","s",303,"i",302,302,2]"#);
+
+        let before = crossings();
+        let out = run(
+            scope,
+            "const l = x.labels; let m = 0; for (let i = 0; i < 1000; i++) m += x.labels === l ? 1 : 0; String(m) + ':' + l.length",
+        );
+        assert_eq!(out, "1000:1");
+        let used = crossings() - before;
+        assert!(used <= 1100, "{used} crossings for 1000 labels reads");
+
+        let out = run(
+            scope,
+            "\
+             const tries = [() => Object.getOwnPropertyDescriptor(Document.prototype, 'body').get.call(d), \
+             () => Object.getOwnPropertyDescriptor(Element.prototype, 'children').get.call(document), \
+             () => Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'labels').get.call(d), \
+             () => Object.getOwnPropertyDescriptor(Document.prototype, 'body').get.call({})]; \
+             tries.map(f => { try { f(); return 'no'; } catch (e) { return e.constructor.name + ':' + e.message; } }).join('|')",
+        );
+        assert_eq!(
+            out,
+            "TypeError:Illegal invocation|TypeError:Illegal invocation|TypeError:Illegal invocation|TypeError:Illegal invocation"
+        );
+        let out = run(
+            scope,
+            "const h = document.implementation.createHTMLDocument('t'); const f = h.createElement('frameset'); \
+             h.documentElement.replaceChild(f, h.body); const r = [h.body === f]; h.documentElement.remove(); r.push(h.body); JSON.stringify(r)",
+        );
+        assert_eq!(out, "[true,null]");
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// The `{__proto__: null, ...}` literals left in `source`'s hot function at `marker`: the body
+/// from the first `{` after the marker to its matching `}` (`whole_line`: the marker's line).
+fn null_proto_literals(source: &str, marker: &str, whole_line: bool) -> usize {
+    let start = source
+        .find(marker)
+        .unwrap_or_else(|| panic!("hot path {marker:?} not found"));
+    let rest = &source[start..];
+    let body = if whole_line {
+        rest.lines().next().unwrap_or("")
+    } else {
+        let open = rest.find('{').expect("function body");
+        let mut depth = 0usize;
+        let mut end = rest.len();
+        for (index, ch) in rest[open..].char_indices() {
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = open + index + 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        &rest[..end]
+    };
+    body.replace(' ', "").matches("__proto__:null").count()
+}
+
+/// 0.7.1 item 3: the per-call computed-style and collection paths build no
+/// `{__proto__: null, ...}` literal per call (V8 makes each a slow dictionary-mode object
+/// and the profile's CreateShallowObjectLiteral / dictionary lookups are their cost): static
+/// tables are hoisted, records come from fixed-shape constructors, and row descriptors are
+/// one reused null-prototype descriptor.
+#[test]
+fn hot_computed_style_and_collection_paths_build_no_null_proto_literals() {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/src/");
+    let read = |name: &str| std::fs::read_to_string(format!("{dir}{name}")).unwrap();
+    let browser_env = read("browser_env.js");
+    let document_basics = read("document_basics.js");
+    let form_collections = read("form_collections.js");
+    let typed_om = read("typed_om.js");
+    let sites = [
+        (&browser_env, "var add=function(list,value){", false),
+        (&browser_env, "function computedFonts(", false),
+        (&browser_env, "function groupContext(", false),
+        (&browser_env, "function appliedGroupRules(", false),
+        (&browser_env, "function appliedSheetEntries(", false),
+        (&browser_env, "function appliedEntryMatch(", false),
+        (&document_basics, "const collectionOwn=", true),
+        (&form_collections, "const row = (array, item) =>", false),
+        (&typed_om, "const push = (array, value) =>", true),
+        (&typed_om, "const toArray = (array) =>", true),
+    ];
+    let left: Vec<String> = sites
+        .iter()
+        .filter_map(|(source, marker, line)| {
+            let count = null_proto_literals(source, marker, *line);
+            (count > 0).then(|| format!("{marker} x{count}"))
+        })
+        .collect();
+    assert!(
+        left.is_empty(),
+        "per-call null-prototype literals left: {left:?}"
+    );
+}
+
+/// 0.7.1 item 2: a cached live collection (`childNodes`, `children`, `getElementsBy*`)
+/// learns of mutations from an epoch the engine pushes on every tree write, so an indexed,
+/// `length` or iterator read between mutations makes no native crossing (it used to ask
+/// for the tree stamp on every read). Liveness and identity are unchanged.
+#[test]
+fn live_collection_reads_between_mutations_cross_nothing() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<body><ul id=u><li>a</li><li>b</li><li class=k>c</li></ul>",
+        );
+        run(
+            scope,
+            "globalThis.u = document.getElementById('u'); globalThis.nodes = u.childNodes; \
+             globalThis.kids = u.children; globalThis.ks = document.getElementsByClassName('k'); \
+             nodes.length; kids.length; ks.length; 'ok'",
+        );
+        let before = crossings();
+        let out = run(
+            scope,
+            "let n = 0; for (let i = 0; i < 1000; i++) { n += nodes.length + kids.length + ks.length; \
+             n += nodes[i % 3] === kids[i % 3] ? 1 : 0; for (const k of kids) n += k === ks[0] ? 1 : 0; } String(n)",
+        );
+        assert_eq!(out, "9000");
+        let used = crossings() - before;
+        assert!(
+            used <= 10,
+            "{used} crossings for 1000 rounds of reads with no mutation"
+        );
+        let out = run(
+            scope,
+            "const r = [nodes === u.childNodes, kids === u.children]; const li = document.createElement('li'); \
+             u.append(li); r.push(nodes.length, kids[3] === li); li.className = 'k'; r.push(ks.length, ks[1] === li); \
+             u.firstChild.remove(); r.push(nodes.length, kids.length, kids[0].textContent); \
+             u.textContent = ''; r.push(nodes.length, kids.length, ks.length, nodes[0], [...kids].length); \
+             const other = document.implementation.createHTMLDocument('o'); other.body.append(document.adoptNode(u)); \
+             u.append(other.createElement('i')); r.push(nodes.length, kids[0].localName); JSON.stringify(r)",
+        );
+        assert_eq!(
+            out,
+            r#"[true,true,4,true,2,true,3,3,"b",0,0,0,null,0,1,"i"]"#
+        );
+        reset();
+    }
+    clear_interface_records(isolate);
+}

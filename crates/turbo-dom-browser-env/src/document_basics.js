@@ -3,7 +3,12 @@
   const ns = __tsNs;
   const native = g.__documentBasicsNative;
   delete g.__documentBasicsNative;
-  const getRecord=g.__getCollectionRecord, setRecord=g.__setCollectionRecord;
+  const nativeGetRecord=g.__getCollectionRecord, nativeSetRecord=g.__setCollectionRecord;
+  // This realm's records, memoized in JS: a read of one of its own collections makes no
+  // native call (another realm's collection still reads the V8-private record).
+  const ownRecords=new WeakMap(), ownRecordGet=WeakMap.prototype.get, ownRecordSet=WeakMap.prototype.set;
+  const getRecord=object=>{const own=typeof object==='object'&&object!==null?apply(ownRecordGet,ownRecords,[object]):undefined;return own!==undefined?own:nativeGetRecord(object);};
+  const setRecord=(object,record)=>{apply(ownRecordSet,ownRecords,[object,record]);return nativeSetRecord(object,record);};
   delete g.__getCollectionRecord; delete g.__setCollectionRecord;
   const make = ns.makeNativeFunction;
   const type = Object.getOwnPropertyDescriptor(g.Node.prototype, 'nodeType').get;
@@ -126,7 +131,9 @@
   const collectionDefine=Object.defineProperty, collectionApply=Reflect.apply;
   const collectionMapGet=Map.prototype.get, collectionMapHas=Map.prototype.has, collectionMapSet=Map.prototype.set;
   const collectionValues=Array.prototype.values, collectionEntries=Array.prototype.entries, collectionKeys=Array.prototype.keys, collectionForEach=Array.prototype.forEach;
-  const collectionOwn=(rows,index,value)=>collectionDefine(rows,index,{__proto__:null,value,writable:true,configurable:true,enumerable:true});
+  // One reused null-prototype row descriptor (no literal per row); cleared after each define.
+  const collectionRow=Object.create(null); collectionRow.value=undefined; collectionRow.writable=true; collectionRow.configurable=true; collectionRow.enumerable=true;
+  const collectionOwn=(rows,index,value)=>{collectionRow.value=value;collectionDefine(rows,index,collectionRow);collectionRow.value=undefined;};
   const copyRows=(rows,match)=>{const result=[];for(let index=0;index<rows.length;index++){const value=rows[index];if(!match||match(value))collectionOwn(result,result.length,value);}return result;};
   function descendants(receiver, match) {
     const result = [];
@@ -152,7 +159,7 @@
     const record = receiver => { const value = getRecord(receiver); if (!value || !(value.kind===name || name==='HTMLCollection'&&(value.kind==='HTMLFormControlsCollection'||value.kind==='HTMLOptionsCollection') || name==='NodeList'&&value.kind==='RadioNodeList')) throw new TypeError('Illegal invocation'); return value.read; };
     property(proto, 'length', function () { return record(this)().length; });
     method(proto, 'item', function (index) { if (!arguments.length) throw new TypeError('item requires 1 argument'); return record(this)()[(+index) >>> 0] || null; }, 1);
-    Object.defineProperty(proto, Symbol.iterator, { value: make(function () { if(name==='HTMLCollection'&&formIteratorRead){const target=formIteratorRead(this);if(target)return collectionApply(collectionValues,target,[]);}record(this); return collectionApply(collectionValues,this,[]); }, 'values', 0), writable: true, configurable: true });
+    Object.defineProperty(proto, Symbol.iterator, { value: make(function () { const own=typeof this==='object'&&this!==null&&apply(ownRecordGet,ownRecords,[this])!==undefined;if(!own&&name==='HTMLCollection'&&formIteratorRead){const target=formIteratorRead(this);if(target)return collectionApply(collectionValues,target,[]);}record(this); return collectionApply(collectionValues,this,[]); }, 'values', 0), writable: true, configurable: true });
     return { proto, record };
   }
   const collection = collectionInterface('HTMLCollection');
@@ -202,13 +209,16 @@
   }
   ns.internalsLiveCollection = live;
   ns.formCollectionFactory={live,getRecord,setIterator:read=>{formIteratorRead=read;}};
+  let epoch = null;
   const caches = new WeakMap(), cacheGet=WeakMap.prototype.get.bind(caches),cacheSet=WeakMap.prototype.set.bind(caches);
   function cached(receiver, key, read, namedProperties = true) {
     let cache = cacheGet(receiver);
     if (!cache) { cache = new Map(); cacheSet(receiver, cache); }
     if (!collectionApply(collectionMapHas,cache,[key])) {
-      let stamp = null, rows = null;
-      const current = () => { const next = native('stamp', receiver); if(next !== stamp) { rows = read(); stamp = next; } return rows; };
+      // Rows re-read only after the engine's mutation epoch moved (no native call per read).
+      if (epoch === null) epoch = native('epoch');
+      let seen = -1, rows = null;
+      const current = () => { const next = epoch[0]; if (next !== seen) { rows = read(); seen = next; } return rows; };
       collectionApply(collectionMapSet,cache,[key,live(current,namedProperties)]);
     }
     return collectionApply(collectionMapGet,cache,[key]);
@@ -221,7 +231,7 @@
   for (const owner of ['Element', 'Document', 'DocumentFragment']) property(g[owner].prototype, 'children', function () {
     check(this, owner === 'Element' ? [1] : owner === 'Document' ? [9] : [11]);
     const receiver = this;
-    return cached(receiver, 'children', () => copyRows(call(rawChildren, receiver),node=>call(type, node)===1));
+    return cached(receiver, 'children', () => native('elementChildren', receiver));
   });
   for (const owner of ['Document', 'Element', 'DocumentFragment']) {
     const proto = g[owner].prototype;
@@ -306,7 +316,7 @@
   }
   property(g.Document.prototype, 'documentElement', function () { check(this, [9]); return documentElementOf(this); });
   property(g.Document.prototype, 'head', function () { check(this, [9]); const root=documentElementOf(this); return root ? firstChild(root, node => call(type, node) === 1 && local(node) === 'head' && call(namespace, node) === html) : null; });
-  property(g.Document.prototype, 'body', function () { check(this, [9]); const root=documentElementOf(this); return root ? firstChild(root, node => { if (call(type, node) !== 1 || call(namespace, node) !== html) return false; const name = local(node); return name === 'body' || name === 'frameset'; }) : null; }, function (value) {
+  property(g.Document.prototype, 'body', function () { return native('body', this); }, function (value) {
     check(this,[9]); if (!value || call(type, value)!==1 || !['body','frameset'].includes(value.localName) || call(namespace, value)!==html) throw new ns.DOMException('The new body is not a body or frameset element','HierarchyRequestError');
     const current=this.body;if(value===current)return;if(current)current.parentNode.replaceChild(value,current);else if(this.documentElement)this.documentElement.appendChild(value);else throw new ns.DOMException('The document has no document element','HierarchyRequestError');
   });
