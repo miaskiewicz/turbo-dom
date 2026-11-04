@@ -618,6 +618,10 @@
     if(adopted&&adopted.target&&adopted.target.length)return true;
     var ownerRecord=collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
     if(!host)return false;
+    return computedOwnerSheetsReadStyle(owner,host);
+  }
+  // The sheet scan of computedInlineSensitive, memoized on the owner's sheet-list entry.
+  function computedOwnerSheetsReadStyle(owner,host){
     var sheets=computedOwnerSheets(owner,host),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&entry.sheets===sheets&&entry.styleSelectors!==undefined)return entry.styleSelectors;
     var found=false;
@@ -702,9 +706,11 @@
     return context?[layer,context[0],context[1],context[2],context[3],context[4]]:[layer];
   }
   function computedProbeEqual(a,b){if(a.length!==b.length)return false;for(var index=0;index<a.length;index++)if(a[index]!==b[index])return false;return true;}
+  // Whether a cache entry (or a recomputed key) has `key`'s epoch, versions and owner.
+  function computedKeyEqual(entry,key){return !!entry&&entry.epoch===key.epoch&&entry.version===key.version&&entry.inline===key.inline&&entry.owner===key.owner;}
   function computedCacheHit(el,key,snapshots){
     var entry=computedSnapshotGet(computedStyleCache,el);
-    if(!entry||entry.epoch!==key.epoch||entry.version!==key.version||entry.inline!==key.inline||entry.owner!==key.owner)return null;
+    if(!computedKeyEqual(entry,key))return null;
     if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
     if(!computedMediaUnchanged(entry.media))return null;
     if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
@@ -721,7 +727,7 @@
     try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
     if(key){
       var after=computedCacheKey(el);
-      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.inline!==key.inline||after.owner!==key.owner||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
+      if(volatile||!computedKeyEqual(after,key)||stateRead&&styleStateEpoch()!==state)computedSnapshotSet(computedStyleCache,el,null);
       else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps});
     }
     return snapshot;
