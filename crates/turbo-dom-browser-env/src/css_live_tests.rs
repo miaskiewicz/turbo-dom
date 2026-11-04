@@ -845,12 +845,14 @@ fn computed_fonts_preserve_unresolved_metrics_without_fabricating_inherited_valu
         for(const id of ['p','c','g']){const style=getComputedStyle(document.getElementById(id));values.push([style.fontSize,style.lineHeight,style.font]);}
         return values;
     })())"#, Some(("serif",16.0)));
+    // <b> is html.css `font-weight: bolder` (700 in Chrome 156, turbo-dom#305,
+    // computed_defaults_chrome156.json), so its font shorthand leads with 700.
     assert_eq!(
         value,
         serde_json::json!([
             ["2ch", "calc(1em + 1ch)", "2ch / calc(1em + 1ch) serif"],
             ["2ch", "calc(1em + 1ch)", "2ch / calc(1em + 1ch) serif"],
-            ["2ch", "calc(1em + 1ch)", "2ch / calc(1em + 1ch) serif"]
+            ["2ch", "calc(1em + 1ch)", "700 2ch / calc(1em + 1ch) serif"]
         ])
     );
 }
@@ -1019,6 +1021,8 @@ fn computed_importance_tracks_live_adoption_and_inline_priority_without_public_m
           return JSON.stringify({rows,reads,shadowWidth,ordinaryFirst});
         })()"#,
     );
+    // shadowWidth: an unset border side with style none is 0px wide in Chrome 156 (turbo-dom#305,
+    // computed_defaults_chrome156.json; it read "" before).
     assert_eq!(
         actual,
         serde_json::json!({"rows":[
@@ -1027,7 +1031,7 @@ fn computed_importance_tracks_live_adoption_and_inline_priority_without_public_m
         ["7px","8px","rgb(255, 0, 0)","128px",""],
         ["11px","8px","rgb(255, 0, 0)","128px",""],
         ["11px","rgb(255, 0, 0)","128px"]
-    ],"reads":0,"shadowWidth":"","ordinaryFirst":true})
+    ],"reads":0,"shadowWidth":"0px","ordinaryFirst":true})
     );
 }
 

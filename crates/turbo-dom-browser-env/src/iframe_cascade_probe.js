@@ -49,5 +49,36 @@
   iframe.remove();
   topSheet.remove();
   outer.remove();
+  // turbo-dom#306: a child document is a real HTML document: html / head / body elements
+  // (Chrome's element types, the documentElement / head / body accessors), a full-document
+  // srcdoc parsed as one (head content in <head>, attributes on <html> / <body>), :root /
+  // html / body selectors of its sheets matching, body's UA 8px margin.
+  const full = document.createElement('iframe');
+  full.srcdoc = '<!doctype html><html lang="fr" class="r"><head><title>t</title><style>' +
+    ':root { color: rgb(0, 0, 128); } html { background-color: rgb(1, 2, 3); } body { padding-top: 5px; } html > body { border-top-style: solid; }' +
+    ' :root > body > p { padding-left: 4px; } head { display: block; }' +
+    '</style></head><body class="b"><p id="p">x</p></body></html>';
+  document.body.appendChild(full);
+  for (let i = 0; i < 500 && !(full.contentDocument && full.contentDocument.getElementById('p')); i++) await frames();
+  const fw = full.contentWindow, fd = full.contentDocument;
+  const kind = el => el ? [Object.prototype.toString.call(el), el.localName, el.parentNode === fd ? 'document' : el.parentNode ? el.parentNode.localName : null] : null;
+  const names = el => Array.from(el.children, child => child.localName);
+  const boxProps = ['color', 'background-color', 'display', 'margin-top', 'margin-left', 'padding-top', 'padding-left', 'border-top-style', 'border-top-width'];
+  const box = el => { const style = fw.getComputedStyle(el); return boxProps.map(name => style.getPropertyValue(name)); };
+  out.document = {
+    kinds: [kind(fd.documentElement), kind(fd.head), kind(fd.body)],
+    tree: [names(fd.documentElement), names(fd.head), names(fd.body)],
+    attributes: [fd.documentElement.getAttribute('lang'), fd.documentElement.className, fd.body.className],
+    queries: [fd.querySelector('html') === fd.documentElement, fd.querySelector('body') === fd.body, fd.querySelector('head') === fd.head, fd.getElementsByTagName('p').length],
+    styles: [box(fd.documentElement), box(fd.head), box(fd.body), box(fd.getElementById('p'))],
+    bodyFromParent: (() => { const style = getComputedStyle(fd.body); return [style.marginTop, style.paddingTop]; })(),
+  };
+  const blank = document.createElement('iframe');
+  document.body.appendChild(blank);
+  await frames();
+  const bd = blank.contentDocument;
+  out.blank = [kind(bd.documentElement), kind(bd.head), kind(bd.body), names(bd.documentElement), blank.contentWindow.getComputedStyle(bd.body).marginTop];
+  full.remove();
+  blank.remove();
   return out;
 })()

@@ -5,7 +5,7 @@
     "width": 1024,
     "height": 768
   },
-  "probeSha256": "2693a551e7ec21b2a62980ea7d4d044f1643eb3cf04c0acf6c4cbccf128fab5d",
+  "probeSha256": "18a6e6066abe659b70f9e0ed5ed3d7c72eae1d97ec2568ec24ed5ad03a64ce12",
   "collectorSha256": "c8a12247067ebd632b2a1631b1d87bd26fa6a6bd0c00e62c20970022ad25688b",
   "flags": [
     "--remote-debugging-port=0",
@@ -322,6 +322,121 @@
         "",
         "inline"
       ]
+    ],
+    "document": {
+      "kinds": [
+        [
+          "[object HTMLHtmlElement]",
+          "html",
+          "document"
+        ],
+        [
+          "[object HTMLHeadElement]",
+          "head",
+          "html"
+        ],
+        [
+          "[object HTMLBodyElement]",
+          "body",
+          "html"
+        ]
+      ],
+      "tree": [
+        [
+          "head",
+          "body"
+        ],
+        [
+          "title",
+          "style"
+        ],
+        [
+          "p"
+        ]
+      ],
+      "attributes": [
+        "fr",
+        "r",
+        "b"
+      ],
+      "queries": [
+        true,
+        true,
+        true,
+        1
+      ],
+      "styles": [
+        [
+          "rgb(0, 0, 128)",
+          "rgb(1, 2, 3)",
+          "block",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "none",
+          "0px"
+        ],
+        [
+          "rgb(0, 0, 128)",
+          "rgba(0, 0, 0, 0)",
+          "block",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "none",
+          "0px"
+        ],
+        [
+          "rgb(0, 0, 128)",
+          "rgba(0, 0, 0, 0)",
+          "block",
+          "8px",
+          "8px",
+          "5px",
+          "0px",
+          "solid",
+          "3px"
+        ],
+        [
+          "rgb(0, 0, 128)",
+          "rgba(0, 0, 0, 0)",
+          "block",
+          "16px",
+          "0px",
+          "0px",
+          "4px",
+          "none",
+          "0px"
+        ]
+      ],
+      "bodyFromParent": [
+        "8px",
+        "5px"
+      ]
+    },
+    "blank": [
+      [
+        "[object HTMLHtmlElement]",
+        "html",
+        null
+      ],
+      [
+        "[object HTMLHeadElement]",
+        "head",
+        "html"
+      ],
+      [
+        "[object HTMLBodyElement]",
+        "body",
+        "html"
+      ],
+      [
+        "head",
+        "body"
+      ],
+      "8px"
     ]
   }
 }

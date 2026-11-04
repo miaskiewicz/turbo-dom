@@ -318,7 +318,8 @@ fn animations_request_frames_only_when_needed() {
         actual[0][5], false,
         "an endless animation must not keep frames scheduled"
     );
-    assert_eq!(actual[1], serde_json::json!(["finished", ""]));
+    // An unset margin computes to 0px in Chrome 156 (turbo-dom#305, computed_defaults_chrome156.json).
+    assert_eq!(actual[1], serde_json::json!(["finished", "0px"]));
 }
 
 // Without an embedding frame host the document timeline is inactive: animations stay pending
