@@ -206,12 +206,13 @@ impl Tree {
         } else {
             None
         };
-        let data = self
-            .ensure_attrs(owner)
-            .set_qualified(name, &String::from_utf16_lossy(value));
+        let text = String::from_utf16_lossy(value);
+        let styled = old.as_ref().is_some_and(|data| data.ns.is_some())
+            || self.attribute_change_is_styled(owner, &name, Some(&text));
+        let data = self.ensure_attrs(owner).set_qualified(name, &text);
         self.retain_native_attribute_value(owner, &data, value);
         self.sync_attribute_node(owner, &data);
-        self.bump();
+        self.bump_owner_attribute(owner, &data.local, styled);
         self.record_attributes(
             owner,
             &data.local_name,

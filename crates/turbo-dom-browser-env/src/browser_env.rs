@@ -7625,6 +7625,19 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         "__computedStyleSelectorVersion",
         computed_style_selector_version,
     );
+    bind_method(
+        scope,
+        global,
+        "__computedStyleGeneration",
+        computed_style_generation,
+    );
+    bind_method(
+        scope,
+        global,
+        "__computedStyleFilter",
+        computed_style_filter,
+    );
+    bind_method(scope, global, "__computedStyleTouch", computed_style_touch);
     #[cfg(test)]
     bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
     #[cfg(test)]
@@ -7839,6 +7852,109 @@ fn computed_style_selector_version(
         }
     }) {
         result.set(v8::Number::new(scope, version as f64).into());
+    }
+}
+
+/// `__computedStyleGeneration(node, scope)`: the style generation of `node`
+/// (`Tree::style_generation`, turbo-dom#279) — what moves when a mutation reaches `node` or an
+/// ancestor, plus by `scope`'s bits the child lists along that chain (1 forward, 2 both ways)
+/// and form validity (4). `undefined` for anything but a node, and when the tree has a shadow
+/// root (its scoped sheets are not analysed: the caller keys on the tree-wide version).
+fn computed_style_generation(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let bits = args.get(1).uint32_value(scope).unwrap_or(0);
+    let style_scope = turbo_dom_parser::rtdom::StyleScope {
+        siblings: if bits & 2 != 0 {
+            turbo_dom_parser::rtdom::Siblings::Both
+        } else if bits & 1 != 0 {
+            turbo_dom_parser::rtdom::Siblings::Forward
+        } else {
+            turbo_dom_parser::rtdom::Siblings::None
+        },
+        forms: bits & 4 != 0,
+    };
+    let _owner = DomScope::for_object(scope, node);
+    let Some(handle) = handle_of(scope, node) else {
+        return;
+    };
+    let generation = with_tree(|tree| {
+        (!tree.has_shadow_roots()).then(|| tree.style_generation(handle, style_scope))
+    });
+    if let Some(Some(generation)) = generation {
+        result.set(v8::Number::new(scope, generation as f64).into());
+    }
+}
+
+/// `__computedStyleFilter(owner, features)`: report the class names, ids and attribute names
+/// (`{classes, ids, attributes}` arrays of strings) the owner's selectors name to its tree
+/// (`Tree::set_style_filter`, turbo-dom#279), or `null` to follow every attribute write.
+fn computed_style_filter(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let filter = v8::Local::<v8::Object>::try_from(args.get(1))
+        .ok()
+        .map(|features| {
+            let mut read = |name: &str| {
+                let mut set = Vec::<Box<str>>::new();
+                let key = v8::String::new(scope, name).unwrap();
+                if let Some(list) = features
+                    .get(scope, key.into())
+                    .and_then(|list| v8::Local::<v8::Array>::try_from(list).ok())
+                {
+                    for index in 0..list.length() {
+                        if let Some(value) = list.get_index(scope, index) {
+                            set.push(value.to_rust_string_lossy(scope).into_boxed_str());
+                        }
+                    }
+                }
+                set
+            };
+            turbo_dom_parser::rtdom::StyleFilter {
+                classes: read("classes").into_iter().collect(),
+                ids: read("ids").into_iter().collect(),
+                attributes: read("attributes").into_iter().collect(),
+            }
+        });
+    let _owner = DomScope::for_object(scope, node);
+    if handle_of(scope, node).is_some() {
+        with_tree_mut(|tree| tree.set_style_filter(filter));
+    }
+}
+
+/// `__computedStyleTouch(elements, quiet)`: move the style generation of each node of the
+/// array (`Tree::invalidate_style`): the elements a sheet added to the document can select,
+/// or (`quiet`: the tree version stays) the targets an animation joined or left.
+fn computed_style_touch(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    let Ok(list) = v8::Local::<v8::Array>::try_from(args.get(0)) else {
+        return;
+    };
+    let quiet = args.get(1).is_true();
+    for index in 0..list.length() {
+        let Some(node) = list
+            .get_index(scope, index)
+            .and_then(|node| v8::Local::<v8::Object>::try_from(node).ok())
+        else {
+            continue;
+        };
+        let _owner = DomScope::for_object(scope, node);
+        if let Some(handle) = handle_of(scope, node) {
+            with_tree_mut(|tree| tree.invalidate_style(handle, quiet));
+        }
     }
 }
 

@@ -86,6 +86,27 @@ at the time); this file reconstructs them from history.
   `{__proto__: null}` literal per call (hoisted tables, fixed-shape records, one reused row
   descriptor).
 - Counter gates for all three in `perf_gates_tests.rs`.
+### Performance
+
+- **Subtree-scoped style invalidation** (#279, browser-env + `turbo-dom`). A DOM mutation no
+  longer drops every reused computed style. `Tree` keeps per-node style generations
+  (`Tree::style_generation(h, StyleScope)`): the element and its ancestors; with
+  `Siblings::Forward` (`+`, `~`, `:nth-child`, `:first-*`, `:*-of-type`, `:enabled` /
+  `:disabled`) the child-list changes a later sibling sees, with `Siblings::Both`
+  (`:last-child`, `:only-*`, `:nth-last-*`) every child-list change; with `forms` a tree-wide
+  form-validity generation (`:valid` / `:invalid` / `:user-*`). getComputedStyle classifies
+  the owner's sheets once per sheet and CSSOM epoch and keys reused styles on that
+  generation. `Tree::set_style_filter` makes writes of class tokens, ids, `role`, `tabindex`,
+  `title`, `aria-*` and `data-*` attributes no selector names move nothing. A `<style>` added
+  through the DOM (emotion's insertion) invalidates only the elements its rules can select
+  (rule-set invalidation, `Tree::invalidate_style`), and an animation joining or leaving a
+  target only that target's subtree, instead of bumping the CSSOM epoch. Fallbacks: `:has()`,
+  `:empty`, `:checked` / `:default` / `:indeterminate`, `:host`, `@scope`, unknown
+  pseudo-classes and escapes key on the tree-wide selector version; `[style]` selectors,
+  `@container`, `@import`, adopted sheets and shadow roots on the plain version; any other
+  sheet-list change bumps the CSSOM epoch. Chrome 156 control `style_invalidation_chrome156.json`
+  (`scripts/style-invalidation-chrome-control.mjs`), counter gates and a randomised
+  reused-vs-fresh differential.
 
 ## [0.7.0] — <date TBD at tag>
 

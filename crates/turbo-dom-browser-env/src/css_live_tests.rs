@@ -1073,7 +1073,7 @@ fn computed_style_reuses_the_cascade_until_the_document_changes() {
           for(let index=0;index<5;index++)rows.push(read(getComputedStyle(t)).concat(read(retained),[getComputedStyle(t.parentElement).color]));
           const repeated=runs()-mark;
           const distinct=getComputedStyle(t)!==getComputedStyle(t);
-          t.setAttribute('data-x','1');mark=runs();const after=read(retained);const mutated=runs()-mark;
+          t.setAttribute('lang','en');mark=runs();const after=read(retained);const mutated=runs()-mark;
           mark=runs();read(retained);const settled=runs()-mark;
           return JSON.stringify({first,warm:warm>=4,repeated,row:rows[0],same:rows.every(row=>JSON.stringify(row)===JSON.stringify(rows[0])),distinct,after,mutated:mutated>0,settled});
         })()"#,
@@ -1749,3 +1749,6 @@ fn rule_entries_are_built_once_per_sheet_list() {
     assert_eq!(value["after"], "rgb(3, 3, 3)", "a CSSOM change rebuilds");
     assert!(value["builds"].as_u64().unwrap() <= 1, "{value}");
 }
+
+#[path = "style_invalidation_tests.rs"]
+mod style_invalidation_tests;

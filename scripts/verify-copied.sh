@@ -344,6 +344,10 @@ browser_env.js: 0.7.0 turbo-dom#273 getComputedStyle applies style rules nested 
 css_admission_tests.rs: 0.7.0 turbo-dom#273 grouping-rule cascade vs its Chrome 156 control
 browser_env.js: 0.7.0 turbo-dom#275 the computed-style cascade orders rules by Selectors 4 specificity; turbo-dom#276 @scope proximity, :scope bound to the scoping root, & as :where(:scope)
 browser_env.rs: 0.7.0 turbo-dom#275 __parseCssNative 'specificity' mode (the cascade parser's complex selectors with their specificity)
+browser_env.js: 0.7.1 turbo-dom#279 subtree-scoped style invalidation: reused computed styles key on Tree::style_generation by the sheets' selector scope, the style filter, rule-set invalidation of added sheets, animation targets' generations
+browser_env.rs: 0.7.1 turbo-dom#279 __computedStyleGeneration / __computedStyleFilter / __computedStyleTouch natives
+animations.js: 0.7.1 turbo-dom#279 the effect-target index reports the targets it left and joined to invalidateAnimatedStyles
+css_live_tests.rs: 0.7.1 turbo-dom#279 style_invalidation_tests submodule; the reuse test mutates an attribute no style filter skips
 css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
 control_labels.rs: 0.7.0 perf turbo-dom#271 label lookups read a per-tree-version index (first element per id, label candidates per host chain) + a test-only walk counter
 "
@@ -369,6 +373,7 @@ OWNED="$OWNED native_guards_hostile_probe.js native_guards_hostile_chrome156.jso
 OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
 OWNED="$OWNED activation_focus_probe.js activation_focus_chrome156.json selector_errors_probe.js selector_errors_chrome156.json"
 OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
+OWNED="$OWNED style_invalidation_probe.js style_invalidation_chrome156.json style_invalidation_tests.rs"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
 OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"

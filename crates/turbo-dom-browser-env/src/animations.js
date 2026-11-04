@@ -971,7 +971,7 @@
     if (from) { const entries = targets.get(from); if (entries) { const at = find(entries); if (at >= 0) { for (let i = at; i + 1 < entries.length; i++) entries[i] = entries[i + 1]; entries.length--; } } }
     if (to) { let entries = targets.get(to); if (!entries) targets.set(to, entries = []); if (find(entries) < 0) push(entries, animation); }
     // The targets' computed styles change with their animations (turbo-test#125: drop reuse).
-    if (ns.invalidateAnimatedStyles) ns.invalidateAnimatedStyles();
+    if (ns.invalidateAnimatedStyles) ns.invalidateAnimatedStyles(from, to);
   }
   // https://drafts.csswg.org/web-animations-1/#removing-replaced-animations
   function replaceable(record) {
