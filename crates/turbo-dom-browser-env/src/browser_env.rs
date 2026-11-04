@@ -10805,6 +10805,9 @@ mod shadow_events_tests;
 #[cfg(test)]
 #[path = "svg_mathml_element_tests.rs"]
 mod svg_mathml_element_tests;
+#[cfg(test)]
+#[path = "viewport_cssom_tests.rs"]
+mod viewport_cssom_tests;
 
 #[cfg(test)]
 #[path = "css_live_tests.rs"]
