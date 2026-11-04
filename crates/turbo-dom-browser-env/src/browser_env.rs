@@ -7646,6 +7646,8 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     bind_method(scope, global, "__noteStyleLookup", note_style_lookup);
     #[cfg(test)]
     bind_method(scope, global, "__noteEntryBuild", note_entry_build);
+    #[cfg(test)]
+    bind_method(scope, global, "__noteRuleProbe", note_rule_probe);
     bind_method(scope, global, "__cssomEpoch", cssom_epoch);
     bind_method(scope, global, "__styleStateEpoch", style_state_epoch);
     bind_method(scope, global, "__bumpStyleState", bump_style_state_native);
@@ -7786,6 +7788,30 @@ fn note_entry_build(
     _rv: v8::ReturnValue,
 ) {
     ENTRY_BUILDS.with(|builds| builds.set(builds.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Style rules a cascade tested against an element on this thread (the test-only
+    /// `__noteRuleProbe` hook, turbo-dom#307): the rule buckets skip rules whose rightmost
+    /// compound names a class or id the element lacks.
+    static RULE_PROBES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The style rules tested so far (see `RULE_PROBES`).
+#[cfg(test)]
+fn rule_probes() -> u64 {
+    RULE_PROBES.with(std::cell::Cell::get)
+}
+
+/// Counts one style rule tested against an element (the test-only `__noteRuleProbe` hook).
+#[cfg(test)]
+fn note_rule_probe(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    RULE_PROBES.with(|probes| probes.set(probes.get() + 1));
 }
 
 /// The current CSSOM epoch (see `CSSOM_EPOCH`).

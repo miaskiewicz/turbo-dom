@@ -104,6 +104,19 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
         let key = v8::String::new(scope, "__cssTestEntryBuilds").unwrap();
         global.set(scope, key.into(), getter.into());
     }
+    if code.contains("__cssTestRuleProbes") {
+        // The style rules tested behind the test-only `__noteRuleProbe` hook (turbo-dom#307).
+        fn rule_probes(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::rule_probes() as f64).into());
+        }
+        let getter = v8::Function::new(scope, rule_probes).unwrap();
+        let key = v8::String::new(scope, "__cssTestRuleProbes").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
     if code.contains("__fontInertDoc") {
         let document = parse_html_document(scope, "<!doctype html><body><b>inert</b>", false);
         let key = v8::String::new(scope, "__fontInertDoc").unwrap();
@@ -1753,6 +1766,9 @@ fn rule_entries_are_built_once_per_sheet_list() {
     assert_eq!(value["after"], "rgb(3, 3, 3)", "a CSSOM change rebuilds");
     assert!(value["builds"].as_u64().unwrap() <= 1, "{value}");
 }
+
+#[path = "rule_bucket_tests.rs"]
+mod rule_bucket_tests;
 
 #[path = "style_invalidation_tests.rs"]
 mod style_invalidation_tests;

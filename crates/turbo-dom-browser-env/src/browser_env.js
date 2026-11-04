@@ -112,6 +112,7 @@
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
   var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
   var noteEntryBuild=g.__noteEntryBuild;delete g.__noteEntryBuild;
+  var noteRuleProbe=g.__noteRuleProbe;delete g.__noteRuleProbe;
   // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
   if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
@@ -1180,7 +1181,9 @@
       // Match the private selector list before touching declarations. Native parsing
       // preserves quoted delimiters that serialized text splitting loses.
       var sheets = info && !info.authored ? [] : computedSheets(el),build=computedSheetEntries(sheets,el),layers=build.layers,matched=[];
-      for (var si=0; si<sheets.length; si++) {
+      var bucketOwn=sheets.length?cssElementKeys(el):null,bucketIndex=bucketOwn?cssBucketIndex(build):null,bucketOrder=bucketIndex?cssBucketCandidates(bucketIndex,bucketOwn):null;
+      if(bucketOrder){for(var bucketAt=0;bucketAt<bucketOrder.length;bucketAt++){var bucketEntry=bucketOrder[bucketAt];if(sheetRecord(sheets[bucketIndex.sheet[bucketEntry]]).disabled)continue;var bucketHit=appliedEntryMatch(el,bucketIndex.entries[bucketEntry],pseudo,matched.length);if(bucketHit)$c.push(matched,bucketHit);}}
+      else for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
         var entries = build.lists[si];
         for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
@@ -2316,6 +2319,91 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if(!volatile&&sheets.length)computedSnapshotSet(computedEntryBuilds,sheets,build);
     return build;
   }
+  // Rule buckets (turbo-dom#307): a style rule can select an element only when, for some
+  // alternative of its selector list, the element carries every class and id named at the top
+  // level of that alternative's rightmost compound. Each entry keeps one such name per
+  // alternative ('.a' / '#b', ASCII- and Unicode-lowercased, so quirks mode's case-insensitive
+  // class and id matching is never under-approximated), or none when some alternative names
+  // none or the scan cannot read it. Each entry build indexes its entries by those names once,
+  // and a cascade visits, in document order, only the unkeyed entries and those keyed on a name
+  // the element carries. Skipping only drops rules that cannot match, in any live state (relaxing a state
+  // pseudo-class keeps the names), so the matched list, its order and every volatility read
+  // are unchanged. Names inside functional pseudo-classes (:is, :not, :has, :host(), ...) are
+  // never keys; :host / ::slotted / ::part compounds, nesting (&), namespaces (|) and escapes
+  // leave the rule unkeyed.
+  // The build's bucket index, made on first use: every entry by its position in the build
+  // (sheet by sheet, in order), the sheet it came from, the positions of the unkeyed entries and,
+  // per name, the positions of the entries keyed on it (all ascending).
+  function cssBucketIndex(build){
+    var index=build.buckets;if(index)return index;
+    index=build.buckets={__proto__:null,entries:[],sheet:[],unkeyed:[],keyed:{__proto__:null}};
+    for(var si=0;si<build.lists.length;si++){
+      var entries=build.lists[si];
+      for(var ri=0;ri<entries.length;ri++){
+        var at=index.entries.length,entry=entries[ri],keys=entry.scopes?null:cssRuleKeys($c.trim(String(entry.rule.selectorText||'')));
+        $c.push(index.entries,entry);$c.push(index.sheet,si);
+        if(!keys){$c.push(index.unkeyed,at);continue;}
+        for(var ki=0;ki<keys.length;ki++){var list=index.keyed[keys[ki]];if(!list)list=index.keyed[keys[ki]]=[];if(list[list.length-1]!==at)$c.push(list,at);}
+      }
+    }
+    return index;
+  }
+  // The positions of the entries that can select an element with the names `own`, ascending
+  // and once each: the unkeyed ones merged with each of its names' lists.
+  function cssBucketCandidates(index,own){
+    var out=index.unkeyed;
+    for(var name in own){var list=index.keyed[name];if(list)out=cssMergeSorted(out,list);}
+    return out;
+  }
+  function cssMergeSorted(a,b){
+    var out=[],i=0,j=0;
+    while(i<a.length||j<b.length){
+      if(j>=b.length||i<a.length&&a[i]<b[j])$c.push(out,a[i++]);
+      else if(i>=a.length||b[j]<a[i])$c.push(out,b[j++]);
+      else{$c.push(out,a[i]);i++;j++;}
+    }
+    return out;
+  }
+  var cssUnkeyedCompound=/^::?(?:host|slotted|part)(?![\w-])/i;
+  function cssRuleKeys(text){
+    if($c.indexOf(text,'\\')>=0)return null;
+    var keys=[],key=null,depth=0;
+    for(var index=0;index<text.length;index++){
+      var c=text[index];
+      if(c==='\\'||c==='&'||c==='|')return null;
+      if(c==='"'||c==="'"){index=computedStringEnd(text,index);continue;}
+      if(c==='['){index=cssBracketEnd(text,index);continue;}
+      if(c==='('){depth++;continue;}
+      if(c===')'){depth--;continue;}
+      if(depth)continue;
+      if(c===','){if(!key)return null;$c.push(keys,key);key=null;}
+      else if(c===' '||c==='\t'||c==='\n'||c==='\r'||c==='\f'||c==='>'||c==='+'||c==='~')key=null;
+      else if(c===':'&&cssApply(cssZoomExec,cssUnkeyedCompound,[$c.slice(text,index)]))return null;
+      else if(c==='.'||c==='#'){
+        var ident=cssApply(cssZoomExec,computedIdent,[$c.slice(text,index+1)]);
+        if(!ident)return null;
+        if(!key)key=c+$c.toLowerCase(ident[0]);
+        index+=ident[0].length;
+      }
+    }
+    if(!key)return null;
+    $c.push(keys,key);
+    return keys;
+  }
+  // The index of the `]` closing the attribute selector at `index` (quoted values skipped).
+  function cssBracketEnd(text,index){
+    while(index<text.length&&text[index]!==']'){if(text[index]==='"'||text[index]==="'")index=computedStringEnd(text,index);index++;}
+    return index;
+  }
+  // The element's class and id names, lowercased like cssRuleKeys' names; null (test every rule)
+  // when they cannot be read.
+  function cssElementKeys(el){
+    var keys={__proto__:null},names,id;
+    try{names=cssApply(computedStyleNativeGetAttribute,el,['class']);id=cssApply(computedStyleNativeGetAttribute,el,['id']);}catch(e){return null;}
+    if(id)keys['#'+$c.toLowerCase(id)]=true;
+    if(names){names=$c.toLowerCase(names);var start=0;for(var index=0;index<=names.length;index++){var c=names[index];if(index===names.length||c===' '||c==='\t'||c==='\n'||c==='\f'||c==='\r'){if(index>start)keys['.'+$c.slice(names,start,index)]=true;start=index+1;}}}
+    return keys;
+  }
   function computedMergeMedia(reads){if(computedMediaReads&&reads)for(var text in reads)if(computedMediaReads[text]===undefined)computedMediaReads[text]=reads[text];}
   function computedMediaUnchanged(reads){
     if(!reads)return true;
@@ -2417,6 +2505,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // pseudo-element of it), or null. A rule under a conditional @media makes the computation
   // volatile when its selector matches.
   function appliedEntryMatch(el,entry,pseudo,order){
+    if(noteRuleProbe)noteRuleProbe();
     var selector=entry.rule.selectorText,matched=false,specificity=0,proximity=Infinity;
     if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
     else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
