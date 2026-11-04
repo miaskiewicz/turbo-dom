@@ -184,6 +184,12 @@ package or publish workflow.
   `scripts/live-geometry-chrome-control.mjs` -> `src/live/chrome_tests.rs`; the scroll /
   visibility / caret / Range reads: `scripts/cssom-view-chrome-control.mjs` ->
   `tests/fixtures/cssom_view_chrome156.json`, asserted in `cssom_view::{scroll, visibility, text, range}`).
+  Since turbo-dom#295 `position: sticky` (`layout::sticky`) sticks to the nearest scroll
+  container's content box (the viewport's only when there is none; the root's and a
+  propagated body's overflow are the viewport's); layout shifts for the unscrolled state and
+  records `LayoutSnapshot::sticky_constraint`, and `scroll::scroll_translation` /
+  `scroll::sticky_offset` re-solve it under the embedder's scroll offsets (live control
+  `sticky-inline-*` / `sticky-more-*`).
   Since turbo-dom#190 an RTL block container places its block children from the right
   (the UA maps `dir`; `direction` inherits), an RTL scroller overflows to the left with
   offsets `ScrollMetrics::min_x..=0` (`scroll::inline_alignment` swaps start/end for

@@ -279,7 +279,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 21] = [
+    let groups: [fn(&str) -> bool; 22] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -301,6 +301,7 @@ fn held_out(id: &str) -> bool {
         close_glued_case,
         quirks_form_case,
         sticky_inline_case,
+        sticky_more_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -650,7 +651,8 @@ fn sticky_inline_case(id: &str) -> bool {
 }
 
 /// A case's scroll offsets as an embedder hands them over: each `[scrollLeft,
-/// scrollTop]` clamped into the scroller's range first, as Chrome clamps the set one.
+/// scrollTop]` clamped into the scroller's range first, as Chrome clamps the set one
+/// (`viewport`: the document's, keyed [`crate::cssom_view::scroll::VIEWPORT`]).
 fn case_offsets(
     case: &Value,
     tree: &turbo_dom::Tree,
@@ -660,11 +662,28 @@ fn case_offsets(
     let snap = |value: f64| (value + 0.5).floor();
     let mut offsets = BTreeMap::new();
     for (cid, offset) in case["scroll"].as_object().unwrap() {
-        let handle = tree
-            .query_selector(&format!("[data-cid=\"{cid}\"]"))
-            .unwrap();
-        let id = source_id(DOCUMENT, handle);
-        let m = crate::cssom_view::scroll::scroll_metrics(snapshot, styles, id).unwrap();
+        let (id, m) = if cid == "viewport" {
+            let root = source_id(DOCUMENT, tree.query_selector("html").unwrap());
+            (
+                crate::cssom_view::scroll::VIEWPORT,
+                crate::cssom_view::scroll::viewport_metrics(
+                    snapshot,
+                    styles,
+                    root,
+                    [1280.0, 800.0],
+                ),
+            )
+        } else {
+            let handle = tree
+                .query_selector(&format!("[data-cid=\"{cid}\"]"))
+                .unwrap();
+            let id = source_id(DOCUMENT, handle);
+            (
+                id,
+                crate::cssom_view::scroll::scroll_metrics(snapshot, styles, id),
+            )
+        };
+        let m = m.unwrap();
         let [x, y] = [offset[0].as_f64().unwrap(), offset[1].as_f64().unwrap()];
         offsets.insert(
             id,
@@ -677,16 +696,17 @@ fn case_offsets(
     offsets
 }
 
-/// Every sticky inline case: each box's `getBoundingClientRect()` (its bounds less the
-/// scroll translation) and its offsetLeft / offsetTop / offsetWidth / offsetHeight (the
-/// scrollers are their offsetParents; a sticky box's own offset adds in).
-fn compare_sticky_cases() -> (usize, Vec<String>) {
+/// Every sticky case `select` picks: each box's `getBoundingClientRect()` (its bounds
+/// less the scroll translation) and its offsetLeft / offsetTop / offsetWidth /
+/// offsetHeight (the scrollers are their offsetParents; a sticky box's own offset adds
+/// in).
+fn compare_sticky_cases(select: fn(&str) -> bool) -> (usize, Vec<String>) {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
     let fonts = crate::test_support::fixture_fonts();
     let mut failures = Vec::new();
     let mut compared = 0;
     for case in fixture["cases"].as_array().unwrap() {
-        if !sticky_inline_case(case["id"].as_str().unwrap()) {
+        if !select(case["id"].as_str().unwrap()) {
             continue;
         }
         let html = case["html"].as_str().unwrap();
@@ -745,8 +765,26 @@ fn compare_sticky_cases() -> (usize, Vec<String>) {
 
 #[test]
 fn sticky_inline_boxes_follow_their_scrollers_like_chrome_156() {
-    let (compared, failures) = compare_sticky_cases();
+    let (compared, failures) = compare_sticky_cases(sticky_inline_case);
     assert_eq!(compared, 5 * 103, "every sticky-inline-* box is compared");
+    assert!(
+        failures.is_empty(),
+        "{} sticky reads differ from Chrome 156:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
+}
+
+/// miaskiewicz/turbo-dom#295: sticky block boxes in scrolled scrollers (a border-box
+/// one, `left` / `right` insets) and sticky boxes whose scrollport is the viewport.
+fn sticky_more_case(id: &str) -> bool {
+    id.starts_with("sticky-more-")
+}
+
+#[test]
+fn sticky_blocks_and_viewport_stickies_follow_the_scroll_like_chrome_156() {
+    let (compared, failures) = compare_sticky_cases(sticky_more_case);
+    assert_eq!(compared, 5 * 41, "every sticky-more-* box is compared");
     assert!(
         failures.is_empty(),
         "{} sticky reads differ from Chrome 156:\n{}",

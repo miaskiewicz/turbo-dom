@@ -13,6 +13,17 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout: `position: sticky` sticks to its scroll container and follows the
+  scroll.** A sticky box (inline or block) now takes its thresholds from its nearest scroll
+  container's content box (the viewport only when it has none) instead of always the
+  viewport, and its constraints are kept in the live snapshot
+  (`LayoutSnapshot::sticky_constraint`): `cssom_view::scroll::scroll_translation` moves a
+  sticky box and its content against the scroll offsets it is given, and the new
+  `cssom_view::scroll::sticky_offset` is what a sticky element's `offsetLeft` /
+  `offsetTop` move by. A scroll container's own line boxes add its end padding to
+  `scrollWidth` / `scrollHeight`, and an inline-level box's max-content width breaks at a
+  `<br>` (the widest line, not the whole run). Chrome 156 controls `sticky-inline-*` /
+  `sticky-more-*` in `live_geometry_chrome156.json` (#295).
 - **turbo-dom-layout: quirks-mode `<form>` margin.** A quirks-mode (`BackCompat`) document's
   forms take Chrome 156's quirks.css `margin-block-end: 1em` on the live and static HTML
   paths (an author `margin-bottom` / `margin-block-end` replaces it; at the start of a quirks

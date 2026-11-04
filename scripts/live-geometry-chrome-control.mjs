@@ -465,6 +465,37 @@ const STICKY_CASES = [
     [[0, 0]],
   ],
 ];
+// miaskiewicz/turbo-dom#295: block sticky boxes and the viewport as the scrollport. A
+// `viewport` scroll entry is `window.scrollTo(left, top)`.
+const STICKY_MORE_CASES = [
+  [
+    "viewport-inline",
+    `<div data-cid="cb" style="height:600px;margin-left:20px">a<br><span data-cid="s" style="position:sticky;top:10px">st</span></div><div style="height:2000px"></div>`,
+    [[0, 0], [0, 100], [0, 1000]],
+    "viewport",
+  ],
+  [
+    "viewport-block",
+    `<div data-cid="cb" style="height:600px;padding-top:50px"><div data-cid="b" style="position:sticky;top:5px;height:20px;margin:0 10px"></div></div><div style="height:2000px"></div>`,
+    [[0, 0], [0, 30], [0, 100], [0, 1000]],
+    "viewport",
+  ],
+  [
+    "block-bottom-border-box",
+    `<div class="sc" data-cid="sc" style="box-sizing:border-box;width:200px;height:80px"><div data-cid="cb" style="height:300px;position:relative"><div style="height:200px"></div><div data-cid="b" style="position:sticky;bottom:5px;height:20px;margin-top:4px"></div></div></div>`,
+    [[0, 0], [0, 100], [0, 400]],
+  ],
+  [
+    "block-left",
+    `<div class="sc" data-cid="sc" style="width:100px;height:60px"><div data-cid="cb" style="width:400px;position:relative"><div data-cid="b" style="position:sticky;left:5px;width:50px;height:20px;margin-left:100px"></div></div></div>`,
+    [[0, 0], [150, 0], [400, 0]],
+  ],
+  [
+    "block-right",
+    `<div class="sc" data-cid="sc" style="width:100px;height:60px"><div data-cid="cb" style="width:400px;position:relative"><div data-cid="b" style="position:sticky;right:5px;width:50px;height:20px;margin-left:200px"></div></div></div>`,
+    [[0, 0], [150, 0], [400, 0]],
+  ],
+];
 const CASES = [
   // turbo-surf#31 C: position:absolute/fixed blockify an inline (display computes to
   // block; CSS 2.1 §9.7) and it lays out as an out-of-flow box.
@@ -905,6 +936,16 @@ const CASES = [
       })),
     ),
   ),
+  // miaskiewicz/turbo-dom#295: sticky block boxes, and the viewport as the scrollport.
+  ...STICKY_MORE_CASES.flatMap(([id, body, offsets, scroller]) =>
+    offsets.map(([left, top]) => ({
+      id: `sticky-more-${id}-${left}-${top}`,
+      html: DOC(STICKY_CSS, body),
+      fonts: true,
+      metrics: "offsets",
+      scroll: { [scroller || "sc"]: [left, top] },
+    })),
+  ),
   // miaskiewicz/turbo-dom#295: sticky inline boxes in scrolled scrollers.
   ...STICKY_CASES.flatMap(([id, body, offsets, scrollers]) =>
     offsets.map(([left, top]) => ({
@@ -942,6 +983,10 @@ for (const testCase of CASES) {
   }
   const { boxes, hits } = await page.evaluate(([points, metrics, scroll]) => {
     for (const [cid, offset] of Object.entries(scroll)) {
+      if (cid === "viewport") {
+        window.scrollTo(offset[0], offset[1]);
+        continue;
+      }
       const el = document.querySelector(`[data-cid="${cid}"]`);
       if (Array.isArray(offset)) [el.scrollLeft, el.scrollTop] = offset;
       else el.scrollLeft = offset;
