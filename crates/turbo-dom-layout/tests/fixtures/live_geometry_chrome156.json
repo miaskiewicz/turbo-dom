@@ -18515,6 +18515,96 @@
    ]
   },
   {
+   "id": "sticky-more-lines-block-end-padding-0-0",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Liberation Serif\"}.sc{position:relative;overflow:auto;margin:20px 0 0 30px;border:2px solid;padding:3px}</style><div class=\"sc\" data-cid=\"sc\" style=\"width:100px;height:60px\">a<br>a<br>a<br>a<br>a<br>a<br>a<br>a<br><span data-cid=\"s\" style=\"position:sticky;top:0\">st</span><br>b</div>",
+   "fonts": true,
+   "metrics": "offsets",
+   "scroll": {
+    "sc": [
+     0,
+     0
+    ]
+   },
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "sc",
+     "x": 30,
+     "y": 20,
+     "width": 110,
+     "height": 70,
+     "display": "block",
+     "position": "relative",
+     "metrics": {
+      "offsetLeft": 30,
+      "offsetTop": 20,
+      "offsetWidth": 110,
+      "offsetHeight": 70
+     }
+    },
+    {
+     "cid": "s",
+     "x": 35,
+     "y": 186,
+     "width": 10.671875,
+     "height": 17,
+     "display": "inline",
+     "position": "sticky",
+     "metrics": {
+      "offsetLeft": 3,
+      "offsetTop": 164,
+      "offsetWidth": 11,
+      "offsetHeight": 17
+     }
+    }
+   ]
+  },
+  {
+   "id": "sticky-more-lines-block-end-padding-0-400",
+   "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Liberation Serif\"}.sc{position:relative;overflow:auto;margin:20px 0 0 30px;border:2px solid;padding:3px}</style><div class=\"sc\" data-cid=\"sc\" style=\"width:100px;height:60px\">a<br>a<br>a<br>a<br>a<br>a<br>a<br>a<br><span data-cid=\"s\" style=\"position:sticky;top:0\">st</span><br>b</div>",
+   "fonts": true,
+   "metrics": "offsets",
+   "scroll": {
+    "sc": [
+     0,
+     400
+    ]
+   },
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "sc",
+     "x": 30,
+     "y": 20,
+     "width": 110,
+     "height": 70,
+     "display": "block",
+     "position": "relative",
+     "metrics": {
+      "offsetLeft": 30,
+      "offsetTop": 20,
+      "offsetWidth": 110,
+      "offsetHeight": 70
+     }
+    },
+    {
+     "cid": "s",
+     "x": 35,
+     "y": 46,
+     "width": 10.671875,
+     "height": 17,
+     "display": "inline",
+     "position": "sticky",
+     "metrics": {
+      "offsetLeft": 3,
+      "offsetTop": 164,
+      "offsetWidth": 11,
+      "offsetHeight": 17
+     }
+    }
+   ]
+  },
+  {
    "id": "sticky-more-block-left-0-0",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Liberation Serif\"}.sc{position:relative;overflow:auto;margin:20px 0 0 30px;border:2px solid;padding:3px}</style><div class=\"sc\" data-cid=\"sc\" style=\"width:100px;height:60px\"><div data-cid=\"cb\" style=\"width:400px;position:relative\"><div data-cid=\"b\" style=\"position:sticky;left:5px;width:50px;height:20px;margin-left:100px\"></div></div></div>",
    "fonts": true,

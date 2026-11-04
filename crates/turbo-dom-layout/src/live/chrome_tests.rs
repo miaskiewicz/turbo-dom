@@ -784,7 +784,7 @@ fn sticky_more_case(id: &str) -> bool {
 #[test]
 fn sticky_blocks_and_viewport_stickies_follow_the_scroll_like_chrome_156() {
     let (compared, failures) = compare_sticky_cases(sticky_more_case);
-    assert_eq!(compared, 5 * 41, "every sticky-more-* box is compared");
+    assert_eq!(compared, 5 * 45, "every sticky-more-* box is compared");
     assert!(
         failures.is_empty(),
         "{} sticky reads differ from Chrome 156:\n{}",
