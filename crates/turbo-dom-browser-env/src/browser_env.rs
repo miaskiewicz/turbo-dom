@@ -5584,6 +5584,43 @@ fn labels_list(scope: &mut v8::PinScope, node: v8::Local<v8::Object>, rv: &mut v
     }
 }
 
+/// The whole `labels` getter in one crossing (0.7.1): brand check, the hidden input's null,
+/// then the element's one live list (made once by the JS factory, cached on the element).
+fn labels_getter(
+    scope: &mut v8::PinScope,
+    node: v8::Local<v8::Object>,
+    handle: Handle,
+    tag: &str,
+    rv: &mut v8::ReturnValue,
+) {
+    let branded = with_tree(|tree| {
+        tree.node_type_id(handle) == 1
+            && tree.namespace_id(handle) == 0
+            && tree.local_name(handle) == Some(tag)
+    })
+    .unwrap_or(false);
+    if !branded {
+        let message = v8::String::new(scope, "Illegal invocation").unwrap();
+        let error = v8::Exception::type_error(scope, message);
+        scope.throw_exception(error);
+        return;
+    }
+    if tag == "input" && control_labels::hidden(handle) {
+        rv.set(v8::null(scope).into());
+        return;
+    }
+    // invariant: engine-built name, far below V8's string length limit
+    let name = v8::String::new(scope, "turbo.forms.private.control-labels").unwrap();
+    let key = v8::Private::for_api(scope, Some(name));
+    match node
+        .get_private(scope, key)
+        .filter(|value| !value.is_undefined())
+    {
+        Some(value) => rv.set(value),
+        None => labels_list(scope, node, rv),
+    }
+}
+
 fn form_controls_native(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
@@ -5652,35 +5689,8 @@ fn form_controls_native(
             }
         }
         "labels" => {
-            // The whole `labels` getter in one crossing (0.7.1): brand check, the hidden
-            // input's null, then the element's one live list (made once by the JS factory).
             let tag = args.get(2).to_rust_string_lossy(scope);
-            let branded = with_tree(|tree| {
-                tree.node_type_id(handle) == 1
-                    && tree.namespace_id(handle) == 0
-                    && tree.local_name(handle) == Some(tag.as_str())
-            })
-            .unwrap_or(false);
-            if !branded {
-                let message = v8::String::new(scope, "Illegal invocation").unwrap();
-                let error = v8::Exception::type_error(scope, message);
-                scope.throw_exception(error);
-                return;
-            }
-            if tag == "input" && control_labels::hidden(handle) {
-                rv.set(v8::null(scope).into());
-                return;
-            }
-            let name = v8::String::new(scope, "turbo.forms.private.control-labels").unwrap();
-            let key = v8::Private::for_api(scope, Some(name));
-            let cached = node
-                .get_private(scope, key)
-                .filter(|value| !value.is_undefined());
-            if let Some(value) = cached {
-                rv.set(value);
-            } else {
-                labels_list(scope, node, &mut rv);
-            }
+            labels_getter(scope, node, handle, &tag, &mut rv);
         }
         "html-element" => {
             rv.set(
