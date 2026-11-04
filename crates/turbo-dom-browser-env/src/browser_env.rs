@@ -7985,11 +7985,24 @@ fn computed_style_selector_version(
 /// ancestor, plus by `scope`'s bits the child lists along that chain (1 forward, 2 both ways)
 /// and form validity (4). `undefined` for anything but a node, and when the tree has a shadow
 /// root (its scoped sheets are not analysed: the caller keys on the tree-wide version).
+#[cfg(test)]
+thread_local! {
+    /// `__computedStyleGeneration` calls on this thread: one per full computed-style cache key
+    /// (the perf gate in `perf_gates_tests`).
+    static STYLE_GENERATION_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+/// The `__computedStyleGeneration` calls counted so far (see `STYLE_GENERATION_READS`).
+#[cfg(test)]
+pub(super) fn style_generation_reads() -> usize {
+    STYLE_GENERATION_READS.with(std::cell::Cell::get)
+}
 fn computed_style_generation(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
     mut result: v8::ReturnValue,
 ) {
+    #[cfg(test)]
+    STYLE_GENERATION_READS.with(|reads| reads.set(reads.get() + 1));
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
         return;
     };

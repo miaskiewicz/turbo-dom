@@ -409,7 +409,10 @@ fn internal_dispatch_defines_no_argument_rows() {
              String(globalThis.__defines)",
         );
         let defines: u64 = out.parse().unwrap();
-        assert!(defines < 3_000, "{defines} defineProperty calls for 50 style passes");
+        assert!(
+            defines < 3_000,
+            "{defines} defineProperty calls for 50 style passes"
+        );
         reset();
     }
     clear_interface_records(isolate);
@@ -439,7 +442,10 @@ fn radio_owner_scans_run_once_per_tree_version() {
             "const x = document.getElementById('x'); for (let i = 0; i < 100; i++) x.click(); 'ok'",
         );
         let scans = form_checked_state::owner_scans() - before;
-        assert!(scans <= 1, "{scans} radio owner scans for 100 clicks without a DOM change");
+        assert!(
+            scans <= 1,
+            "{scans} radio owner scans for 100 clicks without a DOM change"
+        );
         let out = run(
             scope,
             "const a = document.getElementById('a'), b = document.getElementById('b'); \
@@ -449,6 +455,55 @@ fn radio_owner_scans_run_once_per_tree_version() {
              JSON.stringify([a.form.id, a.checked, b.checked, c.checked])",
         );
         assert_eq!(out, "[\"g\",false,false,true]");
+        reset();
+    }
+    clear_interface_records(isolate);
+}
+
+/// A stable computed style (validated with its whole ancestor chain at an unchanged tree,
+/// selector, CSSOM and state version) is reused without recomputing its cache key or walking
+/// its ancestors again: each property read of a computed declaration re-reads the style, and
+/// testing-library's visibility checks read every ancestor's, which made role queries
+/// quadratic in depth. Any change still reaches the next read.
+#[test]
+fn stable_computed_styles_skip_the_key_and_ancestor_walk() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<head><style>.leaf{color:red}.big{font-size:30px}</style></head><body><div id=root></div>",
+        );
+        run(
+            scope,
+            "let at = document.getElementById('root'); for (let i = 0; i < 30; i++) { \
+             const d = document.createElement('div'); at.append(d); at = d; } \
+             at.className = 'leaf'; at.id = 'leaf'; getComputedStyle(at).color",
+        );
+        let before = style_generation_reads();
+        let out = run(
+            scope,
+            "(() => { const leaf = document.getElementById('leaf'); let n = 0; \
+             for (let i = 0; i < 100; i++) { const s = getComputedStyle(leaf); n += s.color.length + s.display.length; } \
+             return String(n); })()",
+        );
+        assert_eq!(out, String::from("1900"));
+        let reads = style_generation_reads() - before;
+        assert!(reads <= 10, "{reads} full cache keys for 300 stable reads");
+        let out = run(
+            scope,
+            "(() => { const leaf = document.getElementById('leaf'), s = getComputedStyle(leaf); \
+             const out = [s.color, s.fontSize]; leaf.className = ''; out.push(s.color); \
+             document.getElementById('root').firstChild.className = 'big'; out.push(s.fontSize); \
+             return JSON.stringify(out); })()",
+        );
+        assert_eq!(
+            out,
+            "[\"rgb(255, 0, 0)\",\"16px\",\"rgb(0, 0, 0)\",\"30px\"]"
+        );
         reset();
     }
     clear_interface_records(isolate);
