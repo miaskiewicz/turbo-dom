@@ -125,6 +125,11 @@ impl Styler<'_, '_> {
             .into_iter()
             .map(|declaration| author(declaration, depth, false, 0))
             .collect();
+        // Chrome's quirks.css (miaskiewicz/turbo-dom#282): a BackCompat document's forms
+        // take `margin-block-end: 1em` at the UA level, beneath every embedder rule.
+        if self.capture.quirks && local == "form" {
+            declarations.extend(crate::style::quirks_form_declarations());
+        }
         declarations.extend(
             self.matched
                 .get(&self.id(node))
@@ -148,6 +153,9 @@ impl Styler<'_, '_> {
         let mut style = resolve_matched_style(parent, &declarations);
         if self.capture.quirks {
             style.set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
+            if local == "body" {
+                style.set(crate::style::QUIRKY_CONTAINER, "1".to_string());
+            }
         }
         let children = self.children(node, &style)?;
         Ok(StyledElement {

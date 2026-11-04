@@ -1850,10 +1850,26 @@ fn leading_margin_walk(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
             if !self_collapsing(child, &cbs, cw) {
                 break;
             }
-            m = collapse_margins(m, cbs.margin.bottom);
+            m = collapse_margins(m, start_bottom_margin(lb, child, &cbs));
         }
     }
     m
+}
+
+/// The bottom margin an empty child at the start of `container` adds to its leading
+/// margin: none for a quirks.css margin inside a quirky container (a quirks-mode
+/// `<body>`), which Chrome 156 ignores there (miaskiewicz/turbo-dom#282).
+fn start_bottom_margin(container: &LayoutBox, child: &LayoutBox, cbs: &BoxStyle) -> f32 {
+    let quirky = container
+        .style
+        .get(crate::style::QUIRKY_CONTAINER)
+        .is_some()
+        && super::value::quirks_margin_block_end(&child.style);
+    if quirky {
+        0.0
+    } else {
+        cbs.margin.bottom
+    }
 }
 
 /// Whether a block's last in-flow child's bottom margin can collapse through its bottom

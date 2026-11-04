@@ -1134,7 +1134,28 @@ fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges 
     apply_side(s, prefix, "block-end", fs, basis, &mut e.bottom);
     apply_side(s, prefix, "inline-start", fs, basis, &mut e.left);
     apply_side(s, prefix, "inline-end", fs, basis, &mut e.right);
+    if prefix == "margin" && quirks_margin_block_end(s) {
+        if let Some(v) = side_value(s, UA_LOGICAL_MARGIN_BLOCK_END, fs, basis) {
+            e.bottom = v;
+        }
+    }
     e
+}
+
+/// Whether the box's block-end margin is the UA quirks.css one (no author block-end
+/// margin replaces it).
+pub(crate) fn quirks_margin_block_end(s: &ComputedStyle) -> bool {
+    s.get(UA_LOGICAL_MARGIN_BLOCK_END).is_some() && !has_block_end_margin(s)
+}
+
+/// The UA sheet's quirks-mode form margin (Chrome's quirks.css `margin-block-end: 1em`,
+/// miaskiewicz/turbo-dom#282), under any block-end margin the author sets.
+pub(crate) const UA_LOGICAL_MARGIN_BLOCK_END: &str = "-internal-ua-margin-block-end";
+
+/// Whether an author block-end margin is set (a `margin` shorthand arrives as
+/// longhands): the UA's quirks margin then gives way.
+fn has_block_end_margin(s: &ComputedStyle) -> bool {
+    s.get("margin-bottom").is_some() || s.get("margin-block-end").is_some()
 }
 
 /// Whether a `padding-*` longhand is set (an author `padding` shorthand arrives as

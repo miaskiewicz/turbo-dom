@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed
+
+- **turbo-dom-layout: quirks-mode `<form>` margin.** A quirks-mode (`BackCompat`) document's
+  forms take Chrome 156's quirks.css `margin-block-end: 1em` on the live and static HTML
+  paths (an author `margin-bottom` / `margin-block-end` replaces it; at the start of a quirks
+  `<body>` an empty form's margin is ignored, as Blink's quirky container does).
+  `Cascade::with_quirks` adds the rule to a caller-built cascade (#282).
+
 ## [0.7.0] — <date TBD at tag>
 
 | crate | version |

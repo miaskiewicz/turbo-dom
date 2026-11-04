@@ -155,6 +155,14 @@ fn style_document(
     } else {
         cascade.with_fullscreen()
     };
+    // Chrome's quirks.css form margin, only in a BackCompat document
+    // (miaskiewicz/turbo-dom#282).
+    let quirks = tree.compat_mode() == "BackCompat";
+    let cascade = if quirks {
+        cascade.with_quirks()
+    } else {
+        cascade
+    };
     let input = StyleInput {
         view: view.strip_non_visual(true),
         roots: Roots::Document,
@@ -168,7 +176,7 @@ fn style_document(
     );
     // A BackCompat document takes the quirks-mode line height quirk, as the live style
     // pass marks it (miaskiewicz/turbo-dom#238 item 2, #190).
-    if tree.compat_mode() == "BackCompat" {
+    if quirks {
         mark_quirks(&mut styled);
     }
     styled
@@ -181,6 +189,11 @@ fn mark_quirks(nodes: &mut [StyledNode]) {
             element
                 .style
                 .set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
+            if element.tag == Tag::Html("body".into()) {
+                element
+                    .style
+                    .set(crate::style::QUIRKY_CONTAINER, "1".to_string());
+            }
             mark_quirks(&mut element.children);
         }
     }
