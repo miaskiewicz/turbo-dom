@@ -446,6 +446,7 @@ impl Tree {
         }
         self.children_ov.insert(node, children.clone().into());
         self.bump_node(node);
+        self.bump_form_change(node, "");
         if self.is_recording() && (!children.is_empty() || !removed.is_empty()) {
             self.record_child_list_batch(node, children, removed);
         }

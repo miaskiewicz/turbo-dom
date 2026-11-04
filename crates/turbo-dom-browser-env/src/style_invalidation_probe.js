@@ -181,6 +181,43 @@
       ],
     },
     {
+      id: "form-validity",
+      css:
+        // Explicit control colours and fieldset margins: the UA values are not what this tests.
+        "input{color:rgb(5, 5, 5)} fieldset{margin:0} form:invalid{color:rgb(130, 0, 0)} fieldset:invalid .t{margin-left:26px} input:invalid{margin-left:27px}" +
+        " form:valid .t{color:rgb(0, 130, 0)} .sel:user-invalid{color:rgb(0, 0, 130)}",
+      html:
+        "<form id=f><fieldset id=s><input id=i><span id=t class=t>t</span></fieldset></form>" +
+        "<div id=o><input id=j required form=f></div><p id=p class=t>p</p>",
+      steps: [
+        ($) => $.i.setAttribute("required", ""),
+        ($) => $.i.setAttribute("value", "x"),
+        ($) => $.j.removeAttribute("form"),
+        ($) => $.s.append($.j),
+        ($) => $.j.setAttribute("value", "y"),
+        ($) => $.o.append(Object.assign(document.createElement("input"), { required: true })),
+        ($) => $.f.append($.o),
+        ($) => $.o.remove(),
+        ($) => $.i.setAttribute("pattern", "z"),
+        ($) => $.p.className = "sel",
+      ],
+    },
+    {
+      id: "appends-and-last",
+      css:
+        "li + li{margin-left:28px} li:last-child{color:rgb(140, 0, 0)} li:nth-last-child(2){margin-left:29px}" +
+        " ul > :first-child ~ .k{color:rgb(0, 140, 0)}",
+      html: "<ul id=u><li id=a>a</li><li id=b>b</li></ul>",
+      steps: [
+        ($) => $.u.append(document.createElement("li")),
+        ($) => $.u.append(Object.assign(document.createElement("li"), { className: "k" })),
+        ($) => $.u.lastChild.remove(),
+        ($) => $.b.classList.add("k"),
+        ($) => $.u.prepend(document.createElement("li")),
+        ($) => $.a.remove(),
+      ],
+    },
+    {
       id: "interleaved",
       css:
         ".a .b{color:rgb(120, 0, 0)} .a + .a{margin-left:24px} li:nth-child(3n){color:rgb(0, 120, 0)}" +

@@ -103,6 +103,7 @@
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
   var computedStyleSelectorVersion=g.__computedStyleSelectorVersion;delete g.__computedStyleSelectorVersion;
   var computedStyleGeneration=g.__computedStyleGeneration;delete g.__computedStyleGeneration;
+  var computedStyleFilter=g.__computedStyleFilter;delete g.__computedStyleFilter;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
   var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
@@ -605,59 +606,76 @@
   // ancestors (turbo-dom#279), from its sheets' selectors: -1 another element's inline style
   // (an attribute selector naming `style`, directly, through a combinator or inside :has(); an
   // @container or @import rule; adopted sheets, which the scan does not see: key on the plain
-  // tree version), 2 anything else no node scope covers (:has(), :empty, form
-  // state over other elements, :host and @scope rules, unknown
-  // pseudo-classes, escapes: key on the selector version), 1 the child lists along the chain (+, ~, :nth-*, :*-of-type,
-  // :first/last/only-child, :enabled / :disabled through a fieldset's legend), 0 nothing
-  // (key on the element's style generation). Scanned once per sheet and CSSOM epoch.
+  // tree version); 8 anything else no node scope covers (:has(), :empty, :checked / :default /
+  // :indeterminate over other elements, :host, @scope rules, unknown pseudo-classes, escapes:
+  // key on the selector version); otherwise the bits of a style generation scope
+  // (Tree::style_generation): 1 the child lists along the chain as later siblings see them
+  // (+, ~, :nth-child, :nth-of-type, :first-child, :first-of-type, :enabled / :disabled /
+  // :read-only / :read-write through a fieldset's legend), 2 every child-list change
+  // (:last-child, :only-child, :nth-last-*, :last-of-type, :only-of-type), 4 form validity
+  // (:valid, :invalid, :user-valid, :user-invalid); 0 the element and its ancestors only.
+  // Scanned once per sheet and CSSOM epoch.
   var computedStyleAttributeSelector=/\[\s*(?:[\w*-]*\|)?style(?![\w-])/i;
-  var computedSiblingPseudo=/^(?:first-child|last-child|only-child|nth-child|nth-last-child|first-of-type|last-of-type|only-of-type|nth-of-type|nth-last-of-type|enabled|disabled|read-only|read-write)$/;
+  var computedForwardPseudo=/^(?:first-child|nth-child|first-of-type|nth-of-type|enabled|disabled|read-only|read-write)$/;
+  var computedBackwardPseudo=/^(?:last-child|only-child|nth-last-child|last-of-type|only-of-type|nth-last-of-type)$/;
+  var computedFormPseudo=/^(?:valid|invalid|user-valid|user-invalid)$/;
   // Pseudo-classes over the element itself and its ancestors only (their attributes and the
   // state the live-state epoch or the element's own generation tracks). Pseudo-elements never
   // widen the scope: `::slotted` / `::part` select into shadow trees, and a tree with a shadow
   // root keys on its tree-wide version (`__computedStyleGeneration` answers undefined).
   var computedOwnPseudo=/^(?:not|is|where|matches|-webkit-any|root|scope|link|any-link|visited|hover|active|focus|focus-visible|focus-within|required|optional|placeholder-shown|in-range|out-of-range|autofill|-webkit-autofill|defined|popover-open|modal|open|fullscreen|-webkit-full-screen|-webkit-full-screen-ancestor|state|before|after|first-line|first-letter|placeholder|selection|marker|backdrop|file-selector-button|-webkit-[\w-]+|-moz-[\w-]+)$/;
-  function computedSelectorScope(text){
+  function computedScopeJoin(a,b){return a<0||b<0?-1:a===8||b===8?8:a|b;}
+  // `features` collects the class names, ids and (lowercase) attribute names the selector
+  // names, for Tree::set_style_filter.
+  var computedIdent=/^-?(?:[A-Za-z_\u0080-\uffff]|-)[\w\u0080-\uffff-]*/;
+  function computedSelectorScope(text,features){
     var scope=0;
     for(var index=0;index<text.length;index++){
       var c=text[index];
-      if(c==='\\')return 2;
+      if(c==='\\')return 8;
       if(c==='"'||c==="'"){index++;while(index<text.length&&text[index]!==c)index++;continue;}
-      if(c==='['){var close=index;while(close<text.length&&text[close]!==']')close++;if(close>=text.length)return 2;if(cssApply(cssZoomExec,computedStyleAttributeSelector,[$c.slice(text,index,close+1)]))return -1;index=close;continue;}
-      if(c==='+'||c==='~'){scope=1;continue;}
+      if(c==='['){var close=index;while(close<text.length&&text[close]!==']')close++;if(close>=text.length)return 8;var attribute=$c.slice(text,index,close+1);if(cssApply(cssZoomExec,computedStyleAttributeSelector,[attribute]))return -1;var attributeName=cssApply(cssZoomExec,/^\[\s*(?:[\w*-]*\|)?([\w-]+)/,[attribute]);if(!attributeName)return 8;$c.push(features.attributes,$c.toLowerCase(attributeName[1]));index=close;continue;}
+      if(c==='.'||c==='#'){var ident=cssApply(cssZoomExec,computedIdent,[$c.slice(text,index+1)]);if(ident){$c.push(c==='.'?features.classes:features.ids,ident[0]);index+=ident[0].length;}continue;}
+      if(c==='+'||c==='~'){scope|=1;continue;}
       if(c!==':')continue;
       var element=text[index+1]===':';if(element)index++;
       var name=$c.toLowerCase(cssApply(cssZoomExec,/^[A-Za-z0-9_-]*/,[$c.slice(text,index+1)])[0]);
       index+=name.length;
       if(element||cssApply(cssZoomExec,computedOwnPseudo,[name]))continue;
-      if(cssApply(cssZoomExec,computedSiblingPseudo,[name])){scope=1;continue;}
-      return 2;
+      if(cssApply(cssZoomExec,computedForwardPseudo,[name]))scope|=1;
+      else if(cssApply(cssZoomExec,computedBackwardPseudo,[name]))scope|=2;
+      else if(cssApply(cssZoomExec,computedFormPseudo,[name]))scope|=4;
+      else return 8;
     }
     return scope;
   }
-  function computedRulesScope(rules){
+  function computedRulesScope(rules,features){
     var items=cssItems(rules),scope=0;
     for(var i=0;i<items.length&&scope>=0;i++){
-      var record=cssRuleRecord(items[i]),inner=0;
+      var record=cssRuleRecord(items[i]);
       // An @import's sheet is not walked; a container query reads its container's size, which
       // other elements' inline styles set.
       if(record.type===3||record.kind==='container')return -1;
-      if(record.kind==='scope')return 2;
+      if(record.kind==='scope')scope=8;
       if(record.type===7||record.type===5)continue;
-      if(record.type===1){inner=computedSelectorScope(String(record.selectorText||''));if(inner<0)return -1;}
-      if(record.cssRules){var nested=computedRulesScope(record.cssRules);if(nested<0)return -1;if(nested>inner)inner=nested;}
-      if(inner>scope)scope=inner;
+      if(record.type===1)scope=computedScopeJoin(scope,computedSelectorScope(String(record.selectorText||''),features));
+      if(record.cssRules)scope=computedScopeJoin(scope,computedRulesScope(record.cssRules,features));
     }
     return scope;
   }
   var computedSheetScopes=new computedSnapshotMap();
+  function computedFeatureLists(){return {__proto__:null,classes:[],ids:[],attributes:[]};}
   function computedSheetScope(sheet){
     var epoch=cssomEpoch(),memo=computedSnapshotGet(computedSheetScopes,sheet);
-    if(memo&&memo.epoch===epoch)return memo.scope;
-    var scope=2;try{scope=computedRulesScope(sheetRecord(sheet).rules);}catch(e){}
-    computedSnapshotSet(computedSheetScopes,sheet,{__proto__:null,epoch:epoch,scope:scope});
-    return scope;
+    if(memo&&memo.epoch===epoch)return memo;
+    var features=computedFeatureLists(),scope=8;try{scope=computedRulesScope(sheetRecord(sheet).rules,features);}catch(e){}
+    memo={__proto__:null,epoch:epoch,scope:scope,features:features};
+    computedSnapshotSet(computedSheetScopes,sheet,memo);
+    return memo;
   }
+  // The owner's scope, reported with the features its selectors name to the tree
+  // (Tree::set_style_filter) when reused styles key on its style generations, so writes of
+  // unnamed classes, ids and attributes move none.
   function computedOwnerScope(el){
     var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return -1;}
     if(!owner)return -1;
@@ -667,8 +685,12 @@
     if(!host)return 0;
     var sheets=computedOwnerSheets(owner,host),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&entry.sheets===sheets&&entry.scope!==undefined)return entry.scope;
-    var scope=0;
-    for(var si=0;si<sheets.length&&scope>=0;si++){var one=computedSheetScope(sheets[si]);if(one<0||one>scope)scope=one;}
+    var scope=0,features=computedFeatureLists();
+    for(var si=0;si<sheets.length&&scope>=0;si++){
+      var memo=computedSheetScope(sheets[si]);scope=computedScopeJoin(scope,memo.scope);
+      for(var kind in features)for(var fi=0;fi<memo.features[kind].length;fi++)$c.push(features[kind],memo.features[kind][fi]);
+    }
+    try{computedStyleFilter(owner,scope>=0&&scope<8?features:null);}catch(e){}
     if(entry&&entry.sheets===sheets)entry.scope=scope;
     return scope;
   }
@@ -742,7 +764,7 @@
     var inline=null,scope=computedOwnerScope(el);
     if(scope<0)version=full;
     else{try{inline=$c.call(appliedInlineRead,el);}catch(e){version=full;inline=null;scope=-1;}}
-    if(scope===0||scope===1){var generation;try{generation=computedStyleGeneration(el,scope===1);}catch(e){}if(typeof generation==='number')version=generation;else scope=2;}
+    if(scope>=0&&scope<8){var generation;try{generation=computedStyleGeneration(el,scope);}catch(e){}if(typeof generation==='number')version=generation;}
     return {__proto__:null,epoch:cssomEpoch(),version:version,full:full,inline:inline,owner:owner};
   }
   // What the key cannot see: the element's top layer and font context.

@@ -108,6 +108,28 @@
    "c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px u:rgb(0, 0, 0)|0px t:rgb(0, 0, 0)|0px",
    "c:rgb(0, 0, 0)|0px d:rgb(0, 0, 0)|0px u:rgb(110, 0, 0)|0px t:rgb(110, 0, 0)|0px"
   ],
+  "form-validity": [
+   "f:rgb(130, 0, 0)|0px s:rgb(130, 0, 0)|0px i:rgb(5, 5, 5)|0px t:rgb(130, 0, 0)|0px o:rgb(0, 0, 0)|0px j:rgb(5, 5, 5)|27px p:rgb(0, 0, 0)|0px",
+   "f:rgb(130, 0, 0)|0px s:rgb(130, 0, 0)|0px i:rgb(5, 5, 5)|27px t:rgb(130, 0, 0)|26px o:rgb(0, 0, 0)|0px j:rgb(5, 5, 5)|27px p:rgb(0, 0, 0)|0px",
+   "f:rgb(130, 0, 0)|0px s:rgb(130, 0, 0)|0px i:rgb(5, 5, 5)|0px t:rgb(130, 0, 0)|0px o:rgb(0, 0, 0)|0px j:rgb(5, 5, 5)|27px p:rgb(0, 0, 0)|0px",
+   "f:rgb(0, 0, 0)|0px s:rgb(0, 0, 0)|0px i:rgb(5, 5, 5)|0px t:rgb(0, 130, 0)|0px o:rgb(0, 0, 0)|0px j:rgb(5, 5, 5)|27px p:rgb(0, 0, 0)|0px",
+   "f:rgb(130, 0, 0)|0px s:rgb(130, 0, 0)|0px i:rgb(5, 5, 5)|0px t:rgb(130, 0, 0)|26px j:rgb(5, 5, 5)|27px o:rgb(0, 0, 0)|0px p:rgb(0, 0, 0)|0px",
+   "f:rgb(0, 0, 0)|0px s:rgb(0, 0, 0)|0px i:rgb(5, 5, 5)|0px t:rgb(0, 130, 0)|0px j:rgb(5, 5, 5)|0px o:rgb(0, 0, 0)|0px p:rgb(0, 0, 0)|0px",
+   "f:rgb(0, 0, 0)|0px s:rgb(0, 0, 0)|0px i:rgb(5, 5, 5)|0px t:rgb(0, 130, 0)|0px j:rgb(5, 5, 5)|0px o:rgb(0, 0, 0)|0px input:rgb(5, 5, 5)|27px p:rgb(0, 0, 0)|0px",
+   "f:rgb(130, 0, 0)|0px s:rgb(130, 0, 0)|0px i:rgb(5, 5, 5)|0px t:rgb(130, 0, 0)|0px j:rgb(5, 5, 5)|0px o:rgb(130, 0, 0)|0px input:rgb(5, 5, 5)|27px p:rgb(0, 0, 0)|0px",
+   "f:rgb(0, 0, 0)|0px s:rgb(0, 0, 0)|0px i:rgb(5, 5, 5)|0px t:rgb(0, 130, 0)|0px j:rgb(5, 5, 5)|0px p:rgb(0, 0, 0)|0px",
+   "f:rgb(130, 0, 0)|0px s:rgb(130, 0, 0)|0px i:rgb(5, 5, 5)|27px t:rgb(130, 0, 0)|26px j:rgb(5, 5, 5)|0px p:rgb(0, 0, 0)|0px",
+   "f:rgb(130, 0, 0)|0px s:rgb(130, 0, 0)|0px i:rgb(5, 5, 5)|27px t:rgb(130, 0, 0)|26px j:rgb(5, 5, 5)|0px p:rgb(0, 0, 0)|0px"
+  ],
+  "appends-and-last": [
+   "u:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|29px b:rgb(140, 0, 0)|28px",
+   "u:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|29px li:rgb(140, 0, 0)|28px",
+   "u:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|28px li:rgb(0, 0, 0)|29px li:rgb(0, 140, 0)|28px",
+   "u:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|0px b:rgb(0, 0, 0)|29px li:rgb(140, 0, 0)|28px",
+   "u:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|0px b:rgb(0, 140, 0)|29px li:rgb(140, 0, 0)|28px",
+   "u:rgb(0, 0, 0)|0px li:rgb(0, 0, 0)|0px a:rgb(0, 0, 0)|28px b:rgb(0, 140, 0)|29px li:rgb(140, 0, 0)|28px",
+   "u:rgb(0, 0, 0)|0px li:rgb(0, 0, 0)|0px b:rgb(0, 140, 0)|29px li:rgb(140, 0, 0)|28px"
+  ],
   "interleaved": [
    "u:rgb(0, 0, 0)|0px l1:rgb(0, 0, 0)|0px l2:rgb(0, 0, 0)|0px l3:rgb(0, 120, 0)|0px d:rgb(0, 0, 0)|0px s:rgb(0, 0, 0)|0px",
    "u:rgb(0, 0, 0)|0px l1:rgb(0, 0, 0)|0px l2:rgb(0, 0, 0)|0px l3:rgb(0, 120, 0)|0px d:rgb(0, 0, 0)|0px s:rgb(120, 0, 0)|0px",

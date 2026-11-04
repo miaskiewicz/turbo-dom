@@ -112,6 +112,66 @@ fn sibling_selectors_widen_the_scope_to_the_child_lists_along_the_chain() {
     assert_eq!(value["color"], "rgb(0, 0, 255)");
 }
 
+/// Sheets with only forward sibling selectors (`+`, `~`, `:nth-child`) keep every reused style
+/// across an append to `<body>` (a portal), which no later sibling sees; `:last-child` makes
+/// the append reach every element below `<body>`.
+#[test]
+fn an_append_reaches_only_backward_sibling_selectors() {
+    let forward = gate(
+        ".t{color:red} .a + .t{color:blue} div:nth-child(2) .t{margin-left:2px}",
+        r#"const g=__gate(()=>{const n=document.createElement('aside');document.body.append(n);n.className='a';});
+        return JSON.stringify({max:g.max});"#,
+    );
+    assert_eq!(forward["max"], 0, "{forward}");
+    let backward = gate(
+        ".t{color:red} body > div:last-child .t{color:blue}",
+        r#"const g=__gate(()=>{document.body.append(document.createElement('aside'));},2);
+        return JSON.stringify({max:g.max,color:getComputedStyle(g.target).color});"#,
+    );
+    assert_eq!(backward["color"], "rgb(255, 0, 0)");
+    assert!(backward["max"].as_u64().unwrap() > 0, "{backward}");
+}
+
+/// `:invalid` (MUI's InputBase sheet) keys reused styles on form validity: class writes
+/// re-cascade nothing, while a control's validity change is seen.
+#[test]
+fn form_validity_selectors_ignore_presentational_writes() {
+    let value = gate(
+        ".t{color:red} input:invalid{color:blue} form:invalid .t{margin-left:4px}",
+        r#"const g=__gate((other,i)=>{other.firstChild.className='k'+i;});
+        const form=document.createElement('form'),input=document.createElement('input'),t=document.createElement('p');
+        t.className='t';form.append(input,t);document.body.append(form);
+        const before=getComputedStyle(t).marginLeft+'|'+getComputedStyle(input).color;
+        input.setAttribute('required','');
+        const after=getComputedStyle(t).marginLeft+'|'+getComputedStyle(input).color;
+        return JSON.stringify({max:g.max,before,after});"#,
+    );
+    assert_eq!(value["max"], 0, "{value}");
+    assert_eq!(value["before"], "|rgb(0, 0, 0)");
+    assert_eq!(value["after"], "4px|rgb(0, 0, 255)");
+}
+
+/// A write of a class, id or `aria-*` / `data-*` attribute no selector names moves no style
+/// generation, even on an ancestor of the read element; a named class does.
+#[test]
+fn unnamed_class_and_attribute_writes_recascade_nothing() {
+    let value = gate(
+        ".t{color:red} .on .t{color:blue} [data-named] .t{margin-left:5px} #named .t{margin-left:6px}",
+        r#"const g=__gate((other,i)=>{},1);
+        const ancestor=g.parent.parentNode,before=__cssTestCascadeRuns();
+        for(let i=0;i<5;i++){ancestor.className='x'+i;ancestor.setAttribute('aria-expanded',String(i%2));ancestor.dataset.other=i;ancestor.id='id'+i;getComputedStyle(g.target).color;}
+        const unnamed=__cssTestCascadeRuns()-before;
+        ancestor.classList.add('on');const on=getComputedStyle(g.target).color;
+        ancestor.dataset.named='';const data=getComputedStyle(g.target).marginLeft;
+        ancestor.id='named';const id=getComputedStyle(g.target).marginLeft;
+        return JSON.stringify({unnamed,on,data,id});"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"unnamed":0,"on":"rgb(0, 0, 255)","data":"5px","id":"6px"})
+    );
+}
+
 /// `:has()` (and the other upward or document-wide dependencies) fall back to the tree-wide
 /// version: a write anywhere is seen.
 #[test]
@@ -156,8 +216,8 @@ fn reused_styles_equal_a_fresh_cascade_under_random_mutations() {
         r#"(()=>{
       let seed=279;const rnd=n=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed%n;};
       const pick=a=>a[rnd(a.length)];
-      const tags=['div','p','span','i','b'],classes=['a','b','c','d'];
-      const sels=['.a .b','.a > .c','.b + .c','.c ~ .d','div:nth-child(2n)','span:first-child','p:last-of-type',
+      const tags=['div','p','span','i','b','input','form','fieldset'],classes=['a','b','c','d','z','y'];
+      const sels=['.c:last-child','li:nth-last-child(2) .a','input:invalid','form:invalid .b','.a .b','.a > .c','.b + .c','.c ~ .d','div:nth-child(2n)','span:first-child','p:last-of-type',
         '.d:only-child','.a:not(.b) i','[data-x] .c','#n3 .a',':is(.a,.d) > b','.b:empty','div:has(> .d)','.a *'];
       const props=['color','margin-left'];
       let mismatches=0,checks=0,first=null;
@@ -176,7 +236,7 @@ fn reused_styles_equal_a_fresh_cascade_under_random_mutations() {
           const el=pick(all.slice(1)),kind=rnd(7);
           if(kind===0)el.className=pick(classes);
           else if(kind===1)el.classList.toggle(pick(classes));
-          else if(kind===2)el.toggleAttribute('data-x');
+          else if(kind===2)el.toggleAttribute(pick(['data-x','required','data-q','aria-z']));else if(kind===6&&rnd(2))el.id=pick(['n3','n4','q']);
           else if(kind===3){const p=pick(all);if(!el.contains(p))p.insertBefore(el,rnd(2)?p.firstChild:null);}
           else if(kind===4)el.remove();
           else if(kind===5){if(!el.isConnected){const p=pick(all);if(!el.contains(p))p.append(el);}else el.append(document.createTextNode('t'));}

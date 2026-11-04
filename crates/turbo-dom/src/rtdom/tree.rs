@@ -614,6 +614,18 @@ pub struct Tree {
     /// The `selector_version` at which each node's child list last changed (a child inserted,
     /// removed or mutated): what sibling and child-indexed selectors read.
     child_gens: FxHashMap<Handle, u64>,
+    /// [`Self::child_gens`] for the changes a later sibling can see: a child inserted, removed
+    /// or mutated that has a next sibling. An append, or a change to the last child, reaches
+    /// no sibling through `+`, `~`, `:nth-child`, `:first-child` or `:*-of-type` forward.
+    forward_child_gens: FxHashMap<Handle, u64>,
+    /// The `selector_version` of the last mutation that can change form validity anywhere
+    /// (`:valid` / `:invalid` / `:user-*` of a control, its form, fieldset or radio group).
+    form_gen: u64,
+    /// The class names, ids and attribute names the owner's selectors reference (turbo-dom#279),
+    /// reported by the embedder that keys computed styles on [`Self::style_generation`]: a
+    /// write of an unreferenced class token, id or presentational attribute moves no style
+    /// generation. `None`: every write does.
+    style_filter: Option<StyleFilter>,
     /// The `selector_version` of the last mutation no node scope covers (a stylesheet owner's
     /// attribute, the fullscreen stack, a shadow root): it moves every style generation.
     global_style_gen: u64,
@@ -657,6 +669,37 @@ pub enum FormProp {
     ReadOnly,
 }
 
+/// The selector features a [`Tree`]'s style generations follow (see
+/// [`Tree::set_style_filter`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StyleFilter {
+    /// Class names a selector names (`.name`).
+    pub classes: FxHashSet<Box<str>>,
+    /// Ids a selector names (`#name`).
+    pub ids: FxHashSet<Box<str>>,
+    /// Attribute names (ASCII lowercase) an attribute selector names (`[name...]`).
+    pub attributes: FxHashSet<Box<str>>,
+}
+
+/// What a [`Tree::style_generation`] reads beyond the element and its ancestors.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct StyleScope {
+    pub siblings: Siblings,
+    /// Form validity (`:valid`, `:invalid`, `:user-valid`, `:user-invalid`).
+    pub forms: bool,
+}
+
+/// Which child-list changes along the chain a [`StyleScope`] reads.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Siblings {
+    #[default]
+    None,
+    /// Changes a later sibling sees (`+`, `~`, `:nth-child`, `:first-child`, `:*-of-type`).
+    Forward,
+    /// Every change (`:last-child`, `:only-child`, `:nth-last-*`, `:last-of-type`, ...).
+    Both,
+}
+
 #[derive(Default)]
 pub(crate) struct QueryCache {
     pub version: u64,
@@ -696,6 +739,9 @@ impl Tree {
             selector_version: 0,
             style_gens: FxHashMap::default(),
             child_gens: FxHashMap::default(),
+            forward_child_gens: FxHashMap::default(),
+            form_gen: 0,
+            style_filter: None,
             global_style_gen: 0,
             qcache: RefCell::new(QueryCache::default()),
             parse_cache: RefCell::new(FxHashMap::default()),
@@ -1288,9 +1334,11 @@ impl Tree {
             None
         };
         self.attribute_units.remove(&key);
+        let styled = data.ns.is_some()
+            || self.attribute_change_is_styled(owner, &data.local, Some(&data.legacy.value));
         self.ensure_attrs(owner).set_namespace(data.clone());
         self.sync_attribute_node(owner, data);
-        self.bump_owner_attribute(owner);
+        self.bump_owner_attribute(owner, &data.local, styled);
         self.record_attributes(owner, &data.local_name, old, data.namespace.as_deref());
         self.record_old_units(old_units);
         self.record_native_attribute_names(data);
@@ -1327,10 +1375,11 @@ impl Tree {
         } else {
             None
         };
+        let styled = data.ns.is_some() || self.attribute_change_is_styled(owner, local, None);
         self.detach_attribute_node(owner, &data);
         self.attribute_units.remove(&key);
         self.ensure_attrs(owner).remove_ns(namespace, local);
-        self.bump_owner_attribute(owner);
+        self.bump_owner_attribute(owner, local, styled);
         self.record_attributes(
             owner,
             &data.local_name,
@@ -1496,61 +1545,186 @@ impl Tree {
     }
 
     /// A mutation of `h` itself (an attribute, its text, its state): its generation and its
-    /// parent's child-list generation move.
+    /// parent's child-list generations move.
     pub(crate) fn bump_node(&mut self, h: Handle) {
         self.bump_unscoped();
         self.style_gens.insert(h, self.selector_version);
         if let Some(parent) = self.parent(h) {
-            self.child_gens.insert(parent, self.selector_version);
+            let forward = self.next_sibling(h).is_some();
+            self.bump_child_gens(parent, forward);
         }
     }
 
-    /// `child` inserted into or removed from `parent`.
-    fn bump_child_list(&mut self, parent: Handle, child: Handle) {
+    /// `child` inserted into or removed from `parent`; `forward`: it has (had) a next sibling.
+    fn bump_child_list(&mut self, parent: Handle, child: Handle, forward: bool) {
         self.bump_unscoped();
         self.style_gens.insert(child, self.selector_version);
+        self.bump_child_gens(parent, forward);
+        if self.touches_forms(parent) || self.has_form_content(child) {
+            self.form_gen = self.selector_version;
+        }
+    }
+
+    fn bump_child_gens(&mut self, parent: Handle, forward: bool) {
         self.child_gens.insert(parent, self.selector_version);
+        if forward {
+            self.forward_child_gens
+                .insert(parent, self.selector_version);
+        }
+    }
+
+    /// Whether `h` or an ancestor is an element whose validity, or whose descendants' form
+    /// association, a change below it can move.
+    fn touches_forms(&self, h: Handle) -> bool {
+        let mut node = Some(h);
+        while let Some(current) = node {
+            if self.is_form_element(current) {
+                return true;
+            }
+            node = self.parent(current);
+        }
+        false
+    }
+
+    /// Whether the subtree of `h` holds a form-associated (or possibly form-associated custom)
+    /// element, or one naming its form owner.
+    fn has_form_content(&self, h: Handle) -> bool {
+        let mut pending = vec![h];
+        while let Some(node) = pending.pop() {
+            if self.is_form_element(node) || self.get_attribute(node, "form").is_some() {
+                return true;
+            }
+            pending.extend(self.children(node));
+        }
+        false
+    }
+
+    fn is_form_element(&self, h: Handle) -> bool {
+        self.local_name(h).is_some_and(|name| {
+            name.contains('-')
+                || matches!(
+                    name,
+                    "form"
+                        | "fieldset"
+                        | "input"
+                        | "select"
+                        | "textarea"
+                        | "button"
+                        | "output"
+                        | "object"
+                        | "option"
+                        | "optgroup"
+                        | "datalist"
+                )
+        })
     }
 
     /// [`Self::bump`] for an attribute change of `h`: a `style` attribute moves `version` only;
     /// a stylesheet owner's (`<style>` / `<link>`: `media`, `type`, `disabled`, ...) moves every
     /// style generation; any other moves `h`'s.
-    fn bump_attribute(&mut self, h: Handle, name: &str) {
+    fn bump_attribute(&mut self, h: Handle, name: &str, styled: bool) {
         if name == "style" {
             self.version += 1;
         } else {
-            self.bump_owner_attribute(h);
+            self.bump_owner_attribute(h, name, styled);
+        }
+    }
+
+    /// Report the selector features the embedder's computed styles follow (turbo-dom#279), or
+    /// `None` when every attribute write can change a computed style (the default). Only
+    /// `class`, `id`, `role`, `tabindex`, `title`, `aria-*` and `data-*` writes are filtered:
+    /// no UA style or presentational hint reads them.
+    pub fn set_style_filter(&mut self, filter: Option<StyleFilter>) {
+        self.style_filter = filter;
+    }
+
+    /// Whether changing `name` of `h` from its current value to `new` can change a computed
+    /// style through a selector (see [`Self::set_style_filter`]).
+    fn attribute_change_is_styled(&self, h: Handle, name: &str, new: Option<&str>) -> bool {
+        let Some(filter) = self.style_filter.as_ref() else {
+            return true;
+        };
+        let old = self.get_attribute(h, name);
+        match name {
+            "class" => {
+                let (old, new) = (old.unwrap_or(""), new.unwrap_or(""));
+                // A token in one value but not the other that a selector names.
+                let moved = |a: &str, b: &str| {
+                    a.split_ascii_whitespace().any(|token| {
+                        filter.classes.contains(token)
+                            && !b.split_ascii_whitespace().any(|other| other == token)
+                    })
+                };
+                moved(old, new) || moved(new, old)
+            }
+            "id" => [old, new]
+                .into_iter()
+                .flatten()
+                .any(|id| filter.ids.contains(id)),
+            _ if matches!(name, "role" | "tabindex" | "title")
+                || name.starts_with("aria-")
+                || name.starts_with("data-") =>
+            {
+                filter
+                    .attributes
+                    .contains(name.to_ascii_lowercase().as_str())
+            }
+            _ => true,
         }
     }
 
     /// An attribute of `h` other than `style` changed (see [`Self::bump_attribute`]).
-    fn bump_owner_attribute(&mut self, h: Handle) {
+    fn bump_owner_attribute(&mut self, h: Handle, name: &str, styled: bool) {
         if matches!(self.local_name(h), Some("style" | "link")) {
             self.bump();
-        } else {
+        } else if styled {
             self.bump_node(h);
+        } else {
+            self.bump_unscoped();
+        }
+        self.bump_form_change(h, name);
+    }
+
+    /// A change of `h` that can move form validity (an attribute other than `class`, `style`,
+    /// `aria-*`, `data-*`; text; form state) inside or of a form-associated element.
+    fn bump_form_change(&mut self, h: Handle, name: &str) {
+        let inert = matches!(name, "class" | "style" | "id" | "title" | "role" | "hidden")
+            || name.starts_with("aria-")
+            || name.starts_with("data-");
+        if !inert && (self.touches_forms(h) || name == "form") {
+            self.form_gen = self.selector_version;
         }
     }
 
     /// The style generation of `h` (turbo-dom#279): the latest `selector_version` at which a
     /// mutation reached what a selector matching `h` or one of its ancestors can read without
     /// `:has()` or other upward / document-wide dependencies — `h` and every ancestor (their
-    /// attributes, state, insertion) and, with `siblings`, every child list along the chain
-    /// (what `+`, `~`, `:nth-*`, `:*-of-type`, `:first-child` ... read). Never below the
-    /// last unscoped mutation. A cached computed style keyed on it is current while it holds.
+    /// attributes, state, insertion) and, by `scope`, the child lists along that chain (what
+    /// `+`, `~`, `:nth-*`, `:*-of-type`, `:first-child` ... read; forward only, or both ways
+    /// for `:last-child`, `:nth-last-*` ...) and form validity. Never below the last unscoped
+    /// mutation. A cached computed style keyed on it is current while it holds.
     #[must_use]
-    pub fn style_generation(&self, h: Handle, siblings: bool) -> u64 {
+    pub fn style_generation(&self, h: Handle, scope: StyleScope) -> u64 {
         let mut generation = self.global_style_gen;
+        if scope.forms {
+            generation = generation.max(self.form_gen);
+        }
+        let lists = match scope.siblings {
+            Siblings::None => None,
+            Siblings::Forward => Some(&self.forward_child_gens),
+            Siblings::Both => Some(&self.child_gens),
+        };
         let mut node = Some(h);
         while let Some(current) = node {
             if let Some(&own) = self.style_gens.get(&current) {
                 generation = generation.max(own);
             }
             node = self.parent(current);
-            if siblings {
-                if let Some(&list) = node.and_then(|parent| self.child_gens.get(&parent)) {
-                    generation = generation.max(list);
-                }
+            if let Some(&list) = lists
+                .zip(node)
+                .and_then(|(lists, parent)| lists.get(&parent))
+            {
+                generation = generation.max(list);
             }
         }
         generation
@@ -1705,12 +1879,13 @@ impl Tree {
             None
         };
         let old_units = self.recorded_attribute_units(h, name);
+        let styled = self.attribute_change_is_styled(h, name, Some(value));
         let ov = self.ensure_attrs(h);
         let changed = ov.set(name, value);
         self.attribute_units
             .remove(&(h, changed.ns.clone(), changed.local.clone()));
         self.sync_attribute_node(h, &changed);
-        self.bump_attribute(h, name);
+        self.bump_attribute(h, name, styled);
         self.record_attributes(h, &changed.local_name, old, changed.namespace.as_deref());
         self.record_old_units(old_units);
         self.record_native_attribute_names(&changed);
@@ -1724,6 +1899,7 @@ impl Tree {
             None
         };
         let old_units = self.recorded_attribute_units(h, name);
+        let styled = self.attribute_change_is_styled(h, name, None);
         let ov = self.ensure_attrs(h);
         let removed = ov.remove(name);
         if let Some(removed) = &removed {
@@ -1731,7 +1907,7 @@ impl Tree {
             self.attribute_units
                 .remove(&(h, removed.ns.clone(), removed.local.clone()));
         }
-        self.bump_attribute(h, name);
+        self.bump_attribute(h, name, styled);
         if let Some(removed) = removed {
             self.record_attributes(h, &removed.local_name, old, removed.namespace.as_deref());
             self.record_old_units(old_units);
@@ -1751,6 +1927,7 @@ impl Tree {
             && self.form_props.insert((h, prop), value) != Some(value)
         {
             self.bump_node(h);
+            self.bump_form_change(h, "");
         }
     }
 
@@ -1759,6 +1936,7 @@ impl Tree {
     pub fn clear_form_property(&mut self, h: Handle, prop: FormProp) {
         if self.form_props.remove(&(h, prop)).is_some() {
             self.bump_node(h);
+            self.bump_form_change(h, "");
         }
     }
 
@@ -1841,7 +2019,8 @@ impl Tree {
         self.detach(child);
         self.ensure_children(parent).push(child);
         self.parent_ov.insert(child, Some(parent));
-        self.bump_child_list(parent, child);
+        let forward = self.next_sibling(child).is_some();
+        self.bump_child_list(parent, child, forward);
         if self.is_recording() {
             self.record_child_list(
                 parent,
@@ -1877,7 +2056,8 @@ impl Tree {
             None => list.push(child),
         }
         self.parent_ov.insert(child, Some(parent));
-        self.bump_child_list(parent, child);
+        let forward = self.next_sibling(child).is_some();
+        self.bump_child_list(parent, child, forward);
         if self.is_recording() {
             self.record_child_list(
                 parent,
@@ -1896,12 +2076,13 @@ impl Tree {
         let siblings = self
             .is_recording()
             .then(|| (self.previous_sibling(child), self.next_sibling(child)));
+        let forward = self.next_sibling(child).is_some();
         let list = self.ensure_children(parent);
         if let Some(pos) = list.iter().position(|&x| x == child) {
             list.remove(pos);
         }
         self.parent_ov.insert(child, None);
-        self.bump_child_list(parent, child);
+        self.bump_child_list(parent, child, forward);
         if let Some((previous, next)) = siblings {
             self.record_child_list(parent, None, Some(child), previous, next);
         }
@@ -1928,6 +2109,7 @@ impl Tree {
             let old_units = self.recorded_character_units(h);
             self.text_ov.insert(h, text.into());
             self.bump_node(h);
+            self.bump_form_change(h, "");
             self.record_character_data(h, old);
             self.record_old_units(old_units);
         } else {
@@ -1956,10 +2138,12 @@ impl Tree {
             if self.is_recording() {
                 self.children_ov.insert(h, added.clone().into());
                 self.bump_node(h);
+                self.bump_form_change(h, "");
                 self.record_child_list_batch(h, added, removed);
             } else {
                 self.children_ov.insert(h, added.into());
                 self.bump_node(h);
+                self.bump_form_change(h, "");
             }
         }
     }
@@ -1988,6 +2172,7 @@ impl Tree {
         let old_units = self.recorded_character_units(h);
         self.text_ov.insert(h, text.into());
         self.bump_node(h);
+        self.bump_form_change(h, "");
         self.record_character_data(h, old);
         self.record_old_units(old_units);
     }
@@ -2154,12 +2339,14 @@ impl Tree {
         if self.is_recording() {
             self.children_ov.insert(h, kids.clone().into());
             self.bump_node(h);
+            self.bump_form_change(h, "");
             if !kids.is_empty() || !removed.is_empty() {
                 self.record_child_list_batch(h, kids, removed);
             }
         } else {
             self.children_ov.insert(h, kids.into());
             self.bump_node(h);
+            self.bump_form_change(h, "");
         }
         core::discard_node(frag);
     }
@@ -2734,9 +2921,26 @@ mod tests {
             .unwrap()
     }
 
+    const OWN: StyleScope = StyleScope {
+        siblings: Siblings::None,
+        forms: false,
+    };
+    const FORWARD: StyleScope = StyleScope {
+        siblings: Siblings::Forward,
+        forms: false,
+    };
+    const BOTH: StyleScope = StyleScope {
+        siblings: Siblings::Both,
+        forms: false,
+    };
+    const FORMS: StyleScope = StyleScope {
+        siblings: Siblings::None,
+        forms: true,
+    };
+
     /// turbo-dom#279: a mutation of an element moves the style generation of it and its
     /// descendants only; its parent, siblings and their subtrees keep theirs unless the read
-    /// asks for sibling scope, which follows every child list along the ancestor chain.
+    /// asks for sibling scope, which follows the child lists along the ancestor chain.
     #[test]
     fn style_generation_scopes_an_element_mutation_to_its_subtree() {
         let mut tree = t("<main><div><p><i></i></p></div><section><b></b></section></main>");
@@ -2748,82 +2952,200 @@ mod tests {
             element(&tree, "section"),
             element(&tree, "b"),
         );
-        let gens = |tree: &Tree, siblings| {
-            [main, div, p, i, section, b].map(|h| tree.style_generation(h, siblings))
+        let gens = |tree: &Tree, scope| {
+            [main, div, p, i, section, b].map(|h| tree.style_generation(h, scope))
         };
-        let (before, before_siblings) = (gens(&tree, false), gens(&tree, true));
+        let (own, both) = (gens(&tree, OWN), gens(&tree, BOTH));
         tree.set_attribute(p, "class", "x");
-        let (after, after_siblings) = (gens(&tree, false), gens(&tree, true));
         let s = tree.selector_version;
-        assert_eq!(after, [before[0], before[1], s, s, before[4], before[5]]);
-        // `div`'s child list changed: its children read it with sibling scope.
+        assert_eq!(gens(&tree, OWN), [own[0], own[1], s, s, own[4], own[5]]);
+        // `p` is `div`'s only (so last) child: its children see it both ways only.
         assert_eq!(
-            after_siblings,
-            [
-                before_siblings[0],
-                before_siblings[1],
-                s,
-                s,
-                before_siblings[4],
-                before_siblings[5]
-            ]
+            gens(&tree, BOTH),
+            [both[0], both[1], s, s, both[4], both[5]]
         );
-        tree.set_attribute(section, "class", "y");
+        assert_eq!(gens(&tree, FORWARD), gens(&tree, OWN));
+        tree.set_attribute(div, "class", "y");
         let s2 = tree.selector_version;
-        // `main`'s child list changed: `div`'s subtree sees it with sibling scope only.
-        assert_eq!(gens(&tree, false), [before[0], before[1], s, s, s2, s2]);
-        assert_eq!(gens(&tree, true), [before_siblings[0], s2, s2, s2, s2, s2]);
+        // `div` has a next sibling: `main`'s child list moved forward and both ways.
+        assert_eq!(gens(&tree, OWN), [own[0], s2, s2, s2, own[4], own[5]]);
+        assert_eq!(gens(&tree, FORWARD), [own[0], s2, s2, s2, s2, s2]);
+        tree.set_attribute(section, "class", "z");
+        let s3 = tree.selector_version;
+        // `section` is the last child: forward readers below `div` keep theirs.
+        assert_eq!(gens(&tree, FORWARD), [own[0], s2, s2, s2, s3, s3]);
+        assert_eq!(gens(&tree, BOTH), [both[0], s3, s3, s3, s3, s3]);
     }
 
-    /// Which mutations move which generations: insertion and removal move the node's own
-    /// (and its parent's child list), creating a detached node moves none, an inline style
-    /// write moves none, and an unscoped change (a stylesheet owner's attribute, a shadow root,
-    /// the fullscreen stack) moves every element's.
+    /// Insertion and removal: an append moves the new child and the parent's child list both
+    /// ways only; an insertion before a sibling, or removing a child that had a next sibling,
+    /// moves it forward too.
     #[test]
-    fn style_generation_tracks_each_mutation_kind() {
-        let mut tree = t("<style></style><div><p></p></div><span></span>");
-        let (style, div, p, span) = (
-            element(&tree, "style"),
+    fn style_generation_tracks_insertion_position() {
+        let mut tree = t("<ul><li></li></ul>");
+        let (ul, li) = (element(&tree, "ul"), element(&tree, "li"));
+        let forward = tree.style_generation(li, FORWARD);
+        let last = tree.create_element("li");
+        tree.append_child(ul, last);
+        assert_eq!(tree.style_generation(last, OWN), tree.selector_version);
+        assert_eq!(tree.style_generation(li, FORWARD), forward);
+        assert_eq!(tree.style_generation(li, BOTH), tree.selector_version);
+        let first = tree.create_element("li");
+        tree.insert_before(ul, first, Some(li));
+        assert_eq!(tree.style_generation(li, FORWARD), tree.selector_version);
+        let before = tree.style_generation(last, FORWARD);
+        tree.remove_child(ul, last);
+        assert_eq!(tree.style_generation(li, FORWARD), before, "the last child");
+        tree.remove_child(ul, first);
+        assert_eq!(tree.style_generation(li, FORWARD), tree.selector_version);
+    }
+
+    /// Form validity moves with changes inside or of form-associated elements, and with
+    /// subtrees holding one inserted or removed anywhere, but not with presentational
+    /// attributes or changes outside forms.
+    #[test]
+    fn style_generation_tracks_form_validity() {
+        let mut tree = t("<form><div><input></div></form><p><span></span></p>");
+        let (div, input, p, span) = (
             element(&tree, "div"),
+            element(&tree, "input"),
             element(&tree, "p"),
             element(&tree, "span"),
         );
-        let g0 = tree.style_generation(span, true);
+        let reader = |tree: &Tree| tree.style_generation(span, FORMS);
+        let g0 = reader(&tree);
+        tree.set_attribute(div, "class", "c");
+        tree.set_attribute(input, "aria-invalid", "true");
+        tree.set_attribute(input, "data-x", "1");
+        tree.set_attribute(p, "title", "t");
+        tree.set_attribute(span, "lang", "en");
+        let g1 = reader(&tree);
+        assert_eq!(
+            g1,
+            tree.style_generation(span, OWN),
+            "only the span's own change"
+        );
+        tree.set_attribute(input, "required", "");
+        assert_eq!(reader(&tree), tree.selector_version);
+        let g2 = reader(&tree);
+        tree.set_attribute(span, "form", "f");
+        assert_eq!(
+            reader(&tree),
+            tree.selector_version,
+            "a form owner reference"
+        );
+        let text = tree.create_text_node("x");
+        tree.append_child(p, text);
+        let g3 = reader(&tree);
+        tree.set_node_value(text, "y");
+        assert_eq!(reader(&tree), g3.max(tree.style_generation(span, OWN)));
+        let control = tree.create_element("x-control");
+        let wrapper = tree.create_element("div");
+        tree.append_child(wrapper, control);
+        tree.append_child(p, wrapper);
+        assert_eq!(
+            reader(&tree),
+            tree.selector_version,
+            "a custom element subtree"
+        );
+        tree.set_form_property(input, FormProp::Checked, true);
+        assert_eq!(reader(&tree), tree.selector_version);
+        assert!(g0 <= g1 && g1 < g2);
+    }
+
+    /// With a style filter, writes of class tokens, ids and presentational attributes no
+    /// selector names move no generation; other attributes always do.
+    #[test]
+    fn style_generation_follows_the_style_filter() {
+        let mut tree = t("<div class='a on'><p></p></div>");
+        let (div, p) = (element(&tree, "div"), element(&tree, "p"));
+        let mut filter = StyleFilter::default();
+        filter.classes.insert("on".into());
+        filter.ids.insert("named".into());
+        filter.attributes.insert("data-named".into());
+        tree.set_style_filter(Some(filter));
+        let g0 = tree.style_generation(p, OWN);
+        tree.set_attribute(div, "class", "on b");
+        tree.set_attribute(div, "id", "other");
+        tree.set_attribute(div, "data-other", "1");
+        tree.set_attribute(div, "aria-hidden", "true");
+        tree.remove_attribute(div, "role");
+        assert_eq!(
+            tree.style_generation(p, OWN),
+            g0,
+            "unnamed tokens and attributes"
+        );
+        tree.set_attribute(div, "class", "b");
+        assert_eq!(
+            tree.style_generation(p, OWN),
+            tree.selector_version,
+            "on removed"
+        );
+        let g1 = tree.style_generation(p, OWN);
+        tree.set_attribute(div, "data-named", "");
+        assert!(tree.style_generation(p, OWN) > g1);
+        let g2 = tree.style_generation(p, OWN);
+        tree.set_attribute(div, "id", "named");
+        assert!(tree.style_generation(p, OWN) > g2);
+        let g3 = tree.style_generation(p, OWN);
+        tree.set_attribute(div, "hidden", "");
+        assert!(tree.style_generation(p, OWN) > g3, "every other attribute");
+        let g4 = tree.style_generation(p, OWN);
+        tree.set_attribute_ns(div, Some("urn:x"), "x:data-other", "1");
+        assert!(tree.style_generation(p, OWN) > g4, "a namespaced attribute");
+        let g5 = tree.style_generation(p, OWN);
+        tree.set_attribute_units(
+            div,
+            &"class".encode_utf16().collect::<Vec<_>>(),
+            &"b q".encode_utf16().collect::<Vec<_>>(),
+        );
+        tree.remove_attribute_ns(div, None, "data-other");
+        assert_eq!(tree.style_generation(p, OWN), g5);
+        tree.set_style_filter(None);
+        tree.set_attribute(div, "class", "c");
+        assert_eq!(tree.style_generation(p, OWN), tree.selector_version);
+    }
+
+    /// Which mutations move which generations: creating a detached node moves none, an inline
+    /// style write moves none, and an unscoped change (a stylesheet owner's attribute, a
+    /// shadow root, the fullscreen stack) moves every element's.
+    #[test]
+    fn style_generation_tracks_each_mutation_kind() {
+        let mut tree = t("<style></style><div><p></p></div><span></span>");
+        let (style, div, span) = (
+            element(&tree, "style"),
+            element(&tree, "div"),
+            element(&tree, "span"),
+        );
+        let g0 = tree.style_generation(span, BOTH);
         let made = tree.create_element("em");
         tree.create_text_node("t");
         tree.set_attribute(span, "style", "color: red");
         assert_eq!(
-            tree.style_generation(span, true),
+            tree.style_generation(span, BOTH),
             g0,
             "inline style and detached nodes"
         );
         tree.set_attribute(made, "class", "detached");
-        assert_eq!(tree.style_generation(made, false), tree.selector_version);
-        assert_eq!(tree.style_generation(span, true), g0);
-        tree.append_child(div, made);
-        let s = tree.selector_version;
-        assert_eq!(tree.style_generation(made, false), s);
-        assert!(tree.style_generation(p, false) < s);
-        assert_eq!(tree.style_generation(p, true), s, "a new sibling");
-        tree.remove_child(div, made);
-        assert_eq!(tree.style_generation(made, false), tree.selector_version);
+        assert_eq!(tree.style_generation(made, OWN), tree.selector_version);
+        assert_eq!(tree.style_generation(span, BOTH), g0);
         let text = tree.create_text_node("x");
-        tree.append_child(p, text);
+        tree.append_child(div, text);
         tree.set_node_value(text, "y");
-        assert_eq!(tree.style_generation(text, false), tree.selector_version);
-        assert!(tree.style_generation(span, false) < tree.selector_version);
+        assert_eq!(tree.style_generation(text, OWN), tree.selector_version);
+        assert!(tree.style_generation(span, OWN) < tree.selector_version);
         tree.set_attribute(style, "media", "print");
         assert_eq!(
-            tree.style_generation(span, false),
+            tree.style_generation(span, OWN),
             tree.selector_version,
             "a sheet owner"
         );
         tree.set_attribute(span, "lang", "en");
         let link = tree.create_element("link");
         tree.remove_attribute(link, "href");
-        assert_eq!(tree.style_generation(div, false), tree.selector_version);
+        assert_eq!(tree.style_generation(div, OWN), tree.selector_version);
         tree.attach_shadow(div);
-        assert_eq!(tree.style_generation(span, false), tree.selector_version);
+        assert_eq!(tree.style_generation(span, OWN), tree.selector_version);
     }
 
     /// `selector_version` moves with every mutation but a `style` attribute change: an

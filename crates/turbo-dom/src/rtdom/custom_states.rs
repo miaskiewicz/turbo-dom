@@ -31,6 +31,7 @@ impl Tree {
         }
         if changed {
             self.bump_node(node);
+            self.bump_form_change(node, "");
         }
         changed
     }
@@ -47,6 +48,7 @@ impl Tree {
     pub fn clear_custom_states(&mut self, node: Handle) -> bool {
         if self.custom_states.remove(&node).is_some() {
             self.bump_node(node);
+            self.bump_form_change(node, "");
             true
         } else {
             false

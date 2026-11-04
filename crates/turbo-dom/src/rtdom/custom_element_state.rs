@@ -88,6 +88,7 @@ impl Tree {
         let changed = before != state;
         if changed {
             self.bump_node(h);
+            self.bump_form_change(h, "");
         }
         changed
     }
