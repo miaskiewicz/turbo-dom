@@ -1,0 +1,76 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "probeSha256": "93078f5239a11bb5ffb8dd29b074e5b2ce4fd91ab440fe746ad61a9859596bb8",
+  "collectorSha256": "c8a12247067ebd632b2a1631b1d87bd26fa6a6bd0c00e62c20970022ad25688b",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "outer": {
+      "--a": "#ff0000",
+      "--g": "#ABC",
+      "--from-sheet": "#00ff00",
+      "--over": "inline",
+      "--root-color": "#00f",
+      "--spaced": "a   b",
+      "--child-only": "",
+      "--missing": ""
+    },
+    "win": {
+      "--a": "#ff0000",
+      "--g": "#ABC",
+      "--from-sheet": "#00ff00",
+      "--over": "id",
+      "--root-color": "#00f",
+      "--spaced": "a   b",
+      "--child-only": "",
+      "--missing": ""
+    },
+    "leaf": {
+      "--a": "#ff0000",
+      "--g": "#ABC",
+      "--from-sheet": "#00ff00",
+      "--over": "id",
+      "--root-color": "#00f",
+      "--spaced": "a   b",
+      "--child-only": "1px",
+      "--missing": ""
+    },
+    "plain": {
+      "--a": "",
+      "--g": "",
+      "--from-sheet": "",
+      "--over": "",
+      "--root-color": "#00f",
+      "--spaced": "a   b",
+      "--child-only": "",
+      "--missing": ""
+    },
+    "root": {
+      "--a": "",
+      "--g": "",
+      "--from-sheet": "",
+      "--over": "",
+      "--root-color": "#00f",
+      "--spaced": "a   b",
+      "--child-only": "",
+      "--missing": ""
+    },
+    "afterChange": "changed",
+    "detached": ""
+  }
+}

@@ -85,3 +85,13 @@ fn custom_property_colors_match_chrome156_control() {
         include_str!("custom_property_colors_probe.js"),
     );
 }
+
+/// turbo-dom#286: getComputedStyle reports inline, stylesheet, style-attribute and
+/// inherited custom properties with their specified (trimmed) text.
+#[test]
+fn computed_custom_properties_match_chrome156_control() {
+    check(
+        include_str!("computed_custom_properties_chrome156.json"),
+        include_str!("computed_custom_properties_probe.js"),
+    );
+}
