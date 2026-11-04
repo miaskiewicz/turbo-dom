@@ -7,6 +7,19 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Performance (turbo-dom-browser-env, 0.7.1)
+
+- `document.body` and a form control's `labels` read in one native call (was ~10 projected
+  accessor round trips); `children` re-reads its rows with one native call instead of a
+  `nodeType` dispatch per child.
+- Cached live collections (`childNodes`, `children`, `getElementsBy*`) follow a mutation epoch
+  the engine pushes on every tree write, so reads between mutations make no native call; this
+  realm's collection records are memoized in JS.
+- The computed-style font and cascade paths and the collection row appends build no
+  `{__proto__: null}` literal per call (hoisted tables, fixed-shape records, one reused row
+  descriptor).
+- Counter gates for all three in `perf_gates_tests.rs`.
+
 ## [0.7.0] — <date TBD at tag>
 
 | crate | version |
