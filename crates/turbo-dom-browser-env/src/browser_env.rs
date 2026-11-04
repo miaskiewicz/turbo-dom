@@ -5529,6 +5529,7 @@ fn form_controls_native(
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
+    count_crossing();
     let operation = args.get(0).to_rust_string_lossy(scope);
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return;
@@ -6656,6 +6657,7 @@ fn dom_accessor_dispatch(
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
+    count_crossing();
     let receiver = args.this();
     let (_dom, handle) = enter_node(scope, receiver);
     let mut buffer = [std::mem::MaybeUninit::<u8>::uninit(); 256];
@@ -6755,6 +6757,20 @@ fn dom_accessor_dispatch(
             views.1.push(weak);
         }
     });
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Engine-JS -> native crossings through the DOM natives the perf gates watch
+    /// (`dom_accessor_dispatch`, `document_basics::dispatch`, `form_controls_native`).
+    pub(crate) static NATIVE_CROSSINGS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Count one native crossing (tests only; the perf gate in `perf_gates_tests`).
+#[inline]
+fn count_crossing() {
+    #[cfg(test)]
+    NATIVE_CROSSINGS.with(|calls| calls.set(calls.get() + 1));
 }
 
 #[cfg(test)]

@@ -455,3 +455,80 @@ fn dom_accessor_dispatch_reuses_raw_views() {
     }
     clear_interface_records(isolate);
 }
+
+fn crossings() -> usize {
+    NATIVE_CROSSINGS.with(std::cell::Cell::get)
+}
+
+/// 0.7.1 item 1: the engine-JS getters dom-testing-library reads hardest (`document.body`,
+/// `children`, `labels`) cost about one native crossing per read, not a JS walk of projected
+/// accessor round trips. Identity, liveness and brand checks are unchanged.
+#[test]
+fn hot_engine_getters_cost_one_native_crossing() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(
+            scope,
+            "<body><div id=d>t<b></b>u<i></i><!--c--><s></s></div><label for=x>L</label><input id=x>",
+        );
+        run(
+            scope,
+            "globalThis.d = document.getElementById('d'); globalThis.x = document.getElementById('x'); 'ok'",
+        );
+        let before = crossings();
+        let out = run(
+            scope,
+            "const b = document.body; let n = 0; for (let i = 0; i < 1000; i++) n += document.body === b ? 1 : 0; String(n)",
+        );
+        assert_eq!(out, "1000");
+        let used = crossings() - before;
+        assert!(used <= 1100, "{used} crossings for 1000 document.body reads");
+
+        let before = crossings();
+        let out = run(
+            scope,
+            "let k = 0; for (let i = 0; i < 300; i++) { d.append(document.createElement('p')); \
+             const c = d.children; k += c === d.children && c.length === 4 + i && c[0].localName === 'b' ? 1 : 0; } \
+             d.querySelectorAll('p').forEach(p => p.remove()); String(k)",
+        );
+        assert_eq!(out, "300");
+        let used = crossings() - before;
+        // per iteration: createElement + append + the remove loop, plus the getter reads.
+        assert!(used <= 300 * 12, "{used} crossings for 300 mutate+children rounds");
+
+        let before = crossings();
+        let out = run(
+            scope,
+            "const l = x.labels; let m = 0; for (let i = 0; i < 1000; i++) m += x.labels === l ? 1 : 0; String(m) + ':' + l.length",
+        );
+        assert_eq!(out, "1000:1");
+        let used = crossings() - before;
+        assert!(used <= 1100, "{used} crossings for 1000 labels reads");
+
+        let out = run(
+            scope,
+            "\
+             const tries = [() => Object.getOwnPropertyDescriptor(Document.prototype, 'body').get.call(d), \
+             () => Object.getOwnPropertyDescriptor(Element.prototype, 'children').get.call(document), \
+             () => Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'labels').get.call(d), \
+             () => Object.getOwnPropertyDescriptor(Document.prototype, 'body').get.call({})]; \
+             tries.map(f => { try { f(); return 'no'; } catch (e) { return e.constructor.name + ':' + e.message; } }).join('|')",
+        );
+        assert_eq!(
+            out,
+            "TypeError:Illegal invocation|TypeError:Illegal invocation|TypeError:Illegal invocation|TypeError:Illegal invocation"
+        );
+        let out = run(
+            scope,
+            "const h = document.implementation.createHTMLDocument('t'); const f = h.createElement('frameset'); \
+             h.documentElement.replaceChild(f, h.body); const r = [h.body === f]; h.documentElement.remove(); r.push(h.body); JSON.stringify(r)",
+        );
+        assert_eq!(out, "[true,null]");
+        reset();
+    }
+    clear_interface_records(isolate);
+}

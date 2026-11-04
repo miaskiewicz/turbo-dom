@@ -546,6 +546,7 @@ pub fn dispatch<'s>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue,
 ) {
+    count_crossing();
     let operation = args.get(0).to_rust_string_lossy(scope);
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return type_error(scope);
