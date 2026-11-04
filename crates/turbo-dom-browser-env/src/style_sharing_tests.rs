@@ -24,13 +24,14 @@ fn shared_styles_match_fresh_cascades() {
       const pick=list=>list[rand(list.length)];
       const classes=['a','b','c','d','row','cell'],tags=['div','span','p','li','b','input','button','section'];
       const props=['display','position','color','font-size','font-weight','line-height','margin-top','padding-left','width','height','opacity','visibility','flex-grow','background-color','text-align','border-top-width','border-top-style','z-index','cursor','letter-spacing','font-family','--c','--d','zoom','content','float'];
-      // Odd rounds also use pseudo-classes outside the style filter's scopes (:has, :empty,
+      // Every fourth round also uses pseudo-classes outside the style filter's scopes (:has, :empty,
       // :checked, :lang, :dir): their trees key on the tree-wide version and never share.
       let wide=false;
-      const simple=()=>pick([()=>'.'+pick(classes),()=>pick(tags),()=>'[data-k]',()=>'[data-k="1"]',()=>':first-child',()=>':last-child',
-        ()=>':nth-child(2n+1)',()=>':not(.'+pick(classes)+')',()=>':is(.'+pick(classes)+')',()=>':has(> .'+pick(classes)+')',()=>':empty',
-        ()=>':checked',()=>':disabled',()=>':lang(pl)',()=>':dir(rtl)',()=>'[type=checkbox]',()=>'.'+pick(classes)+'.'+pick(classes),()=>':hover',()=>':only-child',()=>':disabled:not(.a)',()=>'.'+pick(classes)+':nth-child(2)'].filter(f=>wide||!/has|empty|checked|lang|dir\(/.test(f.toString())));
-      const compound=()=>{let out=pick([()=>'.'+pick(classes),()=>pick(tags),()=>'']) ();const n=rand(3);for(let i=0;i<n;i++)out+=simple()();return out||'*';};
+      const simple=()=>pick([()=>'.'+pick(classes),()=>'.'+pick(classes),()=>'.'+pick(classes),()=>pick(tags),()=>'[data-k]',()=>'[data-k="1"]',()=>'[lang]',
+        ()=>':first-child',()=>':last-child',()=>':nth-child(2n+1)',()=>':not(.'+pick(classes)+')',()=>':is(.'+pick(classes)+')',()=>':hover',()=>':only-child',
+        ()=>'[type=checkbox]',()=>'.'+pick(classes)+':disabled',()=>'.'+pick(classes)+':nth-child(2)',
+        ()=>':has(> .'+pick(classes)+')',()=>':empty',()=>':checked',()=>':lang(pl)',()=>':dir(rtl)'].filter(f=>wide||!/has|empty|checked|lang\(|dir\(/.test(f.toString())));
+      const compound=()=>{let out=pick([()=>'.'+pick(classes),()=>'.'+pick(classes),()=>pick(tags)])();const n=rand(3);for(let i=0;i<n;i++)out+=simple()();return out;};
       const complex=()=>{let out=compound();const n=rand(3);for(let i=0;i<n;i++)out=compound()+pick([' ',' > ',' + ',' ~ '])+out;return out;};
       const decl=()=>pick(['color: rgb('+rand(256)+', 1, 2)','font-size: '+(1+rand(3))+'em','margin-top: '+rand(9)+'px','padding-left: '+rand(5)+'%',
         'display: '+pick(['flex','grid','block','inline','none','inline-block','contents']),'position: '+pick(['absolute','relative','static']),'opacity: 0.'+rand(10),
@@ -38,9 +39,9 @@ fn shared_styles_match_fresh_cascades() {
         'line-height: '+pick(['1.5','normal','2em']),'text-align: '+pick(['center','start']),'border-top: '+rand(4)+'px solid red','z-index: '+rand(5),'cursor: pointer',
         'letter-spacing: '+rand(3)+'px','font-family: '+pick(['serif','a, b']),'--c: '+rand(9),'--d: var(--c)','zoom: '+pick(['1','2','normal']),'width: '+pick(['50%','10px','auto']),
         'float: '+pick(['left','none']),'height: '+pick(['3px','50%']),'color: inherit']);
-      let checks=0,shares=0,mismatches=[];
-      for(let round=0;round<10;round++){
-        __cssTestStyleShareOff(false);wide=round%2===1;
+      let checks=0,shares=0,offShares=0,mismatches=[];
+      for(let round=0;round<20;round++){
+        __cssTestStyleShareOff(false);wide=round%4===3;
         document.head.textContent='';document.body.textContent='';
         let css='';
         for(let i=0;i<40;i++){let text=complex();if(rand(4)===0)text+=', '+complex();try{document.body.matches(text);}catch(e){continue;}css+=text+' { '+decl()+'; '+decl()+(rand(5)===0?' !important':'')+' }\n';}
@@ -48,34 +49,40 @@ fn shared_styles_match_fresh_cascades() {
         const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
         const parents=[document.body];
         for(let i=0;i<8;i++){const p=document.createElement(pick(['div','ul','section']));p.className=pick(classes)+(rand(2)?' '+pick(classes):'');if(rand(3)===0)p.style.display=pick(['flex','grid']);if(rand(4)===0)p.lang='pl';if(rand(5)===0)p.dir='rtl';pick(parents).appendChild(p);parents.push(p);}
-        const groups=[];for(let i=0;i<6;i++){const tag=pick(tags);groups.push({tag,cls:pick(classes)+(rand(2)?' '+pick(classes):''),type:tag==='input'?pick(['checkbox','text']):null});}
+        // Few tags and class lists, so many siblings share a signature and many differ from a
+        // sharing sibling in one input only (class, id, data-k, lang, type, position, state).
+        const lists=['a','b','a b','row','cell','row cell','c','b a'];
         const all=[];
-        const make=()=>{const g=pick(groups),el=document.createElement(g.tag);el.className=g.cls;if(g.type)el.type=g.type;
-          if(rand(8)===0)el.setAttribute('data-k',String(rand(2)));if(rand(10)===0)el.style.marginTop=rand(9)+'px';if(rand(10)===0)el.lang='pl';
-          if(g.type==='checkbox'&&rand(2))el.checked=true;if(g.tag==='button'&&rand(3)===0)el.disabled=true;if(rand(12)===0)el.textContent='t';return el;};
-        for(const p of parents)for(let i=0,n=2+rand(7);i<n;i++){const el=make();p.appendChild(el);all.push(el);}
+        const make=()=>{const tag=pick(['div','div','div','span','li','input','button']),el=document.createElement(tag);el.className=pick(lists);
+          if(tag==='input')el.type=pick(['checkbox','text']);
+          if(rand(5)===0)el.setAttribute('data-k',String(rand(2)));if(rand(10)===0)el.style.marginTop=rand(9)+'px';if(rand(10)===0)el.lang='pl';if(rand(12)===0)el.id='x'+rand(2);
+          if(el.type==='checkbox'&&rand(2))el.checked=true;if(tag==='button'&&rand(3)===0)el.disabled=true;if(rand(12)===0)el.textContent='t';return el;};
+        for(const p of parents)for(let i=0,n=4+rand(9);i<n;i++){const el=make();p.appendChild(el);all.push(el);}
         all.push(...parents.slice(1));
         const read=()=>all.filter(el=>el.isConnected).map(el=>{const s=getComputedStyle(el);return props.map(name=>s.getPropertyValue(name));});
         const before=__cssTestStyleShares();
         let shared=read();
         if(round%3!==2){
           for(let i=0;i<12;i++){const el=pick(all);const op=rand(5);
-            if(op===0)el.className=pick(groups).cls;else if(op===1)el.toggleAttribute('data-k');else if(op===2){const n=make();pick(parents).insertBefore(n,pick(parents).firstChild&&null);all.push(n);}
+            if(op===0)el.className=pick(lists);else if(op===1)el.toggleAttribute('data-k');else if(op===2){const n=make();pick(parents).insertBefore(n,pick(parents).firstChild&&null);all.push(n);}
             else if(op===3&&el.parentNode&&parents.indexOf(el)<0)el.remove();else if(op===4){const n=make();if(el.parentNode&&parents.indexOf(el)<0){el.after(n);all.push(n);}}}
           shared=read();
         }
         shares+=__cssTestStyleShares()-before;
         __cssTestStyleShareOff(true);
         const bump=document.createElement('style');bump.textContent='.never-'+round+' { color: red }';document.head.appendChild(bump);
+        const offBefore=__cssTestStyleShares();
         const fresh=read();
+        offShares+=__cssTestStyleShares()-offBefore;
         fresh.forEach((row,i)=>row.forEach((v,j)=>{checks++;if(v!==shared[i][j]&&mismatches.length<10)mismatches.push({round,prop:props[j],shared:shared[i][j],fresh:v,css:css.length});}));
       }
       __cssTestStyleShareOff(false);
-      return JSON.stringify({checks,shares,mismatches});
+      return JSON.stringify({checks,shares,offShares,mismatches});
     })()"#,
     );
     assert!(value["checks"].as_u64().unwrap() >= 10_000, "{value}");
-    assert!(value["shares"].as_u64().unwrap() >= 100, "{value}");
+    assert!(value["shares"].as_u64().unwrap() >= 250, "{value}");
+    assert_eq!(value["offShares"], 0, "{value}");
     assert_eq!(value["mismatches"], serde_json::json!([]), "{value}");
 }
 
@@ -121,3 +128,4 @@ fn a_running_transition_reuses_its_cascaded_declarations() {
     assert_eq!(value["values"], serde_json::json!(["1/rgb(1, 2, 3)"]));
     assert_eq!(value["running"], 1);
 }
+
