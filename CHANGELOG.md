@@ -38,6 +38,12 @@ at the time); this file reconstructs them from history.
   (turbo-dom#318).** Buttons and `<input type=button|submit|reset>` get html.css's ButtonFace as a
   UA declaration below every author rule and inline style (it read `rgba(0, 0, 0, 0)`). Control:
   `computed_form_background_chrome156.json`.
+- turbo-dom-layout: `Intrinsic::natural_ratio: Option<f32>` and `Intrinsic::ratio_only(width, height, ratio, has_alpha)`, an image with a natural aspect ratio and no natural size, and `svg::natural_sizing(bytes) -> Option<((f32, f32), Option<f32>)>` (`svg::natural_size` plus that ratio). `image::probe_natural` returns it for an SVG whose root has a `viewBox` and neither `width` nor `height` (`width`/`height` stay Chrome's `naturalWidth`/`naturalHeight`). Breaking for struct literals of `Intrinsic` (use `..Intrinsic::new(..)`); `Intrinsic` is `Eq` by a manual impl (turbo-dom#320).
+
+### Fixed
+
+- **turbo-dom-layout: an SVG `<img>` with only a `viewBox` sizes from its ratio.** An auto-sized one is as wide as its containing block allows (less its margins, padding and border), the height a layout unit first and the width from it, under `width` / `height` / `min-*` / `max-*` and in a vertical writing mode; it contributes no width to a shrink-to-fit container (float, inline-block, table), like Chrome 156. It laid out at its 225x150 reported size. As a row flex item it still does (turbo-dom#326). Control: `svg_image_ratio_chrome156.json` (`scripts/svg-image-ratio-chrome-control.mjs`; turbo-dom#320, turbo-surf#161).
+- **turbo-dom-layout: no `font-family` resolves to the initial `serif`.** A box with no font-family declaration up the tree selected the registry's first face; it now selects `serif` (Times on macOS, Chrome's default). The line box of a 16px default `<p>` is 18px at `layout_scale` 1 and 18.5px at 2, as in Chrome at DSF 1 and 2 (Blink rounds font metrics in device pixels): turbo-surf#158's 18.5px is its `layout_scale: 2.0` on a DPR-1 page. Control: `default_line_box_chrome156.json` (`scripts/default-line-box-chrome-control.mjs`; turbo-dom#319).
 - **turbo-dom-browser-env: `setHTML` / `setHTMLUnsafe` / `template.innerHTML` keep template
   contents and declarative shadow roots through a GC.** Past 256 live wrappers a mutating call
   defers its ownership reconcile. These calls wrap the parsed nodes while they are still in a

@@ -3428,7 +3428,13 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx, fonts: &FontRegis
     let probed = super::imgsize::replaced_intrinsic(images.resolver, src, &lb.style);
     src.unloaded.set(probed.is_none_or(|(_, loaded)| !loaded));
     if let Some((i, _)) = probed {
-        lb.set_intrinsic(i.width as f32, Some(i.height as f32));
+        if i.natural_ratio.is_some() {
+            // No natural size: a shrink-to-fit container gets no width from it, like
+            // Chrome 156 (the image then fills that 0 width; miaskiewicz/turbo-dom#320).
+            lb.set_intrinsic(0.0, Some(0.0));
+        } else {
+            lb.set_intrinsic(i.width as f32, Some(i.height as f32));
+        }
     }
 }
 
@@ -3476,7 +3482,9 @@ fn replaced_image_box(
     let intrinsic = logical_intrinsic(intrinsic, ctx);
     let sizing = size_ctx(bs, cb_width, ctx);
     if ctx.live_geometry {
-        let mut sized = super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing);
+        let scale = ctx.html_font_scale.unwrap_or(1.0);
+        let mut sized =
+            super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing, scale);
         record_metrics(lb, bs, sized.width, sized.height, ctx);
         physical_placement(&mut sized.placement, ctx);
         let mut fragment = live_image_fragment(lb, bx, by, &sized, bs);
@@ -3488,7 +3496,7 @@ fn replaced_image_box(
     if !loaded && src.media == super::boxgen::Media::Canvas {
         // A canvas is sized like Chrome's replaced boxes (`box-sizing`, min / max) on
         // this path too: a content box inside its padding and border (#252).
-        let sized = super::imgsize::size_replaced_live(String::new(), intrinsic, &sizing);
+        let sized = super::imgsize::size_replaced_live(String::new(), intrinsic, &sizing, 1.0);
         let content = (sized.width, sized.height);
         return Some(viewport_fragment(lb, bs, bx, by, content, ctx));
     }
@@ -3509,6 +3517,7 @@ fn replaced_image_box(
 fn logical_intrinsic(mut intrinsic: crate::image::Intrinsic, ctx: &Ctx) -> crate::image::Intrinsic {
     if ctx.writing.vertical() {
         std::mem::swap(&mut intrinsic.width, &mut intrinsic.height);
+        intrinsic.natural_ratio = intrinsic.natural_ratio.map(f32::recip);
     }
     intrinsic
 }
