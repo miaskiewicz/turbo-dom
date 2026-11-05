@@ -11219,6 +11219,9 @@ mod css_longhand_tests;
 #[path = "css_shorthand_tests.rs"]
 mod css_shorthand_tests;
 #[cfg(test)]
+#[path = "css_supports_tests.rs"]
+mod css_supports_tests;
+#[cfg(test)]
 #[path = "dom_reactions_tests.rs"]
 mod dom_reactions_tests;
 #[cfg(test)]
@@ -11227,6 +11230,9 @@ mod html_image_tests;
 #[cfg(test)]
 #[path = "html_track_tests.rs"]
 mod html_track_tests;
+#[cfg(test)]
+#[path = "interface_parity_tests.rs"]
+mod interface_parity_tests;
 #[cfg(test)]
 #[path = "shadow_events_tests.rs"]
 mod shadow_events_tests;

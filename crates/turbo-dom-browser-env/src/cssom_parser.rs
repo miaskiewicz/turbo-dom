@@ -746,6 +746,37 @@ mod tests {
     }
 
     #[test]
+    fn if_function_admits_chrome156_conditions_only() {
+        // Chrome 156 control: css_supports_chrome156.json (the browser-env CSS.supports test).
+        for (value, valid) in [
+            ("if(style(--x: 1): red; else: blue)", true),
+            (
+                "if((style(--x) or (media(print))) and supports(display: grid): red)",
+                true,
+            ),
+            ("if(not media(print): red;)", true),
+            ("if(else:)", true),
+            ("if(red)", false),
+            ("if()", false),
+            ("if(: red)", false),
+            ("if(style(--x); red)", false),
+            ("if(not style(--x) and media(print): red)", false),
+            (
+                "if(style(--x) and media(print) or supports(a: b): red)",
+                false,
+            ),
+            ("if(style(--x) and: red)", false),
+            ("if(style(--x) red: blue)", false),
+            ("if((style(--x): red)", false),
+            ("if((): red)", false),
+            ("if(else: red;;)", false),
+        ] {
+            let parsed = parse(&format!("a {{ color: {value} }}"));
+            assert_eq!(parsed.contains("color:"), valid, "{value}: {parsed}");
+        }
+    }
+
+    #[test]
     fn zoom_uses_chrome156_grammar_serialization_and_factors() {
         for (source, text, factor) in [
             ("2", "2", 2.0),
