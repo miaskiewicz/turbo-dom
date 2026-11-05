@@ -2073,6 +2073,28 @@ pub fn set_media_mode(scope: &mut v8::PinScope, mode: MediaMode) {
     );
 }
 
+/// Whether the current window runs CSS transitions, `@keyframes` animations and Web
+/// Animations (installs start with them on, as Chrome). Off is jsdom 27's behaviour: no
+/// CSSTransition / CSSAnimation is created, so getComputedStyle reports the declared (end)
+/// value at once and no transition / animation event fires, and the Web Animations surface
+/// jsdom lacks (`animate`, `getAnimations`, `document.timeline`, `Animation`, `CSSTransition`,
+/// `AnimationEvent`, ...) is hidden. Independent of [`MediaMode`].
+pub fn set_css_transitions(scope: &mut v8::PinScope, enabled: bool) {
+    let id = scope
+        .get_current_context()
+        .get_slot::<DomContextId>()
+        .map_or(0, |id| id.0);
+    let _dom = DomScope::enter(id);
+    run_js(
+        scope,
+        if enabled {
+            "__tsNs.setJsdomAnimations(false)"
+        } else {
+            "__tsNs.setJsdomAnimations(true)"
+        },
+    );
+}
+
 /// First connected document base attribute, read without guest getters.
 pub fn form_submission_base_href(
     scope: &mut v8::PinScope,
