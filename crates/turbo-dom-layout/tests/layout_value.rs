@@ -326,7 +326,9 @@ fn font_families_split() {
             "Helvetica".to_string()
         ]
     );
-    assert_eq!(resolve(&[]).font_families.len(), 0);
+    // No declaration: the initial `serif` (miaskiewicz/turbo-dom#319), not an empty list
+    // that selects the registry's first face.
+    assert_eq!(resolve(&[]).font_families, vec!["serif".to_string()]);
 }
 
 #[test]
