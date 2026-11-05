@@ -287,11 +287,24 @@ fn clamp_width(mut bb: f32, bs: &BoxStyle, cb_width: f32, extra: f32) -> f32 {
 }
 
 pub(crate) fn border_box_width(bs: &BoxStyle, cb_width: f32) -> f32 {
+    border_box_width_scaled(bs, cb_width, None)
+}
+
+/// [`border_box_width`] snapping a resolved percentage width to Chrome's
+/// `LayoutUnit` grid (1/64 device px) at the given physical scale before placement
+/// (miaskiewicz/turbo-dom#372): `width: 33.33%` of 784 is 261.296875 CSS px at
+/// `scale = 1` (Chrome 156), not 261.3072. `scale = None` leaves the width as
+/// resolved, as before (the PDF / generic path).
+pub(crate) fn border_box_width_scaled(bs: &BoxStyle, cb_width: f32, scale: Option<f32>) -> f32 {
     let avail = (cb_width - bs.margin.horizontal()).max(0.0);
     let extra = bs.padding.horizontal() + bs.border.widths().horizontal();
     let bb = match bs.width.resolve(cb_width) {
         None => avail,
-        Some(w) => to_border(w, bs.box_sizing, extra),
+        Some(w) => to_border(
+            super::value::html_used_value(w, scale),
+            bs.box_sizing,
+            extra,
+        ),
     };
     clamp_width(bb, bs, cb_width, extra)
 }
@@ -3353,7 +3366,7 @@ fn layout_box(
     if let Some(frag) = replaced_image_box(lb, &bs, bx, by, cb_width, ctx) {
         return frag;
     }
-    let mut bbw = border_box_width(&bs, cb_width);
+    let mut bbw = border_box_width_scaled(&bs, cb_width, ctx.html_font_scale);
     // A table never shrinks below its content: grow the border box to the columns'
     // min-content when a declared/`max-width` is narrower (CSS auto table layout).
     // Wikipedia's infobox is `width:200px` but its cat-image row is 267px wide — so

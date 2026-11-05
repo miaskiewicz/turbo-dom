@@ -116,13 +116,11 @@ fn content_height(fonts: &FontRegistry, size: f32, scale: f32) -> f32 {
 #[test]
 fn a_web_face_lays_text_out_at_chromes_content_height() {
     // turbo-surf#130's case: IBM Plex Mono as a web font at 20px is 25px tall in Chrome 156.
-    let control = control();
-    let font = control["fonts"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|f| f["path"] == "ibm-plex-mono/IBMPlexMono-Regular.ttf")
-        .unwrap();
+    // miaskiewicz/turbo-dom#377: Chrome's emulated-DPR reads (what turbo-surf sees through
+    // `getBoundingClientRect`, in CSS px) take the CSS-size metrics -- no device-pixel
+    // rounding -- so the content height is the same at every DSF. The DSF-2 20px live
+    // path returned 26 before, now 25.
+    let _control = control();
     let mut fonts = FontRegistry::new();
     fonts.add(
         FontFace::from_web_font_bytes(
@@ -133,16 +131,14 @@ fn a_web_face_lays_text_out_at_chromes_content_height() {
         )
         .unwrap(),
     );
-    for (dsf, sizes) in [(1.0_f32, [20.0, 60.0]), (2.0, [10.0, 30.0])] {
-        let rows = font[format!("dsf{dsf}")]["rows"].as_array().unwrap();
-        for size in sizes {
-            let row = rows.iter().find(|r| r[0].as_f64() == Some(size)).unwrap();
-            let want = row[1].as_f64().unwrap() as f32;
-            assert_eq!(
-                content_height(&fonts, size as f32, dsf),
-                want,
-                "dsf{dsf} {size}px"
-            );
-        }
+    // Chrome's emulated-DPR heights for IBM Plex Mono in CSS px: `html_metrics(size)`
+    // ascent + descent. 20px -> 25, 60px -> 77, 10px -> 13, 30px -> 39.
+    for (dsf, size, want) in [
+        (1.0_f32, 20.0_f32, 25.0_f32),
+        (1.0, 60.0, 77.0),
+        (2.0, 10.0, 13.0),
+        (2.0, 30.0, 39.0),
+    ] {
+        assert_eq!(content_height(&fonts, size, dsf), want, "dsf{dsf} {size}px");
     }
 }

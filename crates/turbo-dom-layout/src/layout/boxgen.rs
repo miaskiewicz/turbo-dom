@@ -2556,6 +2556,10 @@ mod tests {
     /// A `div` with `style` (property, value) pairs and `children`.
     fn styled_div(pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNode {
         let mut style = ComputedStyle::default();
+        // Chrome's `html.css` `div { display: block }` (miaskiewicz/turbo-dom#375): the
+        // layout engine now defaults an unspecified `display` to `inline`, so test-built
+        // styled trees that bypass the UA cascade set it explicitly.
+        style.set("display", "block".into());
         for (property, value) in pairs {
             style.set(property, (*value).to_string());
         }
@@ -2704,13 +2708,68 @@ mod tests {
     }
 
     fn html_el(tag: &str, children: Vec<StyledNode>) -> StyledNode {
+        let mut style = ComputedStyle::default();
+        // Chrome's `html.css` default `display` for this tag (miaskiewicz/turbo-dom#375):
+        // test-built styled trees bypass the UA cascade, so set it explicitly.
+        if default_block(tag) {
+            style.set("display", "block".into());
+        }
         StyledNode::Element(StyledElement {
             tag: Tag::Html(tag.to_string()),
             attrs: vec![],
-            style: ComputedStyle::default(),
+            style,
             children,
             source: None,
         })
+    }
+
+    /// The UA-default `display: block` tags of [`UA_CSS`](crate::style::UA_CSS).
+    fn default_block(tag: &str) -> bool {
+        matches!(
+            tag,
+            "address"
+                | "article"
+                | "aside"
+                | "blockquote"
+                | "body"
+                | "center"
+                | "dd"
+                | "details"
+                | "dialog"
+                | "dir"
+                | "div"
+                | "dl"
+                | "dt"
+                | "fieldset"
+                | "figcaption"
+                | "figure"
+                | "footer"
+                | "form"
+                | "h1"
+                | "h2"
+                | "h3"
+                | "h4"
+                | "h5"
+                | "h6"
+                | "header"
+                | "hgroup"
+                | "hr"
+                | "html"
+                | "legend"
+                | "listing"
+                | "main"
+                | "menu"
+                | "nav"
+                | "ol"
+                | "p"
+                | "plaintext"
+                | "pre"
+                | "search"
+                | "section"
+                | "summary"
+                | "ul"
+                | "xmp"
+        )
     }
 
     fn bare(tag: &str) -> StyledElement {

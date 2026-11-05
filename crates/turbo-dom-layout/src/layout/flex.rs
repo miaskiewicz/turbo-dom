@@ -2019,10 +2019,17 @@ mod coverage_tests {
     }
 
     fn el(tag: &str, pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNode {
+        let mut style = cs(pairs);
+        // Chrome's `html.css` `div { display: block }` (miaskiewicz/turbo-dom#375):
+        // test-built styled trees bypass the UA cascade, so a `div` without an explicit
+        // display sets it here.
+        if tag == "div" && style.get("display").is_none() {
+            style.set("display", "block".into());
+        }
         StyledNode::Element(StyledElement {
             tag: Tag::Html(tag.to_string()),
             attrs: vec![],
-            style: cs(pairs),
+            style,
             children,
             source: None,
         })

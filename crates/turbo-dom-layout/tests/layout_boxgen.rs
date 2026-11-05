@@ -14,10 +14,15 @@ fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
 }
 
 fn el(tag: &str, pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNode {
+    let mut style = cs(pairs);
+    // Chrome's `html.css` default `display` for the tag (miaskiewicz/turbo-dom#375):
+    // test-built styled trees bypass the UA cascade, so set it explicitly for known
+    // HTML block elements.
+    turbo_dom_layout::test_support::ensure_default_display(&mut style, tag);
     StyledNode::Element(StyledElement {
         tag: Tag::Html(tag.to_string()),
         attrs: vec![],
-        style: cs(pairs),
+        style,
         children,
         source: None,
     })
@@ -242,10 +247,14 @@ fn node_ids_are_preorder() {
 
 /// A block styled by the real cascade from one author declaration block.
 fn cascaded_div(declarations: &str) -> StyledNode {
+    let mut style = turbo_dom_layout::test_support::cascaded(declarations);
+    // Chrome's `html.css` `div { display: block }` (miaskiewicz/turbo-dom#375): the
+    // cascade here runs without the UA sheet, so set the block default explicitly.
+    turbo_dom_layout::test_support::ensure_default_display(&mut style, "div");
     StyledNode::Element(StyledElement {
         tag: Tag::Html("div".into()),
         attrs: vec![],
-        style: turbo_dom_layout::test_support::cascaded(declarations),
+        style,
         children: vec![],
         source: None,
     })
@@ -335,7 +344,10 @@ fn input_button_value_renders_as_text() {
                     value: "Go".into(),
                 },
             ],
-            style: cs(&[]),
+            // miaskiewicz/turbo-dom#375: the layout engine's unspecified `display`
+            // default is now `inline` (the CSS initial value); this test's old root
+            // wrapping relied on the previous `block` default, so set it explicitly.
+            style: cs(&[("display", "block")]),
             children: vec![],
             source: None,
         })

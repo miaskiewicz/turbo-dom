@@ -517,6 +517,26 @@ const MATHML_CASES = [
 ];
 
 const CASES = [
+  // miaskiewicz/turbo-dom#372: a percentage-resolved width snaps to Chrome's
+  // `LayoutUnit` grid (1/64 device px). On a 1280x800 viewport (body margin 8) the
+  // containing block is 1264 px; `width: 33.33%` is 421.28125 (421.2912 before),
+  // `width: 66.666%` is 842.578125, `width: 12.5%` is 158, `width: 20%` is 252.8.
+  {
+    id: "percent-width-snaps-to-layout-unit",
+    html: DOC(
+      "",
+      `<div data-cid="a" style="width:33.33%;height:1px"></div><div data-cid="b" style="width:66.666%;height:1px"></div><div data-cid="c" style="width:12.5%;height:1px"></div><div data-cid="d" style="width:20%;height:1px"></div>`,
+    ),
+  },
+  // miaskiewicz/turbo-dom#375: an empty unknown inline element (`<xform>` is
+  // `HTMLUnknownElement`, CSS initial `display: inline`) has `offsetWidth: 0`, not
+  // the containing-block width it used to grow to.
+  {
+    id: "unknown-inline-empty",
+    html: DOC("", `<xform data-cid="x"></xform>`),
+    metrics: true,
+    measure: { x: "wh" },
+  },
   // turbo-surf#31 C: position:absolute/fixed blockify an inline (display computes to
   // block; CSS 2.1 §9.7) and it lays out as an out-of-flow box.
   {
