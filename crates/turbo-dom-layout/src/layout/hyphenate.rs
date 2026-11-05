@@ -172,4 +172,53 @@ mod tests {
         // U+0130 lowercases to two characters: not hyphenated.
         assert_eq!(breaks("typ\u{130}graphy", DEFAULT), Vec::<usize>::new());
     }
+
+    /// Every word of the per-language control (`tests/fixtures/hyphens/words-chrome156.json`,
+    /// `words-probe.js`: Chrome 156 on macOS, default limits) breaks where Chrome does,
+    /// except where the macOS system dictionary Chrome uses there differs from the TeX
+    /// patterns (Chrome on Linux, Windows and Android hyphenates with those patterns).
+    #[cfg(feature = "hyphenation-languages")]
+    #[test]
+    fn word_breaks_match_chrome_156_but_for_the_macos_dictionary_differences() {
+        const MACOS_DICTIONARY: [(&str, &str, &[usize]); 8] = [
+            ("en", "international", &[2, 5, 7, 11]),
+            ("en", "extraordinary", &[2, 5, 7, 9]),
+            ("es", "desarrollo", &[2, 4, 7]),
+            ("pl", "odpowiedzialność", &[2, 4, 7, 12]),
+            ("pl", "szczególnie", &[5, 8]),
+            ("pl", "elektryczność", &[4, 9]),
+            ("pl", "chrząszcz", &[]),
+            ("cs", "knihovna", &[6]),
+        ];
+        let control: serde_json::Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/hyphens/words-chrome156.json"
+        ))
+        .unwrap();
+        assert_eq!(control["browser"], "Chrome/156.0.8078.47");
+        let mut differences = Vec::new();
+        let mut words = 0;
+        for (lang, list) in control["result"]["words"].as_object().unwrap() {
+            let limits = AutoHyphens::from_computed(Some("auto"), Some(lang), None);
+            for (word, chrome) in list.as_object().unwrap() {
+                words += 1;
+                let chrome: Vec<usize> = chrome
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|at| usize::try_from(at.as_u64().unwrap()).unwrap())
+                    .collect();
+                let letters: Vec<char> = word.chars().collect();
+                let got = limits.map_or_else(Vec::new, |limits| word_breaks(&letters, limits));
+                if got != chrome {
+                    differences.push((lang.as_str(), word.as_str(), got));
+                }
+            }
+        }
+        assert_eq!(words, 330, "every control word");
+        let expected: Vec<_> = MACOS_DICTIONARY
+            .iter()
+            .map(|&(lang, word, tex)| (lang, word, tex.to_vec()))
+            .collect();
+        assert_eq!(differences, expected);
+    }
 }

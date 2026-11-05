@@ -8,8 +8,8 @@
     ],
     "deviceScaleFactor": 2
   },
-  "probeSha256": "b3f1f6af7ba63f8a1908c7e85b5aa649982d239d5b52ea96e8bd19b319e94803",
-  "collectorSha256": "77ac4d9707bc53d1f1e4c3273b60750f990d9fb0695a345601289ef1cfc78897",
+  "probeSha256": "67e3a89a1754f1b252c08b8c2513afaeaeac0cb06b8fff73144887b58cd51556",
+  "collectorSha256": "d4cdf92543dde45e43fabf2b36f6e2bc944b467bc0d5547a60aaf92d57547f94",
   "fontFiles": {
     "liberation-serif/LiberationSerif-Regular.ttf": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4",
     "liberation-serif/LiberationSerif-Bold.ttf": "443a4dbd694b6e4689925947b456e0532e10b19c90fa32eb39ea6c2cd9db9ebd",
@@ -20,7 +20,10 @@
     "inter/Inter-Italic.otf": "3bdf49f72ad2f2959a2619ceef700784504f6d17f502e2e2bc6edce5d43ca631",
     "inter/Inter-BoldItalic.otf": "84e07cd77951a855c668f71e63af261f42d019dc80e963326b4c560b1fca8dcd",
     "fira-code/FiraCode-Regular.ttf": "5992ab9640e2df491b2f609467b1de60e8bc39b2c28db184342a0592d98f6117",
-    "fira-code/FiraCode-Bold.ttf": "41f6554e845e2f5b70adad3950122334b866aac436793b7742ade600067701be"
+    "fira-code/FiraCode-Bold.ttf": "41f6554e845e2f5b70adad3950122334b866aac436793b7742ade600067701be",
+    "noto-sans-hebrew/NotoSansHebrew-Regular.ttf": "cdefaf8efd47045f6820928eba84db5bed7557539328952b5f828315485e02ee",
+    "noto-sans-arabic/NotoSansArabic-Regular.ttf": "bdff3e5659d67e67def05b33f749683b9376ae819d65d3dd62ac4640b3aaef48",
+    "ic-fixture/IcFixture.ttf": "5f3099c7e424413bc08564e12dde12d886563140f7fdbc38277aa6587a81c168"
   },
   "errors": [],
   "result": {
@@ -493,6 +496,341 @@
           {
             "text": "ment",
             "width": 31.9921875
+          }
+        ]
+      },
+      {
+        "id": "de-words",
+        "lang": "de",
+        "style": "width:90px;hyphens:auto",
+        "text": "Silbentrennung Geschwindigkeit wunderbar",
+        "height": 100,
+        "lines": [
+          {
+            "text": "Silbentren",
+            "width": 82.1015625
+          },
+          {
+            "text": "nung Ge",
+            "width": 69.6796875
+          },
+          {
+            "text": "schwindig",
+            "width": 82.6875
+          },
+          {
+            "text": "keit",
+            "width": 26.859375
+          },
+          {
+            "text": " wunderbar",
+            "width": 82.3671875
+          }
+        ]
+      },
+      {
+        "id": "de-region",
+        "lang": "de-CH",
+        "style": "width:70px;hyphens:auto",
+        "text": "Zusammenarbeit",
+        "height": 60,
+        "lines": [
+          {
+            "text": "Zusam",
+            "width": 56.703125
+          },
+          {
+            "text": "menar",
+            "width": 53.5390625
+          },
+          {
+            "text": "beit",
+            "width": 28.234375
+          }
+        ]
+      },
+      {
+        "id": "de-caps",
+        "lang": "de",
+        "style": "width:80px;hyphens:auto",
+        "text": "SILBENTRENNUNG",
+        "height": 60,
+        "lines": [
+          {
+            "text": "SILBEN",
+            "width": 61.484375
+          },
+          {
+            "text": "TREN",
+            "width": 48.03125
+          },
+          {
+            "text": "NUNG",
+            "width": 47.953125
+          }
+        ]
+      },
+      {
+        "id": "fr-words",
+        "lang": "fr",
+        "style": "width:80px;hyphens:auto",
+        "text": "développement gouvernement bibliothèque",
+        "height": 120,
+        "lines": [
+          {
+            "text": "dévelop",
+            "width": 65.8203125
+          },
+          {
+            "text": "pement",
+            "width": 57.15625
+          },
+          {
+            "text": " gouverne",
+            "width": 77.6640625
+          },
+          {
+            "text": "ment",
+            "width": 38.03125
+          },
+          {
+            "text": " biblio",
+            "width": 46.546875
+          },
+          {
+            "text": "thèque",
+            "width": 52.609375
+          }
+        ]
+      },
+      {
+        "id": "fr-capitalized",
+        "lang": "fr-CA",
+        "style": "width:70px;hyphens:auto",
+        "text": "International",
+        "height": 40,
+        "lines": [
+          {
+            "text": "Interna",
+            "width": 58.6015625
+          },
+          {
+            "text": "tional",
+            "width": 41.015625
+          }
+        ]
+      },
+      {
+        "id": "es-words",
+        "lang": "es",
+        "style": "width:80px;hyphens:auto",
+        "text": "internacional extraordinario murciélago",
+        "height": 120,
+        "lines": [
+          {
+            "text": "interna",
+            "width": 58.1796875
+          },
+          {
+            "text": "cional ex",
+            "width": 72.859375
+          },
+          {
+            "text": "traordina",
+            "width": 73.4375
+          },
+          {
+            "text": "rio",
+            "width": 19.6484375
+          },
+          {
+            "text": " murciéla",
+            "width": 70.171875
+          },
+          {
+            "text": "go",
+            "width": 19.40625
+          }
+        ]
+      },
+      {
+        "id": "nl-words",
+        "lang": "nl",
+        "style": "width:80px;hyphens:auto",
+        "text": "onafhankelijkheid ziekenhuis",
+        "height": 80,
+        "lines": [
+          {
+            "text": "onafhan",
+            "width": 67.5859375
+          },
+          {
+            "text": "kelijkheid",
+            "width": 70.6171875
+          },
+          {
+            "text": " zieken",
+            "width": 54.9765625
+          },
+          {
+            "text": "huis",
+            "width": 31.2421875
+          }
+        ]
+      },
+      {
+        "id": "pl-words",
+        "lang": "pl",
+        "style": "width:80px;hyphens:auto",
+        "text": "międzynarodowy przedsiębiorstwo",
+        "height": 80,
+        "lines": [
+          {
+            "text": "międzyna",
+            "width": 79.015625
+          },
+          {
+            "text": "rodowy",
+            "width": 56.5390625
+          },
+          {
+            "text": " przedsię",
+            "width": 70.9296875
+          },
+          {
+            "text": "biorstwo",
+            "width": 65.6015625
+          }
+        ]
+      },
+      {
+        "id": "en-gb",
+        "lang": "en-GB",
+        "style": "width:80px;hyphens:auto",
+        "text": "characteristics typography",
+        "height": 80,
+        "lines": [
+          {
+            "text": "character",
+            "width": 77.8984375
+          },
+          {
+            "text": "istics",
+            "width": 39.015625
+          },
+          {
+            "text": " typo",
+            "width": 39.6640625
+          },
+          {
+            "text": "graphy",
+            "width": 52.8359375
+          }
+        ]
+      },
+      {
+        "id": "en-gb-capitalized",
+        "lang": "en-GB",
+        "style": "width:60px;hyphens:auto",
+        "text": "International",
+        "height": 20,
+        "lines": [
+          {
+            "text": "International",
+            "width": 93.8828125
+          }
+        ]
+      },
+      {
+        "id": "it-words",
+        "lang": "it",
+        "style": "width:80px;hyphens:auto",
+        "text": "internazionale",
+        "height": 40,
+        "lines": [
+          {
+            "text": "interna",
+            "width": 58.1796875
+          },
+          {
+            "text": "zionale",
+            "width": 53.9453125
+          }
+        ]
+      },
+      {
+        "id": "ru-words",
+        "lang": "ru",
+        "style": "width:80px;hyphens:auto",
+        "text": "международный университет",
+        "height": 80,
+        "lines": [
+          {
+            "text": "междуна",
+            "width": 76.875
+          },
+          {
+            "text": "родный",
+            "width": 59.859375
+          },
+          {
+            "text": " универ",
+            "width": 61.765625
+          },
+          {
+            "text": "ситет",
+            "width": 42.5703125
+          }
+        ]
+      },
+      {
+        "id": "lang-span-de",
+        "lang": "en",
+        "style": "width:80px;hyphens:auto",
+        "text": "<span lang=\"de\">Geschwindigkeit</span> Characteristics",
+        "height": 80,
+        "lines": [
+          {
+            "text": "Ge",
+            "width": 27
+          },
+          {
+            "text": "schwin",
+            "width": 59.203125
+          },
+          {
+            "text": "digkeit",
+            "width": 50.34375
+          },
+          {
+            "text": " Characteristics",
+            "width": 113.8828125
+          }
+        ]
+      },
+      {
+        "id": "unsupported-nn",
+        "lang": "nn",
+        "style": "width:60px;hyphens:auto",
+        "text": "internasjonal",
+        "height": 20,
+        "lines": [
+          {
+            "text": "internasjonal",
+            "width": 96.671875
+          }
+        ]
+      },
+      {
+        "id": "unsupported-tr",
+        "lang": "tr",
+        "style": "width:60px;hyphens:auto",
+        "text": "uluslararası",
+        "height": 20,
+        "lines": [
+          {
+            "text": "uluslararası",
+            "width": 86.4375
           }
         ]
       }
