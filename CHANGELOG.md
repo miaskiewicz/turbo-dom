@@ -57,6 +57,20 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout: `hyphens: auto` hyphenates the languages Chrome 156 on macOS does,
+  not just English.** en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb / no, nl, pl, pt, ro, ru, sk, sv, uk break at the TeX `hyph-*` patterns' points (the `hyphenation`
+  crate's, the patterns Chrome's Minikin dictionaries on Linux, Windows and Android are built
+  from) under the new default-on `hyphenation-languages` cargo feature (~3 MB of embedded
+  patterns; `default-features = false, features = ["bundled-fonts", "hyphenation"]` keeps
+  the ~90 KB English-only build). Outside English a capitalized word hyphenates, as in Blink.
+  Chrome on macOS uses the system dictionary, whose points differ for 8 of the 330 words of
+  the new control (en `international`, `extraordinary`; es `desarrollo`; pl
+  `odpowiedzialność`, `szczególnie`, `elektryczność`, `chrząszcz`; cs `knihovna`); the test
+  pins exactly those. API: `AutoHyphens` gains a `language: HyphenationLanguage` field (a new
+  `#[non_exhaustive]` enum with `HyphenationLanguage::from_locale`). Controls:
+  `hyphens/chrome156.json` (new per-language cases) and `hyphens/words-chrome156.json`
+  (`scripts/fixture-font-chrome-controls.mjs`) (turbo-dom#289).
+
 - turbo-dom-browser-env: getComputedStyle `width` / `height` report the used value of a rendered box (Chrome 156): an embedder with a layout sets `layoutUsedSize` on the engine namespace (`(element) => [border-box width, height, content-box width, height]` or `null`), box-sizing picks the box and the px value serializes like Blink (`%g`, ties to even: `5.32812px`). Elements Chrome reports the computed value for — display none / contents (also under a display:none ancestor), non-atomic inline elements, SVG children other than rect / image / foreignObject — read their declared value or `auto` instead of `""`, and a display:none percentage stays a percentage. Without a layout a rendered box keeps its declared value. turbo-surf installs the hook to close its width column (turbo-dom#316; control: case `used-size` of `computed_defaults_chrome156.json`).
 - turbo-dom-browser-env: getComputedStyle resolves the CSS-wide keywords `initial` / `inherit` / `unset` / `revert` for the properties its computed defaults know, so `background-color: initial` reads `rgba(0, 0, 0, 0)` instead of `initial` (turbo-dom#317; control: case `css-wide-keywords`).
 - **turbo-dom-layout: a point in a table's border-spacing hits the table.** `cssom_view::hit::elements_at_point` no longer returns a row or row group for a point between cells, between rows or row groups, or in a row's missing cell slot: rows and row groups are not hit targets (a floated or absolutely positioned one is blockified and still hits), as in Chrome 156. The UA sheet gives `<tbody>` `display: table-row-group` (layout unchanged), and a row-spanning cell spans the vertical border-spacing between its rows (its height and the rows it grows). Chrome 156 control: `table-spacing-*` / `table-rowspan-spacing` in `scripts/live-geometry-chrome-control.mjs` (turbo-dom#321, turbo-surf#162; the spread of a spanning cell's excess height over its rows is turbo-dom#327).

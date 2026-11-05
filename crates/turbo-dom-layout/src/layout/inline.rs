@@ -26,7 +26,7 @@ mod inline_advances;
 #[path = "native_text_advance.rs"]
 mod native_text_advance;
 pub use bidi::UnicodeBidi;
-pub use hyphenate::AutoHyphens;
+pub use hyphenate::{AutoHyphens, HyphenationLanguage};
 
 /// One styled run of text entering inline layout. `face` is the run's primary
 /// face (already selected); `families`/`weight`/`italic` drive per-glyph fallback.
