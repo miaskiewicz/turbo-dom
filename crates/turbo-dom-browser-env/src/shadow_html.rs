@@ -734,4 +734,70 @@ mod tests {
         clear_interface_records(&mut isolate);
         reset();
     }
+    /// turbo-dom#324: on a document with more than `EAGER_WRAPPER_LIMIT` live wrappers a
+    /// mutating call defers its ownership reconcile. `setHTML[Unsafe]` wraps the parsed
+    /// nodes while they are still in its detached source fragment (template contents and
+    /// declarative roots are realized there), then moves them into the target. A GC
+    /// before the deferred reconcile must not collect those wrappers: a template's
+    /// contents and a closed declarative root's init flags live on them.
+    #[test]
+    fn set_html_wrappers_survive_collection_before_a_deferred_reconcile() {
+        super::super::tests::init_v8();
+        let mut isolate = crate::browser_env::tests::new_isolate();
+        let context = {
+            v8::scope!(let scope, &mut isolate);
+            let context = v8::Context::new(scope, Default::default());
+            let scope = &mut v8::ContextScope::new(scope, context);
+            install_with_html(scope, "<!doctype html><body></body>");
+            // Live wrappers past the eager limit, so the next calls defer their reconcile.
+            let code = v8::String::new(scope, "globalThis.kept=[];for(let i=0;i<2000;i++)kept.push(document.body.appendChild(document.createElement('span')));for(const id of ['unsafe','safe','sanitized','declared'])document.body.appendChild(document.createElement('div')).id=id;document.body.appendChild(document.createElement('template')).id='inner';").unwrap();
+            v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap();
+            // Start from exact ownership, so no deferred call budget is left over.
+            dom_ownership::reconcile_all(scope);
+            v8::Global::new(scope, context)
+        };
+        {
+            v8::scope!(let scope, &mut isolate);
+            let context = v8::Local::new(scope, &context);
+            let scope = &mut v8::ContextScope::new(scope, context);
+            let code = v8::String::new(scope, "(()=>{const markup='<div><template><b>x</b><i>y</i></template>light</div>';document.getElementById('unsafe').setHTMLUnsafe(markup);document.getElementById('safe').setHTML(markup,{sanitizer:{elements:['div','template','b']}});document.getElementById('sanitized').setHTML(markup,{sanitizer:{elements:['div',{name:'template',attributes:[]},'b']}});document.getElementById('declared').setHTMLUnsafe('<div><template shadowrootmode=closed shadowrootserializable><b>z</b></template></div>');document.getElementById('inner').innerHTML='<p><template><b>n</b></template></p>';})()").unwrap();
+            v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap();
+        }
+        for _ in 0..3 {
+            isolate.low_memory_notification();
+        }
+        {
+            v8::scope!(let scope, &mut isolate);
+            let context = v8::Local::new(scope, &context);
+            let scope = &mut v8::ContextScope::new(scope, context);
+            let code = v8::String::new(scope, "(()=>{const html=id=>document.getElementById(id).innerHTML;const declared=document.getElementById('declared');const serialized=declared.getHTML({serializableShadowRoots:true});let attach;try{attach=declared.firstChild.attachShadow({mode:'closed'}).innerHTML;}catch(error){attach=error.name;}return JSON.stringify([html('unsafe'),html('safe'),html('sanitized'),serialized,attach,html('inner')]);})()").unwrap();
+            let value = v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap()
+                .to_rust_string_lossy(scope);
+            let value: serde_json::Value = serde_json::from_str(&value).unwrap();
+            assert_eq!(
+                value,
+                serde_json::json!([
+                    "<div><template><b>x</b><i>y</i></template>light</div>",
+                    "<div><template><b>x</b></template>light</div>",
+                    "<div><template><b>x</b></template>light</div>",
+                    "<div><template shadowrootmode=\"closed\" shadowrootserializable=\"\"><b>z</b></template></div>",
+                    "",
+                    "<p><template><b>n</b></template></p>",
+                ])
+            );
+            clear_context_capabilities(scope);
+        }
+        drop(context);
+        clear_interface_records(&mut isolate);
+        reset();
+    }
 }
