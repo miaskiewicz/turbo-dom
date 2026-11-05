@@ -224,7 +224,12 @@ package or publish workflow.
   and lay out vertically in vertical modes; nothing fails with `UnsupportedVerticalWriting` any
   more (`form-*` controls). Since turbo-dom#255/#257 they paint Chrome 156's native appearance
   with galley boxes, and a menu list's / colour well's baseline follows Chrome; `<input type=image>`
-  is a replaced image control without a frame (#258). The
+  is a replaced image control without a frame (#258). Since turbo-dom#293 `<progress>` / `<meter>`
+  are native controls too (`-internal-ua-css-size`, kept under `appearance: none`), a checkbox
+  carrying `INDETERMINATE_ATTR` (a live embedder's script-set flag) paints Chrome's dash, and
+  vertical-mode controls stay native (drawn in their logical space; glyphs `form_paint::upright`);
+  since turbo-dom#292 `<audio controls>` paints Chrome's panel (`layout::media_paint`; controls:
+  raster `form_native_chrome156.json`). The
   flow-relative `border-*-*-radius` corners map with the sides (turbo-dom#253). Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
   `unicode-bidi`/`direction` as formatting characters (for inlines the static path

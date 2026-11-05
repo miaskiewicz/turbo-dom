@@ -405,16 +405,20 @@
   // html.css form controls (turbo-dom#61): `font: -webkit-small-control` (13.3333px Arial;
   // monospace for textarea and the date / time inputs), optgroup bolder, option normal; the measured button
   // box values. `tag` is the HTML element's tagName.
+  // turbo-dom#318: buttons and the button-like inputs have ButtonFace, rgb(239, 239, 239).
   var monospaceInputTypes = { __proto__: null, 'date': 1, 'time': 1, 'datetime-local': 1, 'month': 1, 'week': 1 };
+  var buttonInputTypes = { __proto__: null, 'button': 1, 'submit': 1, 'reset': 1 };
   function formControlUserAgent(el, tag){
-    if (tag === 'BUTTON') return { 'display': 'inline-block', 'font': '13.3333px Arial', 'margin': '0px', 'padding': '1px 6px', 'border-width': '2px', 'vertical-align': 'baseline' };
+    if (tag === 'BUTTON') return { 'display': 'inline-block', 'font': '13.3333px Arial', 'margin': '0px', 'padding': '1px 6px', 'border-width': '2px', 'vertical-align': 'baseline', 'background-color': 'rgb(239, 239, 239)' };
     if (tag === 'TEXTAREA') return { 'font': '13.3333px monospace' };
     if (tag === 'SELECT') return { 'font': '13.3333px Arial' };
     if (tag === 'OPTGROUP') return { 'font-weight': 'bolder' };
     if (tag === 'OPTION') return { 'font-weight': 'normal' };
     if (tag !== 'INPUT') return null;
     var type = ''; try { type = cssApply(cssFontLower, String(cssApply(computedStyleNativeGetAttribute, el, ['type']) || ''), []); } catch(e){}
-    return { 'font': '13.3333px ' + (monospaceInputTypes[type] ? 'monospace' : 'Arial') };
+    var ua = { 'font': '13.3333px ' + (monospaceInputTypes[type] ? 'monospace' : 'Arial') };
+    if (buttonInputTypes[type]) ua['background-color'] = 'rgb(239, 239, 239)';
+    return ua;
   }
   // html.css font sizes / weights of headings and b / strong (turbo-dom#305).
   var textUserAgent = (function(){
