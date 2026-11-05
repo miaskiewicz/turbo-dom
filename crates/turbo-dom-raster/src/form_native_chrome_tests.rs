@@ -7,6 +7,8 @@
 //!   the flag as [`turbo_dom_layout::INDETERMINATE_ATTR`], as a live embedder does from
 //!   its `post_cascade` hook;
 //! - `vertical-*`: every control turned in `vertical-lr` / `vertical-rl` (#293);
+//! - `vline-*`: every control on a `vertical-lr` / `vertical-rl` line, in an absolutely
+//!   positioned and a static wrapper (miaskiewicz/turbo-dom#345);
 //! - `audio-*`: the `<audio controls>` panel (miaskiewicz/turbo-dom#292).
 //!
 //! Each case is laid out at Chrome's 1280x800 viewport and painted through `paint_png` and
@@ -228,8 +230,30 @@ fn vertical_controls_turn_like_chrome_156() {
 }
 
 #[test]
+fn controls_sit_on_a_vertical_lines_central_baseline_like_chrome_156() {
+    assert_like_chrome("vline-");
+}
+
+#[test]
 fn audio_controls_paint_chromes_panel() {
     assert_like_chrome("audio-");
+}
+
+#[test]
+fn progress_meter_fall_back_to_shadow_bars_under_appearance_none_or_author_background() {
+    for prefix in [
+        "progress-appearance-",
+        "progress-author-",
+        "meter-appearance-",
+        "meter-author-",
+    ] {
+        assert_like_chrome(prefix);
+    }
+}
+
+#[test]
+fn indeterminate_progress_paints_the_first_frames_blue_bar() {
+    assert_like_chrome("progress-indeterminate-first-frame");
 }
 
 #[test]

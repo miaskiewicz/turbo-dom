@@ -844,6 +844,43 @@ fn vborders(placed: &[Placed], ncols: usize, style: &ComputedStyle) -> Vec<f32> 
     v
 }
 
+/// Collapsed border widths of the vertical grid-line segments: `seg[line][row]` is
+/// the max of the cells edging line `line` in row `row` (a cell's left border on its
+/// first line, its right on its last) and the table's left/right border on the outer
+/// lines in every row. A cell owns half of the widest segment along each of its own
+/// edges (miaskiewicz/turbo-dom#355; the column analogue of [`hsegments`]).
+fn vsegments(
+    placed: &[Placed],
+    (nrows, ncols): (usize, usize),
+    style: &ComputedStyle,
+) -> Vec<Vec<f32>> {
+    let table = resolve_box_style(
+        style,
+        ResolveCtx {
+            parent_font_size: DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        },
+    )
+    .border
+    .widths();
+    let mut seg = vec![vec![0.0_f32; nrows]; ncols + 1];
+    seg[0].fill(table.left);
+    for w in &mut seg[ncols] {
+        *w = w.max(table.right);
+    }
+    for p in placed {
+        let b = cell_border(p.lb);
+        let rows = p.row..p.row + p.rowspan;
+        for w in &mut seg[p.col][rows.clone()] {
+            *w = w.max(b.left);
+        }
+        for w in &mut seg[p.col + p.colspan][rows] {
+            *w = w.max(b.right);
+        }
+    }
+    seg
+}
+
 /// Collapsed border widths of the horizontal grid-line segments: `seg[line][col]` is
 /// the max of the cells edging line `line` over column `col` (a cell's top border on
 /// its first line, its bottom on its last) and the table's top/bottom border on the
@@ -973,30 +1010,35 @@ fn assign_fixed_col(w: &mut [f32], fixed: &mut [bool], j: usize, per: f32, expli
     }
 }
 
-/// Content+padding widths per column of an auto-layout collapsed table, each cell
-/// measured by `measure` (its natural or min-content border-box width) less its own
-/// borders, which live on the grid lines; a spanning cell wider than its columns
-/// (and the lines between them) widens them in proportion (evenly when empty).
+/// Column track widths for an auto-layout collapsed table, as Chrome 156 sizes them:
+/// each cell's border box in its row is `cp + half(seg[left][row]) + half(seg[right][row])`
+/// over the vertical segments [`vsegments`]; a column's track is the max over its
+/// cells. A spanning cell wider than its tracks and the segments inside it (at its own
+/// row) spreads the excess over the tracks proportionally (evenly when empty).
+/// `measure` gives a cell's natural or min-content border-box width (less its own
+/// borders, which live on the grid lines).
 fn collapse_columns(
     placed: &[Placed],
-    vert: &[f32],
+    seg: &[Vec<f32>],
     fonts: &FontRegistry,
     measure: fn(&LayoutBox, &FontRegistry) -> f32,
 ) -> Vec<f32> {
+    let ncols = seg.len() - 1;
     // A `px` width is the cell's content+padding (`explicit_cp`: a border-box one less
     // its collapsed half-borders, miaskiewicz/turbo-dom#65).
     let cp = |p: &Placed| {
         explicit_cp(p.lb)
             .unwrap_or_else(|| (measure(p.lb, fonts) - cell_border(p.lb).horizontal()).max(0.0))
     };
-    let mut w = vec![0.0_f32; vert.len() - 1];
+    let edges = |p: &Placed| (seg[p.col][p.row] + seg[p.col + p.colspan][p.row]) / 2.0;
+    let mut w = vec![0.0_f32; ncols];
     for p in placed.iter().filter(|p| p.colspan == 1) {
-        w[p.col] = w[p.col].max(cp(p));
+        w[p.col] = w[p.col].max(cp(p) + edges(p));
     }
     for p in placed.iter().filter(|p| p.colspan > 1) {
         let span = p.col..p.col + p.colspan;
-        let lines: f32 = vert[p.col + 1..p.col + p.colspan].iter().sum();
-        let need = cp(p) - lines - w[span.clone()].iter().sum::<f32>();
+        let interior: f32 = (p.col + 1..p.col + p.colspan).map(|j| seg[j][p.row]).sum();
+        let need = cp(p) + edges(p) - interior - w[span.clone()].iter().sum::<f32>();
         if need > 0.0 {
             spread(&mut w[span], need);
         }
@@ -1023,6 +1065,38 @@ fn collapsed_width(tracks: &[f32], vert: &[f32], style: &ComputedStyle) -> f32 {
     tracks.iter().sum::<f32>() + vert.iter().sum::<f32>() - table_border(style).horizontal()
 }
 
+/// Widest segment of vertical grid line `j` over its rows.
+fn widest_v(seg: &[Vec<f32>], j: usize) -> f32 {
+    seg[j].iter().copied().fold(0.0_f32, f32::max)
+}
+
+/// Grid-line x positions for an auto-collapsed table whose tracks already include each
+/// row's own half-border: `line_x[0]` starts at the widest outer-left half over the
+/// rows and the tracks tile with no interior gap (miaskiewicz/turbo-dom#355).
+fn tiled_lines(tracks: &[f32], start: f32) -> Vec<f32> {
+    let mut out = Vec::with_capacity(tracks.len() + 1);
+    let mut pos = start;
+    out.push(pos);
+    for t in tracks {
+        pos += t;
+        out.push(pos);
+    }
+    out
+}
+
+/// Content width of an auto-collapsed table: its track sum plus its widest outer-left
+/// and outer-right half-segments over the rows, less the table's own left/right border
+/// (its box frame adds it back).
+fn collapsed_auto_width(tracks: &[f32], seg: &[Vec<f32>], style: &ComputedStyle) -> f32 {
+    collapsed_auto_width_total(tracks.iter().sum::<f32>(), seg, style)
+}
+
+/// [`collapsed_auto_width`] with the track sum already computed.
+fn collapsed_auto_width_total(total: f32, seg: &[Vec<f32>], style: &ComputedStyle) -> f32 {
+    let ncols = seg.len() - 1;
+    total + (widest_v(seg, 0) + widest_v(seg, ncols)) / 2.0 - table_border(style).horizontal()
+}
+
 /// Lay out the cells of a collapsed-border table into the grid defined by the
 /// vertical grid-line centres `line_x` and their border widths `vert`. Each cell's
 /// content is laid at the width its content region truly gets — the collapsed
@@ -1032,7 +1106,7 @@ fn collapsed_width(tracks: &[f32], vert: &[f32], style: &ComputedStyle) -> f32 {
 fn layout_cells_collapsed<'a>(
     placed: &'a [Placed],
     line_x: &[f32],
-    vert: &[f32],
+    seg: &[Vec<f32>],
     fs: f32,
     ctx: &mut Ctx,
 ) -> Vec<LaidCell<'a>> {
@@ -1040,7 +1114,7 @@ fn layout_cells_collapsed<'a>(
         .iter()
         .map(|p| {
             let extent = line_x[p.col + p.colspan] - line_x[p.col];
-            let half = vert[p.col] / 2.0 + vert[p.col + p.colspan] / 2.0;
+            let half = (seg[p.col][p.row] + seg[p.col + p.colspan][p.row]) / 2.0;
             let bs = p.lb.resolved(ResolveCtx {
                 parent_font_size: fs,
                 cb_width: extent,
@@ -1122,14 +1196,22 @@ fn layout_table_collapsed(
     // The grid spans the table's border box: its own borders are the outer lines.
     let own = table_border(&table.style);
     let (cx, cy) = (cx - own.left, cy - own.top);
-    let vert = vborders(placed, ncols, &table.style);
-    let avail = cw + own.horizontal() - vert.iter().sum::<f32>();
-    let col_cp = if fixed_layout(&table.style) {
-        fixed_collapse_columns(placed, ncols, avail.max(1.0))
+    let vseg = vsegments(placed, (nrows, ncols), &table.style);
+    // Each column track already includes half the widest segment on either of its edges
+    // for the ROW whose cell dominates that edge; tracks tile with no gap between them.
+    // The outer left tile starts at the widest left segment's half over the rows.
+    let outer_left = widest_v(&vseg, 0) / 2.0;
+    let outer_right = widest_v(&vseg, ncols) / 2.0;
+    let avail = cw + own.horizontal() - outer_left - outer_right;
+    let (col_cp, line_x_pipe) = if fixed_layout(&table.style) {
+        let vert = vborders(placed, ncols, &table.style);
+        let avail = cw + own.horizontal() - vert.iter().sum::<f32>();
+        let cols = fixed_collapse_columns(placed, ncols, avail.max(1.0));
+        (cols, Some(vert))
     } else {
-        let mut cols = collapse_columns(placed, &vert, ctx.fonts, natural_width);
+        let mut cols = collapse_columns(placed, &vseg, ctx.fonts, natural_width);
         let limits = Limits {
-            mins: collapse_columns(placed, &vert, ctx.fonts, super::flex::min_content_width),
+            mins: collapse_columns(placed, &vseg, ctx.fonts, super::flex::min_content_width),
             fixed: px_columns(placed, ncols, explicit_cp),
         };
         fit_columns(
@@ -1138,10 +1220,13 @@ fn layout_table_collapsed(
             &column_percents(placed, ncols),
             avail.max(0.0),
         );
-        cols
+        (cols, None)
     };
-    let line_x = line_centers(&col_cp, &vert);
-    let laid = layout_cells_collapsed(placed, &line_x, &vert, fs, ctx);
+    let line_x = match line_x_pipe {
+        Some(vert) => line_centers(&col_cp, &vert),
+        None => tiled_lines(&col_cp, outer_left),
+    };
+    let laid = layout_cells_collapsed(placed, &line_x, &vseg, fs, ctx);
     let seg = hsegments(placed, (nrows, ncols), &table.style);
     let mut row_h = collapse_row_extents(&laid, rows, &seg);
     // The table's border box adds half the widest segment of its outer lines.
@@ -1738,17 +1823,20 @@ fn grid_min_content(items: &[LayoutBox], style: &ComputedStyle, fonts: &FontRegi
     if ncols == 0 {
         return 0.0;
     }
-    // Collapsed table: floor = its columns' content+padding minima (a fixed one's
-    // first row) plus one border per grid line — the used-width basis, not each cell's
-    // full borders — less the table's own border, which its box frame adds back.
+    // Collapsed table: a fixed one's first-row columns + grid-line widths less the
+    // table's own border; an auto one's tracks already include its per-row edge halves,
+    // so the floor is their sum plus the outer-left/outer-right widest halves over the
+    // rows, less the table's own border (its box frame adds it back).
     if collapsed(style) {
-        let vert = vborders(&placed, ncols, style);
-        let cp = if fixed_layout(style) {
-            fixed_min_cp(&placed, ncols, fonts)
-        } else {
-            collapse_columns(&placed, &vert, fonts, super::flex::min_content_width)
-        };
-        return collapsed_width(&cp, &vert, style);
+        if fixed_layout(style) {
+            let vert = vborders(&placed, ncols, style);
+            let cp = fixed_min_cp(&placed, ncols, fonts);
+            return collapsed_width(&cp, &vert, style);
+        }
+        let nrows = rows.len();
+        let vseg = vsegments(&placed, (nrows, ncols), style);
+        let cp = collapse_columns(&placed, &vseg, fonts, super::flex::min_content_width);
+        return collapsed_auto_width(&cp, &vseg, style);
     }
     let (hs, _) = border_spacing(style);
     separated_min_content(&placed, ncols, hs, fonts)
@@ -1794,10 +1882,11 @@ fn grid_max_content(
     }
     let pcts = column_percents(&placed, ncols);
     if collapsed(style) {
-        let vert = vborders(&placed, ncols, style);
-        let cp = collapse_columns(&placed, &vert, fonts, natural_width);
+        let nrows = rows.len();
+        let vseg = vsegments(&placed, (nrows, ncols), style);
+        let cp = collapse_columns(&placed, &vseg, fonts, natural_width);
         let (total, unbounded) = percent_aware_total(&cp, &pcts);
-        return (collapsed_width(&[total], &vert, style), unbounded);
+        return (collapsed_auto_width_total(total, &vseg, style), unbounded);
     }
     let (hs, _) = border_spacing(style);
     let cols = auto_columns(&placed, ncols, hs, fonts);

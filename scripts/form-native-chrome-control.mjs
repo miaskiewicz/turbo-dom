@@ -109,6 +109,34 @@ const CASES = [
   ["audio-panel", `<audio data-cid="m" controls style="${AT}"></audio>`, { exclude: [[58, 34, 142, 59]], probes: [[25, 27], [27, 25], [150, 26], [180, 27], [236, 27], [240, 27], [244, 27], [248, 26], [273, 22], [274, 27], [273, 32], [6, 27], [294, 27], [150, 10], [150, 45]] }],
   ["audio-panel-wide", `<audio data-cid="m" controls style="${AT};width:400px"></audio>`, { exclude: [[58, 34, 142, 59]] }],
   ["audio-panel-tall", `<audio data-cid="m" controls style="${AT};height:80px"></audio>`, { exclude: [[58, 60, 142, 85]] }],
+    // `<audio controls>` at the Chrome 156 width thresholds measured (DevTools box model;
+  // miaskiewicz/turbo-dom#346): at the default 300px the full panel, under 211px no
+  // time-remaining, under 175px no current-time, under 143px no volume, under 100px no
+  // play button, under 68px the menu button hangs off the right. A box under 54px tall
+  // or in a vertical mode the panel sticks to the content box's block end (54px high,
+  // at the content-box's inline size; Chrome's layout, measured from
+  // `-webkit-media-controls-enclosure`). Only the controls' RGB classes are checked;
+  // their glyphs (set in the host's system font) stay inside the probes' `exclude`.
+  ["audio-panel-210", `<audio data-cid="m" controls style="${AT};width:210px"></audio>`, { exclude: [[22, 20, 200, 44]] }],
+  ["audio-panel-174", `<audio data-cid="m" controls style="${AT};width:174px"></audio>`, { exclude: [[22, 20, 164, 44]] }],
+  ["audio-panel-142", `<audio data-cid="m" controls style="${AT};width:142px"></audio>`, { exclude: [[22, 20, 132, 44]] }],
+  ["audio-panel-99", `<audio data-cid="m" controls style="${AT};width:99px"></audio>`, { exclude: [[22, 20, 89, 44]] }],
+  ["audio-panel-67", `<audio data-cid="m" controls style="${AT};width:67px"></audio>`, { exclude: [[22, 20, 57, 44]] }],
+  ["audio-panel-short", `<audio data-cid="m" controls style="${AT};height:40px"></audio>`, { exclude: [[22, 20, 300, 39]] }],
+  // `<progress>` / `<meter>` under `appearance:none` or an author background stop
+  // painting Chrome's native look: Chrome's shadow bars take over (grey / blue for
+  // progress, gradients for meter; miaskiewicz/turbo-dom#346). `-pbg`: a plain author
+  // background. `-pbd`: an author border too (that goes around the bars, not over them).
+  ["progress-appearance-none", `<progress data-cid="m" value="0.3" style="${AT};appearance:none"></progress>`, { exclude: [] }],
+  ["progress-author-background", `<progress data-cid="m" value="0.3" style="${AT};background:#ff0000"></progress>`, { exclude: [] }],
+  ["meter-appearance-none", `<meter data-cid="m" value="0.6" style="${AT};appearance:none"></meter>`, { exclude: [] }],
+  ["meter-author-background", `<meter data-cid="m" value="0.3" style="${AT};background:#ff0000"></meter>`, { exclude: [] }],
+  // An indeterminate `<progress>` has no `value` attribute. Chrome animates a 20%-wide
+  // blue bar from the inline start, one of the shadow bar painting rules above (no
+  // indeterminate value means the appearance:none shadow DOM paints too). This is the
+  // **first frame** at page load, captured by this control (its only reproducible
+  // snapshot); Chrome's animation runs after it.
+  ["progress-indeterminate-first-frame", `<progress data-cid="m" style="${AT}"></progress>`, { exclude: [] }],
   ["audio-panel-frame", `<audio data-cid="m" controls style="${AT};border:4px solid #0000ff;padding:6px;background:#00ff00"></audio>`, { exclude: [[68, 44, 152, 69]] }],
 ];
 
@@ -134,6 +162,27 @@ const VERTICAL = [
 for (const mode of ["vertical-lr", "vertical-rl"]) {
   for (const [kind, control, probes] of VERTICAL) {
     CASES.push([`vertical-${kind}-${mode.slice(9)}`, `<div style="${AT};writing-mode:${mode};font-family:'Liberation Serif'">${control}</div>`, { probes }]);
+  }
+}
+
+// Every control on a vertical line of 20px fixture serif (its text transparent) between
+// two letters, in an absolutely positioned wrapper at (20, 20) and in a static one (a
+// 20px padding): placed on the line's central baseline (miaskiewicz/turbo-dom#345).
+// Each control's layout is checked in [`vertical-*`] above; here only those whose
+// baseline the fix for miaskiewicz/turbo-dom#345 covers (toggles, progress, meter).
+// The other controls' central-baseline placement needs its own pre-existing-bug work
+// (follow-up issues in the PR body).
+const VERTICAL_LINE = [
+  ["checkbox", `<input data-cid="m" type="checkbox" checked>`],
+  ["radio", `<input data-cid="m" type="radio" checked>`],
+  ["progress", `<progress data-cid="m" value="0.3"></progress>`],
+  ["meter", `<meter data-cid="m" value="0.3"></meter>`],
+];
+for (const mode of ["vertical-lr", "vertical-rl"]) {
+  for (const [kind, control] of VERTICAL_LINE) {
+    const line = (style) => `<div data-cid="w" style="${style}writing-mode:${mode};font:20px 'Liberation Serif';color:transparent">x${control}x</div>`;
+    CASES.push([`vline-${kind}-${mode.slice(9)}-abs`, line(`${AT};`), {}]);
+    CASES.push([`vline-${kind}-${mode.slice(9)}-static`, `<div style="padding:20px">${line("")}</div>`, {}]);
   }
 }
 

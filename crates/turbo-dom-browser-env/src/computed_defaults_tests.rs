@@ -169,6 +169,7 @@ fn computed_defaults_and_head_match_chrome156_control() {
                 | "unset-properties"
                 | "css-wide-keywords"
                 | "used-size"
+                | "transform-resolution"
         )
     });
     assert!(
@@ -412,6 +413,103 @@ fn used_sizes_follow_the_embedder_layout_live() {
         "__tsNs.layoutUsedSize = () => { const v = globalThis.__size ?? 100; return [v, v, v, v]; };",
     );
     assert_eq!(value, serde_json::json!(["100px", "12.5px", "12.5px"]));
+}
+
+/// The `transform-resolution` row (`transform.*`) of the probe's result against the
+/// control's, as mismatches; `transformBoxes` (Chrome's layout facts) is only the stand-in
+/// embedder's input (`BOXES` in `engine`).
+fn transform_mismatches(engine: &str, keep: impl Fn(&str) -> bool) -> Vec<String> {
+    let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
+    let cases: serde_json::Value = serde_json::from_slice(CASES).unwrap();
+    let index = cases
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|case| case["id"] == "transform-resolution")
+        .unwrap();
+    let expected = &control["result"][index]["result"];
+    let actual = run_with(
+        cases[index]["html"].as_str().unwrap(),
+        PROBE,
+        &engine.replace("BOXES", &expected["transformBoxes"].to_string()),
+    );
+    let mut found = Vec::new();
+    for key in ["transform", "transformCamel", "transformDetached"] {
+        let (mut want, mut got) = (Vec::new(), Vec::new());
+        rows(key, &expected[key], &mut want);
+        rows(key, &actual[key], &mut got);
+        let got: std::collections::BTreeMap<_, _> = got.into_iter().collect();
+        found.extend(want.into_iter().filter(|(path, _)| keep(path)).filter_map(
+            |(path, value)| {
+                let binding = got.get(&path).map_or("<missing>", String::as_str);
+                (binding != value).then(|| format!("{path}: binding {binding}, chrome {value}"))
+            },
+        ));
+    }
+    found
+}
+
+/// turbo-dom#353: `transform` computes to the resolved matrix() / matrix3d() / none like
+/// Chrome 156. With the embedder's layout (`__tsNs.layoutUsedSize`, here answering Chrome's
+/// own boxes from the control's `transformBoxes` so percentage translates resolve against
+/// the border box), every 2D function list serializes as `matrix(a, b, c, d, e, f)` with six
+/// Blink-%g values, and any 3D function (`translate3d`, `rotateX`/`Y`, `matrix3d`,
+/// `perspective`, ...) as `matrix3d(16 column-major values)`. `none`, a disconnected element
+/// and an unparented host element compute to `none`. em resolves against the font size the
+/// embedder reports as the fifth box entry.
+#[test]
+fn transform_matches_chrome156_control_with_embedder_layout() {
+    let found = transform_mismatches(
+        "const boxes = BOXES; __tsNs.layoutUsedSize = (el) => boxes[el.id] ?? null;",
+        |_| true,
+    );
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#353 without a layout: the rows that need no box — none / an initial transform,
+/// non-percentage function lists, disconnected / host-only elements — still match. A
+/// percentage translate stays as the declared text, as Chrome also cannot resolve it before
+/// layout.
+#[test]
+fn transform_without_a_layout_resolves_non_percentage_lists() {
+    let known = |path: &str| {
+        let id = path.split('.').nth(1).unwrap_or("");
+        path.starts_with("transformDetached")
+            || matches!(
+                id,
+                "none"
+                    | "page"
+                    | "x1"
+                    | "x2"
+                    | "x3"
+                    | "x4"
+                    | "x5"
+                    | "x6"
+                    | "x9"
+                    | "x10"
+                    | "x11"
+                    | "xform"
+            )
+    };
+    for engine in [
+        "",
+        "__tsNs.layoutUsedSize = () => { throw Error('layout'); };",
+        "__tsNs.layoutUsedSize = () => 7;",
+        "__tsNs.layoutUsedSize = () => null;",
+    ] {
+        let found = transform_mismatches(engine, known);
+        assert!(
+            found.is_empty(),
+            "{engine}: {} mismatches:\n{}",
+            found.len(),
+            found.join("\n")
+        );
+    }
 }
 
 /// turbo-test#125: a reused computed style follows the viewport: the fullscreen element's width /

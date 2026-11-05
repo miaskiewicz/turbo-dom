@@ -176,6 +176,20 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout: `<audio controls>` panel size variants, `<progress>` shadow bars and
+  indeterminate first frame (turbo-dom#346).** The audio panel paints at Chrome 156's
+  measured width thresholds (`-webkit-media-controls-*`): time-remaining from 211px,
+  current-time from 175px, volume from 143px, play from 100px, menu from 68px; the
+  timeline fills the gap between what is drawn on each side. A box under 54px tall paints
+  the pill at the content-box's height (the taller controls are left off; a follow-up for
+  the overflow). An indeterminate `<progress>` with its default look paints Chrome's
+  first-frame blue bar at 5%..19% of the box over the white track. A `<progress>` whose
+  author turns the native look off with `appearance:none` or an author background paints
+  Chrome's shadow-DOM bars instead: a grey #808080 track with a green #008000 value bar
+  (or the first-frame blue bar when indeterminate). Chrome 156 control:
+  `audio-panel-{210,174,142,99,67,short}`, `progress-{appearance-none,author-background,
+  indeterminate-first-frame}` cases of `form_native_chrome156.json`.
+- turbo-dom-browser-env: getComputedStyle `transform` reports the resolved `matrix()` / `matrix3d()` / `none` like Chrome 156, not the declared function list. 2D-only lists serialize as `matrix(a, b, c, d, e, f)`; any 3D function (`translate3d`, `rotateX` / `Y`, `matrix3d`, `perspective`, ...) promotes the whole list to `matrix3d(16 column-major values)`. Percentage translates resolve against the embedder-supplied border box (`layoutUsedSize`'s first two entries, from turbo-dom#316); `em` resolves against the element's font size (reported as a fifth entry). Without a layout a list with a percentage keeps its declared text. CSS-wide keywords (turbo-dom#317) already resolved for `transform` through the computed-default table (turbo-dom#353).
 - **turbo-dom-browser-env: an exception thrown by an event listener is reported, like Chrome
   156.** The binding dropped every listener exception. Now a throwing listener (or `on*`
   handler, or `handleEvent` method or getter) on a node, document, window, AbortSignal or
@@ -237,6 +251,16 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout: form controls on a `vertical-lr` line's central baseline (turbo-dom#345).**
+  Chrome 156 places an inline atom's central baseline on the line's over side — the physical
+  right in `vertical-lr`, its block end (CSS Writing Modes 4 §2.3's flipped-lines mode) — which
+  the layout engine was placing on the left (the block start): a checkbox on a 20px serif line
+  sat at `x=4.5` instead of Chrome's `5.5` (`vertical-rl` always matched), and an inline control
+  inside an abs-pos vertical wrapper was 1px off in both modes. The piece builder relabels an
+  atom's margins into line-relative space, the inline placer mirrors the atom back from the line
+  box's block end, and `form_baseline` / `gauge_baseline` read line-relative edges so a textarea,
+  colour well, empty button and progress / meter's baselines stay on the over side. Chrome 156
+  control: new `vline-*` cases of `form_native_chrome156.json`.
 - **turbo-dom-layout: `<progress>` / `<meter>`, indeterminate checkboxes and vertical controls
   look native (turbo-dom#293).** A `<progress>` / `<meter>` is Chrome's `10em` / `5em` by `1em`
   inline-block (logical, so `16 x 160` in a vertical mode) whose children do not render, its
@@ -355,6 +379,17 @@ at the time); this file reconstructs them from history.
   the rows split the extra by deficit when it runs short. The rest goes to the auto rows,
   else to all rows by size. `calc()` heights stay auto. Control: `table-extra-percent-*`
   in `scripts/html-document-chrome-control.mjs` (turbo-dom#349).
+- **turbo-dom-layout: collapsed-border columns are sized by each cell's own edges,
+  like Chrome 156** (the column analogue of #350). An auto-layout collapsed column
+  used to take half of the widest border anywhere on its grid line. Now each column
+  track is as wide as its widest cell's border box: the cell's own content+padding
+  plus half the widest collapsed segment along its own left and right edges in its
+  row (new `vsegments`, per `[line][row]`). Tracks tile with no interior gap, and the
+  table adds half of its widest outer-left and outer-right segments over the rows. A
+  spanning cell wider than its tracks plus the segments inside it (at its own row)
+  spreads the excess over the tracks proportionally. Fixed-layout collapsed tables
+  still use one width per grid line. Control: `table-collapsed-vedge-*`, column axis
+  (turbo-dom#355).
 - **turbo-dom-layout: collapsed-border rows are sized by each cell's own edges, like
   Chrome 156.** A row used to take half of the widest border anywhere on its two grid
   lines. Now it is as tall as its tallest cell's border box, and each cell adds half the
