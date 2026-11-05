@@ -1,0 +1,1645 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.47 Safari/537.36",
+    "viewport": [
+      800,
+      600
+    ],
+    "deviceScaleFactor": 2
+  },
+  "probeSha256": "ff3ad7e47b3e568b572ef8e1144bf88ca92dfc8392b750a6c78b55f9d5047e8a",
+  "collectorSha256": "d4cdf92543dde45e43fabf2b36f6e2bc944b467bc0d5547a60aaf92d57547f94",
+  "fontFiles": {
+    "liberation-serif/LiberationSerif-Regular.ttf": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4",
+    "liberation-serif/LiberationSerif-Bold.ttf": "443a4dbd694b6e4689925947b456e0532e10b19c90fa32eb39ea6c2cd9db9ebd",
+    "liberation-serif/LiberationSerif-Italic.ttf": "de18fe26337e03241952dca46398d5b66f3c5738d080bfd284f66e67b926f597",
+    "liberation-serif/LiberationSerif-BoldItalic.ttf": "4b2635d2ec4d992373dcae577c742a98ecfd841ffc1b8a103b5f10db163dbc7a",
+    "inter/Inter-Regular.otf": "d4f2b9e148059a15f014cb0f0b8fea8cd11bfa447dd483bedf1b0adc0e2ba799",
+    "inter/Inter-Bold.otf": "9fc6261e817d0b1b2bf1953d8799bb1c837d11aeebbf83ae352e7b4d6de6425d",
+    "inter/Inter-Italic.otf": "3bdf49f72ad2f2959a2619ceef700784504f6d17f502e2e2bc6edce5d43ca631",
+    "inter/Inter-BoldItalic.otf": "84e07cd77951a855c668f71e63af261f42d019dc80e963326b4c560b1fca8dcd",
+    "fira-code/FiraCode-Regular.ttf": "5992ab9640e2df491b2f609467b1de60e8bc39b2c28db184342a0592d98f6117",
+    "fira-code/FiraCode-Bold.ttf": "41f6554e845e2f5b70adad3950122334b866aac436793b7742ade600067701be",
+    "noto-sans-hebrew/NotoSansHebrew-Regular.ttf": "cdefaf8efd47045f6820928eba84db5bed7557539328952b5f828315485e02ee",
+    "noto-sans-arabic/NotoSansArabic-Regular.ttf": "bdff3e5659d67e67def05b33f749683b9376ae819d65d3dd62ac4640b3aaef48",
+    "ic-fixture/IcFixture.ttf": "5f3099c7e424413bc08564e12dde12d886563140f7fdbc38277aa6587a81c168"
+  },
+  "errors": [],
+  "result": {
+    "words": {
+      "en": {
+        "international": [
+          2
+        ],
+        "extraordinary": [
+          2
+        ],
+        "typography": [
+          2,
+          5,
+          7
+        ],
+        "characteristics": [
+          4,
+          6,
+          9,
+          11
+        ],
+        "responsibility": [
+          2,
+          6,
+          8,
+          11,
+          12
+        ],
+        "performance": [
+          3,
+          6
+        ],
+        "information": [
+          2,
+          5,
+          7
+        ],
+        "development": [
+          2,
+          5,
+          7
+        ],
+        "government": [
+          3,
+          6
+        ],
+        "communication": [
+          3,
+          5,
+          7,
+          9
+        ]
+      },
+      "de": {
+        "Silbentrennung": [
+          3,
+          6,
+          10
+        ],
+        "Rechtschreibung": [
+          5,
+          11
+        ],
+        "wunderbar": [
+          3,
+          6
+        ],
+        "Geschwindigkeit": [
+          2,
+          8,
+          11
+        ],
+        "Entwicklung": [
+          3,
+          7
+        ],
+        "Bundesrepublik": [
+          3,
+          6,
+          8,
+          10
+        ],
+        "Wissenschaft": [
+          3,
+          6
+        ],
+        "Kindergarten": [
+          3,
+          6,
+          9
+        ],
+        "Zusammenarbeit": [
+          2,
+          5,
+          8,
+          10
+        ],
+        "Verantwortung": [
+          3,
+          6,
+          9
+        ],
+        "Unterschied": [
+          2,
+          5
+        ],
+        "Bibliothek": [
+          2,
+          6
+        ],
+        "Straßenbahn": [
+          4,
+          7
+        ],
+        "Universität": [
+          3,
+          6,
+          8
+        ],
+        "Möglichkeiten": [
+          3,
+          7,
+          10
+        ],
+        "Geschichte": [
+          2,
+          8
+        ],
+        "Gesellschaft": [
+          2,
+          6
+        ],
+        "Wirtschaft": [
+          4
+        ],
+        "Regierung": [
+          2,
+          5
+        ],
+        "Fahrradweg": [
+          4,
+          7
+        ],
+        "schwierig": [
+          6
+        ],
+        "Freundschaft": [
+          6
+        ],
+        "Überraschung": [
+          4,
+          6
+        ],
+        "Eichhörnchen": [
+          4,
+          8
+        ],
+        "Schmetterling": [
+          6,
+          9
+        ],
+        "Krankenhaus": [
+          4,
+          7
+        ],
+        "Nachrichten": [
+          4,
+          8
+        ],
+        "Erfahrung": [
+          2,
+          5
+        ],
+        "Tageszeitung": [
+          2,
+          5,
+          8
+        ],
+        "Programmierung": [
+          3,
+          7,
+          10
+        ]
+      },
+      "fr": {
+        "international": [
+          2,
+          5,
+          7,
+          10
+        ],
+        "extraordinaire": [
+          2,
+          5,
+          7,
+          9
+        ],
+        "anticonstitutionnellement": [
+          2,
+          4,
+          8,
+          10,
+          12,
+          16,
+          19,
+          21
+        ],
+        "développement": [
+          2,
+          4,
+          7,
+          9
+        ],
+        "gouvernement": [
+          3,
+          6,
+          8
+        ],
+        "responsabilité": [
+          3,
+          6,
+          8,
+          10,
+          12
+        ],
+        "bibliothèque": [
+          2,
+          6
+        ],
+        "connaissance": [
+          7
+        ],
+        "particulièrement": [
+          3,
+          5,
+          7,
+          10,
+          12
+        ],
+        "information": [
+          2,
+          5,
+          7
+        ],
+        "république": [
+          2,
+          4
+        ],
+        "architecture": [
+          2,
+          5,
+          8
+        ],
+        "conversation": [
+          6,
+          8
+        ],
+        "professionnel": [
+          3,
+          6,
+          10
+        ],
+        "technologie": [
+          4,
+          6,
+          8
+        ],
+        "environnement": [
+          2,
+          4,
+          7,
+          9
+        ],
+        "malheureusement": [
+          3,
+          6,
+          9,
+          11
+        ],
+        "communication": [
+          3,
+          5,
+          7,
+          9
+        ],
+        "imagination": [
+          3,
+          5,
+          7
+        ],
+        "philosophie": [
+          3,
+          5,
+          7
+        ],
+        "nécessaire": [
+          2,
+          5
+        ],
+        "littérature": [
+          3,
+          5,
+          7
+        ],
+        "entreprise": [
+          2,
+          5
+        ],
+        "historique": [
+          3,
+          5
+        ],
+        "complètement": [
+          3,
+          6,
+          8
+        ],
+        "organisation": [
+          2,
+          4,
+          6,
+          8
+        ],
+        "différence": [
+          3,
+          5
+        ],
+        "quotidien": [
+          3,
+          5
+        ],
+        "électricité": [
+          4,
+          7,
+          9
+        ],
+        "quotidiennement": [
+          3,
+          5,
+          9,
+          11
+        ]
+      },
+      "es": {
+        "internacional": [
+          2,
+          5,
+          7,
+          10
+        ],
+        "extraordinario": [
+          2,
+          5,
+          7,
+          9,
+          11
+        ],
+        "murciélago": [
+          3,
+          6,
+          8
+        ],
+        "desarrollo": [
+          7
+        ],
+        "gobierno": [
+          2
+        ],
+        "responsabilidad": [
+          3,
+          6,
+          8,
+          10,
+          12
+        ],
+        "biblioteca": [
+          2,
+          6,
+          8
+        ],
+        "conocimiento": [
+          2,
+          4,
+          6,
+          10
+        ],
+        "particularmente": [
+          3,
+          5,
+          7,
+          10,
+          13
+        ],
+        "información": [
+          2,
+          5,
+          7
+        ],
+        "república": [
+          2,
+          4,
+          7
+        ],
+        "arquitectura": [
+          2,
+          5,
+          8,
+          10
+        ],
+        "conversación": [
+          3,
+          6,
+          8
+        ],
+        "profesional": [
+          3,
+          5,
+          8
+        ],
+        "tecnología": [
+          3,
+          5,
+          7
+        ],
+        "comunicación": [
+          2,
+          4,
+          6,
+          8
+        ],
+        "imaginación": [
+          3,
+          5,
+          7
+        ],
+        "filosofía": [
+          2,
+          4,
+          6
+        ],
+        "necesario": [
+          2,
+          4,
+          6
+        ],
+        "literatura": [
+          2,
+          4,
+          6,
+          8
+        ],
+        "empresa": [
+          2,
+          5
+        ],
+        "histórico": [
+          3,
+          5,
+          7
+        ],
+        "completamente": [
+          3,
+          6,
+          8,
+          11
+        ],
+        "organización": [
+          2,
+          4,
+          6,
+          8
+        ],
+        "diferencia": [
+          2,
+          4,
+          7
+        ],
+        "electricidad": [
+          4,
+          7,
+          9
+        ],
+        "ferrocarril": [
+          2,
+          5,
+          7
+        ],
+        "pingüino": [
+          3
+        ],
+        "acción": [
+          2
+        ],
+        "guerrero": [
+          3,
+          6
+        ]
+      },
+      "nl": {
+        "ziekenhuis": [
+          3,
+          6
+        ],
+        "onafhankelijkheid": [
+          2,
+          4,
+          7,
+          9,
+          13
+        ],
+        "ontwikkeling": [
+          3,
+          6,
+          8
+        ],
+        "regering": [
+          2,
+          4
+        ],
+        "verantwoordelijkheid": [
+          3,
+          6,
+          10,
+          12,
+          16
+        ],
+        "bibliotheek": [
+          2,
+          5,
+          6
+        ],
+        "kennis": [
+          3
+        ],
+        "informatie": [
+          2,
+          5,
+          7
+        ],
+        "republiek": [
+          2,
+          4
+        ],
+        "architectuur": [
+          2,
+          5,
+          8
+        ],
+        "gesprek": [
+          2
+        ],
+        "professioneel": [
+          3,
+          6,
+          8,
+          9
+        ],
+        "technologie": [
+          4,
+          6,
+          8
+        ],
+        "communicatie": [
+          3,
+          5,
+          7,
+          9
+        ],
+        "verbeelding": [
+          3,
+          7
+        ],
+        "filosofie": [
+          2,
+          4,
+          6
+        ],
+        "noodzakelijk": [
+          4,
+          6,
+          8
+        ],
+        "literatuur": [
+          2,
+          4,
+          6
+        ],
+        "onderneming": [
+          2,
+          5,
+          7
+        ],
+        "geschiedenis": [
+          2,
+          7,
+          9
+        ],
+        "volledig": [
+          3,
+          5
+        ],
+        "organisatie": [
+          2,
+          4,
+          6,
+          8
+        ],
+        "verschil": [
+          3
+        ],
+        "elektriciteit": [
+          4,
+          7,
+          9
+        ],
+        "fietspad": [
+          5
+        ],
+        "kinderwagen": [
+          3,
+          6,
+          8
+        ],
+        "boterham": [
+          2,
+          5
+        ],
+        "schilderij": [
+          5,
+          7
+        ],
+        "wetenschap": [
+          2,
+          5
+        ],
+        "vriendschap": [
+          6
+        ]
+      },
+      "pl": {
+        "międzynarodowy": [
+          3,
+          6,
+          8,
+          10,
+          12
+        ],
+        "konstantynopolitańczykowianeczka": [
+          3,
+          7,
+          9,
+          11,
+          13,
+          15,
+          18,
+          21,
+          23,
+          26,
+          30
+        ],
+        "rozwój": [
+          3
+        ],
+        "rząd": [],
+        "odpowiedzialność": [
+          2,
+          4,
+          7,
+          12,
+          14
+        ],
+        "biblioteka": [
+          2,
+          6,
+          8
+        ],
+        "wiedza": [
+          3
+        ],
+        "szczególnie": [
+          2,
+          5,
+          8
+        ],
+        "informacja": [
+          2,
+          5,
+          7
+        ],
+        "rzeczpospolita": [
+          5,
+          7,
+          10,
+          12
+        ],
+        "architektura": [
+          2,
+          5,
+          8,
+          10
+        ],
+        "rozmowa": [
+          3,
+          5
+        ],
+        "profesjonalny": [
+          3,
+          5,
+          8,
+          11
+        ],
+        "technologia": [
+          4,
+          6,
+          8
+        ],
+        "komunikacja": [
+          2,
+          4,
+          6,
+          8
+        ],
+        "wyobraźnia": [
+          2,
+          7
+        ],
+        "filozofia": [
+          2,
+          4,
+          6
+        ],
+        "konieczny": [
+          2,
+          7
+        ],
+        "literatura": [
+          2,
+          4,
+          6,
+          8
+        ],
+        "przedsiębiorstwo": [
+          5,
+          8,
+          12
+        ],
+        "historyczny": [
+          2,
+          5,
+          9
+        ],
+        "całkowicie": [
+          3,
+          5,
+          7
+        ],
+        "organizacja": [
+          2,
+          4,
+          6,
+          8
+        ],
+        "różnica": [
+          3,
+          5
+        ],
+        "elektryczność": [
+          4,
+          9,
+          11
+        ],
+        "dziewczyna": [
+          5,
+          8
+        ],
+        "przyjaciel": [
+          4,
+          6
+        ],
+        "chrząszcz": [
+          7
+        ],
+        "samochód": [
+          2,
+          4
+        ],
+        "uniwersytet": [
+          3,
+          6,
+          8
+        ]
+      },
+      "en-GB": {
+        "international": [
+          2,
+          5,
+          7,
+          11
+        ],
+        "extraordinary": [
+          2,
+          10
+        ],
+        "typography": [
+          2,
+          4
+        ],
+        "characteristics": [
+          4,
+          6,
+          9,
+          12
+        ],
+        "responsibility": [
+          2,
+          7,
+          9,
+          11
+        ],
+        "performance": [
+          3,
+          7
+        ],
+        "information": [
+          2,
+          6,
+          7
+        ],
+        "development": [
+          2,
+          5,
+          7
+        ],
+        "government": [
+          3,
+          6
+        ],
+        "communication": [
+          3,
+          5,
+          8,
+          9
+        ],
+        "organisation": [
+          2,
+          5,
+          8
+        ],
+        "philosophy": [
+          5
+        ],
+        "technology": [
+          4,
+          6
+        ],
+        "beautiful": [
+          4,
+          6
+        ],
+        "computer": [
+          3
+        ],
+        "example": [
+          2
+        ],
+        "hyphenation": [
+          2,
+          6,
+          7
+        ],
+        "literature": [
+          3,
+          5,
+          7
+        ],
+        "particularly": [
+          3,
+          6,
+          7
+        ],
+        "imagination": [
+          3,
+          6,
+          7
+        ]
+      },
+      "it": {
+        "internazionale": [
+          2,
+          5,
+          7,
+          10,
+          12
+        ],
+        "straordinario": [
+          6,
+          8,
+          10
+        ],
+        "sviluppo": [
+          3,
+          6
+        ],
+        "governo": [
+          2,
+          5
+        ],
+        "responsabilità": [
+          2,
+          6,
+          8,
+          10,
+          12
+        ],
+        "biblioteca": [
+          2,
+          6,
+          8
+        ],
+        "conoscenza": [
+          2,
+          4,
+          8
+        ],
+        "informazione": [
+          2,
+          5,
+          7,
+          10
+        ],
+        "architettura": [
+          2,
+          5,
+          8,
+          10
+        ],
+        "conversazione": [
+          3,
+          6,
+          8,
+          11
+        ]
+      },
+      "pt": {
+        "internacional": [
+          2,
+          5,
+          7,
+          9,
+          10
+        ],
+        "extraordinário": [
+          2,
+          5,
+          7,
+          9,
+          11
+        ],
+        "desenvolvimento": [
+          2,
+          5,
+          8,
+          10,
+          13
+        ],
+        "governo": [
+          2,
+          5
+        ],
+        "responsabilidade": [
+          3,
+          6,
+          8,
+          10,
+          12,
+          14
+        ],
+        "biblioteca": [
+          2,
+          5,
+          6,
+          8
+        ],
+        "conhecimento": [
+          2,
+          5,
+          7,
+          10
+        ],
+        "informação": [
+          2,
+          5,
+          7
+        ],
+        "arquitetura": [
+          2,
+          5,
+          7,
+          9
+        ],
+        "conversação": [
+          3,
+          6,
+          8
+        ]
+      },
+      "sv": {
+        "internationell": [
+          2,
+          5,
+          7,
+          10
+        ],
+        "utveckling": [
+          2,
+          6
+        ],
+        "regering": [
+          2,
+          4
+        ],
+        "ansvar": [
+          2
+        ],
+        "bibliotek": [
+          3,
+          5,
+          6
+        ],
+        "kunskap": [
+          3
+        ],
+        "information": [
+          2,
+          5,
+          7
+        ],
+        "arkitektur": [
+          2,
+          4,
+          7
+        ],
+        "samtal": [
+          3
+        ],
+        "sjukhus": [
+          4
+        ]
+      },
+      "ru": {
+        "международный": [
+          3,
+          5,
+          7,
+          10
+        ],
+        "развитие": [
+          3,
+          5
+        ],
+        "правительство": [
+          3,
+          5,
+          9
+        ],
+        "ответственность": [
+          2,
+          5,
+          10
+        ],
+        "библиотека": [
+          3,
+          6,
+          8
+        ],
+        "знание": [
+          3
+        ],
+        "информация": [
+          2,
+          5,
+          7
+        ],
+        "архитектура": [
+          2,
+          4,
+          7,
+          9
+        ],
+        "разговор": [
+          3,
+          5
+        ],
+        "университет": [
+          3,
+          6,
+          8
+        ]
+      },
+      "da": {
+        "international": [
+          2,
+          5,
+          7,
+          10
+        ],
+        "udvikling": [
+          2,
+          5
+        ],
+        "regering": [
+          2,
+          4
+        ],
+        "ansvar": [
+          2
+        ],
+        "bibliotek": [
+          2,
+          5,
+          6
+        ],
+        "viden": [
+          2
+        ],
+        "information": [
+          2,
+          5,
+          7
+        ],
+        "arkitektur": [
+          2,
+          4,
+          7
+        ],
+        "samtale": [
+          3,
+          5
+        ],
+        "sygehus": [
+          2,
+          4
+        ]
+      },
+      "nb": {
+        "internasjonal": [
+          2,
+          5,
+          7,
+          10
+        ],
+        "utvikling": [
+          2,
+          5
+        ],
+        "regjering": [
+          2,
+          5
+        ],
+        "ansvar": [
+          2
+        ],
+        "bibliotek": [
+          2,
+          6
+        ],
+        "kunnskap": [
+          4
+        ],
+        "informasjon": [
+          2,
+          5,
+          7
+        ],
+        "arkitektur": [
+          2,
+          4,
+          7
+        ],
+        "samtale": [
+          3,
+          5
+        ],
+        "sykehus": [
+          4
+        ]
+      },
+      "fi": {
+        "kansainvälinen": [
+          3,
+          7,
+          9,
+          11
+        ],
+        "kehitys": [
+          2,
+          4
+        ],
+        "hallitus": [
+          3,
+          5
+        ],
+        "vastuu": [
+          3
+        ],
+        "kirjasto": [
+          3,
+          6
+        ],
+        "tieto": [
+          3
+        ],
+        "informaatio": [
+          2,
+          5,
+          8
+        ],
+        "arkkitehtuuri": [
+          3,
+          5,
+          8,
+          11
+        ],
+        "keskustelu": [
+          3,
+          6,
+          8
+        ],
+        "sairaala": [
+          3,
+          6
+        ]
+      },
+      "cs": {
+        "mezinárodní": [
+          2,
+          4,
+          6,
+          9
+        ],
+        "rozvoj": [
+          3
+        ],
+        "vláda": [
+          3
+        ],
+        "odpovědnost": [
+          2,
+          4,
+          7
+        ],
+        "knihovna": [
+          3,
+          6
+        ],
+        "znalost": [
+          3
+        ],
+        "informace": [
+          2,
+          5,
+          7
+        ],
+        "architektura": [
+          2,
+          5,
+          8,
+          10
+        ],
+        "rozhovor": [
+          3,
+          5
+        ],
+        "nemocnice": [
+          2,
+          5,
+          7
+        ]
+      },
+      "hu": {
+        "nemzetközi": [
+          3,
+          6,
+          8
+        ],
+        "fejlesztés": [
+          3,
+          7
+        ],
+        "kormány": [
+          3
+        ],
+        "felelősség": [
+          2,
+          4,
+          7
+        ],
+        "könyvtár": [
+          5
+        ],
+        "tudás": [
+          2
+        ],
+        "információ": [
+          2,
+          5,
+          7
+        ],
+        "építészet": [
+          3,
+          5
+        ],
+        "beszélgetés": [
+          2,
+          6,
+          8
+        ],
+        "kórház": [
+          3
+        ]
+      },
+      "uk": {
+        "міжнародний": [
+          3,
+          5,
+          7
+        ],
+        "розвиток": [
+          3,
+          5
+        ],
+        "уряд": [],
+        "відповідальність": [
+          3,
+          5,
+          8,
+          11
+        ],
+        "бібліотека": [
+          2,
+          6,
+          8
+        ],
+        "знання": [
+          3,
+          4
+        ],
+        "інформація": [
+          2,
+          5,
+          7
+        ],
+        "архітектура": [
+          2,
+          4,
+          6,
+          9
+        ],
+        "розмова": [
+          3,
+          5
+        ],
+        "університет": [
+          3,
+          6,
+          8
+        ]
+      },
+      "ca": {
+        "internacional": [
+          2,
+          5,
+          7,
+          9,
+          10
+        ],
+        "desenvolupament": [
+          5,
+          7,
+          9,
+          11
+        ],
+        "govern": [
+          2
+        ],
+        "responsabilitat": [
+          3,
+          6,
+          8,
+          10,
+          12
+        ],
+        "biblioteca": [
+          2,
+          5,
+          6,
+          8
+        ],
+        "coneixement": [
+          2,
+          5,
+          7
+        ],
+        "informació": [
+          2,
+          5,
+          7
+        ],
+        "arquitectura": [
+          2,
+          5,
+          8,
+          10
+        ],
+        "conversa": [
+          3,
+          6
+        ],
+        "hospital": [
+          3,
+          5
+        ]
+      },
+      "hr": {
+        "međunarodni": [
+          2,
+          4,
+          6,
+          9
+        ],
+        "razvoj": [
+          2
+        ],
+        "vlada": [
+          3
+        ],
+        "odgovornost": [
+          2,
+          4,
+          7
+        ],
+        "knjižnica": [
+          5,
+          7
+        ],
+        "znanje": [
+          3
+        ],
+        "informacija": [
+          2,
+          5,
+          7,
+          9
+        ],
+        "arhitektura": [
+          2,
+          4,
+          7,
+          9
+        ],
+        "razgovor": [
+          3,
+          5
+        ],
+        "bolnica": [
+          3,
+          5
+        ]
+      },
+      "sk": {
+        "medzinárodný": [
+          2,
+          5,
+          7,
+          10
+        ],
+        "rozvoj": [
+          3
+        ],
+        "vláda": [
+          3
+        ],
+        "zodpovednosť": [
+          3,
+          5,
+          8
+        ],
+        "knižnica": [
+          4,
+          6
+        ],
+        "znalosť": [
+          3
+        ],
+        "informácia": [
+          2,
+          5,
+          7
+        ],
+        "architektúra": [
+          2,
+          5,
+          8,
+          10
+        ],
+        "rozhovor": [
+          3,
+          5
+        ],
+        "nemocnica": [
+          2,
+          5,
+          7
+        ]
+      },
+      "ro": {
+        "internațional": [
+          2,
+          5,
+          10
+        ],
+        "dezvoltare": [
+          6,
+          8
+        ],
+        "guvern": [
+          2
+        ],
+        "responsabilitate": [
+          3,
+          6,
+          8,
+          10,
+          12,
+          14
+        ],
+        "bibliotecă": [
+          2,
+          5,
+          6,
+          8
+        ],
+        "cunoaștere": [
+          2,
+          6,
+          8
+        ],
+        "informație": [
+          2,
+          5,
+          7
+        ],
+        "arhitectură": [
+          2,
+          4,
+          7,
+          9
+        ],
+        "conversație": [
+          3,
+          6,
+          8
+        ],
+        "spital": [
+          3
+        ]
+      },
+      "el": {
+        "διεθνής": [
+          3
+        ],
+        "ανάπτυξη": [
+          3,
+          6
+        ],
+        "κυβέρνηση": [
+          2,
+          5,
+          7
+        ],
+        "ευθύνη": [
+          2,
+          4
+        ],
+        "βιβλιοθήκη": [
+          2,
+          6,
+          8
+        ],
+        "γνώση": [
+          3
+        ],
+        "πληροφορία": [
+          3,
+          5,
+          7
+        ],
+        "αρχιτεκτονική": [
+          2,
+          4,
+          6,
+          9,
+          11
+        ],
+        "συζήτηση": [
+          2,
+          4,
+          6
+        ],
+        "νοσοκομείο": [
+          2,
+          4,
+          6
+        ]
+      }
+    }
+  }
+}
