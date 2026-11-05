@@ -531,33 +531,9 @@ impl<'i> DeclarationParser<'i> for CssParser {
         _: &ParserState,
     ) -> Result<String, ParseError<'i, ()>> {
         let start = input.position();
-        if self.raw_descriptors {
-            return Ok(format!(
-                "{}: {};",
-                name.to_ascii_lowercase(),
-                consume(input)
-            ));
-        }
-        if self.font_face {
-            let value = consume(input);
-            return font_descriptor(&name.to_ascii_lowercase(), &value)
-                .ok_or_else(|| input.new_custom_error(()));
-        }
-        if name.eq_ignore_ascii_case("zoom") {
-            // Lightning CSS has no typed `zoom`; Chrome serializes its own grammar.
-            let value = input.parse_until_before(Delimiter::Bang, zoom_declaration)?;
-            let important = important(input)?;
-            return Ok(format!("zoom: {value}{important};"));
-        }
-        let property = name.to_ascii_lowercase();
-        if SCROLL_KEYWORD_PROPERTIES.contains(&property.as_str()) {
-            let text = input.parse_until_before(Delimiter::Bang, |input| {
-                Ok::<_, ParseError<'i, ()>>(consume(input))
-            })?;
-            let value =
-                scroll_keyword_value(&property, &text).ok_or_else(|| input.new_custom_error(()))?;
-            let important = important(input)?;
-            return Ok(format!("{property}: {value}{important};"));
+        if let Some(early) = parse_value_early(self.raw_descriptors, self.font_face, &name, input)?
+        {
+            return Ok(early);
         }
         let valid =
             input.parse_until_before(Delimiter::Bang, |input| parse_value_body(&name, input))?;
@@ -578,6 +554,43 @@ impl<'i> DeclarationParser<'i> for CssParser {
         };
         Ok(format!("{name}: {value}{important};"))
     }
+}
+
+fn parse_value_early<'i, 't>(
+    raw_descriptors: bool,
+    font_face: bool,
+    name: &CowRcStr<'i>,
+    input: &mut Parser<'i, 't>,
+) -> Result<Option<String>, ParseError<'i, ()>> {
+    if raw_descriptors {
+        return Ok(Some(format!(
+            "{}: {};",
+            name.to_ascii_lowercase(),
+            consume(input)
+        )));
+    }
+    if font_face {
+        let value = consume(input);
+        return font_descriptor(&name.to_ascii_lowercase(), &value)
+            .map(Some)
+            .ok_or_else(|| input.new_custom_error(()));
+    }
+    if name.eq_ignore_ascii_case("zoom") {
+        let value = input.parse_until_before(Delimiter::Bang, zoom_declaration)?;
+        let important = important(input)?;
+        return Ok(Some(format!("zoom: {value}{important};")));
+    }
+    let property = name.to_ascii_lowercase();
+    if SCROLL_KEYWORD_PROPERTIES.contains(&property.as_str()) {
+        let text = input.parse_until_before(Delimiter::Bang, |input| {
+            Ok::<_, ParseError<'i, ()>>(consume(input))
+        })?;
+        let value =
+            scroll_keyword_value(&property, &text).ok_or_else(|| input.new_custom_error(()))?;
+        let important = important(input)?;
+        return Ok(Some(format!("{property}: {value}{important};")));
+    }
+    Ok(None)
 }
 
 fn parse_value_body<'i>(
