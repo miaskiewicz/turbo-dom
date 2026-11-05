@@ -7,12 +7,16 @@
 //! width, so it lays out 0x0.
 //! Oracle: `tests/fixtures/svg_image_ratio_chrome156.json`, captured by
 //! `scripts/svg-image-ratio-chrome-control.mjs` (Chrome 156.0.8078.47 headless, 1280x800,
-//! DSF 1). The live drive sizes each image from [`probe_natural`], as turbo-surf's live
-//! image loads do.
-#![cfg(feature = "svg-rasterize")]
+//! DSF 1). The live drive sizes each image from the control's natural size and ratio,
+//! which is what [`probe_natural`] reports for it (asserted under `svg-rasterize`, the
+//! feature that probe needs), as turbo-surf's live image loads do; so the layout rows
+//! run in every feature configuration. Since miaskiewicz/turbo-dom#326 that includes
+//! flex and grid items.
 use std::collections::HashMap;
 use std::fmt::Write as _;
-use turbo_dom_layout::image::{probe_natural, Intrinsic};
+#[cfg(feature = "svg-rasterize")]
+use turbo_dom_layout::image::probe_natural;
+use turbo_dom_layout::image::Intrinsic;
 use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, NativeTextOptions, SnapshotInputs, SourceId,
     SourceIdentity,
@@ -25,16 +29,16 @@ fn fixture() -> serde_json::Value {
     serde_json::from_str(include_str!("fixtures/svg_image_ratio_chrome156.json")).unwrap()
 }
 
-/// The case SVGs by id; sized like turbo-surf's live loads ([`probe_natural`]).
-struct Svgs(HashMap<String, Vec<u8>>);
+/// The case SVGs by id, each with the intrinsic [`probe_natural`] reports for it.
+struct Svgs(HashMap<String, (Vec<u8>, Intrinsic)>);
 
 impl ImageResolver for Svgs {
     fn resolve(&self, name: &str) -> Option<&[u8]> {
-        self.0.get(name).map(Vec::as_slice)
+        self.0.get(name).map(|(bytes, _)| bytes.as_slice())
     }
 
     fn intrinsic(&self, name: &str) -> Option<Intrinsic> {
-        self.resolve(name).and_then(probe_natural)
+        self.0.get(name).map(|&(_, intrinsic)| intrinsic)
     }
 }
 
@@ -42,6 +46,31 @@ fn pair(value: &serde_json::Value) -> (f64, f64) {
     (value[0].as_f64().unwrap(), value[1].as_f64().unwrap())
 }
 
+/// A case's natural ratio: only an SVG with just a `viewBox` has one (its `viewBox`'s).
+fn natural_ratio(id: &str) -> Option<f32> {
+    id.starts_with("viewbox-only").then(|| {
+        if id.ends_with("7x3") {
+            7.0 / 3.0
+        } else if id.ends_with("wide") {
+            9.0
+        } else {
+            1.5
+        }
+    })
+}
+
+/// A case's intrinsic: Chrome's `naturalWidth`/`naturalHeight`, plus its natural ratio.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn case_intrinsic(case: &serde_json::Value) -> Intrinsic {
+    let (w, h) = pair(&case["natural"]);
+    let (w, h) = (w as u32, h as u32);
+    match natural_ratio(case["id"].as_str().unwrap()) {
+        Some(ratio) => Intrinsic::ratio_only(w, h, ratio, true),
+        None => Intrinsic::new(w, h, true),
+    }
+}
+
+#[cfg(feature = "svg-rasterize")]
 #[test]
 fn natural_size_is_chromes_and_only_a_viewbox_gives_a_bare_ratio() {
     let control = fixture();
@@ -54,28 +83,24 @@ fn natural_size_is_chromes_and_only_a_viewbox_gives_a_bare_ratio() {
             pair(&case["natural"]),
             "{id}: naturalWidth/naturalHeight"
         );
-        let expected = id.starts_with("viewbox-only").then(|| {
-            if id.ends_with("7x3") {
-                7.0 / 3.0
-            } else if id.ends_with("wide") {
-                9.0
-            } else {
-                1.5
-            }
-        });
-        assert_eq!(intrinsic.natural_ratio, expected, "{id}: natural ratio");
+        assert_eq!(
+            intrinsic.natural_ratio,
+            natural_ratio(id),
+            "{id}: natural ratio"
+        );
+        assert_eq!(
+            intrinsic,
+            case_intrinsic(case),
+            "{id}: the layout test's intrinsic"
+        );
     }
 }
-
-/// The one control row not matched yet: a ratio-only image as a row flex item
-/// (miaskiewicz/turbo-dom#326).
-const KNOWN_GAP: &str = "viewbox-only-flex-item";
 
 #[test]
 fn ratio_only_svg_images_lay_out_like_chrome_156() {
     let control = fixture();
     let cases = control["cases"].as_array().unwrap();
-    assert_eq!(cases.len(), 24);
+    assert_eq!(cases.len(), 46);
     let mut html = String::new();
     let mut svgs = HashMap::new();
     for case in cases {
@@ -89,7 +114,10 @@ fn ratio_only_svg_images_lay_out_like_chrome_156() {
         .unwrap();
         svgs.insert(
             id.to_owned(),
-            case["svg"].as_str().unwrap().as_bytes().to_vec(),
+            (
+                case["svg"].as_str().unwrap().as_bytes().to_vec(),
+                case_intrinsic(case),
+            ),
         );
     }
     let nodes = parse_html(&html).unwrap();
@@ -131,12 +159,7 @@ fn ratio_only_svg_images_lay_out_like_chrome_156() {
         let got = (f64::from(rect.width), f64::from(rect.height));
         let want = pair(&case["size"]);
         let matches = (got.0 - want.0).abs() <= 1e-3 && (got.1 - want.1).abs() <= 1e-3;
-        if id == KNOWN_GAP {
-            // miaskiewicz/turbo-dom#326: still the natural size, not the container's
-            // width; this fails once that is fixed, so the gap is lifted then.
-            assert_eq!(got, (225.0, 150.0), "{id}: the #326 gap changed");
-            assert!(!matches);
-        } else if !matches {
+        if !matches {
             failures.push(format!("{id}: {got:?}, Chrome {want:?}"));
         }
     }

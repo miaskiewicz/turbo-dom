@@ -9,6 +9,54 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- turbo-dom-browser-env: `browser_env::dispatch_host_event_did_listeners_throw(scope, event,
+  target) -> bool`, `dispatch_host_event` that also returns the DOM's
+  legacy-output-did-listeners-throw flag: whether a listener or event handler invoked by that
+  dispatch threw (nested dispatches from inside the listeners do not count). IndexedDB aborts
+  a transaction on it ("Uncaught exception in event handler.", turbo-surf#148). Window
+  `reportError(e)` is now a real global that reports `e` like Chrome 156 (turbo-dom#301).
+
+### Fixed
+
+- **turbo-dom-browser-env: an exception thrown by an event listener is reported, like Chrome
+  156.** The binding dropped every listener exception. Now a throwing listener (or `on*`
+  handler, or `handleEvent` method or getter) on a node, document, window, AbortSignal or
+  generic `EventTarget` fires a trusted, cancelable `ErrorEvent` at the listener's window
+  before the next listener runs: message `Uncaught Error: boom` (`Uncaught ` + `String(value)`
+  for a thrown non-Error object, `Uncaught exception` when that conversion throws), located
+  where a thrown Error was created and where any other value was thrown. `window.onerror`
+  gets its five arguments and can cancel the event. An exception thrown while a window is
+  reporting one is not reported again (HTML's error reporting mode), and a listener object
+  whose `handleEvent` is not callable is still skipped silently, as in Chrome. Errors reported
+  from custom element reactions are now cancelable too. Control: `listener_errors_chrome156.json`
+  (`listener_errors_probe.js`, `scripts/trusted-input-chrome-control.mjs`); tests
+  `listener_exceptions_are_reported_like_chrome156` and
+  `host_dispatch_reports_whether_its_own_listeners_threw` (turbo-dom#301).
+
+- **turbo-dom-browser-env: CSS transitions and animations dispatch their events
+  (turbo-dom#313).** A `CSSTransition` fires `transitionrun`, `transitionstart`,
+  `transitionend` and `transitioncancel`, a `CSSAnimation` `animationstart`,
+  `animationiteration`, `animationend` and `animationcancel`, as Chrome 156 does: trusted,
+  bubbling, cancelable `TransitionEvent` / `AnimationEvent`s on the owner element, in the
+  rendering frame after the phase change and before its animation-frame callbacks, with
+  Blink's elapsed times (negative delays, skipped phases, backwards seeks, one
+  `animationiteration` per sample, cancel times) and `event.animation`. `AnimationEvent` and
+  `TransitionEvent` are real interfaces now (constructor, init dictionary, brand checks,
+  `animation`, `pseudoTarget`), no longer empty placeholders. A transition whose property
+  leaves `transition-property` is cancelled. A running CSS animation keeps frames requested
+  for its next iteration. Chrome control: `css_animation_events_chrome156.json`
+  (`scripts/animations-chrome-control.mjs`); the `jsdom_transitions_chrome156.json` events
+  row is asserted now.
+- turbo-dom-browser-env: `browser_env::set_css_animations(scope, enabled)`, on by default:
+  off runs no `@keyframes` animation and fires no animation event (jsdom 27).
+
+### Changed
+
+- **turbo-dom-browser-env: `set_css_transitions` covers CSS transitions only (turbo-dom#313).**
+  `set_css_transitions(scope, false)` now stops CSS transitions and their events alone;
+  `@keyframes` animations follow the new `set_css_animations`. The Web Animations surface
+  jsdom lacks is hidden only with both switches off. jsdom 27 parity (turbo-test) is
+  `set_css_transitions(scope, false)` plus `set_css_animations(scope, false)`.
 - **turbo-dom-raster: `<canvas>` content in screenshots.** Since #252 a canvas laid out as a
   replaced box but painted only its frame and background: the snapshot HTML carries no canvas
   pixels. `screenshot_png_with_options` / `screenshot_svg_with_options` take a
@@ -57,6 +105,29 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-raster: `coretext` / `gpu-metal` canvas output matches the Chrome 156 controls
+  (#342).** The Metal canvas replay blended straight-alpha colours, so a translucent paint
+  over a transparent canvas stored premultiplied bytes in the PNG and colours blended a
+  level off; it now feeds colours premultiplied the way Skia rounds them and unpremultiplies
+  the read-back like `getImageData`. CoreText canvas text declines a named family CoreText
+  does not have (it used to substitute Helvetica for bundled or web fonts), so those trace
+  the registry's glyphs. The macOS raster CI job now runs the suite with both features.
+- **turbo-dom-raster: glyph edges closer to Chrome 156 (#266, #331).** The PNG painter grows
+  each glyph outline by a box (`0.0045 * size` px: each edge moves `d * (|nx| + |ny|)`, so
+  diagonal strokes of `W`, `x` and `y` no longer sit 0.14 px off), fills concave joins a
+  little, lifts the run `d + 0.03` px, and takes the coverage through an edge transfer keyed
+  on Skia's 3-bit text luminance (linear for dark text from 28px, as a 64px stem's four
+  subpixel phases measure, a little darker below, lighter for white). Against the Chrome 156
+  control the mean residual per inked pixel drops at every size, e.g. 12px black 12.3 to 10.8,
+  20px white 12.9 to 8.5, 64px black 5.1 to 3.8, and the stem / bar subpixel cases from
+  4.1–6.5 to 0.9–3.3; every `tests/glyph_coverage_chrome.rs` limit tightens. One probe
+  widens: `overflow-glyph-ink-visible` (28,44) tolerance 15 to 24 (Chrome 139, this model
+  163, the previous painter 154), the 40px `g` bar's glyph-specific vertical offset in
+  Chrome. Not modelled: Chrome's grid-dependent vertical geometry below about 20px. The SVG
+  screenshot keeps Skia's pre-blend filter (#294), now over the same box-grown outline.
+
+- **turbo-dom-layout: an SVG `<img>` with only a `viewBox` sizes from its ratio.** An auto-sized one is as wide as its containing block allows (less its margins, padding and border), the height a layout unit first and the width from it, under `width` / `height` / `min-*` / `max-*` and in a vertical writing mode; it contributes no width to a shrink-to-fit container (float, inline-block, table), like Chrome 156. It laid out at its 225x150 reported size. Control: `svg_image_ratio_chrome156.json` (`scripts/svg-image-ratio-chrome-control.mjs`; turbo-dom#320, turbo-surf#161).
+- **turbo-dom-layout: a ratio-only SVG `<img>` flex or grid item is sized like Chrome 156.** As a row flex item its base size is the container's inner width less its margins, exactly (a 400px row gives 400 x 266.65625; it laid out at its 225x150 reported size), with `min-width: auto` keeping it from shrinking below that, a definite stretched height giving the width through the ratio, and height constraints sizing it as in block layout; a column flex item stretches to the container's width, and a grid item fills its area. The flexed width is its used width. A width-constrained auto-sized one now also derives its width from the layout-unit height in block layout (`max-width: 287px` is 286.984375 x 191.328125). Control: the flex and grid rows of `svg_image_ratio_chrome156.json`, which now run in every feature configuration (turbo-dom#326).
 - **turbo-dom-raster: SVG screenshot glyph edges take the colour-dependent pre-blend.** Each
   glyph run path now carries a `glyph-lum<class>` filter: an `feComponentTransfer` alpha table
   with the raster painter's Skia pre-blend for the text's 3-bit luminance, one per class the
@@ -64,6 +135,7 @@ at the time); this file reconstructs them from history.
   the PNG painter. Against Chrome 156, white text's SVG residual drops from a mean of
   14.6–38.6 to 6.2–21.4 per pixel (`tests/glyph_coverage_chrome.rs`), and the
   overflow-glyph-ink edge tolerances drop from 17 / 41 to 11 / 32 (turbo-dom#294).
+
 - **turbo-dom-layout: `hyphens: auto` hyphenates the languages Chrome 156 on macOS does,
   not just English.** en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb / no, nl, pl, pt, ro, ru, sk, sv, uk break at the TeX `hyph-*` patterns' points (the `hyphenation`
   crate's, the patterns Chrome's Minikin dictionaries on Linux, Windows and Android are built

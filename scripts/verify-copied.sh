@@ -389,6 +389,7 @@ OWNED="$OWNED style_invalidation_probe.js style_invalidation_chrome156.json styl
 OWNED="$OWNED rule_bucket_tests.rs style_sharing_tests.rs"
 OWNED="$OWNED jsdom_media_jsdom27.json jsdom_media_probe.js media_override_chrome156.json media_override_probe.js"
 OWNED="$OWNED jsdom_transitions_chrome156.json jsdom_transitions_jsdom27.json jsdom_transitions_probe.js"
+OWNED="$OWNED css_animation_events_probe.js css_animation_events_cases.json css_animation_events_chrome156.json"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
 OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"
@@ -400,6 +401,7 @@ OWNED="$OWNED css_grouping_cascade_probe.js css_grouping_cascade_chrome156.json"
 OWNED="$OWNED css_cascade_specificity_probe.js css_cascade_specificity_chrome156.json"
 OWNED="$OWNED inline_style_reuse_probe.js inline_style_reuse_chrome156.json"
 OWNED="$OWNED viewport_cssom_tests.rs custom_property_colors_probe.js custom_property_colors_chrome156.json computed_custom_properties_probe.js computed_custom_properties_chrome156.json match_media_probe.js match_media_chrome156.json iframe_viewport_probe.js iframe_viewport_chrome156.json iframe_media_probe.js iframe_media_chrome156.json iframe_cascade_probe.js iframe_cascade_chrome156.json"
+OWNED="$OWNED listener_errors_probe.js listener_errors_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

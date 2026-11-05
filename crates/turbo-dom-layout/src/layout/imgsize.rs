@@ -76,7 +76,12 @@ pub(crate) fn size_replaced_live(
         None => live_base(iw, ih, width, height),
     };
     let limits = live_limits(ctx, frame);
+    let auto = width.is_none() && height.is_none();
     let (width, height) = constrain_live(w, h, width.is_none(), height.is_none(), limits);
+    let (width, height) = match intrinsic.natural_ratio {
+        Some(ratio) if auto => ratio_units(ratio, height, layout_scale),
+        _ => (width, height),
+    };
     SizedImage {
         width,
         height,
@@ -193,6 +198,15 @@ fn ratio_base(
             (unit(h * ratio), h)
         }
     }
+}
+
+/// A constrained auto-sized ratio-only box in layout units, like Blink: the height
+/// first, then the width derived from it (a `max-width: 286px` 3:2 image is
+/// 285.984375 x 190.65625 at scale 1; miaskiewicz/turbo-dom#326).
+fn ratio_units(ratio: f32, height: f32, layout_scale: f32) -> (f32, f32) {
+    let unit = |value: f32| viewport_layout_unit(value, layout_scale);
+    let h = unit(height);
+    (unit(h * ratio), h)
 }
 
 fn live_frame(style: &BoxStyle) -> (f32, f32) {

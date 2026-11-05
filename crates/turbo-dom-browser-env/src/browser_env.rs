@@ -2073,26 +2073,45 @@ pub fn set_media_mode(scope: &mut v8::PinScope, mode: MediaMode) {
     );
 }
 
-/// Whether the current window runs CSS transitions, `@keyframes` animations and Web
-/// Animations (installs start with them on, as Chrome). Off is jsdom 27's behaviour: no
-/// CSSTransition / CSSAnimation is created, so getComputedStyle reports the declared (end)
-/// value at once and no transition / animation event fires, and the Web Animations surface
-/// jsdom lacks (`animate`, `getAnimations`, `document.timeline`, `Animation`, `CSSTransition`,
-/// `AnimationEvent`, ...) is hidden. Independent of [`MediaMode`].
+/// Whether the current window runs CSS transitions (turbo-dom#313). **On by default**: every
+/// install starts with it on, as Chrome, so an embedder that never calls this keeps Chrome's
+/// behaviour. On, a transitioned property's computed-value change creates a `CSSTransition`
+/// that animates the property and dispatches `transitionrun`, `transitionstart`,
+/// `transitionend` and `transitioncancel` (`TransitionEvent`) as Chrome 156 does. Off (jsdom
+/// 27's behaviour, for turbo-test's vitest parity), no `CSSTransition` is created, so
+/// getComputedStyle reports the declared (end) value at once and no transition event fires.
+///
+/// Independent of [`set_css_animations`] (`@keyframes` animations) and of [`MediaMode`]. With
+/// both switches off the Web Animations surface jsdom lacks (`animate`, `getAnimations`,
+/// `document.timeline`, `Animation`, `CSSTransition`, `AnimationEvent`, ...) is hidden too;
+/// turning either back on restores the same bindings. `TransitionEvent` always stays.
 pub fn set_css_transitions(scope: &mut v8::PinScope, enabled: bool) {
+    set_css_switch(scope, "setCssTransitions", enabled);
+}
+
+/// Whether the current window runs CSS `@keyframes` animations (turbo-dom#313). **On by
+/// default**: every install starts with it on, as Chrome, so an embedder that never calls
+/// this keeps Chrome's behaviour. On, an element's `animation-name` naming a `@keyframes`
+/// rule creates a `CSSAnimation` that animates the element and dispatches `animationstart`,
+/// `animationiteration`, `animationend` and `animationcancel` (`AnimationEvent`) as Chrome
+/// 156 does. Off (jsdom 27's behaviour, for turbo-test's vitest parity), no `CSSAnimation` is
+/// created, so getComputedStyle reports the element's own value and no animation event
+/// fires. Script animations (`Element.animate`) are not CSS animations and are unaffected.
+///
+/// Independent of [`set_css_transitions`] and of [`MediaMode`]; with both switches off the
+/// Web Animations surface jsdom lacks is hidden (see [`set_css_transitions`]).
+pub fn set_css_animations(scope: &mut v8::PinScope, enabled: bool) {
+    set_css_switch(scope, "setCssAnimations", enabled);
+}
+
+/// Run one of animations.js's CSS switches in the current window's DOM.
+fn set_css_switch(scope: &mut v8::PinScope, switch: &str, enabled: bool) {
     let id = scope
         .get_current_context()
         .get_slot::<DomContextId>()
         .map_or(0, |id| id.0);
     let _dom = DomScope::enter(id);
-    run_js(
-        scope,
-        if enabled {
-            "__tsNs.setJsdomAnimations(false)"
-        } else {
-            "__tsNs.setJsdomAnimations(true)"
-        },
-    );
+    run_js(scope, &format!("__tsNs.{switch}({enabled})"));
 }
 
 /// First connected document base attribute, read without guest getters.
@@ -4900,6 +4919,28 @@ pub fn dispatch_host_event(
     }
 }
 
+/// [`dispatch_host_event`], returning the DOM dispatch's legacy-output-did-listeners-throw flag:
+/// whether a listener (or event handler) invoked by this dispatch threw. The exception is
+/// reported either way, like Chrome 156: a trusted, cancelable `ErrorEvent` at the listener's
+/// window, before the next listener runs (turbo-dom#301). Listeners of
+/// events dispatched from inside the listeners (nested dispatches) do not count. IndexedDB
+/// aborts the transaction when a request's `success` / `error` listener threw
+/// ("Uncaught exception in event handler.", turbo-surf#148).
+pub fn dispatch_host_event_did_listeners_throw(
+    scope: &mut v8::PinScope,
+    event: v8::Local<v8::Object>,
+    target: v8::Local<v8::Object>,
+) -> bool {
+    let Some(record) = event_record(scope, event) else {
+        dispatch_host_event(scope, event, target);
+        return false;
+    };
+    let no = v8::Boolean::new(scope, false);
+    set_prop(scope, record, "threw", no.into());
+    dispatch_host_event(scope, event, target);
+    get_bool_prop(scope, record, "threw")
+}
+
 /// Enter or leave an engine-delivered callback on a non-DOM target.
 pub fn event_callback_state(
     scope: &mut v8::PinScope,
@@ -5147,25 +5188,19 @@ fn el_dispatch_event(
                 }
                 let passive = v8::Boolean::new(scope, listener.passive);
                 set_prop(scope, record, "passive", passive.into());
-                let scope = std::pin::pin!(v8::TryCatch::new(scope));
-                let scope = &mut scope.init();
-                if let Ok(function) = v8::Local::<v8::Function>::try_from(callback) {
-                    function.call(scope, cur_node.into(), &[event]);
-                } else if let Some(function) = get_prop(scope, callback, "handleEvent")
-                    .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-                {
-                    function.call(scope, callback.into(), &[event]);
-                }
+                // A listener's exception is reported and the dispatch goes on (turbo-dom#301);
+                // a terminated one ends the dispatch (no further listener runs).
+                let called = event_listeners::call_listener(
+                    scope,
+                    event_obj,
+                    callback.into(),
+                    cur_node.into(),
+                    &[event],
+                );
                 let passive = v8::Boolean::new(scope, false);
                 set_prop(scope, record, "passive", passive.into());
-                // A terminated listener ends the dispatch: this TryCatch caught the termination,
-                // so hand it back to the caller (no further listener runs once it is active).
-                if scope.has_terminated() {
-                    scope.rethrow();
+                if matches!(called, event_listeners::Called::Terminated) {
                     terminated.set(true);
-                    break;
-                }
-                if scope.is_execution_terminating() {
                     break;
                 }
             }
