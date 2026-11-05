@@ -625,6 +625,272 @@
    ]
   },
   {
+   "id": "table-spacing-hits",
+   "html": "<!doctype html><style>body{margin:0}table{border-spacing:10px 6px;border:2px solid #000;padding:4px}td{padding:0}</style><table data-cid=\"table\"><tbody data-cid=\"b1\"><tr data-cid=\"r1\"><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"s\" rowspan=\"2\"><div style=\"width:30px;height:10px\"></div></td></tr><tr data-cid=\"r2\"><td data-cid=\"c\"><div style=\"width:30px;height:10px\"></div></td></tr></tbody><tbody data-cid=\"b2\"><tr data-cid=\"r3\"><td data-cid=\"d\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"e\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"f\"><div style=\"width:30px;height:10px\"></div></td></tr></tbody></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "table",
+     "x": 0,
+     "y": 0,
+     "width": 142,
+     "height": 66,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "b1",
+     "x": 16,
+     "y": 12,
+     "width": 110,
+     "height": 26,
+     "display": "table-row-group",
+     "position": "static"
+    },
+    {
+     "cid": "r1",
+     "x": 16,
+     "y": 12,
+     "width": 110,
+     "height": 10,
+     "display": "table-row",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 16,
+     "y": 12,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 56,
+     "y": 12,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "s",
+     "x": 96,
+     "y": 12,
+     "width": 30,
+     "height": 26,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "r2",
+     "x": 16,
+     "y": 28,
+     "width": 110,
+     "height": 10,
+     "display": "table-row",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 16,
+     "y": 28,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b2",
+     "x": 16,
+     "y": 44,
+     "width": 110,
+     "height": 10,
+     "display": "table-row-group",
+     "position": "static"
+    },
+    {
+     "cid": "r3",
+     "x": 16,
+     "y": 44,
+     "width": 110,
+     "height": 10,
+     "display": "table-row",
+     "position": "static"
+    },
+    {
+     "cid": "d",
+     "x": 16,
+     "y": 44,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 56,
+     "y": 44,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 96,
+     "y": 44,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ],
+   "hits": [
+    {
+     "x": 20,
+     "y": 20,
+     "hit": "div"
+    },
+    {
+     "x": 50,
+     "y": 20,
+     "hit": "table"
+    },
+    {
+     "x": 20,
+     "y": 25,
+     "hit": "table"
+    },
+    {
+     "x": 70,
+     "y": 33,
+     "hit": "table"
+    },
+    {
+     "x": 110,
+     "y": 15,
+     "hit": "s"
+    },
+    {
+     "x": 110,
+     "y": 33,
+     "hit": "s"
+    },
+    {
+     "x": 20,
+     "y": 40,
+     "hit": "table"
+    },
+    {
+     "x": 50,
+     "y": 48,
+     "hit": "table"
+    },
+    {
+     "x": 130,
+     "y": 48,
+     "hit": "table"
+    },
+    {
+     "x": 3,
+     "y": 3,
+     "hit": "table"
+    },
+    {
+     "x": 8,
+     "y": 20,
+     "hit": "table"
+    },
+    {
+     "x": 20,
+     "y": 60,
+     "hit": "table"
+    },
+    {
+     "x": 140,
+     "y": 20,
+     "hit": "table"
+    },
+    {
+     "x": 145,
+     "y": 20,
+     "hit": "body"
+    }
+   ]
+  },
+  {
+   "id": "table-rowspan-spacing",
+   "html": "<!doctype html><style>body{margin:0}table{border-spacing:10px 6px}td{padding:0}</style><table data-cid=\"table\"><tr data-cid=\"r1\"><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"s\" rowspan=\"2\"><div style=\"width:30px;height:26px\"></div></td><td data-cid=\"t\" rowspan=\"2\"><div style=\"width:30px;height:20px\"></div></td></tr><tr data-cid=\"r2\"><td data-cid=\"c\"><div style=\"width:30px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "table",
+     "x": 0,
+     "y": 0,
+     "width": 130,
+     "height": 38,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "r1",
+     "x": 10,
+     "y": 6,
+     "width": 110,
+     "height": 10,
+     "display": "table-row",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 10,
+     "y": 6,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "s",
+     "x": 50,
+     "y": 6,
+     "width": 30,
+     "height": 26,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "t",
+     "x": 90,
+     "y": 6,
+     "width": 30,
+     "height": 26,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "r2",
+     "x": 10,
+     "y": 22,
+     "width": 110,
+     "height": 10,
+     "display": "table-row",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 10,
+     "y": 22,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
    "id": "table-empty-cell",
    "html": "<!doctype html><style></style><table data-cid=\"table\"><tbody data-cid=\"tbody\"><tr data-cid=\"tr\"><td data-cid=\"td\"></td></tr></tbody></table>",
    "measure": {},
