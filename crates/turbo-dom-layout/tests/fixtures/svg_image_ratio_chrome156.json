@@ -6,7 +6,7 @@
   800
  ],
  "deviceScaleFactor": 1,
- "html": "<!DOCTYPE html><html><head><style>body{margin:8px}div{margin:0 0 4px}</style></head><body><div style=\"width:400px\"><img data-cid=\"viewbox-only\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-7x3\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%207%203%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-wide\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20900%20100%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"\"><img data-cid=\"viewbox-only-page\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-block\" style=\"display:block\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-block-frame\" style=\"display:block;margin:0 10px;padding:4px;border:3px solid red\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-inline-frame\" style=\"padding:4px;border:3px solid red\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-border-box\" style=\"box-sizing:border-box;padding:4px;border:3px solid red\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-width\" style=\"width:120px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-width-pct\" style=\"width:50%\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-height\" style=\"height:60px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-max-width\" style=\"max-width:150px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-max-height\" style=\"max-height:90px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-min-height\" style=\"min-height:300px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"float:left\"><img data-cid=\"viewbox-only-float-wrap\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:inline-block\"><img data-cid=\"viewbox-only-inline-block-wrap\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"position:relative;width:400px;height:0\"><img data-cid=\"viewbox-only-abspos\" style=\"position:absolute\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-item\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:table\"><img data-cid=\"viewbox-only-table-cell\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"width-only\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2290%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"height-only\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2240%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"both-lengths\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2290%22%20height%3D%2230%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"no-size-no-viewbox\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"writing-mode:vertical-rl;width:400px;height:300px\"><img data-cid=\"viewbox-only-vertical\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div></body></html>",
+ "html": "<!DOCTYPE html><html><head><style>body{margin:8px}div{margin:0 0 4px}</style></head><body><div style=\"width:400px\"><img data-cid=\"viewbox-only\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-7x3\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%207%203%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-wide\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20900%20100%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"\"><img data-cid=\"viewbox-only-page\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-block\" style=\"display:block\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-block-frame\" style=\"display:block;margin:0 10px;padding:4px;border:3px solid red\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-inline-frame\" style=\"padding:4px;border:3px solid red\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-border-box\" style=\"box-sizing:border-box;padding:4px;border:3px solid red\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-width\" style=\"width:120px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-width-pct\" style=\"width:50%\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-height\" style=\"height:60px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-max-width\" style=\"max-width:150px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-max-width-border-box\" style=\"box-sizing:border-box;max-width:300px;padding:4px;border:3px solid red\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-max-width-fraction\" style=\"max-width:287px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-max-height\" style=\"max-height:90px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"viewbox-only-min-height\" style=\"min-height:300px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"float:left\"><img data-cid=\"viewbox-only-float-wrap\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:inline-block\"><img data-cid=\"viewbox-only-inline-block-wrap\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"position:relative;width:400px;height:0\"><img data-cid=\"viewbox-only-abspos\" style=\"position:absolute\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-item\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;flex-direction:column;width:400px\"><img data-cid=\"viewbox-only-flex-column\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;flex-direction:column;align-items:flex-start;width:400px\"><img data-cid=\"viewbox-only-flex-column-start\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-min-width-0\" style=\"flex:0 1 auto;min-width:0\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;align-items:flex-start;width:400px\"><img data-cid=\"viewbox-only-flex-start\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-frame\" style=\"padding:4px;border:3px solid red\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-border-box\" style=\"box-sizing:border-box;max-width:300px;padding:4px;border:3px solid red\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-border-box-height\" style=\"box-sizing:border-box;height:60px;padding:4px;border:3px solid red\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-max-width\" style=\"max-width:150px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-max-height\" style=\"max-height:90px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-min-height\" style=\"min-height:300px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-margin\" style=\"margin:0 10px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px;height:100px\"><img data-cid=\"viewbox-only-flex-container-height\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-height\" style=\"height:60px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;width:400px\"><img data-cid=\"viewbox-only-flex-basis\" style=\"flex-basis:100px\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:flex;flex-wrap:wrap;width:400px\"><img data-cid=\"viewbox-only-flex-wrap\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:inline-flex\"><img data-cid=\"viewbox-only-inline-flex-wrap\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:grid;width:400px\"><img data-cid=\"viewbox-only-grid-item\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:grid;justify-items:start;width:400px\"><img data-cid=\"viewbox-only-grid-start\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:grid;grid-template-columns:200px 1fr;width:400px\"><img data-cid=\"viewbox-only-grid-track\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:grid;grid-template-columns:200px;justify-items:start;width:400px\"><img data-cid=\"viewbox-only-grid-track-start\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"display:table\"><img data-cid=\"viewbox-only-table-cell\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"width-only\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2290%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"height-only\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2240%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"both-lengths\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2290%22%20height%3D%2230%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"width:400px\"><img data-cid=\"no-size-no-viewbox\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div><div style=\"writing-mode:vertical-rl;width:400px;height:300px\"><img data-cid=\"viewbox-only-vertical\" style=\"\" src=\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22teal%22%2F%3E%3C%2Fsvg%3E\"></div></body></html>",
  "cases": [
   {
    "id": "viewbox-only",
@@ -177,6 +177,34 @@
    ]
   },
   {
+   "id": "viewbox-only-max-width-border-box",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "width:400px",
+   "style": "box-sizing:border-box;max-width:300px;padding:4px;border:3px solid red",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    299.984375,
+    204.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-max-width-fraction",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "width:400px",
+   "style": "max-width:287px",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    286.984375,
+    191.328125
+   ]
+  },
+  {
    "id": "viewbox-only-max-height",
    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
    "wrap": "width:400px",
@@ -258,6 +286,286 @@
    "size": [
     400,
     266.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-column",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;flex-direction:column;width:400px",
+   "style": "",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    400,
+    266.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-column-start",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;flex-direction:column;align-items:flex-start;width:400px",
+   "style": "",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    399.984375,
+    266.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-min-width-0",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px",
+   "style": "flex:0 1 auto;min-width:0",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    400,
+    266.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-start",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;align-items:flex-start;width:400px",
+   "style": "",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    400,
+    266.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-frame",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px",
+   "style": "padding:4px;border:3px solid red",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    400,
+    271.328125
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-border-box",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px",
+   "style": "box-sizing:border-box;max-width:300px;padding:4px;border:3px solid red",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    300,
+    204.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-border-box-height",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px",
+   "style": "box-sizing:border-box;height:60px;padding:4px;border:3px solid red",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    83,
+    60
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-max-width",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px",
+   "style": "max-width:150px",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    150,
+    100
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-max-height",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px",
+   "style": "max-height:90px",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    135,
+    90
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-min-height",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px",
+   "style": "min-height:300px",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    450,
+    300
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-margin",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px",
+   "style": "margin:0 10px",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    380,
+    253.328125
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-container-height",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px;height:100px",
+   "style": "",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    150,
+    100
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-height",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px",
+   "style": "height:60px",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    90,
+    60
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-basis",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;width:400px",
+   "style": "flex-basis:100px",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    400,
+    266.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-flex-wrap",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:flex;flex-wrap:wrap;width:400px",
+   "style": "",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    400,
+    266.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-inline-flex-wrap",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:inline-flex",
+   "style": "",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "viewbox-only-grid-item",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:grid;width:400px",
+   "style": "",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    399.984375,
+    266.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-grid-start",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:grid;justify-items:start;width:400px",
+   "style": "",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    399.984375,
+    266.65625
+   ]
+  },
+  {
+   "id": "viewbox-only-grid-track",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:grid;grid-template-columns:200px 1fr;width:400px",
+   "style": "",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    199.984375,
+    133.328125
+   ]
+  },
+  {
+   "id": "viewbox-only-grid-track-start",
+   "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 200\"><rect width=\"100%\" height=\"100%\" fill=\"teal\"/></svg>",
+   "wrap": "display:grid;grid-template-columns:200px;justify-items:start;width:400px",
+   "style": "",
+   "natural": [
+    225,
+    150
+   ],
+   "size": [
+    199.984375,
+    133.328125
    ]
   },
   {
