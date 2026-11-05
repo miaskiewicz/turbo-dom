@@ -2146,12 +2146,13 @@
     return text;
   }
   const endsWithText = (text, suffix) => text.length >= suffix.length && sliceText(text, text.length - suffix.length) === suffix;
+  function componentCssTextBlock(item) {
+    if (item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)]) { const node = parseMathComponent(item); if (node) return node.t === 'lit' ? 'calc(' + formatNumber(node.value, node.unit) + ')' : mathFunctionText(node); }
+    const open = item.type === 'function' ? lowerCase(item.value) + '(' : item.type;
+    return open + normalizedText(item.children) + BLOCK_END[item.type];
+  }
   function componentCssText(item) {
-    if (item.block) {
-      if (item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)]) { const node = parseMathComponent(item); if (node) return node.t === 'lit' ? 'calc(' + formatNumber(node.value, node.unit) + ')' : mathFunctionText(node); }
-      const open = item.type === 'function' ? lowerCase(item.value) + '(' : item.type;
-      return open + normalizedText(item.children) + BLOCK_END[item.type];
-    }
+    if (item.block) return componentCssTextBlock(item);
     switch (item.type) {
       case 'ident': { const lower = lowerCase(item.value); return KEYWORD_IDS[lower] ? lower : serializeIdentifier(item.value); }
       case 'number': return formatNumber(item.value, 'number');
@@ -2201,34 +2202,30 @@
   }
 
   // ---- Serializing typed values into declarations (StyleValueToCSSValue) -------------------------
+  const TYPE_MATCH_BASE = { __proto__: null, Length: BASE.length, Time: BASE.time, Angle: BASE.angle, Resolution: BASE.resolution, Flex: BASE.flex };
+  const TYPE_MATCH_FAMILY = { __proto__: null, Image: 'CSSImageValue', Transform: 'CSSTransformValue', Position: 'CSSPositionValue' };
   const typeMatches = (value, typeName) => {
     const record = recordOf(value);
-    switch (typeName) {
-      case 'Length': return !!record.numeric && matchesBase(record.type, BASE.length);
-      case 'Number': return !!record.numeric && matchesNumber(record.type);
-      case 'Time': return !!record.numeric && matchesBase(record.type, BASE.time);
-      case 'Angle': return !!record.numeric && matchesBase(record.type, BASE.angle);
-      case 'Percentage': return !!record.numeric && matchesPercentage(record.type);
-      case 'Resolution': return !!record.numeric && matchesBase(record.type, BASE.resolution);
-      case 'Flex': return !!record.numeric && matchesBase(record.type, BASE.flex);
-      case 'Image': return record.family === 'CSSImageValue';
-      case 'Transform': return record.family === 'CSSTransformValue';
-      case 'Position': return record.family === 'CSSPositionValue';
-    }
+    if (TYPE_MATCH_FAMILY[typeName]) return record.family === TYPE_MATCH_FAMILY[typeName];
+    if (!record.numeric) return false;
+    if (typeName in TYPE_MATCH_BASE) return matchesBase(record.type, TYPE_MATCH_BASE[typeName]);
+    if (typeName === 'Number') return matchesNumber(record.type);
+    if (typeName === 'Percentage') return matchesPercentage(record.type);
     return false;
   };
+  function propertyCanTakeKeyword(property, record) {
+    const id = keywordId(record.value);
+    if (id !== null && CSS_WIDE[id] && id !== 'revert-layer') return !property.custom;
+    if (id === 'revert-layer') return !property.custom;
+    if (property.custom) return false;
+    if (property.meta.customIdent) return id !== 'default';
+    if (id === null) return false;
+    return hasType(property.meta, 'Keyword') && hasKeyword(property.meta, id);
+  }
   // CSSOMTypes::PropertyCanTake.
   function propertyCanTake(property, value) {
     const record = recordOf(value);
-    if (record.family === 'CSSKeywordValue') {
-      const id = keywordId(record.value);
-      if (id !== null && CSS_WIDE[id] && id !== 'revert-layer') return !property.custom;
-      if (id === 'revert-layer') return !property.custom;
-      if (property.custom) return false;
-      if (property.meta.customIdent) return id !== 'default';
-      if (id === null) return false;
-      return hasType(property.meta, 'Keyword') && hasKeyword(property.meta, id);
-    }
+    if (record.family === 'CSSKeywordValue') return propertyCanTakeKeyword(property, record);
     if (record.family === 'CSSStyleValue') return !!record.property && record.property === property.name;
     if (record.family === 'CSSUnparsedValue') return unparsedDeclarationOk(record);
     if (property.custom) return false;
@@ -2238,27 +2235,29 @@
     return false;
   }
   function unparsedDeclarationOk(record) { const text = unparsedText(record); const tokens = tokenize(text); return declarationValueOk(tokens, true) && substitutionsOk(components(tokens)); }
+  function valueDeclarationTextKeyword(property, record) {
+    const id = keywordId(record.value);
+    if (!property.custom && property.meta.customIdent && !(id !== null && CSS_WIDE[id])) { const text = keywordText(record.value); return validValue(property, text) ? text : null; }
+    return keywordText(record.value);
+  }
+  function valueDeclarationTextNumeric(property, record, value) {
+    if (record.kind === 'unit') {
+      const wrapped = !property.custom && outOfRange(property.name, record.value, record.unit);
+      writtenNode = wrapped ? nest(lit(record.value, record.unit)) : lit(record.value, record.unit);
+      return wrapped ? 'calc(' + formatNumber(record.value, record.unit) + ')' : formatNumber(record.value, record.unit);
+    }
+    const node = numericToNode(value);
+    writtenNode = node;
+    return node ? mathFunctionText(node) : null;
+  }
   // The declaration text of one typed value for `property`, or null when it cannot take it.
   function valueDeclarationText(property, value) {
     if (!propertyCanTake(property, value)) return null;
     const record = recordOf(value);
     if (record.family === 'CSSStyleValue') { const text = record.text; return validValue(property, text) ? normalizedText(trimSpace(components(tokenize(text)))) : null; }
-    if (record.family === 'CSSKeywordValue') {
-      const id = keywordId(record.value);
-      if (!property.custom && property.meta.customIdent && !(id !== null && CSS_WIDE[id])) { const text = keywordText(record.value); return validValue(property, text) ? text : null; }
-      return keywordText(record.value);
-    }
+    if (record.family === 'CSSKeywordValue') return valueDeclarationTextKeyword(property, record);
     if (record.family === 'CSSUnparsedValue') return unparsedText(record);
-    if (record.numeric) {
-      if (record.kind === 'unit') {
-        const wrapped = !property.custom && outOfRange(property.name, record.value, record.unit);
-        writtenNode = wrapped ? nest(lit(record.value, record.unit)) : lit(record.value, record.unit);
-        return wrapped ? 'calc(' + formatNumber(record.value, record.unit) + ')' : formatNumber(record.value, record.unit);
-      }
-      const node = numericToNode(value);
-      writtenNode = node;
-      return node ? mathFunctionText(node) : null;
-    }
+    if (record.numeric) return valueDeclarationTextNumeric(property, record, value);
     return styleText(record, value) || null;
   }
   const isCssWideText = (text) => { const items = significant(components(tokenize(text))); return items.length === 1 && items[0].type === 'ident' && !!CSS_WIDE[lowerCase(items[0].value)]; };
@@ -2308,19 +2307,31 @@
   // Blink stores box shorthands as their longhands; the binding keeps the authored shorthand,
   // so the map's view expands them in place (a later longhand replaces its slot).
   const SPLIT_SHORTHANDS = plainSet(['margin', 'padding', 'inset', 'scroll-margin', 'scroll-padding', 'border-width', 'border-style', 'border-color', 'gap', 'overflow']);
+  const splitShorthandTextOfPart = (item) => normalizedText(plain([item]));
+  function splitShorthandBox(longhands, parts) {
+    if (!parts.length || parts.length > 4) return null;
+    const box = parts.length === 1 ? [parts[0], parts[0], parts[0], parts[0]] : parts.length === 2 ? [parts[0], parts[1], parts[0], parts[1]] : parts.length === 3 ? [parts[0], parts[1], parts[2], parts[1]] : [parts[0], parts[1], parts[2], parts[3]];
+    const result = list();
+    for (let index = 0; index < 4; index++) push(result, [longhands[index], splitShorthandTextOfPart(box[index])]);
+    return result;
+  }
+  function splitShorthandCssWide(longhands, parts) {
+    const result = list(), value = lowerCase(parts[0].value);
+    for (let index = 0; index < longhands.length; index++) push(result, [longhands[index], value]);
+    return result;
+  }
   function splitShorthand(name, text) {
     const meta = PROPERTIES[name], items = components(tokenize(text));
     if (!meta || !meta.longhands || hasSubstitution(items)) return null;
-    const parts = significant(items), longhands = meta.longhands, result = list();
-    const textOfPart = (item) => normalizedText(plain([item]));
-    if (parts.length === 1 && parts[0].type === 'ident' && CSS_WIDE[lowerCase(parts[0].value)]) { for (let index = 0; index < longhands.length; index++) push(result, [longhands[index], lowerCase(parts[0].value)]); return result; }
-    if (longhands.length === 4) {
-      if (!parts.length || parts.length > 4) return null;
-      const box = parts.length === 1 ? [parts[0], parts[0], parts[0], parts[0]] : parts.length === 2 ? [parts[0], parts[1], parts[0], parts[1]] : parts.length === 3 ? [parts[0], parts[1], parts[2], parts[1]] : [parts[0], parts[1], parts[2], parts[3]];
-      for (let index = 0; index < 4; index++) push(result, [longhands[index], textOfPart(box[index])]);
+    const parts = significant(items), longhands = meta.longhands;
+    if (parts.length === 1 && parts[0].type === 'ident' && CSS_WIDE[lowerCase(parts[0].value)]) return splitShorthandCssWide(longhands, parts);
+    if (longhands.length === 4) return splitShorthandBox(longhands, parts);
+    if (longhands.length === 2 && parts.length >= 1 && parts.length <= 2) {
+      const result = list();
+      push(result, [longhands[0], splitShorthandTextOfPart(parts[0])]);
+      push(result, [longhands[1], splitShorthandTextOfPart(parts[parts.length - 1])]);
       return result;
     }
-    if (longhands.length === 2 && parts.length >= 1 && parts.length <= 2) { push(result, [longhands[0], textOfPart(parts[0])]); push(result, [longhands[1], textOfPart(parts[parts.length - 1])]); return result; }
     return null;
   }
   function storedView(record) {
@@ -2448,22 +2459,25 @@
     define(proto, symbolIterator, { __proto__: null, value: entries, writable: true, enumerable: false, configurable: true });
   }
   const writableRecord = (self) => brand(self, MAP_WRITE);
+  function mapSetShorthand(record, property, values) {
+    if (values.length !== 1) throw fail('Invalid type for property');
+    const value = values[0];
+    const cssText = typeof value === 'string' ? value : propertyCanTake(property, value) ? styleText(recordOf(value), value) : '';
+    if (cssText === '' || !validValue(property, cssText)) throw fail('Invalid type for property');
+    writeDeclaration(record, property.name, cssText);
+  }
+  function mapSetCoerced(property, values) {
+    if (isRepeated(property)) { const result = coerceList(property, values); return result ? (result.single !== undefined ? result.single : joinList(result.parts, separatorOf(property))) : null; }
+    if (values.length === 1) return coerceSingle(property, values[0]);
+    return null;
+  }
   method('StylePropertyMap', 'set', 1, function () {
     const record = writableRecord(this), text = readName(arguments), property = propertyName(text);
     const values = styleValuesOrStrings(arguments, 1);
     if (!property || (!property.custom && property.meta.descriptor)) throw fail('Invalid propertyName: ' + text);
-    if (isShorthand(property)) {
-      if (values.length !== 1) throw fail('Invalid type for property');
-      const value = values[0];
-      const cssText = typeof value === 'string' ? value : propertyCanTake(property, value) ? styleText(recordOf(value), value) : '';
-      if (cssText === '' || !validValue(property, cssText)) throw fail('Invalid type for property');
-      writeDeclaration(record, property.name, cssText);
-      return undefined;
-    }
-    let declaration = null;
+    if (isShorthand(property)) { mapSetShorthand(record, property, values); return undefined; }
     writtenNode = null;
-    if (isRepeated(property)) { const result = coerceList(property, values); declaration = result ? (result.single !== undefined ? result.single : joinList(result.parts, separatorOf(property))) : null; }
-    else if (values.length === 1) declaration = coerceSingle(property, values[0]);
+    const declaration = mapSetCoerced(property, values);
     if (declaration === null) throw fail('Invalid type for property');
     writeDeclaration(record, property.custom ? text : property.name, declaration, !isRepeated(property) && !property.custom ? writtenNode : null);
     return undefined;
