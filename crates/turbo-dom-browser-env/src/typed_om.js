@@ -1722,29 +1722,31 @@
   const NON_NEGATIVE = plainSet(['animation-duration', 'animation-iteration-count', 'background-size', 'block-size', 'border-block-end-width', 'border-block-start-width', 'border-image-outset', 'border-image-slice', 'border-image-width', 'border-inline-end-width', 'border-inline-start-width', 'column-rule-width', 'flex-grow', 'flex-shrink', 'font-size', 'font-size-adjust', 'font-stretch', 'grid-auto-columns', 'grid-auto-rows', 'inline-size', 'max-block-size', 'max-inline-size', 'min-block-size', 'min-inline-size', 'padding-block-end', 'padding-block-start', 'padding-inline-end', 'padding-inline-start', 'r', 'rx', 'ry', 'scroll-padding-block-end', 'scroll-padding-block-start', 'scroll-padding-bottom', 'scroll-padding-inline-end', 'scroll-padding-inline-start', 'scroll-padding-left', 'scroll-padding-right', 'scroll-padding-top', 'stroke-miterlimit', 'transition-duration']);
   function plainSet(names) { const set = create(null); for (let index = 0; index < names.length; index++) set[names[index]] = true; return set; }
   // CSSUnitValue::IsValueOutOfRangeForProperty.
+  const OUT_OF_RANGE_INT_ONLY = plainSet(['order', 'reading-order', 'z-index', 'math-depth']);
+  const OUT_OF_RANGE_POSITIVE_INT = plainSet(['orphans', 'widows', 'column-count']);
   function outOfRange(name, value, unitKey) {
     if (unitKey === 'fr') return false;
     if (NON_NEGATIVE_LENGTH[name] && value < 0) return true;
-    switch (name) {
-      case 'order': case 'reading-order': case 'z-index': case 'math-depth': return mathRound(value) !== value;
-      case 'tab-size': return value < 0 || (unitKey === 'number' && mathRound(value) !== value);
-      case 'orphans': case 'widows': case 'column-count': return mathRound(value) !== value || value < 1;
-      case 'font-weight': return value < 1 || value > 1000;
-    }
+    if (OUT_OF_RANGE_INT_ONLY[name]) return mathRound(value) !== value;
+    if (name === 'tab-size') return value < 0 || (unitKey === 'number' && mathRound(value) !== value);
+    if (OUT_OF_RANGE_POSITIVE_INT[name]) return mathRound(value) !== value || value < 1;
+    if (name === 'font-weight') return value < 1 || value > 1000;
     return !!NON_NEGATIVE[name] && value < 0;
   }
 
   // ---- Value grammar (validation) --------------------------------------------------------------
   // Unbalanced blocks, top-level `!`/`;`/`{}` and bad tokens are never a declaration value.
+  const DECL_CLOSE_TOKENS = plainSet([')', ']', '}']);
+  const declStepTopLevelBad = (token, depth) => depth === 0 && (token.type === 'semicolon' || (token.type === 'delim' && token.delim === '!'));
   function declarationValueOk(tokens, allowEmpty) {
-    let depth = 0; const stack = list(); let content = false;
+    const stateRef = { depth: 0, stack: list() }; let content = false;
     for (let index = 0; index < tokens.length; index++) {
       const token = tokens[index];
       if (token.type === 'bad-string' || token.type === 'bad-url') return false;
       if (token.type !== 'whitespace') content = true;
-      if (BLOCK_END[token.type]) { push(stack, BLOCK_END[token.type]); depth++; continue; }
-      if (token.type === ')' || token.type === ']' || token.type === '}') { if (!stack.length || stack[stack.length - 1] !== token.type) return false; stack.length--; depth--; continue; }
-      if (depth === 0 && (token.type === 'semicolon' || (token.type === 'delim' && token.delim === '!'))) return false;
+      if (BLOCK_END[token.type]) { push(stateRef.stack, BLOCK_END[token.type]); stateRef.depth++; continue; }
+      if (DECL_CLOSE_TOKENS[token.type]) { if (!stateRef.stack.length || stateRef.stack[stateRef.stack.length - 1] !== token.type) return false; stateRef.stack.length--; stateRef.depth--; continue; }
+      if (declStepTopLevelBad(token, stateRef.depth)) return false;
     }
     return allowEmpty || content;
   }
@@ -1810,29 +1812,36 @@
     if (POSITION_PROPERTIES[name] && !positionCountOk(items)) return false;
     return DASHED_NAMES[name] ? DASHED_NAMES[name](items) : undefined;
   }
+  const isSingleIdent = (items) => items.length === 1 && items[0].type === 'ident';
+  function validValueFinalKeyword(property, items) {
+    const meta = property.meta;
+    if (!isSingleIdent(items) || !meta.keywords || meta.customIdent || !meta.types || meta.types.length !== 1 || meta.types[0] !== 'Keyword') return null;
+    return hasKeyword(meta, lowerCase(items[0].value));
+  }
+  function validValueAfterRange(property, text, items) {
+    const fixed = fixedGrammar(property.name, items);
+    if (fixed !== undefined) return fixed;
+    const native = Native('valid', property.name, text);
+    if (native === true) return true;
+    if (isSingleIdent(items) && hasKeyword(property.meta, lowerCase(items[0].value))) return true;
+    if (EXTRA_GRAMMAR[property.name] && EXTRA_GRAMMAR[property.name](items)) return true;
+    if (native === false) return false;
+    const trailing = validValueFinalKeyword(property, items);
+    return trailing === null ? true : trailing;
+  }
   // Whether `text` is a valid value of a (non-custom) property: Lightning CSS's grammar when it
   // models the property, else the property's Blink keyword table for single identifiers.
   function validValue(property, text) {
     const tokens = tokenize(text);
     if (!declarationValueOk(tokens, false)) return false;
     const items = significant(components(tokens));
-    if (items.length === 1 && items[0].type === 'ident' && CSS_WIDE[lowerCase(items[0].value)]) return true;
+    if (isSingleIdent(items) && CSS_WIDE[lowerCase(items[0].value)]) return true;
     if (hasSubstitution(items)) return false;
-    const meta = property.meta;
     if (property.descriptor) return false;
     // -webkit-box-reflect serializes `none` but its grammar has no such keyword.
-    if (property.name === '-webkit-box-reflect' && items.length === 1 && ident(items[0]) === 'none') return false;
+    if (property.name === '-webkit-box-reflect' && isSingleIdent(items) && ident(items[0]) === 'none') return false;
     if (!rangeOk(property, items)) return false;
-    const fixed = fixedGrammar(property.name, items);
-    if (fixed !== undefined) return fixed;
-    const native = Native('valid', property.name, text);
-    if (native === true) return true;
-    // Keywords Blink lists for the property (flex-basis: content, box-shadow: none, …).
-    if (items.length === 1 && items[0].type === 'ident' && hasKeyword(meta, lowerCase(items[0].value))) return true;
-    if (EXTRA_GRAMMAR[property.name] && EXTRA_GRAMMAR[property.name](items)) return true;
-    if (native === false) return false;
-    if (items.length === 1 && items[0].type === 'ident' && meta.keywords && !meta.customIdent && meta.types && meta.types.length === 1 && meta.types[0] === 'Keyword') return hasKeyword(meta, lowerCase(items[0].value));
-    return true;
+    return validValueAfterRange(property, text, items);
   }
 
   // ---- Reification (StyleValueFactory) -----------------------------------------------------------
@@ -1857,66 +1866,89 @@
   const ALPHA = plainSet(['opacity', 'fill-opacity', 'flood-opacity', 'stop-opacity', 'stroke-opacity']);
   // Two-value display maps to its legacy single keyword.
   const DISPLAY_PAIRS = { __proto__: null, 'block flow': 'block', 'inline flow': 'inline', 'block flow-root': 'flow-root', 'inline flow-root': 'inline-block', 'block flex': 'flex', 'inline flex': 'inline-flex', 'block grid': 'grid', 'inline grid': 'inline-grid', 'block table': 'table', 'inline table': 'inline-table', 'block list-item': 'list-item', 'block flow list-item': 'list-item', 'block ruby': 'block ruby', 'inline ruby': 'ruby', 'run-in flow': 'run-in', 'block math': 'block math', 'inline math': 'math' };
-  // CreateStyleValue: identifiers, numerics, colors and images reify without a property.
-  function genericValue(property, item, mode) {
-    if (item.type === 'ident') return keywordValue(identifierKeyword(property, item));
-    const meta = property.meta || { __proto__: null };
-    const numericTyped = hasType(meta, 'Length') || hasType(meta, 'Number') || hasType(meta, 'Percentage') || hasType(meta, 'Time') || hasType(meta, 'Angle') || hasType(meta, 'Flex') || hasType(meta, 'Resolution');
-    if ((item.type === 'number' || item.type === 'percentage' || item.type === 'dimension') && !numericTyped && meta.types) return null;
-    if (item.type === 'number') {
-      // Unitless lengths: 0 is 0px in CSS length grammar; SVG user units have no Typed OM unit.
-      if (hasType(meta, 'Length') && !hasType(meta, 'Number')) return item.value === 0 && !USER_UNITS[property.name] ? unitValue(0, 'px') : null;
-      return unitValue(item.value, 'number');
-    }
-    if (item.type === 'percentage') return ALPHA[property.name] ? unitValue(item.value / 100, 'number') : unitValue(item.value, 'percent');
-    if (item.type === 'dimension') { const key = lowerCase(item.unit); return UNITS[key] && key !== 'number' && key !== 'percent' ? unitValue(item.value, key) : null; }
-    if (item.block && item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)]) { const node = parseMathComponent(item); return node ? nodeToNumeric(node) : null; }
+  const GENERIC_NUMERIC_TYPES = plain(['Length', 'Number', 'Percentage', 'Time', 'Angle', 'Flex', 'Resolution']);
+  const metaHasNumericType = (meta) => { for (let index = 0; index < GENERIC_NUMERIC_TYPES.length; index++) if (hasType(meta, GENERIC_NUMERIC_TYPES[index])) return true; return false; };
+  function genericValueNumber(property, meta, item) {
+    if (hasType(meta, 'Length') && !hasType(meta, 'Number')) return item.value === 0 && !USER_UNITS[property.name] ? unitValue(0, 'px') : null;
+    return unitValue(item.value, 'number');
+  }
+  function genericValueDimension(item) {
+    const key = lowerCase(item.unit);
+    return UNITS[key] && key !== 'number' && key !== 'percent' ? unitValue(item.value, key) : null;
+  }
+  function genericValueBlock(property, item, mode) {
+    if (item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)]) { const node = parseMathComponent(item); return node ? nodeToNumeric(node) : null; }
     if (isColor(item)) return unsupported(colorText(item, mode), property.name);
     if (isUrl(item) && property.meta && hasType(property.meta, 'Image')) return imageValue('url(' + serializeString(urlString(item)) + ')');
     return null;
   }
+  const GENERIC_NUMERIC_ITEM = plainSet(['number', 'percentage', 'dimension']);
+  // CreateStyleValue: identifiers, numerics, colors and images reify without a property.
+  function genericValue(property, item, mode) {
+    if (item.type === 'ident') return keywordValue(identifierKeyword(property, item));
+    const meta = property.meta || { __proto__: null };
+    if (GENERIC_NUMERIC_ITEM[item.type] && !metaHasNumericType(meta) && meta.types) return null;
+    if (item.type === 'number') return genericValueNumber(property, meta, item);
+    if (item.type === 'percentage') return ALPHA[property.name] ? unitValue(item.value / 100, 'number') : unitValue(item.value, 'percent');
+    if (item.type === 'dimension') return genericValueDimension(item);
+    if (item.block) return genericValueBlock(property, item, mode);
+    if (isColor(item)) return unsupported(colorText(item, mode), property.name);
+    return null;
+  }
   const colorText = (item, mode) => mode.normalize(plain([item]));
   // Position syntax (css-values-4 <position>) as a CSSValuePair of x and y offsets.
-  function positionValueOf(items) {
-    const parts = significant(items);
-    if (!parts.length || parts.length > 4) return null;
-    const isKeyword = (item, names) => item.type === 'ident' && indexOfText(names, ' ' + lowerCase(item.value) + ' ') >= 0;
-    const offset = (item) => item.type === 'number' && item.value === 0 ? unitValue(0, 'px') : item.type === 'percentage' ? unitValue(item.value, 'percent') : item.type === 'dimension' && UNITS[lowerCase(item.unit)] && UNITS[lowerCase(item.unit)].base === BASE.length ? unitValue(item.value, lowerCase(item.unit)) : item.block && item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)] ? (() => { const node = parseMathComponent(item); return node ? nodeToNumeric(node) : null; })() : null;
-    const keywordOffset = (name) => name === 'left' || name === 'top' ? unitValue(0, 'percent') : name === 'center' ? unitValue(50, 'percent') : unitValue(100, 'percent');
-    const fromEdge = (name, value) => name === 'left' || name === 'top' ? value : createVariadic('sum', toArray([unitValue(100, 'percent'), negateValue(value)]));
-    if (parts.length === 1) {
-      const item = parts[0];
-      if (isKeyword(item, ' left right center ')) return [keywordOffset(lowerCase(item.value)), unitValue(50, 'percent')];
-      if (isKeyword(item, ' top bottom ')) return [unitValue(50, 'percent'), keywordOffset(lowerCase(item.value))];
-      const value = offset(item); return value ? [value, unitValue(50, 'percent')] : null;
-    }
-    if (parts.length === 2) {
-      const a = parts[0], b = parts[1];
-      const aValue = offset(a), bValue = offset(b);
-      const aX = isKeyword(a, ' left right '), aY = isKeyword(a, ' top bottom '), aC = isKeyword(a, ' center ');
-      const bX = isKeyword(b, ' left right '), bY = isKeyword(b, ' top bottom '), bC = isKeyword(b, ' center ');
-      const valueOf = (item, number) => number || keywordOffset(lowerCase(item.value));
-      if ((aX || aC || aValue) && (bY || bC || bValue) && !(aC && bX)) return [valueOf(a, aValue), valueOf(b, bValue)];
-      if ((aY || aC) && (bX || bC)) return [valueOf(b, bValue), valueOf(a, aValue)];
-      return null;
-    }
-    // Three or four values: keyword-offset pairs.
+  const positionIsKeyword = (item, names) => item.type === 'ident' && indexOfText(names, ' ' + lowerCase(item.value) + ' ') >= 0;
+  function positionOffset(item) {
+    if (item.type === 'number' && item.value === 0) return unitValue(0, 'px');
+    if (item.type === 'percentage') return unitValue(item.value, 'percent');
+    if (item.type === 'dimension' && UNITS[lowerCase(item.unit)] && UNITS[lowerCase(item.unit)].base === BASE.length) return unitValue(item.value, lowerCase(item.unit));
+    if (item.block && item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)]) { const node = parseMathComponent(item); return node ? nodeToNumeric(node) : null; }
+    return null;
+  }
+  const positionKeywordOffset = (name) => name === 'left' || name === 'top' ? unitValue(0, 'percent') : name === 'center' ? unitValue(50, 'percent') : unitValue(100, 'percent');
+  const positionFromEdge = (name, value) => name === 'left' || name === 'top' ? value : createVariadic('sum', toArray([unitValue(100, 'percent'), negateValue(value)]));
+  function positionValueOne(item) {
+    if (positionIsKeyword(item, ' left right center ')) return [positionKeywordOffset(lowerCase(item.value)), unitValue(50, 'percent')];
+    if (positionIsKeyword(item, ' top bottom ')) return [unitValue(50, 'percent'), positionKeywordOffset(lowerCase(item.value))];
+    const value = positionOffset(item); return value ? [value, unitValue(50, 'percent')] : null;
+  }
+  function positionValueTwo(a, b) {
+    const aValue = positionOffset(a), bValue = positionOffset(b);
+    const aX = positionIsKeyword(a, ' left right '), aY = positionIsKeyword(a, ' top bottom '), aC = positionIsKeyword(a, ' center ');
+    const bX = positionIsKeyword(b, ' left right '), bY = positionIsKeyword(b, ' top bottom '), bC = positionIsKeyword(b, ' center ');
+    const valueOf = (item, number) => number || positionKeywordOffset(lowerCase(item.value));
+    if ((aX || aC || aValue) && (bY || bC || bValue) && !(aC && bX)) return [valueOf(a, aValue), valueOf(b, bValue)];
+    if ((aY || aC) && (bX || bC)) return [valueOf(b, bValue), valueOf(a, aValue)];
+    return null;
+  }
+  function positionValueGroups(parts) {
     const groups = list(); let index = 0;
     while (index < parts.length) {
       const item = parts[index];
       if (item.type !== 'ident') return null;
       const name = lowerCase(item.value);
-      const next = parts[index + 1], value = next ? offset(next) : null;
+      const next = parts[index + 1], value = next ? positionOffset(next) : null;
       if (value && name !== 'center') { push(groups, { name, value }); index += 2; } else { push(groups, { name, value: null }); index++; }
     }
-    if (groups.length !== 2) return null;
+    return groups.length === 2 ? groups : null;
+  }
+  function positionValueThreeOrFour(parts) {
+    const groups = positionValueGroups(parts);
+    if (!groups) return null;
     let first = groups[0], second = groups[1];
     const horizontal = (group) => group.name === 'left' || group.name === 'right';
     const vertical = (group) => group.name === 'top' || group.name === 'bottom';
     if (vertical(first) || (first.name === 'center' && horizontal(second))) { const swap = first; first = second; second = swap; }
     if (!(horizontal(first) || first.name === 'center') || !(vertical(second) || second.name === 'center')) return null;
-    const resolve = (group) => group.value ? fromEdge(group.name, group.value) : keywordOffset(group.name);
+    const resolve = (group) => group.value ? positionFromEdge(group.name, group.value) : positionKeywordOffset(group.name);
     return [resolve(first), resolve(second)];
+  }
+  function positionValueOf(items) {
+    const parts = significant(items);
+    if (!parts.length || parts.length > 4) return null;
+    if (parts.length === 1) return positionValueOne(parts[0]);
+    if (parts.length === 2) return positionValueTwo(parts[0], parts[1]);
+    return positionValueThreeOrFour(parts);
   }
   // CSSTransformComponent::FromCSSValue over one transform function.
   function transformComponentNumeric(group) {
