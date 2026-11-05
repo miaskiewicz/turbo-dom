@@ -7,8 +7,37 @@ at the time); this file reconstructs them from history.
 
 ## Unreleased
 
+### Added
+
+- turbo-dom-layout: `INDETERMINATE_ATTR`, the attribute a live embedder adds to a checkbox's
+  `StyledElement` (from `live::snapshot`'s `post_cascade` hook) when a script set its
+  `indeterminate` IDL flag; the checkbox then paints Chrome's indeterminate dash
+  (turbo-dom#293).
+
 ### Fixed
 
+- **turbo-dom-layout: `<progress>` / `<meter>`, indeterminate checkboxes and vertical controls
+  look native (turbo-dom#293).** A `<progress>` / `<meter>` is Chrome's `10em` / `5em` by `1em`
+  inline-block (logical, so `16 x 160` in a vertical mode) whose children do not render, its
+  baseline its bottom lowered by `vertical-align: -0.2em`, painted as Chrome's rounded bar
+  (half the box tall, `#efefef` in a `#b2b2b2` / `#cbcbcb` frame) filled to its value: a
+  progress in `#0075ff`, a meter in its value's region colour (optimum / suboptimal / even less
+  good; HTML's min / max / low / high / optimum defaults and clamping). An indeterminate checkbox
+  paints Chrome's white dash on blue. Every control keeps its native look in `vertical-lr` /
+  `vertical-rl` instead of falling back to its CSS border: drawn in its logical space, so a
+  range, progress or meter runs down its inline axis and a menu list's chevron points along the
+  block axis, while the check, dash and chevron glyphs keep their physical shape. Chrome 156
+  control: `form_native_chrome156.json` (`scripts/form-native-chrome-control.mjs`); tests:
+  `turbo-dom-raster` `form_native_chrome_tests`. An indeterminate progress shows its track (Chrome
+  animates a bar over it).
+- **turbo-dom-layout: `<audio controls>` paints Chrome's media control panel (turbo-dom#292).**
+  The `#f1f3f4` pill over the content box with the greyed-out play button, the `0:00 / 0:00`
+  time display, the timeline, the greyed-out volume button and the menu button, at Chrome's
+  positions (the timeline stretching with the box). Same control and tests (`audio-*`).
+- **turbo-dom-browser-env: a `<button>`'s computed `background-color` is `rgb(239, 239, 239)`
+  (turbo-dom#318).** Buttons and `<input type=button|submit|reset>` get html.css's ButtonFace as a
+  UA declaration below every author rule and inline style (it read `rgba(0, 0, 0, 0)`). Control:
+  `computed_form_background_chrome156.json`.
 - **turbo-dom-browser-env: `setHTML` / `setHTMLUnsafe` / `template.innerHTML` keep template
   contents and declarative shadow roots through a GC.** Past 256 live wrappers a mutating call
   defers its ownership reconcile. These calls wrap the parsed nodes while they are still in a
