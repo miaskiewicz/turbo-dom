@@ -1235,20 +1235,15 @@
     if (!result) throw fail('Cannot convert to ' + text);
     return result;
   });
-  method('CSSNumericValue', 'toSum', 0, function () {
-    brand(this, brandSets.CSSNumericValue);
-    const units = list();
-    for (let index = 0; index < arguments.length; index++) { const text = toStringValue(arguments[index]); push(units, text); }
-    for (let index = 0; index < units.length; index++) if (!unitFromName(units[index])) throw fail('Invalid unit for conversion', 'SyntaxError');
-    const sum = sumValue(this);
-    if (!sum) throw fail('Invalid value for conversion');
-    const values = list();
-    for (let index = 0; index < sum.length; index++) { const value = termToUnit(sum[index]); if (!value) throw fail('Invalid value for conversion'); push(values, value); }
-    if (!units.length) {
-      const unitString = (value) => { const key = numericRecord(value).unit; return key; };
-      for (let index = 1; index < values.length; index++) { const value = values[index]; let at = index - 1; while (at >= 0 && unitString(values[at]) > unitString(value)) { values[at + 1] = values[at]; at--; } values[at + 1] = value; }
-      return createVariadic('sum', toArray(values));
+  function toSumSortByUnit(values) {
+    const unitString = (value) => numericRecord(value).unit;
+    for (let index = 1; index < values.length; index++) {
+      const value = values[index]; let at = index - 1;
+      while (at >= 0 && unitString(values[at]) > unitString(value)) { values[at + 1] = values[at]; at--; }
+      values[at + 1] = value;
     }
+  }
+  function toSumConverted(units, values) {
     const result = list();
     for (let index = 0; index < units.length; index++) {
       const target = unitFromName(units[index]); let total = 0;
@@ -1256,7 +1251,19 @@
       push(result, unitValue(total, target));
     }
     for (let index = 0; index < values.length; index++) if (values[index]) throw fail('There were leftover terms that were not converted');
-    return incompatible(createVariadic('sum', toArray(result)));
+    return result;
+  }
+  method('CSSNumericValue', 'toSum', 0, function () {
+    brand(this, brandSets.CSSNumericValue);
+    const units = list();
+    for (let index = 0; index < arguments.length; index++) push(units, toStringValue(arguments[index]));
+    for (let index = 0; index < units.length; index++) if (!unitFromName(units[index])) throw fail('Invalid unit for conversion', 'SyntaxError');
+    const sum = sumValue(this);
+    if (!sum) throw fail('Invalid value for conversion');
+    const values = list();
+    for (let index = 0; index < sum.length; index++) { const value = termToUnit(sum[index]); if (!value) throw fail('Invalid value for conversion'); push(values, value); }
+    if (!units.length) { toSumSortByUnit(values); return createVariadic('sum', toArray(values)); }
+    return incompatible(createVariadic('sum', toArray(toSumConverted(units, values))));
   });
   const TYPE_MEMBERS = plain(['angle', 'flex', 'frequency', 'length', 'percent', 'percentHint', 'resolution', 'time']);
   method('CSSNumericValue', 'type', 0, function () {
@@ -1275,6 +1282,18 @@
     if (!value) throw fail('Invalid math expression', 'SyntaxError');
     return value;
   });
+  const PARSE_NUMERIC_FNS = plainSet(['calc', '-webkit-calc', 'min', 'max', 'clamp']);
+  function parseNumericFunction(item) {
+    const name = lowerCase(item.value);
+    if (!PARSE_NUMERIC_FNS[name]) return null;
+    // Blink parses the outer function as a calc() argument, so a top-level calc() is nested.
+    const wrapper = list(); push(wrapper, item);
+    let node;
+    if (name === 'calc') { const state = { items: wrapper, at: 0, depth: 0, allowNone: false }; const result = parseSum(state); node = result && state.at === wrapper.length ? result : null; }
+    else node = parseMathFunction(name, item.children, 0);
+    if (!node || node.t === 'kw') return null;
+    return nodeToNumeric(node);
+  }
   // CSSNumericValue::parse: one numeric token, or a calc()/-webkit-calc()/min()/max()/clamp().
   function parseNumeric(text) {
     const items = trimSpace(components(tokenize(text)));
@@ -1283,15 +1302,7 @@
     if (item.type === 'number') return unitValue(item.value, 'number');
     if (item.type === 'percentage') return unitValue(item.value, 'percent');
     if (item.type === 'dimension') { const key = lowerCase(item.unit); return UNITS[key] && key !== 'number' && key !== 'percent' ? unitValue(item.value, key) : null; }
-    if (item.block && item.type === 'function') {
-      const name = lowerCase(item.value);
-      if (name !== 'calc' && name !== '-webkit-calc' && name !== 'min' && name !== 'max' && name !== 'clamp') return null;
-      // Blink parses the outer function as a calc() argument, so a top-level calc() is nested.
-      const wrapper = list(); push(wrapper, item);
-      const node = name === 'calc' ? (() => { const state = { items: wrapper, at: 0, depth: 0, allowNone: false }; const result = parseSum(state); return result && state.at === wrapper.length ? result : null; })() : parseMathFunction(name, item.children, 0);
-      if (!node || node.t === 'kw') return null;
-      return nodeToNumeric(node);
-    }
+    if (item.block && item.type === 'function') return parseNumericFunction(item);
     return null;
   }
   attribute('CSSUnitValue', 'value', (self) => brand(self, brandSets.CSSUnitValue).value, (self, value) => { const record = brand(self, brandSets.CSSUnitValue); record.value = toDouble(value); });
@@ -1403,28 +1414,31 @@
   }
   // CSSUnparsedValue::FromCSSVariableData: var()/env() become references, the rest strings.
   function unparsedFromText(text) {
-    const tokens = tokenize(text); let index = 0;
+    const tokens = tokenize(text); const stateRef = { index: 0 };
+    function consumeVarReference(segments, builder) {
+      if (builder) { push(segments, builder); }
+      stateRef.index++;
+      while (stateRef.index < tokens.length && tokens[stateRef.index].type === 'whitespace') stateRef.index++;
+      let variable = '';
+      if (stateRef.index < tokens.length && tokens[stateRef.index].type === 'ident') { variable = tokens[stateRef.index].value; stateRef.index++; }
+      while (stateRef.index < tokens.length && tokens[stateRef.index].type === 'whitespace') stateRef.index++;
+      if (stateRef.index < tokens.length && tokens[stateRef.index].type === 'comma') stateRef.index++;
+      const inner = read(true);
+      if (stateRef.index < tokens.length && tokens[stateRef.index].type === ')') stateRef.index++;
+      if (!startsWith(variable, '--')) return { stop: true };
+      push(segments, instance('CSSVariableReferenceValue', { variable, fallback: inner.length ? newUnparsed(inner) : null }));
+      return { stop: false };
+    }
+    const isVarOrEnv = (token) => token.type === 'function' && (lowerCase(token.value) === 'var' || lowerCase(token.value) === 'env');
+    const isCloseToken = (type) => type === ')' || type === ']' || type === '}';
     function read(stopAtClose) {
       const segments = list(); let builder = '', depth = 0;
-      while (index < tokens.length) {
-        const token = tokens[index];
-        if (token.type === 'function' && (lowerCase(token.value) === 'var' || lowerCase(token.value) === 'env')) {
-          if (builder) { push(segments, builder); builder = ''; }
-          index++;
-          while (index < tokens.length && tokens[index].type === 'whitespace') index++;
-          let variable = '';
-          if (index < tokens.length && tokens[index].type === 'ident') { variable = tokens[index].value; index++; }
-          while (index < tokens.length && tokens[index].type === 'whitespace') index++;
-          if (index < tokens.length && tokens[index].type === 'comma') index++;
-          const inner = read(true);
-          if (index < tokens.length && tokens[index].type === ')') index++;
-          if (!startsWith(variable, '--')) return segments;
-          push(segments, instance('CSSVariableReferenceValue', { variable, fallback: inner.length ? newUnparsed(inner) : null }));
-          continue;
-        }
+      while (stateRef.index < tokens.length) {
+        const token = tokens[stateRef.index];
+        if (isVarOrEnv(token)) { const r = consumeVarReference(segments, builder); builder = ''; if (r.stop) return segments; continue; }
         if (BLOCK_END[token.type]) depth++;
-        else if (token.type === ')' || token.type === ']' || token.type === '}') { depth--; if (depth < 0 && stopAtClose) break; }
-        builder += serializeToken(token); index++;
+        else if (isCloseToken(token.type)) { depth--; if (depth < 0 && stopAtClose) break; }
+        builder += serializeToken(token); stateRef.index++;
       }
       if (builder) push(segments, builder);
       return segments;
@@ -1544,72 +1558,83 @@
     record.matrix = value;
   });
   const numericCss = (value) => numericCssText(value);
+  function componentTextPerspective(record) {
+    const length = record.length, numeric = numericRecord(length);
+    if (!numeric) return 'perspective(' + keywordText(recordOf(length).value) + ')';
+    if (numeric.kind === 'unit' && numeric.value < 0) return 'perspective(calc(' + formatNumber(numeric.value, numeric.unit) + '))';
+    return 'perspective(' + numericCss(length) + ')';
+  }
+  function componentTextMatrix(record) {
+    const names = record.is2D ? ['a', 'b', 'c', 'd', 'e', 'f'] : ['m11', 'm12', 'm13', 'm14', 'm21', 'm22', 'm23', 'm24', 'm31', 'm32', 'm33', 'm34', 'm41', 'm42', 'm43', 'm44'];
+    let text = record.is2D ? 'matrix(' : 'matrix3d(';
+    for (let index = 0; index < names.length; index++) text += (index ? ', ' : '') + formatNumber(matrixField(record.matrix, names[index]), 'number');
+    return text + ')';
+  }
+  function componentTextSkew(record) {
+    const ay = numericRecord(record.ay);
+    return 'skew(' + numericCss(record.ax) + (ay.kind !== 'unit' || ay.value !== 0 ? ', ' + numericCss(record.ay) : '') + ')';
+  }
   function componentText(record) {
     switch (record.kind) {
       case 'translate': return record.is2D ? 'translate(' + numericCss(record.x) + ', ' + numericCss(record.y) + ')' : 'translate3d(' + numericCss(record.x) + ', ' + numericCss(record.y) + ', ' + numericCss(record.z) + ')';
       case 'rotate': return record.is2D ? 'rotate(' + numericCss(record.angle) + ')' : 'rotate3d(' + numericCss(record.x) + ', ' + numericCss(record.y) + ', ' + numericCss(record.z) + ', ' + numericCss(record.angle) + ')';
       case 'scale': return record.is2D ? 'scale(' + numericCss(record.x) + ', ' + numericCss(record.y) + ')' : 'scale3d(' + numericCss(record.x) + ', ' + numericCss(record.y) + ', ' + numericCss(record.z) + ')';
-      case 'skew': { const ay = numericRecord(record.ay); return 'skew(' + numericCss(record.ax) + (ay.kind !== 'unit' || ay.value !== 0 ? ', ' + numericCss(record.ay) : '') + ')'; }
+      case 'skew': return componentTextSkew(record);
       case 'skewX': return 'skewX(' + numericCss(record.ax) + ')';
       case 'skewY': return 'skewY(' + numericCss(record.ay) + ')';
-      case 'perspective': {
-        const length = record.length, numeric = numericRecord(length);
-        if (!numeric) return 'perspective(' + keywordText(recordOf(length).value) + ')';
-        if (numeric.kind === 'unit' && numeric.value < 0) return 'perspective(calc(' + formatNumber(numeric.value, numeric.unit) + '))';
-        return 'perspective(' + numericCss(length) + ')';
-      }
-      case 'matrix': {
-        const names = record.is2D ? ['a', 'b', 'c', 'd', 'e', 'f'] : ['m11', 'm12', 'm13', 'm14', 'm21', 'm22', 'm23', 'm24', 'm31', 'm32', 'm33', 'm34', 'm41', 'm42', 'm43', 'm44'];
-        let text = record.is2D ? 'matrix(' : 'matrix3d(';
-        for (let index = 0; index < names.length; index++) text += (index ? ', ' : '') + formatNumber(matrixField(record.matrix, names[index]), 'number');
-        return text + ')';
-      }
+      case 'perspective': return componentTextPerspective(record);
+      case 'matrix': return componentTextMatrix(record);
     }
     return null;
   }
   function newMatrix() { const api = matrices(); if (!api) throw fail('DOMMatrix is not available'); return new api.Matrix(); }
+  function componentMatrixTranslate(record, api) {
+    const x = toUnit(record.x, 'px'), y = toUnit(record.y, 'px'), z = toUnit(record.z, 'px');
+    if (!x || !y || !z) throw fail('Cannot create matrix if units are not compatible with px');
+    const matrix = newMatrix();
+    if (record.is2D) apply(api.translateSelf, matrix, [numericRecord(x).value, numericRecord(y).value]); else apply(api.translateSelf, matrix, [numericRecord(x).value, numericRecord(y).value, numericRecord(z).value]);
+    return matrix;
+  }
+  function componentMatrixRotate(record, api) {
+    const x = toUnit(record.x, 'number'), y = toUnit(record.y, 'number'), z = toUnit(record.z, 'number');
+    if (!x || !y || !z) throw fail('Cannot create matrix if units cannot be converted to CSSUnitValue');
+    const matrix = newMatrix(), angle = numericRecord(toUnit(record.angle, 'deg')).value;
+    if (record.is2D) apply(api.rotateAxisAngleSelf, matrix, [0, 0, 1, angle]); else apply(api.rotateAxisAngleSelf, matrix, [numericRecord(x).value, numericRecord(y).value, numericRecord(z).value, angle]);
+    return matrix;
+  }
+  function componentMatrixScale(record, api) {
+    const x = toUnit(record.x, 'number'), y = toUnit(record.y, 'number'), z = toUnit(record.z, 'number');
+    if (!x || !y || !z) throw fail('Cannot create matrix if values are not numbers');
+    const matrix = newMatrix();
+    if (record.is2D) apply(api.scaleSelf, matrix, [numericRecord(x).value, numericRecord(y).value]); else apply(api.scaleSelf, matrix, [numericRecord(x).value, numericRecord(y).value, numericRecord(z).value]);
+    return matrix;
+  }
+  function componentMatrixPerspective(record, api) {
+    if (!numericRecord(record.length)) return newMatrix();
+    const length = toUnit(record.length, 'px');
+    if (!length) throw fail('Cannot create matrix if units are not compatible with px');
+    // gfx::Transform::ApplyPerspectiveDepth: m34 = -1 / depth.
+    const matrix = newMatrix(); apply(api.setters.m34, matrix, [-1 / mathMax(1, numericRecord(length).value)]); return matrix;
+  }
+  function componentMatrixMatrix(record, api) {
+    if (record.is2D && !apply(api.is2D, record.matrix, [])) {
+      const matrix = newMatrix(), map = [['a', 'm11'], ['b', 'm12'], ['c', 'm21'], ['d', 'm22'], ['e', 'm41'], ['f', 'm42']];
+      for (let index = 0; index < map.length; index++) apply(api.setters[map[index][0]], matrix, [matrixField(record.matrix, map[index][1])]);
+      return matrix;
+    }
+    return apply(api.fromMatrix, api.Matrix, [record.matrix]);
+  }
   function componentMatrix(record) {
     const api = matrices();
     switch (record.kind) {
-      case 'translate': {
-        const x = toUnit(record.x, 'px'), y = toUnit(record.y, 'px'), z = toUnit(record.z, 'px');
-        if (!x || !y || !z) throw fail('Cannot create matrix if units are not compatible with px');
-        const matrix = newMatrix();
-        if (record.is2D) apply(api.translateSelf, matrix, [numericRecord(x).value, numericRecord(y).value]); else apply(api.translateSelf, matrix, [numericRecord(x).value, numericRecord(y).value, numericRecord(z).value]);
-        return matrix;
-      }
-      case 'rotate': {
-        const x = toUnit(record.x, 'number'), y = toUnit(record.y, 'number'), z = toUnit(record.z, 'number');
-        if (!x || !y || !z) throw fail('Cannot create matrix if units cannot be converted to CSSUnitValue');
-        const matrix = newMatrix(), angle = numericRecord(toUnit(record.angle, 'deg')).value;
-        if (record.is2D) apply(api.rotateAxisAngleSelf, matrix, [0, 0, 1, angle]); else apply(api.rotateAxisAngleSelf, matrix, [numericRecord(x).value, numericRecord(y).value, numericRecord(z).value, angle]);
-        return matrix;
-      }
-      case 'scale': {
-        const x = toUnit(record.x, 'number'), y = toUnit(record.y, 'number'), z = toUnit(record.z, 'number');
-        if (!x || !y || !z) throw fail('Cannot create matrix if values are not numbers');
-        const matrix = newMatrix();
-        if (record.is2D) apply(api.scaleSelf, matrix, [numericRecord(x).value, numericRecord(y).value]); else apply(api.scaleSelf, matrix, [numericRecord(x).value, numericRecord(y).value, numericRecord(z).value]);
-        return matrix;
-      }
+      case 'translate': return componentMatrixTranslate(record, api);
+      case 'rotate': return componentMatrixRotate(record, api);
+      case 'scale': return componentMatrixScale(record, api);
       case 'skew': { const matrix = newMatrix(); apply(api.setters.m12, matrix, [mathTan(numericRecord(toUnit(record.ay, 'rad')).value)]); apply(api.setters.m21, matrix, [mathTan(numericRecord(toUnit(record.ax, 'rad')).value)]); return matrix; }
       case 'skewX': { const matrix = newMatrix(); apply(api.skewXSelf, matrix, [numericRecord(toUnit(record.ax, 'deg')).value]); return matrix; }
       case 'skewY': { const matrix = newMatrix(); apply(api.skewYSelf, matrix, [numericRecord(toUnit(record.ay, 'deg')).value]); return matrix; }
-      case 'perspective': {
-        if (!numericRecord(record.length)) return newMatrix();
-        const length = toUnit(record.length, 'px');
-        if (!length) throw fail('Cannot create matrix if units are not compatible with px');
-        // gfx::Transform::ApplyPerspectiveDepth: m34 = -1 / depth.
-        const matrix = newMatrix(); apply(api.setters.m34, matrix, [-1 / mathMax(1, numericRecord(length).value)]); return matrix;
-      }
-      case 'matrix': {
-        if (record.is2D && !apply(api.is2D, record.matrix, [])) {
-          const matrix = newMatrix(), map = [['a', 'm11'], ['b', 'm12'], ['c', 'm21'], ['d', 'm22'], ['e', 'm41'], ['f', 'm42']];
-          for (let index = 0; index < map.length; index++) apply(api.setters[map[index][0]], matrix, [matrixField(record.matrix, map[index][1])]);
-          return matrix;
-        }
-        return apply(api.fromMatrix, api.Matrix, [record.matrix]);
-      }
+      case 'perspective': return componentMatrixPerspective(record, api);
+      case 'matrix': return componentMatrixMatrix(record, api);
     }
     return null;
   }
@@ -1894,85 +1919,168 @@
     return [resolve(first), resolve(second)];
   }
   // CSSTransformComponent::FromCSSValue over one transform function.
-  function transformComponent(item) {
-    if (!item.block || item.type !== 'function') return null;
-    const name = lowerCase(item.value), args = splitComponents(item.children, 'comma');
-    const numeric = (group) => { const parts = significant(group); if (parts.length !== 1) return null; const part = parts[0]; if (part.type === 'number') return unitValue(part.value, 'number'); if (part.type === 'percentage') return unitValue(part.value, 'percent'); if (part.type === 'dimension') { const key = lowerCase(part.unit); return UNITS[key] ? unitValue(part.value, key) : null; } if (part.block && part.type === 'function' && MATH_FUNCTIONS[lowerCase(part.value)]) { const node = parseMathComponent(part); return node ? nodeToNumeric(node) : null; } return null; };
-    const values = list();
-    if (!(args.length === 1 && !args[0].length)) for (let index = 0; index < args.length; index++) { const value = numeric(args[index]); if (!value && name !== 'perspective') return null; push(values, value); }
-    // Unitless zero lengths/angles are stored as px/deg.
-    const zeroAs = (value, unitKey) => { const record = value && numericRecord(value); return record && record.kind === 'unit' && record.unit === 'number' && record.value === 0 ? unitValue(0, unitKey) : value; };
-    const number = (value) => value;
+  function transformComponentNumeric(group) {
+    const parts = significant(group); if (parts.length !== 1) return null;
+    const part = parts[0];
+    if (part.type === 'number') return unitValue(part.value, 'number');
+    if (part.type === 'percentage') return unitValue(part.value, 'percent');
+    if (part.type === 'dimension') { const key = lowerCase(part.unit); return UNITS[key] ? unitValue(part.value, key) : null; }
+    if (part.block && part.type === 'function' && MATH_FUNCTIONS[lowerCase(part.value)]) { const node = parseMathComponent(part); return node ? nodeToNumeric(node) : null; }
+    return null;
+  }
+  const transformZeroAs = (value, unitKey) => { const record = value && numericRecord(value); return record && record.kind === 'unit' && record.unit === 'number' && record.value === 0 ? unitValue(0, unitKey) : value; };
+  function transformComponentTranslate(name, values) {
+    const zx = () => transformZeroAs(values[0], 'px');
     switch (name) {
-      case 'translate': return values.length === 1 ? component('CSSTranslate', { kind: 'translate', x: zeroAs(values[0], 'px'), y: px(0), z: px(0), is2D: true }) : values.length === 2 ? component('CSSTranslate', { kind: 'translate', x: zeroAs(values[0], 'px'), y: zeroAs(values[1], 'px'), z: px(0), is2D: true }) : null;
-      case 'translatex': return values.length === 1 ? component('CSSTranslate', { kind: 'translate', x: zeroAs(values[0], 'px'), y: px(0), z: px(0), is2D: true }) : null;
-      case 'translatey': return values.length === 1 ? component('CSSTranslate', { kind: 'translate', x: px(0), y: zeroAs(values[0], 'px'), z: px(0), is2D: true }) : null;
-      case 'translatez': return values.length === 1 ? component('CSSTranslate', { kind: 'translate', x: px(0), y: px(0), z: zeroAs(values[0], 'px'), is2D: false }) : null;
-      case 'translate3d': return values.length === 3 ? component('CSSTranslate', { kind: 'translate', x: zeroAs(values[0], 'px'), y: zeroAs(values[1], 'px'), z: zeroAs(values[2], 'px'), is2D: false }) : null;
-      case 'rotate': case 'rotatez': return values.length === 1 ? (name === 'rotate' ? component('CSSRotate', { kind: 'rotate', x: unitValue(0, 'number'), y: unitValue(0, 'number'), z: unitValue(1, 'number'), angle: zeroAs(values[0], 'deg'), is2D: true }) : component('CSSRotate', { kind: 'rotate', x: unitValue(0, 'number'), y: unitValue(0, 'number'), z: unitValue(1, 'number'), angle: zeroAs(values[0], 'deg'), is2D: false })) : null;
-      case 'rotatex': return values.length === 1 ? component('CSSRotate', { kind: 'rotate', x: unitValue(1, 'number'), y: unitValue(0, 'number'), z: unitValue(0, 'number'), angle: zeroAs(values[0], 'deg'), is2D: false }) : null;
-      case 'rotatey': return values.length === 1 ? component('CSSRotate', { kind: 'rotate', x: unitValue(0, 'number'), y: unitValue(1, 'number'), z: unitValue(0, 'number'), angle: zeroAs(values[0], 'deg'), is2D: false }) : null;
-      case 'rotate3d': return values.length === 4 ? component('CSSRotate', { kind: 'rotate', x: number(values[0]), y: number(values[1]), z: number(values[2]), angle: zeroAs(values[3], 'deg'), is2D: false }) : null;
-      case 'scale': return values.length === 1 ? component('CSSScale', { kind: 'scale', x: values[0], y: values[0], z: unitValue(1, 'number'), is2D: true }) : values.length === 2 ? component('CSSScale', { kind: 'scale', x: values[0], y: values[1], z: unitValue(1, 'number'), is2D: true }) : null;
-      case 'scalex': return values.length === 1 ? component('CSSScale', { kind: 'scale', x: values[0], y: unitValue(1, 'number'), z: unitValue(1, 'number'), is2D: true }) : null;
-      case 'scaley': return values.length === 1 ? component('CSSScale', { kind: 'scale', x: unitValue(1, 'number'), y: values[0], z: unitValue(1, 'number'), is2D: true }) : null;
-      case 'scalez': return values.length === 1 ? component('CSSScale', { kind: 'scale', x: unitValue(1, 'number'), y: unitValue(1, 'number'), z: values[0], is2D: false }) : null;
-      case 'scale3d': return values.length === 3 ? component('CSSScale', { kind: 'scale', x: values[0], y: values[1], z: values[2], is2D: false }) : null;
-      case 'skew': return values.length === 1 ? component('CSSSkew', { kind: 'skew', ax: zeroAs(values[0], 'deg'), ay: unitValue(0, 'deg'), is2D: true }) : values.length === 2 ? component('CSSSkew', { kind: 'skew', ax: zeroAs(values[0], 'deg'), ay: zeroAs(values[1], 'deg'), is2D: true }) : null;
-      case 'skewx': return values.length === 1 ? component('CSSSkewX', { kind: 'skewX', ax: zeroAs(values[0], 'deg'), is2D: true }) : null;
-      case 'skewy': return values.length === 1 ? component('CSSSkewY', { kind: 'skewY', ay: zeroAs(values[0], 'deg'), is2D: true }) : null;
-      case 'perspective': {
-        const parts = significant(args[0] || list());
-        if (args.length !== 1 || parts.length !== 1) return null;
-        if (parts[0].type === 'ident' && lowerCase(parts[0].value) === 'none') return component('CSSPerspective', { kind: 'perspective', length: keywordValue('none'), is2D: false });
-        const value = values[0]; return value ? component('CSSPerspective', { kind: 'perspective', length: value, is2D: false }) : null;
-      }
-      case 'matrix': case 'matrix3d': {
-        const api = matrices();
-        if (!api || values.length !== (name === 'matrix' ? 6 : 16)) return null;
-        const entries = list();
-        for (let index = 0; index < values.length; index++) { const record = numericRecord(values[index]); if (record.kind !== 'unit' || record.unit !== 'number') return null; push(entries, record.value); }
-        const matrix = new api.Matrix(toArray(entries));
-        return component('CSSMatrixComponent', { kind: 'matrix', matrix, is2D: name === 'matrix' });
-      }
+      case 'translate': if (values.length === 1) return component('CSSTranslate', { kind: 'translate', x: zx(), y: px(0), z: px(0), is2D: true });
+        return values.length === 2 ? component('CSSTranslate', { kind: 'translate', x: zx(), y: transformZeroAs(values[1], 'px'), z: px(0), is2D: true }) : null;
+      case 'translatex': return values.length === 1 ? component('CSSTranslate', { kind: 'translate', x: zx(), y: px(0), z: px(0), is2D: true }) : null;
+      case 'translatey': return values.length === 1 ? component('CSSTranslate', { kind: 'translate', x: px(0), y: zx(), z: px(0), is2D: true }) : null;
+      case 'translatez': return values.length === 1 ? component('CSSTranslate', { kind: 'translate', x: px(0), y: px(0), z: zx(), is2D: false }) : null;
+      case 'translate3d': return values.length === 3 ? component('CSSTranslate', { kind: 'translate', x: zx(), y: transformZeroAs(values[1], 'px'), z: transformZeroAs(values[2], 'px'), is2D: false }) : null;
     }
     return null;
   }
+  function transformComponentRotate(name, values) {
+    const angleOf = () => transformZeroAs(values[0], 'deg');
+    const axes = (xKey, yKey, zKey) => ({ x: unitValue(xKey, 'number'), y: unitValue(yKey, 'number'), z: unitValue(zKey, 'number') });
+    switch (name) {
+      case 'rotate': case 'rotatez': {
+        if (values.length !== 1) return null;
+        const base = { kind: 'rotate', ...axes(0, 0, 1), angle: angleOf(), is2D: name === 'rotate' };
+        return component('CSSRotate', base);
+      }
+      case 'rotatex': return values.length === 1 ? component('CSSRotate', { kind: 'rotate', ...axes(1, 0, 0), angle: angleOf(), is2D: false }) : null;
+      case 'rotatey': return values.length === 1 ? component('CSSRotate', { kind: 'rotate', ...axes(0, 1, 0), angle: angleOf(), is2D: false }) : null;
+      case 'rotate3d': return values.length === 4 ? component('CSSRotate', { kind: 'rotate', x: values[0], y: values[1], z: values[2], angle: transformZeroAs(values[3], 'deg'), is2D: false }) : null;
+    }
+    return null;
+  }
+  function transformComponentScale(name, values) {
+    const one = () => unitValue(1, 'number');
+    switch (name) {
+      case 'scale': if (values.length === 1) return component('CSSScale', { kind: 'scale', x: values[0], y: values[0], z: one(), is2D: true });
+        return values.length === 2 ? component('CSSScale', { kind: 'scale', x: values[0], y: values[1], z: one(), is2D: true }) : null;
+      case 'scalex': return values.length === 1 ? component('CSSScale', { kind: 'scale', x: values[0], y: one(), z: one(), is2D: true }) : null;
+      case 'scaley': return values.length === 1 ? component('CSSScale', { kind: 'scale', x: one(), y: values[0], z: one(), is2D: true }) : null;
+      case 'scalez': return values.length === 1 ? component('CSSScale', { kind: 'scale', x: one(), y: one(), z: values[0], is2D: false }) : null;
+      case 'scale3d': return values.length === 3 ? component('CSSScale', { kind: 'scale', x: values[0], y: values[1], z: values[2], is2D: false }) : null;
+    }
+    return null;
+  }
+  function transformComponentSkew(name, values) {
+    switch (name) {
+      case 'skew': if (values.length === 1) return component('CSSSkew', { kind: 'skew', ax: transformZeroAs(values[0], 'deg'), ay: unitValue(0, 'deg'), is2D: true });
+        return values.length === 2 ? component('CSSSkew', { kind: 'skew', ax: transformZeroAs(values[0], 'deg'), ay: transformZeroAs(values[1], 'deg'), is2D: true }) : null;
+      case 'skewx': return values.length === 1 ? component('CSSSkewX', { kind: 'skewX', ax: transformZeroAs(values[0], 'deg'), is2D: true }) : null;
+      case 'skewy': return values.length === 1 ? component('CSSSkewY', { kind: 'skewY', ay: transformZeroAs(values[0], 'deg'), is2D: true }) : null;
+    }
+    return null;
+  }
+  function transformComponentPerspective(args, values) {
+    const parts = significant(args[0] || list());
+    if (args.length !== 1 || parts.length !== 1) return null;
+    if (parts[0].type === 'ident' && lowerCase(parts[0].value) === 'none') return component('CSSPerspective', { kind: 'perspective', length: keywordValue('none'), is2D: false });
+    const value = values[0]; return value ? component('CSSPerspective', { kind: 'perspective', length: value, is2D: false }) : null;
+  }
+  function transformComponentMatrix(name, values) {
+    const api = matrices();
+    if (!api || values.length !== (name === 'matrix' ? 6 : 16)) return null;
+    const entries = list();
+    for (let index = 0; index < values.length; index++) { const record = numericRecord(values[index]); if (record.kind !== 'unit' || record.unit !== 'number') return null; push(entries, record.value); }
+    const matrix = new api.Matrix(toArray(entries));
+    return component('CSSMatrixComponent', { kind: 'matrix', matrix, is2D: name === 'matrix' });
+  }
+  const TRANSFORM_TRANSLATE = plainSet(['translate', 'translatex', 'translatey', 'translatez', 'translate3d']);
+  const TRANSFORM_ROTATE = plainSet(['rotate', 'rotatex', 'rotatey', 'rotatez', 'rotate3d']);
+  const TRANSFORM_SCALE = plainSet(['scale', 'scalex', 'scaley', 'scalez', 'scale3d']);
+  const TRANSFORM_SKEW = plainSet(['skew', 'skewx', 'skewy']);
+  function transformComponent(item) {
+    if (!item.block || item.type !== 'function') return null;
+    const name = lowerCase(item.value), args = splitComponents(item.children, 'comma');
+    const values = list();
+    if (!(args.length === 1 && !args[0].length)) for (let index = 0; index < args.length; index++) { const value = transformComponentNumeric(args[index]); if (!value && name !== 'perspective') return null; push(values, value); }
+    if (TRANSFORM_TRANSLATE[name]) return transformComponentTranslate(name, values);
+    if (TRANSFORM_ROTATE[name]) return transformComponentRotate(name, values);
+    if (TRANSFORM_SCALE[name]) return transformComponentScale(name, values);
+    if (TRANSFORM_SKEW[name]) return transformComponentSkew(name, values);
+    if (name === 'perspective') return transformComponentPerspective(args, values);
+    if (name === 'matrix' || name === 'matrix3d') return transformComponentMatrix(name, values);
+    return null;
+  }
+  function reifyRadius(property, items, single, mode) {
+    if (single) return genericValue(property, single, mode);
+    if (items.length === 2) { const a = genericValue(property, items[0], mode), b = genericValue(property, items[1], mode); if (a && b && numericRecord(a) && numericRecord(b) && equalsValue(a, b)) return a; }
+    return null;
+  }
+  function reifyBackgroundSize(property, items, single, mode) {
+    if (single) return genericValue(property, single, mode);
+    if (items.length === 2 && ident(items[1]) === 'auto') return genericValue(property, items[0], mode);
+    return null;
+  }
+  function reifyColorKeyword(property, layer, single, mode) {
+    const name = property.name;
+    const id = single && ident(single);
+    if (id === 'auto' && (name === 'accent-color' || name === 'caret-color')) return keywordValue('auto');
+    if (id === 'currentcolor') return keywordValue('currentcolor');
+    return unsupported(mode.normalize(layer), name);
+  }
+  function reifyTransform(property, items, single, mode) {
+    if (single && single.type === 'ident') return genericValue(property, single, mode);
+    const parts = list();
+    for (let index = 0; index < items.length; index++) { const part = transformComponent(items[index]); if (!part) return null; push(parts, part); }
+    return parts.length ? newTransform(parts) : null;
+  }
+  function reifyDisplay(items) {
+    let key = '';
+    for (let index = 0; index < items.length; index++) { if (items[index].type !== 'ident') return null; key += (index ? ' ' : '') + lowerCase(items[index].value); }
+    const mapped = DISPLAY_PAIRS[key];
+    return mapped && indexOfText(mapped, ' ') < 0 ? keywordValue(mapped) : null;
+  }
+  function reifyGridAutoFlow(property, items, mode) {
+    const kept = list();
+    for (let index = 0; index < items.length; index++) if (!(items.length > 1 && ident(items[index]) === 'row')) push(kept, items[index]);
+    return kept.length === 1 ? genericValue(property, kept[0], mode) : null;
+  }
+  function reifyTransitionProperty(property, single, mode) {
+    if (!single || single.type !== 'ident') return null;
+    const id = lowerCase(single.value);
+    return id === 'none' ? keywordValue('none') : PROPERTIES[id] || id === 'all' ? null : genericValue(property, single, mode);
+  }
+  const POSITION_LIKE_PROPS = plainSet(['object-position', 'perspective-origin', 'offset-anchor', 'offset-position']);
+  const BG_SIZE_PROPS = plainSet(['background-size', 'mask-size']);
+  const COLOR_KW_PROPS = plainSet(['accent-color', 'caret-color']);
+  const OFFSET_ANCHOR_PROPS = plainSet(['offset-anchor', 'offset-position']);
+  function reifyOffsetAnchorIdent(property, single, mode) {
+    if (single && single.type === 'ident' && (ident(single) === 'auto' || ident(single) === 'normal')) return genericValue(property, single, mode);
+    return undefined;
+  }
+  function reifyPosition(items) { const pair = positionValueOf(items); return pair ? positionValue(pair[0], pair[1]) : null; }
+  function reifyNamedBranch(property, items, single, layer, mode) {
+    const name = property.name;
+    if (RADIUS[name]) return reifyRadius(property, items, single, mode);
+    if (BG_SIZE_PROPS[name]) return reifyBackgroundSize(property, items, single, mode);
+    if (COLOR_KW_PROPS[name] || COLOR_KEYWORD_ONLY[name]) return reifyColorKeyword(property, layer, single, mode);
+    if (name === 'transform') return reifyTransform(property, items, single, mode);
+    if (OFFSET_ANCHOR_PROPS[name]) { const r = reifyOffsetAnchorIdent(property, single, mode); if (r !== undefined) return r; }
+    if (POSITION_LIKE_PROPS[name]) return reifyPosition(items);
+    if (name === 'transform-origin') return null;
+    return undefined;
+  }
+  function reifyTrailingBranch(property, items, single, mode) {
+    const name = property.name;
+    if (name === 'will-change') return single && ident(single) === 'auto' ? keywordValue('auto') : null;
+    if (name === 'display' && !single) return reifyDisplay(items);
+    if (name === 'grid-auto-flow') return reifyGridAutoFlow(property, items, mode);
+    if (name === 'transition-property') return reifyTransitionProperty(property, single, mode);
+    return single ? genericValue(property, single, mode) : null;
+  }
   // CreateStyleValueWithPropertyInternal + CreateStyleValue for one value (or list layer).
   function reifyOne(property, layer, mode) {
-    const items = significant(layer), name = property.name, single = items.length === 1 ? items[0] : null;
-    if (RADIUS[name]) {
-      if (single) return genericValue(property, single, mode);
-      if (items.length === 2) { const a = genericValue(property, items[0], mode), b = genericValue(property, items[1], mode); if (a && b && numericRecord(a) && numericRecord(b) && equalsValue(a, b)) return a; }
-      return null;
-    }
-    if (name === 'background-size' || name === 'mask-size') {
-      if (single) return genericValue(property, single, mode);
-      if (items.length === 2 && ident(items[1]) === 'auto') return genericValue(property, items[0], mode);
-      return null;
-    }
-    if (name === 'accent-color' || name === 'caret-color' || COLOR_KEYWORD_ONLY[name]) {
-      const id = single && ident(single);
-      if (id === 'auto' && (name === 'accent-color' || name === 'caret-color')) return keywordValue('auto');
-      if (id === 'currentcolor') return keywordValue('currentcolor');
-      return unsupported(mode.normalize(layer), name);
-    }
-    if (name === 'transform') {
-      if (single && single.type === 'ident') return genericValue(property, single, mode);
-      const parts = list();
-      for (let index = 0; index < items.length; index++) { const part = transformComponent(items[index]); if (!part) return null; push(parts, part); }
-      return parts.length ? newTransform(parts) : null;
-    }
-    if (name === 'offset-anchor' || name === 'offset-position') { if (single && single.type === 'ident' && (ident(single) === 'auto' || ident(single) === 'normal')) return genericValue(property, single, mode); }
-    if (name === 'object-position' || name === 'perspective-origin' || name === 'offset-anchor' || name === 'offset-position') { const pair = positionValueOf(items); return pair ? positionValue(pair[0], pair[1]) : null; }
-    if (name === 'transform-origin') return null;
-    if (name === 'will-change') return single && ident(single) === 'auto' ? keywordValue('auto') : null;
-    if (name === 'display' && !single) { let key = ''; for (let index = 0; index < items.length; index++) { if (items[index].type !== 'ident') return null; key += (index ? ' ' : '') + lowerCase(items[index].value); } const mapped = DISPLAY_PAIRS[key]; return mapped && indexOfText(mapped, ' ') < 0 ? keywordValue(mapped) : null; }
-    if (name === 'grid-auto-flow') { const kept = list(); for (let index = 0; index < items.length; index++) if (!(items.length > 1 && ident(items[index]) === 'row')) push(kept, items[index]); return kept.length === 1 ? genericValue(property, kept[0], mode) : null; }
-    // Property names in transition-property are custom idents naming a known property.
-    if (name === 'transition-property') { if (!single || single.type !== 'ident') return null; const id = lowerCase(single.value); return id === 'none' ? keywordValue('none') : PROPERTIES[id] || id === 'all' ? null : genericValue(property, single, mode); }
-    if (SINGLE_ONLY[name]) return single ? genericValue(property, single, mode) : null;
-    return single ? genericValue(property, single, mode) : null;
+    const items = significant(layer), single = items.length === 1 ? items[0] : null;
+    const first = reifyNamedBranch(property, items, single, layer, mode);
+    if (first !== undefined) return first;
+    return reifyTrailingBranch(property, items, single, mode);
   }
   // CssValueToStyleValueVector over a value's component list (CSS-wide keywords, var() and
   // shorthands are handled by the caller).
