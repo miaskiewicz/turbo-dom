@@ -1,6 +1,8 @@
 //! CSSOM measurements obtained from actual native source fragments. Missing
 //! inline/caret provenance is an explicit error, never a synthetic zero box.
-use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, Rect, SourceId, SourceKind};
+use crate::layout_snapshot::{
+    GeometryKind, LayoutSnapshot, Rect, SnapshotFragment, SourceId, SourceKind,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -22,6 +24,29 @@ pub struct ElementGeometry {
     pub rects: Vec<Rect>,
     pub client: ClientMetrics,
     pub offset: OffsetSize,
+}
+
+fn inline_fragment_geometry(boxes: &[&SnapshotFragment]) -> Result<ElementGeometry, String> {
+    let rects: Vec<_> = boxes
+        .iter()
+        .map(|fragment| fragment.transformed_bounds)
+        .collect();
+    let local_rects: Vec<_> = boxes.iter().map(|fragment| fragment.rect).collect();
+    let local = all_fragment_bounds(&local_rects);
+    Ok(ElementGeometry {
+        bounds: bounding_box(&rects),
+        rects,
+        client: ClientMetrics {
+            left: 0,
+            top: 0,
+            width: 0,
+            height: 0,
+        },
+        offset: OffsetSize {
+            width: integer(local.width)?,
+            height: integer(local.height)?,
+        },
+    })
 }
 
 pub fn element_geometry(
@@ -52,30 +77,7 @@ pub fn element_geometry(
         .used_box
         .ok_or("native live layout used box metrics are missing")?;
     if used.inline_fragment {
-        let rects = boxes
-            .iter()
-            .map(|fragment| fragment.transformed_bounds)
-            .collect::<Vec<_>>();
-        let local = all_fragment_bounds(
-            &boxes
-                .iter()
-                .map(|fragment| fragment.rect)
-                .collect::<Vec<_>>(),
-        );
-        return Ok(ElementGeometry {
-            bounds: bounding_box(&rects),
-            rects,
-            client: ClientMetrics {
-                left: 0,
-                top: 0,
-                width: 0,
-                height: 0,
-            },
-            offset: OffsetSize {
-                width: integer(local.width)?,
-                height: integer(local.height)?,
-            },
-        });
+        return inline_fragment_geometry(&boxes);
     }
     let padding = used.padding_rect(first.rect);
     let rects: Vec<_> = boxes
