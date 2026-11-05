@@ -114,13 +114,13 @@ closures are scored on their own), installed from its home rather than copied he
 923c89f791f3a89cb089a59626a25cef0a9cbd5f cc-check` (CI pins the same rev). It scans every
 tracked `.rs` file (`git ls-files`, so the generated `crates/turbo-dom-v8/crate/` is never
 scanned). JS uses oxlint's ESLint-compatible `complexity` rule (pinned `oxlint@1.87.0` via npx,
-no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`. **Both jobs are
-report-only for 0.6.0 and 0.7.0**: the functions above 15 (59 Rust, 228 JS measured 2026-10-28;
-`docs/CONSOLIDATION.md` "Complexity"; a failing job writes the current list to its step
-summary) are the refactor backlog, refactored after the release. Until then both jobs run
-with `continue-on-error` (red job, green workflow, so `publish.yml` is not blocked) and are
-not required checks. Don't add new ones, and never raise
-the limit to turn the jobs green.
+no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`. **0.8.0 flips both
+jobs blocking at cc ≤ 15**: the pre-release refactor (turbo-dom#297) drives the Rust and JS
+counts to zero, and the workflow drops `continue-on-error` on both jobs so a new
+cc > 15 function fails CI and blocks `publish.yml` like any other required check. The
+report-only phase that carried 0.6.0 and 0.7.0 (59 Rust / 228 JS functions above the
+limit, measured 2026-10-28; `docs/CONSOLIDATION.md` "Complexity") is over. Don't add new
+ones, and never raise the limit to turn the jobs green.
 
 ## Releasing (`vX.Y.Z`)
 

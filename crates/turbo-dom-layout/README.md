@@ -110,11 +110,33 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   (`blink_advances`). `cmap` provides the reverse cmap for text extraction.
 - **Images** (`image`): `ImageResolver` / `NoImages`, `probe` (header size and EXIF
   orientation for PNG / JPEG / GIF / WebP / BMP / ICO / AVIF / JPEG XL, and SVG under
-  `svg`), `probe_natural` (`naturalWidth/Height`; an SVG with only a `viewBox` also carries
-  `Intrinsic::natural_ratio`, so layout sizes it from the ratio), `PngFrame` (the one PNG decode),
-  `decode_data_url`. Truncated bodies follow Blink's load decision.
+  `svg`), `probe_natural` (`naturalWidth/Height`), `PngFrame` (the one PNG decode),
+  `decode_data_url`. Truncated bodies follow Blink's load decision. `Intrinsic` carries
+  `natural_ratio: Option<f32>` (a `Some(width / height)` for an image with a natural
+  aspect ratio and no natural size, else `None`), built by
+  `Intrinsic::ratio_only(width, height, ratio, has_alpha)`; layout then sizes an auto
+  box from the ratio and the containing block like Chrome 156 (turbo-dom#320).
+  `Intrinsic` is non-exhaustive in practice: construct it with `Intrinsic::new(..)` or
+  `..Intrinsic::new(..)` rather than a struct literal.
 - **SVG** (`svg`, under `svg-rasterize`): `svg::rasterize(bytes, scale, Oversize)` and
-  `natural_size` / `natural_sizing` (the natural size plus a bare ratio).
+  `natural_size` / `natural_sizing(bytes) -> Option<((f32, f32), Option<f32>)>` (the
+  natural size plus `Some(ratio)` for a viewBox-only SVG, else `None`).
+- **Canvas content** (`canvas_image_name(handle) -> String`,
+  `canvas_bitmap_size(width, height) -> (u32, u32)`): the opaque image name under
+  which the embedder's `ImageResolver` serves a `<canvas>` element's rendered bitmap
+  (turbo-dom-raster's `CanvasContents`), and the canvas's natural bitmap size (its
+  `width` / `height` attributes, 300 x 150 by default, clamped to Chrome's maximum
+  area).
+- **Live IDL state.** `INDETERMINATE_ATTR` is the attribute a live embedder adds to a
+  checkbox's `StyledElement` from `live::snapshot`'s `post_cascade` hook when a script
+  set its `indeterminate` IDL flag; the cascade then paints Chrome's indeterminate
+  dash (turbo-dom#293). Static embedders carry this flag through
+  `turbo_dom_raster::IdlStates::indeterminate_inputs`.
+- **Hyphenation.** `AutoHyphens` is the compiled `hyphens: auto` state of an element:
+  a `language: HyphenationLanguage` field (new `#[non_exhaustive]` enum, built from a
+  BCP 47 locale with `HyphenationLanguage::from_locale`) selects the TeX pattern dictionary
+  loaded under the `hyphenation-languages` feature. Outside English a capitalized word
+  still hyphenates, as in Blink (turbo-dom#289).
 - **Live documents** (`live`, "surf mode"): `live::capture` / `live::snapshot` over an
   embedder's composed tree. They take pre-matched rules (`PreMatched`) and inline
   overrides, with fixed budgets; failures are `LiveError`.
@@ -139,8 +161,8 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   - wasm32 and musl checks.
 - MSRV 1.89 check.
 - Pull requests run on Linux; macOS is added in the release run.
-- Cyclomatic complexity ≤ 15 is **report-only** until the post-release refactor. It
-  replaces the old cc ≤ 5 allow-list.
+- Cyclomatic complexity ≤ 15 is **blocking** since 0.8.0 (turbo-dom#297). It replaces
+  the old cc ≤ 5 allow-list.
 
 ## Testing
 

@@ -7,6 +7,62 @@ at the time); this file reconstructs them from history.
 
 ## Unreleased
 
+### Highlights
+
+0.8.0 fills in the live / static embedder contracts around CSS, media and canvas, and
+brings the complexity gates fully blocking.
+
+Public API additions (every item is non-breaking unless it appears under "Changed"):
+
+- **turbo-dom-browser-env**: `MediaMode` + `set_media_mode` (Chrome vs jsdom 27 media
+  surface); `set_css_transitions` (CSS transitions only) and the new
+  `set_css_animations` (gates `@keyframes` + animation events; both default on and
+  independent of each other and of `MediaMode`; both off hides the Web Animations
+  surface for jsdom parity); engine namespace hooks `layoutUsedSize` (now `[bw, bh,
+  cw, ch]` or `[bw, bh, cw, ch, fontSizePx]` — the fifth entry enables `em`
+  resolution in `getComputedStyle(el).transform`, turbo-dom#353) and
+  `cssSupports(text)` / `cssSupportsProperty(property, value)` for an embedder's
+  `CSS.supports()` (turbo-dom#322, strings coerced through a private `String`
+  primordial in #370); `dispatch_host_event_did_listeners_throw(scope, event,
+  target) -> bool` dispatches and reports the DOM's legacy-output-did-listeners-throw
+  flag (surf#148); `ActivationQuery::Sticky` variant for media `play()`'s autoplay
+  policy (turbo-dom#323).
+- **turbo-dom-layout**: new default-on cargo feature `hyphenation-languages` (~3 MB
+  of TeX patterns for the 21 languages Chrome 156 on macOS hyphenates; off keeps the
+  ~90 KB English-only build); `HyphenationLanguage` enum (`#[non_exhaustive]`,
+  `HyphenationLanguage::from_locale`) and `AutoHyphens::language`;
+  `INDETERMINATE_ATTR` (the attribute a live embedder adds in `post_cascade` for an
+  indeterminate checkbox); image sizing additions
+  `Intrinsic::natural_ratio: Option<f32>` and `Intrinsic::ratio_only(w, h, ratio,
+  has_alpha)` (an SVG with only a `viewBox` sizes from the ratio like Chrome), plus
+  `svg::natural_sizing(bytes) -> Option<((f32, f32), Option<f32>)>`;
+  `canvas_image_name(Handle)` and `canvas_bitmap_size(w, h)` (the canvas content
+  pipeline shared with turbo-dom-raster).
+- **turbo-dom-raster**: `ScreenshotOptions<'a>` (`#[non_exhaustive]`;
+  `full_page`, `system_fonts`, `canvases: Option<&CanvasContents>`,
+  `fonts: Option<&FontRegistry>`, `idl_states: Option<&IdlStates>`) +
+  `screenshot_png_with_options` / `screenshot_svg_with_options`;
+  `CanvasContents = HashMap<usize, CanvasContent>` (`Ops(String)` or
+  `Rgba { width, height, pixels }`), keyed by each canvas's tree-order index among
+  `document.querySelectorAll('canvas')`; `IdlStates { indeterminate_inputs }`
+  (same keying scheme over `input`); canvas helpers
+  `canvas_ops_png_with_fonts`, `canvas_ops_rgba_with_fonts`,
+  `measure_canvas_text_with_fonts`; font helpers
+  `FontFace::is_web_font` and `FontFace::from_web_font_bytes`.
+
+Caller-visible behaviour changes: `getComputedStyle` now returns computed defaults
+for unset properties (turbo-dom#305), the used `width` / `height` of a rendered box
+when the embedder supplies `layoutUsedSize` (#316), resolved CSS-wide keywords
+(#317), resolved `transform` as `matrix()` / `matrix3d()` / `none` (#353), and
+canonicalized named colours in every `<color>` longhand (#374); CSS transitions
+and `@keyframes` animations now dispatch their Chrome-timed events (#313); child
+iframe documents cascade their own sheets and are real HTML documents (#299, #306);
+shared `document.domain` across one agent cluster via `share_document_domain`
+(#284); live tables hit the table on `border-spacing` gaps (#321), and
+`position: sticky` sticks to its scroll container (#295). Cyclomatic complexity
+≤ 15 flips **blocking** in CI for both the Rust and the JS jobs (turbo-dom#297),
+replacing the 0.6.0 / 0.7.0 report-only phase.
+
 ### Added
 
 - **turbo-dom-browser-env, turbo-dom: CSS Nesting (CSSStyleRule nested rules + their cascade,
