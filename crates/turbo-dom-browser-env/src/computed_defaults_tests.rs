@@ -287,7 +287,6 @@ fn unset_properties_match_chrome156_control() {
 /// inherits, `revert` html.css's value — from inline and rule declarations in any case
 /// (case `css-wide-keywords`).
 #[test]
-#[ignore = "turbo-dom#317: fails until the fix"]
 fn css_wide_keywords_match_chrome156_control() {
     let found = mismatches(|id| id == "css-wide-keywords");
     assert!(

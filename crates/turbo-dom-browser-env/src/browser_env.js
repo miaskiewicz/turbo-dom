@@ -439,7 +439,8 @@
       'max-width', 'none', 'max-height', 'none', 'user-select', 'auto', 'box-shadow', 'none', 'vertical-align', 'baseline', 'filter', 'none',
       'mix-blend-mode', 'normal', 'isolation', 'auto', 'object-fit', 'fill', 'resize', 'none', 'table-layout', 'auto',
       'transition-duration', '0s', 'transition-property', 'all', 'animation-name', 'none', 'animation-duration', '0s', 'will-change', 'auto',
-      'clip-path', 'none', 'content-visibility', 'visible', 'text-overflow', 'clip', 'touch-action', 'auto', 'scroll-behavior', 'auto', 'appearance', 'none']);
+      'clip-path', 'none', 'content-visibility', 'visible', 'text-overflow', 'clip', 'touch-action', 'auto', 'scroll-behavior', 'auto', 'appearance', 'none',
+      'opacity', '1', 'transform', 'none']);
     add(true, ['text-align', 'start', 'text-transform', 'none', 'text-indent', '0px', 'letter-spacing', 'normal', 'word-spacing', '0px',
       'white-space-collapse', 'collapse', 'text-wrap-mode', 'wrap', 'cursor', 'auto', 'direction', 'ltr', 'writing-mode', 'horizontal-tb',
       'pointer-events', 'auto', 'text-shadow', 'none', 'list-style-type', 'disc', 'list-style-position', 'outside', 'list-style-image', 'none',
@@ -516,6 +517,32 @@
     if ($c.test(/^border-[a-z]+-width$/, name)) return $c.test(/^(none|hidden)$/, propertyValue(record, $c.replace(name, 'width', 'style'))) ? '0px' : entry[0];
     if (entry[0] === 'auto' && $c.test(/^(top|right|bottom|left)$/, name) && propertyValue(record, 'position') !== 'static') return '';
     return entry[0];
+  }
+  // CSS-wide keywords compute to the value they select (turbo-dom#317; computed_defaults case
+  // css-wide-keywords) for the properties computedInitialValues knows: initial -> the
+  // initial value (currentcolor -> the element's `color`), inherit -> the parent's computed
+  // value (the root's: initial), unset -> inherit or initial by whether the property
+  // inherits, revert -> html.css's value, i.e. the lazy default (setProp already applied a UA
+  // table's). A border width resolved here is 0px while its side's style is none / hidden.
+  var wideKeywordInitials = { __proto__: null, width: ['auto', false], height: ['auto', false] };
+  function resolveWideKeywords(decl, parentRecord, setProp, drop){
+    var widths = [];
+    $c.forEach($O.keys(decl), function(name){
+      var entry = computedInitialValues[name] || wideKeywordInitials[name], value = decl[name];
+      if (!entry || typeof value !== 'string') return;
+      var key = $c.toLowerCase($c.trim(value));
+      if (key === 'revert') { drop(name); return; }
+      if (key === 'unset') key = entry[1] ? 'inherit' : 'initial';
+      if (key === 'inherit' && parentRecord) value = propertyValue(parentRecord, name);
+      else if (key === 'inherit' || key === 'initial') value = entry[0] === 'currentcolor' ? decl.color : entry[0];
+      else return;
+      setProp(name, value);
+      if ($c.test(/^border-[a-z]+-width$/, name)) $c.push(widths, name);
+    });
+    $c.forEach(widths, function(name){
+      var style = decl[$c.replace(name, 'width', 'style')];
+      if ($c.test(/^(none|hidden)$/, $c.toLowerCase($c.trim(style == null ? 'none' : String(style))))) setProp(name, '0px');
+    });
   }
   // CSS Position 4: a top-layer box whose position is static / relative / sticky is absolute.
   function topLayerPosition(position){ return $c.test(/^(static|relative|sticky)$/, position) ? 'absolute' : position; }
@@ -1402,6 +1429,7 @@
     // Children of <video> / <audio> are outside the flat tree: Chrome computes no style for them.
     if (connected && computedMediaChild(el)) connected = false;
     setProp('color', connected ? normalizeComputedColor(color) : '');
+    if (connected) resolveWideKeywords(decl, inheritParent ? $c.get(declarationRecords, parentStyle(inheritParent)) : null, setProp, function(name){ delete decl[name]; delete decl[camel(name)]; });
     // UA and initial values for display / position / visibility (turbo-surf#36), measured in
     // computed_defaults_chrome156.json: an author / inline / shadow-scoped declaration wins, the
     // CSS-wide keywords resolve (inherit -> the composed parent's value, initial / unset -> the
