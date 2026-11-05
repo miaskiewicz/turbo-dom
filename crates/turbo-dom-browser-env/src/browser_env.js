@@ -1136,8 +1136,8 @@
   // either of them (the relaxed test). Never shared: an element with an inline style, a form
   // control (UA tables read its attributes and state), an <iframe> (size hints), one in the top
   // layer or a child iframe document, one in a tree whose sheets key on the tree-wide version
-  // (#279's fallback: shadow trees, adopted sheets, @import, container queries, escapes), and a
-  // sibling whose cascade read live state or went volatile.
+  // (#279's fallback: shadow trees, adopted sheets, @import, container queries, escapes; also
+  // every cascade that can go volatile), and a sibling whose cascade read live state.
   var styleShares=new computedSnapshotMap(),styleShareRefused={__proto__:null,INPUT:1,BUTTON:1,TEXTAREA:1,SELECT:1,OPTION:1,OPTGROUP:1,IFRAME:1};
   function styleShareProbe(el){
     if(styleShareOff&&styleShareOff())return null;
@@ -1343,7 +1343,9 @@
     // beat every author one.
     var important = info ? info.important : !pseudo && layer === 'fullscreen' ? fullscreenImportant : null;
     if (important) $c.forEach($O.keys(important), function(name){ setProp(name, important[name], true); });
-    if(base&&!pseudo&&!sink){base.out=computedBaseCapture(decl,priorities,uaValues);if(share&&!base.out.volatile&&!base.out.stateRead)styleShareStore(el,share,base.out,bucketIndex,bucketOrder);}
+    // (A cascade goes volatile before this point only in a tree that never shares: an unkeyed
+    // state rule has scope 8, an @import's media has scope -1.)
+    if(base&&!pseudo&&!sink){base.out=computedBaseCapture(decl,priorities,uaValues);if(share&&!base.out.stateRead)styleShareStore(el,share,base.out,bucketIndex,bucketOrder);}
     }
     if (sink) { var cascaded = { __proto__: null }; $c.forEach($O.keys(decl),function(name){ if (typeof decl[name] === 'string' && ($c.slice(name,0, 2) === '--' || name === $c.toLowerCase(name))) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
     // Inherited values come from the composed parent's snapshot in this read, so
