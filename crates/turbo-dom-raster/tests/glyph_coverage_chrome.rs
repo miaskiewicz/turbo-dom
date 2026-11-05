@@ -1,4 +1,4 @@
-//! Glyph coverage against Chrome 156 (miaskiewicz/turbo-dom#266).
+//! Glyph coverage against Chrome 156 (miaskiewicz/turbo-dom#266, #294).
 //!
 //! The control is `tests/fixtures/glyph_coverage_chrome156.json` (turbo-dom's
 //! `scripts/glyph-coverage-chrome-control.mjs`): Chrome's pixels around a line of fixture
@@ -10,11 +10,13 @@
 //! an outline grown and lifted `0.005 * size` px with Skia's luminance pre-blend
 //! (`src/glyph_raster.rs`). The model is not CoreText's exact dilation kernel, so the
 //! limits below are the measured residual (each a little above it), not zero: a change
-//! that moves glyph edges away from Chrome fails here.
+//! that moves glyph edges away from Chrome fails here. The SVG screenshot (rasterized by
+//! resvg) emits the same outline with the pre-blend as an `feComponentTransfer` filter
+//! (#294) and is held to its own measured residual.
 use std::collections::HashMap;
 
 use turbo_dom_layout::image::decode_data_url;
-use turbo_dom_raster::{screenshot_png_with_opts, Viewport};
+use turbo_dom_raster::{screenshot_png_with_opts, screenshot_svg_with_opts, Viewport};
 
 /// The comparison of one case: the mean and largest channel difference over the
 /// pixels either engine inks.
@@ -33,7 +35,36 @@ fn fixture() -> serde_json::Value {
     serde_json::from_str(&std::fs::read_to_string(path).expect("fixture")).unwrap()
 }
 
-fn residual(case: &serde_json::Value) -> Residual {
+const VIEWPORT: Viewport = Viewport {
+    width: 1280,
+    height: 800,
+};
+
+/// The PNG screenshot of `html`.
+fn png(html: &str) -> tiny_skia::Pixmap {
+    let png =
+        screenshot_png_with_opts(html, "", VIEWPORT, &HashMap::new(), false, false).expect("png");
+    tiny_skia::Pixmap::decode_png(&png).expect("decode")
+}
+
+/// The SVG screenshot of `html`, rasterized by resvg (these pages have no images).
+fn svg(html: &str) -> tiny_skia::Pixmap {
+    use resvg::usvg;
+    let svg =
+        screenshot_svg_with_opts(html, "", VIEWPORT, &HashMap::new(), false, false).expect("svg");
+    let tree = usvg::Tree::from_str(&svg, &usvg::Options::default()).expect("valid svg");
+    let mut pm = resvg::tiny_skia::Pixmap::new(VIEWPORT.width, VIEWPORT.height).unwrap();
+    resvg::render(
+        &tree,
+        resvg::tiny_skia::Transform::identity(),
+        &mut pm.as_mut(),
+    );
+    let mut out = tiny_skia::Pixmap::new(VIEWPORT.width, VIEWPORT.height).unwrap();
+    out.data_mut().copy_from_slice(pm.data());
+    out
+}
+
+fn residual(case: &serde_json::Value, render: fn(&str) -> tiny_skia::Pixmap) -> Residual {
     let crop: Vec<u32> = case["crop"]
         .as_array()
         .unwrap()
@@ -46,14 +77,7 @@ fn residual(case: &serde_json::Value) -> Residual {
     ))
     .unwrap()
     .bytes;
-    let viewport = Viewport {
-        width: 1280,
-        height: 800,
-    };
-    let html = case["html"].as_str().unwrap();
-    let png =
-        screenshot_png_with_opts(html, "", viewport, &HashMap::new(), false, false).expect("png");
-    let ours = tiny_skia::Pixmap::decode_png(&png).expect("decode");
+    let ours = render(case["html"].as_str().unwrap());
     let backdrop = &chrome[..3];
     let (mut sum, mut max, mut inked) = (0u64, 0u8, 0);
     for y in 0..crop[3] {
@@ -117,8 +141,37 @@ const LIMITS: &[(&str, f64, u8)] = &[
     ("edge-hyphen-0.75", 5.9, 26), // 26.1, 159
 ];
 
-/// Every case `select` picks whose residual exceeds its [`LIMITS`].
-fn failures(select: impl Fn(&str) -> bool) -> Vec<String> {
+/// The SVG screenshot's limits `(mean, max)` per text case: its measured residual
+/// (rounded up a little) with the glyph pre-blend filter (#294), and before it in the
+/// comment, when its edges kept a plain source-over blend. resvg's anti-aliasing comes in
+/// quarter steps, so the vector residual stays above the raster one.
+const SVG_LIMITS: &[(&str, f64, u8)] = &[
+    ("text-12-000000", 16.0, 60),  // before #294: mean 14.8, max 52
+    ("text-12-0000ff", 16.2, 62),  // before #294: mean 14.8, max 52
+    ("text-12-ffffff", 21.0, 78),  // before #294: mean 38.3, max 115
+    ("text-16-000000", 18.2, 87),  // before #294: mean 17.6, max 86
+    ("text-16-0000ff", 18.3, 89),  // before #294: mean 17.6, max 86
+    ("text-16-ffffff", 21.7, 100), // before #294: mean 38.6, max 150
+    ("text-20-000000", 10.5, 54),  // before #294: mean 10.1, max 44
+    ("text-20-0000ff", 10.6, 56),  // before #294: mean 10.1, max 44
+    ("text-20-ffffff", 14.3, 72),  // before #294: mean 31.7, max 103
+    ("text-32-000000", 7.4, 57),   // before #294: mean 8.0, max 57
+    ("text-32-0000ff", 7.4, 59),   // before #294: mean 8.0, max 57
+    ("text-32-ffffff", 11.0, 84),  // before #294: mean 25.6, max 121
+    ("text-40-000000", 7.7, 78),   // before #294: mean 9.0, max 84
+    ("text-40-0000ff", 7.5, 77),   // before #294: mean 9.0, max 84
+    ("text-40-ffffff", 13.4, 100), // before #294: mean 26.7, max 137
+    ("text-64-000000", 5.0, 80),   // before #294: mean 4.4, max 72
+    ("text-64-0000ff", 5.1, 81),   // before #294: mean 4.4, max 72
+    ("text-64-ffffff", 6.5, 87),   // before #294: mean 14.6, max 133
+];
+
+/// Every case `select` picks whose residual from `render` exceeds its `limits`.
+fn failures(
+    select: impl Fn(&str) -> bool,
+    render: fn(&str) -> tiny_skia::Pixmap,
+    limits: &[(&str, f64, u8)],
+) -> Vec<String> {
     let fixture = fixture();
     let mut failures = Vec::new();
     let mut compared = 0;
@@ -128,10 +181,10 @@ fn failures(select: impl Fn(&str) -> bool) -> Vec<String> {
             continue;
         }
         compared += 1;
-        let r = residual(case);
+        let r = residual(case, render);
         println!("{id}: {r:?}");
         assert!(r.inked > 20, "{id}: nothing inked");
-        let &(_, mean, max) = LIMITS
+        let &(_, mean, max) = limits
             .iter()
             .find(|l| l.0 == id)
             .unwrap_or_else(|| panic!("{id}: no limit"));
@@ -146,7 +199,7 @@ fn failures(select: impl Fn(&str) -> bool) -> Vec<String> {
 /// Text at 12-64px in black, blue and white within its measured residual.
 #[test]
 fn glyph_edges_cover_like_chrome_156() {
-    let failures = failures(|id| id.starts_with("text-"));
+    let failures = failures(|id| id.starts_with("text-"), png, LIMITS);
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
@@ -154,6 +207,14 @@ fn glyph_edges_cover_like_chrome_156() {
 /// their measured residual.
 #[test]
 fn stem_and_bar_edges_cover_like_chrome_156_at_every_subpixel_phase() {
-    let failures = failures(|id| id.starts_with("edge-"));
+    let failures = failures(|id| id.starts_with("edge-"), png, LIMITS);
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The SVG screenshot's text in black, blue and white within its measured residual: its
+/// glyph edges take the raster painter's colour-dependent pre-blend through a filter.
+#[test]
+fn svg_glyph_edges_take_the_pre_blend_like_chrome_156() {
+    let failures = failures(|id| id.starts_with("text-"), svg, SVG_LIMITS);
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
