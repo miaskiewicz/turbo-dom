@@ -839,47 +839,58 @@
   }
   // Remaining css-values-4 math functions: eagerly evaluated over canonical literals, otherwise
   // an opaque function node that Typed OM cannot reify.
+  const FN_RESULT_NUMBER = plainSet(['sin', 'cos', 'tan', 'pow', 'sqrt', 'exp', 'log', 'sign']);
+  const FN_RESULT_ANGLE = plainSet(['asin', 'acos', 'atan', 'atan2']);
+  const FN_NUMBER_INPUTS = plainSet(['pow', 'sqrt', 'exp', 'log', 'asin', 'acos', 'atan']);
+  const FN_SAME_TYPE = plainSet(['hypot', 'mod', 'rem', 'round', 'atan2']);
+  function fnResultType(name, operands, types) {
+    if (name === 'sin' || name === 'cos' || name === 'tan') { const kind = category(operands[0]); if (kind !== 'number' && kind !== 'angle') return null; return makeType('number'); }
+    if (FN_NUMBER_INPUTS[name]) { for (let index = 0; index < operands.length; index++) if (category(operands[index]) !== 'number') return null; }
+    if (FN_RESULT_NUMBER[name]) return makeType('number');
+    if (FN_RESULT_ANGLE[name]) return name === 'atan2' && !sameTypes(types) ? null : makeType('deg');
+    if (FN_SAME_TYPE[name]) return sameTypes(types);
+    if (name === 'abs') return copyType(types[0]);
+    return null;
+  }
+  function sameTypes(types) { let type = types[0]; for (let index = 1; index < types.length; index++) { type = addTypes(type, types[index]); if (!type) return null; } return type; }
+  const EAGER_FN_TRIG = { __proto__: null, sin: mathSin, cos: mathCos, tan: mathTan };
+  const EAGER_FN_INVERSE_TRIG = { __proto__: null, asin: mathAsin, acos: mathAcos, atan: mathAtan };
+  function eagerFnHypot(values, unitOf) { let total = 0; for (let index = 0; index < values.length; index++) total += values[index] * values[index]; return lit(mathSqrt(total), unitOf); }
+  function eagerFnLog(values) { return lit(values.length > 1 ? mathLog(values[0]) / mathLog(values[1]) : mathLog(values[0]), 'number'); }
+  function eagerFnBinary(name, values, unitOf) {
+    switch (name) {
+      case 'atan2': return lit(mathAtan2(values[0], values[1]) * 180 / mathPI, 'deg');
+      case 'pow': return lit(mathPow(values[0], values[1]), 'number');
+      case 'mod': { const a = values[0], b = values[1]; return lit(b === 0 ? NaN : a - b * mathFloor(a / b), unitOf); }
+      case 'rem': { const a = values[0], b = values[1]; return lit(b === 0 ? NaN : a % b, unitOf); }
+    }
+    return null;
+  }
+  function eagerFnValue(name, operands, values, unitOf) {
+    const radians = (index) => operands[index].unit === 'number' ? values[index] : values[index] * mathPI / 180;
+    if (EAGER_FN_TRIG[name]) return lit(EAGER_FN_TRIG[name](radians(0)), 'number');
+    if (EAGER_FN_INVERSE_TRIG[name]) return lit(EAGER_FN_INVERSE_TRIG[name](values[0]) * 180 / mathPI, 'deg');
+    switch (name) {
+      case 'sqrt': return lit(mathSqrt(values[0]), 'number');
+      case 'exp': return lit(mathExp(values[0]), 'number');
+      case 'log': return eagerFnLog(values);
+      case 'hypot': return eagerFnHypot(values, unitOf);
+      case 'abs': return lit(mathAbs(values[0]), unitOf);
+      case 'sign': return lit(mathSign(values[0]), 'number');
+    }
+    return eagerFnBinary(name, values, unitOf);
+  }
   function createFunction(name, operands) {
     for (let index = 0; index < operands.length; index++) if (operands[index].t === 'kw') return null;
     const types = list(); for (let index = 0; index < operands.length; index++) push(types, nodeType(operands[index]));
-    const same = () => { let type = types[0]; for (let index = 1; index < types.length; index++) { type = addTypes(type, types[index]); if (!type) return null; } return type; };
-    let type;
-    switch (name) {
-      case 'sin': case 'cos': case 'tan': { const kind = category(operands[0]); if (kind !== 'number' && kind !== 'angle') return null; type = makeType('number'); break; }
-      case 'asin': case 'acos': case 'atan': if (category(operands[0]) !== 'number') return null; type = makeType('deg'); break;
-      case 'atan2': if (!same()) return null; type = makeType('deg'); break;
-      case 'pow': if (category(operands[0]) !== 'number' || category(operands[1]) !== 'number') return null; type = makeType('number'); break;
-      case 'sqrt': case 'exp': if (category(operands[0]) !== 'number') return null; type = makeType('number'); break;
-      case 'log': for (let index = 0; index < operands.length; index++) if (category(operands[index]) !== 'number') return null; type = makeType('number'); break;
-      case 'hypot': case 'mod': case 'rem': case 'round': type = same(); if (!type) return null; break;
-      case 'abs': type = copyType(types[0]); break;
-      case 'sign': type = makeType('number'); break;
-      default: return null;
-    }
+    const type = fnResultType(name, operands, types);
+    if (!type) return null;
     let eager = true;
     for (let index = 0; index < operands.length; index++) if (!canEagerlySimplify(operands[index])) { eager = false; break; }
     if (eager) {
       const values = list(); for (let index = 0; index < operands.length; index++) push(values, canonicalValue(operands[index]));
-      const unitOf = canonicalUnit(operands[0].unit);
-      const radians = (index) => operands[index].unit === 'number' ? values[index] : values[index] * mathPI / 180;
-      switch (name) {
-        case 'sin': return lit(mathSin(radians(0)), 'number');
-        case 'cos': return lit(mathCos(radians(0)), 'number');
-        case 'tan': return lit(mathTan(radians(0)), 'number');
-        case 'asin': return lit(mathAsin(values[0]) * 180 / mathPI, 'deg');
-        case 'acos': return lit(mathAcos(values[0]) * 180 / mathPI, 'deg');
-        case 'atan': return lit(mathAtan(values[0]) * 180 / mathPI, 'deg');
-        case 'atan2': return lit(mathAtan2(values[0], values[1]) * 180 / mathPI, 'deg');
-        case 'pow': return lit(mathPow(values[0], values[1]), 'number');
-        case 'sqrt': return lit(mathSqrt(values[0]), 'number');
-        case 'exp': return lit(mathExp(values[0]), 'number');
-        case 'log': return lit(values.length > 1 ? mathLog(values[0]) / mathLog(values[1]) : mathLog(values[0]), 'number');
-        case 'hypot': { let total = 0; for (let index = 0; index < values.length; index++) total += values[index] * values[index]; return lit(mathSqrt(total), unitOf); }
-        case 'abs': return lit(mathAbs(values[0]), unitOf);
-        case 'sign': return lit(mathSign(values[0]), 'number');
-        case 'mod': { const a = values[0], b = values[1]; return lit(b === 0 ? NaN : a - b * mathFloor(a / b), unitOf); }
-        case 'rem': { const a = values[0], b = values[1]; return lit(b === 0 ? NaN : a % b, unitOf); }
-      }
+      const result = eagerFnValue(name, operands, values, canonicalUnit(operands[0].unit));
+      if (result) return result;
     }
     return { __proto__: null, t: 'op', op: 'fn', name, operands, type, nested: false };
   }
@@ -902,30 +913,43 @@
   const MATH_FUNCTIONS = { __proto__: null, calc: 1, '-webkit-calc': 1, min: 1, max: 1, clamp: 1, sin: 1, cos: 1, tan: 1, asin: 1, acos: 1, atan: 1, atan2: 1, pow: 1, sqrt: 1, hypot: 1, log: 1, exp: 1, round: 1, mod: 1, rem: 1, abs: 1, sign: 1 };
   const CONSTANTS = { __proto__: null, infinity: Infinity, '-infinity': -Infinity, nan: NaN, pi: mathPI, e: mathE };
   // Recursive-descent parse over component values of one math function's arguments.
-  function parseMathFunction(name, children, depth) {
-    if (!MATH_FUNCTIONS[name] || depth > 100) return null;
-    let items = list(); for (let index = 0; index < children.length; index++) push(items, children[index]);
-    let at = 0;
-    const skip = () => { while (at < items.length && items[at].type === 'whitespace') at++; };
-    let strategy = null;
+  const MATH_FN_SINGLE_ARG = plainSet(['calc', '-webkit-calc', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sqrt', 'exp', 'abs', 'sign']);
+  const MATH_FN_TWO_ARG = plainSet(['pow', 'atan2', 'mod', 'rem', 'log', 'round']);
+  const MATH_FN_TWO_ARG_REQUIRED = plainSet(['pow', 'atan2', 'mod', 'rem']);
+  function mathFunctionBounds(name) {
+    const maximum = MATH_FN_SINGLE_ARG[name] ? 1 : name === 'clamp' ? 3 : MATH_FN_TWO_ARG[name] ? 2 : 100;
+    const minimum = name === 'clamp' ? 3 : MATH_FN_TWO_ARG_REQUIRED[name] ? 2 : 1;
+    return { maximum, minimum };
+  }
+  function parseRoundStrategy(items, stateRef) {
+    const skip = () => { while (stateRef.at < items.length && items[stateRef.at].type === 'whitespace') stateRef.at++; };
     skip();
-    if (name === 'round' && at < items.length && items[at].type === 'ident' && ROUNDING[lowerCase(items[at].value)]) { strategy = lowerCase(items[at].value); at++; skip(); if (at >= items.length || items[at].type !== 'comma') return null; at++; }
-    const allowNone = name === 'clamp';
-    const maximum = name === 'calc' || name === '-webkit-calc' || name === 'sin' || name === 'cos' || name === 'tan' || name === 'asin' || name === 'acos' || name === 'atan' || name === 'sqrt' || name === 'exp' || name === 'abs' || name === 'sign' ? 1 : name === 'clamp' ? 3 : name === 'pow' || name === 'atan2' || name === 'mod' || name === 'rem' || name === 'log' || name === 'round' ? 2 : 100;
-    const minimum = name === 'clamp' ? 3 : name === 'pow' || name === 'atan2' || name === 'mod' || name === 'rem' ? 2 : 1;
+    if (stateRef.at < items.length && items[stateRef.at].type === 'ident' && ROUNDING[lowerCase(items[stateRef.at].value)]) {
+      const strategy = lowerCase(items[stateRef.at].value); stateRef.at++; skip();
+      if (stateRef.at >= items.length || items[stateRef.at].type !== 'comma') return { bad: true };
+      stateRef.at++;
+      return { strategy };
+    }
+    return { strategy: null };
+  }
+  function parseMathArgs(items, stateRef, depth, allowNone, bounds) {
+    const skip = () => { while (stateRef.at < items.length && items[stateRef.at].type === 'whitespace') stateRef.at++; };
     const nodes = list();
-    while (at < items.length && nodes.length < maximum) {
-      if (nodes.length) { skip(); if (at >= items.length || items[at].type !== 'comma') return null; at++; }
+    while (stateRef.at < items.length && nodes.length < bounds.maximum) {
+      if (nodes.length) { skip(); if (stateRef.at >= items.length || items[stateRef.at].type !== 'comma') return null; stateRef.at++; }
       skip();
-      const state = { items, at, depth: depth + 1, allowNone };
-      const node = parseSum(state);
+      const inner = { items, at: stateRef.at, depth: depth + 1, allowNone };
+      const node = parseSum(inner);
       if (!node) return null;
-      at = state.at; skip();
-      if (at < items.length && items[at].type !== 'comma') return null;
+      stateRef.at = inner.at; skip();
+      if (stateRef.at < items.length && items[stateRef.at].type !== 'comma') return null;
       push(nodes, node);
     }
     skip();
-    if (at < items.length || nodes.length < minimum) return null;
+    if (stateRef.at < items.length || nodes.length < bounds.minimum) return null;
+    return nodes;
+  }
+  function parseMathFunctionResult(name, nodes, strategy) {
     switch (name) {
       case 'calc': case '-webkit-calc': return nodes[0];
       case 'min': case 'max': case 'clamp': return createComparison(nodes, name);
@@ -933,33 +957,47 @@
       default: return createFunction(name, nodes);
     }
   }
+  function parseMathFunction(name, children, depth) {
+    if (!MATH_FUNCTIONS[name] || depth > 100) return null;
+    const items = list(); for (let index = 0; index < children.length; index++) push(items, children[index]);
+    const stateRef = { at: 0 };
+    let strategy = null;
+    if (name === 'round') { const r = parseRoundStrategy(items, stateRef); if (r.bad) return null; strategy = r.strategy; }
+    else { while (stateRef.at < items.length && items[stateRef.at].type === 'whitespace') stateRef.at++; }
+    const nodes = parseMathArgs(items, stateRef, depth, name === 'clamp', mathFunctionBounds(name));
+    if (!nodes) return null;
+    return parseMathFunctionResult(name, nodes, strategy);
+  }
+  function parseTermParen(state, item) {
+    const inner = { items: item.children, at: 0, depth: state.depth + 1, allowNone: false };
+    while (inner.at < inner.items.length && inner.items[inner.at].type === 'whitespace') inner.at++;
+    const result = parseSum(inner);
+    if (!result) return null;
+    while (inner.at < inner.items.length && inner.items[inner.at].type === 'whitespace') inner.at++;
+    if (inner.at < inner.items.length || result.t === 'kw') return null;
+    state.at++;
+    return nest(result);
+  }
+  function parseTermToken(state, item) {
+    state.at++;
+    const id = ident(item);
+    if (id !== null && id in CONSTANTS) return lit(CONSTANTS[id], 'number');
+    if (id === 'none' && state.allowNone) return { __proto__: null, t: 'kw', id: 'none', nested: false };
+    if (item.type === 'number') return lit(item.value, 'number');
+    if (item.type === 'percentage') return lit(item.value, 'percent');
+    if (item.type === 'dimension') { const key = lowerCase(item.unit); if (!UNITS[key] || key === 'number' || key === 'percent' || key === 'fr') return null; return lit(item.value, key); }
+    return null;
+  }
   function parseTerm(state, info) {
     const items = state.items;
     if (state.at >= items.length) return null;
     const item = items[state.at];
     let result = null;
-    if ((item.block && item.type === '(') || (item.block && item.type === 'function' && lowerCase(item.value) === 'calc')) {
-      const inner = { items: item.children, at: 0, depth: state.depth + 1, allowNone: false };
-      while (inner.at < inner.items.length && inner.items[inner.at].type === 'whitespace') inner.at++;
-      result = parseSum(inner);
-      if (!result) return null;
-      while (inner.at < inner.items.length && inner.items[inner.at].type === 'whitespace') inner.at++;
-      if (inner.at < inner.items.length || result.t === 'kw') return null;
-      result = nest(result); state.at++;
-    } else if (item.block && item.type === 'function') {
-      result = parseMathFunction(lowerCase(item.value), item.children, state.depth + 1); state.at++;
-      if (!result) return null;
-    } else if (item.block) return null;
-    else {
-      state.at++;
-      const id = ident(item);
-      if (id !== null && id in CONSTANTS) result = lit(CONSTANTS[id], 'number');
-      else if (id === 'none' && state.allowNone) result = { __proto__: null, t: 'kw', id: 'none', nested: false };
-      else if (item.type === 'number') result = lit(item.value, 'number');
-      else if (item.type === 'percentage') result = lit(item.value, 'percent');
-      else if (item.type === 'dimension') { const key = lowerCase(item.unit); if (!UNITS[key] || key === 'number' || key === 'percent' || key === 'fr') return null; result = lit(item.value, key); }
-      else return null;
-    }
+    if ((item.block && item.type === '(') || (item.block && item.type === 'function' && lowerCase(item.value) === 'calc')) result = parseTermParen(state, item);
+    else if (item.block && item.type === 'function') { result = parseMathFunction(lowerCase(item.value), item.children, state.depth + 1); state.at++; }
+    else if (item.block) return null;
+    else result = parseTermToken(state, item);
+    if (!result) return null;
     info.space = state.at < items.length && items[state.at].type === 'whitespace';
     while (state.at < items.length && items[state.at].type === 'whitespace') state.at++;
     return result;
@@ -980,6 +1018,16 @@
     if (isMulOrDiv(result) && !nestedIntermediate(result)) result = simplifySumOrProduct(result);
     return result;
   }
+  function parseSumRight(state, info, item) {
+    if (!info.space) return null;
+    state.at++;
+    const after = state.items[state.at];
+    if (!after || after.type !== 'whitespace') return null;
+    while (state.at < state.items.length && state.items[state.at].type === 'whitespace') state.at++;
+    const right = parseProduct(state, info);
+    if (!right) return null;
+    return { right, op: item.delim === '+' ? ADD : SUB };
+  }
   function parseSum(state) {
     const info = { space: false };
     let result = parseProduct(state, info);
@@ -987,14 +1035,9 @@
     for (;;) {
       const item = state.items[state.at];
       if (!item || item.type !== 'delim' || (item.delim !== '+' && item.delim !== '-')) break;
-      if (!info.space) return null;
-      state.at++;
-      const after = state.items[state.at];
-      if (!after || after.type !== 'whitespace') return null;
-      while (state.at < state.items.length && state.items[state.at].type === 'whitespace') state.at++;
-      const right = parseProduct(state, info);
-      if (!right) return null;
-      result = simplified(result, right, item.delim === '+' ? ADD : SUB);
+      const step = parseSumRight(state, info, item);
+      if (!step) return null;
+      result = simplified(result, step.right, step.op);
       if (!result) return null;
     }
     if (isAddOrSub(result) && !nestedIntermediate(result)) result = simplifySumOrProduct(result);
@@ -1026,53 +1069,56 @@
     for (let index = 0; index < complex.length; index++) push(result, complex[index]);
     return result;
   }
+  function nodeTextTermStep(entry) {
+    let { op, node: term } = entry;
+    if (op === MUL && term.t === 'op' && term.op === 'invert') return ' / ' + nodeText(term.operands[0]);
+    if (term.t === 'lit' && (op === ADD || op === SUB) && term.value < 0) { op = op === ADD ? SUB : ADD; term = lit(-term.value, term.unit); }
+    return ' ' + (op === ADD ? '+' : op === SUB ? '-' : '*') + ' ' + nodeText(term);
+  }
+  function nodeTextAddSubMul(node) {
+    let terms = sortedTerms(node);
+    if (terms.length === 1) terms = [{ op: MUL, node: node.operands[0] }, { op: node.op, node: node.operands[1] }];
+    const first = terms[0];
+    let text = '(' + nodeText(first.op === SUB && first.node.t === 'lit' ? lit(-first.node.value, first.node.unit) : first.node);
+    for (let index = 1; index < terms.length; index++) text += nodeTextTermStep(terms[index]);
+    return text + ')';
+  }
+  function nodeTextFn(node) {
+    let text = node.name + '(';
+    if (node.name === 'round' && node.strategy && node.strategy !== 'nearest') text += node.strategy + ', ';
+    const operands = node.name === 'round' && node.operands[1].t === 'lit' && node.operands[1].value === 1 && node.operands[1].unit === 'number' ? [node.operands[0]] : node.operands;
+    for (let index = 0; index < operands.length; index++) text += (index ? ', ' : '') + topLevelText(operands[index]);
+    return text + ')';
+  }
+  function nodeTextComparison(node) {
+    let text = node.op + '(';
+    for (let index = 0; index < node.operands.length; index++) text += (index ? ', ' : '') + topLevelText(node.operands[index]);
+    return text + ')';
+  }
   function nodeText(node) {
     if (node.t === 'lit') return formatNumber(node.value, node.unit);
     if (node.t === 'kw') return node.id;
     switch (node.op) {
-      case ADD: case SUB: case MUL: {
-        let terms = sortedTerms(node);
-        if (terms.length === 1) terms = [{ op: MUL, node: node.operands[0] }, { op: node.op, node: node.operands[1] }];
-        const first = terms[0];
-        let text = '(' + nodeText(first.op === SUB && first.node.t === 'lit' ? lit(-first.node.value, first.node.unit) : first.node);
-        for (let index = 1; index < terms.length; index++) {
-          let { op, node: term } = terms[index];
-          if (op === MUL && term.t === 'op' && term.op === 'invert') { text += ' / ' + nodeText(term.operands[0]); continue; }
-          if (term.t === 'lit' && (op === ADD || op === SUB) && term.value < 0) { op = op === ADD ? SUB : ADD; term = lit(-term.value, term.unit); }
-          text += ' ' + (op === ADD ? '+' : op === SUB ? '-' : '*') + ' ' + nodeText(term);
-        }
-        return text + ')';
-      }
+      case ADD: case SUB: case MUL: return nodeTextAddSubMul(node);
       case 'invert': return '(1 / ' + nodeText(node.operands[0]) + ')';
-      case 'fn': {
-        let text = node.name + '(';
-        if (node.name === 'round' && node.strategy && node.strategy !== 'nearest') text += node.strategy + ', ';
-        const operands = node.name === 'round' && node.operands[1].t === 'lit' && node.operands[1].value === 1 && node.operands[1].unit === 'number' ? [node.operands[0]] : node.operands;
-        for (let index = 0; index < operands.length; index++) text += (index ? ', ' : '') + topLevelText(operands[index]);
-        return text + ')';
-      }
-      default: {
-        let text = node.op + '(';
-        for (let index = 0; index < node.operands.length; index++) text += (index ? ', ' : '') + topLevelText(node.operands[index]);
-        return text + ')';
-      }
+      case 'fn': return nodeTextFn(node);
+      default: return nodeTextComparison(node);
     }
   }
   function topLevelText(node) { const text = nodeText(node); return startsWith(text, '(') ? sliceText(text, 1, text.length - 1) : text; }
   // CSSMathFunctionValue::CustomCSSText.
   function mathFunctionText(node) { if (isMathFunction(node)) return nodeText(node); const text = nodeText(node); return startsWith(text, '(') ? 'calc' + text : 'calc(' + text + ')'; }
 
-  // CSSNumericValue reification of a calc tree (CalcToNumericValue).
-  function nodeToNumeric(node) {
-    if (node.t === 'lit') { const value = unitValue(node.value, node.unit); return node.nested ? variadic('sum', toArray([value]), copyType(numericRecord(value).type)) : value; }
-    if (node.t !== 'op') return null;
-    if (node.op === 'invert') { const value = nodeToNumeric(node.operands[0]); return value ? createInvert(value) : null; }
-    if (node.op === 'min' || node.op === 'max' || node.op === 'clamp') {
-      const values = list();
-      for (let index = 0; index < node.operands.length; index++) { const value = nodeToNumeric(node.operands[index]); if (!value) return null; push(values, value); }
-      return node.op === 'clamp' ? createClamp(values[0], values[1], values[2]) : createVariadic(node.op, toArray(values));
-    }
-    if (node.op === 'fn') return null;
+  function nodeToNumericLit(node) {
+    const value = unitValue(node.value, node.unit);
+    return node.nested ? variadic('sum', toArray([value]), copyType(numericRecord(value).type)) : value;
+  }
+  function nodeToNumericComparison(node) {
+    const values = list();
+    for (let index = 0; index < node.operands.length; index++) { const value = nodeToNumeric(node.operands[index]); if (!value) return null; push(values, value); }
+    return node.op === 'clamp' ? createClamp(values[0], values[1], values[2]) : createVariadic(node.op, toArray(values));
+  }
+  function nodeToNumericChain(node) {
     const values = list(); let current = node;
     const combine = (candidate) => candidate.t === 'op' && !candidate.nested && !isMathFunction(candidate) && candidate.op !== 'invert' && ((node.op === ADD || node.op === SUB) ? isAddOrSub(candidate) : isMulOrDiv(candidate));
     do {
@@ -1086,6 +1132,15 @@
     push(values, first);
     const ordered = list(); for (let index = values.length - 1; index >= 0; index--) push(ordered, values[index]);
     return createVariadic(node.op === ADD || node.op === SUB ? 'sum' : 'product', toArray(ordered));
+  }
+  // CSSNumericValue reification of a calc tree (CalcToNumericValue).
+  function nodeToNumeric(node) {
+    if (node.t === 'lit') return nodeToNumericLit(node);
+    if (node.t !== 'op') return null;
+    if (node.op === 'invert') { const value = nodeToNumeric(node.operands[0]); return value ? createInvert(value) : null; }
+    if (node.op === 'min' || node.op === 'max' || node.op === 'clamp') return nodeToNumericComparison(node);
+    if (node.op === 'fn') return null;
+    return nodeToNumericChain(node);
   }
   function numericToNodeSumOrProduct(record) {
     let node = numericToNode(record.values[0]);
