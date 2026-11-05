@@ -5,6 +5,21 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## Unreleased
+
+### Fixed
+
+- **turbo-dom-browser-env: `setHTML` / `setHTMLUnsafe` / `template.innerHTML` keep template
+  contents and declarative shadow roots through a GC.** Past 256 live wrappers a mutating call
+  defers its ownership reconcile. These calls wrap the parsed nodes while they are still in a
+  detached source fragment (template contents and declarative roots are realized there), then
+  move them. Nothing kept those wrappers alive until the deferred reconcile, so a GC in between
+  collected them: a template's contents serialized empty, and a closed declarative root lost its
+  `serializable` / declarative state (`attachShadow` threw `NotSupportedError`). The source
+  fragment, and with it its ownership component, now stays pinned until the next reconcile. This
+  was the intermittent `sanitizer_api_matches_chrome_156` failure (turbo-dom#324). Test:
+  `set_html_wrappers_survive_collection_before_a_deferred_reconcile`.
+
 ## [0.7.1] — 2026-11-05
 
 ### Added
