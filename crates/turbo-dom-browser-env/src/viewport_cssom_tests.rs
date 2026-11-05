@@ -236,9 +236,10 @@ fn media_mode_switches_back_and_forth() {
     assert_eq!(MediaMode::default(), MediaMode::Chrome);
 }
 
-/// The CSS transitions switch hides jsdom's missing Web Animations surface and restores the
-/// very same bindings; setting the current value again changes nothing. It and the media mode
-/// are independent: neither changes what the other controls.
+/// The CSS transitions and CSS animations switches, both off, hide jsdom's missing Web
+/// Animations surface and restore the very same bindings when either is back on; either one
+/// alone hides nothing (turbo-dom#313), and setting the current value again changes nothing.
+/// They and the media mode are independent: none changes what the others control.
 #[test]
 fn css_transitions_switch_is_independent_of_media_mode() {
     super::tests::init_v8();
@@ -253,8 +254,11 @@ fn css_transitions_switch_is_independent_of_media_mode() {
     let off = "undefined,undefined,undefined,undefined,false,false,function";
     assert_eq!(run_js_string(scope, read), on);
     set_css_transitions(scope, false);
+    assert_eq!(run_js_string(scope, read), on);
+    set_css_animations(scope, false);
     assert_eq!(run_js_string(scope, read), off);
     set_css_transitions(scope, false);
+    set_css_animations(scope, false);
     assert_eq!(run_js_string(scope, read), off);
     set_media_mode(scope, MediaMode::Jsdom);
     assert_eq!(
@@ -267,6 +271,10 @@ fn css_transitions_switch_is_independent_of_media_mode() {
     let back = run_js_string(scope, read);
     set_css_transitions(scope, true);
     let again = run_js_string(scope, read);
+    set_css_transitions(scope, false);
+    let both_off_again = run_js_string(scope, read);
+    set_css_animations(scope, true);
+    let transitions_only_off = run_js_string(scope, read);
     let same = run_js_string(scope, "String(Element.prototype.animate === __animate)");
     reset();
     assert_eq!(
@@ -275,6 +283,8 @@ fn css_transitions_switch_is_independent_of_media_mode() {
     );
     assert_eq!(back, on);
     assert_eq!(again, on);
+    assert_eq!(both_off_again, off);
+    assert_eq!(transitions_only_off, on);
     assert_eq!(same, "true");
 }
 
