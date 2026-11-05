@@ -164,6 +164,19 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout: `<audio controls>` panel size variants, `<progress>` shadow bars and
+  indeterminate first frame (turbo-dom#346).** The audio panel paints at Chrome 156's
+  measured width thresholds (`-webkit-media-controls-*`): time-remaining from 211px,
+  current-time from 175px, volume from 143px, play from 100px, menu from 68px; the
+  timeline fills the gap between what is drawn on each side. A box under 54px tall paints
+  the pill at the content-box's height (the taller controls are left off; a follow-up for
+  the overflow). An indeterminate `<progress>` with its default look paints Chrome's
+  first-frame blue bar at 5%..19% of the box over the white track. A `<progress>` whose
+  author turns the native look off with `appearance:none` or an author background paints
+  Chrome's shadow-DOM bars instead: a grey #808080 track with a green #008000 value bar
+  (or the first-frame blue bar when indeterminate). Chrome 156 control:
+  `audio-panel-{210,174,142,99,67,short}`, `progress-{appearance-none,author-background,
+  indeterminate-first-frame}` cases of `form_native_chrome156.json`.
 - **turbo-dom-browser-env: an exception thrown by an event listener is reported, like Chrome
   156.** The binding dropped every listener exception. Now a throwing listener (or `on*`
   handler, or `handleEvent` method or getter) on a node, document, window, AbortSignal or

@@ -241,7 +241,12 @@ fn audio_controls_paint_chromes_panel() {
 
 #[test]
 fn progress_meter_fall_back_to_shadow_bars_under_appearance_none_or_author_background() {
-    for prefix in ["progress-appearance-", "progress-author-", "meter-appearance-", "meter-author-"] {
+    for prefix in [
+        "progress-appearance-",
+        "progress-author-",
+        "meter-appearance-",
+        "meter-author-",
+    ] {
         assert_like_chrome(prefix);
     }
 }

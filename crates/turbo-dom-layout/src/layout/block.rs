@@ -3520,7 +3520,7 @@ fn replaced_image_box(
                 fragment.width - b.horizontal() - bs.padding.horizontal(),
                 fragment.height - b.vertical() - bs.padding.vertical(),
             );
-            super::media_paint::audio_panel(&mut fragment, content, ctx.fonts);
+            super::media_paint::audio_panel(&mut fragment, content, false, ctx.fonts);
         }
         return Some(fragment);
     }

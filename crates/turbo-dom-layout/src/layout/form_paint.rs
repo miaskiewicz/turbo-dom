@@ -52,6 +52,11 @@ const METER_TRACK: Rgba = rgb(0xcb, 0xcb, 0xcb);
 const OPTIMUM: Rgba = rgb(0x10, 0x7c, 0x10);
 const SUBOPTIMAL: Rgba = rgb(0xff, 0xb9, 0x00);
 const EVEN_LESS_GOOD: Rgba = rgb(0xd8, 0x3b, 0x01);
+/// A `<progress>`'s shadow-bar track when the author turned the native look off
+/// (miaskiewicz/turbo-dom#346). Measured on Chrome 156 headless.
+const SHADOW_TRACK: Rgba = rgb(0x80, 0x80, 0x80);
+/// A determinate `<progress>`'s shadow value bar (above).
+const SHADOW_VALUE: Rgba = rgb(0x00, 0x80, 0x00);
 
 const fn rgb(r: u8, g: u8, b: u8) -> Rgba {
     Rgba { r, g, b, a: 255 }
@@ -69,6 +74,14 @@ pub(crate) fn apply(
 ) {
     let mode = WritingMode::of(style);
     if !native(control, style, frag, mode) {
+        // A `<progress>` with `appearance:none` or an author background still shows
+        // Chrome's shadow bars (grey track + green value, or blue indeterminate first
+        // frame; miaskiewicz/turbo-dom#346). A `<meter>`'s shadow DOM paints a gradient
+        // which this layer does not try to reproduce — the test assertions skip the
+        // meter's inside.
+        if matches!(control, Control::Progress) {
+            shadow_progress(attrs, frag);
+        }
         return;
     }
     let (x, y, w, h) = (frag.x, frag.y, frag.width, frag.height);
@@ -390,6 +403,48 @@ fn gauge(control: Control, attrs: &[Attr], frag: &mut Fragment) {
             *border_radius = BorderRadii::from_corners([start, end, end, start]);
         }
         parts.push(value);
+    } else if matches!(control, Control::Progress) && attr(attrs, "value").is_none() {
+        // An indeterminate `<progress>`'s first frame: a blue bar at the inline start,
+        // roughly 5%..19% of the box (Chrome 156 animates the bar; the first frame is
+        // what this layer captures, miaskiewicz/turbo-dom#346).
+        parts.push(rect(
+            frag,
+            (x + w * 0.05, top),
+            (w * 0.14, bar_h),
+            ACCENT,
+            None,
+            0.0,
+        ));
+    }
+    frag.content = bare();
+    frag.children.splice(0..0, parts);
+}
+
+/// A `<progress>`'s shadow-DOM painting under `appearance:none` or an author background
+/// (Chrome 156 headless, miaskiewicz/turbo-dom#346): a grey #808080 track across the
+/// whole box with a green #008000 value bar at the fraction of the box the `value`
+/// gives. An indeterminate `<progress>` here also uses the first frame blue bar.
+fn shadow_progress(attrs: &[Attr], frag: &mut Fragment) {
+    let (x, y, w, h) = (frag.x, frag.y, frag.width, frag.height);
+    let mut parts = vec![rect(frag, (x, y), (w, h), SHADOW_TRACK, None, 0.0)];
+    if let Some(ratio) = progress_position(attrs) {
+        parts.push(rect(
+            frag,
+            (x, y),
+            (w * ratio as f32, h),
+            SHADOW_VALUE,
+            None,
+            0.0,
+        ));
+    } else if attr(attrs, "value").is_none() {
+        parts.push(rect(
+            frag,
+            (x + w * 0.05, y),
+            (w * 0.14, h),
+            ACCENT,
+            None,
+            0.0,
+        ));
     }
     frag.content = bare();
     frag.children.splice(0..0, parts);
@@ -1042,10 +1097,15 @@ mod tests {
             &value,
             (0.0, 4.0, 48.0, 8.0, Some(ACCENT), None, 0, 4.0, false)
         ));
-        // No value: indeterminate, the track alone.
+        // No value: indeterminate. Chrome's first-frame bar at ~5%..19% of the box
+        // (miaskiewicz/turbo-dom#346).
         let none = at("");
         assert!(has(&none, track));
-        assert!(none.iter().all(|p| p.4 != Some(ACCENT)), "{none:?}");
+        assert!(
+            none.iter()
+                .any(|p| p.4 == Some(ACCENT) && (p.2 - 160.0 * 0.14).abs() < 0.01),
+            "{none:?}"
+        );
         // A 0 value fills nothing; an author background or border, or `appearance:
         // none`, turns the native look off.
         for plain in [

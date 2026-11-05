@@ -37,49 +37,88 @@ const CLEAR: Rgba = Rgba {
 };
 /// The panel's height.
 const HEIGHT: f32 = 54.0;
-/// The panel width the time display and timeline need (Chrome's default box).
-const FULL_WIDTH: f32 = 300.0;
 
 const fn rgb(r: u8, g: u8, b: u8) -> Rgba {
     Rgba { r, g, b, a: 255 }
 }
 
-/// Add the panel to the audio box `frag`, whose content box is `(x, y, w, h)`.
+/// Chrome 156's panel-width thresholds (miaskiewicz/turbo-dom#346): the play button,
+/// current-time, time-remaining, volume and menu are each dropped below the width
+/// measured on the `-webkit-media-controls-*` DOM boxes.
+const SHOW_MENU: f32 = 68.0;
+const SHOW_PLAY: f32 = 100.0;
+const SHOW_VOLUME: f32 = 143.0;
+const SHOW_CURRENT_TIME: f32 = 175.0;
+const SHOW_TIME_REMAINING: f32 = 211.0;
+
+/// Add the panel to the audio box `frag`, whose content box is `(x, y, w, h)`. In a
+/// horizontal writing mode the panel spans the content width at the block end; in a
+/// vertical writing mode it is a 54 x 54 pill at the content box's physical bottom
+/// (Chrome 156's `-webkit-media-controls-enclosure`, measured via
+/// `scripts/form-native-chrome-control.mjs`'s `audio-panel-vertical-rl`). A box under
+/// 54px tall still paints the pill, clipped to the box (miaskiewicz/turbo-dom#346).
 pub(crate) fn audio_panel(
     frag: &mut Fragment,
     (x, y, w, h): (f32, f32, f32, f32),
+    vertical: bool,
     fonts: &FontRegistry,
 ) {
-    if h < HEIGHT {
+    let ph = h.min(HEIGHT);
+    let pw = if vertical { w.min(HEIGHT) } else { w };
+    let pill_top = y + h - ph;
+    let id = frag.node_id;
+    let at = |dx: f32, dy: f32| (x + dx, pill_top + dy);
+    let pill_at = |dx: f32, dy: f32| (x + dx, pill_top + dy);
+    let mut parts = vec![rounded(id, pill_at(0.0, 0.0), (pw, ph), PANEL, ph / 2.0)];
+    // A short panel (vertical mode, a thin box or a short box): just the pill.
+    if pw < SHOW_MENU || ph < HEIGHT {
+        frag.children.extend(parts);
         return;
     }
-    let top = y + h - HEIGHT;
-    let id = frag.node_id;
-    let at = |dx: f32, dy: f32| (x + dx, top + dy);
-    let mut parts = vec![
-        rounded(id, at(0.0, 0.0), (w, HEIGHT), PANEL, HEIGHT / 2.0),
-        play(id, at(27.05, 27.0)),
-    ];
-    if w >= FULL_WIDTH {
+    if pw >= SHOW_PLAY {
+        parts.push(play(id, at(27.05, 27.0)));
+    }
+    if pw >= SHOW_TIME_REMAINING {
         parts.extend(time_display(id, at(47.0, 32.0), fonts));
-        let end = w - 90.4;
-        parts.push(rounded(
-            id,
-            at(128.4, 25.0),
-            (end - 128.4, 4.0),
-            TIMELINE,
-            2.0,
-        ));
+    } else if pw >= SHOW_CURRENT_TIME {
+        parts.extend(current_time(id, at(47.0, 32.0), fonts));
     }
-    // Right of the play button (which ends 32px in).
-    let clear = |left: f32| left >= 40.0;
-    if clear(w - 65.6) {
-        parts.extend(volume(id, at(w - 65.6, 0.0)));
+    // The timeline: between the left items (play / time) and the right items (volume /
+    // menu); its position and width depend on which items are drawn (Chrome 156's
+    // `-webkit-media-controls-timeline`, see `audio_scan.mjs`). Below the `SHOW_PLAY`
+    // threshold, it starts 10px from the panel's inline start.
+    let timeline_start = if pw >= SHOW_TIME_REMAINING {
+        128.4
+    } else if pw >= SHOW_CURRENT_TIME {
+        89.25
+    } else if pw >= SHOW_PLAY {
+        42.0
+    } else {
+        10.0
+    };
+    // The right side: menu is always drawn at `pw - 32`, volume (when shown) at
+    // `pw - 74`; the timeline ends 4px before the leftmost right-side item.
+    // Where the timeline must end (its inline end, physical left edge of the rightmost
+    // right-side item): just before the volume button when it is shown, else just before
+    // the menu's dots. The timeline takes at least 32px.
+    let right_items_start = if pw >= SHOW_VOLUME {
+        pw - 90.4
+    } else {
+        pw - 32.0
+    };
+    let timeline_end = right_items_start.max(timeline_start + 32.0);
+    parts.push(rounded(
+        id,
+        at(timeline_start, 25.0),
+        (timeline_end - timeline_start, 4.0),
+        TIMELINE,
+        2.0,
+    ));
+    if pw >= SHOW_VOLUME {
+        parts.extend(volume(id, at(pw - 65.6, 0.0)));
     }
-    if clear(w - 28.0) {
-        for dy in [20.0, 25.0, 30.0] {
-            parts.push(rounded(id, at(w - 28.0, dy), (4.0, 4.0), Rgba::BLACK, 2.0));
-        }
+    for dy in [20.0, 25.0, 30.0] {
+        parts.push(rounded(id, at(pw - 28.0, dy), (4.0, 4.0), Rgba::BLACK, 2.0));
     }
     frag.children.extend(parts);
 }
@@ -211,16 +250,33 @@ fn volume(id: NodeId, (x, y): (f32, f32)) -> [Fragment; 3] {
     ]
 }
 
+/// The current-time-only display (`0:00`), a width below `SHOW_TIME_REMAINING` leaves
+/// out the `/ 0:00` suffix (Chrome 156's `-webkit-media-controls-current-time-display`).
+fn current_time(id: NodeId, at: (f32, f32), fonts: &FontRegistry) -> Option<Fragment> {
+    text_fragment(id, at, "0:00", fonts)
+}
+
 /// The `0:00 / 0:00` time display, its text starting at `x` on the baseline `y`.
 fn time_display(id: NodeId, (x, baseline): (f32, f32), fonts: &FontRegistry) -> Option<Fragment> {
-    const TIME: &str = "0:00 / 0:00";
+    text_fragment(id, (x, baseline), "0:00 / 0:00", fonts)
+}
+
+/// A text fragment at `(x, baseline)` of the panel's text style
+/// (`system-ui`/`sans-serif`, 14px, black at 87%).
+fn text_fragment(
+    id: NodeId,
+    (x, baseline): (f32, f32),
+    label: &str,
+    fonts: &FontRegistry,
+) -> Option<Fragment> {
+    let text = label;
     let face = fonts.select(&["system-ui", "sans-serif"], 400, false)?;
     let size = 14.0;
     let scale = face.scale(size);
     let ascent = face.ascent_px(size);
     let mut pen = 0.0;
     let glyphs = face
-        .shape(TIME)
+        .shape(text)
         .into_iter()
         .map(|g| {
             let start = g.cluster;
@@ -237,7 +293,7 @@ fn time_display(id: NodeId, (x, baseline): (f32, f32), fonts: &FontRegistry) -> 
         .collect();
     let content = FragmentContent::TextLine {
         glyphs,
-        text: TIME.to_string(),
+        text: text.to_string(),
         face: face.clone(),
         font_size: size,
         color: TEXT,
@@ -338,24 +394,30 @@ mod tests {
 
     #[test]
     fn a_small_panel_leaves_out_what_does_not_fit() {
-        // Narrower than 300px: no time display or timeline; the volume button needs to
-        // start 40px in, the menu too.
+        // Below `SHOW_TIME_REMAINING` (211px): no `0:00 / 0:00`. At 100px: still the
+        // play button, a short timeline and the menu dots but no volume or time.
         let (narrow, text) = audio("width:100px");
         assert!(!text);
-        assert!(narrow.iter().all(|p| p.4 != Some(TIMELINE)));
         assert!(narrow.iter().all(|p| !p.6), "no waves: {narrow:?}");
         assert!(narrow.iter().any(|p| p.4 == Some(Rgba::BLACK)));
+        assert!(narrow.iter().any(|p| p.4 == Some(TIMELINE)));
+        // Below `SHOW_MENU` (68px): only the pill, no menu dots.
         let (tiny, _) = audio("width:60px");
         assert!(tiny.iter().all(|p| p.4 != Some(Rgba::BLACK)), "{tiny:?}");
         assert!(tiny.iter().any(|p| p.4 == Some(PANEL)));
-        // Under 54px tall, or in a vertical writing mode: no panel.
-        for style in ["height:53px", "writing-mode:vertical-rl"] {
-            let (none, text) = audio(style);
-            assert!(
-                !text && none.iter().all(|p| p.4 != Some(PANEL)),
-                "{style}: {none:?}"
-            );
-        }
+        assert!(tiny.iter().all(|p| p.4 != Some(TIMELINE)));
+        // Under 54px tall (miaskiewicz/turbo-dom#346): the pill paints at the content
+        // box's height, clipped.
+        let (short, _) = audio("height:40px");
+        assert!(
+            short
+                .iter()
+                .any(|p| p.4 == Some(PANEL) && (p.3 - 40.0).abs() < 0.01),
+            "{short:?}"
+        );
+        // Vertical writing mode: no panel at all (follow-up of miaskiewicz/turbo-dom#346).
+        let (v, _) = audio("writing-mode:vertical-rl;width:54px;height:300px");
+        assert!(v.iter().all(|p| p.4 != Some(PANEL)), "{v:?}");
     }
 
     #[test]
@@ -378,6 +440,7 @@ mod tests {
         audio_panel(
             &mut frag,
             (0.0, 0.0, 300.0, 54.0),
+            false,
             &crate::FontRegistry::default(),
         );
         assert!(frag

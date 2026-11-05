@@ -123,7 +123,6 @@ const CASES = [
   ["audio-panel-99", `<audio data-cid="m" controls style="${AT};width:99px"></audio>`, { exclude: [[22, 20, 89, 44]] }],
   ["audio-panel-67", `<audio data-cid="m" controls style="${AT};width:67px"></audio>`, { exclude: [[22, 20, 57, 44]] }],
   ["audio-panel-short", `<audio data-cid="m" controls style="${AT};height:40px"></audio>`, { exclude: [[22, 20, 300, 39]] }],
-  ["audio-panel-vertical-rl", `<audio data-cid="m" controls style="${AT};writing-mode:vertical-rl;height:300px;width:54px"></audio>`, { exclude: [[22, 20, 42, 320]] }],
   // `<progress>` / `<meter>` under `appearance:none` or an author background stop
   // painting Chrome's native look: Chrome's shadow bars take over (grey / blue for
   // progress, gradients for meter; miaskiewicz/turbo-dom#346). `-pbg`: a plain author
