@@ -2046,7 +2046,8 @@ pub fn set_form_submission_blocked(scope: &mut v8::PinScope, blocked: bool) {
     });
 }
 
-/// How `window.matchMedia` and getComputedStyle's `@media` / `@import` media lists behave.
+/// The embedder's browser-parity mode: how `window.matchMedia`, getComputedStyle's `@media` /
+/// `@import` media lists and CSS transitions / animations behave.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MediaMode {
     /// Chrome's: a live `MediaQueryList` and media lists evaluated against the viewport.
@@ -2054,6 +2055,9 @@ pub enum MediaMode {
     Chrome,
     /// jsdom 27's (vitest's jsdom environment): no `matchMedia`, and a media list applies
     /// only when one of its items is exactly `screen` (an `@import` also with no list).
+    /// Like jsdom it also runs no CSS transitions or `@keyframes` animations (getComputedStyle
+    /// reports the declared value at once) and has no Web Animations surface (`animate`,
+    /// `getAnimations`, `document.timeline`, `Animation`, `CSSTransition`, `AnimationEvent`, ...).
     Jsdom,
 }
 

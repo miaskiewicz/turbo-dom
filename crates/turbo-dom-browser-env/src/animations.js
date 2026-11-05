@@ -1854,7 +1854,7 @@
     return true;
   }
   function cssUpdate(element, read, inherited, snapshots, ownDisplay) {
-    if (cssBusy.get(element)) return;
+    if (jsdomMode || cssBusy.get(element)) return;
     const declared = read('animation-name') || read('transition-property');
     if (!declared && !cssStates.has(element)) return;
     cssBusy.set(element, true);
@@ -1973,6 +1973,22 @@
     cssFlush(shadow);
     return collect(effect => root(effect.target) === shadow);
   }, 0);
+
+  // MediaMode::Jsdom (ns.setJsdomAnimations, from setMediaMode): jsdom 27 has no Web
+  // Animations and runs no CSS transitions or @keyframes animations, so getComputedStyle
+  // reports the declared value at once, no transition / animation events fire, and the
+  // interfaces and members it lacks are hidden. Chrome restores them as they were.
+  let jsdomMode = false, jsdomHidden = null;
+  const jsdomSurface = [[g, 'Animation'], [g, 'AnimationEffect'], [g, 'AnimationTimeline'], [g, 'DocumentTimeline'], [g, 'KeyframeEffect'],
+    [g, 'AnimationPlaybackEvent'], [g, 'CSSAnimation'], [g, 'CSSTransition'], [g, 'AnimationEvent'], [elementPrototype, 'animate'],
+    [elementPrototype, 'getAnimations'], [g.Document.prototype, 'getAnimations'], [g.Document.prototype, 'timeline']];
+  if (g.ShadowRoot) push(jsdomSurface, [g.ShadowRoot.prototype, 'getAnimations']);
+  ns.setJsdomAnimations = function (on) {
+    if (on === jsdomMode) return;
+    jsdomMode = on;
+    if (on) jsdomHidden = intrinsic.map(jsdomSurface, ([object, name]) => { const descriptor = getOwnDescriptor(object, name); delete object[name]; return descriptor; });
+    else { for (let i = 0; i < jsdomSurface.length; i++) if (jsdomHidden[i]) define(jsdomSurface[i][0], jsdomSurface[i][1], jsdomHidden[i]); jsdomHidden = null; }
+  };
 
   // The embedding's rendering-frame host. A runtime with its own frame scheduler installs it
   // once; otherwise a timer-driven default keeps document timelines advancing.
