@@ -1119,15 +1119,17 @@ fn layout_cells<'a>(
         .collect()
 }
 
-fn expand_rows(h: &mut [f32], c: &LaidCell) {
+/// Grow the last row a row-spanning cell `c` covers until the cell's content fits its
+/// rows and the vertical border-spacing `vs` between them (miaskiewicz/turbo-dom#321).
+fn expand_rows(h: &mut [f32], c: &LaidCell, vs: f32) {
     let (start, span) = (c.p.row, c.p.rowspan);
-    let have: f32 = h[start..start + span].iter().sum();
+    let have = spanned(h, start, span) + vs * (span - 1) as f32;
     if c.content_h > have {
         h[start + span - 1] += c.content_h - have;
     }
 }
 
-fn row_heights(laid: &[LaidCell], rows: &[RowRef]) -> Vec<f32> {
+fn row_heights(laid: &[LaidCell], rows: &[RowRef], vs: f32) -> Vec<f32> {
     // Seed each row at its explicit `height` floor (empty spacer rows), then grow
     // to fit content.
     let mut h: Vec<f32> = rows.iter().map(|r| r.min_height).collect();
@@ -1138,7 +1140,7 @@ fn row_heights(laid: &[LaidCell], rows: &[RowRef]) -> Vec<f32> {
     }
     for c in laid {
         if c.p.rowspan > 1 {
-            expand_rows(&mut h, c);
+            expand_rows(&mut h, c, vs);
         }
     }
     h
@@ -1170,7 +1172,10 @@ fn spanned(row_h: &[f32], start: usize, span: usize) -> f32 {
 }
 
 fn position_cell(c: LaidCell, geom: &Geom, cx: f32, cy: f32) -> Fragment {
-    let cell_h = spanned(&geom.row_h, c.p.row, c.p.rowspan);
+    // From its first row's top to its last row's bottom: a spanning cell also spans the
+    // border-spacing between its rows (miaskiewicz/turbo-dom#321).
+    let last = c.p.row + c.p.rowspan - 1;
+    let cell_h = geom.row_y[last] + geom.row_h[last] - geom.row_y[c.p.row];
     let dy = valign_offset(c.valign, cell_h, c.content_h);
     let mut frag = c.frag;
     frag.translate(cx + geom.col_x[c.p.col], cy + geom.row_y[c.p.row]);
@@ -1707,7 +1712,7 @@ pub(crate) fn layout_table(
     let inner = (cw - hs * (ncols as f32 + 1.0)).max(0.0);
     let cols = column_widths(&table.style, &placed, ncols, inner, ctx.fonts);
     let laid = layout_cells(&placed, &cols, hs, fs, ctx);
-    let mut row_h = row_heights(&laid, &rows);
+    let mut row_h = row_heights(&laid, &rows, vs);
     let nrows = row_h.len();
     let spacing = vs * (nrows as f32 + 1.0);
     let weights = row_h.clone();
