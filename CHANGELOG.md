@@ -5,7 +5,7 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [Unreleased]
+## [0.7.1] — 2026-11-05
 
 ### Added
 
@@ -159,7 +159,7 @@ at the time); this file reconstructs them from history.
   (`scripts/style-invalidation-chrome-control.mjs`), counter gates and a randomised
   reused-vs-fresh differential.
 
-## [0.7.0] — <date TBD at tag>
+## [0.7.0] — 2026-11-04
 
 | crate | version |
 |---|---|

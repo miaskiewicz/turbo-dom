@@ -1,6 +1,6 @@
 [package]
 name = "turbo-dom-layout"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2021"
 license = "MIT"
 description = "Native HTML/CSS style cascade, layout (block/inline/flex/grid/table) and font engine for turbo-dom: HTML -> positioned Fragment galley + layout snapshots"
@@ -58,7 +58,7 @@ test-support = []
 
 [dependencies]
 # The DOM the cascade styles and lays out directly (`style::TreeView`).
-turbo-dom = { path = "../turbo-dom", version = "0.7.0" }
+turbo-dom = { path = "../turbo-dom", version = "0.7.1" }
 thiserror = "2"
 rustybuzz = "0.20.1"
 self_cell = "1"
