@@ -1534,6 +1534,17 @@
     // Initial computed values of properties Web Animations commonly animate.
     if (decl.opacity == null) decl.opacity = connected ? '1' : '';
     if (decl.transform == null) { decl.transform = connected ? 'none' : ''; }
+    // Resolve `transform` to the matrix() / matrix3d() / none Chrome 156 reports (the
+    // "resolved value" for a used transform). Percentage translates and em need a layout
+    // box and the font size; `ns.resolveTransform` returns null to keep the declared text
+    // when it cannot resolve them (turbo-dom#353).
+    if (connected && !pseudo && typeof __ns.resolveTransform === 'function' && typeof decl.transform === 'string') {
+      try {
+        var fontMatch = cssApply(cssZoomExec, /^([0-9.e+-]+)px$/, [String(decl['font-size'] == null ? '' : decl['font-size'])]);
+        var resolvedTransform = __ns.resolveTransform(decl.transform, el, fontMatch ? cssFontNumber(fontMatch[1]) : 16);
+        if (typeof resolvedTransform === 'string') setProp('transform', resolvedTransform);
+      } catch(e){}
+    }
     // `zoom` is not inherited; it computes to its factor, with normal and 0 as 1.
     decl.zoom = connected ? computedZoom(decl.zoom, function(){ return inheritedValue('zoom'); }) : '';
     // Used-value resolution for percentage width/height. A no-layout env returns a raw "50%"

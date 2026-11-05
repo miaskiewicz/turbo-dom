@@ -458,7 +458,6 @@ fn transform_mismatches(engine: &str, keep: impl Fn(&str) -> bool) -> Vec<String
 /// and an unparented host element compute to `none`. em resolves against the font size the
 /// embedder reports as the fifth box entry.
 #[test]
-#[ignore = "turbo-dom#353: fails until the fix"]
 fn transform_matches_chrome156_control_with_embedder_layout() {
     let found = transform_mismatches(
         "const boxes = BOXES; __tsNs.layoutUsedSize = (el) => boxes[el.id] ?? null;",
@@ -477,7 +476,6 @@ fn transform_matches_chrome156_control_with_embedder_layout() {
 /// percentage translate stays as the declared text, as Chrome also cannot resolve it before
 /// layout.
 #[test]
-#[ignore = "turbo-dom#353: fails until the fix"]
 fn transform_without_a_layout_resolves_non_percentage_lists() {
     let known = |path: &str| {
         let id = path.split('.').nth(1).unwrap_or("");

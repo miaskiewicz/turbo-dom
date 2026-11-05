@@ -1106,6 +1106,87 @@
   // Whether any animation targets `element`: its computed style follows the timeline, so
   // getComputedStyle never reuses it (turbo-test#125).
   ns.hasAnimations = function (element) { const entries = targets.get(element); return !!(entries && entries.length); };
+  // `transform` resolves to the matrix the declared function list computes to (Chrome 156:
+  // matrix(...) for a 2D list, matrix3d(...) for any 3D function; `none` for an empty list).
+  // Percentage translates resolve against the border box (width for X, height for Y) from
+  // `ns.layoutUsedSize(element)`; lengths against `fontSizePx` for `em` (the embedder also
+  // reports it there, else 16 as a safe default). Returns null to keep the declared text:
+  // unparseable, or percentages / ems with no layout box (turbo-dom#353).
+  ns.resolveTransform = function (text, element, fontSizePx) {
+    if (typeof text !== 'string') return null;
+    if (intrinsic.test(/^\s*$/, text)) return text;
+    if (intrinsic.test(/^\s*none\s*$/i, text)) return 'none';
+    let box = null;
+    try { if (typeof ns.layoutUsedSize === 'function' && element) box = ns.layoutUsedSize(element); } catch (e) {}
+    const em = isFinite(+fontSizePx) ? +fontSizePx : 16;
+    const borderW = box && isFinite(+box[0]) ? +box[0] : null;
+    const borderH = box && isFinite(+box[1]) ? +box[1] : null;
+    const list = parseResolvedTransform(text, em, borderW, borderH);
+    if (list === null) return null;
+    if (!list.length) return 'none';
+    const matrix = listMatrix(list);
+    // Blink's matrix serialization snaps components under ~1e-6 to zero, so trig-driven
+    // neighbours of a right angle (`rotateX(90deg) rotateY(45deg)`) do not leak as `6e-17`.
+    for (let i = 0; i < 16; i++) if (abs(matrix[i]) < 1e-6) matrix[i] = 0;
+    return serializeTransformMatrix(matrix, list);
+  };
+  function serializeTransformMatrix(m, list) {
+    let three = false;
+    for (let i = 0; i < list.length; i++) if (list[i].three) { three = true; break; }
+    if (!three && flat(m)) return `matrix(${intrinsic.join(intrinsic.map([m[0], m[1], m[4], m[5], m[12], m[13]], format), ', ')})`;
+    return `matrix3d(${intrinsic.join(intrinsic.map(m, format), ', ')})`;
+  }
+  // Parse a transform text into primitives whose `v` is already resolved to px / radians /
+  // numbers. Returns null if a percentage translate has no containing-block measure or any
+  // token is unparseable; `[]` for `none`.
+  function parseResolvedTransform(text, em, borderW, borderH) {
+    const trimmed = intrinsic.trim(text);
+    if (intrinsic.test(/^none$/i, trimmed)) return [];
+    const pattern = /\s*([a-zA-Z0-9]+)\(([^()]*)\)\s*/y;
+    const list = [];
+    let at = 0;
+    while (at < trimmed.length) {
+      pattern.lastIndex = at;
+      const match = intrinsic.exec(pattern, trimmed);
+      if (!match) return null;
+      at = pattern.lastIndex;
+      const name = intrinsic.toLowerCase(match[1]);
+      const args = intrinsic.map(intrinsic.split(match[2], ','), part => intrinsic.trim(part));
+      const fn = resolvedFunction(name, args, em, borderW, borderH);
+      if (!fn) return null;
+      push(list, fn);
+    }
+    return list;
+  }
+  function resolvedFunction(name, args, em, borderW, borderH) {
+    const count = (a, b) => args.length >= a && args.length <= b;
+    const resolveLen = (token, base) => {
+      const parsed = parseLength(token, { fontSize: em });
+      if (!parsed) return null;
+      if (parsed.unit === 'px') return parsed.value;
+      if (parsed.unit === '%') return base === null ? null : parsed.value / 100 * base;
+      return null;
+    };
+    const lengths = (bases) => {
+      const out = [];
+      for (let i = 0; i < args.length; i++) {
+        const value = resolveLen(args[i], bases[i] === undefined ? null : bases[i]);
+        if (value === null) return null;
+        push(out, value);
+      }
+      return out;
+    };
+    let v;
+    switch (name) {
+      case 'translate': if (!count(1, 2) || !(v = lengths([borderW, borderH]))) return null; return { type: 'translate', v: [v[0], v.length > 1 ? v[1] : 0, 0] };
+      case 'translatex': if (!count(1, 1) || !(v = lengths([borderW]))) return null; return { type: 'translate', v: [v[0], 0, 0] };
+      case 'translatey': if (!count(1, 1) || !(v = lengths([borderH]))) return null; return { type: 'translate', v: [0, v[0], 0] };
+      case 'translatez': if (!count(1, 1) || !(v = lengths([0]))) return null; return { type: 'translate', v: [0, 0, v[0]], three: true };
+      case 'translate3d': if (!count(3, 3) || !(v = lengths([borderW, borderH, 0]))) return null; return { type: 'translate', v, three: true };
+      case 'perspective': { if (!count(1, 1)) return null; if (intrinsic.test(/^none$/i, args[0])) return { type: 'perspective', v: [Infinity], three: true }; const d = resolveLen(args[0], null); return d === null || d < 0 ? null : { type: 'perspective', v: [d], three: true }; }
+    }
+    return transformFunction(name, args);
+  }
   ns.animatedStyle = function (element, read, inherited, snapshots, ownDisplay) {
     if (suppressStyle) return null;
     cssUpdate(element, read, inherited, snapshots, ownDisplay);

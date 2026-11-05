@@ -300,7 +300,7 @@
     // property's initial value (currentcolor -> the element's color), inherit -> the parent's
     // computed value, unset -> inherit / initial by whether the property inherits, revert ->
     // the UA value (html.css), else as unset. Inline and rule declarations, any case.
-    const props = ['background-color', 'margin-top', 'margin-bottom', 'margin-left', 'padding-left', 'border-top-color', 'border-top-width', 'outline-color', 'opacity', 'text-align', 'letter-spacing', 'max-width', 'z-index', 'float', 'color'];
+    const props = ['background-color', 'margin-top', 'margin-bottom', 'margin-left', 'padding-left', 'border-top-color', 'border-top-width', 'outline-color', 'opacity', 'transform', 'text-align', 'letter-spacing', 'max-width', 'z-index', 'float', 'color'];
     const read = (el) => { const s = getComputedStyle(el); return Object.fromEntries(props.map((p) => [p, s.getPropertyValue(p)])); };
     out.keywords = Object.fromEntries(Array.from(document.querySelectorAll('[id]'), (el) => [el.id, read(el)]));
     const camel = getComputedStyle(document.getElementById('kwInitial'));
@@ -342,10 +342,11 @@
     out.transformBoxes = Object.fromEntries(ids.map((id) => {
       const el = document.getElementById(id);
       if (!el.getClientRects().length) return [id, null];
-      const r = el.getBoundingClientRect(), s = getComputedStyle(el), px = (name) => parseFloat(s.getPropertyValue(name)) || 0;
+      const s = getComputedStyle(el), px = (name) => parseFloat(s.getPropertyValue(name)) || 0;
+      const w = el.offsetWidth, h = el.offsetHeight;
       const x = px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width');
       const y = px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width');
-      return [id, [r.width, r.height, r.width - x, r.height - y, px('font-size')]];
+      return [id, [w, h, w - x, h - y, px('font-size')]];
     }));
   } else {
     // the title setter creates a <title> on demand

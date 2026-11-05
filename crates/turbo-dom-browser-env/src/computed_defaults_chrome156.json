@@ -2,7 +2,7 @@
   "browser": "HeadlessChrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "casesSha256": "fcf3b8365be3ea9ed0ae2e847e8e88280fe34c83448d5f1db8f1d4586b1c4dcc",
-  "probeSha256": "87877424cc68b1809f82a92c35467ff7a9448f17e3dcd5f2745d16e6a2e22ed6",
+  "probeSha256": "8c60edc7ef152103b0760a12c1860dfcf83a7728da770052a1cbbb8ff82dff66",
   "collectorSha256": "671661dee7acadfab3a3ef76ea9a97e1f2f3d99987c9d0cdf0ab8c42410c09ff",
   "flags": [
     "--headless=new",
@@ -5320,6 +5320,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 0)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "start",
             "letter-spacing": "normal",
             "max-width": "none",
@@ -5337,6 +5338,7 @@
             "border-top-width": "2px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "0.5",
+            "transform": "matrix(1, 0, 0, 1, 1, 0)",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "300px",
@@ -5354,6 +5356,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 128, 0)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "start",
             "letter-spacing": "normal",
             "max-width": "none",
@@ -5371,6 +5374,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "0.5",
+            "transform": "matrix(1, 0, 0, 1, 1, 0)",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "300px",
@@ -5388,6 +5392,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5405,6 +5410,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5422,6 +5428,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "0.5",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5439,6 +5446,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5456,6 +5464,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5473,6 +5482,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5490,6 +5500,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 0)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "start",
             "letter-spacing": "normal",
             "max-width": "none",
@@ -5513,6 +5524,7 @@
           "border-top-width": "",
           "outline-color": "",
           "opacity": "",
+          "transform": "",
           "text-align": "",
           "letter-spacing": "",
           "max-width": "",
@@ -5975,24 +5987,24 @@
             16
           ],
           "x4": [
-            424.26409912109375,
-            424.2640380859375,
-            424.26409912109375,
-            424.2640380859375,
+            200,
+            100,
+            200,
+            100,
             16
           ],
           "x5": [
-            217.6326904296875,
+            200,
             100,
-            217.6326904296875,
+            200,
             100,
             16
           ],
           "x6": [
-            141.42135620117188,
-            141.42138671875,
-            141.42135620117188,
-            141.42138671875,
+            200,
+            100,
+            200,
+            100,
             16
           ],
           "x7": [
@@ -6003,10 +6015,10 @@
             16
           ],
           "x8": [
+            200,
             100,
-            50,
+            200,
             100,
-            50,
             16
           ],
           "x9": [
@@ -6024,10 +6036,10 @@
             16
           ],
           "x11": [
-            174.9546356201172,
-            111.111083984375,
-            174.9546356201172,
-            111.111083984375,
+            200,
+            100,
+            200,
+            100,
             16
           ],
           "x12": [
