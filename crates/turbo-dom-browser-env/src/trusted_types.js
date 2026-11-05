@@ -29,23 +29,30 @@
   function required(method, owner, actual, count) {
     if (actual < count) throw failure(method, owner, count + ' argument' + (count === 1 ? '' : 's') + ' required, but only ' + actual + ' present.');
   }
+  function isPrimitiveResult(value) {
+    return value === null || (typeof value !== 'object' && typeof value !== 'function');
+  }
+  function toPrimitiveFallback(object, method, owner) {
+    for (let index = 0; index < 2; index++) {
+      const name = index === 0 ? 'toString' : 'valueOf';
+      const callback = object[name];
+      if (typeof callback !== 'function') continue;
+      const result = apply(callback, object, []);
+      if (isPrimitiveResult(result)) return result;
+    }
+    throw failure(method, owner, 'Cannot convert object to primitive value');
+  }
+  function objectToPrimitive(object, method, owner) {
+    const exotic = object[toPrimitive];
+    if (exotic != null) {
+      if (typeof exotic !== 'function') throw failure(method, owner, 'Cannot convert object to primitive value');
+      return apply(exotic, object, ['string']);
+    }
+    return toPrimitiveFallback(object, method, owner);
+  }
   function string(value, method, owner) {
     if (value !== null && (typeof value === 'object' || typeof value === 'function')) {
-      const object = value, exotic = object[toPrimitive];
-      if (exotic != null) {
-        if (typeof exotic !== 'function') throw failure(method, owner, 'Cannot convert object to primitive value');
-        value = apply(exotic, object, ['string']);
-      } else {
-        let found = false;
-        for (let index = 0; index < 2; index++) {
-          const name = index === 0 ? 'toString' : 'valueOf';
-          const callback = object[name];
-          if (typeof callback !== 'function') continue;
-          const result = apply(callback, object, []);
-          if (result === null || (typeof result !== 'object' && typeof result !== 'function')) { value = result; found = true; break; }
-        }
-        if (!found) throw failure(method, owner, 'Cannot convert object to primitive value');
-      }
+      value = objectToPrimitive(value, method, owner);
       if (value !== null && (typeof value === 'object' || typeof value === 'function')) throw failure(method, owner, 'Cannot convert object to primitive value');
     }
     if (typeof value === 'symbol') throw failure(method, owner, 'Cannot convert a Symbol value to a string');
@@ -100,15 +107,20 @@
     return policy;
   }, 1);
   function namespace(value, method) { return value == null || value === '' ? HTML : string(value, method, 'TrustedTypePolicyFactory'); }
+  function htmlAttributeType(tag, attribute) {
+    if (tag === 'script' && attribute === 'src') return 'TrustedScriptURL';
+    if (tag === 'embed' && attribute === 'src') return 'TrustedScriptURL';
+    if (tag === 'object' && (attribute === 'data' || attribute === 'codebase')) return 'TrustedScriptURL';
+    if (tag === 'iframe' && attribute === 'srcdoc') return 'TrustedHTML';
+    return null;
+  }
+  const KNOWN_NS = { [HTML]: 1, [SVG]: 1, 'http://www.w3.org/1998/Math/MathML': 1 };
   function attributeType(tag, attribute, ns, attributeNS) {
     if (attributeNS != null && attributeNS !== '' && !(ns === SVG && attributeNS === XLINK)) return null;
-    if (ns !== HTML && ns !== SVG && ns !== 'http://www.w3.org/1998/Math/MathML') return null;
-    const events = mapping['*'].attributes;
-    if (own(events, attribute) && (attributeNS == null || attributeNS === '')) return 'TrustedScript';
-    if (ns === HTML && (attributeNS == null || attributeNS === '')) {
-      if (tag === 'script' && attribute === 'src' || tag === 'embed' && attribute === 'src' || tag === 'object' && (attribute === 'data' || attribute === 'codebase')) return 'TrustedScriptURL';
-      if (tag === 'iframe' && attribute === 'srcdoc') return 'TrustedHTML';
-    }
+    if (!KNOWN_NS[ns]) return null;
+    const nsAttrEmpty = attributeNS == null || attributeNS === '';
+    if (nsAttrEmpty && own(mapping['*'].attributes, attribute)) return 'TrustedScript';
+    if (ns === HTML && nsAttrEmpty) return htmlAttributeType(tag, attribute);
     if (ns === SVG && tag === 'script' && attribute === 'href') return 'TrustedScriptURL';
     return null;
   }
@@ -118,17 +130,27 @@
     ns = namespace(ns, 'getAttributeType'); attributeNS = attributeNS == null ? '' : string(attributeNS, 'getAttributeType', 'TrustedTypePolicyFactory');
     return attributeType(tag, attribute, ns, attributeNS);
   }, 2);
+  const SCRIPT_TEXT_PROPS = { text: 1, textContent: 1, innerText: 1 };
+  function htmlPropertyType(tag, property) {
+    if (tag === 'script') {
+      if (SCRIPT_TEXT_PROPS[property]) return 'TrustedScript';
+      if (property === 'src') return 'TrustedScriptURL';
+      return null;
+    }
+    if (!own(mapping, tag) || !own(mapping[tag].properties, property)) return null;
+    return mapping[tag].properties[property];
+  }
+  function propertyType(tag, property, ns) {
+    if (property === 'innerHTML' || property === 'outerHTML') return 'TrustedHTML';
+    if (!KNOWN_NS[ns]) return null;
+    if (ns === SVG) return tag === 'script' && property === 'href' ? 'TrustedScriptURL' : null;
+    if (ns !== HTML) return null;
+    return htmlPropertyType(tag, property);
+  }
   member(factoryPrototype, 'getPropertyType', function (tag, property, ns) {
     read(this, 'TrustedTypePolicyFactory'); required('getPropertyType', 'TrustedTypePolicyFactory', arguments.length, 2);
     tag = lower(string(tag, 'getPropertyType', 'TrustedTypePolicyFactory')); property = string(property, 'getPropertyType', 'TrustedTypePolicyFactory'); ns = namespace(ns, 'getPropertyType');
-    if (property === 'innerHTML' || property === 'outerHTML') return 'TrustedHTML';
-    if (ns !== HTML && ns !== SVG && ns !== 'http://www.w3.org/1998/Math/MathML') return null;
-    if (ns === HTML && tag === 'script' && (property === 'text' || property === 'textContent' || property === 'innerText')) return 'TrustedScript';
-    if (ns === SVG) return tag === 'script' && property === 'href' ? 'TrustedScriptURL' : null;
-    if (ns === HTML && tag === 'script' && property === 'src') return 'TrustedScriptURL';
-    if (ns !== HTML || tag === 'script') return null;
-    if (!own(mapping, tag) || !own(mapping[tag].properties, property)) return null;
-    return mapping[tag].properties[property];
+    return propertyType(tag, property, ns);
   }, 2);
   member(factoryPrototype, 'getTypeMapping', function (ns) {
     read(this, 'TrustedTypePolicyFactory');
