@@ -300,7 +300,7 @@
     // property's initial value (currentcolor -> the element's color), inherit -> the parent's
     // computed value, unset -> inherit / initial by whether the property inherits, revert ->
     // the UA value (html.css), else as unset. Inline and rule declarations, any case.
-    const props = ['background-color', 'margin-top', 'margin-bottom', 'margin-left', 'padding-left', 'border-top-color', 'border-top-width', 'outline-color', 'opacity', 'text-align', 'letter-spacing', 'max-width', 'z-index', 'float', 'color'];
+    const props = ['background-color', 'margin-top', 'margin-bottom', 'margin-left', 'padding-left', 'border-top-color', 'border-top-width', 'outline-color', 'opacity', 'transform', 'text-align', 'letter-spacing', 'max-width', 'z-index', 'float', 'color'];
     const read = (el) => { const s = getComputedStyle(el); return Object.fromEntries(props.map((p) => [p, s.getPropertyValue(p)])); };
     out.keywords = Object.fromEntries(Array.from(document.querySelectorAll('[id]'), (el) => [el.id, read(el)]));
     const camel = getComputedStyle(document.getElementById('kwInitial'));
@@ -325,6 +325,28 @@
       const x = px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width');
       const y = px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width');
       return [id, [r.width, r.height, r.width - x, r.height - y]];
+    }));
+  } else if (document.getElementById('xform')) {
+    // turbo-dom#353: `transform` computes to the resolved matrix()/matrix3d()/none like
+    // Chrome 156. 2D-only lists serialize as matrix() with 6 values; a list with any 3D
+    // function as matrix3d() with 16 column-major values. Percentage translates resolve
+    // against the element's border box (width for X, height for Y); lengths use the
+    // element's font size for em. CSS-wide keywords on `transform` were covered by case
+    // css-wide-keywords.
+    const ids = Array.from(document.querySelectorAll('[id]'), (el) => el.id);
+    const xf = (el) => getComputedStyle(el).transform;
+    out.transform = Object.fromEntries(ids.map((id) => [id, xf(document.getElementById(id))]));
+    const camel = getComputedStyle(document.getElementById('x1'));
+    out.transformCamel = [camel.transform, camel.getPropertyValue('transform')];
+    out.transformDetached = xf(document.createElement('div'));
+    out.transformBoxes = Object.fromEntries(ids.map((id) => {
+      const el = document.getElementById(id);
+      if (!el.getClientRects().length) return [id, null];
+      const s = getComputedStyle(el), px = (name) => parseFloat(s.getPropertyValue(name)) || 0;
+      const w = el.offsetWidth, h = el.offsetHeight;
+      const x = px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width');
+      const y = px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width');
+      return [id, [w, h, w - x, h - y, px('font-size')]];
     }));
   } else {
     // the title setter creates a <title> on demand

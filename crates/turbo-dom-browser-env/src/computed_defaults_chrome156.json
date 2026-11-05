@@ -1,8 +1,8 @@
 {
   "browser": "HeadlessChrome/156.0.8078.47",
   "v8": "15.6.75.19",
-  "casesSha256": "a9774ac8138bd388af5d84528364ffa83e8ac0f02856e9a367cfe2ea55e7c2ac",
-  "probeSha256": "4d6fef1bc5aea86e246117c7bf2e25c7c9ce584195f1de37dd4b35cea125abbf",
+  "casesSha256": "fcf3b8365be3ea9ed0ae2e847e8e88280fe34c83448d5f1db8f1d4586b1c4dcc",
+  "probeSha256": "8c60edc7ef152103b0760a12c1860dfcf83a7728da770052a1cbbb8ff82dff66",
   "collectorSha256": "671661dee7acadfab3a3ef76ea9a97e1f2f3d99987c9d0cdf0ab8c42410c09ff",
   "flags": [
     "--headless=new",
@@ -5320,6 +5320,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 0)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "start",
             "letter-spacing": "normal",
             "max-width": "none",
@@ -5337,6 +5338,7 @@
             "border-top-width": "2px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "0.5",
+            "transform": "matrix(1, 0, 0, 1, 1, 0)",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "300px",
@@ -5354,6 +5356,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 128, 0)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "start",
             "letter-spacing": "normal",
             "max-width": "none",
@@ -5371,6 +5374,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "0.5",
+            "transform": "matrix(1, 0, 0, 1, 1, 0)",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "300px",
@@ -5388,6 +5392,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5405,6 +5410,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5422,6 +5428,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "0.5",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5439,6 +5446,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5456,6 +5464,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5473,6 +5482,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 255)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "center",
             "letter-spacing": "3px",
             "max-width": "none",
@@ -5490,6 +5500,7 @@
             "border-top-width": "0px",
             "outline-color": "rgb(0, 0, 0)",
             "opacity": "1",
+            "transform": "none",
             "text-align": "start",
             "letter-spacing": "normal",
             "max-width": "none",
@@ -5513,6 +5524,7 @@
           "border-top-width": "",
           "outline-color": "",
           "opacity": "",
+          "transform": "",
           "text-align": "",
           "letter-spacing": "",
           "max-width": "",
@@ -5904,6 +5916,145 @@
             17,
             0,
             17
+          ]
+        }
+      }
+    },
+    {
+      "id": "transform-resolution",
+      "result": {
+        "head": {
+          "children": [],
+          "title": "",
+          "titles": 0
+        },
+        "transform": {
+          "page": "none",
+          "none": "none",
+          "x1": "matrix(1, 0, 0, 1, 10, 0)",
+          "x2": "matrix(1, 0, 0, 1, 10, 20)",
+          "x3": "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 10, 20, 30, 1)",
+          "x4": "matrix(1.41421, 1.41421, -1.41421, 1.41421, 0, 0)",
+          "x5": "matrix(1, 0, 0.176327, 1, 0, 0)",
+          "x6": "matrix3d(0.707107, 0.707107, 0, 0, 0, 0, 1, 0, 0.707107, -0.707107, 0, 0, 0, 0, 0, 1)",
+          "x7": "matrix(1, 0, 0, 1, 100, 0)",
+          "x8": "matrix(0.5, 0, 0, 0.5, 50, 50)",
+          "x9": "matrix(1, 0, 0, 1, 7, 8)",
+          "x10": "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 5, 1)",
+          "x11": "matrix3d(0.866025, 0, -0.5, 0.001, 0, 1, 0, 0, 0.5, 0, 0.866025, -0.00173205, 0, 0, 0, 1)",
+          "x12": "matrix(1, 0, 0, 1, 20, 0)",
+          "xform": "none"
+        },
+        "transformCamel": [
+          "matrix(1, 0, 0, 1, 10, 0)",
+          "matrix(1, 0, 0, 1, 10, 0)"
+        ],
+        "transformDetached": "",
+        "transformBoxes": {
+          "page": [
+            784,
+            1100,
+            784,
+            1100,
+            16
+          ],
+          "none": [
+            784,
+            0,
+            784,
+            0,
+            16
+          ],
+          "x1": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x2": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x3": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x4": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x5": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x6": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x7": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x8": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x9": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x10": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x11": [
+            200,
+            100,
+            200,
+            100,
+            16
+          ],
+          "x12": [
+            784,
+            0,
+            784,
+            0,
+            20
+          ],
+          "xform": [
+            0,
+            0,
+            0,
+            0,
+            16
           ]
         }
       }
