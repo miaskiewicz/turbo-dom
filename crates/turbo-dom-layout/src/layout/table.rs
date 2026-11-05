@@ -23,9 +23,9 @@ use super::boxgen::{BoxKind, LayoutBox};
 use super::flex::natural_width;
 use super::fragment::{Fragment, FragmentContent, NodeId, RepeatKind};
 use super::value::{
-    break_inside_avoid_of, break_rule_of, parse_px, position_of, resolve_box_style, BorderEdges,
-    BoxSizing, BoxStyle, BreakRule, Display, Edges, LengthPct, Position, ResolveCtx, VAlign,
-    DEFAULT_FONT_SIZE,
+    break_inside_avoid_of, break_rule_of, parse_length_pct, parse_px, position_of,
+    resolve_box_style, BorderEdges, BoxSizing, BoxStyle, BreakRule, Display, Edges, LengthPct,
+    Position, ResolveCtx, VAlign, DEFAULT_FONT_SIZE,
 };
 use crate::layout_snapshot::UsedBoxMetrics;
 
@@ -45,6 +45,9 @@ struct RowRef<'a> {
     /// The row has a fixed (non-percentage) `height`: a rowspan cell's excess skips it
     /// while an unconstrained row can take it (miaskiewicz/turbo-dom#327).
     fixed_height: bool,
+    /// The row's `height` as a pure percentage (`50%` -> 50): a definite-height table's
+    /// extra height grows it to that share of its section first (miaskiewicz/turbo-dom#349).
+    percent: Option<f32>,
     repeat: Option<RepeatKind>,
     /// The row's `break-inside: avoid`, carried to its fragment's break hints
     /// (miaskiewicz/turbo-dom#158).
@@ -85,6 +88,7 @@ fn row_ref(row: &LayoutBox, repeat: Option<RepeatKind>) -> RowRef<'_> {
         cells: cells_of(row),
         min_height: row_min_height(row),
         fixed_height: has_fixed_height(row),
+        percent: percent_height(row),
         repeat,
         avoid_break_inside: break_inside_avoid_of(&row.style),
         break_before: break_rule_of(&row.style, "break-before"),
@@ -109,6 +113,14 @@ fn has_fixed_height(lb: &LayoutBox) -> bool {
         .get("height")
         .and_then(|v| parse_px(v, DEFAULT_FONT_SIZE))
         .is_some()
+}
+
+/// The box's `height` when it is a pure percentage (not `calc()`), in percent.
+fn percent_height(lb: &LayoutBox) -> Option<f32> {
+    match parse_length_pct(lb.style.get("height")?, DEFAULT_FONT_SIZE)? {
+        LengthPct::Pct(p) => Some(p.max(0.0)),
+        _ => None,
+    }
 }
 
 /// A row group (`<tbody>` / `<thead>` / `<tfoot>`) and the run of collected rows it
@@ -180,13 +192,14 @@ fn sections(items: &[LayoutBox]) -> Vec<Section> {
 }
 
 /// Give a table's `extra` height (beyond its rows and spacing) to its rows `h`, as Chrome
-/// 156 does: to the body sections (else every section) in proportion to their `weights`,
-/// and inside a section to its rows without an explicit height (else all of them), in
-/// proportion — equally when they weigh nothing (miaskiewicz/turbo-dom#64).
+/// 156 does: to the body sections (else every section) in proportion to their `weights`
+/// (miaskiewicz/turbo-dom#64), then inside each section by [`grow_section`]. `vs` is the
+/// vertical border-spacing between a section's rows (0 for a collapsed table, whose
+/// `weights` are the rows' extents between grid-line centres).
 fn distribute_extra(
     h: &mut [f32],
     weights: &[f32],
-    (rows, sections): (&[RowRef], &[Section]),
+    (rows, sections, vs): (&[RowRef], &[Section], f32),
     extra: f32,
 ) {
     if extra <= 0.0 {
@@ -197,22 +210,67 @@ fn distribute_extra(
         .iter()
         .map(|s| weights[s.start..s.start + s.count].iter().sum())
         .collect();
+    let mut size = weights.to_vec();
     for (section, share) in chosen.iter().zip(shares(extra, &section_weights)) {
         let range = section.start..section.start + section.count;
+        let left = grow_percent_rows((h, &mut size), rows, range.clone(), share, vs);
+        if left <= 0.0 {
+            continue;
+        }
         let auto: Vec<usize> = range
             .clone()
-            .filter(|&r| rows[r].min_height <= 0.0)
+            .filter(|&r| rows[r].min_height <= 0.0 && rows[r].percent.is_none())
             .collect();
         let idx: Vec<usize> = if auto.is_empty() {
             range.collect()
         } else {
             auto
         };
-        let row_weights: Vec<f32> = idx.iter().map(|&r| weights[r]).collect();
-        for (&r, add) in idx.iter().zip(shares(share, &row_weights)) {
+        let row_weights: Vec<f32> = idx.iter().map(|&r| size[r]).collect();
+        for (&r, add) in idx.iter().zip(shares(left, &row_weights)) {
             h[r] += add;
+            size[r] += add;
         }
     }
+}
+
+/// Grow a section's percent-height rows toward their percentage of the section's final
+/// block size (its rows' `size`, its `share` of the extra and the spacing `vs` between
+/// its rows), the percentages capped so they add up to at most 100%; when their deficits
+/// exceed `share` they split it in proportion to them (miaskiewicz/turbo-dom#349).
+/// Grows both `h` and `size`, and returns what is left of `share` for the other rows.
+fn grow_percent_rows(
+    (h, size): (&mut [f32], &mut [f32]),
+    rows: &[RowRef],
+    range: std::ops::Range<usize>,
+    share: f32,
+    vs: f32,
+) -> f32 {
+    let base = size[range.clone()].iter().sum::<f32>() + share + vs * (range.len() - 1) as f32;
+    let mut room = 100.0_f32;
+    let mut idx = Vec::new();
+    let mut deficits = Vec::new();
+    for r in range {
+        let Some(p) = rows[r].percent else { continue };
+        let p = p.min(room);
+        room -= p;
+        let deficit = p / 100.0 * base - size[r];
+        if deficit > 0.0 {
+            idx.push(r);
+            deficits.push(deficit);
+        }
+    }
+    let total: f32 = deficits.iter().sum();
+    let given = if total <= share {
+        deficits.clone()
+    } else {
+        shares(share, &deficits)
+    };
+    for (&r, add) in idx.iter().zip(given) {
+        h[r] += add;
+        size[r] += add;
+    }
+    share - total.min(share)
 }
 
 /// The sections that receive a table's extra height: its non-empty bodies, else every
@@ -786,9 +844,16 @@ fn vborders(placed: &[Placed], ncols: usize, style: &ComputedStyle) -> Vec<f32> 
     v
 }
 
-/// Collapsed border widths at the `nrows + 1` horizontal grid lines (the row-axis
-/// analogue of [`vborders`], keyed on `rowspan` and top/bottom borders).
-fn hborders(placed: &[Placed], nrows: usize, style: &ComputedStyle) -> Vec<f32> {
+/// Collapsed border widths of the horizontal grid-line segments: `seg[line][col]` is
+/// the max of the cells edging line `line` over column `col` (a cell's top border on
+/// its first line, its bottom on its last) and the table's top/bottom border on the
+/// outer lines. A cell owns half of the widest segment along each of its own edges
+/// (miaskiewicz/turbo-dom#350).
+fn hsegments(
+    placed: &[Placed],
+    (nrows, ncols): (usize, usize),
+    style: &ComputedStyle,
+) -> Vec<Vec<f32>> {
     let table = resolve_box_style(
         style,
         ResolveCtx {
@@ -798,15 +863,27 @@ fn hborders(placed: &[Placed], nrows: usize, style: &ComputedStyle) -> Vec<f32> 
     )
     .border
     .widths();
-    let mut h = vec![0.0_f32; nrows + 1];
-    h[0] = table.top;
-    h[nrows] = h[nrows].max(table.bottom);
+    let mut seg = vec![vec![0.0_f32; ncols]; nrows + 1];
+    seg[0].fill(table.top);
+    for w in &mut seg[nrows] {
+        *w = w.max(table.bottom);
+    }
     for p in placed {
         let b = cell_border(p.lb);
-        h[p.row] = h[p.row].max(b.top);
-        h[p.row + p.rowspan] = h[p.row + p.rowspan].max(b.bottom);
+        let cols = p.col..p.col + p.colspan;
+        for w in &mut seg[p.row][cols.clone()] {
+            *w = w.max(b.top);
+        }
+        for w in &mut seg[p.row + p.rowspan][cols] {
+            *w = w.max(b.bottom);
+        }
     }
-    h
+    seg
+}
+
+/// The widest of the segments `cols` of one horizontal grid line.
+fn widest(line: &[f32], cols: std::ops::Range<usize>) -> f32 {
+    line[cols].iter().fold(0.0_f32, |a, &b| a.max(b))
 }
 
 /// Centre positions of the `n + 1` grid lines bounding `n` content+padding tracks,
@@ -983,23 +1060,30 @@ fn layout_cells_collapsed<'a>(
         .collect()
 }
 
-/// Content+padding height per row for a collapsed table: the tallest cell's own
-/// content+padding (its laid border box minus its vertical borders), floored by the
-/// row's explicit `height`. A `rowspan` cell that overflows its rows (and the grid
-/// lines between them) spreads the excess over them ([`spread_rowspans`]), weighed by
-/// each row's extent between its grid-line centres (`horiz`), as Chrome sizes a row by
-/// its cells' border boxes with half of each collapsed border.
-fn collapse_row_heights(laid: &[LaidCell], rows: &[RowRef], horiz: &[f32]) -> Vec<f32> {
-    let cp = |c: &LaidCell| (c.frag.height - cell_border(c.p.lb).vertical()).max(0.0);
-    let half = |a: usize, b: usize| (horiz[a] + horiz[b]) / 2.0;
-    let mut h: Vec<f32> = rows.iter().map(|r| r.min_height).collect();
+/// Each row's extent for a collapsed table, as Chrome 156 sizes it: its tallest cell's
+/// border box, a cell being its own content+padding (its laid border box minus its own
+/// vertical borders) plus half the widest collapsed segment along its top and bottom
+/// edges (`seg`, [`hsegments`]), floored by the row's explicit `height` (plus half its
+/// lines). A `rowspan` cell that overflows its rows spreads the excess over them
+/// ([`spread_rowspans`]); rows tile with no gap (miaskiewicz/turbo-dom#327, #350).
+fn collapse_row_extents(laid: &[LaidCell], rows: &[RowRef], seg: &[Vec<f32>]) -> Vec<f32> {
+    let line = |l: usize| widest(&seg[l], 0..seg[l].len());
+    let need = |c: &LaidCell| {
+        let cols = c.p.col..c.p.col + c.p.colspan;
+        let edges = widest(&seg[c.p.row], cols.clone()) + widest(&seg[c.p.row + c.p.rowspan], cols);
+        (c.frag.height - cell_border(c.p.lb).vertical()).max(0.0) + edges / 2.0
+    };
+    let mut ext: Vec<f32> = (0..rows.len())
+        .map(|r| match rows[r].min_height {
+            m if m > 0.0 => m + (line(r) + line(r + 1)) / 2.0,
+            _ => 0.0,
+        })
+        .collect();
     for c in laid.iter().filter(|c| c.p.rowspan == 1) {
-        h[c.p.row] = h[c.p.row].max(cp(c));
+        ext[c.p.row] = ext[c.p.row].max(need(c));
     }
-    let mut ext: Vec<f32> = (0..h.len()).map(|r| h[r] + half(r, r + 1)).collect();
-    let need = |c: &LaidCell| cp(c) + half(c.p.row, c.p.row + c.p.rowspan);
     spread_rowspans(&mut ext, laid, rows, need, 0.0);
-    (0..h.len()).map(|r| ext[r] - half(r, r + 1)).collect()
+    ext
 }
 
 /// A placed table grid: the collected rows and their cells positioned on the
@@ -1058,24 +1142,24 @@ fn layout_table_collapsed(
     };
     let line_x = line_centers(&col_cp, &vert);
     let laid = layout_cells_collapsed(placed, &line_x, &vert, fs, ctx);
-    let horiz = hborders(placed, nrows, &table.style);
-    let mut row_cp = collapse_row_heights(&laid, rows, &horiz);
-    // Each row's extent between its grid-line centres weighs its share of the extra.
-    let weights: Vec<f32> = (0..nrows)
-        .map(|r| row_cp[r] + (horiz[r] + horiz[r + 1]) / 2.0)
-        .collect();
-    let extra =
-        grid.fill - (row_cp.iter().sum::<f32>() + horiz.iter().sum::<f32>() - own.vertical());
-    distribute_extra(&mut row_cp, &weights, (rows, grid.sections), extra);
-    let line_y = line_centers(&row_cp, &horiz);
+    let seg = hsegments(placed, (nrows, ncols), &table.style);
+    let mut row_h = collapse_row_extents(&laid, rows, &seg);
+    // The table's border box adds half the widest segment of its outer lines.
+    let outer = (widest(&seg[0], 0..ncols) + widest(&seg[nrows], 0..ncols)) / 2.0;
+    let weights = row_h.clone();
+    let extra = grid.fill - (row_h.iter().sum::<f32>() + outer - own.vertical());
+    distribute_extra(&mut row_h, &weights, (rows, grid.sections, 0.0), extra);
     let geom = Geom {
         col_x: line_x[..ncols].to_vec(),
-        row_y: line_y[..nrows].to_vec(),
-        row_h: line_y.windows(2).map(|w| w[1] - w[0]).collect(),
+        row_y: spaced_offsets(&row_h, 0.0)
+            .iter()
+            .map(|y| y + widest(&seg[0], 0..ncols) / 2.0)
+            .collect(),
         row_x: line_x[0],
         row_w: line_x[ncols] - line_x[0],
+        row_h,
     };
-    let height = row_cp.iter().sum::<f32>() + horiz.iter().sum::<f32>() - own.vertical();
+    let height = geom.row_h.iter().sum::<f32>() + outer - own.vertical();
     record_rows(rows, ctx);
     let frags = finalize(rows, laid, &geom, (cx, cy), ctx);
     record_row_metrics(rows, &frags, ctx);
@@ -1791,7 +1875,7 @@ pub(crate) fn layout_table(
     let spacing = vs * (nrows as f32 + 1.0);
     let weights = row_h.clone();
     let extra = fill - row_h.iter().sum::<f32>() - spacing;
-    distribute_extra(&mut row_h, &weights, (&rows, &sections(items)), extra);
+    distribute_extra(&mut row_h, &weights, (&rows, &sections(items), vs), extra);
     let geom = Geom {
         col_x: spaced_offsets(&cols, hs),
         row_y: spaced_offsets(&row_h, vs),

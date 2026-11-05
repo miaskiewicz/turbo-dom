@@ -101,7 +101,8 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 43] = [
+    let groups: [fn(&str) -> bool; 44] = [
+        collapsed_edge_case,
         extra_percent_row_case,
         rowspan_case,
         auto_table_case,
@@ -272,14 +273,24 @@ fn rowspan_excess_is_spread_over_the_spanned_rows_like_chrome_156() {
     compare_cases(rowspan_case);
 }
 
-/// Found with miaskiewicz/turbo-dom#327: a definite-height table's extra height grows
-/// its percent-height rows to their percentage first, then goes to its auto rows.
+/// miaskiewicz/turbo-dom#350: a collapsed-border row is as tall as its tallest cell's
+/// border box with half of the collapsed border on each of that cell's own edges.
+fn collapsed_edge_case(id: &str) -> bool {
+    id.starts_with("table-collapsed-edge-")
+}
+
+#[test]
+fn collapsed_rows_size_by_their_cells_own_edges_like_chrome_156() {
+    compare_cases(collapsed_edge_case);
+}
+
+/// miaskiewicz/turbo-dom#349: a definite-height table's extra height grows its
+/// percent-height rows to their percentage first, then goes to its auto rows.
 fn extra_percent_row_case(id: &str) -> bool {
     id.starts_with("table-extra-percent-")
 }
 
 #[test]
-#[ignore = "follow-up of miaskiewicz/turbo-dom#327: percent rows share the extra height"]
 fn table_extra_height_skips_percent_rows_like_chrome_156() {
     compare_cases(extra_percent_row_case);
 }
