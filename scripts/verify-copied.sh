@@ -417,6 +417,8 @@ OWNED="$OWNED viewport_cssom_tests.rs custom_property_colors_probe.js custom_pro
 OWNED="$OWNED html_media_events_probe.js html_media_events_cases.json html_media_events_chrome156.json html_media_events_tests.rs"
 OWNED="$OWNED html_reflections.js html_media.js html_media.rs interface_parity_probe.js interface_parity_cases.json interface_parity_chrome156.json interface_parity_tests.rs create_event_probe.js create_event_cases.json create_event_chrome156.json css_supports_probe.js css_supports_cases.json css_supports_chrome156.json css_supports_tests.rs"
 OWNED="$OWNED listener_errors_probe.js listener_errors_chrome156.json"
+# turbo-dom#338 (tree-counting math, shape()) and #340 (Animation rangeStart / rangeEnd) Chrome 156 controls.
+OWNED="$OWNED css_tree_counting_shape_probe.js css_tree_counting_shape_cases.json css_tree_counting_shape_chrome156.json css_tree_counting_shape_tests.rs animation_range_probe.js animation_range_cases.json animation_range_chrome156.json animation_range_tests.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

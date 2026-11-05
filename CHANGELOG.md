@@ -80,8 +80,8 @@ at the time); this file reconstructs them from history.
   `if()` is an arbitrary substitution function like `var()`, with its condition grammar
   (`else`, or `not` / `and` / `or` over `style()` / `media()` / `supports()`) checked at
   parse time. Test: `css_supports_matches_chrome156_control` against
-  `css_supports_chrome156.json`. `shape()` and `sibling-index()` / `sibling-count()` stay
-  unsupported, consistently, until turbo-dom#338.
+  `css_supports_chrome156.json`. `shape()` and `sibling-index()` / `sibling-count()` are
+  turbo-dom#338 (below).
 
 - **turbo-dom-browser-env: `document.createEvent()` follows Chrome 156's table (turbo-dom#341).**
   It used to return a plain `Event` for any argument. It now returns an uninitialized event
@@ -92,6 +92,38 @@ at the time); this file reconstructs them from history.
   lacks, or has only as an `instanceof` placeholder (`StorageEvent`, `TextEvent`, …), throws
   `NotSupportedError` until an embedder defines it. Test:
   `create_event_matches_chrome156_control`.
+- **turbo-dom, turbo-dom-browser-env, npm: the tree-counting functions `sibling-index()` /
+  `sibling-count()` and the `shape()` basic shape (turbo-dom#338).**
+  - The shared declaration grammar (`rtdom::css_shorthand`, and its npm lockstep port
+    `src/runtime/css-shorthand.mjs`) admits the tree-counting functions as integers in math
+    expressions and spells the expression the way Chrome 156 keeps it: literal factors fold
+    into one leading coefficient, literal terms add up in front, nested sums and products
+    flatten and get parentheses (`calc(sibling-index() * 2px + 1px)` is
+    `calc(1px + (2px * sibling-index()))`, `calc(sibling-index())` is `sibling-index()`).
+    `order` now has its `<integer>` grammar, and `font-weight` takes a math function.
+  - `shape()` is parsed in `clip-path`, `offset-path` and `shape-outside` with Chrome's
+    spelling: positions, the default `nonzero` rule, `from origin` / `from start` anchors,
+    `ccw` / `small` / `rotate 0deg` arc flags and the default reference box left out.
+    `clip-path: path()` is admitted as well (Lightning CSS rejected it).
+  - turbo-dom-browser-env: style sheets, `CSS.supports()` and `el.style` agree (the CSSOM
+    parser takes the shared grammar's answer for these values). `getComputedStyle` resolves
+    them: each tree-counting function becomes the element's position among its siblings or
+    their count, and the math then computes like Chrome's (lengths in px against the font,
+    percentages kept, integers rounded half up, ranges clamped). `shape()` computes its
+    positions to percentages and lengths, and its angles to `deg`. A style that reads its
+    siblings is not cached.
+  Tests: `css_tree_counting_shape_chrome156.json` (browser-env), `css_math_shape_chrome156.json`
+  (turbo-dom `css_math_shape_chrome`, npm `css-math-shape-chrome.test.mjs`). The
+  `css_supports` test no longer keeps these rows as a known gap.
+- **turbo-dom-browser-env: `Animation.prototype.rangeStart` / `rangeEnd` (turbo-dom#340).**
+  The animation attachment range reads back as `"normal"` or `{ rangeName, offset }` with a
+  Typed OM `CSSUnitValue`. The setters take a string (`"entry 10%"`, `"cover"`, `"20px"`) or
+  a `TimelineRangeOffset` dictionary, with Chrome 156's conversions and errors (an offset it
+  cannot keep as px or a percentage reads `0px`; a range end set without an offset reads
+  `1%`). `Element.animate()` keeps its `rangeStart` / `rangeEnd` options, and a `CSSAnimation`
+  follows `animation-range-start` / `-end` until script sets one. Ranges only matter on scroll
+  and view timelines, which the binding does not have. Test: `animation_range_chrome156.json`.
+  `CSSStyleRule` nested rules (CSS Nesting), the other half of #340, are not done yet.
 
 ### Changed
 
@@ -104,6 +136,31 @@ at the time); this file reconstructs them from history.
   dispatch threw (nested dispatches from inside the listeners do not count). IndexedDB aborts
   a transaction on it ("Uncaught exception in event handler.", turbo-surf#148). Window
   `reportError(e)` is now a real global that reports `e` like Chrome 156 (turbo-dom#301).
+
+- **turbo-dom-browser-env: CSS transitions and animations dispatch their events
+  (turbo-dom#313).** A `CSSTransition` fires `transitionrun`, `transitionstart`,
+  `transitionend` and `transitioncancel`, a `CSSAnimation` `animationstart`,
+  `animationiteration`, `animationend` and `animationcancel`, as Chrome 156 does: trusted,
+  bubbling, cancelable `TransitionEvent` / `AnimationEvent`s on the owner element, in the
+  rendering frame after the phase change and before its animation-frame callbacks, with
+  Blink's elapsed times (negative delays, skipped phases, backwards seeks, one
+  `animationiteration` per sample, cancel times) and `event.animation`. `AnimationEvent` and
+  `TransitionEvent` are real interfaces now (constructor, init dictionary, brand checks,
+  `animation`, `pseudoTarget`), no longer empty placeholders. A transition whose property
+  leaves `transition-property` is cancelled. A running CSS animation keeps frames requested
+  for its next iteration. Chrome control: `css_animation_events_chrome156.json`
+  (`scripts/animations-chrome-control.mjs`); the `jsdom_transitions_chrome156.json` events
+  row is asserted now.
+- turbo-dom-browser-env: `browser_env::set_css_animations(scope, enabled)`, on by default:
+  off runs no `@keyframes` animation and fires no animation event (jsdom 27).
+
+### Changed
+
+- **turbo-dom-browser-env: `set_css_transitions` covers CSS transitions only (turbo-dom#313).**
+  `set_css_transitions(scope, false)` now stops CSS transitions and their events alone;
+  `@keyframes` animations follow the new `set_css_animations`. The Web Animations surface
+  jsdom lacks is hidden only with both switches off. jsdom 27 parity (turbo-test) is
+  `set_css_transitions(scope, false)` plus `set_css_animations(scope, false)`.
 
 ### Fixed
 

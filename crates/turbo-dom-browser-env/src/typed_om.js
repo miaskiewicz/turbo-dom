@@ -2691,6 +2691,22 @@
     const property = propertyName(name);
     return !!property && !property.custom && !property.descriptor && validValue(property, value);
   };
+  // Animation timeline range offsets (turbo-dom#340, animations.js): a range offset's
+  // CSSUnitValue, and what a value is as one: [unit, value] for a px / percent CSSUnitValue,
+  // ['length'] for another length or percentage (Blink keeps 0px), null for a CSSNumericValue
+  // of another type, undefined for anything that is not a CSSNumericValue.
+  ns.typedOmRange = {
+    unit: (value, unitKey) => unitValue(value, unitKey),
+    kind(value) {
+      const record = recordOf(value);
+      if (!record || !brandSets.CSSNumericValue[record.family]) return undefined;
+      if (record.kind === 'unit' && (record.unit === 'px' || record.unit === 'percent')) return [record.unit, record.value];
+      const e = record.type.e;
+      let length = 0;
+      for (let index = 0; index < 7; index++) if (index === BASE.length || index === BASE.percent) length += e[index]; else if (e[index] !== 0) return null;
+      return length === 1 ? ['length'] : null;
+    },
+  };
   // CSS.number()/CSS.px()/…: the embedding's CSS namespace installs these factories.
   const FACTORIES = plain(['number', 'percent', 'em', 'ex', 'ch', 'ic', 'rem', 'lh', 'rlh', 'vw', 'vh', 'vi', 'vb', 'vmin', 'vmax', 'svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax', 'cm', 'mm', 'Q', 'in', 'pt', 'pc', 'px', 'deg', 'grad', 'rad', 'turn', 's', 'ms', 'Hz', 'kHz', 'dpi', 'dpcm', 'dppx', 'x', 'fr', 'cap', 'rcap', 'rch', 'rex', 'ric']);
   ns.typedOmFactories = function () {
