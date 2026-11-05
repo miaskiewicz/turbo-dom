@@ -216,6 +216,7 @@ jobs:
           cargo clippy -p turbo-dom-layout --all-targets -- -D warnings
           cargo clippy -p turbo-dom-layout --all-targets --features svg,perf,serde,test-support -- -D warnings
           cargo clippy -p turbo-dom-layout --all-targets --no-default-features -- -D warnings
+          cargo clippy -p turbo-dom-layout --all-targets --no-default-features --features bundled-fonts,hyphenation -- -D warnings
       - name: Test (default = bundled-fonts)
         run: cargo test -p turbo-dom-layout
       - name: Test --no-default-features (exact baseline-red list, turbo-html2pdf#28)
@@ -225,6 +226,8 @@ jobs:
           python scripts/check-baseline-red.py
           scripts/baseline-red/turbo-dom-layout-no-default-features.tsv
           -- -p turbo-dom-layout --no-default-features
+      - name: Test English-only hyphenation (no hyphenation-languages, turbo-dom#289)
+        run: cargo test -p turbo-dom-layout --no-default-features --features bundled-fonts,hyphenation
       - name: Test --features svg
         run: cargo test -p turbo-dom-layout --features svg
       - name: Test --features perf

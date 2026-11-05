@@ -742,8 +742,8 @@ const CASES = [
   // (`canvas_ops_png`), so an empty canvas shows its background.
   ...["canvas width=40 height=20", "video width=40 height=20", "audio controls", "object width=40 height=20"].flatMap((element) => {
     const tag = element.split(" ")[0];
-    // Chrome paints the audio controls' panel over the content box, which a screenshot
-    // here does not: only the frame is probed there.
+    // Chrome paints the audio controls' panel over the content box (probed by
+    // scripts/form-native-chrome-control.mjs, turbo-dom#292): only the frame is probed here.
     const probes = tag === "audio" ? [[22, 22], [28, 28], [26, 40], [21, 60]] : [[22, 22], [28, 28], [26, 40], [34, 34], [21, 60], [90, 30]];
     const media = `<${element} data-cid="m" style="background:#00ff00;border:4px solid #0000ff;padding:6px"></${tag}>`;
     return [

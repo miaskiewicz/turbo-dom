@@ -48,7 +48,9 @@ pub use token::{StyleToken, TokenSet};
 /// content-box. Form controls take Chrome 156's `html.css` defaults (the 13.333px
 /// control font, 2px inset / outset borders, paddings, checkbox / radio / range / color
 /// sizes and margins; miaskiewicz/turbo-dom#239); their font-dependent intrinsic sizes are
-/// `layout::form_controls`.
+/// `layout::form_controls`. A `<progress>` / `<meter>` is an inline-block of html.css's
+/// `10em` / `5em` by `1em` logical size (the internal `-internal-ua-css-size`, which
+/// `appearance: none` keeps; miaskiewicz/turbo-dom#293).
 const UA_CSS: &str = "
 body { font-family: sans-serif }
 code, kbd, samp, pre { font-family: monospace }
@@ -102,6 +104,9 @@ input[type=checkbox] { margin: 3px 3px 3px 4px; padding: 0; border: 0; -internal
 input[type=radio] { margin: 3px 3px 0 5px; padding: 0; border: 0; -internal-ua-size: 13px 13px }
 input[type=range] { margin: 2px; padding: 0; border: 0; -internal-ua-size: 129px 16px }
 input[type=color] { -internal-ua-size: 50px 27px; padding: 1px 2px; border: 1px solid #767676; background-color: #efefef }
+progress, meter { display: inline-block }
+progress { -internal-ua-css-size: 10em 1em }
+meter { -internal-ua-css-size: 5em 1em }
 button, select, meter, progress, input[type=button], input[type=submit], input[type=reset], input[type=color], input[type=checkbox], input[type=radio], input[type=search] { box-sizing: border-box }
 template { display: none }
 canvas, video, audio, object, embed { display: inline }

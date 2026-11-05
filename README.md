@@ -134,6 +134,7 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 |---|---|---|---|
 | `turbo-dom-layout` | `bundled-fonts` | on | embeds OFL faces (Inter/Roboto, Liberation Serif/PT Serif, Fira Code/IBM Plex Mono) so a document lays out with no caller fonts |
 | | `hyphenation` | on | `hyphens: auto` for English (`en` / `en-*`, not en-GB) with the embedded en-US TeX patterns (~90 KB); off, `auto` acts as `manual` |
+| | `hyphenation-languages` | on | `hyphens: auto` in every other language Chrome 156 on macOS hyphenates (en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb / no, nl, pl, pt, ro, ru, sk, sv, uk) with the TeX patterns (~3 MB, all of the `hyphenation` crate's); implies `hyphenation` |
 | | `svg` | off | routes `image/svg+xml` through the SVG rasterizer in the image pipeline (implies `svg-rasterize`) |
 | | `svg-rasterize` | off | the shared resvg rasterizer only (`svg::rasterize`) |
 | | `serde` | off | `Serialize` for the CSSOM-View metrics records |
@@ -170,8 +171,10 @@ upstream rusty_v8's features (for example `simdutf`).
 - **Open gaps (tracked as issues):**
   - glyph stems in raster screenshots lack Chrome's stem darkening, so glyph edges are
     up to ~0.5px thinner per side (#266).
-  - Known difference, not tracked: `hyphens: auto` covers English only, and Chrome on
-    macOS hyphenates with the system dictionary, whose points differ for some words.
+  - Known difference, not tracked: `hyphens: auto` breaks at the TeX patterns' points
+    (what Chrome uses on Linux, Windows and Android); Chrome on macOS hyphenates with the
+    system dictionary, whose points differ for a few words (en `international`, pl
+    `szczególnie`; `tests/fixtures/hyphens/words-chrome156.json` lists them).
 - **The npm runtime has no layout.** Geometry is synthetic: `getBoundingClientRect()`,
   `offsetWidth/Height`, `clientWidth/Height` and `scrollWidth/Height` return a non-zero
   size that is stable for a given DOM state (blocks fill the parent's width, the root
