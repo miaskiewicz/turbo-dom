@@ -46,25 +46,30 @@ const LOOP: &str = r#"(() => {
 })();"#;
 
 pub(super) fn run_probe(html: &str, probe: &str, frozen: bool) -> serde_json::Value {
-    run_probe_in(html, probe, frozen, None)
+    run_probe_in(html, probe, frozen, Switches::default())
 }
 
-/// [`run_probe`] with the embedder's CSS transitions switch set after install (`None` keeps
-/// the default).
-fn run_probe_in(
-    html: &str,
-    probe: &str,
-    frozen: bool,
+/// The embedder's CSS switches a probe runs under: `set_css_transitions` and
+/// `set_css_animations`, set after install (`None` keeps the default).
+#[derive(Clone, Copy, Default)]
+struct Switches {
     transitions: Option<bool>,
-) -> serde_json::Value {
+    animations: Option<bool>,
+}
+
+/// [`run_probe`] under the embedder's CSS [`Switches`].
+fn run_probe_in(html: &str, probe: &str, frozen: bool, switches: Switches) -> serde_json::Value {
     super::tests::init_v8();
     let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     install_with_html(scope, html);
-    if let Some(enabled) = transitions {
+    if let Some(enabled) = switches.transitions {
         set_css_transitions(scope, enabled);
+    }
+    if let Some(enabled) = switches.animations {
+        set_css_animations(scope, enabled);
     }
     run_js(scope, &format!("globalThis.__frozenTimeline = {frozen};"));
     run_js(scope, LOOP);
@@ -388,9 +393,9 @@ fn recorded(json: &str, probe: &str, key: &str, version: &str) -> serde_json::Va
     control["result"].clone()
 }
 
-// CSS transitions off (turbo-test's default, for vitest parity): jsdom 27.4.0 has no Web
-// Animations and runs no CSS transitions or @keyframes animations, so getComputedStyle reports
-// the end value at once and no transition / animation event fires.
+// CSS transitions and animations off (turbo-test's default, for vitest parity): jsdom 27.4.0
+// has no Web Animations and runs no CSS transitions or @keyframes animations, so
+// getComputedStyle reports the end value at once and no transition / animation event fires.
 #[test]
 fn css_transitions_off_match_jsdom27_control() {
     let probe = include_str!("jsdom_transitions_probe.js");
@@ -400,12 +405,16 @@ fn css_transitions_off_match_jsdom27_control() {
         "jsdom",
         "27.4.0",
     );
-    let actual = run_probe_in(TRANSITIONS_HTML, probe, false, Some(false));
+    let off = Switches {
+        transitions: Some(false),
+        animations: Some(false),
+    };
+    let actual = run_probe_in(TRANSITIONS_HTML, probe, false, off);
     assert_eq!(actual, expected);
 }
 
-// CSS transitions on (the default) keeps Chrome 156's transitions, @keyframes animations and
-// their events, explicitly set or not.
+// CSS transitions and animations on (the default) keep Chrome 156's transitions, @keyframes
+// animations and their events (turbo-dom#313), explicitly set or not.
 #[test]
 fn css_transitions_on_match_chrome156_control() {
     let probe = include_str!("jsdom_transitions_probe.js");
@@ -415,14 +424,193 @@ fn css_transitions_on_match_chrome156_control() {
         "browser",
         "HeadlessChrome/156.0.8078.47",
     );
-    // The binding dispatches no transition / animation events yet (turbo-dom#313); every
-    // other row is Chrome's.
-    let mut expected = expected;
     assert_ne!(expected["events"], serde_json::json!([]));
-    expected["events"] = serde_json::json!([]);
-    assert_eq!(run_probe(TRANSITIONS_HTML, probe, false), expected);
+    let expected = by_target(expected);
     assert_eq!(
-        run_probe_in(TRANSITIONS_HTML, probe, false, Some(true)),
+        by_target(run_probe(TRANSITIONS_HTML, probe, false)),
         expected
     );
+    let on = Switches {
+        transitions: Some(true),
+        animations: Some(true),
+    };
+    assert_eq!(
+        by_target(run_probe_in(TRANSITIONS_HTML, probe, false, on)),
+        expected
+    );
+}
+
+/// A probe result with its `events` rows stably sorted by target id: each target's own event
+/// order is kept, while the order across targets (which Chrome dispatches in its animation
+/// update order, Blink's allocation order of the animations, not observable through the DOM)
+/// is not compared. css_animation_events_chrome156.json records which frame dispatches each.
+fn by_target(mut result: serde_json::Value) -> serde_json::Value {
+    let rows = result["events"].as_array_mut().unwrap();
+    rows.sort_by(|a, b| a[1].as_str().cmp(&b[1].as_str()));
+    result
+}
+
+/// The Chrome 156 control's rows with only `transition*` events (`transitions`) or only
+/// `animation*` events kept.
+fn events_of(control: &serde_json::Value, transitions: bool) -> serde_json::Value {
+    let rows = control["events"].as_array().unwrap().iter();
+    rows.filter(|row| row[0].as_str().unwrap().starts_with("transition") == transitions)
+        .cloned()
+        .collect()
+}
+
+// set_css_transitions(false) alone (turbo-dom#313): no CSS transition runs and no transition
+// event fires (the end value applies at once, as in the jsdom 27 control), while @keyframes
+// animations, their events and the whole Web Animations surface stay Chrome's.
+#[test]
+fn css_transitions_off_keeps_animations() {
+    let probe = include_str!("jsdom_transitions_probe.js");
+    let chrome = recorded(
+        include_str!("jsdom_transitions_chrome156.json"),
+        probe,
+        "browser",
+        "HeadlessChrome/156.0.8078.47",
+    );
+    let jsdom = recorded(
+        include_str!("jsdom_transitions_jsdom27.json"),
+        probe,
+        "jsdom",
+        "27.4.0",
+    );
+    let mut expected = chrome.clone();
+    for key in ["after", "later"] {
+        expected[key] = jsdom[key].clone();
+    }
+    expected["animations"] = serde_json::json!([["CSSAnimation", "a"]]);
+    expected["events"] = events_of(&chrome, false);
+    assert_eq!(
+        expected["events"],
+        serde_json::json!([["animationstart", "a"]])
+    );
+    let off = Switches {
+        transitions: Some(false),
+        animations: None,
+    };
+    assert_eq!(
+        by_target(run_probe_in(TRANSITIONS_HTML, probe, false, off)),
+        by_target(expected)
+    );
+}
+
+// set_css_animations(false) alone (turbo-dom#313): no @keyframes animation runs and no
+// animation event fires (the element keeps its own value, as in the jsdom 27 control), while
+// CSS transitions, their events and the whole Web Animations surface stay Chrome's.
+#[test]
+fn css_animations_off_keeps_transitions() {
+    let probe = include_str!("jsdom_transitions_probe.js");
+    let chrome = recorded(
+        include_str!("jsdom_transitions_chrome156.json"),
+        probe,
+        "browser",
+        "HeadlessChrome/156.0.8078.47",
+    );
+    let jsdom = recorded(
+        include_str!("jsdom_transitions_jsdom27.json"),
+        probe,
+        "jsdom",
+        "27.4.0",
+    );
+    let mut expected = chrome.clone();
+    expected["animated"] = jsdom["animated"].clone();
+    expected["animations"] = serde_json::json!([["CSSTransition", "t"], ["CSSTransition", "e"]]);
+    expected["events"] = events_of(&chrome, true);
+    assert_eq!(expected["events"].as_array().unwrap().len(), 5);
+    let off = Switches {
+        transitions: None,
+        animations: Some(false),
+    };
+    assert_eq!(
+        by_target(run_probe_in(TRANSITIONS_HTML, probe, false, off)),
+        by_target(expected)
+    );
+}
+
+// transition* / animation* events (turbo-dom#313) against Chrome 156 on the advancing virtual
+// clock: which frame dispatches each event (before that frame's animation-frame callbacks),
+// each event's interface, elapsedTime, animation, bubbles / cancelable / composed and trusted
+// flag, phase-skipping and backwards seeks, cancellation by style, display:none and cancel(),
+// and the AnimationEvent / TransitionEvent constructors.
+#[test]
+fn css_animation_events_match_chrome156_control() {
+    let probe = include_str!("css_animation_events_probe.js");
+    let cases = include_bytes!("css_animation_events_cases.json");
+    let (expected, case) = control(
+        include_str!("css_animation_events_chrome156.json"),
+        probe,
+        cases,
+    );
+    assert_eq!(case["frozenTimeline"], false);
+    let actual = run_probe(case["html"].as_str().unwrap(), probe, false);
+    let mut out = Vec::new();
+    mismatches(&actual, &expected, "", &mut out);
+    assert!(
+        out.is_empty(),
+        "{} mismatches:\n{}",
+        out.len(),
+        out.join("\n")
+    );
+}
+
+// Each switch gates its own events on the same scenario: with transitions off no
+// transition* event fires (and every animation* event still does), and the other way round.
+#[test]
+fn css_event_switches_are_independent() {
+    let html = serde_json::from_slice::<serde_json::Value>(include_bytes!(
+        "css_animation_events_cases.json"
+    ))
+    .unwrap()[0]["html"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    // The probe drives each CSS animation through getAnimations(); without them it only
+    // records the events that fired.
+    let events = |switches: Switches| -> Vec<String> {
+        let probe = format!(
+            "(async () => {{ const rows = []; for (const type of ['transitionrun', 'transitionstart', 'transitionend', 'transitioncancel', 'animationstart', 'animationiteration', 'animationend', 'animationcancel']) document.addEventListener(type, (event) => rows.push(type + ':' + event.target.id)); for (const element of document.querySelectorAll('#wrap > div')) {{ getComputedStyle(element).opacity; element.classList.add('on'); getComputedStyle(element).opacity; }} await new Promise((resolve) => setTimeout(resolve, 100)); return rows; }})()"
+        );
+        let value = run_probe_in(&html, &probe, false, switches);
+        serde_json::from_value(value).unwrap()
+    };
+    let both = events(Switches::default());
+    let starts =
+        |rows: &[String], prefix: &str| rows.iter().filter(|row| row.starts_with(prefix)).count();
+    assert!(
+        starts(&both, "transition") > 0 && starts(&both, "animation") > 0,
+        "{both:?}"
+    );
+    let no_transitions = events(Switches {
+        transitions: Some(false),
+        animations: None,
+    });
+    assert_eq!(
+        starts(&no_transitions, "transition"),
+        0,
+        "{no_transitions:?}"
+    );
+    let animation_rows: Vec<_> = both
+        .iter()
+        .filter(|row| row.starts_with("animation"))
+        .cloned()
+        .collect();
+    assert_eq!(no_transitions, animation_rows);
+    let no_animations = events(Switches {
+        transitions: None,
+        animations: Some(false),
+    });
+    let transition_rows: Vec<_> = both
+        .iter()
+        .filter(|row| row.starts_with("transition"))
+        .cloned()
+        .collect();
+    assert_eq!(no_animations, transition_rows);
+    let none = events(Switches {
+        transitions: Some(false),
+        animations: Some(false),
+    });
+    assert!(none.is_empty(), "{none:?}");
 }
