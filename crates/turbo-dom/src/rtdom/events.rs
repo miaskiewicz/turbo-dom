@@ -140,6 +140,75 @@ impl Dom {
     }
 
     /// Dispatch. Returns `!default_prevented` (the DOM `dispatchEvent` contract).
+    fn run_dispatch_phases(
+        &mut self,
+        target: Handle,
+        event: &mut Event,
+        path: &[Handle],
+        registry: &mut std::collections::HashMap<Handle, Vec<Listener>>,
+    ) {
+        'outer: for phase in [Phase::Capturing, Phase::AtTarget, Phase::Bubbling] {
+            if phase == Phase::Bubbling && !event.bubbles {
+                break;
+            }
+            let nodes: Vec<Handle> = match phase {
+                Phase::Capturing => path[1..].iter().rev().copied().collect(),
+                Phase::AtTarget => vec![target],
+                _ => path[1..].to_vec(),
+            };
+            for node in nodes {
+                if event.propagation_stopped && phase != Phase::AtTarget {
+                    break 'outer;
+                }
+                event.current_target = Some(node);
+                event.phase = phase;
+                if let Some(list) = registry.get_mut(&node) {
+                    self.invoke_listeners_on_node(list, phase, event);
+                }
+                if event.propagation_stopped
+                    && (phase == Phase::Bubbling || phase == Phase::Capturing)
+                {
+                    break 'outer;
+                }
+            }
+        }
+    }
+
+    fn invoke_listeners_on_node(
+        &mut self,
+        list: &mut Vec<Listener>,
+        phase: Phase,
+        event: &mut Event,
+    ) {
+        let n = list.len();
+        let mut i = 0;
+        while i < n.min(list.len()) {
+            let want = match phase {
+                Phase::Capturing => list[i].capture,
+                Phase::AtTarget => true,
+                _ => !list[i].capture,
+            };
+            if want && list[i].event_type == event.event_type {
+                let mut cb = std::mem::replace(&mut list[i].cb, Box::new(|_, _| {}));
+                cb(&mut self.tree, event);
+                if i < list.len() {
+                    list[i].cb = cb;
+                }
+                if list.get(i).is_some_and(|l| l.once) {
+                    list.remove(i);
+                    if event.immediate_stopped {
+                        break;
+                    }
+                    continue;
+                }
+                if event.immediate_stopped {
+                    break;
+                }
+            }
+            i += 1;
+        }
+    }
+
     pub fn dispatch_event(&mut self, target: Handle, event: &mut Event) -> bool {
         // Build the ancestor path target..root (one walk).
         let mut path = vec![target];
@@ -159,63 +228,7 @@ impl Dom {
         // Snapshot the registry out so handlers can &mut self.tree freely.
         let mut registry = std::mem::take(&mut self.listeners);
 
-        // capture: root -> target's parent (path reversed, excluding index 0)
-        'outer: for phase in [Phase::Capturing, Phase::AtTarget, Phase::Bubbling] {
-            if phase == Phase::Bubbling && !event.bubbles {
-                break;
-            }
-            // node order per phase
-            let nodes: Vec<Handle> = match phase {
-                Phase::Capturing => path[1..].iter().rev().copied().collect(),
-                Phase::AtTarget => vec![target],
-                _ => path[1..].to_vec(), // Bubbling (the 3-phase loop never yields None)
-            };
-            for node in nodes {
-                if event.propagation_stopped && phase != Phase::AtTarget {
-                    break 'outer;
-                }
-                event.current_target = Some(node);
-                event.phase = phase;
-                if let Some(list) = registry.get_mut(&node) {
-                    // snapshot ids to invoke (slice copy semantics)
-                    let n = list.len();
-                    let mut i = 0;
-                    while i < n.min(list.len()) {
-                        let want = match phase {
-                            Phase::Capturing => list[i].capture,
-                            Phase::AtTarget => true,
-                            _ => !list[i].capture, // Bubbling (loop never yields None)
-                        };
-                        if want && list[i].event_type == event.event_type {
-                            // invoke
-                            let mut cb = std::mem::replace(&mut list[i].cb, Box::new(|_, _| {}));
-                            cb(&mut self.tree, event);
-                            // restore the (possibly still-registered) callback
-                            if i < list.len() {
-                                list[i].cb = cb;
-                            }
-                            if list.get(i).is_some_and(|l| l.once) {
-                                list.remove(i);
-                                if event.immediate_stopped {
-                                    break;
-                                }
-                                continue; // indices shifted; don't ++i
-                            }
-                            if event.immediate_stopped {
-                                break;
-                            }
-                        }
-                        i += 1;
-                    }
-                }
-                if event.propagation_stopped {
-                    // finish current node, then stop (handled at loop top next node)
-                    if phase == Phase::Bubbling || phase == Phase::Capturing {
-                        break 'outer;
-                    }
-                }
-            }
-        }
+        self.run_dispatch_phases(target, event, &path, &mut registry);
 
         // Restore the snapshotted registry. A handler's signature is
         // `FnMut(&mut Tree, &mut Event)` — no `&mut Dom` — so it cannot register
