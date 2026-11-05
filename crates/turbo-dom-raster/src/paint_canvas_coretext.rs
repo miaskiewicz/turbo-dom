@@ -116,10 +116,13 @@ pub(crate) fn render_text(
     true
 }
 
-/// The CoreText face for the canvas font: the first family (Helvetica when CoreText has no
-/// such font) at the font size, switched to its bold and/or italic face by the state's
-/// weight (CSS bold threshold, 600 and up) and style. A family without the requested face
-/// keeps the face it has, as Chrome does before synthesizing.
+/// The CoreText face for the canvas font: the first family at the font size (Helvetica for
+/// a CSS generic family), switched to its bold and/or italic face by the state's weight
+/// (CSS bold threshold, 600 and up) and style. A family without the requested face keeps the
+/// face it has, as Chrome does before synthesizing. `None` for a named family CoreText does
+/// not have (a font only the bundled registry or a web font provides, like the fixture
+/// Liberation Serif): CoreText would substitute another face, so the caller traces the
+/// registry's glyphs instead (miaskiewicz/turbo-dom#342).
 pub(crate) fn ct_font(st: &State) -> Option<core_text::font::CTFont> {
     use core_text::font_descriptor::{kCTFontBoldTrait, kCTFontItalicTrait};
     let family = st
@@ -127,9 +130,24 @@ pub(crate) fn ct_font(st: &State) -> Option<core_text::font::CTFont> {
         .first()
         .map_or("sans-serif", String::as_str);
     let size = f64::from(if st.font_px > 0.0 { st.font_px } else { 10.0 });
-    let font = core_text::font::new_from_name(family, size)
-        .or_else(|()| core_text::font::new_from_name("Helvetica", size))
-        .ok()?;
+    let generic = [
+        "serif",
+        "sans-serif",
+        "monospace",
+        "cursive",
+        "fantasy",
+        "system-ui",
+    ]
+    .contains(&family.to_ascii_lowercase().as_str());
+    let font = if generic {
+        core_text::font::new_from_name("Helvetica", size).ok()?
+    } else {
+        let font = core_text::font::new_from_name(family, size).ok()?;
+        if !font.family_name().eq_ignore_ascii_case(family) {
+            return None;
+        }
+        font
+    };
     let mut traits = 0;
     if st.font_weight >= 600 {
         traits |= kCTFontBoldTrait;
