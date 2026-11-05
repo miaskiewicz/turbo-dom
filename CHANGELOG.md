@@ -9,6 +9,30 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- turbo-dom-browser-env: `browser_env::dispatch_host_event_did_listeners_throw(scope, event,
+  target) -> bool`, `dispatch_host_event` that also returns the DOM's
+  legacy-output-did-listeners-throw flag: whether a listener or event handler invoked by that
+  dispatch threw (nested dispatches from inside the listeners do not count). IndexedDB aborts
+  a transaction on it ("Uncaught exception in event handler.", turbo-surf#148). Window
+  `reportError(e)` is now a real global that reports `e` like Chrome 156 (turbo-dom#301).
+
+### Fixed
+
+- **turbo-dom-browser-env: an exception thrown by an event listener is reported, like Chrome
+  156.** The binding dropped every listener exception. Now a throwing listener (or `on*`
+  handler, or `handleEvent` method or getter) on a node, document, window, AbortSignal or
+  generic `EventTarget` fires a trusted, cancelable `ErrorEvent` at the listener's window
+  before the next listener runs: message `Uncaught Error: boom` (`Uncaught ` + `String(value)`
+  for a thrown non-Error object, `Uncaught exception` when that conversion throws), located
+  where a thrown Error was created and where any other value was thrown. `window.onerror`
+  gets its five arguments and can cancel the event. An exception thrown while a window is
+  reporting one is not reported again (HTML's error reporting mode), and a listener object
+  whose `handleEvent` is not callable is still skipped silently, as in Chrome. Errors reported
+  from custom element reactions are now cancelable too. Control: `listener_errors_chrome156.json`
+  (`listener_errors_probe.js`, `scripts/trusted-input-chrome-control.mjs`); tests
+  `listener_exceptions_are_reported_like_chrome156` and
+  `host_dispatch_reports_whether_its_own_listeners_threw` (turbo-dom#301).
+
 - **turbo-dom-browser-env: CSS transitions and animations dispatch their events
   (turbo-dom#313).** A `CSSTransition` fires `transitionrun`, `transitionstart`,
   `transitionend` and `transitioncancel`, a `CSSAnimation` `animationstart`,

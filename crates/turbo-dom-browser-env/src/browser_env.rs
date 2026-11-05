@@ -4919,6 +4919,28 @@ pub fn dispatch_host_event(
     }
 }
 
+/// [`dispatch_host_event`], returning the DOM dispatch's legacy-output-did-listeners-throw flag:
+/// whether a listener (or event handler) invoked by this dispatch threw. The exception is
+/// reported either way, like Chrome 156: a trusted, cancelable `ErrorEvent` at the listener's
+/// window, before the next listener runs (turbo-dom#301). Listeners of
+/// events dispatched from inside the listeners (nested dispatches) do not count. IndexedDB
+/// aborts the transaction when a request's `success` / `error` listener threw
+/// ("Uncaught exception in event handler.", turbo-surf#148).
+pub fn dispatch_host_event_did_listeners_throw(
+    scope: &mut v8::PinScope,
+    event: v8::Local<v8::Object>,
+    target: v8::Local<v8::Object>,
+) -> bool {
+    let Some(record) = event_record(scope, event) else {
+        dispatch_host_event(scope, event, target);
+        return false;
+    };
+    let no = v8::Boolean::new(scope, false);
+    set_prop(scope, record, "threw", no.into());
+    dispatch_host_event(scope, event, target);
+    get_bool_prop(scope, record, "threw")
+}
+
 /// Enter or leave an engine-delivered callback on a non-DOM target.
 pub fn event_callback_state(
     scope: &mut v8::PinScope,
@@ -5166,25 +5188,19 @@ fn el_dispatch_event(
                 }
                 let passive = v8::Boolean::new(scope, listener.passive);
                 set_prop(scope, record, "passive", passive.into());
-                let scope = std::pin::pin!(v8::TryCatch::new(scope));
-                let scope = &mut scope.init();
-                if let Ok(function) = v8::Local::<v8::Function>::try_from(callback) {
-                    function.call(scope, cur_node.into(), &[event]);
-                } else if let Some(function) = get_prop(scope, callback, "handleEvent")
-                    .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-                {
-                    function.call(scope, callback.into(), &[event]);
-                }
+                // A listener's exception is reported and the dispatch goes on (turbo-dom#301);
+                // a terminated one ends the dispatch (no further listener runs).
+                let called = event_listeners::call_listener(
+                    scope,
+                    event_obj,
+                    callback.into(),
+                    cur_node.into(),
+                    &[event],
+                );
                 let passive = v8::Boolean::new(scope, false);
                 set_prop(scope, record, "passive", passive.into());
-                // A terminated listener ends the dispatch: this TryCatch caught the termination,
-                // so hand it back to the caller (no further listener runs once it is active).
-                if scope.has_terminated() {
-                    scope.rethrow();
+                if matches!(called, event_listeners::Called::Terminated) {
                     terminated.set(true);
-                    break;
-                }
-                if scope.is_execution_terminating() {
                     break;
                 }
             }
