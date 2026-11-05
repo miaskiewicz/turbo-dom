@@ -225,6 +225,16 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout: form controls on a `vertical-lr` line's central baseline (turbo-dom#345).**
+  Chrome 156 places an inline atom's central baseline on the line's over side — the physical
+  right in `vertical-lr`, its block end (CSS Writing Modes 4 §2.3's flipped-lines mode) — which
+  the layout engine was placing on the left (the block start): a checkbox on a 20px serif line
+  sat at `x=4.5` instead of Chrome's `5.5` (`vertical-rl` always matched), and an inline control
+  inside an abs-pos vertical wrapper was 1px off in both modes. The piece builder relabels an
+  atom's margins into line-relative space, the inline placer mirrors the atom back from the line
+  box's block end, and `form_baseline` / `gauge_baseline` read line-relative edges so a textarea,
+  colour well, empty button and progress / meter's baselines stay on the over side. Chrome 156
+  control: new `vline-*` cases of `form_native_chrome156.json`.
 - **turbo-dom-layout: `<progress>` / `<meter>`, indeterminate checkboxes and vertical controls
   look native (turbo-dom#293).** A `<progress>` / `<meter>` is Chrome's `10em` / `5em` by `1em`
   inline-block (logical, so `16 x 160` in a vertical mode) whose children do not render, its

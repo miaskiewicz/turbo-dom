@@ -561,10 +561,14 @@ struct InlineFragments<'a, 'b> {
     /// The inline boxes whose content area centres on the line's central baseline
     /// ([`super::writing::central_baseline`]).
     central: std::collections::HashSet<NodeId>,
+    /// The current line's block size when lines are flipped
+    /// ([`super::block::flipped_lines`]): its boxes are placed from its block end.
+    flip: Option<f32>,
 }
 impl InlineFragments<'_, '_> {
     fn line(&mut self, line: &super::inline::InlineLine, cx: f32, cy: f32) {
         self.origin = (cx + line.indent, cy + line.top, line.baseline);
+        self.flip = super::block::flipped_lines(self.ctx).then_some(line.height);
         for value in &mut self.open {
             value.x = line.inline_origin;
             value.first = false;
@@ -633,6 +637,14 @@ impl InlineFragments<'_, '_> {
         }
         let central = self.central.contains(&value.edge.node_id);
         let mut part = fragment(value, used, (end, last, central), self.origin, self.ctx);
+        if let Some(height) = self.flip {
+            // Placed from the line-over side, which its block-end padding and border
+            // face, then mirrored.
+            let border = used.border.widths();
+            let swap = used.padding.top + border.top - used.padding.bottom - border.bottom;
+            let over = part.y - self.origin.1 + swap;
+            part.y = self.origin.1 + height - over - part.height;
+        }
         let (dx, dy) = self.offsets.get(&part.node_id).copied().unwrap_or_default();
         part.translate(dx, dy);
         if skip_empty_part(&part, value, last, used) {
@@ -684,6 +696,7 @@ pub(super) fn fragments(
         origin: (origin.0, origin.1, 0.0),
         offsets,
         central,
+        flip: None,
     };
     for line in &layout.lines {
         builder.line(line, origin.0, origin.1);
@@ -1071,6 +1084,7 @@ mod defensive_contract_tests {
             origin: (0.0, 0.0, 18.0),
             offsets: &offsets,
             central: std::collections::HashSet::new(),
+            flip: None,
         };
         projection.end(&edge);
         assert!(projection.out.is_empty());

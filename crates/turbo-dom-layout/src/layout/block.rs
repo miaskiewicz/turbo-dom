@@ -825,7 +825,7 @@ pub(crate) fn lay_marker_text(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) ->
     let units = ctx.html_font_scale.unwrap_or(1.0) * 64.0;
     let width = (super::flex::natural_width(b, ctx.fonts) * units).ceil() / units;
     let frag = layout_box_sized_impl(b, &bs, 0.0, 0.0, width, ctx, true);
-    let baseline = atom_baseline(b, &frag, None).unwrap_or(frag.height);
+    let baseline = atom_baseline(b, &frag, (None, false)).unwrap_or(frag.height);
     (frag, baseline)
 }
 
@@ -1291,9 +1291,41 @@ fn place_atom(
             ctx,
         );
     }
+    // On a flipped line `placed.y` is the atom's offset from the line-over edge, the
+    // line box's block end.
+    let y = if flipped_lines(ctx) {
+        line.height - placed.y - atom.height
+    } else {
+        placed.y
+    };
     let mut f = atom.clone();
-    f.translate(x, cy + line.top + placed.y + dy);
+    f.translate(x, cy + line.top + y + dy);
     f
+}
+
+/// Whether the lines laid out in `ctx`'s space are flipped: in `vertical-lr` a line's
+/// over side (where its glyphs' ascent faces, and where `vertical-align` raises an item
+/// to) is the physical right, its block end (CSS Writing Modes 4 §2.3; Blink's
+/// flipped-lines writing mode), so the line places its atoms and inline boxes from that
+/// side and mirrors them into the space (miaskiewicz/turbo-dom#345). A glyph run already
+/// measures its baseline from the physical right ([`super::fragment`]'s vertical text
+/// lines), so text needs no mirroring.
+pub(super) fn flipped_lines(ctx: &Ctx) -> bool {
+    ctx.writing == super::writing::WritingMode::VerticalLr
+}
+
+/// `edges` with their top and bottom swapped when `flipped`: a box's sides named from
+/// its line's over (`top`) and under (`bottom`) sides.
+pub(super) fn line_relative(edges: super::value::Edges, flipped: bool) -> super::value::Edges {
+    if flipped {
+        super::value::Edges {
+            top: edges.bottom,
+            bottom: edges.top,
+            ..edges
+        }
+    } else {
+        edges
+    }
 }
 
 /// The absolutely positioned atomic box of `items` with id `node_id`, if it is one.
@@ -1329,8 +1361,12 @@ fn out_of_flow_atom(id: usize) -> inline::InlineAtom {
 /// or one establishing a scroll container has none (its bottom margin edge
 /// aligns instead). `central` (the device scale) reads the last line's central
 /// baseline instead of its alphabetic one (miaskiewicz/turbo-dom#239).
-fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f32> {
-    if let Some(baseline) = form_baseline(b, f, central.is_some()) {
+fn atom_baseline(
+    b: &LayoutBox,
+    f: &Fragment,
+    (central, flipped): (Option<f32>, bool),
+) -> Option<f32> {
+    if let Some(baseline) = form_baseline(b, f, (central.is_some(), flipped)) {
         return Some(baseline);
     }
     if b.is_replaced() || b.containment().layout {
@@ -1352,9 +1388,26 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f3
     }
     let mut floats = std::collections::HashSet::new();
     float_ids(b, &mut floats);
-    let mut last: Option<(f32, f32)> = None;
+    let mut last: Option<LastLine> = None;
     last_line(f, &floats, central, &mut last);
-    last.map(|(_, baseline)| baseline - f.y)
+    // A glyph run's baseline lies its `baseline` from the run's line-over side: its
+    // block start, or on a flipped line its block end.
+    last.map(|line| {
+        if flipped {
+            f.y + f.height - line.top - line.height + line.baseline
+        } else {
+            line.top + line.baseline - f.y
+        }
+    })
+}
+
+/// The lowest in-flow text line of an atom: its block-start `top`, block size `height`
+/// and `baseline` below its line-over side.
+#[derive(Clone, Copy)]
+struct LastLine {
+    top: f32,
+    height: f32,
+    baseline: f32,
 }
 
 /// A flex / grid atom sits on its first item's baseline, also when block-axis size
@@ -1379,8 +1432,9 @@ fn flow_atom_baseline(b: &LayoutBox, f: &Fragment) -> Option<f32> {
 /// empty button at its content-box top, a textarea at its bottom margin edge, a colour
 /// well 4px above its content-box bottom (miaskiewicz/turbo-dom#255), a progress / meter
 /// as a checkbox, lowered by Chrome's `vertical-align: -0.2em` unless the author aligns
-/// it (miaskiewicz/turbo-dom#293).
-fn form_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> Option<f32> {
+/// it (miaskiewicz/turbo-dom#293). On a flipped line ([`flipped_lines`]) top and bottom
+/// are its line-over and line-under sides (miaskiewicz/turbo-dom#345).
+fn form_baseline(b: &LayoutBox, f: &Fragment, (central, flipped): (bool, bool)) -> Option<f32> {
     use super::form_controls::Control;
     match b.form_control()? {
         Control::Toggle if central => Some(f.height / 2.0),
@@ -1390,37 +1444,27 @@ fn form_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> Option<f32> {
         // pixel (Chrome 156: 10px down a 19px-tall list; miaskiewicz/turbo-dom#255).
         Control::Select if central => Some((f.height / 2.0).round()),
         _ if central => None,
-        // A textarea scrolls: it sits on its bottom margin edge, text or not.
-        Control::TextArea => Some(
-            f.height
-                + b.resolved(ResolveCtx {
-                    parent_font_size: super::value::DEFAULT_FONT_SIZE,
-                    cb_width: 0.0,
-                })
-                .margin
-                .bottom,
-        ),
-        Control::Button if !has_text(f) => {
+        control => {
             let style = b.resolved(ResolveCtx {
                 parent_font_size: super::value::DEFAULT_FONT_SIZE,
                 cb_width: 0.0,
             });
-            Some(style.border.widths().top + style.padding.top)
+            let margin = line_relative(style.margin, flipped);
+            let padding = line_relative(style.padding, flipped);
+            let border = line_relative(style.border.widths(), flipped);
+            match control {
+                // A textarea scrolls: it sits on its bottom margin edge, text or not.
+                Control::TextArea => Some(f.height + margin.bottom),
+                Control::Button if !has_text(f) => Some(border.top + padding.top),
+                Control::Color => Some(f.height - border.bottom - padding.bottom - SWATCH_GAP),
+                _ => None,
+            }
         }
-        Control::Color => {
-            let style = b.resolved(ResolveCtx {
-                parent_font_size: super::value::DEFAULT_FONT_SIZE,
-                cb_width: 0.0,
-            });
-            Some(f.height - style.border.widths().bottom - style.padding.bottom - SWATCH_GAP)
-        }
-        _ => None,
     }
 }
 
 /// A progress / meter's baseline (see [`form_baseline`]): its `vertical-align: -0.2em`
-/// lowers it toward the line-under side, the physical left in both vertical modes,
-/// which is `vertical-lr`'s block start.
+/// lowers it toward the line-under side.
 fn gauge_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> f32 {
     let base = if central { f.height / 2.0 } else { f.height };
     if b.style.get("vertical-align").is_some() {
@@ -1432,13 +1476,7 @@ fn gauge_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> f32 {
             cb_width: 0.0,
         })
         .font_size;
-    let toward_block_start =
-        super::writing::WritingMode::of(&b.style) == super::writing::WritingMode::VerticalLr;
-    if toward_block_start {
-        base + 0.2 * font_size
-    } else {
-        base - 0.2 * font_size
-    }
+    base - 0.2 * font_size
 }
 
 /// The bottom padding of a colour well's swatch wrapper, below its baseline.
@@ -1483,12 +1521,12 @@ fn float_ids(b: &LayoutBox, out: &mut std::collections::HashSet<NodeId>) {
     }
 }
 
-/// The `(top, baseline)` of the lowest in-flow text line in `f`'s subtree.
+/// The lowest in-flow text line in `f`'s subtree.
 fn last_line(
     f: &Fragment,
     floats: &std::collections::HashSet<NodeId>,
     central: Option<f32>,
-    last: &mut Option<(f32, f32)>,
+    last: &mut Option<LastLine>,
 ) {
     let in_flow = |child: &&Fragment| !child.is_positioned && !floats.contains(&child.node_id);
     for child in f.children.iter().filter(in_flow) {
@@ -1500,9 +1538,13 @@ fn last_line(
         } = &child.content
         {
             if let Some(glyph) = glyphs.first() {
-                if last.is_none_or(|(top, _)| child.y >= top) {
+                if last.is_none_or(|line| child.y >= line.top) {
                     let lift = central.map_or(0.0, |scale| central_lift(face, *font_size, scale));
-                    *last = Some((child.y, child.y + glyph.y - lift));
+                    *last = Some(LastLine {
+                        top: child.y,
+                        height: child.height,
+                        baseline: glyph.y - lift,
+                    });
                 }
             }
         }
@@ -1703,21 +1745,24 @@ fn build_inline_pieces(
                 let f = lay_atomic(b, cw, bs.font_size, ctx);
                 let scale = ctx.html_font_scale.unwrap_or(1.0);
                 // Cheap re-resolve (style cache memoizes) to read the box's own
-                // `vertical-align` + margins for line-box placement.
+                // `vertical-align` + margins for line-box placement; on a flipped line
+                // its line-over margin is its block-end one.
+                let flipped = flipped_lines(ctx);
                 let abs = resolve(b, cw, bs.font_size);
+                let margin = line_relative(abs.margin, flipped);
                 pieces.push(inline::Piece::Atom(inline::InlineAtom {
                     id: atom_frags.len(),
                     width: f.width,
                     height: f.height,
                     valign: abs.vertical_align,
                     font_size: abs.font_size,
-                    margin_top: abs.margin.top,
-                    margin_bottom: abs.margin.bottom,
-                    margin_left: abs.margin.left,
-                    margin_right: abs.margin.right,
+                    margin_top: margin.top,
+                    margin_bottom: margin.bottom,
+                    margin_left: margin.left,
+                    margin_right: margin.right,
                     placeholder: false,
-                    baseline: atom_baseline(b, &f, central.then_some(scale))
-                        .or_else(|| central.then(|| central_atom_baseline(&f, abs.margin, ctx))),
+                    baseline: atom_baseline(b, &f, (central.then_some(scale), flipped))
+                        .or_else(|| central.then(|| central_atom_baseline(&f, margin, ctx))),
                 }));
                 atom_frags.push(f);
             }
