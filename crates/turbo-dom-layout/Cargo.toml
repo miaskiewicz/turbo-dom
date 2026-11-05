@@ -33,8 +33,12 @@ bundled-fonts = []
 # `manual` (soft hyphens only).
 hyphenation = ["dep:hyphenation"]
 
-# `hyphens: auto` in the other languages Chrome on macOS hyphenates (miaskiewicz/turbo-dom#289).
-hyphenation-languages = ["hyphenation"]
+# `hyphens: auto` in every other language Chrome 156 on macOS hyphenates
+# (miaskiewicz/turbo-dom#289: en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb/no,
+# nl, pl, pt, ro, ru, sk, sv, uk): embeds all of the `hyphenation` crate's TeX patterns
+# (about 3 MB; the crate cannot embed a subset). Builds that only need English can keep
+# `hyphenation` alone.
+hyphenation-languages = ["hyphenation", "hyphenation/embed_all"]
 
 # Hot-path instrumentation counters (`perf` module, `hot!` macro). Off by default so
 # production builds pay nothing.
@@ -77,7 +81,8 @@ encoding_rs = "0.8"
 # and `tiny-skia`. See src/svg.rs.
 resvg = { version = "=0.45.1", default-features = false, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
-# `hyphenation` feature only: the embedded en-US dictionary.
+# `hyphenation` feature only: the embedded en-US dictionary (every language under
+# `hyphenation-languages`).
 hyphenation = { version = "0.8.4", default-features = false, features = ["embed_en-us"], optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]

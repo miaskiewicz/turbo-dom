@@ -1,14 +1,18 @@
-//! `hyphens: auto` dictionary hyphenation against Chrome 156 (miaskiewicz/turbo-dom#213):
-//! English (`lang=en`, `en-US`, other `en-*` regions) breaks at the en-US Knuth-Liang
-//! points under `hyphenate-limit-chars` (default 5 / 2 / 2), draws a hyphen when a break
-//! is taken, leaves capitalized words, words with a soft hyphen, `hyphens: manual | none`
-//! and unset or unsupported languages alone.
+//! `hyphens: auto` dictionary hyphenation against Chrome 156 (miaskiewicz/turbo-dom#213,
+//! #289): English (`lang=en`, `en-US`, other `en-*` regions) breaks at the en-US
+//! Knuth-Liang points under `hyphenate-limit-chars` (default 5 / 2 / 2), draws a hyphen
+//! when a break is taken, leaves capitalized words, words with a soft hyphen,
+//! `hyphens: manual | none` and unset or unsupported languages alone; the other languages
+//! Chrome on macOS hyphenates (de, fr, es, nl, pl, en-GB, it, ru, ...) break at their TeX
+//! patterns' points, capitalized words included outside English.
 //! Oracle: `tests/fixtures/hyphens/chrome156.json`, captured by
 //! `scripts/fixture-font-chrome-controls.mjs` (Chrome 156.0.8078.47 headless, the fixture
 //! fonts through `@font-face` from 127.0.0.1). Laid out with the same fixture fonts.
 //! Chrome on macOS hyphenates with the system's dictionary, whose points differ from the
-//! en-US TeX patterns for some words (`international`, `extraordinary`); the control's
-//! words are ones where both agree. Needs the default `hyphenation` feature.
+//! TeX patterns for some words (`international`, `extraordinary`; the word-level
+//! comparison and its list of differences are in `src/layout/hyphenate.rs`); the
+//! control's words are ones where both agree. Needs the default `hyphenation` feature
+//! (and `hyphenation-languages` for the other languages).
 #![cfg(feature = "hyphenation")]
 
 use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};

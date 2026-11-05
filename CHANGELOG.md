@@ -9,6 +9,20 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout: `hyphens: auto` hyphenates the languages Chrome 156 on macOS does,
+  not just English.** en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb / no, nl, pl, pt, ro, ru, sk, sv, uk break at the TeX `hyph-*` patterns' points (the `hyphenation`
+  crate's, the patterns Chrome's Minikin dictionaries on Linux, Windows and Android are built
+  from) under the new default-on `hyphenation-languages` cargo feature (~3 MB of embedded
+  patterns; `default-features = false, features = ["bundled-fonts", "hyphenation"]` keeps
+  the ~90 KB English-only build). Outside English a capitalized word hyphenates, as in Blink.
+  Chrome on macOS uses the system dictionary, whose points differ for 8 of the 330 words of
+  the new control (en `international`, `extraordinary`; es `desarrollo`; pl
+  `odpowiedzialność`, `szczególnie`, `elektryczność`, `chrząszcz`; cs `knihovna`); the test
+  pins exactly those. API: `AutoHyphens` gains a `language: HyphenationLanguage` field (a new
+  `#[non_exhaustive]` enum with `HyphenationLanguage::from_locale`). Controls:
+  `hyphens/chrome156.json` (new per-language cases) and `hyphens/words-chrome156.json`
+  (`scripts/fixture-font-chrome-controls.mjs`) (turbo-dom#289).
+
 - **turbo-dom-browser-env: `setHTML` / `setHTMLUnsafe` / `template.innerHTML` keep template
   contents and declarative shadow roots through a GC.** Past 256 live wrappers a mutating call
   defers its ownership reconcile. These calls wrap the parsed nodes while they are still in a
