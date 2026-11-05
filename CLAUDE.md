@@ -259,13 +259,17 @@ package or publish workflow.
   own integration tests enable it through a self dev-dependency).
 - `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
   (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Page text is painted like
-  Chrome 156 on macOS (`glyph_raster.rs`, turbo-dom#266): exact-area coverage of the
-  outline grown and lifted `0.005 * size` px (CoreText smoothing), Skia subpixel pens
-  and its luminance pre-blend (gamma 1.8, contrast 1); the SVG painter emits the same
-  grown outline with the pre-blend as an `feComponentTransfer` alpha table, one
-  `glyph-lum<class>` filter per 3-bit text luminance (turbo-dom#294). The residual vs Chrome is pinned per case by
-  `tests/glyph_coverage_chrome.rs` (`scripts/glyph-coverage-chrome-control.mjs`); Chrome's stem darkening is not
-  modelled yet, so turbo-dom#266 stays open with that residual. Relocated verbatim from
+  Chrome 156 on macOS (`glyph_raster.rs`, turbo-dom#266, #331): exact-area coverage of
+  the outline grown by a `0.0045 * size` px box (each edge `d * (|nx| + |ny|)`, concave
+  points a little further) and lifted `d + 0.03` px (CoreText smoothing), Skia subpixel
+  pens, and an edge transfer by Skia's 3-bit text luminance (linear for dark text from
+  28px, a little darker below, lighter for white); the SVG painter emits the same grown
+  outline with Skia's gamma-1.8 pre-blend as an `feComponentTransfer` alpha table, one
+  `glyph-lum<class>` filter per luminance class (turbo-dom#294; resvg's quarter-step
+  anti-aliasing lands nearer Chrome with it). The residual vs Chrome is pinned per case by
+  `tests/glyph_coverage_chrome.rs` (`scripts/glyph-coverage-chrome-control.mjs`); what is
+  left is Chrome's grid-dependent vertical geometry below about 20px and glyph-specific
+  vertical offsets (the 40px `g` bar, `paint_chrome.rs` probe (28,44)). Relocated verbatim from
   turbo-surf-raster 0.5.5 (S1). Decodes images through turbo-dom-layout's image layer (PNG,
   SVG at 1x) and the `image` crate (JPEG/GIF/WebP/BMP/ICO/CUR, resize, PNG re-encode for
   SVG `data:` URIs), AVIF via `rav1d` under the off-by-default `avif` feature (P5b

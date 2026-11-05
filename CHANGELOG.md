@@ -9,6 +9,20 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-raster: glyph edges closer to Chrome 156 (#266, #331).** The PNG painter grows
+  each glyph outline by a box (`0.0045 * size` px: each edge moves `d * (|nx| + |ny|)`, so
+  diagonal strokes of `W`, `x` and `y` no longer sit 0.14 px off), fills concave joins a
+  little, lifts the run `d + 0.03` px, and takes the coverage through an edge transfer keyed
+  on Skia's 3-bit text luminance (linear for dark text from 28px, as a 64px stem's four
+  subpixel phases measure, a little darker below, lighter for white). Against the Chrome 156
+  control the mean residual per inked pixel drops at every size, e.g. 12px black 12.3 to 10.8,
+  20px white 12.9 to 8.5, 64px black 5.1 to 3.8, and the stem / bar subpixel cases from
+  4.1–6.5 to 0.9–3.3; every `tests/glyph_coverage_chrome.rs` limit tightens. One probe
+  widens: `overflow-glyph-ink-visible` (28,44) tolerance 15 to 24 (Chrome 139, this model
+  163, the previous painter 154), the 40px `g` bar's glyph-specific vertical offset in
+  Chrome. Not modelled: Chrome's grid-dependent vertical geometry below about 20px. The SVG
+  screenshot keeps Skia's pre-blend filter (#294), now over the same box-grown outline.
+
 - **turbo-dom-raster: SVG screenshot glyph edges take the colour-dependent pre-blend.** Each
   glyph run path now carries a `glyph-lum<class>` filter: an `feComponentTransfer` alpha table
   with the raster painter's Skia pre-blend for the text's 3-bit luminance, one per class the
