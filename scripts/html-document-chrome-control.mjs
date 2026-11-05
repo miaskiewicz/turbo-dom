@@ -675,6 +675,33 @@ CASES.push(
     html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="${NS};height:100px"><thead><tr data-cid="r0" style="height:50%">${RS(10)}</tr></thead><tbody><tr data-cid="r1">${RS(10)}</tr></tbody></table>`),
   },
 );
+// miaskiewicz/turbo-dom#350: a collapsed-border row is as tall as its tallest cell's
+// border box, each cell taking half of the collapsed border on its OWN edges (the
+// widest segment along each), not half of the widest border anywhere on the row's lines.
+// Only the row axis is measured (`yh`): columns size the same way per cell edge in
+// Chrome, which turbo-dom-layout's collapsed columns do not do yet.
+const CE = (h, b, attrs = "", cid = "") =>
+  `<td${cid ? ` data-cid="${cid}"` : ""} style="border:${b}px solid"${attrs}><div style="width:30px;height:${h}px"></div></td>`;
+const CET = (id, style, rows) => ({
+  id: `table-collapsed-edge-${id}`,
+  html: DOC(
+    S("body{margin:0}td{padding:0}"),
+    `<table data-cid="t" style="border-collapse:collapse;${style}">` +
+      rows.map((cells, i) => `<tr data-cid="r${i}">${cells}</tr>`).join("") +
+      `</table>`,
+  ),
+  measure: "yh",
+});
+CASES.push(
+  CET("mixed", "", [CE(10, 3, "", "a") + CE(10, 1, "", "b"), CE(30, 1, "", "c") + CE(30, 1, "", "d")]),
+  CET("thin-tall-cell", "", [CE(20, 1, "", "a") + CE(10, 6, "", "b"), CE(10, 1, "", "c") + CE(10, 1, "", "d")]),
+  CET("heavy-bottom", "", [CE(10, 1) + CE(10, 1), CE(30, 6, "", "c") + CE(30, 1, "", "d")]),
+  CET("three-rows", "", [CE(10, 2) + CE(10, 4), CE(10, 1) + CE(10, 1), CE(10, 3) + CE(10, 1)]),
+  CET("table-border", "border:5px solid", [CE(10, 1) + CE(10, 1), CE(30, 1) + CE(30, 1)]),
+  CET("colspan", "", [CE(10, 1) + CE(10, 5), CE(10, 1, " colspan=2", "c")]),
+  CET("rowspan", "", [CE(60, 3, " rowspan=2", "a") + CE(10, 1, "", "b"), CE(30, 1, "", "c")]),
+  CET("table-height", "height:100px", [CE(10, 1) + CE(10, 6), CE(10, 1) + CE(10, 1)]),
+);
 // miaskiewicz/turbo-dom#238 item 2: the quirks-mode line height quirk on the static HTML
 // path (the same cases as the live control's `quirks-strut-*`, #190). No doctype =
 // BackCompat; laid out with the repo's Fira Code through @font-face.
