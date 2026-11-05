@@ -23,6 +23,8 @@
 mod avif;
 mod canvas_content;
 mod canvas_ops;
+#[cfg(test)]
+mod form_native_chrome_tests;
 mod glyph;
 mod glyph_raster;
 mod image_paint;
