@@ -418,87 +418,105 @@
     }
     return text;
   }
+  const isUrlBadCode = (c) => c === 34 || c === 39 || c === 40 || (c >= 0 && c <= 8) || c === 11 || (c >= 14 && c <= 31) || c === 127;
+  // Single-character punctuators/braces: one token-type per leading char.
+  const PUNCTUATOR_TOKEN = { __proto__: null, 40: '(', 41: ')', 91: '[', 93: ']', 123: '{', 125: '}', 44: 'comma', 58: 'colon', 59: 'semicolon' };
   function tokenize(source) {
     const text = preprocess(toStringValue(source));
-    const tokens = list(), length = text.length; let at = 0;
-    const code = (offset) => at + offset < length ? charCode(text, at + offset) : -1;
+    const tokens = list(), length = text.length;
+    const state = { text, length, at: 0 };
+    const code = (offset) => state.at + offset < length ? charCode(text, state.at + offset) : -1;
     const validEscape = (a, b) => a === 92 && b !== 10;
     const startsIdent = (a, b, c) => a === 45 ? (isNameStart(b) || b === 45 || validEscape(b, c)) : isNameStart(a) ? true : validEscape(a, b);
     const startsNumber = (a, b, c) => (a === 43 || a === 45) ? (isDigit(b) || (b === 46 && isDigit(c))) : a === 46 ? isDigit(b) : isDigit(a);
     function escape() {
-      let c = code(0); at++;
-      if (isHex(c)) { let hex = fromCode(c), count = 1; while (count < 6 && isHex(code(0))) { hex += text[at]; at++; count++; } if (isSpace(code(0))) at++; const point = parseInt(hex, 16); return point === 0 || (point >= 0xd800 && point <= 0xdfff) || point > 0x10ffff ? '�' : fromCode(point); }
+      let c = code(0); state.at++;
+      if (isHex(c)) { let hex = fromCode(c), count = 1; while (count < 6 && isHex(code(0))) { hex += text[state.at]; state.at++; count++; } if (isSpace(code(0))) state.at++; const point = parseInt(hex, 16); return point === 0 || (point >= 0xd800 && point <= 0xdfff) || point > 0x10ffff ? '�' : fromCode(point); }
       if (c === -1) return '�';
-      const char = fromCode(c); at += char.length - 1; return char;
+      const char = fromCode(c); state.at += char.length - 1; return char;
     }
-    function name() { let result = ''; for (;;) { const c = code(0); if (isName(c)) { result += text[at]; at++; } else if (validEscape(c, code(1))) { at++; result += escape(); } else return result; } }
+    function name() { let result = ''; for (;;) { const c = code(0); if (isName(c)) { result += text[state.at]; state.at++; } else if (validEscape(c, code(1))) { state.at++; result += escape(); } else return result; } }
     function number() {
-      const start = at; let integer = true;
-      if (code(0) === 43 || code(0) === 45) at++;
-      while (isDigit(code(0))) at++;
-      if (code(0) === 46 && isDigit(code(1))) { integer = false; at += 2; while (isDigit(code(0))) at++; }
+      const start = state.at; let integer = true;
+      if (code(0) === 43 || code(0) === 45) state.at++;
+      while (isDigit(code(0))) state.at++;
+      if (code(0) === 46 && isDigit(code(1))) { integer = false; state.at += 2; while (isDigit(code(0))) state.at++; }
       const e = code(0);
-      if ((e === 69 || e === 101) && (isDigit(code(1)) || ((code(1) === 43 || code(1) === 45) && isDigit(code(2))))) { integer = false; at += isDigit(code(1)) ? 2 : 3; while (isDigit(code(0))) at++; }
-      return { value: +sliceText(text, start, at), integer };
+      if ((e === 69 || e === 101) && (isDigit(code(1)) || ((code(1) === 43 || code(1) === 45) && isDigit(code(2))))) { integer = false; state.at += isDigit(code(1)) ? 2 : 3; while (isDigit(code(0))) state.at++; }
+      return { value: +sliceText(text, start, state.at), integer };
     }
     function consumeString(quote) {
-      let value = ''; at++;
+      let value = ''; state.at++;
       for (;;) {
         const c = code(0);
         if (c === -1) return { type: 'string', value };
-        if (c === quote) { at++; return { type: 'string', value }; }
+        if (c === quote) { state.at++; return { type: 'string', value }; }
         if (c === 10) return { type: 'bad-string' };
-        if (c === 92) { if (code(1) === -1) { at++; continue; } if (code(1) === 10) { at += 2; continue; } at++; value += escape(); continue; }
-        value += text[at]; at++;
+        if (c === 92) { if (code(1) === -1) { state.at++; continue; } if (code(1) === 10) { state.at += 2; continue; } state.at++; value += escape(); continue; }
+        value += text[state.at]; state.at++;
       }
     }
-    function consumeBadUrl() { for (;;) { const c = code(0); if (c === -1) return; if (c === 41) { at++; return; } if (validEscape(c, code(1))) { at++; escape(); } else at++; } }
+    function consumeBadUrl() { for (;;) { const c = code(0); if (c === -1) return; if (c === 41) { state.at++; return; } if (validEscape(c, code(1))) { state.at++; escape(); } else state.at++; } }
+    function urlSpaceStep() {
+      while (isSpace(code(0))) state.at++;
+      if (code(0) === 41 || code(0) === -1) { if (code(0) === 41) state.at++; return 'close'; }
+      consumeBadUrl(); return 'bad';
+    }
     function consumeUrl() {
-      let value = ''; while (isSpace(code(0))) at++;
+      let value = ''; while (isSpace(code(0))) state.at++;
       for (;;) {
         const c = code(0);
-        if (c === -1) return { type: 'url', value };
-        if (c === 41) { at++; return { type: 'url', value }; }
-        if (isSpace(c)) { while (isSpace(code(0))) at++; if (code(0) === 41 || code(0) === -1) { if (code(0) === 41) at++; return { type: 'url', value }; } consumeBadUrl(); return { type: 'bad-url' }; }
-        if (c === 34 || c === 39 || c === 40 || (c >= 0 && c <= 8) || c === 11 || (c >= 14 && c <= 31) || c === 127) { consumeBadUrl(); return { type: 'bad-url' }; }
-        if (c === 92) { if (validEscape(c, code(1))) { at++; value += escape(); continue; } consumeBadUrl(); return { type: 'bad-url' }; }
-        value += text[at]; at++;
+        if (c === -1 || c === 41) { if (c === 41) state.at++; return { type: 'url', value }; }
+        if (isSpace(c)) return urlSpaceStep() === 'close' ? { type: 'url', value } : { type: 'bad-url' };
+        if (isUrlBadCode(c)) { consumeBadUrl(); return { type: 'bad-url' }; }
+        if (c === 92) { if (validEscape(c, code(1))) { state.at++; value += escape(); continue; } consumeBadUrl(); return { type: 'bad-url' }; }
+        value += text[state.at]; state.at++;
       }
     }
     function identLike() {
       const value = name();
       if (lowerCase(value) === 'url' && code(0) === 40) {
-        at++; while (isSpace(code(0)) && isSpace(code(1))) at++;
+        state.at++; while (isSpace(code(0)) && isSpace(code(1))) state.at++;
         const next = isSpace(code(0)) ? code(1) : code(0);
         if (next === 34 || next === 39) return { type: 'function', value };
         return consumeUrl();
       }
-      if (code(0) === 40) { at++; return { type: 'function', value }; }
+      if (code(0) === 40) { state.at++; return { type: 'function', value }; }
       return { type: 'ident', value };
     }
-    while (at < length) {
-      const start = at, c = code(0); let token;
-      if (c === 47 && code(1) === 42) { const end = indexOfText(text, '*/', at + 2); at = end < 0 ? length : end + 2; continue; }
-      if (isSpace(c)) { while (isSpace(code(0))) at++; token = { type: 'whitespace' }; }
-      else if (c === 34 || c === 39) token = consumeString(c);
-      else if (c === 35) { if (isName(code(1)) || validEscape(code(1), code(2))) { at++; const unrestricted = !startsIdent(code(0), code(1), code(2)); token = { type: 'hash', value: name(), hashType: unrestricted ? 'unrestricted' : 'id' }; } else { at++; token = { type: 'delim', delim: '#' }; } }
-      else if (c === 40) { at++; token = { type: '(' }; } else if (c === 41) { at++; token = { type: ')' }; }
-      else if (c === 91) { at++; token = { type: '[' }; } else if (c === 93) { at++; token = { type: ']' }; }
-      else if (c === 123) { at++; token = { type: '{' }; } else if (c === 125) { at++; token = { type: '}' }; }
-      else if (c === 44) { at++; token = { type: 'comma' }; } else if (c === 58) { at++; token = { type: 'colon' }; } else if (c === 59) { at++; token = { type: 'semicolon' }; }
-      else if (startsNumber(c, code(1), code(2))) {
-        const parsed = number();
-        if (startsIdent(code(0), code(1), code(2))) token = { type: 'dimension', value: parsed.value, integer: false, numberInteger: parsed.integer, unit: name() };
-        else if (code(0) === 37) { at++; token = { type: 'percentage', value: parsed.value, integer: parsed.integer }; }
-        else token = { type: 'number', value: parsed.value, integer: parsed.integer };
-      }
-      else if (c === 45 && code(1) === 45 && code(2) === 62) { at += 3; token = { type: 'cdc' }; }
-      else if (c === 60 && code(1) === 33 && code(2) === 45 && code(3) === 45) { at += 4; token = { type: 'cdo' }; }
-      else if (startsIdent(c, code(1), code(2))) token = identLike();
-      else if (c === 64) { at++; if (startsIdent(code(0), code(1), code(2))) token = { type: 'at', value: name() }; else token = { type: 'delim', delim: '@' }; }
-      else if (c === 92) { if (validEscape(c, code(1))) token = identLike(); else { at++; token = { type: 'delim', delim: '\\' }; } }
-      else { const char = fromCode(charCodeFull(text, at)); at += char.length; token = { type: 'delim', delim: char }; }
-      token.raw = sliceText(text, start, at);
+    function numberToken() {
+      const parsed = number();
+      if (startsIdent(code(0), code(1), code(2))) return { type: 'dimension', value: parsed.value, integer: false, numberInteger: parsed.integer, unit: name() };
+      if (code(0) === 37) { state.at++; return { type: 'percentage', value: parsed.value, integer: parsed.integer }; }
+      return { type: 'number', value: parsed.value, integer: parsed.integer };
+    }
+    function hashOrDelim() {
+      if (isName(code(1)) || validEscape(code(1), code(2))) { state.at++; const unrestricted = !startsIdent(code(0), code(1), code(2)); return { type: 'hash', value: name(), hashType: unrestricted ? 'unrestricted' : 'id' }; }
+      state.at++; return { type: 'delim', delim: '#' };
+    }
+    function atOrDelim() { state.at++; if (startsIdent(code(0), code(1), code(2))) return { type: 'at', value: name() }; return { type: 'delim', delim: '@' }; }
+    function backslashToken(c) { if (validEscape(c, code(1))) return identLike(); state.at++; return { type: 'delim', delim: '\\' }; }
+    const isCdc = (c) => c === 45 && code(1) === 45 && code(2) === 62;
+    const isCdo = (c) => c === 60 && code(1) === 33 && code(2) === 45 && code(3) === 45;
+    function fallbackDelim() { const char = fromCode(charCodeFull(text, state.at)); state.at += char.length; return { type: 'delim', delim: char }; }
+    function nextToken(c) {
+      if (isSpace(c)) { while (isSpace(code(0))) state.at++; return { type: 'whitespace' }; }
+      if (c === 34 || c === 39) return consumeString(c);
+      if (c === 35) return hashOrDelim();
+      if (PUNCTUATOR_TOKEN[c]) { state.at++; return { type: PUNCTUATOR_TOKEN[c] }; }
+      if (startsNumber(c, code(1), code(2))) return numberToken();
+      if (isCdc(c)) { state.at += 3; return { type: 'cdc' }; }
+      if (isCdo(c)) { state.at += 4; return { type: 'cdo' }; }
+      if (startsIdent(c, code(1), code(2))) return identLike();
+      if (c === 64) return atOrDelim();
+      if (c === 92) return backslashToken(c);
+      return fallbackDelim();
+    }
+    while (state.at < length) {
+      const start = state.at, c = code(0);
+      if (c === 47 && code(1) === 42) { const end = indexOfText(text, '*/', state.at + 2); state.at = end < 0 ? length : end + 2; continue; }
+      const token = nextToken(c);
+      token.raw = sliceText(text, start, state.at);
       push(tokens, token);
     }
     return tokens;
@@ -533,16 +551,19 @@
   // ECMAScript Number::toString, as DoubleToStringConverter formats it.
   const shortNumber = (value) => '' + value;
   // cssom serialize-an-identifier.
+  const identNeedsHexEscape = (value, index, c) => (c >= 1 && c <= 31) || c === 127 || (index === 0 && isDigit(c)) || (index === 1 && isDigit(c) && charCode(value, 0) === 45);
+  const identIsBare = (c) => c >= 128 || c === 45 || c === 95 || isDigit(c) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
+  function serializeIdentifierChar(value, index) {
+    const c = charCode(value, index);
+    if (c === 0) return '�';
+    if (identNeedsHexEscape(value, index, c)) return '\\' + lowerCase(c.toString(16)) + ' ';
+    if (index === 0 && c === 45 && value.length === 1) return '\\' + value[index];
+    if (identIsBare(c)) return value[index];
+    return '\\' + value[index];
+  }
   function serializeIdentifier(value) {
     let result = '';
-    for (let index = 0; index < value.length; index++) {
-      const c = charCode(value, index);
-      if (c === 0) result += '�';
-      else if ((c >= 1 && c <= 31) || c === 127 || (index === 0 && isDigit(c)) || (index === 1 && isDigit(c) && charCode(value, 0) === 45)) result += '\\' + lowerCase(c.toString(16)) + ' ';
-      else if (index === 0 && c === 45 && value.length === 1) result += '\\' + value[index];
-      else if (c >= 128 || c === 45 || c === 95 || isDigit(c) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122)) result += value[index];
-      else result += '\\' + value[index];
-    }
+    for (let index = 0; index < value.length; index++) result += serializeIdentifierChar(value, index);
     return result;
   }
   function serializeString(value) {
@@ -554,6 +575,12 @@
     return result + '"';
   }
   // CSSParserToken::Serialize.
+  function serializeNumberToken(token) {
+    if (token.integer) return '' + mathTrunc(token.value);
+    const text = shortNumber(token.value);
+    return indexOfText(text, '.') < 0 && indexOfText(text, 'e') < 0 ? text + '.0' : text;
+  }
+  const SIMPLE_TOKEN_TEXT = { __proto__: null, 'bad-string': "'\n", 'bad-url': 'url(()', whitespace: ' ', colon: ':', semicolon: ';', comma: ',', cdo: '<!--', cdc: '-->' };
   function serializeToken(token) {
     switch (token.type) {
       case 'ident': return serializeIdentifier(token.value);
@@ -562,29 +589,30 @@
       case 'hash': return '#' + (token.hashType === 'unrestricted' ? serializeIdentifierRest(token.value) : serializeIdentifier(token.value));
       case 'url': return 'url(' + serializeIdentifier(token.value) + ')';
       case 'delim': return token.delim === '\\' ? '\\\n' : token.delim;
-      case 'number': { if (token.integer) return '' + mathTrunc(token.value); const text = shortNumber(token.value); return indexOfText(text, '.') < 0 && indexOfText(text, 'e') < 0 ? text + '.0' : text; }
+      case 'number': return serializeNumberToken(token);
       case 'percentage': return shortNumber(token.value) + '%';
       case 'dimension': return shortNumber(token.value) + serializeIdentifier(token.unit);
       case 'string': return serializeString(token.value);
-      case 'bad-string': return "'\n";
-      case 'bad-url': return 'url(()';
-      case 'whitespace': return ' ';
-      case 'colon': return ':'; case 'semicolon': return ';'; case 'comma': return ',';
-      case 'cdo': return '<!--'; case 'cdc': return '-->';
-      default: return token.type;
+      default: return token.type in SIMPLE_TOKEN_TEXT ? SIMPLE_TOKEN_TEXT[token.type] : token.type;
     }
   }
   function serializeIdentifierRest(value) { const text = serializeIdentifier('a' + value); return sliceText(text, 1); }
+  const NEEDS_COMMENT_IDENT_LHS = plainSet(['ident', 'at', 'hash', 'dimension', 'number']);
+  const NEEDS_COMMENT_IDENT_RHS = plainSet(['ident', 'function', 'url', 'bad-url', 'number', 'percentage', 'dimension', 'cdc']);
+  const NEEDS_COMMENT_AT_RHS = plainSet(['ident', 'function', 'url', 'bad-url', 'cdc']);
+  const NEEDS_COMMENT_NUMERIC_RHS = plainSet(['number', 'percentage', 'dimension']);
+  const isIdentLikeLhs = (a) => NEEDS_COMMENT_IDENT_LHS[a.type] || (a.type === 'delim' && (a.delim === '#' || a.delim === '-'));
+  function needsCommentIdentRhs(a, b) {
+    const bt = b.type;
+    if (a.type === 'ident' && bt === '(') return true;
+    if (a.type === 'number' && bt === 'delim') { if (b.delim === '-') return false; if (b.delim === '%') return true; }
+    return NEEDS_COMMENT_IDENT_RHS[bt] || (bt === 'delim' && b.delim === '-');
+  }
   function needsComment(a, b) {
-    const at = a.type, bt = b.type;
-    if (at === 'ident' || at === 'at' || at === 'hash' || at === 'dimension' || at === 'number' || (at === 'delim' && (a.delim === '#' || a.delim === '-'))) {
-      if (at === 'ident' && bt === '(') return true;
-      if (at === 'number' && bt === 'delim') { if (b.delim === '-') return false; if (b.delim === '%') return true; }
-      return bt === 'ident' || bt === 'function' || bt === 'url' || bt === 'bad-url' || bt === 'number' || bt === 'percentage' || bt === 'dimension' || bt === 'cdc' || (bt === 'delim' && b.delim === '-');
-    }
-    if (at === 'delim' && a.delim === '@') return bt === 'ident' || bt === 'function' || bt === 'url' || bt === 'bad-url' || bt === 'cdc' || (bt === 'delim' && b.delim === '-');
-    if (at === 'delim' && (a.delim === '.' || a.delim === '+')) return bt === 'number' || bt === 'percentage' || bt === 'dimension';
-    return at === 'delim' && bt === 'delim' && a.delim === '/' && b.delim === '*';
+    if (isIdentLikeLhs(a)) return needsCommentIdentRhs(a, b);
+    if (a.type === 'delim' && a.delim === '@') return NEEDS_COMMENT_AT_RHS[b.type] || (b.type === 'delim' && b.delim === '-');
+    if (a.type === 'delim' && (a.delim === '.' || a.delim === '+')) return !!NEEDS_COMMENT_NUMERIC_RHS[b.type];
+    return a.type === 'delim' && b.type === 'delim' && a.delim === '/' && b.delim === '*';
   }
 
   // ---- Calc expression trees (Blink CSSMathExpressionNode) -------------------------------------
