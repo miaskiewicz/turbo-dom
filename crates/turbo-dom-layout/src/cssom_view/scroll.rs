@@ -94,29 +94,136 @@ fn inline_box(snapshot: &LayoutSnapshot, source: &crate::layout_snapshot::Snapsh
     })
 }
 
+/// A vertical-rl box's block flow, like an RTL box's inline flow, starts at its
+/// right edge (miaskiewicz/turbo-dom#234).
+fn block_starts_right(style: &crate::ComputedStyle) -> bool {
+    match crate::layout::writing::WritingMode::of(style) {
+        crate::layout::writing::WritingMode::HorizontalTb => style.get("direction") == Some("rtl"),
+        crate::layout::writing::WritingMode::VerticalRl => true,
+        crate::layout::writing::WritingMode::VerticalLr => false,
+    }
+}
+
+fn zero_scroll_metrics() -> ScrollMetrics {
+    ScrollMetrics {
+        width: 0,
+        height: 0,
+        scroll_x: false,
+        scroll_y: false,
+        max_x: 0.0,
+        max_y: 0.0,
+        min_x: 0.0,
+    }
+}
+
+fn is_zero_scroll_source(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    id: SourceId,
+    source: &crate::layout_snapshot::SnapshotSource,
+) -> bool {
+    source.excluded_from_layout
+        || inline_box(snapshot, source)
+        || styles
+            .get(&id)
+            .is_some_and(|entry| entry.style.get("display") == Some("contents"))
+}
+
+fn is_scroll_fragment(
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    styles: &SourceStyles,
+    id: SourceId,
+) -> bool {
+    matches!(
+        fragment.kind,
+        GeometryKind::BorderBox | GeometryKind::TextLineContainer
+    ) && contained(styles, fragment, id)
+}
+
+fn clip_blockers(
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    styles: &SourceStyles,
+    id: SourceId,
+) -> (bool, bool) {
+    let mut blocked_x = false;
+    let mut blocked_y = false;
+    for ancestor in &fragment.source_ancestors {
+        if *ancestor == id {
+            blocked_x = false;
+            blocked_y = false;
+            continue;
+        }
+        if *ancestor == fragment.source_id.unwrap_or(id)
+            || is_root(styles, *ancestor)
+            || propagated_body(styles, *ancestor)
+        {
+            continue;
+        }
+        if let Some(ancestor) = styles.get(ancestor) {
+            if ancestor.style.get("display") == Some("contents") {
+                continue;
+            }
+            blocked_x |= clips(overflow(&ancestor.style, "overflow-x"));
+            blocked_y |= clips(overflow(&ancestor.style, "overflow-y"));
+        }
+    }
+    (blocked_x, blocked_y)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn extend_scroll_bounds(
+    _snapshot: &LayoutSnapshot,
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    id: SourceId,
+    used: crate::layout_snapshot::UsedBoxMetrics,
+    projected: &dyn Fn(&crate::layout_snapshot::SnapshotFragment) -> ([f32; 2], f32),
+    scroll_container: bool,
+    blocked_x: bool,
+    blocked_y: bool,
+    right: &mut f32,
+    left: &mut f32,
+    bottom: &mut f32,
+) {
+    let (transformed, leftmost) = projected(fragment);
+    let rect = fragment.rect;
+    let out_of_flow = fragment
+        .used_box
+        .is_some_and(|metrics| matches!(metrics.position, Position::Absolute | Position::Fixed));
+    let (untransformed, untransformed_left) = if out_of_flow {
+        ([f32::NEG_INFINITY; 2], f32::INFINITY)
+    } else {
+        ([rect.x + rect.width, rect.y + rect.height], rect.x)
+    };
+    if !blocked_x {
+        *right = right.max(transformed[0]).max(untransformed[0]);
+        *left = left.min(leftmost).min(untransformed_left);
+    }
+    if !blocked_y {
+        *bottom = bottom.max(transformed[1]).max(untransformed[1]);
+    }
+    [*right, *bottom] = own_line_extent((fragment, id, used), scroll_container, [*right, *bottom]);
+    if let Some(metrics) = fragment.used_box {
+        if metrics.position != Position::Absolute && metrics.position != Position::Fixed {
+            if !blocked_x && scroll_container {
+                *right = right.max(rect.x + rect.width + metrics.margin.right + used.padding.right);
+                *left = left.min(rect.x - metrics.margin.left - used.padding.left);
+            }
+            if !blocked_y && scroll_container {
+                *bottom =
+                    bottom.max(rect.y + rect.height + metrics.margin.bottom + used.padding.bottom);
+            }
+        }
+    }
+}
+
 pub fn scroll_metrics(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     id: SourceId,
 ) -> Result<ScrollMetrics, String> {
     let source = snapshot.source(id).ok_or("native scroll source missing")?;
-    // An inline box (no box of its own to scroll) reads zero, like a box-less element
-    // (CSSOM View `scrollWidth` / `scrollHeight`; Chrome 156, miaskiewicz/turbo-dom#239).
-    if source.excluded_from_layout
-        || inline_box(snapshot, source)
-        || styles
-            .get(&id)
-            .is_some_and(|entry| entry.style.get("display") == Some("contents"))
-    {
-        return Ok(ScrollMetrics {
-            width: 0,
-            height: 0,
-            scroll_x: false,
-            scroll_y: false,
-            max_x: 0.0,
-            max_y: 0.0,
-            min_x: 0.0,
-        });
+    if is_zero_scroll_source(snapshot, styles, id, source) {
+        return Ok(zero_scroll_metrics());
     }
     if snapshot.unsupported_svg_source_geometry(id) {
         return Err("native SVG descendant scroll geometry is unsupported".into());
@@ -134,15 +241,7 @@ pub fn scroll_metrics(
         .ok_or("native scroll computed style missing")?;
     let x = overflow(&own.style, "overflow-x");
     let y = overflow(&own.style, "overflow-y");
-    // A vertical-rl box's block flow, like an RTL box's inline flow, starts at its
-    // right edge (miaskiewicz/turbo-dom#234).
-    let rtl = match crate::layout::writing::WritingMode::of(&own.style) {
-        crate::layout::writing::WritingMode::HorizontalTb => {
-            own.style.get("direction") == Some("rtl")
-        }
-        crate::layout::writing::WritingMode::VerticalRl => true,
-        crate::layout::writing::WritingMode::VerticalLr => false,
-    };
+    let rtl = block_starts_right(&own.style);
     let matrix = snapshot
         .native_world_transform(first.index)
         .ok_or("native scroll transform unavailable")?;
@@ -184,81 +283,36 @@ pub fn scroll_metrics(
     let mut bottom = padding.y + padding.height;
     for &index in &source.descendant_fragment_indices {
         let fragment = &snapshot.fragments()[index];
-        if !matches!(
-            fragment.kind,
-            GeometryKind::BorderBox | GeometryKind::TextLineContainer
-        ) {
+        if !is_scroll_fragment(fragment, styles, id) {
             continue;
         }
-        if !contained(styles, fragment, id) {
-            continue;
-        }
-        // A nested clipping ancestor owns its descendants' overflow. Its own
-        // border still contributes to the outer scroll area's extent.
-        let mut blocked_x = false;
-        let mut blocked_y = false;
-        for ancestor in &fragment.source_ancestors {
-            if *ancestor == id {
-                blocked_x = false;
-                blocked_y = false;
-                continue;
-            }
-            // A propagated overflow belongs to the viewport and clips nothing here.
-            if *ancestor == fragment.source_id.unwrap_or(id)
-                || is_root(styles, *ancestor)
-                || propagated_body(styles, *ancestor)
-            {
-                continue;
-            }
-            if let Some(ancestor) = styles.get(ancestor) {
-                if ancestor.style.get("display") == Some("contents") {
-                    continue;
-                }
-                blocked_x |= clips(overflow(&ancestor.style, "overflow-x"));
-                blocked_y |= clips(overflow(&ancestor.style, "overflow-y"));
-            }
-        }
-        let (transformed, leftmost) = projected(fragment);
-        let rect = fragment.rect;
-        // An absolute / fixed box's untransformed rect is not scrollable overflow; a
-        // flow box's is (miaskiewicz/turbo-dom#147, Chrome 156).
-        let out_of_flow = fragment.used_box.is_some_and(|metrics| {
-            matches!(metrics.position, Position::Absolute | Position::Fixed)
-        });
-        let (untransformed, untransformed_left) = if out_of_flow {
-            ([f32::NEG_INFINITY; 2], f32::INFINITY)
-        } else {
-            ([rect.x + rect.width, rect.y + rect.height], rect.x)
-        };
-        if !blocked_x {
-            right = right.max(transformed[0]).max(untransformed[0]);
-            // The left extent only matters to an RTL box (see `start` below).
-            left = left.min(leftmost).min(untransformed_left);
-        }
-        if !blocked_y {
-            bottom = bottom.max(transformed[1]).max(untransformed[1]);
-        }
-        // Flow content's ending padding/margin contributes to scroll containers (on
-        // both axes, a clip axis included: miaskiewicz/turbo-dom#180), while
-        // out-of-flow boxes and transforms contribute only their edges.
-        [right, bottom] = own_line_extent((fragment, id, used), scroll_container, [right, bottom]);
-        if let Some(metrics) = fragment.used_box {
-            if metrics.position != Position::Absolute && metrics.position != Position::Fixed {
-                // An RTL box's inline end is its left side (miaskiewicz/turbo-dom#190).
-                if !blocked_x && scroll_container {
-                    right =
-                        right.max(rect.x + rect.width + metrics.margin.right + used.padding.right);
-                    left = left.min(rect.x - metrics.margin.left - used.padding.left);
-                }
-                if !blocked_y && scroll_container {
-                    bottom = bottom
-                        .max(rect.y + rect.height + metrics.margin.bottom + used.padding.bottom);
-                }
-            }
-        }
+        let (blocked_x, blocked_y) = clip_blockers(fragment, styles, id);
+        extend_scroll_bounds(
+            snapshot,
+            fragment,
+            id,
+            used,
+            &projected,
+            scroll_container,
+            blocked_x,
+            blocked_y,
+            &mut right,
+            &mut left,
+            &mut bottom,
+        );
     }
-    // An RTL box scrolls from its right edge: its left overflow is reached through
-    // negative offsets and its right overflow is unreachable (Chrome 156).
+    build_scroll_metrics(rtl, left, right, bottom, padding, x, y)
+}
+
+fn build_scroll_metrics(
+    rtl: bool,
+    left: f32,
+    right: f32,
+    bottom: f32,
+    padding: crate::layout_snapshot::Rect,
+    x: &str,
+    y: &str,
+) -> Result<ScrollMetrics, String> {
     let (start, end) = if rtl {
         (left, padding.x + padding.width)
     } else {
@@ -640,6 +694,88 @@ fn viewport_rtl(styles: &SourceStyles, root: SourceId) -> bool {
 /// in-flow or absolute descendant edge not owned by a nested clipping box. An RTL
 /// viewport's overflow extends left instead (offsets `min_x..=0`), its content past
 /// the right edge unreachable, as an LTR one's past the left edge.
+fn extend_viewport_bounds(
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    styles: &SourceStyles,
+    root: SourceId,
+    rtl: bool,
+    right: &mut f32,
+    left: &mut f32,
+    bottom: &mut f32,
+) {
+    if !matches!(
+        fragment.kind,
+        GeometryKind::BorderBox | GeometryKind::TextLineContainer
+    ) {
+        return;
+    }
+    let own = fragment.source_id.unwrap_or(root);
+    let position = fragment.used_box.map(|used| used.position);
+    if position == Some(Position::Fixed) || fixed_ancestor(styles, &fragment.source_ancestors, own)
+    {
+        return;
+    }
+    let mut blocked = [false; 2];
+    for ancestor in &fragment.source_ancestors {
+        if *ancestor == own || is_root(styles, *ancestor) || propagated_body(styles, *ancestor) {
+            continue;
+        }
+        if let Some(entry) = styles.get(ancestor) {
+            if has_value(&entry.style, "display", "contents") {
+                continue;
+            }
+            blocked[0] |= clips(overflow(&entry.style, "overflow-x"));
+            blocked[1] |= clips(overflow(&entry.style, "overflow-y"));
+        }
+    }
+    let quad = |axis: usize| {
+        fragment
+            .quad
+            .iter()
+            .map(|point| if axis == 0 { point.x } else { point.y })
+            .fold(f32::NEG_INFINITY, f32::max)
+    };
+    let quad_left = || {
+        fragment
+            .quad
+            .iter()
+            .map(|point| point.x)
+            .fold(f32::INFINITY, f32::min)
+    };
+    let flow = fragment
+        .used_box
+        .filter(|_| position != Some(Position::Absolute))
+        .map_or([0.0; 2], |used| {
+            let inline_level = matches!(
+                used.display,
+                Display::Inline
+                    | Display::InlineBlock
+                    | Display::InlineTable
+                    | Display::InlineFlex
+                    | Display::InlineGrid
+            );
+            let inline_end = if rtl {
+                used.margin.left
+            } else {
+                used.margin.right
+            };
+            [
+                if inline_level { inline_end } else { 0.0 },
+                used.margin.bottom,
+            ]
+        });
+    if !blocked[0] {
+        if rtl {
+            *left = left.min(quad_left() - flow[0]);
+        } else {
+            *right = right.max(quad(0) + flow[0]);
+        }
+    }
+    if !blocked[1] {
+        *bottom = bottom.max(quad(1) + flow[1]);
+    }
+}
+
 pub fn viewport_metrics(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
@@ -659,82 +795,15 @@ pub fn viewport_metrics(
         .chain(&source.descendant_fragment_indices)
     {
         let fragment = &snapshot.fragments()[index];
-        if !matches!(
-            fragment.kind,
-            GeometryKind::BorderBox | GeometryKind::TextLineContainer
-        ) {
-            continue;
-        }
-        let own = fragment.source_id.unwrap_or(root);
-        let position = fragment.used_box.map(|used| used.position);
-        if position == Some(Position::Fixed)
-            || fixed_ancestor(styles, &fragment.source_ancestors, own)
-        {
-            continue;
-        }
-        let mut blocked = [false; 2];
-        for ancestor in &fragment.source_ancestors {
-            if *ancestor == own || is_root(styles, *ancestor) || propagated_body(styles, *ancestor)
-            {
-                continue;
-            }
-            if let Some(entry) = styles.get(ancestor) {
-                if has_value(&entry.style, "display", "contents") {
-                    continue;
-                }
-                blocked[0] |= clips(overflow(&entry.style, "overflow-x"));
-                blocked[1] |= clips(overflow(&entry.style, "overflow-y"));
-            }
-        }
-        // Chrome counts only the painted (transformed) box, plus a flow box's block-end
-        // margin and an inline-level box's inline-end margin; a block's (or float's)
-        // inline-end margin is not viewport overflow (miaskiewicz/turbo-dom#147).
-        let quad = |axis: usize| {
-            fragment
-                .quad
-                .iter()
-                .map(|point| if axis == 0 { point.x } else { point.y })
-                .fold(f32::NEG_INFINITY, f32::max)
-        };
-        let quad_left = || {
-            fragment
-                .quad
-                .iter()
-                .map(|point| point.x)
-                .fold(f32::INFINITY, f32::min)
-        };
-        let flow = fragment
-            .used_box
-            .filter(|_| position != Some(Position::Absolute))
-            .map_or([0.0; 2], |used| {
-                let inline_level = matches!(
-                    used.display,
-                    Display::Inline
-                        | Display::InlineBlock
-                        | Display::InlineTable
-                        | Display::InlineFlex
-                        | Display::InlineGrid
-                );
-                let inline_end = if rtl {
-                    used.margin.left
-                } else {
-                    used.margin.right
-                };
-                [
-                    if inline_level { inline_end } else { 0.0 },
-                    used.margin.bottom,
-                ]
-            });
-        if !blocked[0] {
-            if rtl {
-                left = left.min(quad_left() - flow[0]);
-            } else {
-                right = right.max(quad(0) + flow[0]);
-            }
-        }
-        if !blocked[1] {
-            bottom = bottom.max(quad(1) + flow[1]);
-        }
+        extend_viewport_bounds(
+            fragment,
+            styles,
+            root,
+            rtl,
+            &mut right,
+            &mut left,
+            &mut bottom,
+        );
     }
     Ok(ScrollMetrics {
         width: rounded(right - left)?,
