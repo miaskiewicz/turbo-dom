@@ -964,14 +964,18 @@ fn sextet(c: u8) -> Option<u32> {
 /// displayed size (EXIF orientation applied — Chrome reports it even under
 /// `image-orientation: none`) for every raster format [`probe`](super::probe) reads,
 /// and, under `svg-rasterize`, an SVG's [`crate::svg::natural_size`] rounded to whole
-/// pixels. `None` for bytes a browser would not decode. The probe a live `<img>` load
+/// pixels, with its [`Intrinsic::natural_ratio`] when the SVG has only a `viewBox`
+/// (miaskiewicz/turbo-dom#320). `None` for bytes a browser would not decode. The probe a live `<img>` load
 /// (turbo-surf) decides success and `natural*` with (miaskiewicz/turbo-surf#30).
 #[must_use]
 pub fn probe_natural(bytes: &[u8]) -> Option<Intrinsic> {
     #[cfg(feature = "svg-rasterize")]
     if crate::svg::is_svg(bytes) {
-        let (w, h) = crate::svg::natural_size(bytes)?;
-        return Some(Intrinsic::new(w.round() as u32, h.round() as u32, true));
+        let ((w, h), ratio) = crate::svg::natural_sizing(bytes)?;
+        let (w, h) = (w.round() as u32, h.round() as u32);
+        return Some(ratio.map_or(Intrinsic::new(w, h, true), |r| {
+            Intrinsic::ratio_only(w, h, r, true)
+        }));
     }
     // Raster formats only: SVG has no magic, so the sniff rejects it here (and `probe`'s
     // own SVG arm under `svg` would size it at the PDF's 2x).
