@@ -216,6 +216,9 @@ package or publish workflow.
   `<audio controls>` / `<object>` / `<embed src>` are inline replaced boxes on both paths and in
   every writing mode (`boxgen::media_source`: Chrome's default sizes, canvas `width`/`height`
   attributes as natural size, video poster; no fallback content; frame + background painted;
+  a canvas's embedder-supplied content — raster `ScreenshotOptions::canvases`, layout
+  `canvas_image_name` — fills its content box per `object-fit` / `object-position`, turbo-dom#291,
+  `canvas_content_chrome156.json`;
   `live_geometry_chrome156.json` `media-*`, raster `paint_chrome156.json` `media-*`). Since
   turbo-dom#239 form controls take Chrome 156's `html.css` UA (13.333px control font, inset /
   outset frames, flow-relative padding and range / colour sizes via the internal
