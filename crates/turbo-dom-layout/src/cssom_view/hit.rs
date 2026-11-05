@@ -124,10 +124,7 @@ pub fn elements_at_point(
         let Some(id) = fragment.source_id else {
             continue;
         };
-        if seen.contains(&id)
-            || property(styles, id, "pointer-events") == Some("none")
-            || property(styles, id, "visibility").is_some_and(|value| value != "visible")
-        {
+        if seen.contains(&id) || owns_no_hit_area(styles, id) || !hittable(styles, id) {
             continue;
         }
         let translation = scroll_translation(snapshot, styles, id, offsets)?;
@@ -163,6 +160,22 @@ pub fn elements_at_point(
     }
     Ok(result)
 }
+/// Whether `id` is a table row or row group, whose box is not a hit target: only its
+/// cells are, and a point between them (in the border-spacing, or a missing cell's slot)
+/// hits the table (Chrome 156; miaskiewicz/turbo-dom#321). A blockified (floated or out of
+/// flow) one is a block and hits.
+fn owns_no_hit_area(styles: &SourceStyles, id: SourceId) -> bool {
+    use crate::layout::value::{float_of, position_of, Float};
+    styles.get(&id).is_some_and(|source| {
+        let style = &source.style;
+        matches!(
+            style.get("display").map(str::trim),
+            Some("table-row" | "table-row-group" | "table-header-group" | "table-footer-group")
+        ) && !position_of(style).is_out_of_flow()
+            && float_of(style) == Float::None
+    })
+}
+
 /// Whether `id` takes hits (`pointer-events` not `none`, `visibility: visible`).
 fn hittable(styles: &SourceStyles, id: SourceId) -> bool {
     property(styles, id, "pointer-events") != Some("none")

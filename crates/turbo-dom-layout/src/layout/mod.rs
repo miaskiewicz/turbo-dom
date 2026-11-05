@@ -16,6 +16,7 @@ pub mod inline;
 pub(crate) mod inline_boxes;
 mod invisible;
 pub(crate) mod list_marker;
+mod media_paint;
 pub mod sticky;
 mod svg_numbers;
 pub(crate) mod svg_viewport;
@@ -29,6 +30,7 @@ use crate::image::{ImageResolver, NoImages};
 use crate::style::StyledNode;
 use crate::text::FontRegistry;
 
+pub use form_controls::INDETERMINATE_ATTR;
 pub use fragment::Fragment;
 
 use std::collections::{HashMap, HashSet};

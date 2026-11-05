@@ -1,14 +1,18 @@
-//! `hyphens: auto` dictionary hyphenation against Chrome 156 (miaskiewicz/turbo-dom#213):
-//! English (`lang=en`, `en-US`, other `en-*` regions) breaks at the en-US Knuth-Liang
-//! points under `hyphenate-limit-chars` (default 5 / 2 / 2), draws a hyphen when a break
-//! is taken, leaves capitalized words, words with a soft hyphen, `hyphens: manual | none`
-//! and unset or unsupported languages alone.
+//! `hyphens: auto` dictionary hyphenation against Chrome 156 (miaskiewicz/turbo-dom#213,
+//! #289): English (`lang=en`, `en-US`, other `en-*` regions) breaks at the en-US
+//! Knuth-Liang points under `hyphenate-limit-chars` (default 5 / 2 / 2), draws a hyphen
+//! when a break is taken, leaves capitalized words, words with a soft hyphen,
+//! `hyphens: manual | none` and unset or unsupported languages alone; the other languages
+//! Chrome on macOS hyphenates (de, fr, es, nl, pl, en-GB, it, ru, ...) break at their TeX
+//! patterns' points, capitalized words included outside English.
 //! Oracle: `tests/fixtures/hyphens/chrome156.json`, captured by
 //! `scripts/fixture-font-chrome-controls.mjs` (Chrome 156.0.8078.47 headless, the fixture
 //! fonts through `@font-face` from 127.0.0.1). Laid out with the same fixture fonts.
 //! Chrome on macOS hyphenates with the system's dictionary, whose points differ from the
-//! en-US TeX patterns for some words (`international`, `extraordinary`); the control's
-//! words are ones where both agree. Needs the default `hyphenation` feature.
+//! TeX patterns for some words (`international`, `extraordinary`; the word-level
+//! comparison and its list of differences are in `src/layout/hyphenate.rs`); the
+//! control's words are ones where both agree. Needs the default `hyphenation` feature
+//! (and `hyphenation-languages` for the other languages).
 #![cfg(feature = "hyphenation")]
 
 use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
@@ -166,9 +170,34 @@ fn hyphens_auto_needs_a_supported_language_and_hyphens_auto_like_chrome_156() {
     check(&[
         "no-lang",
         "unsupported-lang",
+        "unsupported-nn",
+        "unsupported-tr",
         "manual",
         "manual-default",
         "none",
+    ]);
+}
+
+/// The other languages Chrome 156 on macOS hyphenates (miaskiewicz/turbo-dom#289), at
+/// the TeX points of the default-on `hyphenation-languages` feature; outside English a
+/// capitalized word hyphenates too.
+#[cfg(feature = "hyphenation-languages")]
+#[test]
+fn hyphens_auto_breaks_other_languages_at_dictionary_points_like_chrome_156() {
+    check(&[
+        "de-words",
+        "de-region",
+        "de-caps",
+        "fr-words",
+        "fr-capitalized",
+        "es-words",
+        "nl-words",
+        "pl-words",
+        "en-gb",
+        "en-gb-capitalized",
+        "it-words",
+        "ru-words",
+        "lang-span-de",
     ]);
 }
 
