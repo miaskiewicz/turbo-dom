@@ -7,6 +7,7 @@
 //! ([`crate::paint_canvas_gpu`]) paints the same op stream on the real GPU.
 
 use tiny_skia::{BlendMode, FillRule, Paint, PathBuilder, Pixmap, Stroke, Transform};
+use turbo_dom_layout::text::FontRegistry;
 use turbo_dom_layout::Rgba;
 
 #[cfg(all(target_os = "macos", feature = "coretext"))]
@@ -14,11 +15,17 @@ use crate::canvas_ops::State;
 use crate::canvas_ops::{self, CanvasBackend, Op, SubPath};
 
 /// Rasterize the parsed op stream at `width × height` (both already clamped ≥ 1 by
-/// the caller) into a PNG. `Err` only on pixmap allocation or PNG encoding.
-pub(crate) fn replay(width: u32, height: u32, ops: &[Op]) -> Result<Vec<u8>, String> {
+/// the caller) into a PNG, drawing text with `fonts`. `Err` only on pixmap allocation or PNG
+/// encoding.
+pub(crate) fn replay(
+    width: u32,
+    height: u32,
+    ops: &[Op],
+    fonts: &FontRegistry,
+) -> Result<Vec<u8>, String> {
     // The PNG carries the straight-alpha pixels `getImageData` reads (Chrome's `toDataURL`
     // encodes the same unpremultiplied values).
-    let rgba = replay_rgba(width, height, ops)?;
+    let rgba = replay_rgba(width, height, ops, fonts)?;
     let img = image::RgbaImage::from_raw(width, height, rgba).expect("width * height * 4 bytes");
     let mut png = std::io::Cursor::new(Vec::new());
     img.write_to(&mut png, image::ImageFormat::Png)
@@ -30,10 +37,15 @@ pub(crate) fn replay(width: u32, height: u32, ops: &[Op]) -> Result<Vec<u8>, Str
 /// the byte layout `getImageData` returns. tiny-skia stores premultiplied alpha, so unpremultiply
 /// back to straight alpha (else a browser reading `getImageData` after a translucent draw would
 /// see premultiplied values a real canvas never returns), rounding as Chrome does.
-pub(crate) fn replay_rgba(width: u32, height: u32, ops: &[Op]) -> Result<Vec<u8>, String> {
+pub(crate) fn replay_rgba(
+    width: u32,
+    height: u32,
+    ops: &[Op],
+    fonts: &FontRegistry,
+) -> Result<Vec<u8>, String> {
     let pm = Pixmap::new(width, height).ok_or_else(|| format!("bad canvas {width}x{height}"))?;
     let mut backend = SkiaCanvas { pm };
-    canvas_ops::run(ops, &mut backend);
+    canvas_ops::run(ops, &mut backend, fonts);
     let (pixels, _rem) = backend.pm.data().as_chunks::<4>(); // premultiplied RGBA8
     Ok(pixels.iter().flat_map(|&px| unpremultiply(px)).collect())
 }
@@ -95,11 +107,15 @@ impl CanvasBackend for SkiaCanvas {
     // Text: on macOS with `coretext`, rasterize glyphs through CoreText/CoreGraphics (Chrome's
     // glyph stack) and composite onto the pixmap — so getImageData over text matches a real Mac
     // Chrome. Falls back to the vector glyph trace for a scaled/rotated CTM the CoreText path
-    // doesn't handle; off-macOS or without the feature the trait default (that same trace)
-    // fills text.
+    // doesn't handle, and for an `@font-face` face of the caller's registry (CoreText knows
+    // installed families only); off-macOS or without the feature the trait default (that same
+    // trace) fills text.
     #[cfg(all(target_os = "macos", feature = "coretext"))]
     fn fill_text(&mut self, st: &State, text: &str, x: f32, y: f32, color: Rgba) {
-        if crate::paint_canvas_coretext::render_text(&mut self.pm, st, text, x, y, color) {
+        let web =
+            canvas_ops::resolve_face(st.fonts, &st.font_families, st.font_weight, st.font_italic)
+                .is_web_font();
+        if !web && crate::paint_canvas_coretext::render_text(&mut self.pm, st, text, x, y, color) {
             return;
         }
         self.fill(&canvas_ops::glyph_subpaths(st, text, x, y), color);
@@ -161,6 +177,16 @@ impl CanvasBackend for SkiaCanvas {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// [`super::replay`] with the bundled faces.
+    fn replay(width: u32, height: u32, ops: &[Op]) -> Result<Vec<u8>, String> {
+        super::replay(width, height, ops, canvas_ops::bundled_fonts())
+    }
+
+    /// [`super::replay_rgba`] with the bundled faces.
+    fn replay_rgba(width: u32, height: u32, ops: &[Op]) -> Result<Vec<u8>, String> {
+        super::replay_rgba(width, height, ops, canvas_ops::bundled_fonts())
+    }
 
     fn png_dims(bytes: &[u8]) -> (u32, u32) {
         let img = image::load_from_memory(bytes).expect("decode png");

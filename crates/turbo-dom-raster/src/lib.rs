@@ -51,9 +51,23 @@ pub use webgl::{webgl_metadata, webgl_readback};
 /// [`canvas_ops`] for the format) into a `width × height` PNG. Default build rasterizes with
 /// tiny-skia (software); under the `gpu-metal` feature it rasterizes on the real GPU (wgpu →
 /// Metal) and, on any GPU failure, transparently falls back to tiny-skia — so enabling the
-/// feature never regresses, it only swaps the pixel backend.
+/// feature never regresses, it only swaps the pixel backend. Text draws with the bundled
+/// faces ([`canvas_ops_png_with_fonts`] takes the caller's).
 /// A canvas over Chrome's maximum area (268,435,456 pixels) is an `Err` (blank in Chrome).
 pub fn canvas_ops_png(width: u32, height: u32, ops_json: &str) -> Result<Vec<u8>, String> {
+    canvas_ops_png_with_fonts(width, height, ops_json, canvas_ops::bundled_fonts())
+}
+
+/// [`canvas_ops_png`] drawing text with `fonts`: the canvas `font` family list resolves
+/// against the caller's registry (for example the page's `@font-face` faces from
+/// [`FontFace::from_web_font_bytes`](turbo_dom_layout::FontFace::from_web_font_bytes) on top
+/// of [`FontRegistry::new`]'s bundled set), so web fonts paint (miaskiewicz/turbo-dom#304).
+pub fn canvas_ops_png_with_fonts(
+    width: u32,
+    height: u32,
+    ops_json: &str,
+    fonts: &FontRegistry,
+) -> Result<Vec<u8>, String> {
     let (w, h) = (width.max(1), height.max(1));
     if canvas_too_large(w, h) {
         return Err(format!(
@@ -63,21 +77,32 @@ pub fn canvas_ops_png(width: u32, height: u32, ops_json: &str) -> Result<Vec<u8>
     let ops = canvas_ops::parse_ops(ops_json)?;
     #[cfg(feature = "gpu-metal")]
     {
-        match paint_canvas_gpu::replay(w, h, &ops) {
+        match paint_canvas_gpu::replay(w, h, &ops, fonts) {
             Ok(png) => Ok(png),
-            Err(_) => paint_canvas::replay(w, h, &ops),
+            Err(_) => paint_canvas::replay(w, h, &ops, fonts),
         }
     }
     #[cfg(not(feature = "gpu-metal"))]
     {
-        paint_canvas::replay(w, h, &ops)
+        paint_canvas::replay(w, h, &ops, fonts)
     }
 }
 /// Replay a 2D-canvas draw list into RAW straight-alpha RGBA8 (top-left origin, tightly packed) —
 /// the byte layout `getImageData` returns. Software (tiny-skia): getImageData reads back exact
 /// pixels with no PNG-encoder in the loop, so shapes/solids match a real browser byte-for-byte.
-/// A canvas over Chrome's maximum area is an `Err`, as for [`canvas_ops_png`].
+/// A canvas over Chrome's maximum area is an `Err`, as for [`canvas_ops_png`]. Text draws with
+/// the bundled faces ([`canvas_ops_rgba_with_fonts`] takes the caller's).
 pub fn canvas_ops_rgba(width: u32, height: u32, ops_json: &str) -> Result<Vec<u8>, String> {
+    canvas_ops_rgba_with_fonts(width, height, ops_json, canvas_ops::bundled_fonts())
+}
+
+/// [`canvas_ops_rgba`] drawing text with `fonts` (see [`canvas_ops_png_with_fonts`]).
+pub fn canvas_ops_rgba_with_fonts(
+    width: u32,
+    height: u32,
+    ops_json: &str,
+    fonts: &FontRegistry,
+) -> Result<Vec<u8>, String> {
     let (w, h) = (width.max(1), height.max(1));
     if canvas_too_large(w, h) {
         return Err(format!(
@@ -85,7 +110,7 @@ pub fn canvas_ops_rgba(width: u32, height: u32, ops_json: &str) -> Result<Vec<u8
         ));
     }
     let ops = canvas_ops::parse_ops(ops_json)?;
-    paint_canvas::replay_rgba(w, h, &ops)
+    paint_canvas::replay_rgba(w, h, &ops, fonts)
 }
 /// Chrome's maximum canvas area (268,435,456 pixels: 16384 x 16384, 32768 x 8192). A larger
 /// canvas is blank in Chrome (`toDataURL()` is `data:,`); replaying it would allocate
@@ -235,22 +260,8 @@ pub fn screenshot_png_with_opts(
     full_page: bool,
     system_fonts: bool,
 ) -> Result<Vec<u8>, String> {
-    let mut decoded = image_paint::decode_all(images);
-    // Recover inline `data:` image masks/backgrounds the fetch step skips (nothing
-    // to fetch) — e.g. Wikipedia's TOC-toggle chevron mask-image.
-    image_paint::add_data_uri_images(&mut decoded, external_css, html);
-    let tree = parse_document(html, &mut decoded);
-    let galley = lay_out(
-        &tree,
-        external_css,
-        viewport.width,
-        viewport.height,
-        &decoded,
-        system_fonts,
-    );
-    let bg = canvas_background(&galley);
-    let height = paint_height(&galley, viewport, full_page);
-    paint_png::paint(&galley, viewport.width, height, bg, &decoded)
+    let fonts = font_registry(system_fonts);
+    screenshot_png_with_fonts(html, external_css, viewport, images, full_page, &fonts)
 }
 
 /// [`screenshot_svg_with_assets`] plus `system_fonts` (see
@@ -263,17 +274,50 @@ pub fn screenshot_svg_with_opts(
     full_page: bool,
     system_fonts: bool,
 ) -> Result<String, String> {
+    let fonts = font_registry(system_fonts);
+    screenshot_svg_with_fonts(html, external_css, viewport, images, full_page, &fonts)
+}
+
+/// [`screenshot_png_with_assets`] laid out and painted with the caller's `fonts` in place of
+/// the bundled (or system) set: the page's text resolves against that registry, so a caller
+/// that loads the page's `@font-face` sources (with
+/// [`FontFace::from_web_font_bytes`](turbo_dom_layout::FontFace::from_web_font_bytes), on top
+/// of [`FontRegistry::new`] or a clone of [`FontRegistry::system`]) gets them laid out with
+/// Chrome's web-font metrics and painted (miaskiewicz/turbo-dom#304). The raster does no
+/// I/O and does not read `@font-face` rules itself.
+pub fn screenshot_png_with_fonts(
+    html: &str,
+    external_css: &str,
+    viewport: Viewport,
+    images: &ImageAssets,
+    full_page: bool,
+    fonts: &FontRegistry,
+) -> Result<Vec<u8>, String> {
+    let mut decoded = image_paint::decode_all(images);
+    // Recover inline `data:` image masks/backgrounds the fetch step skips (nothing
+    // to fetch) — e.g. Wikipedia's TOC-toggle chevron mask-image.
+    image_paint::add_data_uri_images(&mut decoded, external_css, html);
+    let tree = parse_document(html, &mut decoded);
+    let galley = lay_out(&tree, external_css, viewport, &decoded, fonts);
+    let bg = canvas_background(&galley);
+    let height = paint_height(&galley, viewport, full_page);
+    paint_png::paint(&galley, viewport.width, height, bg, &decoded)
+}
+
+/// [`screenshot_svg_with_assets`] with the caller's `fonts` (see
+/// [`screenshot_png_with_fonts`]).
+pub fn screenshot_svg_with_fonts(
+    html: &str,
+    external_css: &str,
+    viewport: Viewport,
+    images: &ImageAssets,
+    full_page: bool,
+    fonts: &FontRegistry,
+) -> Result<String, String> {
     let mut decoded = image_paint::decode_all(images);
     image_paint::add_data_uri_images(&mut decoded, external_css, html);
     let tree = parse_document(html, &mut decoded);
-    let galley = lay_out(
-        &tree,
-        external_css,
-        viewport.width,
-        viewport.height,
-        &decoded,
-        system_fonts,
-    );
+    let galley = lay_out(&tree, external_css, viewport, &decoded, fonts);
     let bg = canvas_background(&galley);
     let height = paint_height(&galley, viewport, full_page);
     Ok(paint_svg::paint(
@@ -331,9 +375,16 @@ pub fn measure_text(text: &str, family_css: &str, size_px: f32, system_fonts: bo
 /// advances ([`FontFace::measure_canvas`](turbo_dom_layout::FontFace::measure_canvas)).
 #[must_use]
 pub fn measure_canvas_text(text: &str, font: &str) -> f64 {
+    measure_canvas_text_with_fonts(text, font, canvas_ops::bundled_fonts())
+}
+
+/// [`measure_canvas_text`] against the caller's `fonts`, the registry
+/// [`canvas_ops_png_with_fonts`] draws with.
+#[must_use]
+pub fn measure_canvas_text_with_fonts(text: &str, font: &str, fonts: &FontRegistry) -> f64 {
     let (size_px, families) = canvas_ops::parse_font(font);
     let (weight, italic) = canvas_ops::parse_font_style(font);
-    canvas_ops::resolve_face(&families, weight, italic).measure_canvas(text, size_px)
+    canvas_ops::resolve_face(fonts, &families, weight, italic).measure_canvas(text, size_px)
 }
 
 /// The colour to fill the whole image with before painting: the canvas background
@@ -395,18 +446,18 @@ fn parse_document(html: &str, decoded: &mut image_paint::DecodedAssets) -> Tree 
 }
 
 /// Drive the borrowed layout engine: lay the parsed document out at viewport width
-/// `width` over the bundled font set. The page's own `<style>` sheets (head and body) are
+/// `viewport` width over `fonts`. The page's own `<style>` sheets (head and body) are
 /// collected by the layout's HTML drive (which never lays out
 /// `<style>`/`<script>`/`<noscript>`/`<template>`); the caller's fetched `<link>` sheets
 /// precede them.
 fn lay_out(
     tree: &Tree,
     external_css: &str,
-    width: u32,
-    height: u32,
+    viewport: Viewport,
     images: &image_paint::DecodedAssets,
-    system_fonts: bool,
+    fonts: &FontRegistry,
 ) -> Fragment {
+    let Viewport { width, height } = viewport;
     // Tell the cascade the viewport HEIGHT so `@media (min-height/max-height:…)`
     // conditions evaluate correctly (else every height feature is ignored and its
     // rules always apply — Google's tall search box is `display:none` below
@@ -432,7 +483,7 @@ fn lay_out(
         tree,
         "",
         (width as f32, height as f32),
-        &font_registry(system_fonts),
+        fonts,
         &image_ctx,
         &options,
         &mut diags,

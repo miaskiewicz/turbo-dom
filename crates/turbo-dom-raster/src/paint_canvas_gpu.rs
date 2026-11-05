@@ -190,11 +190,16 @@ fn make_pipeline(
 const VERTEX_BYTES: usize = 6 * 4;
 
 /// Rasterize the parsed op stream at `width × height` on the GPU into a PNG.
-pub(crate) fn replay(width: u32, height: u32, ops: &[Op]) -> Result<Vec<u8>, String> {
+pub(crate) fn replay(
+    width: u32,
+    height: u32,
+    ops: &[Op],
+    fonts: &turbo_dom_layout::text::FontRegistry,
+) -> Result<Vec<u8>, String> {
     let gpu = gpu()?;
     // Tessellate every op into device-space triangles + ordered draw ranges.
     let mut canvas = GpuCanvas::new(width as f32, height as f32);
-    canvas_ops::run(ops, &mut canvas);
+    canvas_ops::run(ops, &mut canvas, fonts);
     render(gpu, width, height, &canvas)
 }
 
@@ -497,6 +502,11 @@ fn encode_png(width: u32, height: u32, rgba: &[u8]) -> Result<Vec<u8>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// [`super::replay`] with the bundled faces.
+    fn replay(width: u32, height: u32, ops: &[Op]) -> Result<Vec<u8>, String> {
+        super::replay(width, height, ops, canvas_ops::bundled_fonts())
+    }
 
     fn ops(json: &str) -> Vec<Op> {
         canvas_ops::parse_ops(json).unwrap()

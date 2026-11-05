@@ -333,19 +333,30 @@ impl Matrix {
     }
 }
 
-/// Resolve the bundled font face for a canvas `font` family list, weight and style
-/// (CSS font matching within the family, so 700 and 400 pick distinct faces). Cached: the
-/// bundled registry is parsed once and cloned (faces are `Arc`-shared, so the
-/// clone is cheap) — canvas text never uses system fonts (deterministic/offline).
-/// Always a face: this crate enables turbo-dom-layout's `bundled-fonts`, and
-/// `FontRegistry::select` falls back to the first bundled face when no family matches.
-pub(crate) fn resolve_face(families: &[String], weight: u16, italic: bool) -> FontFace {
+/// The bundled font registry, parsed once per process: what canvas text draws with unless
+/// the caller passes its own registry (the `*_with_fonts` entry points) — the default canvas
+/// path never uses system fonts (deterministic/offline).
+pub(crate) fn bundled_fonts() -> &'static FontRegistry {
     static BUNDLED: std::sync::LazyLock<FontRegistry> = std::sync::LazyLock::new(FontRegistry::new);
+    &BUNDLED
+}
+
+/// Resolve the face in `fonts` for a canvas `font` family list, weight and style (CSS font
+/// matching within the family, so 700 and 400 pick distinct faces; an `@font-face` face
+/// shadows an installed one of its family). Always a face when `fonts` carries the bundled
+/// set (this crate enables turbo-dom-layout's `bundled-fonts`, and `FontRegistry::select`
+/// falls back to the first face when no family matches).
+pub(crate) fn resolve_face(
+    fonts: &FontRegistry,
+    families: &[String],
+    weight: u16,
+    italic: bool,
+) -> FontFace {
     let refs: Vec<&str> = families.iter().map(String::as_str).collect();
-    BUNDLED
+    fonts
         .select(&refs, weight, italic)
         .cloned()
-        .expect("the bundled faces are registered")
+        .expect("the registry carries the bundled faces")
 }
 
 // ---------------------------------------------------------------------------
@@ -386,7 +397,10 @@ pub(crate) trait CanvasBackend {
 
 /// Mutable drawing state, snapshotted by `save`/restored by `restore`.
 #[derive(Clone)]
-pub(crate) struct State {
+pub(crate) struct State<'a> {
+    /// The faces canvas text resolves its `font` against (not canvas state proper: fixed for
+    /// a replay).
+    pub(crate) fonts: &'a FontRegistry,
     pub(crate) ctm: Matrix,
     fill: Rgba,
     stroke: Rgba,
@@ -401,10 +415,18 @@ pub(crate) struct State {
     pub(crate) font_italic: bool,
 }
 
-impl Default for State {
+impl Default for State<'static> {
     fn default() -> Self {
+        State::new(bundled_fonts())
+    }
+}
+
+impl<'a> State<'a> {
+    /// The canvas 2D initial state, drawing text with `fonts`.
+    pub(crate) fn new(fonts: &'a FontRegistry) -> Self {
         // Canvas 2D initial state: black fill/stroke, 1px lines, `10px sans-serif`.
         State {
+            fonts,
             ctm: Matrix::identity(),
             fill: Rgba::BLACK,
             stroke: Rgba::BLACK,
@@ -420,9 +442,10 @@ impl Default for State {
 
 /// Replay a normalized [`Op`] stream against `backend`, tracking the full canvas
 /// 2D state (transform stack, styles, current path) and emitting device-space
-/// geometry. Never panics: unpaintable ops are simply no-ops.
-pub(crate) fn run(ops: &[Op], backend: &mut dyn CanvasBackend) {
-    let mut st = State::default();
+/// geometry, with canvas text resolved against `fonts`. Never panics: unpaintable ops are
+/// simply no-ops.
+pub(crate) fn run(ops: &[Op], backend: &mut dyn CanvasBackend, fonts: &FontRegistry) {
+    let mut st = State::new(fonts);
     let mut stack: Vec<State> = Vec::new();
     let mut path: Vec<SubPath> = Vec::new();
 
@@ -610,11 +633,11 @@ fn arc_into(
     }
 }
 
-/// Shape `text` with the state's font (a bundled face; see [`resolve_face`]) and trace
+/// Shape `text` with the state's font (a face of `st.fonts`; see [`resolve_face`]) and trace
 /// each glyph's outline into device-space subpaths (flattened) at baseline `(x, y)`.
 /// Empty when no glyph has an outline (spaces, an empty string).
 pub(crate) fn glyph_subpaths(st: &State, text: &str, x: f32, y: f32) -> Vec<SubPath> {
-    let face = resolve_face(&st.font_families, st.font_weight, st.font_italic);
+    let face = resolve_face(st.fonts, &st.font_families, st.font_weight, st.font_italic);
     // Non-zero: `ttf-parser` rejects a `head` whose units-per-em is outside 16..=16384.
     let scale = st.font_px / f32::from(face.units_per_em());
     let ttf = crate::glyph::outline_face(&face);
@@ -833,10 +856,10 @@ mod tests {
         assert_eq!(parse_font_style("0 1001 16px bold"), (400, false));
         assert_eq!(parse_font_style("bold"), (700, false));
         // The weight picks the face: Inter Bold is wider than Inter Regular.
-        let regular = resolve_face(&["Inter".to_string()], 400, false);
-        let bold = resolve_face(&["Inter".to_string()], 700, false);
+        let regular = resolve_face(bundled_fonts(), &["Inter".to_string()], 400, false);
+        let bold = resolve_face(bundled_fonts(), &["Inter".to_string()], 700, false);
         assert_eq!((regular.weight(), bold.weight()), (400, 700));
-        assert!(resolve_face(&["Inter".to_string()], 400, true).is_italic());
+        assert!(resolve_face(bundled_fonts(), &["Inter".to_string()], 400, true).is_italic());
     }
 
     #[test]
@@ -1199,7 +1222,7 @@ mod tests {
             font_families: vec!["serif".to_string()],
             ..State::default()
         };
-        let face = resolve_face(&st.font_families, 400, false);
+        let face = resolve_face(st.fonts, &st.font_families, 400, false);
         let shaped = face.shape("q\u{301}x");
         assert!(
             shaped.iter().any(|g| g.x_offset != 0 || g.y_offset != 0),
