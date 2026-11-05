@@ -326,6 +326,15 @@ fn auto_width_tables_shrink_to_fit_like_chrome_156() {
     assert_matches_chrome(compare_cases(|id| AUTO_TABLE_CASES.contains(&id)));
 }
 
+/// miaskiewicz/turbo-dom#321: a point in a table's border-spacing hits the table (rows
+/// and row groups do not own the spacing), and a row-spanning cell spans it.
+#[test]
+fn table_spacing_gaps_hit_the_table_like_chrome_156() {
+    assert_matches_chrome(compare_cases(|id| {
+        id.starts_with("table-spacing-") || id == "table-rowspan-spacing"
+    }));
+}
+
 #[test]
 fn css_of_reads_the_first_style_element() {
     assert_eq!(css_of("<style>a{}</style><style>b{}</style>"), "a{}");

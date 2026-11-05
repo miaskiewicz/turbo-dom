@@ -30,6 +30,7 @@ at the time); this file reconstructs them from history.
   Control: the `table-rowspan-*` cases of `scripts/html-document-chrome-control.mjs`
   (turbo-dom#327). A definite-height table's extra height still treats percent-height rows
   as auto rows (`table-extra-percent-*`, held out).
+- **turbo-dom-layout: a point in a table's border-spacing hits the table.** `cssom_view::hit::elements_at_point` no longer returns a row or row group for a point between cells, between rows or row groups, or in a row's missing cell slot: rows and row groups are not hit targets (a floated or absolutely positioned one is blockified and still hits), as in Chrome 156. The UA sheet gives `<tbody>` `display: table-row-group` (layout unchanged), and a row-spanning cell spans the vertical border-spacing between its rows (its height and the rows it grows). Chrome 156 control: `table-spacing-*` / `table-rowspan-spacing` in `scripts/live-geometry-chrome-control.mjs` (turbo-dom#321, turbo-surf#162; the spread of a spanning cell's excess height over its rows is turbo-dom#327).
 
 ## [0.7.1] — 2026-11-05
 

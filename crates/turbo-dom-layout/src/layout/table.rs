@@ -1246,7 +1246,10 @@ fn spanned(row_h: &[f32], start: usize, span: usize) -> f32 {
 }
 
 fn position_cell(c: LaidCell, geom: &Geom, cx: f32, cy: f32) -> Fragment {
-    let cell_h = spanned(&geom.row_h, c.p.row, c.p.rowspan);
+    // From its first row's top to its last row's bottom: a spanning cell also spans the
+    // border-spacing between its rows (miaskiewicz/turbo-dom#321).
+    let last = c.p.row + c.p.rowspan - 1;
+    let cell_h = geom.row_y[last] + geom.row_h[last] - geom.row_y[c.p.row];
     let dy = valign_offset(c.valign, cell_h, c.content_h);
     let mut frag = c.frag;
     frag.translate(cx + geom.col_x[c.p.col], cy + geom.row_y[c.p.row]);
