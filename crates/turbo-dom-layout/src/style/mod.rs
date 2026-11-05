@@ -187,6 +187,51 @@ pub(crate) fn quirks_form_declarations() -> impl Iterator<Item = MatchedDeclarat
         })
 }
 
+/// Placeholder `MathML` user-agent rules ([miaskiewicz/turbo-dom#376](https://github.com/miaskiewicz/turbo-dom/issues/376)):
+/// a `MathML` root is an inline-block with 0×0 placeholder metrics (Chrome 156's
+/// own empty `<math>`: 0×0 on the current line box baseline), and every `MathML`
+/// descendant takes `display: none` so no `MathML` content enters the box. The real
+/// `MathML` layout — glyph-driven widths and heights per element — is future work.
+const MATHML_ROOT_CSS: &str = "math { display: inline-block; width: 0; height: 0 }";
+const MATHML_DESCENDANT_CSS: &str = "math * { display: none }";
+
+static MATHML_ROOT_SHEET: std::sync::LazyLock<Stylesheet> =
+    std::sync::LazyLock::new(|| parse_stylesheet(MATHML_ROOT_CSS));
+static MATHML_DESCENDANT_SHEET: std::sync::LazyLock<Stylesheet> =
+    std::sync::LazyLock::new(|| parse_stylesheet(MATHML_DESCENDANT_CSS));
+
+/// The placeholder `MathML`-root declarations as UA-origin matched declarations (before
+/// every embedder UA rule); see [`MATHML_ROOT_CSS`].
+pub(crate) fn mathml_root_declarations() -> impl Iterator<Item = MatchedDeclaration> {
+    MATHML_ROOT_SHEET.rules[0]
+        .declarations
+        .iter()
+        .map(|declaration| MatchedDeclaration {
+            declaration: declaration.clone(),
+            origin: CascadeOrigin::UserAgent,
+            scope_depth: 0,
+            inline: false,
+            specificity: (0, 0, 1),
+            order: 0,
+        })
+}
+
+/// The placeholder `MathML`-descendant declarations as UA-origin matched declarations
+/// (see [`MATHML_DESCENDANT_CSS`]).
+pub(crate) fn mathml_descendant_declarations() -> impl Iterator<Item = MatchedDeclaration> {
+    MATHML_DESCENDANT_SHEET.rules[0]
+        .declarations
+        .iter()
+        .map(|declaration| MatchedDeclaration {
+            declaration: declaration.clone(),
+            origin: CascadeOrigin::UserAgent,
+            scope_depth: 0,
+            inline: false,
+            specificity: (0, 0, 1),
+            order: 0,
+        })
+}
+
 static FULLSCREEN_UA_SHEET: std::sync::LazyLock<Stylesheet> =
     std::sync::LazyLock::new(|| parse_stylesheet(FULLSCREEN_UA_CSS));
 

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use turbo_dom::rtdom::tree::Namespace;
 use turbo_dom::{Handle, Tree};
 
 use super::testing::{capture_light, light_children, DOCUMENT};
@@ -115,15 +114,24 @@ fn only_the_outermost_svg_is_a_viewport_and_other_namespaces_are_rejected() {
     let capture = captured(&tree).unwrap();
     let ids = ["o", "s"].map(|id| source_id(DOCUMENT, tree.get_element_by_id(id).unwrap()));
     assert_eq!(capture.svg_viewports, ids);
-    assert_eq!(
-        captured(&Tree::parse("<math></math>")).unwrap_err(),
-        LiveError::Namespace
-    );
     let mut tree = Tree::parse("");
     let body = body(&tree);
     let other = tree.create_element_namespace(None, "x");
     tree.append_child(body, other);
     assert_eq!(captured(&tree).unwrap_err(), LiveError::Namespace);
+}
+
+// miaskiewicz/turbo-dom#376: a composed MathML subtree no longer fails the capture; its
+// outermost element is tracked as a MathML root so the style pass can give it placeholder
+// box metrics (inline-block, 0×0), and nested `<math>` subtrees never nest their roots.
+#[test]
+fn only_the_outermost_math_is_a_mathml_root() {
+    let tree = Tree::parse(
+        "<math id=o><mrow><mi>x</mi><math id=i></math></mrow></math><p><math id=s></math></p>",
+    );
+    let capture = captured(&tree).unwrap();
+    let ids = ["o", "s"].map(|id| source_id(DOCUMENT, tree.get_element_by_id(id).unwrap()));
+    assert_eq!(capture.math_roots, ids);
 }
 
 #[test]
@@ -187,14 +195,14 @@ fn budgets_follow_the_counting_rules() {
 fn the_first_violation_in_composed_order_wins() {
     let mut tree = Tree::parse("");
     let body = body(&tree);
-    let math = tree.create_element_ns("math", Namespace::MathMl);
-    tree.set_attribute(math, "title", &"a".repeat(MAX_ATTRIBUTE_BYTES));
-    tree.append_child(body, math);
+    let foreign = tree.create_element_namespace(None, "x");
+    tree.set_attribute(foreign, "title", &"a".repeat(MAX_ATTRIBUTE_BYTES));
+    tree.append_child(body, foreign);
     let text = tree.create_text_node(&"x".repeat(MAX_TEXT_BYTES + 1));
     tree.append_child(body, text);
     assert_eq!(captured(&tree).unwrap_err(), LiveError::Namespace);
-    tree.remove_child(body, math);
-    tree.append_child(body, math);
+    tree.remove_child(body, foreign);
+    tree.append_child(body, foreign);
     assert_eq!(captured(&tree).unwrap_err(), LiveError::TextBudget);
 }
 
