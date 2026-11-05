@@ -240,6 +240,18 @@ fn audio_controls_paint_chromes_panel() {
 }
 
 #[test]
+fn progress_meter_fall_back_to_shadow_bars_under_appearance_none_or_author_background() {
+    for prefix in ["progress-appearance-", "progress-author-", "meter-appearance-", "meter-author-"] {
+        assert_like_chrome(prefix);
+    }
+}
+
+#[test]
+fn indeterminate_progress_paints_the_first_frames_blue_bar() {
+    assert_like_chrome("progress-indeterminate-first-frame");
+}
+
+#[test]
 fn probes_compare_classes_then_chromes_rgb() {
     let probe = serde_json::json!({"x": 1, "y": 2, "class": "?", "rgb": [100, 100, 100]});
     assert_eq!(probe_difference(&probe, [108, 92, 100]), None);
