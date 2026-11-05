@@ -33,6 +33,21 @@ at the time); this file reconstructs them from history.
   `@keyframes` animations follow the new `set_css_animations`. The Web Animations surface
   jsdom lacks is hidden only with both switches off. jsdom 27 parity (turbo-test) is
   `set_css_transitions(scope, false)` plus `set_css_animations(scope, false)`.
+- **turbo-dom-raster: `<canvas>` content in screenshots.** Since #252 a canvas laid out as a
+  replaced box but painted only its frame and background: the snapshot HTML carries no canvas
+  pixels. `screenshot_png_with_options` / `screenshot_svg_with_options` take a
+  `ScreenshotOptions` (`full_page`, `system_fonts`, `canvases`; `#[non_exhaustive]`, start
+  from `default()`), whose `canvases: Option<&CanvasContents>` maps each canvas's index among
+  the document's `<canvas>` elements in tree order (`querySelectorAll('canvas')` order) to a
+  `CanvasContent`: `Ops(json)` (the `ctx._ops` op log `canvas_ops_png` replays, run at the
+  canvas's `width` x `height`) or `Rgba { width, height, pixels }` (straight-alpha RGBA8). The
+  bitmap paints in the canvas's content box like Chrome 156: scaled by `object-fit`, placed by
+  `object-position`, inside border and padding, clipped to the content box and its rounded
+  corners, under the box's transform, upright in vertical writing modes; PNG and SVG. The
+  `*_with_opts` entries are unchanged (they delegate). turbo-dom-layout: `canvas_image_name`
+  (the `ImageResolver` name a canvas box loads its content by) and `canvas_bitmap_size`.
+  Control: `canvas_content_chrome156.json` (`scripts/canvas-content-chrome-control.mjs`)
+  (turbo-dom#291).
 - turbo-dom-layout: `INDETERMINATE_ATTR`, the attribute a live embedder adds to a checkbox's
   `StyledElement` (from `live::snapshot`'s `post_cascade` hook) when a script set its
   `indeterminate` IDL flag; the checkbox then paints Chrome's indeterminate dash
@@ -66,6 +81,13 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-raster: SVG screenshot glyph edges take the colour-dependent pre-blend.** Each
+  glyph run path now carries a `glyph-lum<class>` filter: an `feComponentTransfer` alpha table
+  with the raster painter's Skia pre-blend for the text's 3-bit luminance, one per class the
+  document uses. The colour's alpha is the path's `opacity`, applied after the table, as in
+  the PNG painter. Against Chrome 156, white text's SVG residual drops from a mean of
+  14.6–38.6 to 6.2–21.4 per pixel (`tests/glyph_coverage_chrome.rs`), and the
+  overflow-glyph-ink edge tolerances drop from 17 / 41 to 11 / 32 (turbo-dom#294).
 - **turbo-dom-layout: `hyphens: auto` hyphenates the languages Chrome 156 on macOS does,
   not just English.** en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb / no, nl, pl, pt, ro, ru, sk, sv, uk break at the TeX `hyph-*` patterns' points (the `hyphenation`
   crate's, the patterns Chrome's Minikin dictionaries on Linux, Windows and Android are built

@@ -470,10 +470,20 @@ fn from_linear(v: f32) -> f32 {
 /// boosted by the contrast where the assumed backdrop (the opposite luminance) is light,
 /// and the table undoes the sRGB blend so the result is a blend at [`GAMMA`].
 pub(crate) fn preblend(r: u8, g: u8, b: u8) -> [f32; 256] {
+    preblend_class(luminance_class(r, g, b))
+}
+
+/// The 3-bit luminance (0..=7) [`preblend`] keeps of text colour `(r, g, b)`: two text
+/// colours of one class share a pre-blend table.
+pub(crate) fn luminance_class(r: u8, g: u8, b: u8) -> u32 {
     let lum = 0.2126 * to_linear(f32::from(r) / 255.0)
         + 0.7152 * to_linear(f32::from(g) / 255.0)
         + 0.0722 * to_linear(f32::from(b) / 255.0);
-    let top = ((from_linear(lum) * 255.0).round() as u32) >> 5;
+    ((from_linear(lum) * 255.0).round() as u32) >> 5
+}
+
+/// The pre-blend table of luminance class `top` ([`luminance_class`]).
+pub(crate) fn preblend_class(top: u32) -> [f32; 256] {
     let src = ((top << 5) | (top << 2) | (top >> 1)) as f32 / 255.0;
     let dst = 1.0 - src;
     let (lin_src, lin_dst) = (to_linear(src), to_linear(dst));
@@ -671,5 +681,12 @@ mod tests {
         // A mid grey sits between.
         let grey = preblend(128, 128, 128);
         assert!(grey[128] > 0.0 && grey[128] < 1.0);
+        // One table per 3-bit luminance class.
+        assert_eq!(
+            (luminance_class(0, 0, 0), luminance_class(0, 0, 255)),
+            (0, 1)
+        );
+        assert_eq!(luminance_class(255, 255, 255), 7);
+        assert_eq!(preblend_class(7), white);
     }
 }
