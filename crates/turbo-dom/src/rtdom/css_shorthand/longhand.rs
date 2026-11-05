@@ -14,6 +14,7 @@ use super::grammar::{
     scroll_margin_v, scroll_padding_v, single, spacing_v, track_list, try_fallbacks, Ty, CAPS,
     EAST_ASIAN, FONT_SIZES, LIGATURES, NUMERIC, STRETCHES,
 };
+use super::shape::shape_with_box;
 
 /// A longhand value's spelling.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -81,9 +82,11 @@ fn font_size(comps: &[Comp]) -> Option<String> {
 fn font_weight(comps: &[Comp]) -> Option<String> {
     single(comps, |c| {
         kw(c, &["normal", "bold", "bolder", "lighter"]).or_else(|| {
-            c.number(false).filter(
-                |_| matches!(c.kind, Kind::Number { value, .. } if (1.0..=1000.0).contains(&value)),
-            )
+            // A literal weight is in [1, 1000]; a math function is checked when computed.
+            c.number(false).filter(|_| match c.kind {
+                Kind::Number { value, .. } => (1.0..=1000.0).contains(&value),
+                _ => true,
+            })
         })
     })
 }
@@ -290,11 +293,44 @@ fn grid_areas(comps: &[Comp]) -> Option<String> {
         _ => areas_text(&comps.iter().map(area_row).collect::<Option<Vec<_>>>()?),
     }
 }
+/// The `<coord-box>` keywords (`offset-path`).
+const COORD_BOXES: &[&str] = &[
+    "content-box",
+    "padding-box",
+    "border-box",
+    "fill-box",
+    "stroke-box",
+    "view-box",
+];
+/// `clip-path`'s `shape() || <geometry-box>` and `path()`; the embedder's grammar decides the
+/// other values.
+fn clip_path(comps: &[Comp]) -> Option<String> {
+    let mut boxes = COORD_BOXES.to_vec();
+    boxes.push("margin-box");
+    shape_with_box(comps, &boxes, "border-box").or_else(|| {
+        single(comps, |c| {
+            c.function_named(&["path"])
+                .filter(|value| path_data_valid(value))
+                .map(|value| path_text(&value))
+        })
+    })
+}
+/// `shape-outside`'s `shape() || <shape-box>`; the embedder's grammar decides the other values.
+fn shape_outside(comps: &[Comp]) -> Option<String> {
+    shape_with_box(
+        comps,
+        &["margin-box", "border-box", "padding-box", "content-box"],
+        "margin-box",
+    )
+}
 fn offset_path(comps: &[Comp]) -> Option<String> {
+    if comps.iter().any(|c| c.function_named(&["shape"]).is_some()) {
+        return shape_with_box(comps, COORD_BOXES, "border-box");
+    }
     single(comps, |c| {
         kw(c, &["none"]).or_else(|| {
             c.function_named(&[
-                "path", "ray", "circle", "ellipse", "inset", "polygon", "xywh", "rect", "shape",
+                "path", "ray", "circle", "ellipse", "inset", "polygon", "xywh", "rect",
             ])
             .or_else(|| c.url())
             .filter(|value| !value.starts_with("path(") || path_data_valid(value))
@@ -629,6 +665,7 @@ fn grammar_of(name: &str) -> Option<(Parse, bool)> {
         "list-style-position" => |c| keywords(c, &["inside", "outside"]),
         "list-style-image" => |c| single(c, |c| c.image().or_else(|| kw(c, &["none"]))),
         "z-index" => z_index,
+        "order" => |c| single(c, |c| c.integer(i64::MIN)),
         "width" | "height" | "min-width" | "min-height" | "block-size" | "inline-size"
         | "min-block-size" | "min-inline-size" => size,
         "max-width" | "max-height" | "max-block-size" | "max-inline-size" => max_size,
@@ -772,6 +809,8 @@ fn grammar_of(name: &str) -> Option<(Parse, bool)> {
         "box-shadow" => box_shadow,
         "text-shadow" => text_shadow,
         "offset-rotate" => offset_rotate,
+        "clip-path" => clip_path,
+        "shape-outside" => shape_outside,
         _ => return None,
     };
     // Image and easing lists and display have more forms than the grammar knows.
@@ -783,6 +822,8 @@ fn grammar_of(name: &str) -> Option<(Parse, bool)> {
             | "transition-timing-function"
             | "animation-timing-function"
             | "display"
+            | "clip-path"
+            | "shape-outside"
     );
     Some((parse, !lenient))
 }
@@ -945,6 +986,12 @@ fn generic(name: &str, comps: &[Comp]) -> String {
     join(&spelled)
 }
 
+/// A lenient grammar's rejection of a `shape()` is final: the embedders' grammars do not know
+/// `shape()` (turbo-dom#338).
+fn has_shape(comps: &[Comp]) -> bool {
+    comps.iter().any(|c| c.function_named(&["shape"]).is_some())
+}
+
 /// The specified value of longhand `name` set to `value`, as Chrome 156 spells it.
 #[must_use]
 pub fn longhand_value(name: &str, value: &str) -> Spelled {
@@ -968,7 +1015,7 @@ pub fn longhand_value(name: &str, value: &str) -> Spelled {
     match grammar_of(name) {
         Some((parse, strict)) => match parse(&comps) {
             Some(text) => Spelled::Valid(text),
-            None if strict => Spelled::Invalid,
+            None if strict || has_shape(&comps) => Spelled::Invalid,
             None => Spelled::Unchecked(generic(name, &comps)),
         },
         None => Spelled::Unchecked(generic(name, &comps)),

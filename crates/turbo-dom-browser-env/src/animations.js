@@ -1348,7 +1348,7 @@
 
   // Animation
   function newAnimation(object, effect, timeline) {
-    const record = { timeline, effect: null, start: null, hold: null, rate: 1, pendingRate: null, task: null, ready: null, finished: deferred(false), previousTime: null, id: '', replace: 'active', seq: ++sequence, finishTask: null, handlers: create(null) };
+    const record = { timeline, effect: null, start: null, hold: null, rate: 1, pendingRate: null, task: null, ready: null, finished: deferred(false), previousTime: null, id: '', replace: 'active', seq: ++sequence, finishTask: null, handlers: create(null), range: [null, null] };
     record.ready = deferred(true, object);
     animations.set(object, record);
     if (effect) setEffect(object, record, effect);
@@ -1500,7 +1500,18 @@
     if (end === 0) return time < 0 ? 0 : 1;
     return min(max(time / end, 0), 1);
   });
-  reorder(AP, ['effect', 'timeline', 'startTime', 'currentTime', 'playbackRate', 'playState', 'replaceState', 'pending', 'id', 'onfinish', 'oncancel', 'onremove', 'finished', 'ready', 'cancel', 'commitStyles', 'finish', 'pause', 'persist', 'play', 'reverse', 'updatePlaybackRate', 'overallProgress']);
+  accessor(AP, 'rangeStart', function () { return rangeObject(animationRecord(this).range[0]); }, function (value) {
+    const record = animationRecord(this), prefix = setting('rangeStart', 'Animation');
+    record.range[0] = rangeOffset(rangeInput(value, prefix, prefix), prefix, 0);
+    if (record.css && record.css.rangeSet) record.css.rangeSet[0] = true;
+  });
+  accessor(AP, 'rangeEnd', function () { return rangeObject(animationRecord(this).range[1]); }, function (value) {
+    const record = animationRecord(this), prefix = setting('rangeEnd', 'Animation');
+    // Chrome 156 reads a range end set without an offset as 1% (its options read 100%).
+    record.range[1] = rangeOffset(rangeInput(value, prefix, prefix), prefix, 1);
+    if (record.css && record.css.rangeSet) record.css.rangeSet[1] = true;
+  });
+  reorder(AP, ['effect', 'timeline', 'startTime', 'currentTime', 'playbackRate', 'rangeStart', 'rangeEnd', 'playState', 'replaceState', 'pending', 'id', 'onfinish', 'oncancel', 'onremove', 'finished', 'ready', 'cancel', 'commitStyles', 'finish', 'pause', 'persist', 'play', 'reverse', 'updatePlaybackRate', 'overallProgress']);
   // CSSAnimation / CSSTransition: the Animation subclasses of declarative animations.
   const cssInterface = (name, member, kind, field) => {
     const delegate = illegalConstructor(name);
@@ -1833,7 +1844,8 @@
     return cssKeyframeInput(rule, pickList(lists['timing-function'], i, 'ease'), boundaryValue);
   }
   function cssAnimation(element, name, rule, lists, i, underlying) {
-    const animation = cssCreate(CSSAnimation, element, cssFrames(element, rule, lists, i, underlying), cssTiming(lists, i), { kind: CSS_ANIMATION, owner: element, name, index: i });
+    const animation = cssCreate(CSSAnimation, element, cssFrames(element, rule, lists, i, underlying), cssTiming(lists, i), { kind: CSS_ANIMATION, owner: element, name, index: i, rangeSet: [false, false] });
+    cssRange(animations.get(animation), lists, i);
     if (pickList(lists['play-state'], i, 'running') === 'paused') pause(animation, animations.get(animation), '');
     return animation;
   }
@@ -1845,7 +1857,16 @@
     const timed = cssRefreshTiming(effect, cssTiming(lists, i));
     const framed = !effect.css.frames && cssRefreshFrames(effect, cssFrames(element, rule, lists, i, underlying));
     if (timed || framed) ownerTouched(effect);
+    cssRange(record, lists, i);
     if (!record.css.scriptPlayState) cssRefreshPlayState(animation, record, pickList(lists['play-state'], i, 'running') === 'paused');
+  }
+  // animation-range-start / -end, except an end script set (rangeStart / rangeEnd).
+  function cssRange(record, lists, i) {
+    const texts = [pickList(lists['range-start'], i, 'normal'), pickList(lists['range-end'], i, 'normal')];
+    for (let side = 0; side < 2; side++) {
+      if (record.css.rangeSet[side]) continue;
+      try { record.range[side] = rangeOffset(rangeText(texts[side], ''), '', side ? 100 : 0); } catch (error) { record.range[side] = null; }
+    }
   }
   // Timing keys script did not set follow the CSS values; whether any changed.
   function cssRefreshTiming(effect, timing) {
@@ -1880,7 +1901,7 @@
   function cssAnimations(element, read, underlying, hidden) {
     const state = cssState(element), names = splitList(read('animation-name'));
     const lists = {};
-    const fields = ['duration', 'delay', 'iteration-count', 'direction', 'fill-mode', 'timing-function', 'play-state'];
+    const fields = ['duration', 'delay', 'iteration-count', 'direction', 'fill-mode', 'timing-function', 'play-state', 'range-start', 'range-end'];
     for (let i = 0; i < fields.length; i++) lists[fields[i]] = splitList(read('animation-' + fields[i]));
     const kept = [];
     // No CSS animation runs on an element that is not rendered (itself or an ancestor display:none).
@@ -1984,7 +2005,7 @@
   // unchanged, an update would keep every animation and start no transition, so it is skipped:
   // the update runs once per style change, not once per computed-style read (a running
   // animation recomputes the style on every read).
-  const CSS_INPUTS = ['animation-name', 'animation-duration', 'animation-delay', 'animation-iteration-count', 'animation-direction', 'animation-fill-mode', 'animation-timing-function', 'animation-play-state', 'transition-property', 'transition-duration', 'transition-delay', 'transition-timing-function', 'display'];
+  const CSS_INPUTS = ['animation-name', 'animation-duration', 'animation-delay', 'animation-iteration-count', 'animation-direction', 'animation-fill-mode', 'animation-timing-function', 'animation-play-state', 'transition-property', 'transition-duration', 'transition-delay', 'transition-timing-function', 'display', 'animation-range-start', 'animation-range-end'];
   let cssUpdates = store();
   function cssInputs(read, underlying) {
     const out = [];
@@ -2067,12 +2088,12 @@
     const effect = construct(function () {}, [], KeyframeEffect);
     // KeyframeAnimationOptions members convert with the dictionary, before keyframes.
     const animationOptions = createEffect(effect, this, keyframes, options, prefix, input => {
-      const result = { id: '', timeline: undefined, hasTimeline: false, range: [] };
+      const result = { id: '', timeline: undefined, hasTimeline: false, range: [undefined, undefined] };
       if (input === null) return result;
       let value;
       if ((value = input.id) !== undefined) result.id = string(value);
-      if ((value = input.rangeEnd) !== undefined) push(result.range, value);
-      if ((value = input.rangeStart) !== undefined) push(result.range, value);
+      if ((value = input.rangeEnd) !== undefined) result.range[1] = rangeInput(value, prefix, member(prefix, 'rangeEnd', 'KeyframeAnimationOptions'));
+      if ((value = input.rangeStart) !== undefined) result.range[0] = rangeInput(value, prefix, member(prefix, 'rangeStart', 'KeyframeAnimationOptions'));
       if ((value = input.timeline) !== undefined) {
         result.hasTimeline = true;
         if (value !== null && !(objectLike(value) && timelines.has(value))) throw new ErrorType(`${member(prefix, 'timeline', 'KeyframeAnimationOptions')}Failed to convert value to 'AnimationTimeline'.`);
@@ -2080,22 +2101,75 @@
       }
       return result;
     });
-    for (let i = 0; i < animationOptions.range.length; i++) rangeValue(animationOptions.range[i], prefix);
+    const range = [rangeOffset(animationOptions.range[0], prefix, 0), rangeOffset(animationOptions.range[1], prefix, 100)];
     const timeline = animationOptions.hasTimeline ? animationOptions.timeline : documentTimeline(apply(ownerGetter, this, []) || realmDocument);
     const animation = construct(TargetType, [], Animation);
     const record = newAnimation(animation, effect, timeline);
     record.id = animationOptions.id;
+    record.range = range;
     // Blink plays only through a timeline; an explicit null timeline leaves the animation idle.
     if (timeline !== null) play(animation, record, true, prefix);
     track(animation);
     return animation;
   }, 1);
-  // Timeline ranges only position scroll and view timelines; their offsets need Typed OM.
-  function rangeValue(value, prefix) {
-    if (typeof value === 'string' && intrinsic.toLowerCase(intrinsic.trim(value)) === 'normal') return;
-    if (objectLike(value)) return;
-    const text = intrinsic.trim(string(value));
-    if (!intrinsic.test(/^(cover|contain|entry|exit|entry-crossing|exit-crossing|scroll)(\s+[+-]?(?:\d+\.?\d*|\.\d+)(?:%|px))?$/i, text)) throw new ErrorType(`${prefix}Animation range must be a name <length-percent> pair`);
+  // ---- Timeline ranges (turbo-dom#340) -------------------------------------------------------
+  // An animation's attachment range: null (normal) or a <timeline-range-name> ('none' without
+  // one) and an offset { name, unit: 'px' | 'percent', value }. Ranges only place an animation
+  // on a scroll or view timeline; the conversions and errors are Chrome 156's (an offset Blink
+  // cannot keep as px or a percentage, such as 1em or calc(), reads 0px).
+  const RANGE_NAMES = ['cover', 'contain', 'entry', 'exit', 'entry-crossing', 'exit-crossing', 'scroll'];
+  const RANGE_UNITS = ['em', 'rem', 'ex', 'rex', 'ch', 'rch', 'ic', 'ric', 'cap', 'rcap', 'lh', 'rlh', 'vw', 'vh', 'vi', 'vb', 'vmin', 'vmax', 'svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax', 'cm', 'mm', 'q', 'in', 'pt', 'pc'];
+  const RANGE_LENGTH = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?(px|%|[a-z]+)?$/i;
+  const rangeInvalid = prefix => new ErrorType(`${prefix}Animation range must be a name <length-percent> pair`);
+  // A string input: 'normal', or a range name and / or a length-percentage offset.
+  function rangeText(value, prefix) {
+    if (typeof value === 'symbol') throw new ErrorType(`${prefix}Cannot convert a Symbol value to a string`);
+    const text = intrinsic.trim(string(value)), lower = intrinsic.toLowerCase(text);
+    if (lower === 'normal') return null;
+    const space = intrinsic.indexOf(text, ' '), head = intrinsic.toLowerCase(space < 0 ? text : intrinsic.slice(text, 0, space));
+    const named = contains(RANGE_NAMES, head);
+    const rest = named ? (space < 0 ? '' : intrinsic.trim(intrinsic.slice(text, space))) : text;
+    const offset = rest === '' ? undefined : rangeLength(rest);
+    if (offset === null || (!named && offset === undefined)) throw rangeInvalid(prefix);
+    return { name: named ? head : 'none', offset };
+  }
+  // A string offset: [unit, value], ['length'] for one kept as 0px, null when it is none.
+  function rangeLength(text) {
+    if (intrinsic.test(/^(?:calc|min|max|clamp)\(.*\)$/i, text)) return ['length'];
+    const match = intrinsic.exec(RANGE_LENGTH, text);
+    if (!match) return null;
+    const number = +intrinsic.slice(text, 0, text.length - (match[1] ? match[1].length : 0)), unit = match[1] ? intrinsic.toLowerCase(match[1]) : '';
+    if (unit === '%') return ['percent', number];
+    if (unit === 'px' || (unit === '' && number === 0)) return ['px', number];
+    return contains(RANGE_UNITS, unit) ? ['length'] : null;
+  }
+  // Any object (null included) is a TimelineRangeOffset dictionary: offset, then rangeName.
+  function rangeInput(value, prefix, memberPrefix) {
+    if (value !== null && value !== undefined && !objectLike(value)) return rangeText(value, prefix);
+    const input = value === null || value === undefined ? {} : value;
+    const offset = input.offset, typed = ns.typedOmRange;
+    let kind;
+    if (offset !== undefined) {
+      kind = typed.kind(offset);
+      if (kind === undefined) throw new ErrorType(`${member(memberPrefix, 'offset', 'TimelineRangeOffset')}Failed to convert value to 'CSSNumericValue'.`);
+    }
+    const name = input.rangeName === undefined ? 'none' : enumeration(input.rangeName, ['none', ...RANGE_NAMES], memberPrefix, 'rangeName', 'TimelineRangeOffset', 'TimelineRange');
+    return { name, offset: kind, typed: true };
+  }
+  // The stored range of a converted input (`fallback`: the end offset percentage without one).
+  function rangeOffset(input, prefix, fallback) {
+    if (input === undefined || input === null) return null;
+    if (input.offset === null) throw new ErrorType(`${prefix}CSSNumericValue must use an absolute length or percentage for animation range.`);
+    if (input.offset === undefined) return { name: input.name, unit: 'percent', value: fallback };
+    const [unit, value] = input.offset;
+    return unit === 'length' ? { name: input.name, unit: 'px', value: 0 } : { name: input.name, unit, value };
+  }
+  function rangeObject(range) {
+    if (range === null) return 'normal';
+    const result = {};
+    result.offset = ns.typedOmRange.unit(range.value, range.unit);
+    result.rangeName = range.name;
+    return result;
   }
   method(elementPrototype, 'getAnimations', function (options) {
     if (!isElement(this)) throw illegal();

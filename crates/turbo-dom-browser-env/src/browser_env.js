@@ -1256,6 +1256,197 @@
     if(!could)return;
     if(unkeyed)computedVolatile=true;else computedStateRead=true;
   }
+  // turbo-dom#338: computed values of the tree-counting functions (sibling-index() /
+  // sibling-count(): the element's 1-based position among its parent's element children and
+  // their count) and of shape(). The cascaded text takes the element's counts; the math
+  // functions then resolve the way Chrome 156 computes them (lengths in px against the font,
+  // percentages kept, angles in deg, times in s; integers rounded half up, ranges clamped),
+  // and shape() resolves its positions and lengths. Chrome 156 control:
+  // css_tree_counting_shape_chrome156.json.
+  var $Mfloor=Math.floor,$Mmax=Math.max,$Mabs=Math.abs,treeCountingPattern=/sibling-(?:index|count)\(\s*\)/i,treeSiblings=null;
+  function treeCounts(el){
+    if(!treeSiblings)treeSiblings=[__ns.domAccessor('parentNode',false,'Node'),__ns.domAccessor('firstChild',false,'Node'),__ns.domAccessor('nextSibling',false,'Node'),__ns.domAccessor('nodeType',false,'Node')];
+    var parent=cssApply(treeSiblings[0],el,[]),index=1,count=0;
+    if(!parent)return [1,1];
+    for(var node=cssApply(treeSiblings[1],parent,[]);node;node=cssApply(treeSiblings[2],node,[])){
+      if(cssApply(treeSiblings[3],node,[])!==1)continue;
+      count++;if(node===el)index=count;
+    }
+    return [index,count];
+  }
+  // The declarations holding a tree-counting function, with the element's counts in place.
+  function treeCountingValues(decl,el,pseudo){
+    var names=null,counts=null;
+    if(pseudo||!el)return null;
+    for(var name in decl){
+      var value=decl[name];
+      if(typeof value!=='string'||$c.slice(name,0,2)==='--'||!$c.test(treeCountingPattern,value))continue;
+      if(!counts)counts=treeCounts(el);
+      value=$c.replace($c.replace(value,/sibling-index\(\s*\)/gi,String(counts[0])),/sibling-count\(\s*\)/gi,String(counts[1]));
+      // A color resolves its math now: the color stage below reads its spelling.
+      if(cssShorthand&&$c.test(/color$/i,name)){var spelled=cssShorthand('longhand',cssPropertyName(name),value);if(spelled[0]==='valid')value=spelled[1];}
+      decl[name]=value;
+      if($c.toLowerCase(name)===name){if(!names)names=[];$c.push(names,name);}
+    }
+    // A style that depends on the element's siblings is never reused.
+    if(names)computedVolatile=true;
+    return names;
+  }
+  // A math value: like-unit coefficients ('' number, px, %, deg, s).
+  var mathUnits={__proto__:null,px:['px',1],pt:['px',96/72],pc:['px',16],in:['px',96],cm:['px',96/2.54],mm:['px',96/25.4],q:['px',96/101.6],deg:['deg',1],grad:['deg',0.9],rad:['deg',180/Math.PI],turn:['deg',360],s:['s',1],ms:['s',0.001],'%':['%',1],'':['',1]};
+  var mathConstants={__proto__:null,e:Math.E,pi:Math.PI,infinity:Infinity,'-infinity':-Infinity,nan:NaN};
+  function mathTerm(token,font){
+    var match=$c.exec(/^([+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?)([a-z]*|%)$/i,token);if(!match)return null;
+    var number=cssFontNumber(match[1]),unit=$c.toLowerCase(match[2]),out={__proto__:null};
+    if(unit==='em'||unit==='rem'){var base=font&&(unit==='em'?font.size:font.rootSize);if(typeof base!=='number')return null;out.px=number*base;return out;}
+    var scale=mathUnits[unit];if(!scale)return null;
+    out[scale[0]]=number*scale[1];return out;
+  }
+  function mathUnitOf(value){var keys=$O.keys(value);return keys.length===1?keys[0]:null;}
+  function mathAdd(a,b,sign){var out={__proto__:null};for(var unit in a)out[unit]=a[unit];for(unit in b)out[unit]=(out[unit]||0)+sign*b[unit];return out;}
+  function mathScale(a,factor){var out={__proto__:null};for(var unit in a)out[unit]=a[unit]*factor;return out;}
+  // One operand: a literal, a constant, a parenthesized sum or a math function.
+  function mathOperand(state){
+    var token=state.tokens[state.at++];
+    if(token==='('){var inner=mathSum(state);state.at++;return inner;}
+    if(token&&token[token.length-1]==='(')return mathFunction($c.toLowerCase($c.slice(token,0,-1)),state);
+    var constant=token&&mathConstants[$c.toLowerCase(token)];
+    if(constant!==undefined){var out={__proto__:null};out['']=constant;return out;}
+    return token?mathTerm(token,state.font):null;
+  }
+  function mathProduct(state){
+    var value=mathOperand(state);
+    while(value&&(state.tokens[state.at]==='*'||state.tokens[state.at]==='/')){
+      var operator=state.tokens[state.at++],right=mathOperand(state);if(!right)return null;
+      if(operator==='/'){if(mathUnitOf(right)!=='')return null;value=mathScale(value,1/right['']);}
+      else if(mathUnitOf(right)==='')value=mathScale(value,right['']);
+      else if(mathUnitOf(value)==='')value=mathScale(right,value['']);
+      else return null;
+    }
+    return value;
+  }
+  function mathSum(state){
+    var value=mathProduct(state);
+    while(value&&(state.tokens[state.at]==='+'||state.tokens[state.at]==='-')){var sign=state.tokens[state.at++]==='-'?-1:1,right=mathProduct(state);value=right&&mathAdd(value,right,sign);}
+    return value;
+  }
+  // The comma-separated arguments of a math function, up to its `)` (`none`: null).
+  function mathArguments(state){
+    var list=[];
+    do{if(state.tokens[state.at]==='none'){state.at++;$c.push(list,null);}else $c.push(list,mathSum(state));}
+    while(state.tokens[state.at++]===',');
+    return list;
+  }
+  // calc() of a sum; min() / max() / clamp() / abs() / sign() / round() of one-unit arguments.
+  function mathFunction(name,state){
+    var list=mathArguments(state),unit=null,values=[];
+    if(name==='calc')return list.length===1?list[0]:null;
+    for(var index=0;index<list.length;index++){
+      if(list[index]===null){$c.push(values,null);continue;}
+      var own=list[index]&&mathUnitOf(list[index]);
+      if(own===null||unit!==null&&own!==unit)return null;
+      unit=own;$c.push(values,list[index][own]);
+    }
+    var number=mathResolve(name,values);
+    if(number===undefined)return null;
+    var out={__proto__:null};out[name==='sign'?'':unit]=number;return out;
+  }
+  function mathResolve(name,values){
+    var a=values[0],b=values[1];
+    switch(name){
+      case 'min':return cssApply($Mmin,null,values);
+      case 'max':return cssApply($Mmax,null,values);
+      case 'clamp':return $Mmax(a===null?-Infinity:a,$Mmin(b,values[2]===null?Infinity:values[2]));
+      case 'abs':return $Mabs(a);
+      case 'sign':return a>0?1:a<0?-1:a;
+      // round(a, b): the nearest multiple of b, ties up.
+      case 'round':if(b===undefined)b=1;return $Mfloor(a/b+0.5)*b;
+    }
+    return undefined;
+  }
+  // The value of one math function's text, or null when it does not resolve here.
+  function mathValue(text,font){
+    var tokens=[],pattern=/\s+|[+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?(?:[a-z]+|%)?|-?[a-z][a-z-]*\(?|[()+*\/,-]/gi,match,at=0;
+    pattern.lastIndex=0;
+    while((match=$c.exec(pattern,text))!==null){if(match.index!==at)return null;at=pattern.lastIndex;if(!$c.test(/^\s/,match[0]))$c.push(tokens,match[0]);}
+    if(at!==text.length)return null;
+    var state={tokens:tokens,at:0,font:font},value=mathOperand(state);
+    return state.at===tokens.length?value:null;
+  }
+  function mathNumberText(number){return cssFontString(cssFontNumber(cssApply(cssFontPrecision,number,[6])));}
+  // Chrome's computed spelling: one unit, or a percentage and a length as calc().
+  function mathText(value){
+    var units=$O.keys(value);
+    if(units.length===1)return mathNumberText(value[units[0]])+units[0];
+    if(units.length!==2||value['%']===undefined||value.px===undefined)return null;
+    var px=value.px;return 'calc('+mathNumberText(value['%'])+'% '+(px<0?'- ':'+ ')+mathNumberText($Mabs(px))+'px)';
+  }
+  // Properties whose number rounds to an integer, whose value is clamped to a range.
+  var mathIntegers={__proto__:null,order:1,'z-index':1,'column-count':1,'orphans':1,'widows':1},mathRanges={__proto__:null,opacity:[0,1],'fill-opacity':[0,1],'stroke-opacity':[0,1],'flood-opacity':[0,1],'stop-opacity':[0,1],'font-weight':[1,1000],'flex-grow':[0,Infinity],'flex-shrink':[0,Infinity]};
+  var mathNonNegative=/^(?:(?:min-|max-)?(?:width|height|block-size|inline-size)|padding(?:-.*)?|border-.*-width|outline-width|column-gap|row-gap|gap|font-size)$/;
+  // A whole math value of `name` (a number or one length / percentage, clamped and rounded).
+  function mathPropertyText(name,value){
+    var unit=mathUnitOf(value);
+    if(unit==='%'&&mathRanges[name]){value=mathScale(value,0.01);value['']=value['%'];delete value['%'];unit='';}
+    var number=unit===null?null:value[unit],range=mathRanges[name];
+    if(number!==null&&range)value[unit]=$Mmin($Mmax(number,range[0]),range[1]);
+    if(number!==null&&mathIntegers[name]&&unit==='')value['']=$Mfloor(number+0.5);
+    if(number!==null&&number<0&&$c.test(mathNonNegative,name))value[unit]=0;
+    return mathText(value);
+  }
+  // Every math function in `text` resolved (`whole`: the value is that one function, for `name`).
+  function mathResolveText(name,text,font){
+    var whole=mathValue(text,font);if(whole)return mathPropertyText(name,whole)||text;
+    return $c.replace(text,/(?:calc|min|max|clamp|abs|sign|round)\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)/gi,function(found){var value=mathValue(found,font),out=value&&mathText(value);return out||found;});
+  }
+  // shape() with its positions as percentages / lengths, lengths in px and angles in deg.
+  var shapeSides={__proto__:null,left:'0%',top:'0%','x-start':'0%','y-start':'0%',center:'50%',right:'100%',bottom:'100%','x-end':'100%','y-end':'100%'};
+  var shapeWords=/^(?:from|to|by|with|of|cw|large|rotate|evenodd|close|move|line|hline|vline|curve|smooth|arc|\/|start|end|origin)$/;
+  function shapeLength(token,font){var value=mathValue(token,font),text=value&&mathText(value);return text||token;}
+  // A right / bottom offset counts from the far side.
+  function shapeSide(side,offset,font){
+    if(side==='left'||side==='top')return shapeLength(offset,font);
+    var value=mathValue(offset,font),start={__proto__:null};start['%']=100;
+    return value&&mathText(mathAdd(start,value,-1))||offset;
+  }
+  function shapePosition(group,font){
+    var point=group.length===4?[shapeSide(group[0],group[1],font),shapeSide(group[2],group[3],font)]:group;
+    return $c.map(point,function(token){return shapeSides[token]||shapeLength(token,font);});
+  }
+  // One command's tokens (top-level words) with its points, lengths and angles computed.
+  function shapeCommand(words,font){
+    var out=[],group=[],context='',name=words[0];
+    function flush(){
+      if(!group.length)return;
+      var computed=context==='rotate'||context==='of'||context==='by'?$c.map(group,function(token){return shapeLength(token,font);}):(name==='hline'||name==='vline')?[shapeSides[group[0]]||shapeLength(group[0],font)]:shapePosition(group,font);
+      $c.forEach(computed,function(token){$c.push(out,token);});group=[];
+    }
+    for(var index=0;index<words.length;index++){
+      var word=words[index];
+      if($c.test(shapeWords,word)){flush();$c.push(out,word);context=word;}else $c.push(group,word);
+    }
+    flush();
+    return $c.join(out,' ');
+  }
+  // Split `text` at top-level `separator`s (outside parentheses).
+  function shapeSplit(text,separator){
+    var parts=[],depth=0,start=0;
+    for(var index=0;index<text.length;index++){var c=text[index];if(c==='(')depth++;else if(c===')')depth--;else if(c===separator&&!depth){$c.push(parts,$c.slice(text,start,index));start=index+1;}}
+    $c.push(parts,$c.slice(text,start));
+    return $c.filter($c.map(parts,function(part){return $c.trim(part);}),function(part){return part!=='';});
+  }
+  function shapeComputed(name,value,font){
+    var spelled=cssShorthand?cssShorthand('longhand',name,value):null;
+    if(!spelled||spelled[0]!=='valid'||!$c.startsWith(spelled[1],'shape('))return null;
+    var text=spelled[1],end=$c.lastIndexOf(text,')'),commands=shapeSplit($c.slice(text,6,end),',');
+    return 'shape('+$c.join($c.map(commands,function(command){return shapeCommand(shapeSplit(command,' '),font);}),', ')+')'+$c.slice(text,end+1);
+  }
+  // The math functions and shape()s of a computed style, once the font is known.
+  function computedMathValues(decl,names,font,connected,set){
+    if(!connected)return;
+    if(names)for(var index=0;index<names.length;index++){var name=names[index],value=decl[name];if(typeof value==='string'&&!$c.test(/shape\(/i,value))set(name,mathResolveText(name,value,font));}
+    $c.forEach(['clip-path','offset-path','shape-outside'],function(name){var value=decl[name];if(typeof value==='string'&&$c.test(/shape\(/i,value))set(name,shapeComputed(name,value,font)||value);});
+  }
   function computeStyleFresh(el,snapshots,sink,pseudo,deps,base){
     var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
     if(noteCascadeRun)noteCascadeRun();
@@ -1376,6 +1567,8 @@
     }
     var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},inheritedValue,snapshots,ownDisplay):null;
     if(animated)for(var ai=0;ai<animated.length;ai++)if(!priorities[animated[ai][0]])setProp(animated[ai][0],animated[ai][1]);
+    // Tree-counting functions take this element's counts; their style follows its siblings.
+    var treeNames=treeCountingValues(decl,el,pseudo);
     var color = decl.color || '';
     if (!color && !pseudo && !inFrame) { try { color = __ns.cascadeProp.call(el, 'color'); } catch(e) {} }
     // A highlight in highlight-inheritance mode inherits color / background-color from the
@@ -1500,6 +1693,7 @@
       });
     } catch(e){}
     var fontState=computedFonts(decl,el,parentStyle,connected,pseudo,inheritSnapshot);
+    computedMathValues(decl,treeNames,fontState,connected,function(name,value){decl[name]=decl[camel(name)]=value;});
     // dialog:modal max-width / max-height: calc(100% - 6px - 2em) at the dialog's font size.
     if (connected && !pseudo && layer === 'modal' && fontState && typeof fontState.size === 'number') {
       var inset = 'calc(100% - ' + cssFontString(cssFontNumber(cssApply(cssFontPrecision, 2 * fontState.size + 6, [6]))) + 'px)';
