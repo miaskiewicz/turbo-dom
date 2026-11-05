@@ -777,6 +777,34 @@ fn button_ua_computed_values_match_chrome_and_remain_below_author_styles() {
     assert_eq!(actual, fixture["result"]);
 }
 
+/// turbo-dom#318: a button's (and a button-like input's) computed `background-color` is
+/// html.css's ButtonFace, below every author rule and inline value.
+#[test]
+fn button_ua_background_color_matches_chrome_and_remains_below_author_styles() {
+    use sha2::{Digest, Sha256};
+    let source = include_str!("computed_form_background_probe.js");
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("computed_form_background_chrome156.json")).unwrap();
+    assert_eq!(
+        fixture["probeSha256"],
+        format!("{:x}", Sha256::digest(source.as_bytes()))
+    );
+    let actual = run_with_font_defaults(
+        "<!doctype html><html><head></head><body></body></html>",
+        &format!("JSON.stringify({})", source.trim().trim_end_matches(';')),
+        Some(("Times", 16.0)),
+    );
+    for (index, row) in fixture["result"]["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .enumerate()
+    {
+        assert_eq!(actual["rows"][index], *row, "row {}", row["name"]);
+    }
+    assert_eq!(actual, fixture["result"]);
+}
+
 #[test]
 fn computed_font_host_preferences_are_private_and_used_by_css_initial_values() {
     let result = run_with_font_defaults("<!doctype html><body><div id=parent style='font:italic 30px/2 serif'><span id=child style='font:initial'></span></div>", r#"JSON.stringify((()=>{
