@@ -142,28 +142,35 @@
   const toExponential = Function.prototype.call.bind(Number.prototype.toExponential);
   const stripZeros = (text) => { if (indexOfText(text, '.') < 0) return text; let end = text.length; while (end > 0 && text[end - 1] === '0') end--; if (end > 0 && text[end - 1] === '.') end--; return sliceText(text, 0, end); };
   // Round to six significant digits half-to-even on the exact binary value, as %.6g does.
+  function formatGRoundMantissa(kept, exponent) {
+    let carry = 1, result = '';
+    for (let index = 5; index >= 0; index--) { const digit = charCode(kept, index) - 48 + carry; carry = digit === 10 ? 1 : 0; result = (digit % 10) + result; }
+    if (carry) { result = '1' + sliceText(result, 0, 5); exponent++; }
+    return { mantissa: result, exponent };
+  }
+  function formatGPlain(mantissa, exponent) {
+    if (exponent < 0) {
+      let zeros = '';
+      for (let index = -1; index > exponent; index--) zeros += '0';
+      return '0.' + zeros + mantissa;
+    }
+    return sliceText(mantissa, 0, exponent + 1) + '.' + sliceText(mantissa, exponent + 1);
+  }
   function formatG(number) {
     if (number === 0) return 1 / number < 0 ? '-0' : '0';
     const negative = number < 0, exact = toExponential(negative ? -number : number, 99);
     const at = indexOfText(exact, 'e');
-    let digits = replaceText(sliceText(exact, 0, at), '.', ''), exponent = +sliceText(exact, at + 1);
+    const digits = replaceText(sliceText(exact, 0, at), '.', '');
+    let exponent = +sliceText(exact, at + 1);
     const kept = sliceText(digits, 0, 6), rest = sliceText(digits, 6);
     let roundUp = false;
     if (charCode(rest, 0) > 53) roundUp = true;
     else if (charCode(rest, 0) === 53) roundUp = testRegExp(/[1-9]/, sliceText(rest, 1)) || (charCode(kept, 5) - 48) % 2 === 1;
     let mantissa = kept;
-    if (roundUp) {
-      let carry = 1, result = '';
-      for (let index = 5; index >= 0; index--) { let digit = charCode(kept, index) - 48 + carry; carry = digit === 10 ? 1 : 0; result = (digit % 10) + result; }
-      if (carry) { result = '1' + sliceText(result, 0, 5); exponent++; }
-      mantissa = result;
-    }
+    if (roundUp) { const rounded = formatGRoundMantissa(kept, exponent); mantissa = rounded.mantissa; exponent = rounded.exponent; }
     const sign = negative ? '-' : '';
     if (exponent < -4 || exponent >= 6) { const magnitude = mathAbs(exponent); return sign + stripZeros(mantissa[0] + '.' + sliceText(mantissa, 1)) + 'e' + (exponent < 0 ? '-' : '+') + (magnitude < 10 ? '0' : '') + magnitude; }
-    let text;
-    if (exponent < 0) { let zeros = ''; for (let index = -1; index > exponent; index--) zeros += '0'; text = '0.' + zeros + mantissa; }
-    else text = sliceText(mantissa, 0, exponent + 1) + '.' + sliceText(mantissa, exponent + 1);
-    return sign + stripZeros(text);
+    return sign + stripZeros(formatGPlain(mantissa, exponent));
   }
   // CSSNumericLiteralValue::CustomCSSText.
   function formatNumber(value, unitKey) {
