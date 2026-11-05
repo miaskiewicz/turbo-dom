@@ -311,7 +311,13 @@ fn pre_matched_rules_rank_by_origin_specificity_and_order_under_inline_and_hints
         "<body style='margin:0'><div id=a width=20 style='height:5px'></div><div id=b bgcolor=red width=30></div></body>",
     );
     let (a, b) = (styled.el("a"), styled.el("b"));
-    let ua = [rule("width:90px;height:90px", &[a, b], (0, 0, 1))];
+    // Chrome's `html.css` `div { display: block }` (miaskiewicz/turbo-dom#375): this
+    // test builds its own origins instead of using `LIVE_UA`, so the block rule joins
+    // the UA origin here.
+    let ua = [
+        rule("width:90px;height:90px", &[a, b], (0, 0, 1)),
+        rule("display:block", &[a, b], (0, 0, 1)),
+    ];
     let author = [
         rule("width:40px", &[a], (0, 1, 0)),
         rule("width:50px", &[a], (0, 0, 1)),
@@ -350,8 +356,16 @@ fn the_inline_override_replaces_an_existing_style_attribute_only() {
         .set_attribute_ns(a, Some("http://www.w3.org/1999/xlink"), "xlink:title", "x");
     styled.children = light_children(&styled.tree);
     let overrides = [(a, "width:30px;height:5px"), (b, "width:40px;height:5px")];
+    // Chrome's `html.css` `div { display: block }` (miaskiewicz/turbo-dom#375): this
+    // test builds its own origins instead of using `LIVE_UA`, so the block rule joins
+    // the UA origin here (CSSOM-style inline overrides sit above the UA).
+    let ua = [rule("display:block", &[a, b], (0, 0, 1))];
+    let origins = [OriginRules {
+        origin: CascadeOrigin::UserAgent,
+        rules: ua.iter().map(Some).collect(),
+    }];
     let (snapshot, attrs) = styled
-        .run(&[], &overrides, &|_| Ok(0), |nodes| {
+        .run(&origins, &overrides, &|_| Ok(0), |nodes| {
             Ok(find(nodes, a).unwrap().attrs.clone())
         })
         .unwrap();
@@ -477,7 +491,11 @@ fn the_hook_sees_the_whole_styled_forest_before_layout() {
                 for node in nodes {
                     if let StyledNode::Element(element) = node {
                         if element.source == Some(a) {
+                            // Chrome's `html.css` `div { display: block }`
+                            // (miaskiewicz/turbo-dom#375): this test builds its origins
+                            // without `LIVE_UA`, so the rewritten used style sets block.
                             element.style = crate::ComputedStyle::from_pairs([
+                                ("display", "block"),
                                 ("width", "20px"),
                                 ("height", "10px"),
                             ]);

@@ -933,9 +933,14 @@ fn blockified(display: Display) -> Display {
     }
 }
 
-/// The `display` keyword as specified (before blockification).
+/// The `display` keyword as specified (before blockification). Chrome's CSS initial
+/// value is `inline`: an unknown HTML element (`HTMLUnknownElement`, e.g. `<xform>`)
+/// takes it, like every element without a UA or author `display` rule. Known HTML
+/// block elements pick up `display: block` from the UA stylesheet rules in
+/// [`UA_CSS`](crate::style::UA_CSS) and `LIVE_UA`, so their behaviour is unchanged
+/// (miaskiewicz/turbo-dom#375).
 fn specified_display(s: &ComputedStyle) -> Display {
-    match s.get("display").unwrap_or("block").trim() {
+    match s.get("display").unwrap_or("inline").trim() {
         "inline" => Display::Inline,
         "inline-block" => Display::InlineBlock,
         "flex" => Display::Flex,

@@ -2174,12 +2174,30 @@ struct Metrics {
 // text/html-font-metrics-provenance.json. Quantize actual font metrics before
 // placement so physical-scale geometry never rewrites returned rectangles.
 fn source_font_metrics(seg: &Seg, scale: Option<f32>) -> crate::text::HtmlFontMetrics {
+    scaled_html_metrics(&seg.primary_face, seg.font_size, scale)
+}
+
+/// Resolve [`crate::FontFace::html_metrics`] for native text placement at an optional
+/// physical scale. An installed face is read at the device-scaled size and divided
+/// back to CSS px (Blink's per-device-pixel rounding, `AscentDescentWithHacks`). An
+/// `@font-face` face is read at the CSS size directly: Chrome's web-font metrics are
+/// already a fraction of the em scaled to the CSS font-size and rounded half up
+/// (`WebMetrics::px`), so device-scaled rounding here would double-quantize the
+/// ascent/descent (IBM Plex Mono 20px: 25 vs 26 at DSF 2; miaskiewicz/turbo-dom#377).
+pub(super) fn scaled_html_metrics(
+    face: &crate::FontFace,
+    font_size: f32,
+    scale: Option<f32>,
+) -> crate::text::HtmlFontMetrics {
     let scale = scale.unwrap_or(1.0);
-    let metrics = seg.primary_face.html_metrics(seg.font_size * scale);
+    if face.is_web_font() {
+        return face.html_metrics(font_size);
+    }
+    let m = face.html_metrics(font_size * scale);
     crate::text::HtmlFontMetrics {
-        ascent: metrics.ascent / scale,
-        descent: metrics.descent / scale,
-        line_gap: metrics.line_gap / scale,
+        ascent: m.ascent / scale,
+        descent: m.descent / scale,
+        line_gap: m.line_gap / scale,
     }
 }
 
@@ -2325,16 +2343,15 @@ fn fold_native_edge(
     if !edge.contributes_metrics {
         return;
     }
-    let scale = scale.unwrap_or(1.0);
-    let font = edge.face.html_metrics(edge.font_size * scale);
+    let scale_f = scale.unwrap_or(1.0);
+    let font = scaled_html_metrics(&edge.face, edge.font_size, scale);
     let lh = edge
         .line_height
-        .unwrap_or((font.ascent + font.descent + font.line_gap) / scale);
-    let (ascent, descent) =
-        baseline_metrics(font.ascent / scale, font.descent / scale, central, scale);
+        .unwrap_or(font.ascent + font.descent + font.line_gap);
+    let (ascent, descent) = baseline_metrics(font.ascent, font.descent, central, scale_f);
     unite_native(
         metrics,
-        native_font_height(ascent, descent, lh, edge.baseline_shift, scale),
+        native_font_height(ascent, descent, lh, edge.baseline_shift, scale_f),
     );
 }
 fn unite_native(metrics: &mut Metrics, height: (f32, f32)) {
@@ -2396,14 +2413,13 @@ fn fold_edge_metrics(edge: &InlineEdge, m: &mut Metrics, scale: Option<f32>) {
     if !edge.contributes_metrics {
         return;
     }
-    let scale = scale.unwrap_or(1.0);
-    let font = edge.face.html_metrics(edge.font_size * scale);
+    let font = scaled_html_metrics(&edge.face, edge.font_size, scale);
     let shift = valign_shift(edge.valign, edge.font_size);
-    m.ascent = m.ascent.max(font.ascent / scale + shift);
-    m.descent = m.descent.max(font.descent / scale - shift);
+    m.ascent = m.ascent.max(font.ascent + shift);
+    m.descent = m.descent.max(font.descent - shift);
     m.height = m.height.max(
         edge.line_height
-            .unwrap_or((font.ascent + font.descent + font.line_gap) / scale),
+            .unwrap_or(font.ascent + font.descent + font.line_gap),
     );
 }
 

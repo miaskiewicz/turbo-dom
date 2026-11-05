@@ -1,12 +1,87 @@
 {
  "generator": "scripts/live-geometry-chrome-control.mjs",
- "chrome": "156.0.8078.47",
+ "chrome": "156.0.8078.4",
  "playwright_core": "1.61.0",
  "viewport": [
   1280,
   800
  ],
  "cases": [
+  {
+   "id": "percent-width-snaps-to-layout-unit",
+   "html": "<!doctype html><style></style><div data-cid=\"a\" style=\"width:33.33%;height:1px\"></div><div data-cid=\"b\" style=\"width:66.666%;height:1px\"></div><div data-cid=\"c\" style=\"width:12.5%;height:1px\"></div><div data-cid=\"d\" style=\"width:20%;height:1px\"></div>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 8,
+     "y": 8,
+     "width": 421.28125,
+     "height": 1,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 8,
+     "y": 9,
+     "width": 842.65625,
+     "height": 1,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 8,
+     "y": 10,
+     "width": 158,
+     "height": 1,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 11,
+     "width": 252.796875,
+     "height": 1,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "unknown-inline-empty",
+   "html": "<!doctype html><style></style><xform data-cid=\"x\"></xform>",
+   "metrics": true,
+   "measure": {
+    "x": "wh"
+   },
+   "boxes": [
+    {
+     "cid": "x",
+     "x": 8,
+     "y": 8,
+     "width": 0,
+     "height": 0,
+     "display": "inline",
+     "position": "static",
+     "metrics": {
+      "offsetLeft": 8,
+      "offsetTop": 8,
+      "offsetWidth": 0,
+      "offsetHeight": 0,
+      "clientLeft": 0,
+      "clientTop": 0,
+      "clientWidth": 0,
+      "clientHeight": 0,
+      "scrollWidth": 0,
+      "scrollHeight": 0,
+      "scrollLeft": 0
+     }
+    }
+   ]
+  },
   {
    "id": "absolute-span-blockified",
    "html": "<!doctype html><style>#a{position:absolute;top:5px;left:7px;width:20px;height:9px}</style><div data-cid=\"d\" style=\"width:10px;height:40px\"></div><span id=\"a\" data-cid=\"a\"></span>",

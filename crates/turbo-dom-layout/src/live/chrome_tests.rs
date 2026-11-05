@@ -801,3 +801,53 @@ fn sticky_blocks_and_viewport_stickies_follow_the_scroll_like_chrome_156() {
         failures.join("\n")
     );
 }
+/// miaskiewicz/turbo-dom#372: a percentage-resolved width snaps to Chrome's `LayoutUnit`
+/// grid (1/64 device px).
+#[test]
+fn percentage_widths_snap_to_layout_unit_like_chrome_156() {
+    assert_matches_chrome(compare_cases(|id| {
+        id == "percent-width-snaps-to-layout-unit"
+    }));
+}
+
+/// miaskiewicz/turbo-dom#375: an empty unknown inline element (`HTMLUnknownElement`,
+/// CSS initial `display: inline`) has `offsetWidth: 0`.
+#[test]
+fn unknown_inline_offset_width_is_zero_like_chrome_156() {
+    let (compared, failures) = compare_cases(|id| id == "unknown-inline-empty");
+    assert!(compared > 0);
+    assert!(
+        failures.is_empty(),
+        "{} unknown-inline reads differ from Chrome 156:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
+    // The metrics check (offsetWidth/offsetHeight) is through the `metrics` field.
+    let fixture: serde_json::Value = serde_json::from_str(FIXTURE).unwrap();
+    let case = fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["id"] == "unknown-inline-empty")
+        .unwrap();
+    let html = case["html"].as_str().unwrap();
+    let fonts = crate::FontRegistry::new();
+    let (tree, snapshot, styles) = super::testing::layout_with_fonts(
+        html,
+        css_of(html),
+        (1280.0, 800.0),
+        Some(1.0),
+        |_| {},
+        &fonts,
+    );
+    let laid: Laid = (&tree, &snapshot, &styles);
+    let mut failures = Vec::new();
+    for want in case["boxes"].as_array().unwrap() {
+        check_metrics(case, want, laid, &mut failures);
+    }
+    assert!(
+        failures.is_empty(),
+        "unknown-inline metrics differ from Chrome 156:\n{}",
+        failures.join("\n")
+    );
+}

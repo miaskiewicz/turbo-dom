@@ -176,6 +176,73 @@ pub fn style(pairs: &[(&str, &str)]) -> ComputedStyle {
     ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))
 }
 
+/// Chrome's UA-default `display` for an HTML tag (`None` for the CSS initial `inline`).
+/// The layout engine defaults an unspecified `display` to `inline` (CSS initial value);
+/// test-built styled trees bypass the UA cascade and set `display` explicitly via this
+/// helper, so a known HTML block element lays out like it does in a full document
+/// (miaskiewicz/turbo-dom#375).
+#[must_use]
+pub fn html_default_display(tag: &str) -> Option<&'static str> {
+    const BLOCK: &[&str] = &[
+        "address",
+        "article",
+        "aside",
+        "blockquote",
+        "body",
+        "center",
+        "dd",
+        "details",
+        "dialog",
+        "dir",
+        "div",
+        "dl",
+        "dt",
+        "fieldset",
+        "figcaption",
+        "figure",
+        "footer",
+        "form",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "header",
+        "hgroup",
+        "hr",
+        "html",
+        "legend",
+        "listing",
+        "main",
+        "menu",
+        "nav",
+        "ol",
+        "option",
+        "p",
+        "plaintext",
+        "pre",
+        "search",
+        "section",
+        "summary",
+        "ul",
+        "xmp",
+    ];
+    if BLOCK.contains(&tag) {
+        return Some("block");
+    }
+    None
+}
+
+/// Apply [`html_default_display`] to `style` when it carries no explicit `display`.
+pub fn ensure_default_display(style: &mut ComputedStyle, tag: &str) {
+    if style.get("display").is_none() {
+        if let Some(value) = html_default_display(tag) {
+            style.set("display", value.into());
+        }
+    }
+}
+
 /// The computed style of an element whose author declarations are `declarations` (one
 /// block, in source order), cascaded like a real rule: shorthands set their longhands
 /// (miaskiewicz/turbo-dom#256), later and `!important` declarations win.

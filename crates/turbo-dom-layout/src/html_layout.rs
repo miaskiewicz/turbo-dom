@@ -344,7 +344,14 @@ pub fn layout_html_tree_in_viewport(
     diags: &mut Diagnostics,
 ) -> Fragment {
     layout_html_tree_in_viewport_with(
-        tree, extra_css, viewport, fonts, images, options, |_| {}, diags,
+        tree,
+        extra_css,
+        viewport,
+        fonts,
+        images,
+        options,
+        |_| {},
+        diags,
     )
 }
 

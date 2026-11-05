@@ -172,7 +172,10 @@ fn display_maps_all() {
     for (css, want) in cases {
         assert_eq!(resolve(&[("display", css)]).display, want);
     }
-    assert_eq!(resolve(&[]).display, Display::Block);
+    // An unspecified `display` is the CSS initial value `inline`
+    // (miaskiewicz/turbo-dom#375); known HTML block elements take `display: block`
+    // from the UA stylesheet rules in `UA_CSS` / `LIVE_UA`.
+    assert_eq!(resolve(&[]).display, Display::Inline);
 }
 
 #[test]

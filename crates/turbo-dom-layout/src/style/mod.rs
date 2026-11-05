@@ -52,6 +52,7 @@ pub use token::{StyleToken, TokenSet};
 /// `10em` / `5em` by `1em` logical size (the internal `-internal-ua-css-size`, which
 /// `appearance: none` keeps; miaskiewicz/turbo-dom#293).
 const UA_CSS: &str = "
+address, article, aside, blockquote, body, center, dd, details, dialog, dir, div, dl, dt, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, html, legend, listing, main, menu, nav, ol, option, p, plaintext, pre, search, section, summary, ul, xmp { display: block }
 body { font-family: sans-serif }
 code, kbd, samp, pre { font-family: monospace }
 pre, listing, xmp, plaintext { white-space: pre }
