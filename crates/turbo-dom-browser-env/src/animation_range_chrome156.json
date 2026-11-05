@@ -1,0 +1,1049 @@
+{
+  "browser": "Chrome/156.0.8078.80",
+  "v8": "15.6.75.27",
+  "casesSha256": "8ad800458bbfd9863dbbed739bdc6e3b025636a7805eb542f591ca2b8d6ba885",
+  "probeSha256": "87d32f9eaaba4b323e5f28ca5a724d37e1975f6d96461954099b45a35045e82f",
+  "collectorSha256": "671661dee7acadfab3a3ef76ea9a97e1f2f3d99987c9d0cdf0ab8c42410c09ff",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "animation-range",
+      "result": {
+        "desc": [
+          [
+            "function",
+            "function",
+            true,
+            true,
+            "get rangeStart",
+            "set rangeStart",
+            0,
+            1
+          ],
+          [
+            "function",
+            "function",
+            true,
+            true,
+            "get rangeEnd",
+            "set rangeEnd",
+            0,
+            1
+          ]
+        ],
+        "keys": [
+          "effect",
+          "timeline",
+          "startTime",
+          "currentTime",
+          "playbackRate",
+          "rangeStart",
+          "rangeEnd",
+          "playState",
+          "replaceState",
+          "pending",
+          "id",
+          "onfinish",
+          "oncancel",
+          "onremove",
+          "finished",
+          "ready",
+          "cancel",
+          "commitStyles",
+          "finish",
+          "pause",
+          "persist",
+          "play",
+          "reverse",
+          "updatePlaybackRate",
+          "overallProgress",
+          "constructor"
+        ],
+        "initial": [
+          "normal",
+          "normal"
+        ],
+        "sets": [
+          [
+            "entry 10%",
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "entry",
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "exit 20px",
+            {
+              "offset": {
+                "css": "20px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "exit",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "20px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "exit",
+              "proto": "Object"
+            }
+          ],
+          [
+            "cover",
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "cover",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "cover",
+              "proto": "Object"
+            }
+          ],
+          [
+            "10%",
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "20px",
+            {
+              "offset": {
+                "css": "20px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "20px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "normal",
+            "normal",
+            "normal"
+          ],
+          [
+            "bogus",
+            "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': Animation range must be a name <length-percent> pair",
+            "throw TypeError: Failed to set the 'rangeEnd' property on 'Animation': Animation range must be a name <length-percent> pair"
+          ],
+          [
+            "entry 10% 20%",
+            "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': Animation range must be a name <length-percent> pair",
+            "throw TypeError: Failed to set the 'rangeEnd' property on 'Animation': Animation range must be a name <length-percent> pair"
+          ],
+          [
+            "ENTRY 10%",
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "contain calc(10% + 1px)",
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "contain",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "contain",
+              "proto": "Object"
+            }
+          ],
+          [
+            "entry-crossing 0%",
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry-crossing",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry-crossing",
+              "proto": "Object"
+            }
+          ],
+          [
+            "scroll 50%",
+            {
+              "offset": {
+                "css": "50%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "scroll",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "50%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "scroll",
+              "proto": "Object"
+            }
+          ],
+          [
+            "",
+            "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': Animation range must be a name <length-percent> pair",
+            "throw TypeError: Failed to set the 'rangeEnd' property on 'Animation': Animation range must be a name <length-percent> pair"
+          ],
+          [
+            "entry 0",
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "1em",
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "entry 1in",
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "entry -10%",
+            {
+              "offset": {
+                "css": "-10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "-10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "entry 1.5px",
+            {
+              "offset": {
+                "css": "1.5px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1.5px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "  entry   10%  ",
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "none 10%",
+            "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': Animation range must be a name <length-percent> pair",
+            "throw TypeError: Failed to set the 'rangeEnd' property on 'Animation': Animation range must be a name <length-percent> pair"
+          ],
+          [
+            "entry 1e1%",
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "entry +5px",
+            {
+              "offset": {
+                "css": "5px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "5px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "cover 10vw",
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "cover",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "cover",
+              "proto": "Object"
+            }
+          ],
+          [
+            "entry calc(5%)",
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "normal 10%",
+            "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': Animation range must be a name <length-percent> pair",
+            "throw TypeError: Failed to set the 'rangeEnd' property on 'Animation': Animation range must be a name <length-percent> pair"
+          ],
+          [
+            "NORMAL",
+            "normal",
+            "normal"
+          ]
+        ],
+        "objs": [
+          [
+            "({ rangeName: 'entry', offset: CSS.percent(10) })",
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "({ rangeName: 'exit' })",
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "exit",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "exit",
+              "proto": "Object"
+            }
+          ],
+          [
+            "({ offset: CSS.px(10) })",
+            {
+              "offset": {
+                "css": "10px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "10px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "({})",
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "({ rangeName: 'bogus', offset: CSS.percent(1) })",
+            "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': Failed to read the 'rangeName' property from 'TimelineRangeOffset': The provided value 'bogus' is not a valid enum value of type TimelineRange.",
+            "throw TypeError: Failed to set the 'rangeEnd' property on 'Animation': Failed to read the 'rangeName' property from 'TimelineRangeOffset': The provided value 'bogus' is not a valid enum value of type TimelineRange."
+          ],
+          [
+            "({ rangeName: 'none', offset: CSS.percent(1) })",
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "CSS.percent(30)",
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "CSS.px(5)",
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "CSS.number(1)",
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "({ rangeName: 'entry', offset: CSS.number(1) })",
+            "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': CSSNumericValue must use an absolute length or percentage for animation range.",
+            "throw TypeError: Failed to set the 'rangeEnd' property on 'Animation': CSSNumericValue must use an absolute length or percentage for animation range."
+          ],
+          [
+            "({ rangeName: 'cover', offset: CSS.px(3) })",
+            {
+              "offset": {
+                "css": "3px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "cover",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "3px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "cover",
+              "proto": "Object"
+            }
+          ],
+          [
+            "null",
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "5",
+            "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': Animation range must be a name <length-percent> pair",
+            "throw TypeError: Failed to set the 'rangeEnd' property on 'Animation': Animation range must be a name <length-percent> pair"
+          ],
+          [
+            "({ rangeName: 'entry', offset: '10%' })",
+            "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': Failed to read the 'offset' property from 'TimelineRangeOffset': Failed to convert value to 'CSSNumericValue'.",
+            "throw TypeError: Failed to set the 'rangeEnd' property on 'Animation': Failed to read the 'offset' property from 'TimelineRangeOffset': Failed to convert value to 'CSSNumericValue'."
+          ],
+          [
+            "({ rangeName: 'entry', offset: CSS.em(1) })",
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "({ rangeName: 'entry', offset: CSS.in(1) })",
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "({ rangeName: 'entry', offset: CSS.percent(10).add(CSS.px(1)) })",
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "0px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ],
+          [
+            "({ rangeName: 'ENTRY', offset: CSS.px(1) })",
+            "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': Failed to read the 'rangeName' property from 'TimelineRangeOffset': The provided value 'ENTRY' is not a valid enum value of type TimelineRange.",
+            "throw TypeError: Failed to set the 'rangeEnd' property on 'Animation': Failed to read the 'rangeName' property from 'TimelineRangeOffset': The provided value 'ENTRY' is not a valid enum value of type TimelineRange."
+          ],
+          [
+            "new CSSKeywordValue('normal')",
+            {
+              "offset": {
+                "css": "0%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "1%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "none",
+              "proto": "Object"
+            }
+          ],
+          [
+            "({ get offset() { throw new Error('o'); }, get rangeName() { throw new Error('n'); } })",
+            "throw Error: o",
+            "throw Error: o"
+          ],
+          [
+            "({ rangeName: 'entry', offset: CSS.percent(-5) })",
+            {
+              "offset": {
+                "css": "-5%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            {
+              "offset": {
+                "css": "-5%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            }
+          ]
+        ],
+        "options": [
+          [
+            "entry 10%",
+            {
+              "0": {
+                "offset": {
+                  "css": "10%",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "entry",
+                "proto": "Object"
+              },
+              "1": {
+                "offset": {
+                  "css": "10%",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "entry",
+                "proto": "Object"
+              },
+              "proto": ""
+            }
+          ],
+          [
+            "normal",
+            {
+              "0": "normal",
+              "1": "normal",
+              "proto": ""
+            }
+          ],
+          [
+            "cover",
+            {
+              "0": {
+                "offset": {
+                  "css": "0%",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "cover",
+                "proto": "Object"
+              },
+              "1": {
+                "offset": {
+                  "css": "100%",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "cover",
+                "proto": "Object"
+              },
+              "proto": ""
+            }
+          ],
+          [
+            "bogus",
+            "throw TypeError: Failed to execute 'animate' on 'Element': Animation range must be a name <length-percent> pair"
+          ],
+          [
+            "exit 5px",
+            {
+              "0": {
+                "offset": {
+                  "css": "5px",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "exit",
+                "proto": "Object"
+              },
+              "1": {
+                "offset": {
+                  "css": "5px",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "exit",
+                "proto": "Object"
+              },
+              "proto": ""
+            }
+          ]
+        ],
+        "optionsMore": [
+          [
+            "({ rangeEnd: { rangeName: 'exit' } })",
+            {
+              "0": "normal",
+              "1": {
+                "offset": {
+                  "css": "100%",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "exit",
+                "proto": "Object"
+              },
+              "proto": ""
+            }
+          ],
+          [
+            "({ rangeEnd: 'exit' })",
+            {
+              "0": "normal",
+              "1": {
+                "offset": {
+                  "css": "100%",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "exit",
+                "proto": "Object"
+              },
+              "proto": ""
+            }
+          ],
+          [
+            "({ rangeStart: 'exit' })",
+            {
+              "0": {
+                "offset": {
+                  "css": "0%",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "exit",
+                "proto": "Object"
+              },
+              "1": "normal",
+              "proto": ""
+            }
+          ],
+          [
+            "({ rangeEnd: '10%' })",
+            {
+              "0": "normal",
+              "1": {
+                "offset": {
+                  "css": "10%",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "none",
+                "proto": "Object"
+              },
+              "proto": ""
+            }
+          ],
+          [
+            "({ rangeEnd: { offset: CSS.px(2) } })",
+            {
+              "0": "normal",
+              "1": {
+                "offset": {
+                  "css": "2px",
+                  "ctor": "CSSUnitValue"
+                },
+                "rangeName": "none",
+                "proto": "Object"
+              },
+              "proto": ""
+            }
+          ],
+          [
+            "({ rangeStart: { rangeName: 'bogus' } })",
+            "throw TypeError: Failed to execute 'animate' on 'Element': Failed to read the 'rangeStart' property from 'KeyframeAnimationOptions': Failed to read the 'rangeName' property from 'TimelineRangeOffset': The provided value 'bogus' is not a valid enum value of type TimelineRange."
+          ],
+          [
+            "({ rangeEnd: 5 })",
+            "throw TypeError: Failed to execute 'animate' on 'Element': Animation range must be a name <length-percent> pair"
+          ],
+          [
+            "({ rangeStart: { rangeName: 'entry', offset: CSS.number(1) } })",
+            "throw TypeError: Failed to execute 'animate' on 'Element': CSSNumericValue must use an absolute length or percentage for animation range."
+          ]
+        ],
+        "optionsObj": {
+          "offset": {
+            "css": "5%",
+            "ctor": "CSSUnitValue"
+          },
+          "rangeName": "entry",
+          "proto": "Object"
+        },
+        "newAnim": {
+          "0": "normal",
+          "1": "normal",
+          "proto": ""
+        },
+        "identity": {
+          "0": false,
+          "1": false,
+          "proto": ""
+        },
+        "css": [
+          {
+            "0": {
+              "offset": {
+                "css": "10%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "entry",
+              "proto": "Object"
+            },
+            "1": {
+              "offset": {
+                "css": "90%",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "exit",
+              "proto": "Object"
+            },
+            "proto": ""
+          },
+          {
+            "0": {
+              "offset": {
+                "css": "20px",
+                "ctor": "CSSUnitValue"
+              },
+              "rangeName": "cover",
+              "proto": "Object"
+            },
+            "1": "normal",
+            "proto": ""
+          }
+        ],
+        "cssSet": {
+          "0": {
+            "offset": {
+              "css": "5%",
+              "ctor": "CSSUnitValue"
+            },
+            "rangeName": "contain",
+            "proto": "Object"
+          },
+          "1": "exit 1%",
+          "proto": ""
+        },
+        "thisCheck": "throw TypeError: Illegal invocation",
+        "symbol": "throw TypeError: Failed to set the 'rangeStart' property on 'Animation': Cannot convert a Symbol value to a string"
+      }
+    }
+  ]
+}

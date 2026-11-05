@@ -11233,6 +11233,9 @@ mod frame_tokens_tests;
 mod html_meta_tests;
 
 #[cfg(test)]
+#[path = "animation_range_tests.rs"]
+mod animation_range_tests;
+#[cfg(test)]
 #[path = "computed_defaults_tests.rs"]
 mod computed_defaults_tests;
 #[cfg(test)]
@@ -11244,6 +11247,9 @@ mod css_shorthand_tests;
 #[cfg(test)]
 #[path = "css_supports_tests.rs"]
 mod css_supports_tests;
+#[cfg(test)]
+#[path = "css_tree_counting_shape_tests.rs"]
+mod css_tree_counting_shape_tests;
 #[cfg(test)]
 #[path = "dom_reactions_tests.rs"]
 mod dom_reactions_tests;

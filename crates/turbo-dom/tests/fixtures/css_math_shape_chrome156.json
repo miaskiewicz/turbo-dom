@@ -1,0 +1,1383 @@
+{
+  "browser": "Chrome/156.0.8078.80",
+  "v8": "15.6.75.27",
+  "casesSha256": "acebf202a1b0c9afad56703b8e3e5404a28a320131e53771407c9772fb01628c",
+  "probeSha256": "a458463e8721c083a75be76315f0bdaf5cee10e5d0a6fc8d470a0b926d6ee37e",
+  "collectorSha256": "671661dee7acadfab3a3ef76ea9a97e1f2f3d99987c9d0cdf0ab8c42410c09ff",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "css-math-shape",
+      "result": [
+        [
+          "width",
+          "calc(sibling-index() * 1px)",
+          "calc(1px * sibling-index())",
+          "width: calc(1px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(2 * sibling-index() * 1px)",
+          "calc(2px * sibling-index())",
+          "width: calc(2px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 2px + 1px)",
+          "calc(1px + (2px * sibling-index()))",
+          "width: calc(1px + (2px * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(1px + sibling-index() * 1px)",
+          "calc(1px + (1px * sibling-index()))",
+          "width: calc(1px + (1px * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px + 50%)",
+          "calc(50% + (1px * sibling-index()))",
+          "width: calc(50% + (1px * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px + 1em + 2px)",
+          "calc(1em + 2px + (1px * sibling-index()))",
+          "width: calc(1em + 2px + (1px * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc((sibling-index() - 1) * 10px)",
+          "calc(10px * (-1 + sibling-index()))",
+          "width: calc(10px * (-1 + sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px * 2)",
+          "calc(2px * sibling-index())",
+          "width: calc(2px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * (1px + 2px))",
+          "calc(3px * sibling-index())",
+          "width: calc(3px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1in)",
+          "calc(96px * sibling-index())",
+          "width: calc(96px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(10px / sibling-count())",
+          "calc(10px / sibling-count())",
+          "width: calc(10px / sibling-count());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px / 2)",
+          "calc(0.5px * sibling-index())",
+          "width: calc(0.5px * sibling-index());"
+        ],
+        [
+          "width",
+          "max(1px, sibling-index() * 1px)",
+          "max(1px, 1px * sibling-index())",
+          "width: max(1px, 1px * sibling-index());"
+        ],
+        [
+          "width",
+          "min(sibling-index() * 1px, 3px)",
+          "min(1px * sibling-index(), 3px)",
+          "width: min(1px * sibling-index(), 3px);"
+        ],
+        [
+          "width",
+          "clamp(1px, sibling-index() * 1px, 3px)",
+          "clamp(1px, 1px * sibling-index(), 3px)",
+          "width: clamp(1px, 1px * sibling-index(), 3px);"
+        ],
+        [
+          "width",
+          "calc(sibling-index()*1px)",
+          "calc(1px * sibling-index())",
+          "width: calc(1px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(SIBLING-INDEX() * 1px)",
+          "calc(1px * sibling-index())",
+          "width: calc(1px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index( ) * 1px)",
+          "calc(1px * sibling-index())",
+          "width: calc(1px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index () * 1px)",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "calc(1px * sibling-index() * sibling-count())",
+          "calc(1px * sibling-index() * sibling-count())",
+          "width: calc(1px * sibling-index() * sibling-count());"
+        ],
+        [
+          "width",
+          "calc(sibling-count() * sibling-index() * 1px)",
+          "calc(1px * sibling-count() * sibling-index())",
+          "width: calc(1px * sibling-count() * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(1px * (sibling-index() + 1))",
+          "calc(1px * (1 + sibling-index()))",
+          "width: calc(1px * (1 + sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(-1px * sibling-index())",
+          "calc(-1px * sibling-index())",
+          "width: calc(-1px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * -1px)",
+          "calc(-1px * sibling-index())",
+          "width: calc(-1px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(0px * sibling-index())",
+          "calc(0px * sibling-index())",
+          "width: calc(0px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px - 1px)",
+          "calc(-1px + (1px * sibling-index()))",
+          "width: calc(-1px + (1px * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(1px - sibling-index() * 1px)",
+          "calc(1px - (1px * sibling-index()))",
+          "width: calc(1px - (1px * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px - 2em)",
+          "calc(-2em + (1px * sibling-index()))",
+          "width: calc(-2em + (1px * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(100% / sibling-count())",
+          "calc(100% / sibling-count())",
+          "width: calc(100% / sibling-count());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px + sibling-count() * 1px)",
+          "calc((1px * sibling-index()) + (1px * sibling-count()))",
+          "width: calc((1px * sibling-index()) + (1px * sibling-count()));"
+        ],
+        [
+          "order",
+          "sibling-index()",
+          "sibling-index()",
+          "order: sibling-index();"
+        ],
+        [
+          "order",
+          "sibling-count()",
+          "sibling-count()",
+          "order: sibling-count();"
+        ],
+        [
+          "order",
+          "calc(sibling-index())",
+          "sibling-index()",
+          "order: sibling-index();"
+        ],
+        [
+          "order",
+          "calc(sibling-index() * 2)",
+          "calc(2 * sibling-index())",
+          "order: calc(2 * sibling-index());"
+        ],
+        [
+          "order",
+          "calc(sibling-index() / 2)",
+          "calc(0.5 * sibling-index())",
+          "order: calc(0.5 * sibling-index());"
+        ],
+        [
+          "order",
+          "calc(sibling-index() + 1 + 2)",
+          "calc(3 + sibling-index())",
+          "order: calc(3 + sibling-index());"
+        ],
+        [
+          "order",
+          "calc(1 + 2 + sibling-index())",
+          "calc(3 + sibling-index())",
+          "order: calc(3 + sibling-index());"
+        ],
+        [
+          "order",
+          "calc(sibling-index() - sibling-count())",
+          "calc(sibling-index() - sibling-count())",
+          "order: calc(sibling-index() - sibling-count());"
+        ],
+        [
+          "order",
+          "min(sibling-index(), 2)",
+          "min(sibling-index(), 2)",
+          "order: min(sibling-index(), 2);"
+        ],
+        [
+          "order",
+          "calc(sibling-index() * 1px)",
+          "",
+          ""
+        ],
+        [
+          "z-index",
+          "calc(sibling-count() + 1)",
+          "calc(1 + sibling-count())",
+          "z-index: calc(1 + sibling-count());"
+        ],
+        [
+          "z-index",
+          "sibling-count()",
+          "sibling-count()",
+          "z-index: sibling-count();"
+        ],
+        [
+          "z-index",
+          "calc(sibling-count() * -1)",
+          "calc(-1 * sibling-count())",
+          "z-index: calc(-1 * sibling-count());"
+        ],
+        [
+          "opacity",
+          "calc(1 / sibling-count())",
+          "calc(1 / sibling-count())",
+          "opacity: calc(1 / sibling-count());"
+        ],
+        [
+          "opacity",
+          "sibling-index()",
+          "sibling-index()",
+          "opacity: sibling-index();"
+        ],
+        [
+          "opacity",
+          "calc(sibling-index() / sibling-count())",
+          "calc(sibling-index() / sibling-count())",
+          "opacity: calc(sibling-index() / sibling-count());"
+        ],
+        [
+          "opacity",
+          "calc(sibling-index() / 10)",
+          "calc(0.1 * sibling-index())",
+          "opacity: calc(0.1 * sibling-index());"
+        ],
+        [
+          "line-height",
+          "sibling-index()",
+          "sibling-index()",
+          "line-height: sibling-index();"
+        ],
+        [
+          "flex-grow",
+          "sibling-index()",
+          "sibling-index()",
+          "flex-grow: sibling-index();"
+        ],
+        [
+          "font-weight",
+          "calc(sibling-index() * 100)",
+          "calc(100 * sibling-index())",
+          "font-weight: calc(100 * sibling-index());"
+        ],
+        [
+          "rotate",
+          "calc(sibling-index() * 10deg)",
+          "calc(10deg * sibling-index())",
+          "rotate: calc(10deg * sibling-index());"
+        ],
+        [
+          "transition-delay",
+          "calc(sibling-index() * 100ms)",
+          "calc(0.1s * sibling-index())",
+          "transition-delay: calc(0.1s * sibling-index());"
+        ],
+        [
+          "margin",
+          "calc(sibling-index() * 1px)",
+          "calc(1px * sibling-index())",
+          "margin: calc(1px * sibling-index());"
+        ],
+        [
+          "margin-left",
+          "calc(sibling-index() * 1px)",
+          "calc(1px * sibling-index())",
+          "margin-left: calc(1px * sibling-index());"
+        ],
+        [
+          "color",
+          "rgb(calc(sibling-index() * 50) 0 0)",
+          "rgb(calc(50 * sibling-index()) 0 0)",
+          "color: rgb(calc(50 * sibling-index()) 0 0);"
+        ],
+        [
+          "width",
+          "sibling-index()",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "calc(sibling-index(1) * 1px)",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px * 1px)",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "calc(sibling-index() + 1px)",
+          "",
+          ""
+        ],
+        [
+          "opacity",
+          "calc(sibling-index() * 1%)",
+          "calc(1% * sibling-index())",
+          "opacity: calc(1% * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1%)",
+          "calc(1% * sibling-index())",
+          "width: calc(1% * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px + 0px)",
+          "calc(0px + (1px * sibling-index()))",
+          "width: calc(0px + (1px * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px + 0%)",
+          "calc(0% + (1px * sibling-index()))",
+          "width: calc(0% + (1px * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(1 * sibling-index() * 1px)",
+          "calc(1px * sibling-index())",
+          "width: calc(1px * sibling-index());"
+        ],
+        [
+          "order",
+          "calc(sibling-index() * 1)",
+          "sibling-index()",
+          "order: sibling-index();"
+        ],
+        [
+          "order",
+          "calc(sibling-index() + 0)",
+          "calc(0 + sibling-index())",
+          "order: calc(0 + sibling-index());"
+        ],
+        [
+          "order",
+          "calc(0 + sibling-index())",
+          "calc(0 + sibling-index())",
+          "order: calc(0 + sibling-index());"
+        ],
+        [
+          "order",
+          "calc(sibling-index() * 0.5 * 4)",
+          "calc(2 * sibling-index())",
+          "order: calc(2 * sibling-index());"
+        ],
+        [
+          "order",
+          "calc(2 * sibling-index() * 3)",
+          "calc(6 * sibling-index())",
+          "order: calc(6 * sibling-index());"
+        ],
+        [
+          "order",
+          "calc(sibling-index() * sibling-count())",
+          "calc(sibling-index() * sibling-count())",
+          "order: calc(sibling-index() * sibling-count());"
+        ],
+        [
+          "order",
+          "calc(sibling-index() / sibling-count())",
+          "calc(sibling-index() / sibling-count())",
+          "order: calc(sibling-index() / sibling-count());"
+        ],
+        [
+          "order",
+          "abs(sibling-index())",
+          "abs(sibling-index())",
+          "order: abs(sibling-index());"
+        ],
+        [
+          "order",
+          "round(sibling-index(), 2)",
+          "round(sibling-index(), 2)",
+          "order: round(sibling-index(), 2);"
+        ],
+        [
+          "order",
+          "calc(-sibling-index())",
+          "",
+          ""
+        ],
+        [
+          "order",
+          "calc(-1 * sibling-index())",
+          "calc(-1 * sibling-index())",
+          "order: calc(-1 * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(e * sibling-index() * 1px)",
+          "calc(2.71828px * sibling-index())",
+          "width: calc(2.71828px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(pi * 1px * sibling-index())",
+          "calc(3.14159px * sibling-index())",
+          "width: calc(3.14159px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 10%)",
+          "calc(10% * sibling-index())",
+          "width: calc(10% * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(2px * sibling-index() - 1px * sibling-count())",
+          "calc((2px * sibling-index()) - (1px * sibling-count()))",
+          "width: calc((2px * sibling-index()) - (1px * sibling-count()));"
+        ],
+        [
+          "width",
+          "calc(2 * (sibling-index() * 3px))",
+          "calc(6px * sibling-index())",
+          "width: calc(6px * sibling-index());"
+        ],
+        [
+          "order",
+          "calc(-1 * (sibling-index() + 1))",
+          "calc(-1 * (1 + sibling-index()))",
+          "order: calc(-1 * (1 + sibling-index()));"
+        ],
+        [
+          "order",
+          "calc((sibling-index() + 1) / 2)",
+          "calc(0.5 * (1 + sibling-index()))",
+          "order: calc(0.5 * (1 + sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(10px / sibling-count() * 2)",
+          "calc(20px / sibling-count())",
+          "width: calc(20px / sibling-count());"
+        ],
+        [
+          "opacity",
+          "calc(1 / sibling-count() / 2)",
+          "calc(0.5 / sibling-count())",
+          "opacity: calc(0.5 / sibling-count());"
+        ],
+        [
+          "width",
+          "calc(1px - 1px + sibling-index() * 1px)",
+          "calc(0px + (1px * sibling-index()))",
+          "width: calc(0px + (1px * sibling-index()));"
+        ],
+        [
+          "order",
+          "calc(0 - sibling-index())",
+          "calc(0 - sibling-index())",
+          "order: calc(0 - sibling-index());"
+        ],
+        [
+          "order",
+          "calc(sibling-index() - (1 + sibling-count()))",
+          "calc(-1 + sibling-index() - sibling-count())",
+          "order: calc(-1 + sibling-index() - sibling-count());"
+        ],
+        [
+          "width",
+          "calc(min(sibling-index(), 2) * 1px)",
+          "calc(1px * min(sibling-index(), 2))",
+          "width: calc(1px * min(sibling-index(), 2));"
+        ],
+        [
+          "margin",
+          "1px calc(sibling-index() * 1px)",
+          "1px calc(1px * sibling-index())",
+          "margin: 1px calc(1px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc((sibling-index()) * 1px)",
+          "calc(1px * sibling-index())",
+          "width: calc(1px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(calc(sibling-index() * 2) * 1px)",
+          "calc(2px * sibling-index())",
+          "width: calc(2px * sibling-index());"
+        ],
+        [
+          "order",
+          "calc(sibling-index() * 2 + sibling-index() * 3)",
+          "calc((2 * sibling-index()) + (3 * sibling-index()))",
+          "order: calc((2 * sibling-index()) + (3 * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(sibling-index() / 2 * 1px)",
+          "calc(0.5px * sibling-index())",
+          "width: calc(0.5px * sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * 1px / sibling-count())",
+          "calc(1px * sibling-index() / sibling-count())",
+          "width: calc(1px * sibling-index() / sibling-count());"
+        ],
+        [
+          "width",
+          "calc(1px * sibling-index() / sibling-count() * 2)",
+          "calc(2px * sibling-index() / sibling-count())",
+          "width: calc(2px * sibling-index() / sibling-count());"
+        ],
+        [
+          "width",
+          "calc(1% + sibling-index() * 1px + 1px)",
+          "calc(1% + 1px + (1px * sibling-index()))",
+          "width: calc(1% + 1px + (1px * sibling-index()));"
+        ],
+        [
+          "order",
+          "calc(sibling-index() - 1 - sibling-count())",
+          "calc(-1 + sibling-index() - sibling-count())",
+          "order: calc(-1 + sibling-index() - sibling-count());"
+        ],
+        [
+          "order",
+          "calc(-1 * sibling-index() + 2)",
+          "calc(2 + (-1 * sibling-index()))",
+          "order: calc(2 + (-1 * sibling-index()));"
+        ],
+        [
+          "width",
+          "calc(-2px * sibling-index() + 10px)",
+          "calc(10px + (-2px * sibling-index()))",
+          "width: calc(10px + (-2px * sibling-index()));"
+        ],
+        [
+          "order",
+          "max(sibling-index() * 2, sibling-count())",
+          "max(2 * sibling-index(), sibling-count())",
+          "order: max(2 * sibling-index(), sibling-count());"
+        ],
+        [
+          "width",
+          "clamp(1px, calc(sibling-index() * 1px), 3px)",
+          "clamp(1px, 1px * sibling-index(), 3px)",
+          "width: clamp(1px, 1px * sibling-index(), 3px);"
+        ],
+        [
+          "flex-grow",
+          "calc(sibling-index() / 2)",
+          "calc(0.5 * sibling-index())",
+          "flex-grow: calc(0.5 * sibling-index());"
+        ],
+        [
+          "z-index",
+          "calc(sibling-index() - 1)",
+          "calc(-1 + sibling-index())",
+          "z-index: calc(-1 + sibling-index());"
+        ],
+        [
+          "width",
+          "calc(sibling-index() * (1px + 1em))",
+          "calc(sibling-index() * (1em + 1px))",
+          "width: calc(sibling-index() * (1em + 1px));"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px)",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "clip-path: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px, close)",
+          "shape(from 0px 0px, line to 1px 1px, close)",
+          "clip-path: shape(from 0px 0px, line to 1px 1px, close);"
+        ],
+        [
+          "clip-path",
+          "shape(nonzero from 0 0, line to 1px 1px)",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "clip-path: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(evenodd from 0 0, line to 1px 1px)",
+          "shape(evenodd from 0px 0px, line to 1px 1px)",
+          "clip-path: shape(evenodd from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(EVENODD FROM 0 0, LINE TO 1PX 1PX)",
+          "shape(evenodd from 0px 0px, line to 1px 1px)",
+          "clip-path: shape(evenodd from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 1em 2em, line to 50% 50%)",
+          "shape(from 1em 2em, line to 50% 50%)",
+          "clip-path: shape(from 1em 2em, line to 50% 50%);"
+        ],
+        [
+          "clip-path",
+          "shape(from left top, line to right bottom)",
+          "shape(from left top, line to right bottom)",
+          "clip-path: shape(from left top, line to right bottom);"
+        ],
+        [
+          "clip-path",
+          "shape(from center, line to 10px 20px)",
+          "shape(from center center, line to 10px 20px)",
+          "clip-path: shape(from center center, line to 10px 20px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 10px, line to 1px 1px)",
+          "shape(from 10px center, line to 1px 1px)",
+          "clip-path: shape(from 10px center, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from left 10px top 20px, line to 1px 1px)",
+          "shape(from left 10px top 20px, line to 1px 1px)",
+          "clip-path: shape(from left 10px top 20px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from top left, line to 1px 1px)",
+          "shape(from left top, line to 1px 1px)",
+          "clip-path: shape(from left top, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to center)",
+          "shape(from 0px 0px, line to center center)",
+          "clip-path: shape(from 0px 0px, line to center center);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to left 10px)",
+          "shape(from 0px 0px, line to left 10px)",
+          "clip-path: shape(from 0px 0px, line to left 10px);"
+        ],
+        [
+          "clip-path",
+          "shape(from right 10px bottom 10%, line to 10px top)",
+          "shape(from right 10px bottom 10%, line to 10px top)",
+          "clip-path: shape(from right 10px bottom 10%, line to 10px top);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to right 20px bottom 1em)",
+          "shape(from 0px 0px, line to right 20px bottom 1em)",
+          "clip-path: shape(from 0px 0px, line to right 20px bottom 1em);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to bottom 10px right)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 10px top 5px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line by 1px 1px)",
+          "shape(from 0px 0px, line by 1px 1px)",
+          "clip-path: shape(from 0px 0px, line by 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line by -1px -1px)",
+          "shape(from 0px 0px, line by -1px -1px)",
+          "clip-path: shape(from 0px 0px, line by -1px -1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line by 10% 1em)",
+          "shape(from 0px 0px, line by 10% 1em)",
+          "clip-path: shape(from 0px 0px, line by 10% 1em);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line by left top)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, move to 1px 1px)",
+          "shape(from 0px 0px, move to 1px 1px)",
+          "clip-path: shape(from 0px 0px, move to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, move by 1px 1px)",
+          "shape(from 0px 0px, move by 1px 1px)",
+          "clip-path: shape(from 0px 0px, move by 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, hline to 10px)",
+          "shape(from 0px 0px, hline to 10px)",
+          "clip-path: shape(from 0px 0px, hline to 10px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, hline by 10px)",
+          "shape(from 0px 0px, hline by 10px)",
+          "clip-path: shape(from 0px 0px, hline by 10px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, vline to 10px)",
+          "shape(from 0px 0px, vline to 10px)",
+          "clip-path: shape(from 0px 0px, vline to 10px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, vline by -10%)",
+          "shape(from 0px 0px, vline by -10%)",
+          "clip-path: shape(from 0px 0px, vline by -10%);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, hline to left)",
+          "shape(from 0px 0px, hline to left)",
+          "clip-path: shape(from 0px 0px, hline to left);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, hline to right)",
+          "shape(from 0px 0px, hline to right)",
+          "clip-path: shape(from 0px 0px, hline to right);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, hline to center)",
+          "shape(from 0px 0px, hline to center)",
+          "clip-path: shape(from 0px 0px, hline to center);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, hline to x-start)",
+          "shape(from 0px 0px, hline to x-start)",
+          "clip-path: shape(from 0px 0px, hline to x-start);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, hline to x-end)",
+          "shape(from 0px 0px, hline to x-end)",
+          "clip-path: shape(from 0px 0px, hline to x-end);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, vline to top)",
+          "shape(from 0px 0px, vline to top)",
+          "clip-path: shape(from 0px 0px, vline to top);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, vline to bottom)",
+          "shape(from 0px 0px, vline to bottom)",
+          "clip-path: shape(from 0px 0px, vline to bottom);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, vline to y-end)",
+          "shape(from 0px 0px, vline to y-end)",
+          "clip-path: shape(from 0px 0px, vline to y-end);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, vline to y-start)",
+          "shape(from 0px 0px, vline to y-start)",
+          "clip-path: shape(from 0px 0px, vline to y-start);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, hline to top)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, vline to left)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, hline 10px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve to 1px 2px with 3px 4px)",
+          "shape(from 0px 0px, curve to 1px 2px with 3px 4px)",
+          "clip-path: shape(from 0px 0px, curve to 1px 2px with 3px 4px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve to 1px 2px with 3px 4px / 5px 6px)",
+          "shape(from 0px 0px, curve to 1px 2px with 3px 4px / 5px 6px)",
+          "clip-path: shape(from 0px 0px, curve to 1px 2px with 3px 4px / 5px 6px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve by 1px 2px with 3px 4px)",
+          "shape(from 0px 0px, curve by 1px 2px with 3px 4px)",
+          "clip-path: shape(from 0px 0px, curve by 1px 2px with 3px 4px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve by 1px 2px with 3px 4px / 5px 6px)",
+          "shape(from 0px 0px, curve by 1px 2px with 3px 4px / 5px 6px)",
+          "clip-path: shape(from 0px 0px, curve by 1px 2px with 3px 4px / 5px 6px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve to 1px 2px with 3px 4px from start)",
+          "shape(from 0px 0px, curve to 1px 2px with 3px 4px from start)",
+          "clip-path: shape(from 0px 0px, curve to 1px 2px with 3px 4px from start);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve to 1px 2px with 3px 4px from end / 1px 1px from origin)",
+          "shape(from 0px 0px, curve to 1px 2px with 3px 4px from end / 1px 1px)",
+          "clip-path: shape(from 0px 0px, curve to 1px 2px with 3px 4px from end / 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve by 1px 2px with 3px 4px from start)",
+          "shape(from 0px 0px, curve by 1px 2px with 3px 4px)",
+          "clip-path: shape(from 0px 0px, curve by 1px 2px with 3px 4px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve by 1px 2px with 3px 4px from origin / 1px 1px from end)",
+          "shape(from 0px 0px, curve by 1px 2px with 3px 4px from origin / 1px 1px from end)",
+          "clip-path: shape(from 0px 0px, curve by 1px 2px with 3px 4px from origin / 1px 1px from end);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve to 1px 2px with center)",
+          "shape(from 0px 0px, curve to 1px 2px with center center)",
+          "clip-path: shape(from 0px 0px, curve to 1px 2px with center center);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve to 1px 2px with left top / right bottom)",
+          "shape(from 0px 0px, curve to 1px 2px with left top / right bottom)",
+          "clip-path: shape(from 0px 0px, curve to 1px 2px with left top / right bottom);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve by 1px 2px with left top)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve to 1px 2px with left top from start)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve to 1px 2px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve to 1px 2px with 3px 4px / 5px 6px / 7px 8px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, smooth to 1px 1px)",
+          "shape(from 0px 0px, smooth to 1px 1px)",
+          "clip-path: shape(from 0px 0px, smooth to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, smooth by 1px 1px)",
+          "shape(from 0px 0px, smooth by 1px 1px)",
+          "clip-path: shape(from 0px 0px, smooth by 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, smooth to 1px 1px with 2px 2px)",
+          "shape(from 0px 0px, smooth to 1px 1px with 2px 2px)",
+          "clip-path: shape(from 0px 0px, smooth to 1px 1px with 2px 2px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, smooth by 1px 1px with 2px 2px)",
+          "shape(from 0px 0px, smooth by 1px 1px with 2px 2px)",
+          "clip-path: shape(from 0px 0px, smooth by 1px 1px with 2px 2px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, smooth by 1px 1px with 2px 2px from end)",
+          "shape(from 0px 0px, smooth by 1px 1px with 2px 2px from end)",
+          "clip-path: shape(from 0px 0px, smooth by 1px 1px with 2px 2px from end);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, smooth by 1px 1px with 2px 2px from start)",
+          "shape(from 0px 0px, smooth by 1px 1px with 2px 2px)",
+          "clip-path: shape(from 0px 0px, smooth by 1px 1px with 2px 2px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, smooth to 1px 1px with 2px 2px from origin)",
+          "shape(from 0px 0px, smooth to 1px 1px with 2px 2px)",
+          "clip-path: shape(from 0px 0px, smooth to 1px 1px with 2px 2px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, smooth to 1px 1px with 2px 2px / 3px 3px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px 5px)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px 5px)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px 5px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px 6px)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px 6px)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px 6px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px ccw)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px cw)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px cw)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px cw);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px small)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px large)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px large)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px large);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px rotate 0deg)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px rotate 0)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px rotate 10deg)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px rotate 10deg)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px rotate 10deg);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px rotate 1turn)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px rotate 1turn)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px rotate 1turn);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px rotate -0.5rad)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px rotate -0.5rad)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px rotate -0.5rad);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px large cw of 5px rotate 10deg)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px cw large rotate 10deg)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px cw large rotate 10deg);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px rotate 10deg of 5px)",
+          "shape(from 0px 0px, arc to 10px 10px of 5px rotate 10deg)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of 5px rotate 10deg);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc by 10px 10px of 5% 1em)",
+          "shape(from 0px 0px, arc by 10px 10px of 5% 1em)",
+          "clip-path: shape(from 0px 0px, arc by 10px 10px of 5% 1em);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px cw ccw)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of 5px 6px 7px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to center of 5px)",
+          "shape(from 0px 0px, arc to center center of 5px)",
+          "clip-path: shape(from 0px 0px, arc to center center of 5px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of -5px)",
+          "shape(from 0px 0px, arc to 10px 10px of -5px)",
+          "clip-path: shape(from 0px 0px, arc to 10px 10px of -5px);"
+        ],
+        [
+          "clip-path",
+          "shape(from calc(1px + 1px) 0, line to calc(50% + 1px) 1px)",
+          "shape(from calc(2px) 0px, line to calc(50% + 1px) 1px)",
+          "clip-path: shape(from calc(2px) 0px, line to calc(50% + 1px) 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px,)",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "clip-path: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0,, line to 1px 1px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0 line to 1px 1px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, close, close)",
+          "shape(from 0px 0px, close, close)",
+          "clip-path: shape(from 0px 0px, close, close);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1 1)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "clip-path: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px)",
+          "shape(from 0px 0px, line to 1px center)",
+          "clip-path: shape(from 0px 0px, line to 1px center);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px 1px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, LINE BY 1PX 1PX)",
+          "shape(from 0px 0px, line by 1px 1px)",
+          "clip-path: shape(from 0px 0px, line by 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, move to 1px 1px, close, move to 2px 2px)",
+          "shape(from 0px 0px, move to 1px 1px, close, move to 2px 2px)",
+          "clip-path: shape(from 0px 0px, move to 1px 1px, close, move to 2px 2px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(line to 1px 1px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape()",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1.50px 2e1px)",
+          "shape(from 0px 0px, line to 1.5px 20px)",
+          "clip-path: shape(from 0px 0px, line to 1.5px 20px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1in 1pt)",
+          "shape(from 0px 0px, line to 1in 1pt)",
+          "clip-path: shape(from 0px 0px, line to 1in 1pt);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line by 1px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, curve by 1px 2px with 3px 4px at end)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, arc to 10px 10px of cw)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, bogus to 1px 1px)",
+          "",
+          ""
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px) border-box",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "clip-path: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1em 1em) content-box",
+          "shape(from 0px 0px, line to 1em 1em) content-box",
+          "clip-path: shape(from 0px 0px, line to 1em 1em) content-box;"
+        ],
+        [
+          "clip-path",
+          "content-box shape(from 0 0, line to 1px 1px)",
+          "shape(from 0px 0px, line to 1px 1px) content-box",
+          "clip-path: shape(from 0px 0px, line to 1px 1px) content-box;"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px) margin-box",
+          "shape(from 0px 0px, line to 1px 1px) margin-box",
+          "clip-path: shape(from 0px 0px, line to 1px 1px) margin-box;"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px) fill-box",
+          "shape(from 0px 0px, line to 1px 1px) fill-box",
+          "clip-path: shape(from 0px 0px, line to 1px 1px) fill-box;"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px) view-box",
+          "shape(from 0px 0px, line to 1px 1px) view-box",
+          "clip-path: shape(from 0px 0px, line to 1px 1px) view-box;"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px) stroke-box",
+          "shape(from 0px 0px, line to 1px 1px) stroke-box",
+          "clip-path: shape(from 0px 0px, line to 1px 1px) stroke-box;"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px) border-box content-box",
+          "",
+          ""
+        ],
+        [
+          "offset-path",
+          "shape(from 0 0, line to 1px 1px)",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "offset-path: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "offset-path",
+          "shape(from 0 0, line to 1em 1px) content-box",
+          "shape(from 0px 0px, line to 1em 1px) content-box",
+          "offset-path: shape(from 0px 0px, line to 1em 1px) content-box;"
+        ],
+        [
+          "offset-path",
+          "shape(from 0 0, line to 1px 1px) border-box",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "offset-path: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "offset-path",
+          "border-box shape(from 0 0, line to 1px 1px)",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "offset-path: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "shape-outside",
+          "shape(from 0 0, line to 1px 1px)",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "shape-outside: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "shape-outside",
+          "shape(from 0 0, line to 1px 1px) margin-box",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "shape-outside: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "-webkit-clip-path",
+          "shape(from 0 0, line to 1px 1px)",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "clip-path: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from 10% 0, hline to 1em, arc by 1em 0 of 1em, close)",
+          "shape(from 10% 0px, hline to 1em, arc by 1em 0px of 1em, close)",
+          "clip-path: shape(from 10% 0px, hline to 1em, arc by 1em 0px of 1em, close);"
+        ],
+        [
+          "clip-path",
+          "SHAPE(from 0 0, line to 1px 1px)",
+          "shape(from 0px 0px, line to 1px 1px)",
+          "clip-path: shape(from 0px 0px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "shape(from calc(sibling-index() * 1px) 0, line to 1px 1px)",
+          "shape(from calc(1px * sibling-index()) 0px, line to 1px 1px)",
+          "clip-path: shape(from calc(1px * sibling-index()) 0px, line to 1px 1px);"
+        ],
+        [
+          "clip-path",
+          "path(\"M 0 0 L 1 1\")",
+          "path(\"M 0 0 L 1 1\")",
+          "clip-path: path(\"M 0 0 L 1 1\");"
+        ],
+        [
+          "clip-path",
+          "shape(from 0 0, line to 1px 1px) foo-box",
+          "",
+          ""
+        ],
+        [
+          "shape-outside",
+          "shape(from 0 0, line to 1px 1px) fill-box",
+          "",
+          ""
+        ]
+      ]
+    }
+  ]
+}
