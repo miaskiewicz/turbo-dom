@@ -425,13 +425,23 @@ pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Im
 /// painter keeps laying SVGs out at [`css_size`].
 #[must_use]
 pub fn natural_size(bytes: &[u8]) -> Option<(f32, f32)> {
+    natural_sizing(bytes).map(|(size, _)| size)
+}
+
+/// [`natural_size`] plus the natural aspect ratio (width / height) when that is all the
+/// SVG has: a root with a `viewBox` and neither `width` nor `height` has no natural size,
+/// so layout sizes it from the ratio (miaskiewicz/turbo-dom#320; the reported size is
+/// still the ratio's fit in 300x150). `None` if the bytes are not a parseable SVG.
+#[must_use]
+pub fn natural_sizing(bytes: &[u8]) -> Option<((f32, f32), Option<f32>)> {
     parse(bytes)?;
     on_svg_stack(|| {
         let document = parse_xml(bytes)?;
         let root = document.root_element();
         let (width, height) = (svg_length(root, "width"), svg_length(root, "height"));
         let ratio = view_box_ratio(root).or_else(|| width.zip(height).map(|(w, h)| w / h));
-        Some(natural_from(width, height, ratio))
+        let ratio_only = ratio.filter(|_| width.is_none() && height.is_none());
+        Some((natural_from(width, height, ratio), ratio_only))
     })
 }
 
