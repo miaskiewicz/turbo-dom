@@ -9,6 +9,34 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- **turbo-dom-browser-env: media element follow-ups (turbo-dom#339).**
+  - `HTMLMediaElement.captureStream()` returns a new `MediaStream`. `MediaStream` is a real,
+    constructible interface (`id` a random v4 UUID, `clone()`, the track getters, the
+    constructor overloads and their errors, `onaddtrack` / `onremovetrack` / `onactive` /
+    `oninactive`). Nothing in the binding produces a `MediaStreamTrack`, so every stream has
+    no tracks and `active` is false, as Chrome 156 returns for an element with no media.
+    `MediaStreamTrack` exists with Chrome's members, each of which rejects any receiver.
+    `srcObject` accepts a `MediaStream`: it is loaded like a URL that never answers
+    (`NETWORK_LOADING`, `loadstart`).
+  - Inserting a `<source>` under a media element without a `src` attribute runs Blink's
+    `SourceWasAdded`. From `NETWORK_EMPTY` it starts resource selection. While the selection
+    waits for a source it restarts it: `NETWORK_LOADING` at once, then a new `loadstart` and a
+    rescan of every source. This covers every insertion path (`append`, `innerHTML`,
+    `replaceChildren`, moving a media element, ...).
+  - `TextTrackList` fires `addtrack` / `removetrack` (a new `TrackEvent` interface) and
+    `change`. `addTextTrack()` fires `addtrack` and then `change`. A track element inserted
+    into a media element runs Chrome's automatic text track selection (default
+    subtitles / captions / descriptions / chapters tracks become `showing`, default metadata
+    tracks `hidden`, and a new subtitles / captions track is shown while text tracks are
+    visible). A track whose mode leaves `disabled` starts the track processing model: without
+    a `src` its `readyState` becomes `ERROR` and it fires `error`. With a `src` it stays
+    `LOADING`, since the binding's network never answers.
+  - The media interfaces' event handler attributes keep any object, as Chrome's do.
+
+  Insertions reach the binding through the mutation pipeline. A document records its
+  mutations once script has seen an audio, video, source or track element. Test:
+  `html_media_events_match_chrome156_control` against `html_media_events_chrome156.json`.
+
 - **turbo-dom-browser-env: the HTML / DOM interface members Chrome 156 has and the binding
   lacked (turbo-dom#323).** The new members are:
   - The reflected attributes of `<iframe>`, `<img>`, `<object>`, `<embed>`, `<video>`, `<a>`,
@@ -40,7 +68,7 @@ at the time); this file reconstructs them from history.
 
   Test: `interface_parity_matches_chrome156_control` against `interface_parity_chrome156.json`.
   Split out: `captureStream()`, `<source>` insertion and `TextTrackList` events go to
-  turbo-dom#339; `CSSStyleRule` nested rules and `Animation` `rangeStart` / `rangeEnd` go to
+  turbo-dom#339 (done, above); `CSSStyleRule` nested rules and `Animation` `rangeStart` / `rangeEnd` go to
   turbo-dom#340.
 - **turbo-dom-browser-env: `CSS.supports()` from the engine's declaration grammar
   (turbo-dom#322).** The engine namespace now has `cssSupports(text)` and

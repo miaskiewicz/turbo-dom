@@ -112,6 +112,7 @@ pub fn clear_interface_records(isolate: &mut v8::Isolate) {
     collection_records::clear(isolate);
     range_live::clear(isolate);
     mutation_observers::clear(isolate);
+    html_media::clear();
 }
 
 /// Access a host-created interface record in the isolate's private ephemeron registry.
@@ -1419,6 +1420,7 @@ fn termination_checkpoint(_scope: &mut v8::PinScope, _name: &'static str) {}
 
 fn wrap_inner<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local<'s, v8::Object> {
     script_state::observe(handle);
+    html_media::observe(handle);
     if scope.is_execution_terminating() {
         let context = scope.get_current_context();
         return context.global(scope);
@@ -6453,6 +6455,7 @@ fn ownership_callback<'s, 'i, F>(
         scope.reset();
     }
     mutation_observers::flush(scope);
+    html_media::flush(scope);
     reactions.flush(scope);
     termination_checkpoint(scope, "method:flushed");
     if scope.has_terminated() || scope.is_execution_terminating() {
@@ -6585,6 +6588,7 @@ fn ownership_setter<'s, 'i, S>(
         scope.reset();
     }
     mutation_observers::flush(scope);
+    html_media::flush(scope);
     reactions.flush(scope);
     termination_checkpoint(scope, "setter:flushed");
     if scope.has_terminated() || scope.is_execution_terminating() {
@@ -11266,6 +11270,9 @@ mod dom_reactions_tests;
 #[cfg(test)]
 #[path = "html_image_tests.rs"]
 mod html_image_tests;
+#[cfg(test)]
+#[path = "html_media_events_tests.rs"]
+mod html_media_events_tests;
 #[cfg(test)]
 #[path = "html_track_tests.rs"]
 mod html_track_tests;
