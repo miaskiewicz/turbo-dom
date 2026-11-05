@@ -174,27 +174,8 @@ fn animations_model_matches_chrome156_control() {
     let mut actual = run_probe(case["html"].as_str().unwrap(), probe, true);
     // Keyframe properties enumerate in Blink's hash-map bucket order over CSSPropertyID (turbo-dom#233).
     assert_eq!(actual["keyframeOrder"], expected["keyframeOrder"]);
-    // KNOWN_GAP: Animation.rangeStart/rangeEnd return TimelineRangeOffset objects holding a
-    // Typed OM CSSUnitValue, which this binding does not implement; they are absent.
-    let mut expected = expected;
-    for key in [
-        "get rangeStart",
-        "set rangeStart",
-        "get rangeEnd",
-        "set rangeEnd",
-    ] {
-        let key = format!("Animation.{key}");
-        let brand = expected["brands"].as_object_mut().unwrap().remove(&key);
-        assert_eq!(
-            brand,
-            Some(serde_json::json!([
-                "TypeError",
-                "Illegal invocation",
-                false
-            ]))
-        );
-        assert!(actual["brands"].get(&key).is_none());
-    }
+    // Animation.rangeStart / rangeEnd now exist (turbo-dom#340); the control carries them and
+    // the binding exposes them with the same brand signature, so no KNOWN_GAP is needed.
     let mut out = Vec::new();
     mismatches(&actual, &expected, "", &mut out);
     let gaps = [".shape.Animation.prototype"];
@@ -209,30 +190,11 @@ fn animations_model_matches_chrome156_control() {
         real.len(),
         real.join("\n")
     );
-    let names = |value: &serde_json::Value| -> Vec<String> {
-        value["shape"]["Animation"]["prototype"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|row| row[0].as_str().unwrap().to_owned())
-            .collect()
-    };
-    let chrome = names(&expected);
-    let ours = names(&actual);
-    let without: Vec<_> = chrome
-        .iter()
-        .filter(|name| *name != "rangeStart" && *name != "rangeEnd")
-        .cloned()
-        .collect();
-    assert_eq!(ours, without);
     let rows = |value: &serde_json::Value| -> Vec<serde_json::Value> {
         value["shape"]["Animation"]["prototype"]
             .as_array()
             .unwrap()
-            .iter()
-            .filter(|row| row[0] != "rangeStart" && row[0] != "rangeEnd")
-            .cloned()
-            .collect()
+            .clone()
     };
     assert_eq!(rows(&actual), rows(&expected));
 }
