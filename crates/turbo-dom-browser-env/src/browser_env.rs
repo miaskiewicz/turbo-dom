@@ -11232,6 +11232,9 @@ mod dom_reactions_tests;
 #[path = "html_image_tests.rs"]
 mod html_image_tests;
 #[cfg(test)]
+#[path = "html_media_events_tests.rs"]
+mod html_media_events_tests;
+#[cfg(test)]
 #[path = "html_track_tests.rs"]
 mod html_track_tests;
 #[cfg(test)]
