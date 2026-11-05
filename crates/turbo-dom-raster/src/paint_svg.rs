@@ -48,13 +48,15 @@ pub fn paint(
 }
 
 /// The id prefix of the glyph edge filters: `glyph-lum<class>`, one per text luminance
-/// class ([`crate::glyph_raster::luminance_class`]).
+/// class ([`luminance_class`]).
 const GLYPH_FILTER: &str = "glyph-lum";
 
 /// Define each glyph edge filter the document uses: Skia's pre-blend table for that
-/// luminance class ([`crate::glyph_raster::preblend_class`], the raster painter's
-/// correction) as an `feComponentTransfer` table on the run's coverage (its alpha), so a
-/// viewer blends the vector glyph edges like the raster ones (miaskiewicz/turbo-dom#294).
+/// luminance class ([`preblend_class`]) as an `feComponentTransfer` table on the run's
+/// coverage (its alpha) (miaskiewicz/turbo-dom#294). The raster painter's own edge
+/// transfer (`glyph_raster::edge_transfer`, #331) is linear for dark text from 28px up;
+/// an SVG viewer's coarser anti-aliasing (resvg's quarter steps) lands nearer Chrome
+/// with Skia's darker pre-blend, so the vector screenshot keeps it.
 fn glyph_filters(svg: &mut String) {
     let marker = format!("url(#{GLYPH_FILTER}");
     let mut used = [false; 8];
@@ -63,7 +65,7 @@ fn glyph_filters(svg: &mut String) {
         used[usize::from(class)] = true;
     }
     for class in (0..8u32).filter(|&c| used[c as usize]) {
-        let lut = crate::glyph_raster::preblend_class(class);
+        let lut = preblend_class(class);
         // One table value per 8-bit coverage: a viewer's linear interpolation between
         // them meets the raster painter's table at every 8-bit alpha.
         let table: Vec<String> = lut.iter().map(|v| format!("{v:.4}")).collect();
@@ -75,6 +77,47 @@ fn glyph_filters(svg: &mut String) {
             table.join(" ")
         );
     }
+}
+
+/// The pre-blend's luminance gamma.
+const GAMMA: f32 = 1.8;
+/// The pre-blend's contrast boost (full for black text, tapering to none for white).
+const CONTRAST: f32 = 1.0;
+
+fn to_linear(v: f32) -> f32 {
+    v.powf(GAMMA)
+}
+
+fn from_linear(v: f32) -> f32 {
+    v.powf(GAMMA.recip())
+}
+
+/// The 3-bit luminance (0..=7) Skia's mask pre-blend keeps of text colour `(r, g, b)`
+/// (in [`GAMMA`] space): two text colours of one class share a pre-blend table.
+fn luminance_class(r: u8, g: u8, b: u8) -> u32 {
+    let lum = 0.2126 * to_linear(f32::from(r) / 255.0)
+        + 0.7152 * to_linear(f32::from(g) / 255.0)
+        + 0.0722 * to_linear(f32::from(b) / 255.0);
+    ((from_linear(lum) * 255.0).round() as u32) >> 5
+}
+
+/// Skia's mask pre-blend table (`SkTMaskGamma_build_correcting_lut`) of luminance class
+/// `top` ([`luminance_class`], replicated back to 8 bits): the coverage is boosted by the
+/// contrast where the assumed backdrop (the opposite luminance) is light, and the table
+/// undoes the sRGB blend so the result is a blend at [`GAMMA`].
+fn preblend_class(top: u32) -> [f32; 256] {
+    let src = ((top << 5) | (top << 2) | (top >> 1)) as f32 / 255.0;
+    let dst = 1.0 - src;
+    let (lin_src, lin_dst) = (to_linear(src), to_linear(dst));
+    let contrast = CONTRAST * lin_dst;
+    let mut table = [0.0; 256];
+    for (i, e) in table.iter_mut().enumerate() {
+        let raw = i as f32 / 255.0;
+        let a = (raw + (1.0 - raw) * contrast * raw).min(1.0);
+        let out = from_linear(lin_src * a + (1.0 - a) * lin_dst);
+        *e = ((out - dst) / (src - dst)).clamp(0.0, 1.0);
+    }
+    table
 }
 
 fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
@@ -715,7 +758,7 @@ fn paint_text(
     if d.is_empty() {
         return;
     }
-    let class = crate::glyph_raster::luminance_class(color.r, color.g, color.b);
+    let class = luminance_class(color.r, color.g, color.b);
     let opacity = if color.a == 255 {
         String::new()
     } else {
@@ -1582,6 +1625,29 @@ mod tests {
     }
 
     #[test]
+    fn preblend_darkens_dark_text_and_lightens_light_text_edges() {
+        let black = preblend_class(luminance_class(0, 0, 0));
+        let white = preblend_class(luminance_class(255, 255, 255));
+        let blue = preblend_class(luminance_class(0, 0, 255));
+        assert_eq!((black[0], black[255]), (0.0, 1.0));
+        assert_eq!((white[0], white[255]), (0.0, 1.0));
+        // Half coverage: black ink 1 - (1 - 0.75)^(1/1.8), white 0.5^(1/1.8).
+        assert!((black[128] - 0.537).abs() < 0.01, "{}", black[128]);
+        assert!((white[128] - 0.684).abs() < 0.01, "{}", white[128]);
+        // Blue's low luminance blends almost like black.
+        assert!((blue[128] - black[128]).abs() < 0.02, "{}", blue[128]);
+        // A mid grey sits between.
+        let grey = preblend_class(luminance_class(128, 128, 128));
+        assert!(grey[128] > 0.0 && grey[128] < 1.0);
+        // One table per 3-bit luminance class.
+        assert_eq!(
+            (luminance_class(0, 0, 0), luminance_class(0, 0, 255)),
+            (0, 1)
+        );
+        assert_eq!(luminance_class(255, 255, 255), 7);
+    }
+
+    #[test]
     fn glyph_runs_share_one_pre_blend_filter_per_luminance_class() {
         // miaskiewicz/turbo-dom#294: each run's coverage goes through its text colour's
         // pre-blend table, one filter per luminance class the document uses.
@@ -1649,7 +1715,7 @@ mod tests {
                 .split(' ')
                 .map(|v| v.parse().unwrap())
                 .collect();
-            let lut = crate::glyph_raster::preblend_class(class);
+            let lut = preblend_class(class);
             assert_eq!(values.len(), 256);
             for (v, want) in values.iter().zip(lut) {
                 assert!((v - want).abs() < 1e-4, "{class}: {v} vs {want}");

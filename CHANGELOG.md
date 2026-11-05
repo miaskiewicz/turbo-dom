@@ -81,6 +81,20 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-raster: glyph edges closer to Chrome 156 (#266, #331).** The PNG painter grows
+  each glyph outline by a box (`0.0045 * size` px: each edge moves `d * (|nx| + |ny|)`, so
+  diagonal strokes of `W`, `x` and `y` no longer sit 0.14 px off), fills concave joins a
+  little, lifts the run `d + 0.03` px, and takes the coverage through an edge transfer keyed
+  on Skia's 3-bit text luminance (linear for dark text from 28px, as a 64px stem's four
+  subpixel phases measure, a little darker below, lighter for white). Against the Chrome 156
+  control the mean residual per inked pixel drops at every size, e.g. 12px black 12.3 to 10.8,
+  20px white 12.9 to 8.5, 64px black 5.1 to 3.8, and the stem / bar subpixel cases from
+  4.1–6.5 to 0.9–3.3; every `tests/glyph_coverage_chrome.rs` limit tightens. One probe
+  widens: `overflow-glyph-ink-visible` (28,44) tolerance 15 to 24 (Chrome 139, this model
+  163, the previous painter 154), the 40px `g` bar's glyph-specific vertical offset in
+  Chrome. Not modelled: Chrome's grid-dependent vertical geometry below about 20px. The SVG
+  screenshot keeps Skia's pre-blend filter (#294), now over the same box-grown outline.
+
 - **turbo-dom-layout: an SVG `<img>` with only a `viewBox` sizes from its ratio.** An auto-sized one is as wide as its containing block allows (less its margins, padding and border), the height a layout unit first and the width from it, under `width` / `height` / `min-*` / `max-*` and in a vertical writing mode; it contributes no width to a shrink-to-fit container (float, inline-block, table), like Chrome 156. It laid out at its 225x150 reported size. Control: `svg_image_ratio_chrome156.json` (`scripts/svg-image-ratio-chrome-control.mjs`; turbo-dom#320, turbo-surf#161).
 - **turbo-dom-layout: a ratio-only SVG `<img>` flex or grid item is sized like Chrome 156.** As a row flex item its base size is the container's inner width less its margins, exactly (a 400px row gives 400 x 266.65625; it laid out at its 225x150 reported size), with `min-width: auto` keeping it from shrinking below that, a definite stretched height giving the width through the ratio, and height constraints sizing it as in block layout; a column flex item stretches to the container's width, and a grid item fills its area. The flexed width is its used width. A width-constrained auto-sized one now also derives its width from the layout-unit height in block layout (`max-width: 287px` is 286.984375 x 191.328125). Control: the flex and grid rows of `svg_image_ratio_chrome156.json`, which now run in every feature configuration (turbo-dom#326).
 - **turbo-dom-raster: SVG screenshot glyph edges take the colour-dependent pre-blend.** Each
@@ -90,6 +104,7 @@ at the time); this file reconstructs them from history.
   the PNG painter. Against Chrome 156, white text's SVG residual drops from a mean of
   14.6–38.6 to 6.2–21.4 per pixel (`tests/glyph_coverage_chrome.rs`), and the
   overflow-glyph-ink edge tolerances drop from 17 / 41 to 11 / 32 (turbo-dom#294).
+
 - **turbo-dom-layout: `hyphens: auto` hyphenates the languages Chrome 156 on macOS does,
   not just English.** en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb / no, nl, pl, pt, ro, ru, sk, sv, uk break at the TeX `hyph-*` patterns' points (the `hyphenation`
   crate's, the patterns Chrome's Minikin dictionaries on Linux, Windows and Android are built
