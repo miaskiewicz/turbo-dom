@@ -101,7 +101,9 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 41] = [
+    let groups: [fn(&str) -> bool; 43] = [
+        extra_percent_row_case,
+        rowspan_case,
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -256,6 +258,30 @@ fn table_height_case(id: &str) -> bool {
 #[test]
 fn table_height_is_distributed_over_the_rows_like_chrome_156() {
     compare_cases(table_height_case);
+}
+
+/// miaskiewicz/turbo-dom#327: a row-spanning cell's excess height is spread over the
+/// rows it spans (originating rows, then unconstrained rows by size, then all rows by
+/// size, else the last row), the rowspan cells taken by end row.
+fn rowspan_case(id: &str) -> bool {
+    id.starts_with("table-rowspan-")
+}
+
+#[test]
+fn rowspan_excess_is_spread_over_the_spanned_rows_like_chrome_156() {
+    compare_cases(rowspan_case);
+}
+
+/// Found with miaskiewicz/turbo-dom#327: a definite-height table's extra height grows
+/// its percent-height rows to their percentage first, then goes to its auto rows.
+fn extra_percent_row_case(id: &str) -> bool {
+    id.starts_with("table-extra-percent-")
+}
+
+#[test]
+#[ignore = "follow-up of miaskiewicz/turbo-dom#327: percent rows share the extra height"]
+fn table_extra_height_skips_percent_rows_like_chrome_156() {
+    compare_cases(extra_percent_row_case);
 }
 
 /// miaskiewicz/turbo-dom#55: a table's extra width goes to its auto columns.

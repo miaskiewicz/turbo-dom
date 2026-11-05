@@ -45,7 +45,11 @@ pub struct SizeCtx<'a> {
 /// overflow caps, returning the painted box plus the placement to emit.
 #[must_use]
 pub fn size_replaced(name: String, intrinsic: Intrinsic, ctx: &SizeCtx) -> SizedImage {
-    let (iw, ih) = (intrinsic.width as f32, intrinsic.height as f32);
+    let (iw, ih) = match intrinsic.natural_ratio {
+        // No natural size: the containing block's width at the natural ratio (#320).
+        Some(ratio) => (stretch_width(ctx), stretch_width(ctx) / ratio),
+        None => (intrinsic.width as f32, intrinsic.height as f32),
+    };
     let (base_w, base_h) = base_size(iw, ih, ctx);
     let (width, height) = apply_caps(base_w, base_h, ctx);
     SizedImage {
@@ -55,15 +59,29 @@ pub fn size_replaced(name: String, intrinsic: Intrinsic, ctx: &SizeCtx) -> Sized
     }
 }
 
-/// Live layout has CSS constraints, but no pagination overflow caps.
-pub(crate) fn size_replaced_live(name: String, intrinsic: Intrinsic, ctx: &SizeCtx) -> SizedImage {
+/// Live layout has CSS constraints, but no pagination overflow caps. `layout_scale` is
+/// the physical scale the layout units of a ratio-derived axis quantize at.
+pub(crate) fn size_replaced_live(
+    name: String,
+    intrinsic: Intrinsic,
+    ctx: &SizeCtx,
+    layout_scale: f32,
+) -> SizedImage {
     let (iw, ih) = (intrinsic.width as f32, intrinsic.height as f32);
     let frame = live_frame(ctx.style);
     let width = live_dimension(ctx.style.width, Some(ctx.cb_width), frame.0);
     let height = live_dimension(ctx.style.height, ctx.cb_height, frame.1);
-    let (w, h) = live_base(iw, ih, width, height);
+    let (w, h) = match intrinsic.natural_ratio {
+        Some(ratio) => ratio_base(ratio, (width, height), stretch_width(ctx), layout_scale),
+        None => live_base(iw, ih, width, height),
+    };
     let limits = live_limits(ctx, frame);
+    let auto = width.is_none() && height.is_none();
     let (width, height) = constrain_live(w, h, width.is_none(), height.is_none(), limits);
+    let (width, height) = match intrinsic.natural_ratio {
+        Some(ratio) if auto => ratio_units(ratio, height, layout_scale),
+        _ => (width, height),
+    };
     SizedImage {
         width,
         height,
@@ -149,6 +167,46 @@ fn viewport_intrinsic(
         (None, None, Some(r)) => (containing_width, containing_width / r),
         _ => (width.unwrap_or(300.0), height.unwrap_or(150.0)),
     }
+}
+
+/// The content width an auto-sized box stretches to: the containing block's width less
+/// its own margins, padding and border.
+fn stretch_width(ctx: &SizeCtx) -> f32 {
+    let s = ctx.style;
+    (ctx.cb_width - s.margin.horizontal() - s.padding.horizontal() - s.border.widths().horizontal())
+        .max(0.0)
+}
+
+/// The pre-constraint content size of an image with only a natural `ratio` (CSS Images 3
+/// default sizing, miaskiewicz/turbo-dom#320): a missing axis follows the given one at
+/// the ratio; with neither given, the box stretches to `stretch` wide. Like Blink, the
+/// derived height is a layout unit first, and a width derived from it is too (a 400px
+/// wide 3:2 image is 399.984375 x 266.65625 at scale 1).
+fn ratio_base(
+    ratio: f32,
+    (width, height): (Option<f32>, Option<f32>),
+    stretch: f32,
+    layout_scale: f32,
+) -> (f32, f32) {
+    let unit = |value: f32| viewport_layout_unit(value, layout_scale);
+    match (width, height) {
+        (Some(w), Some(h)) => (w, h),
+        (Some(w), None) => (w, unit(w / ratio)),
+        (None, Some(h)) => (unit(h * ratio), h),
+        (None, None) => {
+            let h = unit(stretch / ratio);
+            (unit(h * ratio), h)
+        }
+    }
+}
+
+/// A constrained auto-sized ratio-only box in layout units, like Blink: the height
+/// first, then the width derived from it (a `max-width: 286px` 3:2 image is
+/// 285.984375 x 190.65625 at scale 1; miaskiewicz/turbo-dom#326).
+fn ratio_units(ratio: f32, height: f32, layout_scale: f32) -> (f32, f32) {
+    let unit = |value: f32| viewport_layout_unit(value, layout_scale);
+    let h = unit(height);
+    (unit(h * ratio), h)
 }
 
 fn live_frame(style: &BoxStyle) -> (f32, f32) {
@@ -418,10 +476,66 @@ mod coverage_tests {
                 "degenerate".into(),
                 Intrinsic::new(width, height, false),
                 &ctx,
+                1.0,
             );
             assert_eq!((sized.width, sized.height), expected);
             assert!(sized.width.is_finite() && sized.height.is_finite());
         }
+    }
+
+    #[test]
+    fn ratio_only_images_stretch_to_the_containing_block() {
+        // miaskiewicz/turbo-dom#320: no natural size, so the reported 225x150 is ignored.
+        use crate::layout::value::{resolve_box_style, ResolveCtx};
+        use crate::ComputedStyle;
+        let sized = |pairs: &[(&str, &str)], live: Option<f32>| {
+            let style = resolve_box_style(
+                &ComputedStyle::from_pairs(pairs.iter().copied()),
+                ResolveCtx {
+                    parent_font_size: 16.0,
+                    cb_width: 400.0,
+                },
+            );
+            let ctx = SizeCtx {
+                style: &style,
+                cb_width: 400.0,
+                cb_height: None,
+                body_height: None,
+            };
+            let intrinsic = Intrinsic::ratio_only(225, 150, 1.5, true);
+            let out = match live {
+                Some(scale) => size_replaced_live("svg".into(), intrinsic, &ctx, scale),
+                None => size_replaced("svg".into(), intrinsic, &ctx),
+            };
+            assert_eq!(
+                (out.placement.intrinsic_w, out.placement.intrinsic_h),
+                (225, 150)
+            );
+            (out.width, out.height)
+        };
+        // Static (capped) drive: the containing block's width less the margins and frame.
+        assert_eq!(sized(&[], None), (400.0, 400.0 / 1.5));
+        assert_eq!(
+            sized(&[("margin", "0 10px"), ("padding", "5px")], None),
+            (370.0, 370.0 / 1.5)
+        );
+        assert_eq!(
+            sized(&[("width", "120px")], None),
+            (120.0, 120.0 * (400.0 / 1.5) / 400.0)
+        );
+        // Live drive: the height in layout units, then the width from it.
+        assert_eq!(sized(&[], Some(1.0)), (399.984_38, 266.656_25));
+        assert_eq!(sized(&[], Some(2.0)), (399.992_2, 266.664_06));
+        assert_eq!(sized(&[("width", "50%")], Some(1.0)), (200.0, 133.328_13));
+        assert_eq!(sized(&[("height", "60px")], Some(1.0)), (90.0, 60.0));
+        assert_eq!(
+            sized(&[("width", "30px"), ("height", "7px")], Some(1.0)),
+            (30.0, 7.0)
+        );
+        assert_eq!(
+            sized(&[("margin", "0 300px 0 200px")], Some(1.0)),
+            (0.0, 0.0)
+        );
     }
 
     #[test]

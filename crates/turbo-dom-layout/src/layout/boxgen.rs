@@ -284,6 +284,9 @@ enum SourceRole {
     TableGrid,
     /// A text field, textarea or menu list sized by its font (miaskiewicz/turbo-dom#239).
     FormControl(super::form_controls::Control),
+    /// An `<audio controls>`, which paints Chrome's media control panel
+    /// (miaskiewicz/turbo-dom#292).
+    AudioControls,
 }
 
 /// The physical axes a box's size containment applies to (CSS Contain 2 / Containment 3
@@ -350,6 +353,9 @@ impl LayoutBox {
     }
     pub(crate) fn native_iframe(&self) -> bool {
         self.source_role == SourceRole::NativeIframe
+    }
+    pub(crate) fn audio_controls(&self) -> bool {
+        self.source_role == SourceRole::AudioControls
     }
 
     /// Whether the box is absolutely positioned (`absolute` / `fixed`): out of flow,
@@ -1495,8 +1501,9 @@ fn box_kind_for(display: Display, el: &StyledElement, ids: &mut Ids) -> BoxKind 
     if let Some(alt) = img_alt_text(el) {
         return build_flow(&alt_fallback(el, alt), &el.style, ids);
     }
-    if media_element(el).is_some() {
-        // A replaced media box: its fallback content does not render (#252).
+    if media_element(el).is_some() || gauge(el) {
+        // A replaced media box: its fallback content does not render (#252); nor does a
+        // progress / meter's (#293).
         return BoxKind::Lines(Vec::new());
     }
     if let Some(control) = super::form_controls::control_of(el).filter(|c| c.sized()) {
@@ -1585,22 +1592,37 @@ fn is_table_wrapper(kind: &BoxKind) -> bool {
     matches!(kind, BoxKind::Table(kids) if kids.iter().any(LayoutBox::table_grid))
 }
 
+/// Whether `el` is a `<progress>` or `<meter>`.
+fn gauge(el: &StyledElement) -> bool {
+    use super::form_controls::Control;
+    matches!(
+        super::form_controls::control_of(el),
+        Some(Control::Progress | Control::Meter)
+    )
+}
+
 /// The UA sheet's flow-relative size of a range slider or colour well (Chrome 156's
-/// `inline-size` / `block-size`, miaskiewicz/turbo-dom#239): `<inline> <block>` in
-/// the box's own writing mode, for an `auto` width / height. It names logical sizes,
-/// so a vertical layout's relabelling leaves it in place.
+/// `inline-size` / `block-size`, miaskiewicz/turbo-dom#239), or of a `<progress>` /
+/// `<meter>` (`10em` / `5em` by `1em`, miaskiewicz/turbo-dom#293): `<inline> <block>` in
+/// the box's own writing mode, in `px` or `em`, for an `auto` width / height. It names
+/// logical sizes, so a vertical layout's relabelling leaves it in place.
 fn ua_logical_size(computed: &ComputedStyle, style: &mut BoxStyle) {
     use super::value::LengthPct;
-    let Some(value) = computed.get(UA_LOGICAL_SIZE) else {
+    // A theme size is the native control's: `appearance: none` drops it (#255); a
+    // progress / meter's is html.css's, which stays.
+    let themed = computed
+        .get(UA_LOGICAL_SIZE)
+        .filter(|_| computed.get("appearance").map(str::trim) != Some("none"));
+    let Some(value) = themed.or_else(|| computed.get(UA_LOGICAL_CSS_SIZE)) else {
         return;
     };
-    // The size is the native control's: `appearance: none` drops it (#255).
-    if computed.get("appearance").map(str::trim) == Some("none") {
-        return;
-    }
-    let mut sizes = value
-        .split_whitespace()
-        .filter_map(|v| v.strip_suffix("px")?.parse::<f32>().ok());
+    let font_size = style.font_size;
+    let mut sizes = value.split_whitespace().filter_map(|v| {
+        v.strip_suffix("px").map_or_else(
+            || Some(v.strip_suffix("em")?.parse::<f32>().ok()? * font_size),
+            |px| px.parse::<f32>().ok(),
+        )
+    });
     if let (Some(inline), Some(block)) = (sizes.next(), sizes.next()) {
         if style.width == LengthPct::Auto {
             style.width = LengthPct::Px(inline);
@@ -1611,8 +1633,11 @@ fn ua_logical_size(computed: &ComputedStyle, style: &mut BoxStyle) {
     }
 }
 
-/// The internal property of [`ua_logical_size`].
+/// The internal property of [`ua_logical_size`] for a native control's theme size.
 pub(crate) const UA_LOGICAL_SIZE: &str = "-internal-ua-size";
+
+/// The internal property of [`ua_logical_size`] for a size `appearance` leaves alone.
+pub(crate) const UA_LOGICAL_CSS_SIZE: &str = "-internal-ua-css-size";
 
 /// A box's attributes: the element's, plus a `<select>`'s option texts
 /// ([`super::form_controls::OPTION_ATTR`]).
@@ -1646,13 +1671,16 @@ fn form_content(el: &StyledElement, control: super::form_controls::Control) -> V
             }
         }
         Control::TextArea => super::form_controls::text_of(&el.children),
-        Control::Select | Control::Toggle | Control::Button | Control::Color => {
-            super::form_controls::select_options(el)
-                .into_iter()
-                .next()
-                .map(|(shown, _)| shown)
-                .unwrap_or_default()
-        }
+        Control::Select
+        | Control::Toggle
+        | Control::Button
+        | Control::Color
+        | Control::Progress
+        | Control::Meter => super::form_controls::select_options(el)
+            .into_iter()
+            .next()
+            .map(|(shown, _)| shown)
+            .unwrap_or_default(),
     };
     if text.is_empty() && control == Control::TextField {
         // An empty field still sits on its text's baseline: an invisible zero-width
@@ -1699,6 +1727,10 @@ fn source_role(element: &StyledElement, ids: &Ids) -> SourceRole {
         SourceRole::FormControl(control)
     } else if native_iframe(element, ids) {
         SourceRole::NativeIframe
+    } else if media_element(element) == Some("audio")
+        && attr_value(&element.attrs, "controls").is_some()
+    {
+        SourceRole::AudioControls
     } else if ids
         .document_roots
         .contains(&(std::ptr::from_ref::<StyledElement>(element) as usize))
@@ -1886,10 +1918,13 @@ fn image_of(el: &StyledElement) -> Option<ImageSource> {
 fn media_source(el: &StyledElement) -> Option<ImageSource> {
     let (name, fallback, media) = match media_element(el)? {
         "canvas" => (
-            String::new(),
-            (
-                canvas_dimension(attr_value(&el.attrs, "width"), 300),
-                canvas_dimension(attr_value(&el.attrs, "height"), 150),
+            // Its drawn content, when the embedder resolves it (#291).
+            el.source
+                .map(super::canvas_content::canvas_image_name)
+                .unwrap_or_default(),
+            super::canvas_content::canvas_bitmap_size(
+                attr_value(&el.attrs, "width"),
+                attr_value(&el.attrs, "height"),
             ),
             Media::Canvas,
         ),
@@ -1925,17 +1960,6 @@ pub(crate) fn media_element(el: &StyledElement) -> Option<&'static str> {
 /// Whether `el` is an `<embed>` without a source, which Chrome 156 renders no box for.
 pub(crate) fn unrendered_embed(el: &StyledElement) -> bool {
     media_element(el) == Some("embed") && attr_value(&el.attrs, "src").is_none_or(str::is_empty)
-}
-
-/// A canvas `width` / `height` attribute: a valid non-negative integer (HTML's rules:
-/// leading whitespace, an optional `+`, the leading digits), else `default`.
-fn canvas_dimension(value: Option<&str>, default: u32) -> u32 {
-    let value = value
-        .unwrap_or_default()
-        .trim_start_matches([' ', '\t', '\n', '\x0c', '\r']);
-    let value = value.strip_prefix('+').unwrap_or(value);
-    let digits = value.len() - value.trim_start_matches(|c: char| c.is_ascii_digit()).len();
-    value[..digits].parse().unwrap_or(default)
 }
 
 /// The intrinsic size of Chrome's broken-image icon.

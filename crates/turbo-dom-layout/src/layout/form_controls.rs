@@ -35,6 +35,12 @@ pub(crate) enum Control {
     /// Chrome's swatch, whose baseline is 4px above its content-box bottom (the bottom
     /// of the swatch wrapper's content box).
     Color,
+    /// A `<progress>` (miaskiewicz/turbo-dom#293): a `10em` x `1em` box (the UA sheet's)
+    /// whose children do not render and whose baseline is its border-box bottom, lowered
+    /// by Chrome's `vertical-align: -0.2em`.
+    Progress,
+    /// A `<meter>`: as a [`Control::Progress`], `5em` wide.
+    Meter,
 }
 
 impl Control {
@@ -48,9 +54,10 @@ impl Control {
     }
 }
 
-/// The control `el` is, if any: a text-like `<input>` (no `type`, an unknown one, or
-/// `text` / `search` / `url` / `tel` / `email` / `password` / `number`), a `<textarea>`
-/// or a single-line `<select>` (no `multiple`, no `size` above 1).
+/// The control `el` is, if any: an `<input>` of a type drawn here (a text-like one, no
+/// `type`, an unknown one, or `text` / `search` / `url` / `tel` / `email` / `password` /
+/// `number`; a toggle, button or colour well), a `<button>`, a `<textarea>`, a
+/// `<progress>`, a `<meter>` or a single-line `<select>` (no `multiple`, no `size` above 1).
 pub(crate) fn control_of(el: &StyledElement) -> Option<Control> {
     let html = |tag: &str| matches!(&el.tag, Tag::Html(name) if name == tag);
     if html("input") {
@@ -59,6 +66,10 @@ pub(crate) fn control_of(el: &StyledElement) -> Option<Control> {
         Some(Control::Button)
     } else if html("textarea") {
         Some(Control::TextArea)
+    } else if html("progress") {
+        Some(Control::Progress)
+    } else if html("meter") {
+        Some(Control::Meter)
     } else {
         (html("select")
             && attr(el, "multiple").is_none()
@@ -158,6 +169,14 @@ fn collapse(text: &str) -> String {
     text.split_ascii_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// The attribute an embedder adds to a checkbox's [`crate::StyledElement`] whose
+/// `indeterminate` IDL flag a script set (miaskiewicz/turbo-dom#293): the flag lives in
+/// the DOM binding, not in the markup, so a live embedder hands it to layout this way
+/// (from `live::snapshot`'s `post_cascade` hook, say). The checkbox paints Chrome's
+/// indeterminate dash, checked or not; any other control ignores it. Its name cannot be
+/// an HTML attribute's (it starts with a NUL).
+pub const INDETERMINATE_ATTR: &str = "\u{0}indeterminate";
+
 /// The attribute that carries a `<select>`'s measured option texts to layout (one per
 /// option, in [`select_options`] order) on its box: the box has no option children.
 pub(crate) const OPTION_ATTR: &str = "\u{0}option";
@@ -208,7 +227,9 @@ pub(crate) fn intrinsic_size(
         positive_int(value).unwrap_or(default) as f32
     };
     Some(match control {
-        Control::Toggle | Control::Button | Control::Color => return None,
+        Control::Toggle | Control::Button | Control::Color | Control::Progress | Control::Meter => {
+            return None
+        }
         Control::TextField => (
             (number("size", 20) * m.avg + m.ascent - m.avg).ceil(),
             m.line,

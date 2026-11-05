@@ -1377,12 +1377,15 @@ fn flow_atom_baseline(b: &LayoutBox, f: &Fragment) -> Option<f32> {
 /// inline-block's (miaskiewicz/turbo-dom#239): a checkbox / radio / range at its
 /// border-box bottom (on a vertical line's central baseline: its border-box middle), an
 /// empty button at its content-box top, a textarea at its bottom margin edge, a colour
-/// well 4px above its content-box bottom (miaskiewicz/turbo-dom#255).
+/// well 4px above its content-box bottom (miaskiewicz/turbo-dom#255), a progress / meter
+/// as a checkbox, lowered by Chrome's `vertical-align: -0.2em` unless the author aligns
+/// it (miaskiewicz/turbo-dom#293).
 fn form_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> Option<f32> {
     use super::form_controls::Control;
     match b.form_control()? {
         Control::Toggle if central => Some(f.height / 2.0),
         Control::Toggle => Some(f.height),
+        Control::Progress | Control::Meter => Some(gauge_baseline(b, f, central)),
         // A menu list's central baseline is its border-box middle rounded to a whole
         // pixel (Chrome 156: 10px down a 19px-tall list; miaskiewicz/turbo-dom#255).
         Control::Select if central => Some((f.height / 2.0).round()),
@@ -1412,6 +1415,29 @@ fn form_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> Option<f32> {
             Some(f.height - style.border.widths().bottom - style.padding.bottom - SWATCH_GAP)
         }
         _ => None,
+    }
+}
+
+/// A progress / meter's baseline (see [`form_baseline`]): its `vertical-align: -0.2em`
+/// lowers it toward the line-under side, the physical left in both vertical modes,
+/// which is `vertical-lr`'s block start.
+fn gauge_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> f32 {
+    let base = if central { f.height / 2.0 } else { f.height };
+    if b.style.get("vertical-align").is_some() {
+        return base;
+    }
+    let font_size = b
+        .resolved(ResolveCtx {
+            parent_font_size: super::value::DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        })
+        .font_size;
+    let toward_block_start =
+        super::writing::WritingMode::of(&b.style) == super::writing::WritingMode::VerticalLr;
+    if toward_block_start {
+        base + 0.2 * font_size
+    } else {
+        base - 0.2 * font_size
     }
 }
 
@@ -3402,7 +3428,13 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx, fonts: &FontRegis
     let probed = super::imgsize::replaced_intrinsic(images.resolver, src, &lb.style);
     src.unloaded.set(probed.is_none_or(|(_, loaded)| !loaded));
     if let Some((i, _)) = probed {
-        lb.set_intrinsic(i.width as f32, Some(i.height as f32));
+        if i.natural_ratio.is_some() {
+            // No natural size: a shrink-to-fit container gets no width from it, like
+            // Chrome 156 (the image then fills that 0 width; miaskiewicz/turbo-dom#320).
+            lb.set_intrinsic(0.0, Some(0.0));
+        } else {
+            lb.set_intrinsic(i.width as f32, Some(i.height as f32));
+        }
     }
 }
 
@@ -3434,19 +3466,25 @@ fn replaced_image_box(
     if !loaded && src.media == super::boxgen::Media::Viewport {
         // A media default box: no aspect ratio, like an iframe's (#252).
         let natural = (intrinsic.width as f32, intrinsic.height as f32);
-        return Some(embedded_viewport_fragment(
-            lb,
-            bs,
-            (bx, by),
-            cb_width,
-            natural,
-            ctx,
-        ));
+        let mut fragment = embedded_viewport_fragment(lb, bs, (bx, by), cb_width, natural, ctx);
+        if lb.audio_controls() && !ctx.writing.vertical() {
+            let b = bs.border.widths();
+            let content = (
+                fragment.x + b.left + bs.padding.left,
+                fragment.y + b.top + bs.padding.top,
+                fragment.width - b.horizontal() - bs.padding.horizontal(),
+                fragment.height - b.vertical() - bs.padding.vertical(),
+            );
+            super::media_paint::audio_panel(&mut fragment, content, ctx.fonts);
+        }
+        return Some(fragment);
     }
     let intrinsic = logical_intrinsic(intrinsic, ctx);
     let sizing = size_ctx(bs, cb_width, ctx);
     if ctx.live_geometry {
-        let mut sized = super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing);
+        let scale = ctx.html_font_scale.unwrap_or(1.0);
+        let mut sized =
+            super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing, scale);
         record_metrics(lb, bs, sized.width, sized.height, ctx);
         physical_placement(&mut sized.placement, ctx);
         let mut fragment = live_image_fragment(lb, bx, by, &sized, bs);
@@ -3455,12 +3493,20 @@ fn replaced_image_box(
         }
         return Some(fragment);
     }
-    if !loaded && src.media == super::boxgen::Media::Canvas {
+    if src.media == super::boxgen::Media::Canvas {
         // A canvas is sized like Chrome's replaced boxes (`box-sizing`, min / max) on
-        // this path too: a content box inside its padding and border (#252).
-        let sized = super::imgsize::size_replaced_live(String::new(), intrinsic, &sizing);
+        // this path too: a content box inside its padding and border (#252), which its
+        // drawn content, when the embedder supplies it, fills (#291).
+        let mut sized =
+            super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing, 1.0);
         let content = (sized.width, sized.height);
-        return Some(viewport_fragment(lb, bs, bx, by, content, ctx));
+        let mut fragment = viewport_fragment(lb, bs, bx, by, content, ctx);
+        if loaded {
+            physical_placement(&mut sized.placement, ctx);
+            let placement = sized.placement;
+            super::canvas_content::attach(&mut fragment, &lb.style, bs, placement, ctx.writing);
+        }
+        return Some(fragment);
     }
     let mut sized = size_replaced(src.name.clone(), intrinsic, &sizing);
     physical_placement(&mut sized.placement, ctx);
@@ -3479,6 +3525,7 @@ fn replaced_image_box(
 fn logical_intrinsic(mut intrinsic: crate::image::Intrinsic, ctx: &Ctx) -> crate::image::Intrinsic {
     if ctx.writing.vertical() {
         std::mem::swap(&mut intrinsic.width, &mut intrinsic.height);
+        intrinsic.natural_ratio = intrinsic.natural_ratio.map(f32::recip);
     }
     intrinsic
 }
