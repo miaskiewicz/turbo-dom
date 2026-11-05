@@ -19,6 +19,17 @@ at the time); this file reconstructs them from history.
   fragment, and with it its ownership component, now stays pinned until the next reconcile. This
   was the intermittent `sanitizer_api_matches_chrome_156` failure (turbo-dom#324). Test:
   `set_html_wrappers_survive_collection_before_a_deferred_reconcile`.
+- **turbo-dom-layout: a row-spanning cell taller than its rows spreads the excess over
+  them like Chrome 156** instead of growing only the last row. Rowspan cells are taken by
+  end row, then the later-starting first; each one's excess over its rows and the
+  border-spacing (or collapsed grid lines) between them goes equally to the spanned rows
+  after the first where another rowspan cell starts, else to its unconstrained rows (no
+  fixed `height` on the row or a single-row cell; percentage heights do not constrain) in
+  proportion to their heights, else to all its rows by height, else to the last row, in
+  1/64 px shares. Collapsed tables weigh each row by its extent between grid-line centres.
+  Control: the `table-rowspan-*` cases of `scripts/html-document-chrome-control.mjs`
+  (turbo-dom#327). A definite-height table's extra height still treats percent-height rows
+  as auto rows (`table-extra-percent-*`, held out).
 
 ## [0.7.1] — 2026-11-05
 
