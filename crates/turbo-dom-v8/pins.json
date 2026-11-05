@@ -1,6 +1,6 @@
 {
   "package": "turbo-dom-v8",
-  "version": "150.4.0",
+  "version": "150.4.1",
   "rust_version": "1.91",
   "repository": "https://github.com/miaskiewicz/turbo-dom",
   "description": "turbo-dom fork of rusty_v8 (v8 150.4.0) with the interceptor ShouldThrowOnError and isolate weak-teardown fixes: Rust bindings to V8",

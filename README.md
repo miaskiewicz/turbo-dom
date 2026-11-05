@@ -1,6 +1,6 @@
 # turbo-dom
 
-Release **0.7.1**. turbo-dom is the shared browser-engine base of three projects:
+Release **0.8.0**. turbo-dom is the shared browser-engine base of three projects:
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
@@ -24,7 +24,7 @@ and the publish order.
 | [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.7.0 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
 | [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.7.0 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
 | [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.7.0 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
-| [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.0 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
+| [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.1 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
 
 The root `turbo-dom-parser` crate is `publish = false`. It ships inside the npm package.
 
