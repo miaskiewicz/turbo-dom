@@ -262,7 +262,8 @@ package or publish workflow.
   Chrome 156 on macOS (`glyph_raster.rs`, turbo-dom#266): exact-area coverage of the
   outline grown and lifted `0.005 * size` px (CoreText smoothing), Skia subpixel pens
   and its luminance pre-blend (gamma 1.8, contrast 1); the SVG painter emits the same
-  grown outline. The residual vs Chrome is pinned per case by
+  grown outline with the pre-blend as an `feComponentTransfer` alpha table, one
+  `glyph-lum<class>` filter per 3-bit text luminance (turbo-dom#294). The residual vs Chrome is pinned per case by
   `tests/glyph_coverage_chrome.rs` (`scripts/glyph-coverage-chrome-control.mjs`); Chrome's stem darkening is not
   modelled yet, so turbo-dom#266 stays open with that residual. Relocated verbatim from
   turbo-surf-raster 0.5.5 (S1). Decodes images through turbo-dom-layout's image layer (PNG,
