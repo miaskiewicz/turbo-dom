@@ -185,6 +185,23 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-browser-env: three Chrome 156 gaps in the browser binding (turbo-dom#370,
+  #373, #374).**
+  - `__tsNs.cssSupports` / `cssSupportsProperty` (turbo-dom#370): the string coercion of
+    their arguments now goes through an internal `String` primordial captured at install
+    time, so a page that replaces `globalThis.String` cannot break the engine's
+    `CSS.supports` path. Matches Chrome 156, which also uses a private coercion here;
+    unblocks turbo-surf#163.
+  - `getComputedStyle(el).transform` em resolution (turbo-dom#373): `translateX(2em)` on
+    an element whose `font-size` is inherited now resolves against the layout's reported
+    font size (`layoutUsedSize(el)[4]`, added in #353) instead of the element's declared
+    `font-size`, which may still be null at this cascade step. Matches Chrome 156's
+    `matrix(1, 0, 0, 1, 24, 0)` for `translateX(2em)` under an inherited 12px font.
+  - `getComputedStyle` color canonicalization (turbo-dom#374): named colors like `red` /
+    `blue` / `lime` in every `<color>` longhand (`background-color`, `border-*-color`,
+    `outline-color`, `caret-color`, `text-decoration-color`, `fill`, `stroke`, ...) now
+    serialize as Chrome 156's `rgb(...)` / `rgba(...)`; `color` and (for pseudos)
+    `background-color` were already normalized.
 - **turbo-dom-layout: vertical `<audio controls>` panel, short-panel controls, `<meter>`
   shadow gradient under `appearance:none` / author background (turbo-dom#363, #364, #365).**
   A vertical `<audio controls>` box (`writing-mode: vertical-rl` / `vertical-lr`) now

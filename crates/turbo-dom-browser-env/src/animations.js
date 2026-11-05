@@ -1118,7 +1118,13 @@
     if (intrinsic.test(/^\s*none\s*$/i, text)) return 'none';
     let box = null;
     try { if (typeof ns.layoutUsedSize === 'function' && element) box = ns.layoutUsedSize(element); } catch (e) {}
-    const em = isFinite(+fontSizePx) ? +fontSizePx : 16;
+    // turbo-dom#373: the layout reports the used font size as `box[4]` (the fifth entry,
+    // added for em resolution in #353); prefer it, so an element with an inherited
+    // font-size resolves `em` against the inherited value — not the declared one, which
+    // may not be set yet on this element's `decl['font-size']`. Fall back to the caller's
+    // `fontSizePx` (the element's declared font-size, if any), else Chrome's initial 16.
+    const layoutEm = box && isFinite(+box[4]) ? +box[4] : null;
+    const em = layoutEm !== null ? layoutEm : isFinite(+fontSizePx) ? +fontSizePx : 16;
     const borderW = box && isFinite(+box[0]) ? +box[0] : null;
     const borderH = box && isFinite(+box[1]) ? +box[1] : null;
     const list = parseResolvedTransform(text, em, borderW, borderH);
