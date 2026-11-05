@@ -821,6 +821,71 @@
    ]
   },
   {
+   "id": "table-spacing-blockified-rows",
+   "html": "<!doctype html><style>body{margin:0}div{width:50px;height:20px}</style><div data-cid=\"f\" style=\"display:table-row;float:left\"></div><div data-cid=\"g\" style=\"display:table-row-group;float:left\"></div><div data-cid=\"a\" style=\"display:table-row;position:absolute;left:0;top:40px\"></div><div data-cid=\"h\" style=\"display:table-header-group;position:absolute;left:60px;top:40px\"></div>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 50,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "g",
+     "x": 50,
+     "y": 0,
+     "width": 50,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 40,
+     "width": 50,
+     "height": 20,
+     "display": "block",
+     "position": "absolute"
+    },
+    {
+     "cid": "h",
+     "x": 60,
+     "y": 40,
+     "width": 50,
+     "height": 20,
+     "display": "block",
+     "position": "absolute"
+    }
+   ],
+   "hits": [
+    {
+     "x": 10,
+     "y": 10,
+     "hit": "f"
+    },
+    {
+     "x": 60,
+     "y": 10,
+     "hit": "g"
+    },
+    {
+     "x": 10,
+     "y": 50,
+     "hit": "a"
+    },
+    {
+     "x": 70,
+     "y": 50,
+     "hit": "h"
+    }
+   ]
+  },
+  {
    "id": "table-rowspan-spacing",
    "html": "<!doctype html><style>body{margin:0}table{border-spacing:10px 6px}td{padding:0}</style><table data-cid=\"table\"><tr data-cid=\"r1\"><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"s\" rowspan=\"2\"><div style=\"width:30px;height:26px\"></div></td><td data-cid=\"t\" rowspan=\"2\"><div style=\"width:30px;height:20px\"></div></td></tr><tr data-cid=\"r2\"><td data-cid=\"c\"><div style=\"width:30px;height:10px\"></div></td></tr></table>",
    "measure": {},

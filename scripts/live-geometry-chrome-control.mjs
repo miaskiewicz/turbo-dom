@@ -594,6 +594,16 @@ const CASES = [
     ),
     hits: [[20, 20], [50, 20], [20, 25], [70, 33], [110, 15], [110, 33], [20, 40], [50, 48], [130, 48], [3, 3], [8, 20], [20, 60], [140, 20], [145, 20]],
   },
+  // A floated or absolutely positioned row / row group is blockified: a block box that
+  // hits itself (miaskiewicz/turbo-dom#321).
+  {
+    id: "table-spacing-blockified-rows",
+    html: DOC(
+      "body{margin:0}div{width:50px;height:20px}",
+      `<div data-cid="f" style="display:table-row;float:left"></div><div data-cid="g" style="display:table-row-group;float:left"></div><div data-cid="a" style="display:table-row;position:absolute;left:0;top:40px"></div><div data-cid="h" style="display:table-header-group;position:absolute;left:60px;top:40px"></div>`,
+    ),
+    hits: [[10, 10], [60, 10], [10, 50], [70, 50]],
+  },
   // A row-spanning cell spans the border-spacing between its rows too: it is as tall as
   // its rows and the gaps between them, and content that fits there grows no row
   // (miaskiewicz/turbo-dom#321).
