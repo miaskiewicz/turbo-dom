@@ -439,7 +439,8 @@
       'max-width', 'none', 'max-height', 'none', 'user-select', 'auto', 'box-shadow', 'none', 'vertical-align', 'baseline', 'filter', 'none',
       'mix-blend-mode', 'normal', 'isolation', 'auto', 'object-fit', 'fill', 'resize', 'none', 'table-layout', 'auto',
       'transition-duration', '0s', 'transition-property', 'all', 'animation-name', 'none', 'animation-duration', '0s', 'will-change', 'auto',
-      'clip-path', 'none', 'content-visibility', 'visible', 'text-overflow', 'clip', 'touch-action', 'auto', 'scroll-behavior', 'auto', 'appearance', 'none']);
+      'clip-path', 'none', 'content-visibility', 'visible', 'text-overflow', 'clip', 'touch-action', 'auto', 'scroll-behavior', 'auto', 'appearance', 'none',
+      'opacity', '1', 'transform', 'none']);
     add(true, ['text-align', 'start', 'text-transform', 'none', 'text-indent', '0px', 'letter-spacing', 'normal', 'word-spacing', '0px',
       'white-space-collapse', 'collapse', 'text-wrap-mode', 'wrap', 'cursor', 'auto', 'direction', 'ltr', 'writing-mode', 'horizontal-tb',
       'pointer-events', 'auto', 'text-shadow', 'none', 'list-style-type', 'disc', 'list-style-position', 'outside', 'list-style-image', 'none',
@@ -516,6 +517,77 @@
     if ($c.test(/^border-[a-z]+-width$/, name)) return $c.test(/^(none|hidden)$/, propertyValue(record, $c.replace(name, 'width', 'style'))) ? '0px' : entry[0];
     if (entry[0] === 'auto' && $c.test(/^(top|right|bottom|left)$/, name) && propertyValue(record, 'position') !== 'static') return '';
     return entry[0];
+  }
+  // CSS-wide keywords compute to the value they select (turbo-dom#317; computed_defaults case
+  // css-wide-keywords) for the properties computedInitialValues knows: initial -> the
+  // initial value (currentcolor -> the element's `color`), inherit -> the parent's computed
+  // value (the root's: initial), unset -> inherit or initial by whether the property
+  // inherits, revert -> html.css's value, i.e. the lazy default (setProp already applied a UA
+  // table's). A border width resolved here is 0px while its side's style is none / hidden.
+  var wideKeywordInitials = { __proto__: null, width: ['auto', false], height: ['auto', false] };
+  function resolveWideKeywords(decl, parentRecord, setProp, drop){
+    var widths = [];
+    $c.forEach($O.keys(decl), function(name){
+      var entry = computedInitialValues[name] || wideKeywordInitials[name], value = decl[name];
+      if (!entry || typeof value !== 'string') return;
+      var key = $c.toLowerCase($c.trim(value));
+      if (key === 'revert') { drop(name); return; }
+      if (key === 'unset') key = entry[1] ? 'inherit' : 'initial';
+      if (key === 'inherit' && parentRecord) value = propertyValue(parentRecord, name);
+      else if (key === 'inherit' || key === 'initial') value = entry[0] === 'currentcolor' ? decl.color : entry[0];
+      else return;
+      setProp(name, value);
+      if ($c.test(/^border-[a-z]+-width$/, name)) $c.push(widths, name);
+    });
+    $c.forEach(widths, function(name){
+      var style = decl[$c.replace(name, 'width', 'style')];
+      if ($c.test(/^(none|hidden)$/, $c.toLowerCase($c.trim(style == null ? 'none' : String(style))))) setProp(name, '0px');
+    });
+  }
+  // The used value a rendered box's width / height reads (turbo-dom#316; computed_defaults
+  // case used-size): the embedder's layout, `__ns.layoutUsedSize(element)`, answers
+  // [border-box width, border-box height, content-box width, content-box height] in unzoomed
+  // CSS px, or null for an element without a box; box-sizing picks the box (Blink's
+  // UsedBoxSize). Elements Chrome reports the computed value for (computedUsedApplies), and
+  // those the layout gives no box, read their declared value or `auto`; without a layout a
+  // rendered box reads its declared value (or "": no used value to report, the null return).
+  var usedReplacedTags = { __proto__: null, IMG: 1, CANVAS: 1, VIDEO: 1, AUDIO: 1, IFRAME: 1, EMBED: 1, OBJECT: 1, INPUT: 1, SELECT: 1, TEXTAREA: 1, BUTTON: 1 };
+  var usedSvgBoxes = { __proto__: null, rect: 1, image: 1, foreignObject: 1 };
+  function computedUsedSize(record, name){
+    var el = record.defaultsOf;
+    if ((name !== 'width' && name !== 'height') || !el) return null;
+    var declared = cssMapGet(record.values, name);
+    if (!computedUsedApplies(record, el)) return declared ? declared.text : 'auto';
+    var provider = __ns.layoutUsedSize;
+    if (typeof provider !== 'function') return null;
+    var value = NaN;
+    try { var box = provider(el); value = box ? cssFontNumber(box[(name === 'height' ? 1 : 0) + (propertyValue(record, 'box-sizing') === 'border-box' ? 0 : 2)]) : NaN; } catch(e){}
+    if (cssFontFinite(value)) return computedUsedPixels(value);
+    return declared ? declared.text : 'auto';
+  }
+  // Blink's WidthOrHeightShouldReturnUsedValue: a box (not display none / contents) that is not
+  // a non-atomic inline; of SVG children only rect / image / foreignObject (the outermost
+  // <svg> is a replaced box). Whether an ancestor's display hides the box is the layout's.
+  function computedUsedApplies(record, el){
+    var entry = cssMapGet(record.values, 'display'), display = entry ? entry.text : '';
+    if (display === 'none' || display === 'contents') return false;
+    var namespace = '', tag = '';
+    try { namespace = cssApply(computedStyleNativeNamespace, el, []); tag = cssApply(computedStyleNativeTag, el, []); } catch(e){}
+    if (namespace === 'http://www.w3.org/2000/svg') {
+      var parent = computedParentElement(el), parentNamespace = '';
+      try { parentNamespace = parent ? cssApply(computedStyleNativeNamespace, parent, []) : ''; } catch(e){}
+      return parentNamespace !== namespace || usedSvgBoxes[tag] === 1;
+    }
+    if (namespace === 'http://www.w3.org/1998/Math/MathML') return true;
+    return !$c.test(/^(inline|ruby|ruby-text)$/, display) || namespace === 'http://www.w3.org/1999/xhtml' && usedReplacedTags[tag] === 1;
+  }
+  // Blink serializes a used px value with printf's %g: six significant digits, an exact tie
+  // rounding to even where toPrecision rounds it away from zero (5.328125 -> 5.32812).
+  function computedUsedPixels(value){
+    var text = cssApply(cssFontPrecision, value, [6]);
+    var digits = $c.replace($c.replace(cssApply(cssFontPrecision, value, [21]), /[-.]|e.*$/g, ''), /^0+/, '');
+    if ($c.test(/^\d{5}[02468]50*$/, digits)) text = cssApply(cssFontPrecision, 2 * value - cssFontNumber(text), [6]);
+    return cssFontString(cssFontNumber(text)) + 'px';
   }
   // CSS Position 4: a top-layer box whose position is static / relative / sticky is absolute.
   function topLayerPosition(position){ return $c.test(/^(static|relative|sticky)$/, position) ? 'absolute' : position; }
@@ -1402,6 +1474,7 @@
     // Children of <video> / <audio> are outside the flat tree: Chrome computes no style for them.
     if (connected && computedMediaChild(el)) connected = false;
     setProp('color', connected ? normalizeComputedColor(color) : '');
+    if (connected) resolveWideKeywords(decl, inheritParent ? $c.get(declarationRecords, parentStyle(inheritParent)) : null, setProp, function(name){ delete decl[name]; delete decl[camel(name)]; });
     // UA and initial values for display / position / visibility (turbo-surf#36), measured in
     // computed_defaults_chrome156.json: an author / inline / shadow-scoped declaration wins, the
     // CSS-wide keywords resolve (inherit -> the composed parent's value, initial / unset -> the
@@ -1490,7 +1563,9 @@
         if (size > 0 && cssFontFinite(size)) setProp(pair[0], ($Mround(size * 1000) / 1000) + 'px', true);
       });
     }
-    if (!pseudo && layer !== 'fullscreen') try {
+    // An embedder's layout answers the used size at read time (computedUsedSize); a box-less
+    // display keeps its computed percentage (Chrome).
+    if (!pseudo && layer !== 'fullscreen' && typeof __ns.layoutUsedSize !== 'function' && decl.display !== 'none' && decl.display !== 'contents') try {
       $c.forEach(['width', 'height'], function(axis){
         var raw = decl[axis];
         if (typeof raw === 'string' && $c.test(/^-?\d+(?:\.\d+)?%$/, $c.trim(raw))) {
@@ -2311,7 +2386,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   __ns.declarationAuthoredValue=function(style,name){var record=declarationRecord(style);if(record.fontFace||!cssShorthand)return propertyValue(record,name);name=propertyAlias(cssString(name));var value=$c.get(record.values,name);if(value)return value.pending||!value.raw?value.text:colorText(name,value.raw);return shorthandName(name)?shorthandValue(record,name):'';};
   // getPropertyValue: a shorthand serializes from its longhands (a computed declaration's own
   // shorthand entry wins); a pending longhand reads ''.
-  function propertyValue(record,name){if(!record.fontFace&&cssShorthand){name=propertyAlias(name);var value=$c.get(record.values,name);if(value)return value.text;var text=shorthandName(name)?shorthandValue(record,name):'';return !text&&record.defaultsOf?computedDefault(record,name):text;}var value=$c.get(record.values,name);return value?value.text:record.defaultsOf?computedDefault(record,name):'';}
+  function propertyValue(record,name){var used=record.computed?computedUsedSize(record,name):null;if(used!==null)return used;if(!record.fontFace&&cssShorthand){name=propertyAlias(name);var value=$c.get(record.values,name);if(value)return value.text;var text=shorthandName(name)?shorthandValue(record,name):'';return !text&&record.defaultsOf?computedDefault(record,name):text;}var value=$c.get(record.values,name);return value?value.text:record.defaultsOf?computedDefault(record,name):'';}
   var declarationConstructor=__ns.makeNativeFunction(function(){throw new TypeError('Illegal constructor');},'CSSStyleDeclaration',0,true);
   declarationConstructor.prototype={};$O.defineProperty(declarationConstructor.prototype,'constructor',{value:declarationConstructor,writable:true,configurable:true});$O.defineProperty(declarationConstructor.prototype,Symbol.toStringTag,{value:'CSSStyleDeclaration',configurable:true});$O.defineProperty(declarationConstructor,'prototype',{writable:false});$O.defineProperty(g,'CSSStyleDeclaration',{value:declarationConstructor,writable:true,configurable:true,enumerable:false});
   var declarationPrototype=declarationConstructor.prototype;
