@@ -11,6 +11,7 @@
 //! image loads do.
 #![cfg(feature = "svg-rasterize")]
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use turbo_dom_layout::image::{probe_natural, Intrinsic};
 use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, NativeTextOptions, SnapshotInputs, SourceId,
@@ -42,7 +43,7 @@ fn pair(value: &serde_json::Value) -> (f64, f64) {
 }
 
 #[test]
-fn natural_size_is_chromes() {
+fn natural_size_is_chromes_and_only_a_viewbox_gives_a_bare_ratio() {
     let control = fixture();
     assert_eq!(control["chrome"], "156.0.8078.47");
     for case in control["cases"].as_array().unwrap() {
@@ -53,24 +54,39 @@ fn natural_size_is_chromes() {
             pair(&case["natural"]),
             "{id}: naturalWidth/naturalHeight"
         );
+        let expected = id.starts_with("viewbox-only").then(|| {
+            if id.ends_with("7x3") {
+                7.0 / 3.0
+            } else if id.ends_with("wide") {
+                9.0
+            } else {
+                1.5
+            }
+        });
+        assert_eq!(intrinsic.natural_ratio, expected, "{id}: natural ratio");
     }
 }
 
+/// The one control row not matched yet: a ratio-only image as a row flex item
+/// (miaskiewicz/turbo-dom#326).
+const KNOWN_GAP: &str = "viewbox-only-flex-item";
+
 #[test]
-#[ignore = "turbo-dom#320: fails until the fix"]
 fn ratio_only_svg_images_lay_out_like_chrome_156() {
     let control = fixture();
     let cases = control["cases"].as_array().unwrap();
-    assert_eq!(cases.len(), 23);
+    assert_eq!(cases.len(), 24);
     let mut html = String::new();
     let mut svgs = HashMap::new();
     for case in cases {
         let id = case["id"].as_str().unwrap();
-        html.push_str(&format!(
+        write!(
+            html,
             "<div style=\"margin:0 0 4px;{}\"><img src=\"{id}\" style=\"{}\"></div>",
             case["wrap"].as_str().unwrap(),
             case["style"].as_str().unwrap(),
-        ));
+        )
+        .unwrap();
         svgs.insert(
             id.to_owned(),
             case["svg"].as_str().unwrap().as_bytes().to_vec(),
@@ -114,7 +130,13 @@ fn ratio_only_svg_images_lay_out_like_chrome_156() {
         let rect = snapshot.fragments()[source.fragment_indices[0]].rect;
         let got = (f64::from(rect.width), f64::from(rect.height));
         let want = pair(&case["size"]);
-        if (got.0 - want.0).abs() > 1e-3 || (got.1 - want.1).abs() > 1e-3 {
+        let matches = (got.0 - want.0).abs() <= 1e-3 && (got.1 - want.1).abs() <= 1e-3;
+        if id == KNOWN_GAP {
+            // miaskiewicz/turbo-dom#326: still the natural size, not the container's
+            // width; this fails once that is fixed, so the gap is lifted then.
+            assert_eq!(got, (225.0, 150.0), "{id}: the #326 gap changed");
+            assert!(!matches);
+        } else if !matches {
             failures.push(format!("{id}: {got:?}, Chrome {want:?}"));
         }
     }

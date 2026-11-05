@@ -65,6 +65,7 @@ const CASES = [
   ["height-only", svg('height="40" viewBox="0 0 300 200"'), "width:400px", ""],
   ["both-lengths", svg('width="90" height="30" viewBox="0 0 300 200"'), "width:400px", ""],
   ["no-size-no-viewbox", svg(""), "width:400px", ""],
+  ["viewbox-only-vertical", VB, "writing-mode:vertical-rl;width:400px;height:300px", ""],
 ];
 
 const page = (cases) =>
