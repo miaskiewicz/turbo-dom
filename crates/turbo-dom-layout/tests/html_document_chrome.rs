@@ -272,14 +272,13 @@ fn rowspan_excess_is_spread_over_the_spanned_rows_like_chrome_156() {
     compare_cases(rowspan_case);
 }
 
-/// Found with miaskiewicz/turbo-dom#327: a definite-height table's extra height grows
-/// its percent-height rows to their percentage first, then goes to its auto rows.
+/// miaskiewicz/turbo-dom#349: a definite-height table's extra height grows its
+/// percent-height rows to their percentage first, then goes to its auto rows.
 fn extra_percent_row_case(id: &str) -> bool {
     id.starts_with("table-extra-percent-")
 }
 
 #[test]
-#[ignore = "follow-up of miaskiewicz/turbo-dom#327: percent rows share the extra height"]
 fn table_extra_height_skips_percent_rows_like_chrome_156() {
     compare_cases(extra_percent_row_case);
 }
