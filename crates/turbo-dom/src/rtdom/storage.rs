@@ -118,17 +118,11 @@ impl Tree {
     /// renumbering occurs. All checks precede the atomic storage replacement.
     /// Callers must supply *all* independently retained native handles. Omitted
     /// handles can be collected; this API cannot discover external Rust copies.
-    pub fn collect_unreachable(
-        &mut self,
-        pins: &[Handle],
+    fn charge_preflight(
+        &self,
+        work: &mut usize,
         budget: CollectionBudget,
-    ) -> Result<CollectionReport, CollectionError> {
-        if self.node_count() as usize > budget.max_nodes || pins.len() > budget.max_edges {
-            return Err(CollectionError::BudgetExceeded);
-        }
-        let mut work = 0;
-        // Preflight counts are O(nodes), with no traversal of arbitrarily wide
-        // attribute/string tables until their work has been admitted.
+    ) -> Result<(), CollectionError> {
         for pool in [
             &self.buf.tag_names,
             &self.buf.attr_names,
@@ -136,10 +130,10 @@ impl Tree {
             &self.buf.attr_values,
             &self.buf.strings,
         ] {
-            charge(&mut work, pool.len(), budget)?;
+            charge(work, pool.len(), budget)?;
         }
         for h in self.handles() {
-            charge(&mut work, 1, budget)?;
+            charge(work, 1, budget)?;
             let count = self.attrs_ov.get(h).map_or_else(
                 || {
                     if self.is_new(h) {
@@ -153,15 +147,11 @@ impl Tree {
                     AttrList::Namespaced(rows) => rows.len(),
                 },
             );
-            charge(&mut work, count, budget)?;
+            charge(work, count, budget)?;
         }
+        charge(work, self.mutation_log.as_ref().map_or(0, Vec::len), budget)?;
         charge(
-            &mut work,
-            self.mutation_log.as_ref().map_or(0, Vec::len),
-            budget,
-        )?;
-        charge(
-            &mut work,
+            work,
             self.source_attribute_positions
                 .values()
                 .map(FxHashMap::len)
@@ -174,17 +164,25 @@ impl Tree {
             budget,
         )?;
         for states in self.custom_states.values() {
-            charge(&mut work, 1 + states.len(), budget)?;
+            charge(work, 1 + states.len(), budget)?;
         }
-        charge(&mut work, self.custom_element_states.len(), budget)?;
-        charge(&mut work, self.fullscreen_stack.len(), budget)?;
-        let before = self.storage_stats();
+        charge(work, self.custom_element_states.len(), budget)?;
+        charge(work, self.fullscreen_stack.len(), budget)?;
+        Ok(())
+    }
+
+    fn collect_roots(
+        &self,
+        pins: &[Handle],
+        work: &mut usize,
+        budget: CollectionBudget,
+    ) -> Result<Vec<Handle>, CollectionError> {
         let mut roots = vec![self.root()];
         roots.extend_from_slice(pins);
         if let Some(records) = &self.mutation_log {
             for event in records {
                 charge(
-                    &mut work,
+                    work,
                     1 + event.record.added().len()
                         + event.record.removed().len()
                         + event.inclusive_ancestors.len()
@@ -203,64 +201,110 @@ impl Tree {
                 }
             }
         }
-        let required = roots.clone();
+        Ok(roots)
+    }
+
+    fn walk_retained(
+        &self,
+        roots: Vec<Handle>,
+        work: &mut usize,
+        budget: CollectionBudget,
+    ) -> Result<FxHashSet<Handle>, CollectionError> {
         let mut retained = FxHashSet::default();
         let mut owned_attrs: FxHashMap<Handle, Vec<Handle>> = FxHashMap::default();
         for ((owner, _, _), attr) in &self.attribute_nodes {
-            charge(&mut work, 1, budget)?;
+            charge(work, 1, budget)?;
             owned_attrs.entry(*owner).or_default().push(*attr);
         }
         for mut h in roots {
             if !self.is_live(h) {
                 return Err(CollectionError::InvalidPin);
             }
-            let mut ancestors = FxHashSet::default();
-            while let Some(parent) = self
-                .parent(h)
-                .or_else(|| self.attribute_owner(h))
-                .or_else(|| self.shadow_host(h))
-            {
-                charge(&mut work, 1, budget)?;
-                if !ancestors.insert(h) || !self.is_live(parent) {
-                    return Err(CollectionError::InvalidGraph);
-                }
-                if self.parent(h).is_none()
-                    && self.attribute_owner(h).is_none()
-                    && self.shadow_root(parent) != Some(h)
-                {
-                    return Err(CollectionError::InvalidGraph);
-                }
-                h = parent;
+            self.walk_ancestors(&mut h, work, budget)?;
+            self.walk_subtree(h, &owned_attrs, &mut retained, work, budget)?;
+        }
+        Ok(retained)
+    }
+
+    fn walk_ancestors(
+        &self,
+        h: &mut Handle,
+        work: &mut usize,
+        budget: CollectionBudget,
+    ) -> Result<(), CollectionError> {
+        let mut ancestors = FxHashSet::default();
+        while let Some(parent) = self
+            .parent(*h)
+            .or_else(|| self.attribute_owner(*h))
+            .or_else(|| self.shadow_host(*h))
+        {
+            charge(work, 1, budget)?;
+            if !ancestors.insert(*h) || !self.is_live(parent) {
+                return Err(CollectionError::InvalidGraph);
             }
-            let mut pending = vec![h];
-            while let Some(node) = pending.pop() {
-                charge(&mut work, 1, budget)?;
-                if !self.is_live(node) {
+            if self.parent(*h).is_none()
+                && self.attribute_owner(*h).is_none()
+                && self.shadow_root(parent) != Some(*h)
+            {
+                return Err(CollectionError::InvalidGraph);
+            }
+            *h = parent;
+        }
+        Ok(())
+    }
+
+    fn walk_subtree(
+        &self,
+        root: Handle,
+        owned_attrs: &FxHashMap<Handle, Vec<Handle>>,
+        retained: &mut FxHashSet<Handle>,
+        work: &mut usize,
+        budget: CollectionBudget,
+    ) -> Result<(), CollectionError> {
+        let mut pending = vec![root];
+        while let Some(node) = pending.pop() {
+            charge(work, 1, budget)?;
+            if !self.is_live(node) {
+                return Err(CollectionError::InvalidGraph);
+            }
+            if !retained.insert(node) {
+                continue;
+            }
+            let children = self.children(node);
+            charge(work, children.len(), budget)?;
+            for child in children {
+                if self.parent(child) != Some(node) {
                     return Err(CollectionError::InvalidGraph);
                 }
-                if !retained.insert(node) {
-                    continue;
+                pending.push(child);
+            }
+            if let Some(shadow) = self.shadow_root(node) {
+                if self.shadow_host(shadow) != Some(node) {
+                    return Err(CollectionError::InvalidGraph);
                 }
-                let children = self.children(node);
-                charge(&mut work, children.len(), budget)?;
-                for child in children {
-                    if self.parent(child) != Some(node) {
-                        return Err(CollectionError::InvalidGraph);
-                    }
-                    pending.push(child);
-                }
-                if let Some(shadow) = self.shadow_root(node) {
-                    if self.shadow_host(shadow) != Some(node) {
-                        return Err(CollectionError::InvalidGraph);
-                    }
-                    pending.push(shadow);
-                }
-                // Attribute identity is independent of the element's attribute list.
-                if let Some(attrs) = owned_attrs.get(&node) {
-                    pending.extend_from_slice(attrs);
-                }
+                pending.push(shadow);
+            }
+            if let Some(attrs) = owned_attrs.get(&node) {
+                pending.extend_from_slice(attrs);
             }
         }
+        Ok(())
+    }
+
+    pub fn collect_unreachable(
+        &mut self,
+        pins: &[Handle],
+        budget: CollectionBudget,
+    ) -> Result<CollectionReport, CollectionError> {
+        if self.node_count() as usize > budget.max_nodes || pins.len() > budget.max_edges {
+            return Err(CollectionError::BudgetExceeded);
+        }
+        let mut work = 0;
+        self.charge_preflight(&mut work, budget)?;
+        let before = self.storage_stats();
+        let roots = self.collect_roots(pins, &mut work, budget)?;
+        let required = roots.clone();
+        let retained = self.walk_retained(roots, &mut work, budget)?;
         if required.iter().any(|node| !retained.contains(node)) {
             return Err(CollectionError::InvalidGraph);
         }

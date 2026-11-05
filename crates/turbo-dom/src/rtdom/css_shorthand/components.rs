@@ -226,6 +226,76 @@ fn percent_of(token: &str, unit_value: f32) -> f32 {
         .unwrap_or_else(|_| (f64::from(unit_value) * 100.0) as f32)
 }
 
+fn read_function_comp(name: &str, inner: Vec<Comp>) -> Option<Comp> {
+    if name == "url" {
+        let [Comp {
+            kind: Kind::Str(url),
+            ..
+        }] = inner.as_slice()
+        else {
+            return None;
+        };
+        return Some(Comp {
+            text: format!("url({})", quoted(url)),
+            kind: Kind::Url(url.clone()),
+        });
+    }
+    let mut inner = inner;
+    if !NAMING_FUNCTIONS.contains(&name) {
+        for comp in &mut inner {
+            if let Kind::Ident(ident) = &comp.kind {
+                if !ident.starts_with("--") {
+                    comp.text = ident.to_ascii_lowercase();
+                }
+            }
+        }
+    }
+    if name == "cubic-bezier" || name == "linear" {
+        for comp in &mut inner {
+            match math_value(comp) {
+                Some((unit, value)) if unit.is_empty() => {
+                    comp.text = css_number(value as f32);
+                    comp.kind = Kind::Number {
+                        value: value as f32,
+                        integer: false,
+                    };
+                }
+                Some((unit, value)) if unit == "%" && name == "linear" => {
+                    comp.text = format!("{}%", css_number(value as f32));
+                    comp.kind = Kind::Percentage(value as f32);
+                }
+                _ => {}
+            }
+        }
+    }
+    if !function_valid(name, &inner) {
+        return None;
+    }
+    let text = match name {
+        "calc" if super::math::has_tree_counting(&inner) => Some(super::math::calc_text_of(&inner)),
+        "calc" => calc_sum(&inner),
+        "min" | "max" | "clamp" => min_max(name, &inner),
+        "abs" | "sign" => abs_sign(name, &inner),
+        "rgb" | "rgba" | "hsl" | "hsla" => color_function(name, &inner),
+        "lab" | "lch" | "oklab" | "oklch" => Some(lab_function(name, &inner)),
+        "steps" => steps_text(&inner),
+        "linear" => linear_text(&inner),
+        _ => None,
+    };
+    let text = text.unwrap_or_else(|| {
+        let spelled = camel_function(name);
+        if SUM_FUNCTIONS.contains(&name) {
+            format!("{spelled}({})", sum_arguments(&inner))
+        } else {
+            format!("{spelled}({})", join(&inner))
+        }
+    });
+    Some(Comp {
+        text,
+        kind: Kind::Function(name.to_string()),
+    })
+}
+
 fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
     loop {
         let start = input.position();
@@ -299,79 +369,7 @@ fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
                         Ok(inner)
                     })
                     .ok()?;
-                if name == "url" {
-                    let [Comp {
-                        kind: Kind::Str(url),
-                        ..
-                    }] = inner.as_slice()
-                    else {
-                        return None;
-                    };
-                    Comp {
-                        text: format!("url({})", quoted(url)),
-                        kind: Kind::Url(url.clone()),
-                    }
-                } else {
-                    let mut inner = inner;
-                    if !NAMING_FUNCTIONS.contains(&name.as_str()) {
-                        // Keyword arguments are case-insensitive: Chrome writes them lowercase.
-                        for comp in &mut inner {
-                            if let Kind::Ident(ident) = &comp.kind {
-                                if !ident.starts_with("--") {
-                                    comp.text = ident.to_ascii_lowercase();
-                                }
-                            }
-                        }
-                    }
-                    if name == "cubic-bezier" || name == "linear" {
-                        // A math argument Chrome resolves to a number (or, in `linear()`, a
-                        // percentage) is that literal.
-                        for comp in &mut inner {
-                            match math_value(comp) {
-                                Some((unit, value)) if unit.is_empty() => {
-                                    comp.text = css_number(value as f32);
-                                    comp.kind = Kind::Number {
-                                        value: value as f32,
-                                        integer: false,
-                                    };
-                                }
-                                Some((unit, value)) if unit == "%" && name == "linear" => {
-                                    comp.text = format!("{}%", css_number(value as f32));
-                                    comp.kind = Kind::Percentage(value as f32);
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                    if !function_valid(&name, &inner) {
-                        return None;
-                    }
-                    let text = match name.as_str() {
-                        "calc" if super::math::has_tree_counting(&inner) => {
-                            Some(super::math::calc_text_of(&inner))
-                        }
-                        "calc" => calc_sum(&inner),
-                        "min" | "max" | "clamp" => min_max(&name, &inner),
-                        "abs" | "sign" => abs_sign(&name, &inner),
-                        "rgb" | "rgba" | "hsl" | "hsla" => color_function(&name, &inner),
-                        "lab" | "lch" | "oklab" | "oklch" => Some(lab_function(&name, &inner)),
-                        "steps" => steps_text(&inner),
-                        "linear" => linear_text(&inner),
-                        _ => None,
-                    };
-                    let text = text.unwrap_or_else(|| {
-                        let spelled = camel_function(&name);
-                        if SUM_FUNCTIONS.contains(&name.as_str()) {
-                            format!("{spelled}({})", sum_arguments(&inner))
-                        } else {
-                            format!("{spelled}({})", join(&inner))
-                        }
-                    });
-                    Comp {
-                        text,
-                        kind: Kind::Function(name),
-                    }
-                }
+                read_function_comp(&name, inner)?
             }
             Token::ParenthesisBlock | Token::SquareBracketBlock => {
                 let (open, close) = if matches!(token, Token::ParenthesisBlock) {
@@ -730,6 +728,37 @@ fn arguments_type(inner: &[Comp]) -> Option<CalcType> {
 /// `clamp()` / `abs()` / `sign()` take type-checked sums (`clamp()` bounds may be `none`),
 /// `rgb()` / `hsl()` have three channels (and an alpha) in one syntax with an angle or number
 /// hue, `linear()` stops a number and at most two percentages, `cubic-bezier()` four numbers.
+fn rgb_hsl_valid(name: &str, inner: &[Comp]) -> bool {
+    let commas = inner.iter().filter(|comp| comp.kind == Kind::Comma).count();
+    let hue = |comp: &Comp| match &comp.kind {
+        Kind::Number { .. } => true,
+        Kind::Dimension { unit, .. } => unit_category(unit) == Some(2),
+        Kind::Ident(_) => commas == 0 && comp.is_ident(&["none"]),
+        Kind::Function(_) if comp.is_math() => matches!(
+            math_type(comp),
+            Some(CalcType::Number | CalcType::Unit(2) | CalcType::Unknown)
+        ),
+        _ => false,
+    };
+    if inner.first().is_some_and(|comp| comp.is_ident(&["from"])) {
+        commas == 0 && (inner.len() == 5 || (inner.len() == 7 && inner[5].is_slash()))
+    } else if name.starts_with("hsl") && inner.first().is_some_and(|comp| !hue(comp)) {
+        false
+    } else if commas > 0 {
+        (commas == 2 || commas == 3)
+            && inner.len() == 2 * commas + 1
+            && inner
+                .iter()
+                .enumerate()
+                .all(|(index, comp)| (comp.kind == Kind::Comma) == (index % 2 == 1))
+    } else {
+        match inner.iter().position(|comp| comp.kind == Kind::Slash) {
+            Some(slash) => slash == 3 && inner.len() == 5,
+            None => inner.len() == 3,
+        }
+    }
+}
+
 fn function_valid(name: &str, inner: &[Comp]) -> bool {
     match name {
         "calc" => checked_sum(inner).is_some(),
@@ -743,40 +772,7 @@ fn function_valid(name: &str, inner: &[Comp]) -> bool {
         "abs" | "sign" => !inner.iter().any(Comp::is_comma) && checked_sum(inner).is_some(),
         // The tree-counting functions take no arguments.
         "sibling-index" | "sibling-count" => inner.is_empty(),
-        "rgb" | "rgba" | "hsl" | "hsla" => {
-            let commas = inner.iter().filter(|comp| comp.kind == Kind::Comma).count();
-            // A hue: a number, an angle, `none` (modern syntax) or a math function of those.
-            let hue = |comp: &Comp| match &comp.kind {
-                Kind::Number { .. } => true,
-                Kind::Dimension { unit, .. } => unit_category(unit) == Some(2),
-                Kind::Ident(_) => commas == 0 && comp.is_ident(&["none"]),
-                Kind::Function(_) if comp.is_math() => matches!(
-                    math_type(comp),
-                    Some(CalcType::Number | CalcType::Unit(2) | CalcType::Unknown)
-                ),
-                _ => false,
-            };
-            if inner.first().is_some_and(|comp| comp.is_ident(&["from"])) {
-                // Relative color syntax: `from <color>`, three channels, then `/ alpha`.
-                commas == 0 && (inner.len() == 5 || (inner.len() == 7 && inner[5].is_slash()))
-            } else if name.starts_with("hsl") && inner.first().is_some_and(|comp| !hue(comp)) {
-                false
-            } else if commas > 0 {
-                // The legacy syntax: three or four comma-separated values.
-                (commas == 2 || commas == 3)
-                    && inner.len() == 2 * commas + 1
-                    && inner
-                        .iter()
-                        .enumerate()
-                        .all(|(index, comp)| (comp.kind == Kind::Comma) == (index % 2 == 1))
-            } else {
-                // The modern syntax: three values, then `/ alpha`.
-                match inner.iter().position(|comp| comp.kind == Kind::Slash) {
-                    Some(slash) => slash == 3 && inner.len() == 5,
-                    None => inner.len() == 3,
-                }
-            }
-        }
+        "rgb" | "rgba" | "hsl" | "hsla" => rgb_hsl_valid(name, inner),
         // Each stop is an output and at most two input positions, literals once `read`
         // resolved the math functions.
         "linear" => {
