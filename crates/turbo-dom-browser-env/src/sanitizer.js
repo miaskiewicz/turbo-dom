@@ -251,38 +251,48 @@
     "processingInstructions",
     "removeProcessingInstructions",
   ];
-  // "Configuration is valid".
-  function valid(config) {
+  function validMutuallyExclusive(config) {
     if (config.elements !== undefined && config.removeElements !== undefined) return false;
     if (config.attributes !== undefined && config.removeAttributes !== undefined) return false;
     if (config.processingInstructions !== undefined && config.removeProcessingInstructions !== undefined) return false;
-    for (let index = 0; index < listMembers.length; index++) if (duplicates(config[listMembers[index]])) return false;
+    return true;
+  }
+  function validReplaceDisjoint(config) {
     const replace = config.replaceWithChildrenElements;
     if (replace !== undefined && !disjoint(replace, nonReplaceable)) return false;
-    if (!disjoint(config.elements, replace) || !disjoint(config.removeElements, replace)) return false;
-    const elements = config.elements || [];
-    if (config.attributes !== undefined) {
-      for (let index = 0; index < elements.length; index++) {
-        const item = elements[index];
-        if (duplicates(item.attributes) || duplicates(item.removeAttributes)) return false;
-        if (!disjoint(config.attributes, item.attributes)) return false;
-        const removed = item.removeAttributes || [];
-        if (filter(removed, (attr) => !contains(config.attributes, attr)).length) return false;
-        if (config.dataAttributes === true && item.attributes !== undefined && filter(item.attributes, isData).length)
-          return false;
-      }
-      if (config.dataAttributes === true && filter(config.attributes, isData).length) return false;
-    } else {
-      for (let index = 0; index < elements.length; index++) {
-        const item = elements[index];
-        if (item.attributes !== undefined && item.removeAttributes !== undefined) return false;
-        if (duplicates(item.attributes) || duplicates(item.removeAttributes)) return false;
-        if (!disjoint(config.removeAttributes, item.attributes)) return false;
-        if (!disjoint(config.removeAttributes, item.removeAttributes)) return false;
-      }
-      if (config.dataAttributes !== undefined) return false;
+    return disjoint(config.elements, replace) && disjoint(config.removeElements, replace);
+  }
+  function validWithAllowAttributes(config, elements) {
+    for (let index = 0; index < elements.length; index++) {
+      const item = elements[index];
+      if (duplicates(item.attributes) || duplicates(item.removeAttributes)) return false;
+      if (!disjoint(config.attributes, item.attributes)) return false;
+      const removed = item.removeAttributes || [];
+      if (filter(removed, (attr) => !contains(config.attributes, attr)).length) return false;
+      if (config.dataAttributes === true && item.attributes !== undefined && filter(item.attributes, isData).length)
+        return false;
     }
-    return true;
+    return !(config.dataAttributes === true && filter(config.attributes, isData).length);
+  }
+  function validWithoutAllowAttributes(config, elements) {
+    for (let index = 0; index < elements.length; index++) {
+      const item = elements[index];
+      if (item.attributes !== undefined && item.removeAttributes !== undefined) return false;
+      if (duplicates(item.attributes) || duplicates(item.removeAttributes)) return false;
+      if (!disjoint(config.removeAttributes, item.attributes)) return false;
+      if (!disjoint(config.removeAttributes, item.removeAttributes)) return false;
+    }
+    return config.dataAttributes === undefined;
+  }
+  // "Configuration is valid".
+  function valid(config) {
+    if (!validMutuallyExclusive(config)) return false;
+    for (let index = 0; index < listMembers.length; index++) if (duplicates(config[listMembers[index]])) return false;
+    if (!validReplaceDisjoint(config)) return false;
+    const elements = config.elements || [];
+    return config.attributes !== undefined
+      ? validWithAllowAttributes(config, elements)
+      : validWithoutAllowAttributes(config, elements);
   }
 
   // ------------------------------------------------------- Sanitizer methods

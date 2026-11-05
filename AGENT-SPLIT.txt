@@ -1,0 +1,12 @@
+Batch B files (basename n..z) for miaskiewicz/turbo-dom#297 JS complexity refactor:
+
+src/runtime/stubs.mjs
+crates/turbo-dom-browser-env/src/range_contents.js
+crates/turbo-dom-browser-env/src/sanitizer.js
+crates/turbo-dom-browser-env/src/selection.js
+crates/turbo-dom-browser-env/src/svg_mathml_element_probe.js
+crates/turbo-dom-browser-env/src/trusted_types.js
+crates/turbo-dom-browser-env/src/typed_om.js
+crates/turbo-dom-browser-env/src/typed_om_probe.js
+crates/turbo-dom-browser-env/src/view_transitions_probe.js
+crates/turbo-dom-browser-env/src/xpath_provider/xpath.js

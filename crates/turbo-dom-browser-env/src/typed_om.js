@@ -142,28 +142,35 @@
   const toExponential = Function.prototype.call.bind(Number.prototype.toExponential);
   const stripZeros = (text) => { if (indexOfText(text, '.') < 0) return text; let end = text.length; while (end > 0 && text[end - 1] === '0') end--; if (end > 0 && text[end - 1] === '.') end--; return sliceText(text, 0, end); };
   // Round to six significant digits half-to-even on the exact binary value, as %.6g does.
+  function formatGRoundMantissa(kept, exponent) {
+    let carry = 1, result = '';
+    for (let index = 5; index >= 0; index--) { const digit = charCode(kept, index) - 48 + carry; carry = digit === 10 ? 1 : 0; result = (digit % 10) + result; }
+    if (carry) { result = '1' + sliceText(result, 0, 5); exponent++; }
+    return { mantissa: result, exponent };
+  }
+  function formatGPlain(mantissa, exponent) {
+    if (exponent < 0) {
+      let zeros = '';
+      for (let index = -1; index > exponent; index--) zeros += '0';
+      return '0.' + zeros + mantissa;
+    }
+    return sliceText(mantissa, 0, exponent + 1) + '.' + sliceText(mantissa, exponent + 1);
+  }
   function formatG(number) {
     if (number === 0) return 1 / number < 0 ? '-0' : '0';
     const negative = number < 0, exact = toExponential(negative ? -number : number, 99);
     const at = indexOfText(exact, 'e');
-    let digits = replaceText(sliceText(exact, 0, at), '.', ''), exponent = +sliceText(exact, at + 1);
+    const digits = replaceText(sliceText(exact, 0, at), '.', '');
+    let exponent = +sliceText(exact, at + 1);
     const kept = sliceText(digits, 0, 6), rest = sliceText(digits, 6);
     let roundUp = false;
     if (charCode(rest, 0) > 53) roundUp = true;
     else if (charCode(rest, 0) === 53) roundUp = testRegExp(/[1-9]/, sliceText(rest, 1)) || (charCode(kept, 5) - 48) % 2 === 1;
     let mantissa = kept;
-    if (roundUp) {
-      let carry = 1, result = '';
-      for (let index = 5; index >= 0; index--) { let digit = charCode(kept, index) - 48 + carry; carry = digit === 10 ? 1 : 0; result = (digit % 10) + result; }
-      if (carry) { result = '1' + sliceText(result, 0, 5); exponent++; }
-      mantissa = result;
-    }
+    if (roundUp) { const rounded = formatGRoundMantissa(kept, exponent); mantissa = rounded.mantissa; exponent = rounded.exponent; }
     const sign = negative ? '-' : '';
     if (exponent < -4 || exponent >= 6) { const magnitude = mathAbs(exponent); return sign + stripZeros(mantissa[0] + '.' + sliceText(mantissa, 1)) + 'e' + (exponent < 0 ? '-' : '+') + (magnitude < 10 ? '0' : '') + magnitude; }
-    let text;
-    if (exponent < 0) { let zeros = ''; for (let index = -1; index > exponent; index--) zeros += '0'; text = '0.' + zeros + mantissa; }
-    else text = sliceText(mantissa, 0, exponent + 1) + '.' + sliceText(mantissa, exponent + 1);
-    return sign + stripZeros(text);
+    return sign + stripZeros(formatGPlain(mantissa, exponent));
   }
   // CSSNumericLiteralValue::CustomCSSText.
   function formatNumber(value, unitKey) {
@@ -747,14 +754,16 @@
     return nest(result);
   }
   const maybeSimplifySumOrProduct = (node) => node && (isAddOrSub(node) || isMulOrDiv(node)) && !nestedIntermediate(node) ? simplifySumOrProduct(node) : node;
+  function clampReduction(operands) {
+    const low = operands[0], value = operands[1], high = operands[2];
+    if (value.t === 'kw') return null;
+    if (low.t === 'kw' && high.t === 'kw') return unnest(value);
+    if (low.t === 'kw') return createComparison([value, high], 'min');
+    if (high.t === 'kw') return createComparison([low, value], 'max');
+    return undefined;
+  }
   function createComparison(operands, op) {
-    if (op === 'clamp') {
-      const low = operands[0], value = operands[1], high = operands[2];
-      if (value.t === 'kw') return null;
-      if (low.t === 'kw' && high.t === 'kw') return unnest(value);
-      if (low.t === 'kw') return createComparison([value, high], 'min');
-      if (high.t === 'kw') return createComparison([low, value], 'max');
-    }
+    if (op === 'clamp') { const r = clampReduction(operands); if (r !== undefined) return r; }
     let type = null;
     for (let index = 0; index < operands.length; index++) { if (operands[index].t === 'kw') return null; type = index ? addTypes(type, nodeType(operands[index])) : nodeType(operands[index]); if (!type) return null; }
     let eager = true;
@@ -1017,19 +1026,28 @@
     const ordered = list(); for (let index = values.length - 1; index >= 0; index--) push(ordered, values[index]);
     return createVariadic(node.op === ADD || node.op === SUB ? 'sum' : 'product', toArray(ordered));
   }
+  function numericToNodeSumOrProduct(record) {
+    let node = numericToNode(record.values[0]);
+    for (let index = 1; index < record.values.length; index++) {
+      const next = numericToNode(record.values[index]);
+      node = node && next ? createOperation(node, next, record.kind === 'sum' ? ADD : MUL) : null;
+    }
+    return node;
+  }
+  function numericToNodeMinMax(record) {
+    const operands = list();
+    for (let index = 0; index < record.values.length; index++) push(operands, numericToNode(record.values[index]));
+    return createComparison(operands, record.kind);
+  }
   // CSSNumericValue::ToCalcExpressionNode.
   function numericToNode(value) {
     const record = numericRecord(value);
     switch (record.kind) {
       case 'unit': return lit(record.value, record.unit);
-      case 'sum': case 'product': {
-        let node = numericToNode(record.values[0]);
-        for (let index = 1; index < record.values.length; index++) { const next = numericToNode(record.values[index]); node = node && next ? createOperation(node, next, record.kind === 'sum' ? ADD : MUL) : null; }
-        return node;
-      }
+      case 'sum': case 'product': return numericToNodeSumOrProduct(record);
       case 'negate': { const inner = numericToNode(record.value); return inner ? simplified(lit(-1, 'number'), inner, MUL) : null; }
       case 'invert': { const inner = numericToNode(record.value); return inner ? createOperation(lit(1, 'number'), inner, DIV) : null; }
-      case 'min': case 'max': { const operands = list(); for (let index = 0; index < record.values.length; index++) push(operands, numericToNode(record.values[index])); return createComparison(operands, record.kind); }
+      case 'min': case 'max': return numericToNodeMinMax(record);
       case 'clamp': return createComparison([numericToNode(record.lower), numericToNode(record.value), numericToNode(record.upper)], 'clamp');
     }
     return null;
