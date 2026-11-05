@@ -214,11 +214,11 @@ fn create_event_matches_chrome156_control() {
     let cases = include_bytes!("create_event_cases.json");
     let mut expected = control(probe, cases, include_str!("create_event_chrome156.json"));
     let actual = run_probe(probe, cases);
-    // KNOWN_GAP: an interface this realm does not define (an embedder's to install, e.g.
-    // StorageEvent) cannot be created: those names answer NotSupportedError, as Chrome does
+    // KNOWN_GAP: an Event interface this realm does not define (an embedder's to install, e.g.
+    // StorageEvent; the binding's instanceof placeholders are not one) cannot be created: those names answer NotSupportedError, as Chrome does
     // for any interface it lacks.
     for (interface, kind) in actual["defined"].as_object().unwrap() {
-        if kind == "function" {
+        if kind == "Event interface" {
             continue;
         }
         expected["defined"][interface] = kind.clone();

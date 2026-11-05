@@ -255,6 +255,29 @@
       return node;
     }, 'get ' + name, 0) });
   }
+  // Document.prototype.createEvent (turbo-dom#341): the DOM createEvent table plus the legacy
+  // names Chrome 156 keeps, ASCII case-insensitive, returning an uninitialized event of that
+  // interface; NotSupportedError for every other name. An interface the realm does not define
+  // at install (an embedder's) is looked up when it is asked for.
+  {
+    const table = { __proto__: null, event: 'Event', events: 'Event', htmlevents: 'Event', svgevents: 'Event', uievent: 'UIEvent', uievents: 'UIEvent', mouseevent: 'MouseEvent', mouseevents: 'MouseEvent', keyboardevent: 'KeyboardEvent', keyboardevents: 'KeyboardEvent', focusevent: 'FocusEvent', compositionevent: 'CompositionEvent', textevent: 'TextEvent', dragevent: 'DragEvent', customevent: 'CustomEvent', messageevent: 'MessageEvent', hashchangeevent: 'HashChangeEvent', storageevent: 'StorageEvent', beforeunloadevent: 'BeforeUnloadEvent', devicemotionevent: 'DeviceMotionEvent', deviceorientationevent: 'DeviceOrientationEvent', transitionevent: 'TransitionEvent' };
+    const captured = { __proto__: null }, construct = Reflect.construct, checkDocument = accessorOf('nodeType', false, 'Document');
+    // Only a real Event interface: the binding's `instanceof` placeholders (browser_env.js
+    // ctors) are not one.
+    const EventPrototype = g.Event.prototype, isPrototypeOf = Function.prototype.call.bind(Object.prototype.isPrototypeOf);
+    const eventInterface = (ctor) => typeof ctor === 'function' && (ctor === g.Event || isPrototypeOf(EventPrototype, ctor.prototype));
+    for (const key in table) if (eventInterface(g[table[key]])) captured[table[key]] = g[table[key]];
+    const failure = (message) => "Failed to execute 'createEvent' on 'Document': " + message;
+    define(g.Document.prototype, 'createEvent', { value: make(function createEvent(type) {
+      apply(checkDocument, this, []);
+      if (!arguments.length) throw new ErrorType(failure('1 argument required, but only 0 present.'));
+      if (typeof type === 'symbol') throw new ErrorType(failure('Cannot convert a Symbol value to a string'));
+      type = StringValue(type);
+      const name = table[lower(type)], ctor = name && (captured[name] || g[name]);
+      if (!eventInterface(ctor)) throw new ns.DOMException(failure("The provided event type ('" + type + "') is invalid."), 'NotSupportedError');
+      return construct(ctor, ['']);
+    }, 'createEvent', 1), writable: true, enumerable: true, configurable: true });
+  }
   // HTMLBodyElement's window-reflecting event handlers: they read and write the handlers of the
   // body's document's window, and are null / ignored without one. The Gamepad handlers stay
   // the body's own (Chrome's WindowEventHandlers partial interface on the element).

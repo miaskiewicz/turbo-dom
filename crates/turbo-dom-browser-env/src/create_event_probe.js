@@ -7,7 +7,7 @@
   const extra = ['Events', 'HTMLEvents', 'MouseEvents', 'UIEvents', 'SVGEvents', 'KeyEvents', 'KeyboardEvents', 'MutationEvent', 'MutationEvents', 'TextEvent', 'BeforeUnloadEvent', 'WebKitTransitionEvent', 'WebKitAnimationEvent', 'OrientationEvent', 'SVGZoomEvent', 'SVGZoomEvents', 'StorageEvent', 'TouchEvent', 'DeviceMotionEvent', 'DeviceOrientationEvent', 'event', 'EVENT', 'mouseevent', 'MOUSEEVENTS', 'customevent', 'htmlevents', 'Event ', ' Event', 'Bogus', '', 'Eventſ'];
   const names = [...new Set([...extra, ...globals])];
   const out = { table: {}, defined: {} };
-  for (const name of ['Event', 'UIEvent', 'MouseEvent', 'KeyboardEvent', 'FocusEvent', 'CompositionEvent', 'TextEvent', 'DragEvent', 'CustomEvent', 'MessageEvent', 'HashChangeEvent', 'StorageEvent', 'BeforeUnloadEvent', 'DeviceMotionEvent', 'DeviceOrientationEvent', 'TransitionEvent']) out.defined[name] = typeof globalThis[name];
+  for (const name of ['Event', 'UIEvent', 'MouseEvent', 'KeyboardEvent', 'FocusEvent', 'CompositionEvent', 'TextEvent', 'DragEvent', 'CustomEvent', 'MessageEvent', 'HashChangeEvent', 'StorageEvent', 'BeforeUnloadEvent', 'DeviceMotionEvent', 'DeviceOrientationEvent', 'TransitionEvent']) out.defined[name] = typeof globalThis[name] === 'function' && (globalThis[name] === Event || globalThis[name].prototype instanceof Event) ? 'Event interface' : 'none';
   for (const name of names) {
     let e;
     try { e = document.createEvent(name); } catch (error) { out.table[name] = ['throw', error.name, error.message]; continue; }

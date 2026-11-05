@@ -55,6 +55,16 @@ at the time); this file reconstructs them from history.
   `css_supports_chrome156.json`. `shape()` and `sibling-index()` / `sibling-count()` stay
   unsupported, consistently, until turbo-dom#338.
 
+- **turbo-dom-browser-env: `document.createEvent()` follows Chrome 156's table (turbo-dom#341).**
+  It used to return a plain `Event` for any argument. It now returns an uninitialized event
+  of the named interface. The names are the DOM createEvent table plus the legacy names Chrome
+  keeps (`Events`, `HTMLEvents`, `SVGEvents`, `MouseEvents`, `UIEvents`, `KeyboardEvents`,
+  `TransitionEvent`), matched ASCII case-insensitively. Any other name throws
+  `NotSupportedError`, including `AnimationEvent` and `TouchEvent`. An interface the realm
+  lacks, or has only as an `instanceof` placeholder (`StorageEvent`, `TextEvent`, …), throws
+  `NotSupportedError` until an embedder defines it. Test:
+  `create_event_matches_chrome156_control`.
+
 ### Changed
 
 - **turbo-dom-browser-env: `ActivationQuery` has a new `Sticky` variant** (the window has ever

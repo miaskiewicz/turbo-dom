@@ -359,6 +359,7 @@ browser_env.js: 0.7.1 perf the internal-call dispatcher passes arguments as arra
 browser_env.rs: 0.7.1 perf test-only STYLE_GENERATION_READS / SHEET_READS counters; the snapshot fingerprint folds in the engine scripts' hash (fingerprint_of)
 css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
 control_labels.rs: 0.7.0 perf turbo-dom#271 label lookups read a per-tree-version index (first element per id, label candidates per host chain) + a test-only walk counter
+browser_env.js: 0.8.0 turbo-dom#341 the document.createEvent stub moves to html_reflections.js (Chrome's createEvent table)
 browser_env.js: 0.8.0 turbo-dom#322 ns.cssSupports / cssSupportsProperty (CSS.supports from the engine grammar), if() is a substitution function, a supports declaration followed by ';' is false
 browser_env.rs: 0.8.0 turbo-dom#323 installs html_reflections.js and html_media (html_media.rs/.js) after interface_members.js; interface_parity and css_supports control test modules
 element_tokens.js: 0.8.0 turbo-dom#323 ns.defineTokenList and per-list supported tokens (relList / sizes / blocking / controlsList)

@@ -1729,7 +1729,7 @@
     [CustomEvent,PopStateEvent,HashChangeEvent,ProgressEvent,CloseEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],Event);});
     [PointerEvent,WheelEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],g.MouseEvent);});
     sub('CompositionEvent'); sub('DragEvent'); sub('TouchEvent'); sub('ClipboardEvent');
-    g.document.createEvent = function(){ return new Event('', {}); };
+    // document.createEvent: html_reflections.js (turbo-dom#341).
     // The installer captures and deletes this function before guest execution.
     g.__captureEventRecord=function(event){return getEventRecord(event);};
     __ns.ttEvent=true;
