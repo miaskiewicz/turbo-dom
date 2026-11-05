@@ -9,6 +9,14 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-raster: SVG screenshot glyph edges take the colour-dependent pre-blend.** Each
+  glyph run path now carries a `glyph-lum<class>` filter: an `feComponentTransfer` alpha table
+  with the raster painter's Skia pre-blend for the text's 3-bit luminance, one per class the
+  document uses. The colour's alpha is the path's `opacity`, applied after the table, as in
+  the PNG painter. Against Chrome 156, white text's SVG residual drops from a mean of
+  14.6–38.6 to 6.2–21.4 per pixel (`tests/glyph_coverage_chrome.rs`), and the
+  overflow-glyph-ink edge tolerances drop from 17 / 41 to 11 / 32 (turbo-dom#294).
+
 - **turbo-dom-browser-env: `setHTML` / `setHTMLUnsafe` / `template.innerHTML` keep template
   contents and declarative shadow roots through a GC.** Past 256 live wrappers a mutating call
   defers its ownership reconcile. These calls wrap the parsed nodes while they are still in a
