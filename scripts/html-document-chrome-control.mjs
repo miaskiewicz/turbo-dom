@@ -675,6 +675,33 @@ CASES.push(
     html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="${NS};height:100px"><thead><tr data-cid="r0" style="height:50%">${RS(10)}</tr></thead><tbody><tr data-cid="r1">${RS(10)}</tr></tbody></table>`),
   },
 );
+// miaskiewicz/turbo-dom#355: a collapsed-border column is as wide as its widest cell's
+// border box with half of the collapsed border on each of that cell's own edges; the
+// segments are per (line, row), symmetric to #350. Only the column axis is measured
+// (`xw`) — this is the counterpart of #350 (`yh`).
+const CV = (b, attrs = "", w = 10) =>
+  `<td data-cid="${b}c" style="border:${b}px solid"${attrs}><div style="width:${w}px;height:10px"></div></td>`;
+const CVT = (id, style, rows) => ({
+  id: `table-collapsed-vedge-${id}`,
+  html: DOC(
+    S("body{margin:0}td{padding:0}"),
+    `<table data-cid="t" style="border-collapse:collapse;${style}">` +
+      rows.map((cells, i) => `<tr data-cid="r${i}">${cells}</tr>`).join("") +
+      `</table>`,
+  ),
+  measure: "xw",
+});
+CASES.push(
+  CVT("mixed", "", [`<td data-cid="a" style="border:3px solid"><div style="width:10px;height:10px"></div></td><td data-cid="b" style="border:1px solid"><div style="width:10px;height:10px"></div></td>`, `<td data-cid="c" style="border:1px solid"><div style="width:10px;height:10px"></div></td><td data-cid="d" style="border:1px solid"><div style="width:10px;height:10px"></div></td>`]),
+  CVT("three-cols", "", [`<td data-cid="a" style="border:2px solid"><div style="width:10px;height:10px"></div></td><td data-cid="b" style="border:4px solid"><div style="width:10px;height:10px"></div></td><td style="border:1px solid"><div style="width:10px;height:10px"></div></td>`, `<td style="border:1px solid"><div style="width:10px;height:10px"></div></td><td style="border:1px solid"><div style="width:10px;height:10px"></div></td><td style="border:1px solid"><div style="width:10px;height:10px"></div></td>`]),
+  CVT("thin-wide-cell", "", [`<td data-cid="a" style="border:1px solid"><div style="width:20px;height:10px"></div></td><td data-cid="b" style="border:6px solid"><div style="width:10px;height:10px"></div></td>`, `<td style="border:1px solid"><div style="width:10px;height:10px"></div></td><td style="border:1px solid"><div style="width:10px;height:10px"></div></td>`]),
+  CVT("table-border", "border:5px solid", [`<td data-cid="a" style="border:1px solid"><div style="width:10px;height:10px"></div></td><td data-cid="b" style="border:1px solid"><div style="width:10px;height:10px"></div></td>`, `<td style="border:1px solid"><div style="width:10px;height:10px"></div></td><td style="border:1px solid"><div style="width:10px;height:10px"></div></td>`]),
+  CVT("asymmetric-borders", "", [`<td data-cid="a" style="border-left:6px solid;border-right:1px solid;border-top:1px solid;border-bottom:1px solid"><div style="width:10px;height:10px"></div></td><td data-cid="b" style="border:1px solid"><div style="width:10px;height:10px"></div></td>`, `<td style="border:1px solid"><div style="width:10px;height:10px"></div></td><td style="border:1px solid"><div style="width:10px;height:10px"></div></td>`]),
+  CVT("colspan-wider", "", [`<td data-cid="a" style="border:1px solid"><div style="width:10px;height:10px"></div></td><td data-cid="b" style="border:1px solid"><div style="width:10px;height:10px"></div></td>`, `<td data-cid="s" style="border:6px solid" colspan="2"><div style="width:40px;height:10px"></div></td>`]),
+  CVT("colspan-mixed", "", [`<td data-cid="a" style="border:3px solid"><div style="width:10px;height:10px"></div></td><td data-cid="b" style="border:1px solid"><div style="width:10px;height:10px"></div></td>`, `<td data-cid="s" style="border:1px solid" colspan="2"><div style="width:20px;height:10px"></div></td>`]),
+  CVT("explicit-width", "", [`<td data-cid="a" style="border:3px solid;width:30px"><div style="width:10px;height:10px"></div></td><td data-cid="b" style="border:1px solid"><div style="width:10px;height:10px"></div></td>`, `<td style="border:1px solid"><div style="width:10px;height:10px"></div></td><td style="border:1px solid"><div style="width:10px;height:10px"></div></td>`]),
+  CVT("three-rows", "", [`<td data-cid="a" style="border:2px solid"><div style="width:10px;height:10px"></div></td><td data-cid="b" style="border:4px solid"><div style="width:10px;height:10px"></div></td>`, `<td style="border:1px solid"><div style="width:10px;height:10px"></div></td><td style="border:1px solid"><div style="width:10px;height:10px"></div></td>`, `<td style="border:3px solid"><div style="width:10px;height:10px"></div></td><td style="border:1px solid"><div style="width:10px;height:10px"></div></td>`]),
+);
 // miaskiewicz/turbo-dom#350: a collapsed-border row is as tall as its tallest cell's
 // border box, each cell taking half of the collapsed border on its OWN edges (the
 // widest segment along each), not half of the widest border anywhere on the row's lines.
