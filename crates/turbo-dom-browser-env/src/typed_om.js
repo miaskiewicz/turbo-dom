@@ -2527,18 +2527,34 @@
   const GROUPS = create(null);
   { const names = ownKeys(PROPERTIES); for (let index = 0; index < names.length; index++) { const meta = PROPERTIES[names[index]]; if (!meta.group || meta.alias) continue; const [group, resolver] = meta.group; if (!GROUPS[group]) GROUPS[group] = create(null); GROUPS[group][resolver] = names[index]; } }
   const LOGICAL_RESOLVERS = plainSet(['inline', 'block', 'inline-start', 'inline-end', 'block-start', 'block-end', 'start-start', 'start-end', 'end-start', 'end-end']);
+  const VERTICAL_MODES = plainSet(['vertical-rl', 'vertical-lr', 'sideways-rl', 'sideways-lr']);
+  function physicalResolverSides(mode, rtl) {
+    const vertical = !!VERTICAL_MODES[mode];
+    const inlineStart = vertical ? (rtl ? 'bottom' : 'top') : (rtl ? 'right' : 'left');
+    const inlineEnd = vertical ? (rtl ? 'top' : 'bottom') : (rtl ? 'left' : 'right');
+    const blockStart = vertical ? (mode === 'vertical-rl' || mode === 'sideways-rl' ? 'right' : 'left') : 'top';
+    const blockEnd = vertical ? (blockStart === 'right' ? 'left' : 'right') : 'bottom';
+    return { vertical, inlineStart, inlineEnd, blockStart, blockEnd };
+  }
+  function physicalResolverCorner(block, inline) {
+    const sides = [block, inline];
+    const vertical0 = sides[0] === 'top' || sides[0] === 'bottom' ? sides[0] : sides[1];
+    const horizontal0 = vertical0 === sides[0] ? sides[1] : sides[0];
+    return vertical0 + '-' + horizontal0;
+  }
   function physicalResolver(resolver, mode, rtl) {
-    const vertical = mode === 'vertical-rl' || mode === 'vertical-lr' || mode === 'sideways-rl' || mode === 'sideways-lr';
-    const inlineStart = vertical ? (rtl ? 'bottom' : 'top') : (rtl ? 'right' : 'left'), inlineEnd = vertical ? (rtl ? 'top' : 'bottom') : (rtl ? 'left' : 'right');
-    const blockStart = vertical ? (mode === 'vertical-rl' || mode === 'sideways-rl' ? 'right' : 'left') : 'top', blockEnd = vertical ? (blockStart === 'right' ? 'left' : 'right') : 'bottom';
-    const corner = (block, inline) => { const sides = [block, inline]; const vertical0 = sides[0] === 'top' || sides[0] === 'bottom' ? sides[0] : sides[1]; const horizontal0 = vertical0 === sides[0] ? sides[1] : sides[0]; return vertical0 + '-' + horizontal0; };
+    const sides = physicalResolverSides(mode, rtl);
     switch (resolver) {
-      case 'inline': return vertical ? 'vertical' : 'horizontal';
-      case 'block': return vertical ? 'horizontal' : 'vertical';
-      case 'inline-start': return inlineStart; case 'inline-end': return inlineEnd;
-      case 'block-start': return blockStart; case 'block-end': return blockEnd;
-      case 'start-start': return corner(blockStart, inlineStart); case 'start-end': return corner(blockStart, inlineEnd);
-      case 'end-start': return corner(blockEnd, inlineStart); case 'end-end': return corner(blockEnd, inlineEnd);
+      case 'inline': return sides.vertical ? 'vertical' : 'horizontal';
+      case 'block': return sides.vertical ? 'horizontal' : 'vertical';
+      case 'inline-start': return sides.inlineStart;
+      case 'inline-end': return sides.inlineEnd;
+      case 'block-start': return sides.blockStart;
+      case 'block-end': return sides.blockEnd;
+      case 'start-start': return physicalResolverCorner(sides.blockStart, sides.inlineStart);
+      case 'start-end': return physicalResolverCorner(sides.blockStart, sides.inlineEnd);
+      case 'end-start': return physicalResolverCorner(sides.blockEnd, sides.inlineStart);
+      case 'end-end': return physicalResolverCorner(sides.blockEnd, sides.inlineEnd);
     }
     return resolver;
   }
@@ -2623,23 +2639,30 @@
     if (name === 'unicode-bidi' && apply(namespaceOf, element, []) === HTML_NAMESPACE) return registry.unicodeBidi[apply(tagOf, element, [])] || null;
     return null;
   }
+  function specifiedTextFromLogical(context, meta, textRankRef) {
+    const { cascaded, order } = context;
+    const group = GROUPS[meta.group[0]], resolvers = ownKeys(group);
+    for (let index = 0; index < resolvers.length; index++) {
+      const resolver = resolvers[index];
+      if (!LOGICAL_RESOLVERS[resolver]) continue;
+      const logical = group[resolver];
+      if (logical in cascaded && (order[logical] || 0) > textRankRef.rank && physicalResolver(resolver, computeText(context, 'writing-mode'), computeText(context, 'direction') === 'rtl') === meta.group[1]) {
+        textRankRef.text = cascaded[logical]; textRankRef.rank = order[logical] || 0;
+      }
+    }
+  }
   // The physical property's cascaded value, or a later-declared logical counterpart's.
   function specifiedText(context, name) {
     const cascaded = context.cascaded, order = context.order;
-    let text = name in cascaded ? cascaded[name] : undefined, rank = name in cascaded ? order[name] || 0 : -1;
+    const textRankRef = {
+      text: name in cascaded ? cascaded[name] : undefined,
+      rank: name in cascaded ? order[name] || 0 : -1,
+    };
     const surrogate = SURROGATE_OF[name];
-    if (surrogate && surrogate in cascaded && (order[surrogate] || 0) > rank) { text = mapKeyword(SURROGATES[surrogate][1], lowerCase(trimText(cascaded[surrogate]))); rank = order[surrogate] || 0; }
+    if (surrogate && surrogate in cascaded && (order[surrogate] || 0) > textRankRef.rank) { textRankRef.text = mapKeyword(SURROGATES[surrogate][1], lowerCase(trimText(cascaded[surrogate]))); textRankRef.rank = order[surrogate] || 0; }
     const meta = PROPERTIES[name];
-    if (meta.group && !LOGICAL_RESOLVERS[meta.group[1]]) {
-      const group = GROUPS[meta.group[0]], resolvers = ownKeys(group);
-      for (let index = 0; index < resolvers.length; index++) {
-        const resolver = resolvers[index];
-        if (!LOGICAL_RESOLVERS[resolver]) continue;
-        const logical = group[resolver];
-        if (logical in cascaded && (order[logical] || 0) > rank && physicalResolver(resolver, computeText(context, 'writing-mode'), computeText(context, 'direction') === 'rtl') === meta.group[1]) { text = cascaded[logical]; rank = order[logical] || 0; }
-      }
-    }
-    return text;
+    if (meta.group && !LOGICAL_RESOLVERS[meta.group[1]]) specifiedTextFromLogical(context, meta, textRankRef);
+    return textRankRef.text;
   }
   // Blink surrogate longhands (css_properties.json5 surrogate_for) compute from their target;
   // the legacy keywords map onto the standard ones.
@@ -2676,16 +2699,18 @@
     if (items.length === 1 && (ident(items[0]) === 'currentcolor' || (name === 'caret-color' && ident(items[0]) === 'auto'))) return 'currentcolor';
     return absolutize(context, name, text);
   }
+  const COMPUTE_FRESH_RESET_KWS = plainSet(['unset', 'revert', 'revert-layer']);
+  function computeFreshFromUnspecified(context, name, meta, keyword) {
+    if (meta.inherited) return inheritedText(context, name);
+    const ua = keyword === 'unset' ? null : uaText(context, name);
+    return absolutize(context, name, ua || initialText(name));
+  }
   function computeFresh(context, name, meta) {
     if (CURRENTCOLOR_INITIAL[name] && meta.inherited) { const raw = rawInherited(context, name); return raw === 'currentcolor' ? computeText(context, 'color') : raw; }
     let text = specifiedText(context, name);
     if (text !== undefined) text = substitute(context, trimText(text));
     const keyword = text === undefined ? null : lowerCase(trimText(text));
-    if (text === undefined || text === null || keyword === 'unset' || keyword === 'revert' || keyword === 'revert-layer') {
-      if (meta.inherited) return inheritedText(context, name);
-      const ua = keyword === 'unset' ? null : uaText(context, name);
-      return absolutize(context, name, ua || initialText(name));
-    }
+    if (text === undefined || text === null || COMPUTE_FRESH_RESET_KWS[keyword]) return computeFreshFromUnspecified(context, name, meta, keyword);
     if (keyword === 'inherit') return inheritedText(context, name);
     if (keyword === 'initial') return absolutize(context, name, initialText(name));
     return absolutize(context, name, text);
@@ -2729,25 +2754,34 @@
   const FONT_SIZE_KEYWORDS = { __proto__: null, 'xx-small': 9, 'x-small': 10, small: 13, medium: 16, large: 18, 'x-large': 24, 'xx-large': 32, 'xxx-large': 48 };
   const WIDTH_KEYWORDS = { __proto__: null, thin: 1, medium: 3, thick: 5 };
   // Resolve one numeric literal to its computed form.
+  const VIEWPORT_W_UNITS = plainSet(['vw', 'svw', 'lvw', 'dvw', 'vi', 'svi', 'lvi', 'dvi']);
+  const VIEWPORT_H_UNITS = plainSet(['vh', 'svh', 'lvh', 'dvh', 'vb', 'svb', 'lvb', 'dvb']);
+  const VIEWPORT_MIN_UNITS = plainSet(['vmin', 'svmin', 'lvmin', 'dvmin']);
+  const VIEWPORT_MAX_UNITS = plainSet(['vmax', 'svmax', 'lvmax', 'dvmax']);
+  function computedLiteralNonLength(info, node) {
+    if (info && info.base === BASE.time) return lit(node.value * info.factor, 's');
+    if (info && info.base === BASE.angle) return lit(node.value * info.factor, 'deg');
+    return node;
+  }
+  function computedLiteralViewport(unitKey, node) {
+    const viewportWidth = +g.innerWidth || 0, viewportHeight = +g.innerHeight || 0;
+    if (VIEWPORT_W_UNITS[unitKey]) return lit(node.value * viewportWidth / 100, 'px');
+    if (VIEWPORT_H_UNITS[unitKey]) return lit(node.value * viewportHeight / 100, 'px');
+    if (VIEWPORT_MIN_UNITS[unitKey]) return lit(node.value * mathMin(viewportWidth, viewportHeight) / 100, 'px');
+    if (VIEWPORT_MAX_UNITS[unitKey]) return lit(node.value * mathMax(viewportWidth, viewportHeight) / 100, 'px');
+    return null;
+  }
   function computedLiteral(context, name, node) {
     const unitKey = node.unit, info = UNITS[unitKey];
-    if (!info || info.base !== BASE.length) {
-      if (info && info.base === BASE.time) return lit(node.value * info.factor, 's');
-      if (info && info.base === BASE.angle) return lit(node.value * info.factor, 'deg');
-      return node;
-    }
+    if (!info || info.base !== BASE.length) return computedLiteralNonLength(info, node);
     if (info.category === 'length') return lit(node.value * info.factor, 'px');
-    const viewportWidth = +g.innerWidth || 0, viewportHeight = +g.innerHeight || 0;
-    const fontBase = () => name === 'font-size' ? (parentContext(context, context.contexts) ? fontSizePx(parentContext(context, context.contexts)) : 16) : fontSizePx(context);
-    switch (unitKey) {
-      case 'em': return lit(node.value * fontBase(), 'px');
-      case 'rem': { const root = rootContext(context); return lit(node.value * (root === context && name === 'font-size' ? 16 : fontSizePx(root)), 'px'); }
-      case 'vw': case 'svw': case 'lvw': case 'dvw': case 'vi': case 'svi': case 'lvi': case 'dvi': return lit(node.value * viewportWidth / 100, 'px');
-      case 'vh': case 'svh': case 'lvh': case 'dvh': case 'vb': case 'svb': case 'lvb': case 'dvb': return lit(node.value * viewportHeight / 100, 'px');
-      case 'vmin': case 'svmin': case 'lvmin': case 'dvmin': return lit(node.value * mathMin(viewportWidth, viewportHeight) / 100, 'px');
-      case 'vmax': case 'svmax': case 'lvmax': case 'dvmax': return lit(node.value * mathMax(viewportWidth, viewportHeight) / 100, 'px');
+    if (unitKey === 'em') {
+      const base = name === 'font-size' ? (parentContext(context, context.contexts) ? fontSizePx(parentContext(context, context.contexts)) : 16) : fontSizePx(context);
+      return lit(node.value * base, 'px');
     }
-    return node;
+    if (unitKey === 'rem') { const root = rootContext(context); return lit(node.value * (root === context && name === 'font-size' ? 16 : fontSizePx(root)), 'px'); }
+    const viewport = computedLiteralViewport(unitKey, node);
+    return viewport || node;
   }
   function computedNode(context, name, node) {
     if (node.t === 'lit') return computedLiteral(context, name, node);
@@ -2759,25 +2793,29 @@
     if (node.op === 'min' || node.op === 'max' || node.op === 'clamp') return createComparison(toArray(operands), node.op) || node;
     return node;
   }
+  function computedComponentNumeric(context, name, item) {
+    const node = item.type === 'number' ? lit(item.value, 'number') : item.type === 'percentage' ? lit(item.value, 'percent') : UNITS[lowerCase(item.unit)] ? lit(item.value, lowerCase(item.unit)) : null;
+    if (!node) return componentCssText(item);
+    if (node.unit === 'number' && node.value === 0 && LENGTH_ZERO(name)) return '0px';
+    return nodeText(computedLiteral(context, name, node));
+  }
+  function computedComponentMath(context, name, item) {
+    const node = parseMathComponent(item);
+    if (!node) return componentCssText(item);
+    const resolved = maybeSimplifySumOrProduct(computedNode(context, name, node));
+    return resolved.t === 'lit' ? nodeText(resolved) : mathFunctionText(resolved);
+  }
+  function computedComponentIdent(context, item) {
+    const lower = lowerCase(item.value);
+    if (lower === 'currentcolor') return computeText(context, 'color');
+    return KEYWORD_IDS[lower] ? lower : serializeIdentifier(item.value);
+  }
+  const COMPUTED_COMPONENT_NUMERIC = plainSet(['number', 'percentage', 'dimension']);
   function computedComponent(context, name, item) {
-    if (item.type === 'number' || item.type === 'percentage' || item.type === 'dimension') {
-      const node = item.type === 'number' ? lit(item.value, 'number') : item.type === 'percentage' ? lit(item.value, 'percent') : UNITS[lowerCase(item.unit)] ? lit(item.value, lowerCase(item.unit)) : null;
-      if (!node) return componentCssText(item);
-      if (node.unit === 'number' && node.value === 0 && LENGTH_ZERO(name)) return '0px';
-      return nodeText(computedLiteral(context, name, node));
-    }
-    if (item.block && item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)]) {
-      const node = parseMathComponent(item);
-      if (!node) return componentCssText(item);
-      const resolved = maybeSimplifySumOrProduct(computedNode(context, name, node));
-      return resolved.t === 'lit' ? nodeText(resolved) : mathFunctionText(resolved);
-    }
+    if (COMPUTED_COMPONENT_NUMERIC[item.type]) return computedComponentNumeric(context, name, item);
+    if (item.block && item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)]) return computedComponentMath(context, name, item);
     if (item.block) { const open = item.type === 'function' ? lowerCase(item.value) + '(' : item.type; return open + computedList(context, name, item.children) + BLOCK_END[item.type]; }
-    if (item.type === 'ident') {
-      const lower = lowerCase(item.value);
-      if (lower === 'currentcolor') return computeText(context, 'color');
-      return KEYWORD_IDS[lower] ? lower : serializeIdentifier(item.value);
-    }
+    if (item.type === 'ident') return computedComponentIdent(context, item);
     return componentCssText(item);
   }
   const LENGTH_ZERO = (name) => { const meta = PROPERTIES[name]; return !!meta && hasType(meta, 'Length') && !hasType(meta, 'Number') && !USER_UNITS[name]; };
@@ -2806,6 +2844,16 @@
     if (urlApi) { try { return apply(urlApi.href, new urlApi.URLConstructor(relative, base), []); } catch { return relative; } }
     return resolveReference(relative, base);
   }
+  function resolveReferenceMergePath(input) {
+    const segments = list();
+    for (let index = 0; index < input.length; index++) {
+      const segment = input[index];
+      if (segment === '.') { if (index === input.length - 1) push(segments, ''); continue; }
+      if (segment === '..') { if (segments.length > 1) segments.length--; if (index === input.length - 1) push(segments, ''); continue; }
+      push(segments, segment);
+    }
+    return segments;
+  }
   function resolveReference(reference, base) {
     if (execRegExp(/^[A-Za-z][A-Za-z0-9+.-]*:/, reference)) return reference;
     const parts = execRegExp(/^([A-Za-z][A-Za-z0-9+.-]*:)(\/\/[^/?#]*)?([^?#]*)(\?[^#]*)?(#.*)?$/, base);
@@ -2819,13 +2867,7 @@
     if (startsWith(reference, '?')) return scheme + authority + basePath + reference;
     const split = execRegExp(/^([^?#]*)(.*)$/, reference), path = split[1], suffix = split[2];
     const merged = startsWith(path, '/') ? path : sliceText(basePath, 0, basePath.lastIndexOf('/') + 1) + path;
-    const segments = list(), input = merged.split('/');
-    for (let index = 0; index < input.length; index++) {
-      const segment = input[index];
-      if (segment === '.') { if (index === input.length - 1) push(segments, ''); continue; }
-      if (segment === '..') { if (segments.length > 1) segments.length--; if (index === input.length - 1) push(segments, ''); continue; }
-      push(segments, segment);
-    }
+    const segments = resolveReferenceMergePath(merged.split('/'));
     return scheme + authority + joinList(segments, '/') + suffix;
   }
   function computedImages(context, name, items) {
@@ -2854,27 +2896,35 @@
     return container || !parent || position === 'absolute' || position === 'fixed' || (float !== 'none' && float !== '') ? BLOCKIFY[display] : display;
   }
   const COLOR_PROPERTY = (name) => endsWithText(name, '-color') || name === 'color' || name === 'fill' || name === 'stroke';
+  const absolutizeIsColorContext = (name, items) => name === 'color' || (COLOR_PROPERTY(name) && items.length === 1 && (isColor(items[0]) || (items[0].type === 'ident' && !KEYWORD_ONLY_COLOR(name, items[0]))));
+  function absolutizeColor(context, name, items) {
+    if (items.length === 1 && ident(items[0]) === 'currentcolor') return name === 'color' ? inheritedText(context, 'color') : computeText(context, 'color');
+    if (name === 'caret-color' && items.length === 1 && ident(items[0]) === 'auto') return computeText(context, 'color');
+    const color = cascadeHook.color(textOf(items));
+    return color || null;
+  }
+  function absolutizeFontSizeIdent(context, items) {
+    const lower = lowerCase(items[0].value), parent = parentContext(context, context.contexts), base = parent ? fontSizePx(parent) : 16;
+    if (lower in FONT_SIZE_KEYWORDS) return FONT_SIZE_KEYWORDS[lower] + 'px';
+    if (lower === 'smaller') return formatNumber(base / 1.2, 'px');
+    if (lower === 'larger') return formatNumber(base * 1.2, 'px');
+    return null;
+  }
+  const absolutizeIsSingleIdent = (items) => items.length === 1 && items[0].type === 'ident';
+  const absolutizeIsSinglePercentage = (items) => items.length === 1 && items[0].type === 'percentage';
+  function absolutizeFontSizeOrLineHeight(context, name, items) {
+    if (name === 'font-size' && absolutizeIsSingleIdent(items)) { const font = absolutizeFontSizeIdent(context, items); if (font !== null) return font; }
+    if (name === 'font-size' && absolutizeIsSinglePercentage(items)) { const parent = parentContext(context, context.contexts); return formatNumber(items[0].value / 100 * (parent ? fontSizePx(parent) : 16), 'px'); }
+    if (name === 'line-height' && absolutizeIsSinglePercentage(items)) return formatNumber(items[0].value / 100 * fontSizePx(context), 'px');
+    return undefined;
+  }
   function absolutize(context, name, text) {
-    if (FONT_FROM_BINDING[name]) {
-      const value = computedGet(bindingStyle(context), name);
-      if (value) return value;
-    }
+    if (FONT_FROM_BINDING[name]) { const value = computedGet(bindingStyle(context), name); if (value) return value; }
     const all = trimSpace(components(tokenize(text))), items = significant(all);
-    if (name === 'color' || (COLOR_PROPERTY(name) && items.length === 1 && (isColor(items[0]) || (items[0].type === 'ident' && !KEYWORD_ONLY_COLOR(name, items[0]))))) {
-      if (items.length === 1 && ident(items[0]) === 'currentcolor') return name === 'color' ? inheritedText(context, 'color') : computeText(context, 'color');
-      if (name === 'caret-color' && items.length === 1 && ident(items[0]) === 'auto') return computeText(context, 'color');
-      const color = cascadeHook.color(textOf(items));
-      if (color) return color;
-    }
-    if (BORDER_WIDTH[name] && items.length === 1 && items[0].type === 'ident' && lowerCase(items[0].value) in WIDTH_KEYWORDS) return WIDTH_KEYWORDS[lowerCase(items[0].value)] + 'px';
-    if (name === 'font-size' && items.length === 1 && items[0].type === 'ident') {
-      const lower = lowerCase(items[0].value), parent = parentContext(context, context.contexts), base = parent ? fontSizePx(parent) : 16;
-      if (lower in FONT_SIZE_KEYWORDS) return FONT_SIZE_KEYWORDS[lower] + 'px';
-      if (lower === 'smaller') return formatNumber(base / 1.2, 'px');
-      if (lower === 'larger') return formatNumber(base * 1.2, 'px');
-    }
-    if (name === 'font-size' && items.length === 1 && items[0].type === 'percentage') { const parent = parentContext(context, context.contexts); return formatNumber(items[0].value / 100 * (parent ? fontSizePx(parent) : 16), 'px'); }
-    if (name === 'line-height' && items.length === 1 && items[0].type === 'percentage') return formatNumber(items[0].value / 100 * fontSizePx(context), 'px');
+    if (absolutizeIsColorContext(name, items)) { const color = absolutizeColor(context, name, items); if (color) return color; }
+    if (BORDER_WIDTH[name] && absolutizeIsSingleIdent(items) && lowerCase(items[0].value) in WIDTH_KEYWORDS) return WIDTH_KEYWORDS[lowerCase(items[0].value)] + 'px';
+    const font = absolutizeFontSizeOrLineHeight(context, name, items);
+    if (font !== undefined) return font;
     if (IMAGE_LAYERS[name]) return computedImages(context, name, all);
     return computedList(context, name, all);
   }
