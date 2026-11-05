@@ -14,7 +14,8 @@ fn bucketed_cascade_matches_every_rule_the_selector_engine_matches() {
     let value = run(
         "<!doctype html><html><head></head><body></body></html>",
         r#"(()=>{
-      let seed=307;const rand=n=>{seed=(seed*1103515245+12345)%2147483648;return seed%n;};
+      // MINSTD, read from the high bits.
+      let seed=307;const rand=n=>{seed=(seed*48271)%2147483647;return Math.floor(seed/2147483647*n);};
       const pick=list=>list[rand(list.length)];
       const classes=['a','b','c','A','d-1','é'],ids=['x','y','X'],tags=['div','span','p','section'];
       const simple=()=>pick([

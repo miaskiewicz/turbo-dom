@@ -301,6 +301,37 @@ fn computed_style_reuse_follows_viewport_changes() {
     );
 }
 
+/// turbo-test#227: an element with a running transition reuses its cascaded declarations only
+/// while its top layer holds: entering fullscreen adds the fullscreen UA values and leaving
+/// drops them, though neither moves the tree version (Chrome 156: fixed / 0px, then static).
+#[test]
+fn a_transitioning_element_follows_fullscreen() {
+    let value = run(
+        "<!doctype html><head><style>.v { transition: opacity 100s linear; opacity: 1 } .v.dim { opacity: 0.5 }</style></head><body><div class=v id=f>f</div></body>",
+        r"(async () => {
+          const f = document.getElementById('f'), rows = [];
+          const read = () => { const s = getComputedStyle(f); rows.push([s.position, s.top, s.opacity]); };
+          getComputedStyle(f).opacity; f.classList.add('dim'); read(); read();
+          await new Promise((done) => { globalThis.__cdpGestureDone = done; __cdpGesture('click'); });
+          await f.requestFullscreen();
+          read(); read();
+          await document.exitFullscreen();
+          read();
+          return rows;
+        })()",
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            ["static", "auto", "1"],
+            ["static", "auto", "1"],
+            ["fixed", "0px", "1"],
+            ["fixed", "0px", "1"],
+            ["static", "auto", "1"]
+        ])
+    );
+}
+
 /// The stand-in embedder answers from `__probeActivation`; consuming clears it.
 #[test]
 fn probe_activation_answers_from_the_gesture_flag() {

@@ -1108,7 +1108,10 @@
     if(!computedKeyEqual(entry,key))return null;
     if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
     if(!computedMediaUnchanged(entry.media))return null;
-    if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
+    // No top-layer / font-context probe: entering or leaving the top layer moves the key (open
+    // attribute, the fullscreen stack bumps the tree), font defaults, parent and root feed no
+    // cascaded declaration, and the UA-table flag changes only in a retired document, which
+    // has no computed style.
     return entry.base;
   }
   function computedBaseCapture(decl,priorities,uaValues){
@@ -1136,8 +1139,8 @@
   // either of them (the relaxed test). Never shared: an element with an inline style, a form
   // control (UA tables read its attributes and state), an <iframe> (size hints), one in the top
   // layer or a child iframe document, one in a tree whose sheets key on the tree-wide version
-  // (#279's fallback: shadow trees, adopted sheets, @import, container queries, escapes), and a
-  // sibling whose cascade read live state or went volatile.
+  // (#279's fallback: shadow trees, adopted sheets, @import, container queries, escapes; also
+  // every cascade that can go volatile), and a sibling whose cascade read live state.
   var styleShares=new computedSnapshotMap(),styleShareRefused={__proto__:null,INPUT:1,BUTTON:1,TEXTAREA:1,SELECT:1,OPTION:1,OPTGROUP:1,IFRAME:1};
   function styleShareProbe(el){
     if(styleShareOff&&styleShareOff())return null;
@@ -1201,7 +1204,7 @@
         // turbo-test#227: a style volatile only after its cascaded declarations (a running
         // animation or transition, the fullscreen element's viewport size) keeps them.
         var out=base.out;
-        if(out&&unchanged&&!out.volatile)computedSnapshotSet(computedBaseCache,el,{__proto__:null,base:out,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:out.stateRead?state:null,media:out.media,probe:computedCacheProbe(el)});
+        if(out&&unchanged&&!out.volatile)computedSnapshotSet(computedBaseCache,el,{__proto__:null,base:out,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:out.stateRead?state:null,media:out.media});
         else if(!base.use)computedSnapshotSet(computedBaseCache,el,null);
       }
       else{var stored={__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps,stable:null};computedSnapshotSet(computedStyleCache,el,stored);if(computedStampEqual(before,computedWorldStamp(el)))computedMarkStable(el,stored);}
@@ -1343,7 +1346,9 @@
     // beat every author one.
     var important = info ? info.important : !pseudo && layer === 'fullscreen' ? fullscreenImportant : null;
     if (important) $c.forEach($O.keys(important), function(name){ setProp(name, important[name], true); });
-    if(base&&!pseudo&&!sink){base.out=computedBaseCapture(decl,priorities,uaValues);if(share&&!base.out.volatile&&!base.out.stateRead)styleShareStore(el,share,base.out,bucketIndex,bucketOrder);}
+    // (A cascade goes volatile before this point only in a tree that never shares: an unkeyed
+    // state rule has scope 8, an @import's media has scope -1.)
+    if(base&&!pseudo&&!sink){base.out=computedBaseCapture(decl,priorities,uaValues);if(share&&!base.out.stateRead)styleShareStore(el,share,base.out,bucketIndex,bucketOrder);}
     }
     if (sink) { var cascaded = { __proto__: null }; $c.forEach($O.keys(decl),function(name){ if (typeof decl[name] === 'string' && ($c.slice(name,0, 2) === '--' || name === $c.toLowerCase(name))) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
     // Inherited values come from the composed parent's snapshot in this read, so
