@@ -164,6 +164,7 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- turbo-dom-browser-env: getComputedStyle `transform` reports the resolved `matrix()` / `matrix3d()` / `none` like Chrome 156, not the declared function list. 2D-only lists serialize as `matrix(a, b, c, d, e, f)`; any 3D function (`translate3d`, `rotateX` / `Y`, `matrix3d`, `perspective`, ...) promotes the whole list to `matrix3d(16 column-major values)`. Percentage translates resolve against the embedder-supplied border box (`layoutUsedSize`'s first two entries, from turbo-dom#316); `em` resolves against the element's font size (reported as a fifth entry). Without a layout a list with a percentage keeps its declared text. CSS-wide keywords (turbo-dom#317) already resolved for `transform` through the computed-default table (turbo-dom#353).
 - **turbo-dom-browser-env: an exception thrown by an event listener is reported, like Chrome
   156.** The binding dropped every listener exception. Now a throwing listener (or `on*`
   handler, or `handleEvent` method or getter) on a node, document, window, AbortSignal or
