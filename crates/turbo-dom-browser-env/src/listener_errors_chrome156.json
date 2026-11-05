@@ -1,0 +1,865 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "listener_errors_probe.js",
+  "probeSha256": "2e62f0f267f80873484e8a396392117b2b30508ce85894eb059703f05fd81237",
+  "collectorSha256": "9f74b347e01fa1d91859d5f7965cbc5f53085366af04171b1389e30b403dddec",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "generic": {
+      "value": true,
+      "log": [
+        "first",
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: generic",
+          "",
+          16,
+          67,
+          "Error:generic"
+        ],
+        [
+          "second",
+          true,
+          2
+        ]
+      ]
+    },
+    "node": {
+      "value": true,
+      "log": [
+        "parent-capture",
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught TypeError: capture",
+          "",
+          23,
+          76,
+          "TypeError:capture"
+        ],
+        "child",
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught RangeError: child",
+          "",
+          24,
+          66,
+          "RangeError:child"
+        ],
+        [
+          "child-2",
+          true,
+          2
+        ],
+        [
+          "parent-bubble",
+          true,
+          3
+        ]
+      ]
+    },
+    "detached": {
+      "value": true,
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: detached",
+          "",
+          33,
+          46,
+          "Error:detached"
+        ],
+        "after"
+      ]
+    },
+    "window": {
+      "value": true,
+      "log": [
+        "w1",
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: window",
+          "",
+          38,
+          57,
+          "Error:window"
+        ],
+        "w2"
+      ]
+    },
+    "document": {
+      "value": true,
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: document",
+          "",
+          43,
+          36,
+          "Error:document"
+        ]
+      ]
+    },
+    "handleEvent": {
+      "value": true,
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: object",
+          "",
+          51,
+          58,
+          "Error:object"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: node object",
+          "",
+          52,
+          56,
+          "Error:node object"
+        ]
+      ]
+    },
+    "handleEventNotCallable": {
+      "value": [],
+      "log": [
+        "after-target",
+        "after-node"
+      ]
+    },
+    "handleEventGetter": {
+      "value": true,
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: getter",
+          "",
+          67,
+          62,
+          "Error:getter"
+        ],
+        "after"
+      ]
+    },
+    "primitives": {
+      "value": [
+        [
+          "Uncaught text",
+          "text"
+        ],
+        [
+          "Uncaught 42",
+          42
+        ],
+        [
+          "Uncaught null",
+          null
+        ],
+        [
+          "Uncaught undefined",
+          null
+        ],
+        [
+          "Uncaught false",
+          false
+        ],
+        [
+          "Uncaught [object Object]",
+          "undefined:undefined"
+        ],
+        [
+          "Uncaught Symbol(s)",
+          "symbol"
+        ]
+      ],
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught text",
+          "",
+          74,
+          44,
+          "text"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught 42",
+          "",
+          74,
+          44,
+          42
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught null",
+          "",
+          74,
+          44,
+          null
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught undefined",
+          "",
+          74,
+          44,
+          null
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught false",
+          "",
+          74,
+          44,
+          false
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught [object Object]",
+          "",
+          74,
+          44,
+          "undefined:undefined"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Symbol(s)",
+          "",
+          74,
+          44,
+          null
+        ]
+      ]
+    },
+    "stopImmediate": {
+      "value": true,
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: stopped",
+          "",
+          80,
+          79,
+          "Error:stopped"
+        ]
+      ]
+    },
+    "onerrorCancels": {
+      "value": [
+        true,
+        true,
+        [
+          [
+            "Uncaught Error: canceled",
+            "",
+            91,
+            48,
+            "canceled",
+            5,
+            true
+          ]
+        ]
+      ],
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: canceled",
+          "",
+          91,
+          48,
+          "Error:canceled"
+        ]
+      ]
+    },
+    "preventedByListener": {
+      "value": true,
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: prevented",
+          "",
+          100,
+          48,
+          "Error:prevented"
+        ]
+      ]
+    },
+    "handlerAttribute": {
+      "value": true,
+      "log": [
+        "handler",
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: handler",
+          "",
+          108,
+          55,
+          "Error:handler"
+        ],
+        "listener"
+      ]
+    },
+    "abortSignal": {
+      "value": true,
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: abort",
+          "",
+          116,
+          63,
+          "Error:abort"
+        ],
+        "second-abort"
+      ]
+    },
+    "throwingErrorListener": {
+      "value": 1,
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: outer",
+          "",
+          127,
+          48,
+          "Error:outer"
+        ],
+        "next"
+      ]
+    },
+    "nestedDispatch": {
+      "value": true,
+      "log": [
+        "outer-start",
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: inner",
+          "",
+          135,
+          47,
+          "Error:inner"
+        ],
+        "outer-end"
+      ]
+    },
+    "reportErrorLocation": {
+      "value": true,
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: made early",
+          "",
+          140,
+          19,
+          "Error:made early"
+        ]
+      ]
+    },
+    "reportError": {
+      "value": [
+        [
+          "function",
+          true,
+          true,
+          true,
+          1,
+          "reportError"
+        ],
+        "TypeError: Failed to execute 'reportError' on 'Window': 1 argument required, but only 0 present.",
+        [
+          null,
+          null,
+          null
+        ]
+      ],
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: reported",
+          "",
+          153,
+          26,
+          "Error:reported"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught reported text",
+          "",
+          153,
+          85,
+          "reported text"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught null",
+          "",
+          153,
+          85,
+          null
+        ]
+      ]
+    },
+    "thrownObjects": {
+      "value": [
+        [
+          "Uncaught custom",
+          163,
+          70
+        ],
+        [
+          "Uncaught 1,2",
+          163,
+          70
+        ],
+        [
+          "Uncaught function named() {}",
+          163,
+          70
+        ],
+        [
+          "Uncaught exception",
+          163,
+          70
+        ],
+        [
+          "Uncaught Error: sub",
+          161,
+          108
+        ],
+        [
+          "Uncaught Error: patched",
+          160,
+          21
+        ],
+        [
+          "Uncaught exception",
+          163,
+          70
+        ],
+        [
+          "Uncaught NotFoundError: dom",
+          163,
+          70
+        ],
+        [
+          "Uncaught Renamed: renamed",
+          161,
+          238
+        ]
+      ],
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught custom",
+          "",
+          163,
+          70,
+          "undefined:undefined"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught 1,2",
+          "",
+          163,
+          70,
+          "undefined:undefined"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught function named() {}",
+          "",
+          163,
+          70,
+          null
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught exception",
+          "",
+          163,
+          70,
+          "undefined:undefined"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: sub",
+          "",
+          161,
+          108,
+          "Error:sub"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: patched",
+          "",
+          160,
+          21,
+          "Error:patched"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught exception",
+          "",
+          163,
+          70,
+          "undefined:undefined"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught NotFoundError: dom",
+          "",
+          163,
+          70,
+          "NotFoundError:dom"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Renamed: renamed",
+          "",
+          161,
+          238,
+          "Renamed:renamed"
+        ]
+      ]
+    }
+  }
+}

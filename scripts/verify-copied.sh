@@ -372,6 +372,8 @@ computed_defaults_tests.rs: 0.8.0 turbo-dom#323 the test activation host answers
 browser_env.rs: 0.8.0 turbo-dom#339 wrapping an audio / video / source / track element turns on html_media's mutation recording (html_media::observe); method and setter calls run html_media's pending insertion steps after the mutation flush; clear_interface_records clears them; html_media_events control test module
 mutation_observers.rs: 0.8.0 turbo-dom#339 recording() includes html_media::recording(); childList records reach html_media::mutation
 event_listeners.js: 0.8.0 turbo-dom#339 ns.makeEventTarget gives an engine object (html_media.js's TextTrackList) a listener record
+browser_env.js: 0.8.0 turbo-dom#318 buttons and button-like inputs compute html.css's ButtonFace background-color, rgb(239, 239, 239)
+css_live_tests.rs: 0.8.0 turbo-dom#318 button UA background-color vs its Chrome 156 control
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -393,12 +395,14 @@ OWNED="$OWNED stack_edge_tests.rs stack_edge_probe.js stack_edge_chrome156.json"
 OWNED="$OWNED reflection_regressions_tests.rs"
 OWNED="$OWNED native_guards_hostile_probe.js native_guards_hostile_chrome156.json"
 OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
+OWNED="$OWNED computed_form_background_probe.js computed_form_background_chrome156.json"
 OWNED="$OWNED activation_focus_probe.js activation_focus_chrome156.json selector_errors_probe.js selector_errors_chrome156.json"
 OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
 OWNED="$OWNED style_invalidation_probe.js style_invalidation_chrome156.json style_invalidation_tests.rs"
 OWNED="$OWNED rule_bucket_tests.rs style_sharing_tests.rs"
 OWNED="$OWNED jsdom_media_jsdom27.json jsdom_media_probe.js media_override_chrome156.json media_override_probe.js"
 OWNED="$OWNED jsdom_transitions_chrome156.json jsdom_transitions_jsdom27.json jsdom_transitions_probe.js"
+OWNED="$OWNED css_animation_events_probe.js css_animation_events_cases.json css_animation_events_chrome156.json"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
 OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"
@@ -412,6 +416,7 @@ OWNED="$OWNED inline_style_reuse_probe.js inline_style_reuse_chrome156.json"
 OWNED="$OWNED viewport_cssom_tests.rs custom_property_colors_probe.js custom_property_colors_chrome156.json computed_custom_properties_probe.js computed_custom_properties_chrome156.json match_media_probe.js match_media_chrome156.json iframe_viewport_probe.js iframe_viewport_chrome156.json iframe_media_probe.js iframe_media_chrome156.json iframe_cascade_probe.js iframe_cascade_chrome156.json"
 OWNED="$OWNED html_media_events_probe.js html_media_events_cases.json html_media_events_chrome156.json html_media_events_tests.rs"
 OWNED="$OWNED html_reflections.js html_media.js html_media.rs interface_parity_probe.js interface_parity_cases.json interface_parity_chrome156.json interface_parity_tests.rs create_event_probe.js create_event_cases.json create_event_chrome156.json css_supports_probe.js css_supports_cases.json css_supports_chrome156.json css_supports_tests.rs"
+OWNED="$OWNED listener_errors_probe.js listener_errors_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

@@ -87,8 +87,10 @@ so any number of tiles fill the box; fractional tiles blend their edge pixels li
 (#269). Gradients take length, double-position and repeating stops (#264). A `transform`
 on an `<img>` itself applies (#272). Form controls paint Chrome 156's native appearance
 from turbo-dom-layout's galley boxes (#255, #257). Glyphs are rasterized with exact-area
-coverage, CoreText-like outline growth and Skia's mask pre-blend; Chrome's stem darkening
-is still missing, so small and white text differ most (open: #266).
+coverage, CoreText-like box-kernel outline growth and a luminance-dependent edge transfer
+(#266, #331); the SVG screenshot's glyph paths take Skia's mask pre-blend through one
+`feComponentTransfer` filter per text luminance class (#294). Chrome's grid-dependent
+vertical geometry below about 20px is not modelled, so 12–16px text differs most.
 
 ## Gates
 

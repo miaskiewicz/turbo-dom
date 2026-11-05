@@ -116,10 +116,13 @@ pub(crate) fn render_text(
     true
 }
 
-/// The CoreText face for the canvas font: the first family (Helvetica when CoreText has no
-/// such font) at the font size, switched to its bold and/or italic face by the state's
-/// weight (CSS bold threshold, 600 and up) and style. A family without the requested face
-/// keeps the face it has, as Chrome does before synthesizing.
+/// The CoreText face for the canvas font: the first family at the font size (Helvetica for
+/// a CSS generic family), switched to its bold and/or italic face by the state's weight
+/// (CSS bold threshold, 600 and up) and style. A family without the requested face keeps the
+/// face it has, as Chrome does before synthesizing. `None` for a named family CoreText does
+/// not have (a font only the bundled registry or a web font provides, like the fixture
+/// Liberation Serif): CoreText would substitute another face, so the caller traces the
+/// registry's glyphs instead (miaskiewicz/turbo-dom#342).
 pub(crate) fn ct_font(st: &State) -> Option<core_text::font::CTFont> {
     use core_text::font_descriptor::{kCTFontBoldTrait, kCTFontItalicTrait};
     let family = st
@@ -127,9 +130,24 @@ pub(crate) fn ct_font(st: &State) -> Option<core_text::font::CTFont> {
         .first()
         .map_or("sans-serif", String::as_str);
     let size = f64::from(if st.font_px > 0.0 { st.font_px } else { 10.0 });
-    let font = core_text::font::new_from_name(family, size)
-        .or_else(|()| core_text::font::new_from_name("Helvetica", size))
-        .ok()?;
+    let generic = [
+        "serif",
+        "sans-serif",
+        "monospace",
+        "cursive",
+        "fantasy",
+        "system-ui",
+    ]
+    .contains(&family.to_ascii_lowercase().as_str());
+    let font = if generic {
+        core_text::font::new_from_name("Helvetica", size).ok()?
+    } else {
+        let font = core_text::font::new_from_name(family, size).ok()?;
+        if !font.family_name().eq_ignore_ascii_case(family) {
+            return None;
+        }
+        font
+    };
     let mut traits = 0;
     if st.font_weight >= 600 {
         traits |= kCTFontBoldTrait;
@@ -223,6 +241,34 @@ mod tests {
             pm.data().chunks(4).map(|p| u32::from(p[3])).sum::<u32>()
         };
         assert!(ink(700) > ink(400));
+    }
+
+    // A named family CoreText does not have declines (the caller traces the registry's
+    // glyphs, turbo-dom#342); a generic family is Helvetica.
+    #[test]
+    fn coretext_declines_a_family_it_does_not_have() {
+        let state = |family: &str| {
+            let mut st = State::default();
+            st.font_px = 20.0;
+            st.font_families = vec![family.to_string()];
+            st
+        };
+        assert!(ct_font(&state("No Such Family 342")).is_none());
+        assert!(!render_text(
+            &mut Pixmap::new(64, 32).unwrap(),
+            &state("No Such Family 342"),
+            "x",
+            2.0,
+            20.0,
+            Rgba::new(0, 0, 0, 255)
+        ));
+        let helvetica = ct_font(&state("sans-serif")).unwrap().family_name();
+        assert_eq!(helvetica, "Helvetica");
+        assert_eq!(
+            ct_font(&State::default()).unwrap().family_name(),
+            "Helvetica"
+        );
+        assert_eq!(ct_font(&state("arial")).unwrap().family_name(), "Arial");
     }
 
     // A scaled/rotated CTM is not handled here → returns false so the caller uses the vector trace.

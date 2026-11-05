@@ -843,6 +843,7 @@
   };
   g.__captureCustomElementError = (error, message, filename, lineno, colno) =>
     new ErrorEventValue("error", {
+      cancelable: true,
       error,
       message,
       filename: typeof filename === "string" ? filename : "",
