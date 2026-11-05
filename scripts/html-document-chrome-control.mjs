@@ -599,6 +599,61 @@ const CASES = [
   ].map(([id, cond], i) => `@supports ${cond}{#${id}{width:${10 + i}px}}`).join("")),
     "abcdefghijkl".split("").map((id) => `<div id="${id}" data-cid="${id}"></div>`).join("")) },
 ];
+// miaskiewicz/turbo-dom#327: a row-spanning cell taller than its rows (plus the
+// border-spacing between them) spreads the excess over the spanned rows, not the last
+// one. Rowspan cells are taken by end row, then the later-starting (shorter) first; the
+// excess goes equally to spanned rows (other than the first) where another rowspan
+// cell starts, else proportionally to the unconstrained rows (no fixed `height` on the
+// row or a single-row cell), else proportionally to all its rows, else to the last.
+// Only the rows and the table are measured.
+const RS = (h, attrs = "") => `<td${attrs}><div style="width:30px;height:${h}px"></div></td>`;
+const RT = (style, rows) =>
+  `<table data-cid="t" style="${style}">` +
+  rows.map((r) => (typeof r === "string" ? [r, ""] : r)).map(([cells, trStyle], i) => `<tr data-cid="r${i}"${trStyle ? ` style="${trStyle}"` : ""}>${cells}</tr>`).join("") +
+  `</table>`;
+const RSP = (id, style, rows) => ({ id: `table-rowspan-${id}`, html: DOC(S("body{margin:0}td{padding:0}"), RT(style, rows)) });
+const NS = "border-spacing:0";
+const SPAN = (h, n) => RS(h, ` rowspan=${n}`);
+CASES.push(
+  RSP("equal-rows-spacing", "border-spacing:6px", [SPAN(30, 2) + RS(10), RS(10)]),
+  RSP("proportional", NS, [SPAN(60, 2) + RS(10), RS(30)]),
+  RSP("proportional-layout-units", NS, [RS(10) + SPAN(100, 3), RS(20), RS(40)]),
+  RSP("zero-rows-last", NS, [SPAN(60, 3) + RS(0), RS(0), RS(0)]),
+  RSP("cell-less-row", NS, [SPAN(50, 3) + RS(10), "", RS(10)]),
+  RSP("fixed-row", NS, [[SPAN(40, 2) + RS(10), "height:10px"], RS(10)]),
+  RSP("fixed-rows-only", NS, [[SPAN(60, 2) + RS(10), "height:10px"], [RS(10), "height:20px"]]),
+  RSP("fixed-cell", NS, [SPAN(60, 2) + `<td style="height:10px"><div style="width:30px;height:5px"></div></td>`, RS(10)]),
+  RSP("fixed-spanning-cell", NS, [`<td rowspan=2 style="height:10px"><div style="width:30px;height:5px"></div></td>` + RS(10) + SPAN(60, 3), RS(10), RS(10)]),
+  RSP("constrained-sized-row", NS, [SPAN(60, 3) + `<td style="height:10px"></td>`, "", RS(0)]),
+  RSP("percent-row", NS, [[SPAN(60, 2) + RS(10), "height:20%"], [RS(10), "height:20px"]]),
+  RSP("percent-cell", NS, [`<td style="height:10%"><div style="width:30px;height:10px"></div></td>` + SPAN(60, 2), RS(10)]),
+  RSP("originating-row", NS, [SPAN(100, 3) + RS(10) + "<td></td>", RS(10) + SPAN(5, 2), RS(10)]),
+  RSP("originating-rows-equal", NS, [SPAN(100, 3) + RS(10) + "<td></td><td></td>", RS(10) + SPAN(5, 2) + "<td></td>", RS(30) + "<td></td>" + SPAN(5, 2), RS(10)]),
+  RSP("originating-fixed-row", NS, [SPAN(100, 3) + RS(10) + "<td></td>", [RS(10) + SPAN(5, 2), "height:10px"], RS(10)]),
+  RSP("originating-spacing", "border-spacing:4px", [SPAN(100, 3) + RS(10) + "<td></td>", RS(10) + SPAN(5, 2), RS(10)]),
+  RSP("order-same-end", NS, [SPAN(100, 3) + RS(10) + "<td></td>", RS(10) + SPAN(80, 2), RS(10)]),
+  RSP("order-end-first", NS, [RS(10) + SPAN(90, 3) + "<td></td>", RS(10), RS(10) + SPAN(80, 2), RS(10)]),
+  RSP("order-chain", NS, [SPAN(80, 2) + RS(10) + "<td></td>", RS(10) + SPAN(100, 2), RS(10)]),
+  RSP("order-nested", NS, [SPAN(40, 2) + RS(10) + SPAN(100, 3), RS(10), RS(10)]),
+  RSP("spacing-zero-rows", "border-spacing:5px", [SPAN(30, 2) + "<td></td>", "<td></td>"]),
+  RSP("collapse-proportional", "border-collapse:collapse", [SPAN(60, 2) + RS(10), RS(30)]),
+  RSP("collapse-borders", "border-collapse:collapse;border:4px solid", [RS(60, ` rowspan=2 style="border:2px solid"`) + RS(10, ` style="border:2px solid"`), RS(30, ` style="border:2px solid"`)]),
+  RSP("collapse-originating", "border-collapse:collapse", [SPAN(100, 3) + RS(10) + "<td></td>", RS(10) + SPAN(5, 2), RS(10)]),
+);
+// Found with #327 (a follow-up, held out): a definite-height table's extra height grows
+// percent-height rows to their percentage first and gives the rest to its auto rows
+// (else to all rows by size); turbo-dom-layout shares it with the percent rows.
+const PX = (id, rows) => ({
+  id: `table-extra-percent-${id}`,
+  html: DOC(S("body{margin:0}td{padding:0}"), RT(`${NS};height:100px`, rows)),
+});
+CASES.push(
+  PX("rowspan", [[SPAN(80, 2) + RS(5), "height:10%"], RS(5)]),
+  PX("auto-row", [[RS(40), "height:10%"], RS(40)]),
+  PX("auto-and-fixed-rows", [[RS(10), "height:30%"], RS(10), [RS(10), "height:10px"]]),
+  PX("empty-auto-row", [[RS(40), "height:10%"], RS(0)]),
+  PX("fixed-row", [[RS(40), "height:10%"], [RS(20), "height:20px"]]),
+);
 // miaskiewicz/turbo-dom#238 item 2: the quirks-mode line height quirk on the static HTML
 // path (the same cases as the live control's `quirks-strut-*`, #190). No doctype =
 // BackCompat; laid out with the repo's Fira Code through @font-face.

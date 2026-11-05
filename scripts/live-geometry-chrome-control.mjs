@@ -582,6 +582,38 @@ const CASES = [
       `<table data-cid="table"><tbody data-cid="b1"><tr data-cid="r1">${CELL(10, 10, "c1")}</tr></tbody><tbody data-cid="b2"><tr data-cid="r2">${CELL(10, 10, "c2")}</tr></tbody></table>`,
     ),
   },
+  // miaskiewicz/turbo-dom#321: rows and row groups do not own the border-spacing, so a
+  // point in a gap (between cells, between rows, between row groups, around the cells,
+  // or in a row's missing cell slot) hits the table; a cell hits itself, a spanning one
+  // also where it spans into the next row.
+  {
+    id: "table-spacing-hits",
+    html: DOC(
+      "body{margin:0}table{border-spacing:10px 6px;border:2px solid #000;padding:4px}td{padding:0}",
+      `<table data-cid="table"><tbody data-cid="b1"><tr data-cid="r1">${CELL(30, 10, "a")}${CELL(30, 10, "b")}<td data-cid="s" rowspan="2">${BOX(30, 10)}</td></tr><tr data-cid="r2">${CELL(30, 10, "c")}</tr></tbody><tbody data-cid="b2"><tr data-cid="r3">${CELL(30, 10, "d")}${CELL(30, 10, "e")}${CELL(30, 10, "f")}</tr></tbody></table>`,
+    ),
+    hits: [[20, 20], [50, 20], [20, 25], [70, 33], [110, 15], [110, 33], [20, 40], [50, 48], [130, 48], [3, 3], [8, 20], [20, 60], [140, 20], [145, 20]],
+  },
+  // A floated or absolutely positioned row / row group is blockified: a block box that
+  // hits itself (miaskiewicz/turbo-dom#321).
+  {
+    id: "table-spacing-blockified-rows",
+    html: DOC(
+      "body{margin:0}div{width:50px;height:20px}",
+      `<div data-cid="f" style="display:table-row;float:left"></div><div data-cid="g" style="display:table-row-group;float:left"></div><div data-cid="a" style="display:table-row;position:absolute;left:0;top:40px"></div><div data-cid="h" style="display:table-header-group;position:absolute;left:60px;top:40px"></div>`,
+    ),
+    hits: [[10, 10], [60, 10], [10, 50], [70, 50]],
+  },
+  // A row-spanning cell spans the border-spacing between its rows too: it is as tall as
+  // its rows and the gaps between them, and content that fits there grows no row
+  // (miaskiewicz/turbo-dom#321).
+  {
+    id: "table-rowspan-spacing",
+    html: DOC(
+      "body{margin:0}table{border-spacing:10px 6px}td{padding:0}",
+      `<table data-cid="table"><tr data-cid="r1">${CELL(30, 10, "a")}<td data-cid="s" rowspan="2">${BOX(30, 26)}</td><td data-cid="t" rowspan="2">${BOX(30, 20)}</td></tr><tr data-cid="r2">${CELL(30, 10, "c")}</tr></table>`,
+    ),
+  },
   {
     id: "table-empty-cell",
     html: DOC("", `<table data-cid="table"><tbody data-cid="tbody"><tr data-cid="tr"><td data-cid="td"></td></tr></tbody></table>`),

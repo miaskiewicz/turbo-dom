@@ -145,14 +145,24 @@ pub fn sniff(bytes: &[u8]) -> Option<Format> {
 /// channel and its EXIF [`Orientation`], all read from the header without decoding
 /// pixels. `width`/`height` are the STORED pixel size; [`Intrinsic::displayed`] turns
 /// it into the size layout uses.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Intrinsic {
     pub width: u32,
     pub height: u32,
     pub has_alpha: bool,
     /// How the stored pixels are displayed (`image-orientation: from-image`).
     pub orientation: Orientation,
+    /// `Some(width / height)` when the image has a natural aspect ratio but no natural
+    /// width or height: an SVG whose root has a `viewBox` and neither `width` nor
+    /// `height` ([`Intrinsic::ratio_only`]). Layout then sizes an auto box from the
+    /// ratio and the containing block (CSS Images 3 default sizing; Chrome 156,
+    /// miaskiewicz/turbo-dom#320), and `width`/`height` are only what
+    /// `naturalWidth`/`naturalHeight` report. `None` for an image with a natural size.
+    pub natural_ratio: Option<f32>,
 }
+
+// `natural_ratio` is always a finite, positive ratio (never NaN), so equality is total.
+impl Eq for Intrinsic {}
 
 impl Intrinsic {
     /// A stored size with no EXIF orientation.
@@ -163,6 +173,18 @@ impl Intrinsic {
             height,
             has_alpha,
             orientation: Orientation::IDENTITY,
+            natural_ratio: None,
+        }
+    }
+
+    /// An image with a natural aspect ratio `ratio` (width / height, finite and
+    /// positive) and no natural size; `width`/`height` are what the browser reports as
+    /// `naturalWidth`/`naturalHeight` (see [`Intrinsic::natural_ratio`]).
+    #[must_use]
+    pub fn ratio_only(width: u32, height: u32, ratio: f32, has_alpha: bool) -> Intrinsic {
+        Intrinsic {
+            natural_ratio: Some(ratio),
+            ..Intrinsic::new(width, height, has_alpha)
         }
     }
 
@@ -179,9 +201,13 @@ impl Intrinsic {
             };
         }
         let (width, height) = self.orientation.displayed_size(self.width, self.height);
+        let turned = self.orientation.swaps_axes();
         Intrinsic {
             width,
             height,
+            natural_ratio: self
+                .natural_ratio
+                .map(|r| if turned { r.recip() } else { r }),
             ..self
         }
     }
@@ -290,14 +316,16 @@ fn probe_png(bytes: &[u8]) -> Option<Intrinsic> {
     let reader = decoder.read_info().ok()?;
     let info = reader.info();
     Some(Intrinsic {
-        width: info.width,
-        height: info.height,
-        has_alpha: png_has_alpha(info.color_type, info.trns.is_some()),
         // The `eXIf` chunk (read before the first IDAT) is a bare TIFF block.
         orientation: info
             .exif_metadata
             .as_deref()
             .map_or(Orientation::IDENTITY, formats::tiff_orientation),
+        ..Intrinsic::new(
+            info.width,
+            info.height,
+            png_has_alpha(info.color_type, info.trns.is_some()),
+        )
     })
 }
 
@@ -316,10 +344,8 @@ fn probe_jpeg(bytes: &[u8]) -> Option<Intrinsic> {
     decoder.read_info().ok()?;
     let info = decoder.info()?;
     Some(Intrinsic {
-        width: u32::from(info.width),
-        height: u32::from(info.height),
-        has_alpha: false,
         orientation: formats::jpeg_orientation(bytes),
+        ..Intrinsic::new(u32::from(info.width), u32::from(info.height), false)
     })
 }
 
@@ -664,6 +690,27 @@ fn jpeg_color(format: jpeg_decoder::PixelFormat) -> Option<ColorSpace> {
 #[cfg(test)]
 mod format_tests {
     use super::*;
+
+    #[test]
+    fn a_natural_ratio_turns_with_the_displayed_image() {
+        let bare = Intrinsic::ratio_only(30, 20, 1.5, false);
+        assert_eq!(bare.natural_ratio, Some(1.5));
+        assert_eq!(Intrinsic::new(30, 20, false).natural_ratio, None);
+        let turned = Intrinsic {
+            orientation: Orientation::from_exif(6),
+            ..bare
+        };
+        let shown = turned.displayed(true);
+        assert_eq!((shown.width, shown.height), (20, 30));
+        assert_eq!(shown.natural_ratio, Some(1.0 / 1.5));
+        // Mirrored only (no quarter turn) or `image-orientation: none`: unchanged.
+        let mirrored = Intrinsic {
+            orientation: Orientation::from_exif(2),
+            ..bare
+        };
+        assert_eq!(mirrored.displayed(true).natural_ratio, Some(1.5));
+        assert_eq!(turned.displayed(false).natural_ratio, Some(1.5));
+    }
 
     #[test]
     fn png_budgets_keep_each_consumers_limits() {
