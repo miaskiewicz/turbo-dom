@@ -7707,7 +7707,12 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     bind_method(scope, global, "__styleStateEpoch", style_state_epoch);
     bind_method(scope, global, "__bumpStyleState", bump_style_state_native);
     bind_method(scope, global, "__bumpCssomEpoch", bump_cssom_epoch);
-    bind_method(scope, global, "__cssomStructureEpoch", cssom_structure_epoch);
+    bind_method(
+        scope,
+        global,
+        "__cssomStructureEpoch",
+        cssom_structure_epoch,
+    );
     bind_method(scope, global, "__bumpCssomStructure", bump_cssom_structure);
 }
 

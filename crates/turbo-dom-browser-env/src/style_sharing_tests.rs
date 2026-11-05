@@ -138,7 +138,6 @@ fn a_running_transition_reuses_its_cascaded_declarations() {
     assert_eq!(value["running"], 1);
 }
 
-
 /// Runs `body` (which returns the values to compare) with sharing on, then again over the same
 /// tree with sharing off after a CSSOM change that drops every reused style.
 fn shared_and_fresh(html: &str, setup: &str, read: &str) -> serde_json::Value {
@@ -191,7 +190,7 @@ fn a_possible_state_match_cascades_itself() {
     let value = run(
         "<!doctype html><html><head><style>.a { color: rgb(1, 1, 1) } .a:first-child:invalid { color: rgb(2, 2, 2) }</style></head><body><section id=p><fieldset class=a id=late><input id=i></fieldset><fieldset class=a id=source><input></fieldset></section></body>",
         r#"(()=>{
-      const late=document.getElementById('late'),source=document.getElementById('source');
+      const [late,source]=document.querySelectorAll('.a');
       getComputedStyle(source).color;const before=getComputedStyle(late).color;
       document.getElementById('i').required=true;
       return JSON.stringify([before,getComputedStyle(late).color]);
@@ -214,4 +213,68 @@ fn a_transitioning_element_entering_the_top_layer_cascades_again() {
     );
     assert_eq!(value["closed"], serde_json::json!(["absolute", "none"]));
     assert_eq!(value["open"], serde_json::json!(["fixed", "block", "0.5"]));
+}
+
+/// A sibling whose state rule can match it in another state (relaxed) but not the source
+/// cascades itself, so it follows a state change that moves no tree version: emptying the
+/// value of the input before it shows the placeholder (Chrome 156: rgb(2, 2, 2) after).
+#[test]
+fn a_possible_state_match_follows_a_value_change() {
+    let value = run(
+        "<!doctype html><html><head><style>.a { color: rgb(1, 1, 1) } input:placeholder-shown + .a { color: rgb(2, 2, 2) }</style></head><body><section><input placeholder=p value=x><div class=a></div><div class=a></div></section></body>",
+        r#"(()=>{
+      const [late,source]=document.querySelectorAll('.a');
+      getComputedStyle(source).color;const shares=__cssTestStyleShares(),before=getComputedStyle(late).color;
+      document.querySelector('input').value='';
+      return JSON.stringify([before,getComputedStyle(late).color,getComputedStyle(source).color,__cssTestStyleShares()-shares]);
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!(["rgb(1, 1, 1)", "rgb(2, 2, 2)", "rgb(1, 1, 1)", 0])
+    );
+}
+
+/// A sibling whose cascade went volatile (an `:active-view-transition` rule could match it) is
+/// no source: a view transition bumps no epoch, so a sibling that took its declarations would
+/// keep the pre-transition value (Chrome 156: rgb(9, 9, 9) during the transition).
+#[test]
+fn a_volatile_cascade_is_no_share_source() {
+    let value = run(
+        "<!doctype html><html><head><style>.a { color: rgb(1, 1, 1) } :root:active-view-transition .a { color: rgb(9, 9, 9) }</style></head><body><section><div class=a></div><div class=a></div></section></body>",
+        r#"(()=>{
+      const [source,late]=document.querySelectorAll('.a');
+      getComputedStyle(source).color;const before=getComputedStyle(late).color;
+      document.startViewTransition();
+      return JSON.stringify([before,getComputedStyle(source).color,getComputedStyle(late).color]);
+    })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!(["rgb(1, 1, 1)", "rgb(9, 9, 9)", "rgb(9, 9, 9)"])
+    );
+}
+
+/// Trees on #279's tree-wide fallback never share: their sheets' features are not all
+/// scanned (rules after a container query, adopted sheets), so the signature can miss an
+/// attribute a rule tests (Chrome 156: the `data-k` sibling is rgb(9, 9, 9)).
+#[test]
+fn fallback_trees_never_share() {
+    for setup in [
+        "const s=document.createElement('style');s.textContent='@container (min-width: 1px) { .q { color: red } } .a { color: rgb(1, 1, 1) } [data-k] { color: rgb(9, 9, 9) }';document.head.appendChild(s);",
+        "const s=new CSSStyleSheet();s.replaceSync('.a { color: rgb(1, 1, 1) } [data-k] { color: rgb(9, 9, 9) }');document.adoptedStyleSheets=[s];",
+    ] {
+        let value = shared_and_fresh(
+            "<!doctype html><html><head></head><body><section id=p></section></body>",
+            &format!("{setup}const p=document.getElementById('p'),a=document.createElement('div'),b=document.createElement('div');a.className=b.className='a';b.setAttribute('data-k','');p.append(a,b);"),
+            "return [a,b].map(el=>getComputedStyle(el).color);",
+        );
+        assert_eq!(value["shares"], 0, "{value}");
+        assert_eq!(
+            value["shared"],
+            serde_json::json!(["rgb(1, 1, 1)", "rgb(9, 9, 9)"]),
+            "{value}"
+        );
+        assert_eq!(value["fresh"], value["shared"], "{value}");
+    }
 }
