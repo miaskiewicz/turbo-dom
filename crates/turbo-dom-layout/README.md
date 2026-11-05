@@ -102,7 +102,9 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
 - **Text** (`text`): `FontRegistry` (`new`, `FontRegistry::system(SystemFontPolicy)` for the
   process-wide installed fonts), `FontFace`, `layout_text`, `TextStyle`, `LineBox`, `Align`,
   `WhiteSpace`. `FontFace::from_web_font_bytes` loads an `@font-face` face like Chrome
-  (ignoring the legacy `kern` tables Chrome ignores); `FontFace::canvas_text_metrics[_with]`
+  (ignoring the legacy `kern` tables Chrome ignores, with Chrome's web-font vertical
+  metrics, and shadowing installed faces of its family in a `FontRegistry`;
+  `FontFace::is_web_font`); `FontFace::canvas_text_metrics[_with]`
   is canvas `measureText`; text advances are Blink's 1/64px LayoutUnit advances
   (`blink_advances`). `cmap` provides the reverse cmap for text extraction.
 - **Images** (`image`): `ImageResolver` / `NoImages`, `probe` (header size and EXIF

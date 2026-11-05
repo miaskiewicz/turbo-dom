@@ -9,6 +9,22 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout / turbo-dom-raster: web fonts get Chrome's metrics, shadow installed
+  faces, and paint in screenshots and canvas** (turbo-dom#304, for turbo-surf#142).
+  `FontFace::from_web_font_bytes` faces now use Chrome 156's `@font-face` vertical metrics:
+  the `hhea` ascender, descender and line gap (OS/2 `USE_TYPO_METRICS` is not consulted),
+  each a 16.16 fixed-point fraction of the em for a TrueType font (exact for CFF), scaled and
+  rounded half up. IBM Plex Mono at 20px is 25px tall, as in Chrome (was 27). In a
+  `FontRegistry`, a family with an `@font-face` face is served by its web faces only (in
+  `select` and per-glyph resolution, whatever the registration order), as Chrome never matches
+  an installed face of a declared web family; new `FontFace::is_web_font`. turbo-dom-raster
+  adds `screenshot_png_with_fonts` / `screenshot_svg_with_fonts(html, external_css, viewport,
+  images, full_page, fonts)`, `canvas_ops_png_with_fonts` / `canvas_ops_rgba_with_fonts(width,
+  height, ops_json, fonts)` and `measure_canvas_text_with_fonts(text, font, fonts)`; the
+  existing entry points are unchanged. Controls: `web-font-metrics/chrome156.json`,
+  `web-font-priority/chrome156.json` (turbo-dom-layout) and `web_font_paint_chrome156.json`
+  (turbo-dom-raster).
+
 - **turbo-dom-browser-env: `setHTML` / `setHTMLUnsafe` / `template.innerHTML` keep template
   contents and declarative shadow roots through a GC.** Past 256 live wrappers a mutating call
   defers its ownership reconcile. These calls wrap the parsed nodes while they are still in a
