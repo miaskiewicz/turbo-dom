@@ -284,14 +284,14 @@
     apply(insert, container, [node, reference]);
     if (wasCollapsed) { state.endContainer = container; state.endOffset = offset + count; }
   }
-  function ensureInsertion(container, node, reference) {
-    const containerKind = type(container), kind = type(node);
-    if ((containerKind !== 1 && containerKind !== 9 && containerKind !== 11) ||
-        ancestor(node, container) ||
-        (kind !== 1 && kind !== 3 && kind !== 4 && kind !== 7 && kind !== 8 && kind !== 10 && kind !== 11) ||
-        (kind === 10 && containerKind !== 9)) fail("HierarchyRequestError");
-    if (containerKind !== 9) return;
-    const sequence = [], existing = children(container), incoming = kind === 11 ? children(node) : [node];
+  function insertionBaseInvalid(containerKind, kind) {
+    return (containerKind !== 1 && containerKind !== 9 && containerKind !== 11) ||
+      (kind !== 1 && kind !== 3 && kind !== 4 && kind !== 7 && kind !== 8 && kind !== 10 && kind !== 11) ||
+      (kind === 10 && containerKind !== 9);
+  }
+  function buildInsertionSequence(container, node, reference, kind) {
+    const sequence = [], existing = children(container);
+    const incoming = kind === 11 ? children(node) : [node];
     let included = false;
     for (let i = 0; i < existing.length; i++) {
       if (existing[i] === reference) {
@@ -301,6 +301,9 @@
       if (existing[i] !== node) push(sequence, existing[i]);
     }
     if (!included) for (let i = 0; i < incoming.length; i++) push(sequence, incoming[i]);
+    return sequence;
+  }
+  function validateDocumentChildren(sequence) {
     let elements = 0, doctypes = 0;
     for (let i = 0; i < sequence.length; i++) {
       const childKind = type(sequence[i]);
@@ -308,6 +311,12 @@
       if (childKind === 1 && ++elements > 1) fail("HierarchyRequestError");
       if (childKind === 10 && (++doctypes > 1 || elements)) fail("HierarchyRequestError");
     }
+  }
+  function ensureInsertion(container, node, reference) {
+    const containerKind = type(container), kind = type(node);
+    if (insertionBaseInvalid(containerKind, kind) || ancestor(node, container)) fail("HierarchyRequestError");
+    if (containerKind !== 9) return;
+    validateDocumentChildren(buildInsertionSequence(container, node, reference, kind));
   }
   function method(name, length, implementation) {
     define(LocalRange.prototype, name, {__proto__: null,
