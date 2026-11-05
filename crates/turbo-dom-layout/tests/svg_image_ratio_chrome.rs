@@ -71,7 +71,10 @@ fn ratio_only_svg_images_lay_out_like_chrome_156() {
             case["wrap"].as_str().unwrap(),
             case["style"].as_str().unwrap(),
         ));
-        svgs.insert(id.to_owned(), case["svg"].as_str().unwrap().as_bytes().to_vec());
+        svgs.insert(
+            id.to_owned(),
+            case["svg"].as_str().unwrap().as_bytes().to_vec(),
+        );
     }
     let nodes = parse_html(&html).unwrap();
     let identities: Vec<SourceIdentity> = (0..cases.len())

@@ -80,7 +80,9 @@ fn compare(fonts: &FontRegistry, rows: &[serde_json::Value]) {
         let want = row["height"].as_f64().unwrap();
         let got = p_height(fonts, family, size, dsf as f32);
         if got != want {
-            failures.push(format!("{family:?} {size}px DSF {dsf}: {got}, Chrome {want}"));
+            failures.push(format!(
+                "{family:?} {size}px DSF {dsf}: {got}, Chrome {want}"
+            ));
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
@@ -95,7 +97,6 @@ fn fixture_font_line_boxes_follow_the_device_scale_like_chrome() {
 
 #[cfg(target_os = "macos")]
 #[test]
-#[ignore = "turbo-dom#319: fails until the fix"]
 fn default_times_line_box_is_18px_at_dsf_1_and_18_5px_at_dsf_2() {
     let rows = rows("host");
     assert_eq!(rows.len(), 12);
