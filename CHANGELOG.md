@@ -32,10 +32,24 @@ at the time); this file reconstructs them from history.
   after the first where another rowspan cell starts, else to its unconstrained rows (no
   fixed `height` on the row or a single-row cell; percentage heights do not constrain) in
   proportion to their heights, else to all its rows by height, else to the last row, in
-  1/64 px shares. Collapsed tables weigh each row by its extent between grid-line centres.
+  1/64 px shares. Collapsed tables weigh each row by its extent.
   Control: the `table-rowspan-*` cases of `scripts/html-document-chrome-control.mjs`
-  (turbo-dom#327). A definite-height table's extra height still treats percent-height rows
-  as auto rows (`table-extra-percent-*`, held out).
+  (turbo-dom#327).
+- **turbo-dom-layout: a definite-height table grows its percent-height rows to their
+  percentage first, like Chrome 156.** Its extra height used to treat a `height: N%` row
+  as an auto row. Now each receiving section's percent rows first grow toward their
+  percentage of the section's final height (its rows, its share of the extra and the
+  border-spacing between its rows). The percentages are capped at 100% in row order, and
+  the rows split the extra by deficit when it runs short. The rest goes to the auto rows,
+  else to all rows by size. `calc()` heights stay auto. Control: `table-extra-percent-*`
+  in `scripts/html-document-chrome-control.mjs` (turbo-dom#349).
+- **turbo-dom-layout: collapsed-border rows are sized by each cell's own edges, like
+  Chrome 156.** A row used to take half of the widest border anywhere on its two grid
+  lines. Now it is as tall as its tallest cell's border box, and each cell adds half the
+  widest collapsed segment along its own top and bottom edges. The table adds half of
+  its outer lines. A thin-bordered tall cell next to a thick-bordered short one no longer
+  grows the row. Control: `table-collapsed-edge-*`, row axis (turbo-dom#350).
+  Collapsed columns still use one width per grid line.
 - **turbo-dom-layout: a point in a table's border-spacing hits the table.** `cssom_view::hit::elements_at_point` no longer returns a row or row group for a point between cells, between rows or row groups, or in a row's missing cell slot: rows and row groups are not hit targets (a floated or absolutely positioned one is blockified and still hits), as in Chrome 156. The UA sheet gives `<tbody>` `display: table-row-group` (layout unchanged), and a row-spanning cell spans the vertical border-spacing between its rows (its height and the rows it grows). Chrome 156 control: `table-spacing-*` / `table-rowspan-spacing` in `scripts/live-geometry-chrome-control.mjs` (turbo-dom#321, turbo-surf#162; the spread of a spanning cell's excess height over its rows is turbo-dom#327).
 
 ## [0.7.1] — 2026-11-05
