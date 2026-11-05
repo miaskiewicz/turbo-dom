@@ -1,0 +1,2196 @@
+{
+ "generator": "scripts/canvas-content-chrome-control.mjs",
+ "chrome": "156.0.8078.4",
+ "playwright_core": "1.61.0",
+ "viewport": [
+  400,
+  300
+ ],
+ "cases": [
+  {
+   "id": "ops-1x",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "ops": [
+      [
+       "fillRect",
+       [
+        0,
+        0,
+        32,
+        20
+       ],
+       "#ff0000",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        32,
+        0,
+        32,
+        20
+       ],
+       "#00ff00",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        0,
+        20,
+        32,
+        20
+       ],
+       "#0000ff",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        32,
+        20,
+        32,
+        20
+       ],
+       "#ffff00",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ]
+     ]
+    }
+   ],
+   "probes": [
+    {
+     "x": 36,
+     "y": 20,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 20,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 36,
+     "y": 40,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 68,
+     "y": 40,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 20,
+     "y": 10,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 83,
+     "y": 10,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 20,
+     "y": 49,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 83,
+     "y": 49,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 19,
+     "y": 10,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 84,
+     "y": 49,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 50,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bitmap-1x",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 36,
+     "y": 20,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 20,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 36,
+     "y": 40,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 68,
+     "y": 40,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 20,
+     "y": 10,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 83,
+     "y": 10,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 20,
+     "y": 49,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 83,
+     "y": 49,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 19,
+     "y": 10,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 84,
+     "y": 49,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 50,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ops-default-size",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas  style=\"position:absolute;left:0px;top:0px\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "ops": [
+      [
+       "fillRect",
+       [
+        0,
+        0,
+        150,
+        75
+       ],
+       "#ff0000",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        150,
+        0,
+        150,
+        75
+       ],
+       "#00ff00",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        0,
+        75,
+        150,
+        75
+       ],
+       "#0000ff",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        150,
+        75,
+        150,
+        75
+       ],
+       "#ffff00",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ]
+     ]
+    }
+   ],
+   "probes": [
+    {
+     "x": 75,
+     "y": 37,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 225,
+     "y": 37,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 75,
+     "y": 112,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 225,
+     "y": 112,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 299,
+     "y": 149,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 300,
+     "y": 10,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 10,
+     "y": 150,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bitmap-css-scaled",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"32\" height=\"20\" style=\"position:absolute;left:20px;top:10px;width:128px;height:80px\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       32,
+       20
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 52,
+     "y": 30,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 116,
+     "y": 30,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 52,
+     "y": 70,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 116,
+     "y": 70,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 19,
+     "y": 50,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 148,
+     "y": 50,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bitmap-css-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px;width:128px\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 52,
+     "y": 30,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 116,
+     "y": 30,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 52,
+     "y": 70,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 116,
+     "y": 70,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 50,
+     "y": 92,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bitmap-border-padding",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px;border:4px solid #000000;padding:6px;background:#ffffff\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 46,
+     "y": 30,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 78,
+     "y": 30,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 46,
+     "y": 50,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 78,
+     "y": 50,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 22,
+     "y": 30,
+     "rgb": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 26,
+     "y": 30,
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 15,
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 99,
+     "y": 45,
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 30,
+     "y": 20,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 29,
+     "y": 20,
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fit-fill",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px;width:128px;height:128px;object-fit:fill\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 52,
+     "y": 42,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 116,
+     "y": 42,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 52,
+     "y": 106,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 116,
+     "y": 106,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fit-contain",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px;width:128px;height:128px;object-fit:contain;background:#ffffff\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 52,
+     "y": 54,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 116,
+     "y": 54,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 52,
+     "y": 94,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 116,
+     "y": 94,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 84,
+     "y": 20,
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 84,
+     "y": 130,
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fit-cover",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:30px;top:10px;width:80px;height:80px;object-fit:cover\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 50,
+     "y": 30,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 90,
+     "y": 30,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 50,
+     "y": 70,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 90,
+     "y": 70,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 28,
+     "y": 30,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 112,
+     "y": 30,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 31,
+     "y": 11,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 109,
+     "y": 89,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fit-none",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px;width:32px;height:20px;object-fit:none\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 28,
+     "y": 15,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 44,
+     "y": 15,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 28,
+     "y": 25,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 25,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 18,
+     "y": 15,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 54,
+     "y": 15,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 30,
+     "y": 32,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fit-scale-down",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px;width:128px;height:128px;object-fit:scale-down;background:#ffffff\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 68,
+     "y": 64,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 100,
+     "y": 64,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 84,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 100,
+     "y": 84,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 20,
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 130,
+     "y": 130,
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fit-contain-position",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px;width:128px;height:128px;object-fit:contain;object-position:0 100%;background:#ffffff\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 52,
+     "y": 78,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 116,
+     "y": 78,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 52,
+     "y": 118,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 116,
+     "y": 118,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 84,
+     "y": 30,
+     "rgb": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fit-none-position",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px;width:48px;height:30px;object-fit:none;object-position:left top\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 30,
+     "y": 20,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 60,
+     "y": 20,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 35,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 35,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "keyed-by-document-order",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px\"></canvas><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:120px;top:10px\"></canvas><div><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:220px;top:10px\"></canvas></div></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "ops": [
+      [
+       "fillRect",
+       [
+        0,
+        0,
+        32,
+        20
+       ],
+       "#ff0000",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        32,
+        0,
+        32,
+        20
+       ],
+       "#00ff00",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        0,
+        20,
+        32,
+        20
+       ],
+       "#0000ff",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        32,
+        20,
+        32,
+        20
+       ],
+       "#ffff00",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ]
+     ]
+    },
+    {
+     "index": 2,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 36,
+     "y": 20,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 20,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 36,
+     "y": 40,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 68,
+     "y": 40,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 136,
+     "y": 20,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 168,
+     "y": 20,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 136,
+     "y": 40,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 168,
+     "y": 40,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 236,
+     "y": 20,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 268,
+     "y": 20,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 236,
+     "y": 40,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 268,
+     "y": 40,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "alpha",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "ops": [
+      [
+       "fillRect",
+       [
+        0,
+        0,
+        32,
+        40
+       ],
+       "rgba(255, 0, 0, 0.5)",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        32,
+        0,
+        32,
+        40
+       ],
+       "#0000ff",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       0.25,
+       "source-over"
+      ]
+     ]
+    }
+   ],
+   "probes": [
+    {
+     "x": 36,
+     "y": 30,
+     "rgb": [
+      128,
+      127,
+      127
+     ]
+    },
+    {
+     "x": 68,
+     "y": 30,
+     "rgb": [
+      0,
+      191,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bitmap-alpha",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        128
+       ],
+       [
+        0,
+        0,
+        255,
+        64
+       ],
+       [
+        0,
+        0,
+        0,
+        0
+       ],
+       [
+        255,
+        255,
+        0,
+        192
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 36,
+     "y": 20,
+     "rgb": [
+      128,
+      127,
+      127
+     ]
+    },
+    {
+     "x": 68,
+     "y": 20,
+     "rgb": [
+      0,
+      191,
+      255
+     ]
+    },
+    {
+     "x": 36,
+     "y": 40,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 68,
+     "y": 40,
+     "rgb": [
+      192,
+      255,
+      63
+     ]
+    }
+   ]
+  },
+  {
+   "id": "border-radius",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px;border-radius:16px\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 36,
+     "y": 20,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 20,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 36,
+     "y": 40,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 68,
+     "y": 40,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 21,
+     "y": 11,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 82,
+     "y": 11,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 48,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 82,
+     "y": 48,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "transform",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><canvas width=\"64\" height=\"40\" style=\"position:absolute;left:20px;top:10px;transform:rotate(180deg)\"></canvas></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 36,
+     "y": 20,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 20,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 36,
+     "y": 40,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 40,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "vertical-rl",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:10px;writing-mode:vertical-rl\"><canvas width=\"64\" height=\"40\" style=\"\"></canvas></div></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 36,
+     "y": 20,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 20,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 36,
+     "y": 40,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 68,
+     "y": 40,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-in-flow",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:10px;line-height:0\"><canvas width=\"64\" height=\"40\" style=\"\"></canvas></div></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "ops": [
+      [
+       "fillRect",
+       [
+        0,
+        0,
+        32,
+        20
+       ],
+       "#ff0000",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        32,
+        0,
+        32,
+        20
+       ],
+       "#00ff00",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        0,
+        20,
+        32,
+        20
+       ],
+       "#0000ff",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ],
+      [
+       "fillRect",
+       [
+        32,
+        20,
+        32,
+        20
+       ],
+       "#ffff00",
+       "#000000",
+       "10px sans-serif",
+       "alphabetic",
+       "start",
+       1,
+       "source-over"
+      ]
+     ]
+    }
+   ],
+   "probes": [
+    {
+     "x": 36,
+     "y": 20,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 20,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 36,
+     "y": 40,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 68,
+     "y": 40,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    }
+   ]
+  }
+ ]
+}
