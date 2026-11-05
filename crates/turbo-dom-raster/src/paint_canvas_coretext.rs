@@ -225,6 +225,34 @@ mod tests {
         assert!(ink(700) > ink(400));
     }
 
+    // A named family CoreText does not have declines (the caller traces the registry's
+    // glyphs, turbo-dom#342); a generic family is Helvetica.
+    #[test]
+    fn coretext_declines_a_family_it_does_not_have() {
+        let state = |family: &str| {
+            let mut st = State::default();
+            st.font_px = 20.0;
+            st.font_families = vec![family.to_string()];
+            st
+        };
+        assert!(ct_font(&state("No Such Family 342")).is_none());
+        assert!(!render_text(
+            &mut Pixmap::new(64, 32).unwrap(),
+            &state("No Such Family 342"),
+            "x",
+            2.0,
+            20.0,
+            Rgba::new(0, 0, 0, 255)
+        ));
+        let helvetica = ct_font(&state("sans-serif")).unwrap().family_name();
+        assert_eq!(helvetica, "Helvetica");
+        assert_eq!(
+            ct_font(&State::default()).unwrap().family_name(),
+            "Helvetica"
+        );
+        assert_eq!(ct_font(&state("arial")).unwrap().family_name(), "Arial");
+    }
+
     // A scaled/rotated CTM is not handled here → returns false so the caller uses the vector trace.
     #[test]
     fn coretext_declines_non_translate_ctm() {

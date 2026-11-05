@@ -266,12 +266,15 @@ jobs:
         run: |
           cargo clippy -p turbo-dom-raster --all-targets --features jxl -- -D warnings
           cargo test -p turbo-dom-raster --features jxl
-      - name: Clippy + check coretext / gpu-metal (macOS; the CoreText deps are macOS-only)
+      - name: Clippy + test coretext / gpu-metal (macOS; the CoreText deps are macOS-only)
         if: runner.os == 'macOS'
         run: |
           cargo clippy -p turbo-dom-raster --all-targets --features coretext,gpu-metal -- -D warnings
           cargo check -p turbo-dom-raster --features coretext
           cargo check -p turbo-dom-raster --features gpu-metal
+          # The Chrome 156 canvas controls through CoreText text and the Metal replay
+          # (turbo-dom#342; a runner without a Metal adapter replays on tiny-skia).
+          cargo test -p turbo-dom-raster --features coretext,gpu-metal
       - name: Check gpu-metal (wgpu builds on Linux too; coretext is inert there)
         if: runner.os == 'Linux'
         run: cargo check -p turbo-dom-raster --features coretext,gpu-metal
