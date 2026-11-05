@@ -23,6 +23,9 @@ pub enum ActivationQuery {
     CrossOriginFrame,
     /// The document's permissions policy enables `fullscreen`.
     FullscreenAllowed,
+    /// The window has sticky activation (it has ever been activated): the autoplay policy
+    /// of media `play()` (turbo-dom#323).
+    Sticky,
 }
 
 /// Answers a query for the given Document object.
@@ -148,6 +151,11 @@ fn query(scope: &mut v8::PinScope, kind: ActivationQuery) -> bool {
         Some(host) => host(scope, document, kind),
         None => kind == ActivationQuery::FullscreenAllowed,
     }
+}
+
+/// Whether the current DOM's window has sticky activation (never, without a host).
+pub(super) fn sticky_activation(scope: &mut v8::PinScope) -> bool {
+    query(scope, ActivationQuery::Sticky)
 }
 
 fn fully_active() -> bool {

@@ -1808,7 +1808,7 @@
     [CustomEvent,PopStateEvent,HashChangeEvent,ProgressEvent,CloseEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],Event);});
     [PointerEvent,WheelEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],g.MouseEvent);});
     sub('CompositionEvent'); sub('DragEvent'); sub('TouchEvent'); sub('ClipboardEvent');
-    g.document.createEvent = function(){ return new Event('', {}); };
+    // document.createEvent: html_reflections.js (turbo-dom#341).
     // The installer captures and deletes this function before guest execution.
     g.__captureEventRecord=function(event){return getEventRecord(event);};
     __ns.ttEvent=true;
@@ -2370,7 +2370,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function longhandText(name,value){var key=name+'\u0000'+value,cached=$c.get(longhandTexts,key);if(cached!==undefined)return cached;var raw=parseLonghandText(name,value),result=raw===null?null:[raw,raw];if(cssShorthand&&$c.slice(name,0,2)!=='--'){var spelled=cssShorthand('longhand',name,value);if(spelled[0]==='valid')result=[spelled[1],raw===null?spelled[1]:raw];else if(spelled[0]==='invalid')result=null;else if(raw!==null)result=[spelled[1],raw];else if(spelled[1]!==value&&parseLonghandText(name,spelled[1])!==null)result=[spelled[1],spelled[1]];}if($mapSize(longhandTexts)>=4096)$c.clear(longhandTexts);$c.set(longhandTexts,key,result);return result;}
   // A var() / env() value is accepted at parse time once the native parser kept it; Typed OM
   // has no typed reading of it (turbo-dom#162).
-  function deferredCssText(text){return $c.test(/(^|[^-\w])(var|env)\(/i,text);}
+  function deferredCssText(text){return $c.test(/(^|[^-\w])(var|env|if)\(/i,text);}
   function parseLonghandText(name,value){if(!$c.startsWith(name,'--')&&!knownProperty(name))return null;var parsed=typeof cssNativeParse==='function'?cssNativeParse('x { '+name+': '+value+' }'):'x { '+name+': '+value+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}')),accepted=null;$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1||$c.trim($c.slice(part,0,index))!==name)return;var text=$c.trim($c.slice(part,index+1));if($c.test(/\s*!important\s*$/i,text))return;if(!$c.startsWith(name,'--')&&!deferredCssText(text)&&__ns.typedOmValid&&!__ns.typedOmValid(name,text))return;accepted=text;});return accepted;}
   // The [[name, text, pending, raw], ...] a declaration sets, or null when it is invalid.
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
@@ -2528,7 +2528,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // Sub-layers precede their layer's own rules; the root (unlayered rules) comes last.
   function cssLayerRanks(root){var next=0;(function visit(node){for(var index=0;index<node.children.length;index++)visit(node.children[index]);node.rank=next++;})(root);}
   var cssSupportsCache=$O.create(null);
-  function cssSupportsDeclaration(inner){var parts=cssParts(inner,':'),name=$c.trim(parts[0]),record={__proto__:null};if(parts.length<2||!name)return false;parseDeclaration(record,name+': '+$c.trim($c.slice(inner,parts[0].length+1)));return record.names.length>0;}
+  function cssSupportsDeclaration(inner){var parts=cssParts(inner,':'),name=$c.trim(parts[0]),record={__proto__:null};if(parts.length<2||!name||cssParts(inner,';').length>1)return false;parseDeclaration(record,name+': '+$c.trim($c.slice(inner,parts[0].length+1)));return record.names.length>0;}
   function cssSupportsTerm(term,el){
     if(term[0]==='('&&term[term.length-1]===')'){var inner=$c.trim($c.slice(term,1,term.length-1));return inner[0]==='('||$c.test(/^not\s/i,inner)?cssSupportsCondition(inner,el):cssSupportsDeclaration(inner);}
     var selector=$c.exec(/^selector\(([\s\S]*)\)$/i,term);if(!selector)return false;
@@ -2542,6 +2542,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     for(var index=1;index<tokens.length;index+=2){if($c.toLowerCase(tokens[index])!==operator||operator!=='and'&&operator!=='or'||index+1>=tokens.length)return false;var next=cssSupportsTerm(tokens[index+1],el);value=operator==='and'?value&&next:value||next;}
     return value;
   }
+  // CSS.supports() for an embedder's CSS namespace, answered by the grammar this engine's
+  // cascade and @supports use (turbo-dom#322): one argument is a <supports-condition> or a bare
+  // declaration; two are a property name (no surrounding whitespace) and a value (no
+  // !important). selector() conditions are checked against the document element.
+  function cssSupportsScope(){var root=g.document&&g.document.documentElement;return root||g.document.createElement('div');}
+  __ns.cssSupports=function(text){text=$c.trim(String(text));var el=cssSupportsScope();return cssSupportsCondition(text,el)||cssSupportsCondition('('+text+')',el);};
+  __ns.cssSupportsProperty=function(property,value){property=String(property);value=String(value);if(!$c.test(/^(--)?[^\s:;!{}()]+$/,property)||$c.test(/!\s*important\s*$/i,value)||$c.slice(property,0,2)!=='--'&&cssParts(value,';').length>1)return false;return cssSupportsDeclaration(property+': '+value);};
   // A condition is fixed for the engine, so it is evaluated once per text.
   function cssSupportsMatches(text,el){var cached=cssSupportsCache[text];if(cached===undefined)cached=cssSupportsCache[text]=cssSupportsCondition(text,el);return cached;}
   // 0: unconditional; 1: under @media that matches now; 2: under @media that does not.

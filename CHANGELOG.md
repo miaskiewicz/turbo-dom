@@ -9,6 +9,67 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- **turbo-dom-browser-env: the HTML / DOM interface members Chrome 156 has and the binding
+  lacked (turbo-dom#323).** The new members are:
+  - The reflected attributes of `<iframe>`, `<img>`, `<object>`, `<embed>`, `<video>`, `<a>`,
+    `<area>`, `<link>`, `<script>`, `<template>`, `<fieldset>`, `<legend>`, `<optgroup>`,
+    `<style>`, `<html>`, `<div>` and `<body>`. They cover DOMString, URL, boolean,
+    enumerated, nullable `crossOrigin` / `referrerPolicy`, unsigned long and DOMTokenList
+    (`relList`, `sizes`, `blocking`, `controlsList`), with Chrome's supported tokens.
+  - `a.text`, `fieldset.type` / `elements`, `legend.form`, `datalist.options`,
+    `style.disabled` (its sheet's flag) and `CharacterData` `previousElementSibling` /
+    `nextElementSibling`.
+  - The body's window-reflecting event handlers, `getSVGDocument()`, and
+    `object.contentDocument` / `contentWindow` (null, since the binding builds no object
+    browsing context).
+  - The script element's own `textContent` / `innerText`.
+  - New `html_media.js`: `HTMLMediaElement` / `HTMLVideoElement` state with `TimeRanges`,
+    `MediaError`, `TextTrackList` (`addTextTrack()`), `VideoPlaybackQuality` and
+    `RemotePlayback`.
+
+  The binding has no media pipeline, so a media element runs the HTML algorithms up to the
+  fetch:
+  - The load algorithm (`load()`, a `src` change) and resource selection. An empty `src` gives
+    `MediaError` 4. A `<source>` whose type nothing plays fires `error` at the source. A URL
+    becomes `currentSrc` and stays `NETWORK_LOADING`.
+  - `play()` / `pause()` follow Chrome's autoplay policy: muted, or sticky activation, through
+    the new `ActivationQuery::Sticky`.
+  - The `play` / `waiting` / `timeupdate` / `pause` / `volumechange` / `ratechange` events
+    fire, and play promises are rejected the way Chrome rejects them.
+  - Promise-returning operations report their errors as rejections.
+
+  Test: `interface_parity_matches_chrome156_control` against `interface_parity_chrome156.json`.
+  Split out: `captureStream()`, `<source>` insertion and `TextTrackList` events go to
+  turbo-dom#339; `CSSStyleRule` nested rules and `Animation` `rangeStart` / `rangeEnd` go to
+  turbo-dom#340.
+- **turbo-dom-browser-env: `CSS.supports()` from the engine's declaration grammar
+  (turbo-dom#322).** The engine namespace now has `cssSupports(text)` and
+  `cssSupportsProperty(property, value)`, for an embedder's `CSS` namespace. They answer with
+  the grammar the cascade, `@supports` and `el.style` use, including both call forms,
+  `selector()`, the `!important` and `;` rules, and case-insensitive property names.
+  `anchor-name`, `anchor-scope`, `timeline-scope` and `position-anchor` now accept exactly
+  `<dashed-ident>`s or their keywords (`--a` was rejected and `--a --b` accepted).
+  `if()` is an arbitrary substitution function like `var()`, with its condition grammar
+  (`else`, or `not` / `and` / `or` over `style()` / `media()` / `supports()`) checked at
+  parse time. Test: `css_supports_matches_chrome156_control` against
+  `css_supports_chrome156.json`. `shape()` and `sibling-index()` / `sibling-count()` stay
+  unsupported, consistently, until turbo-dom#338.
+
+- **turbo-dom-browser-env: `document.createEvent()` follows Chrome 156's table (turbo-dom#341).**
+  It used to return a plain `Event` for any argument. It now returns an uninitialized event
+  of the named interface. The names are the DOM createEvent table plus the legacy names Chrome
+  keeps (`Events`, `HTMLEvents`, `SVGEvents`, `MouseEvents`, `UIEvents`, `KeyboardEvents`,
+  `TransitionEvent`), matched ASCII case-insensitively. Any other name throws
+  `NotSupportedError`, including `AnimationEvent` and `TouchEvent`. An interface the realm
+  lacks, or has only as an `instanceof` placeholder (`StorageEvent`, `TextEvent`, …), throws
+  `NotSupportedError` until an embedder defines it. Test:
+  `create_event_matches_chrome156_control`.
+
+### Changed
+
+- **turbo-dom-browser-env: `ActivationQuery` has a new `Sticky` variant** (the window has ever
+  been activated). Embedders that match exhaustively add an arm for it. Without a host it
+  answers false.
 - turbo-dom-browser-env: `browser_env::dispatch_host_event_did_listeners_throw(scope, event,
   target) -> bool`, `dispatch_host_event` that also returns the DOM's
   legacy-output-did-listeners-throw flag: whether a listener or event handler invoked by that
