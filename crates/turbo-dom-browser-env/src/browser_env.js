@@ -91,11 +91,29 @@
     // made every $c call cost a runtime call per argument.
     var restOf=function(args,a,b,c){var n=args.length;if(n<=1)return [];if(n===2)return [a];if(n===3)return [a,b];if(n===4)return [a,b,c];var rest=[];for(var i=1;i<n;i++)add(rest,args[i]);return rest;};
     var withReceiver=function(receiver,rest){var n=rest.length;if(n===0)return [receiver];if(n===1)return [receiver,rest[0]];if(n===2)return [receiver,rest[0],rest[1]];if(n===3)return [receiver,rest[0],rest[1],rest[2]];var args=[];add(args,receiver);for(var k=0;k<n;k++)add(args,rest[k]);return args;};
+    var dispatchTableOf=function(receiver){
+      if(receiver instanceof MapType)return maps;
+      if(receiver instanceof WeakMapType)return weakMaps;
+      if(receiver instanceof SetType)return sets;
+      if(receiver instanceof WeakSetType)return weakSets;
+      if(receiver instanceof RegExpType)return regexps;
+      return null;
+    };
+    var dispatchStringExtra=function(name,receiver,rest){
+      if(name==='replace')return {hit:true,value:replace(receiver,rest[0],rest[1])};
+      if(name==='split'&&rest[0] instanceof RegExpType)return {hit:true,value:split(receiver,rest[0],rest[1])};
+      return null;
+    };
+    var dispatchFunctionExtra=function(name,receiver,rest){
+      if(name==='call')return {hit:true,value:$apply(receiver,rest[0],$apply(arrays.slice,null,[rest,1]))};
+      if(name==='apply')return {hit:true,value:$apply(receiver,rest[0],rest[1]==null?[]:rest[1])};
+      return null;
+    };
     var dispatch=function(name){return function(receiver,a,b,c){var rest=restOf(arguments,a,b,c);var t=null;
-      if(typeof receiver==='string'){if(name==='replace')return replace(receiver,rest[0],rest[1]);if(name==='split'&&rest[0] instanceof RegExpType)return split(receiver,rest[0],rest[1]);t=strings;}
-      else if(typeof receiver==='function'){if(name==='call')return $apply(receiver,rest[0],$apply(arrays.slice,null,[rest,1]));if(name==='apply')return $apply(receiver,rest[0],rest[1]==null?[]:rest[1]);}
+      if(typeof receiver==='string'){var sx=dispatchStringExtra(name,receiver,rest);if(sx)return sx.value;t=strings;}
+      else if(typeof receiver==='function'){var fx=dispatchFunctionExtra(name,receiver,rest);if(fx)return fx.value;}
       else if(isArray(receiver)){if(arrays[name])return $apply(arrays[name],null,withReceiver(receiver,rest));}
-      else if(receiver instanceof MapType)t=maps;else if(receiver instanceof WeakMapType)t=weakMaps;else if(receiver instanceof SetType)t=sets;else if(receiver instanceof WeakSetType)t=weakSets;else if(receiver instanceof RegExpType){if(name==='test')return $apply(exec,receiver,rest)!==null;t=regexps;}
+      else {t=dispatchTableOf(receiver);if(t===regexps&&name==='test')return $apply(exec,receiver,rest)!==null;}
       if(t&&t[name])return $apply(t[name],receiver,rest);
       return $apply(receiver[name],receiver,rest);};};
     var out={__proto__:null},names=['get','set','has','delete','clear','add','slice','forEach','test','trim','push','indexOf','startsWith','splice','replace','toLowerCase','toUpperCase','map','concat','join','some','lastIndexOf','exec','filter','every','call','apply','endsWith','includes','split','charCodeAt','find'];
@@ -368,21 +386,27 @@
     ['details > summary:first-of-type', 'list-item'],
   ];
   function computedNativeMatches(el, selector){ try { return !!cssApply(computedStyleNativeMatches, el, [selector]); } catch(e){ return false; } }
+  function computedUserAgentMathBox(el, namespace){
+    var parent = null; try { var context = computedFontContext(el); parent = context ? context[2] : null; } catch(e){}
+    var parentNamespace = ''; try { if (parent) parentNamespace = cssApply(computedStyleNativeNamespace, parent, []); } catch(e){}
+    var inMath = parentNamespace === namespace;
+    return { display: inMath || computedNativeMatches(el, '[display=block i]') ? 'block math' : 'math', position: 'static' };
+  }
+  function computedUserAgentDisplayHtml(el, name){
+    for (var i = 0; i < uaDisplayRules.length; i++) if (computedNativeMatches(el, uaDisplayRules[i][0])) return uaDisplayRules[i][1];
+    return uaDisplayByTag[name] || 'inline';
+  }
+  function computedUserAgentPositionHtml(el, name, layer){
+    if (computedNativeMatches(el, '[popover]') || layer === 'modal') return 'fixed';
+    return name === 'dialog' ? 'absolute' : 'static';
+  }
   function computedUserAgentBox(el, layer){
     var namespace = '', tag = '';
     try { namespace = cssApply(computedStyleNativeNamespace, el, []); tag = cssApply(computedStyleNativeTag, el, []); } catch(e){}
-    if (namespace === 'http://www.w3.org/1998/Math/MathML') {
-      var parent = null; try { var context = computedFontContext(el); parent = context ? context[2] : null; } catch(e){}
-      var parentNamespace = ''; try { if (parent) parentNamespace = cssApply(computedStyleNativeNamespace, parent, []); } catch(e){}
-      var inMath = parentNamespace === namespace;
-      return { display: inMath || computedNativeMatches(el, '[display=block i]') ? 'block math' : 'math', position: 'static' };
-    }
+    if (namespace === 'http://www.w3.org/1998/Math/MathML') return computedUserAgentMathBox(el, namespace);
     if (namespace !== 'http://www.w3.org/1999/xhtml') return { display: 'inline', position: 'static' };
-    var name = cssApply(cssFontLower, String(tag), []), display = null;
-    for (var i = 0; i < uaDisplayRules.length && display === null; i++) if (computedNativeMatches(el, uaDisplayRules[i][0])) display = uaDisplayRules[i][1];
-    if (display === null) display = uaDisplayByTag[name] || 'inline';
-    var position = computedNativeMatches(el, '[popover]') || layer === 'modal' ? 'fixed' : name === 'dialog' ? 'absolute' : 'static';
-    return { display: display, position: position, topLayer: layer !== '' };
+    var name = cssApply(cssFontLower, String(tag), []);
+    return { display: computedUserAgentDisplayHtml(el, name), position: computedUserAgentPositionHtml(el, name, layer), topLayer: layer !== '' };
   }
   // turbo-dom#30, #58: why `el` is in the top layer — 'modal' (a dialog shown with showModal(),
   // which matches :modal), 'fullscreen' (in the fullscreen stack; the root element takes no
@@ -852,10 +876,13 @@
   // version and its selector version; only a `style` attribute moves the version alone and
   // only an animation joining or leaving an element (Tree::invalidate_style quiet) moves the
   // selector version alone. So the list holds while either is where it was last validated.
+  function computedSheetsEntryFresh(entry,version,full,epoch,host){
+    return entry&&typeof version==='number'&&typeof full==='number'&&(entry.version===version||entry.full===full)&&entry.epoch===epoch&&entry.host===host;
+  }
   function computedOwnerSheets(owner,host){
     var version=null,full=null;try{version=computedStyleSelectorVersion(owner);full=computedStyleVersion(owner);}catch(e){}
     var epoch=cssomEpoch(),entry=computedSnapshotGet(computedSheetLists,owner);
-    if(entry&&typeof version==='number'&&typeof full==='number'&&(entry.version===version||entry.full===full)&&entry.epoch===epoch&&entry.host===host){entry.version=version;entry.full=full;return entry.sheets;}
+    if(computedSheetsEntryFresh(entry,version,full,epoch,host)){entry.version=version;entry.full=full;return entry.sheets;}
     if(noteSheetRead)noteSheetRead();
     var sheets=host.readSheets();
     // An unchanged list keeps its identity, so the entry build keyed on it is reused (#307).
@@ -1221,19 +1248,24 @@
   // (#279's fallback: shadow trees, adopted sheets, @import, container queries, escapes; also
   // every cascade that can go volatile), and a sibling whose cascade read live state.
   var styleShares=new computedSnapshotMap(),styleShareRefused={__proto__:null,INPUT:1,BUTTON:1,TEXTAREA:1,SELECT:1,OPTION:1,OPTGROUP:1,IFRAME:1};
+  function styleShareProbeCollect(el){
+    var out={};
+    if(cssApply(computedStyleNativeGetAttribute,el,['style'])!==null)return null;
+    out.tag=cssApply(computedStyleNativeTag,el,[]);if(styleShareRefused[out.tag])return null;
+    out.parent=cssParentElement(el);if(!out.parent)return null;
+    out.scope=computedOwnerScope(el);if(out.scope<0||out.scope>=8)return null;
+    out.generation=computedStyleGeneration(out.parent,out.scope);if(typeof out.generation!=='number')return null;
+    out.owner=cssApply(computedStyleNativeOwner,el,[]);out.namespace=cssApply(computedStyleNativeNamespace,el,[]);
+    out.names=cssApply(computedStyleNativeGetAttribute,el,['class']);out.id=cssApply(computedStyleNativeGetAttribute,el,['id']);
+    out.context=computedFontContext(el);
+    return out;
+  }
   function styleShareProbe(el){
     if(styleShareOff&&styleShareOff())return null;
-    var parent,scope,generation,tag,namespace,id,names,context,owner;
-    try{
-      if(cssApply(computedStyleNativeGetAttribute,el,['style'])!==null)return null;
-      tag=cssApply(computedStyleNativeTag,el,[]);if(styleShareRefused[tag])return null;
-      parent=cssParentElement(el);if(!parent)return null;
-      scope=computedOwnerScope(el);if(scope<0||scope>=8)return null;
-      generation=computedStyleGeneration(parent,scope);if(typeof generation!=='number')return null;
-      owner=cssApply(computedStyleNativeOwner,el,[]);namespace=cssApply(computedStyleNativeNamespace,el,[]);
-      names=cssApply(computedStyleNativeGetAttribute,el,['class']);id=cssApply(computedStyleNativeGetAttribute,el,['id']);
-      context=computedFontContext(el);
-    }catch(e){return null;}
+    var info;
+    try{info=styleShareProbeCollect(el);}catch(e){return null;}
+    if(!info)return null;
+    var parent=info.parent,generation=info.generation,tag=info.tag,namespace=info.namespace,id=info.id,names=info.names,context=info.context,owner=info.owner;
     var signature=tag+'\u0001'+namespace+'\u0001'+(context&&context[4]?1:0)+'\u0001'+names+'\u0001'+id,attributes=styleShareAttributes(owner);
     for(var index=0;index<attributes.length;index++)signature+='\u0001'+cssApply(computedStyleNativeGetAttribute,el,[attributes[index]]);
     var sheets=computedSheets(el),build=computedSheetEntries(sheets,el);
@@ -1265,6 +1297,14 @@
     if(!record.signatures[probe.signature])record.count++;
     record.signatures[probe.signature]={__proto__:null,base:base,tests:tests};
   }
+  function computeStyleSnapshotRun(el,snapshots,sink,pseudo,key){
+    var before=key?computedWorldStamp(el):null,deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,media={__proto__:null},snapshot,volatile,stateRead,state=styleStateEpoch();
+    computedVolatile=false;computedStateRead=false;computedMediaReads=media;
+    var base={__proto__:null,use:key?computedBaseHit(el,key):null,out:null};
+    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps,base);volatile=computedVolatile;stateRead=computedStateRead;}
+    finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
+    return {snapshot:snapshot,volatile:volatile,stateRead:stateRead,state:state,media:media,deps:deps,base:base,before:before};
+  }
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     if(pseudo||sink||!el||typeof el!=='object')return computeStyleFresh(el,snapshots,sink,pseudo,null);
     var local=computedSnapshotGet(snapshots,el);if(local)return local;
@@ -1272,23 +1312,24 @@
     var stable=computedStableHit(el);if(stable){computedSnapshotSet(snapshots,el,stable);return stable;}
     var key=computedCacheKey(el);
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
-    var before=key?computedWorldStamp(el):null,deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,media={__proto__:null},snapshot,volatile,stateRead,state=styleStateEpoch();computedVolatile=false;computedStateRead=false;computedMediaReads=media;
-    var base={__proto__:null,use:key?computedBaseHit(el,key):null,out:null};
-    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps,base);volatile=computedVolatile;stateRead=computedStateRead;}finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
-    if(key){
-      var after=computedCacheKey(el);
-      var unchanged=computedKeyEqual(after,key)&&!(stateRead&&styleStateEpoch()!==state);
-      if(volatile||!unchanged){
-        computedSnapshotSet(computedStyleCache,el,null);
-        // turbo-test#227: a style volatile only after its cascaded declarations (a running
-        // animation or transition, the fullscreen element's viewport size) keeps them.
-        var out=base.out;
-        if(out&&unchanged&&!out.volatile)computedSnapshotSet(computedBaseCache,el,{__proto__:null,base:out,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:out.stateRead?state:null,media:out.media});
-        else if(!base.use)computedSnapshotSet(computedBaseCache,el,null);
-      }
-      else{var stored={__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps,stable:null};computedSnapshotSet(computedStyleCache,el,stored);if(computedStampEqual(before,computedWorldStamp(el)))computedMarkStable(el,stored);}
-    }
+    var ctx=computeStyleSnapshotRun(el,snapshots,sink,pseudo,key);
+    var snapshot=ctx.snapshot,volatile=ctx.volatile,stateRead=ctx.stateRead,state=ctx.state,media=ctx.media,deps=ctx.deps,base=ctx.base,before=ctx.before;
+    if(key)computeStyleSnapshotStore(el,key,state,stateRead,media,deps,base,snapshot,volatile,before);
     return snapshot;
+  }
+  function computeStyleSnapshotStoreVolatile(el,key,state,base,unchanged){
+    computedSnapshotSet(computedStyleCache,el,null);
+    var out=base.out;
+    if(out&&unchanged&&!out.volatile)computedSnapshotSet(computedBaseCache,el,{__proto__:null,base:out,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:out.stateRead?state:null,media:out.media});
+    else if(!base.use)computedSnapshotSet(computedBaseCache,el,null);
+  }
+  function computeStyleSnapshotStore(el,key,state,stateRead,media,deps,base,snapshot,volatile,before){
+    var after=computedCacheKey(el);
+    var unchanged=computedKeyEqual(after,key)&&!(stateRead&&styleStateEpoch()!==state);
+    if(volatile||!unchanged){computeStyleSnapshotStoreVolatile(el,key,state,base,unchanged);return;}
+    var stored={__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps,stable:null};
+    computedSnapshotSet(computedStyleCache,el,stored);
+    if(computedStampEqual(before,computedWorldStamp(el)))computedMarkStable(el,stored);
   }
   // Selector-dependent state: the pseudo-classes whose truth is live binding state (form
   // control state, open popovers, modal dialogs, active view transitions, interest invokers)
@@ -1957,7 +1998,9 @@
     ['fromElement','toElement'].forEach(function(name){member(MouseEvent.prototype,name,{get:Object.getOwnPropertyDescriptor({get [name](){var state=stateOf(mouseStates,this),event=eventRecord(this);return (name==='fromElement')===(event.type==='mouseover'||event.type==='mouseenter')?state.relatedTarget:event.target;}},name).get});});
     function modifier(states,receiver,key){var state=stateOf(states,receiver);return !!state[modifierNames[eventString(key)]];}
     member(MouseEvent.prototype,'getModifierState',{value:function getModifierState(key){if(!arguments.length)throw new TypeError('A modifier is required');return modifier(mouseStates,this,key);}});
-    member(MouseEvent.prototype,'initMouseEvent',{value:function initMouseEvent(type,bubbles=false,cancelable=false,view=null,detail=0,screenX=0,screenY=0,clientX=0,clientY=0,ctrlKey=false,altKey=false,shiftKey=false,metaKey=false,button=0,relatedTarget=null){stateOf(mouseStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;$call(initUIEvent,this,type,bubbles,cancelable,view,detail);$call($wmSet,mouseStates,this,mouseState({screenX,screenY,clientX,clientY,ctrlKey,altKey,shiftKey,metaKey,button,relatedTarget}));relatedRecord(this,$call($wmGet,mouseStates,this).relatedTarget);}});
+    var initMouseEventImpl=function(self,args){stateOf(mouseStates,self);if(eventRecord(self).dispatching)return;$call(initUIEvent,self,args.type,args.bubbles,args.cancelable,args.view,args.detail);$call($wmSet,mouseStates,self,mouseState(args));relatedRecord(self,$call($wmGet,mouseStates,self).relatedTarget);};
+    var initMouseEventDefaults={bubbles:false,cancelable:false,view:null,detail:0,screenX:0,screenY:0,clientX:0,clientY:0,ctrlKey:false,altKey:false,shiftKey:false,metaKey:false,button:0,relatedTarget:null};
+    member(MouseEvent.prototype,'initMouseEvent',{value:function initMouseEvent(type){if(!arguments.length)throw new TypeError('A type is required');var args=$O.assign({__proto__:null,type:type},initMouseEventDefaults);var names=['bubbles','cancelable','view','detail','screenX','screenY','clientX','clientY','ctrlKey','altKey','shiftKey','metaKey','button','relatedTarget'];for(var i=0;i<names.length;i++)if(i+1<arguments.length)args[names[i]]=arguments[i+1];initMouseEventImpl(this,args);}});
     tagEvent(MouseEvent,'MouseEvent');g.MouseEvent=MouseEvent;
     class KeyboardEvent extends UIEvent {
       constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};var state=modifiers(init);state.key=stringValue(init.key);state.code=stringValue(init.code);state.location=intValue(init.location)>>>0;state.repeat=!!init.repeat;state.isComposing=!!init.isComposing;state.charCode=intValue(init.charCode)>>>0;state.keyCode=intValue(init.keyCode)>>>0;$call($wmSet,keyStates,this,state);}
@@ -2530,28 +2573,51 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     });$c.set(cssStores,proxy,record);return proxy;
   };
   var cssItems=function(list){return $c.get(cssStores,list).items;};
+  var cssPartsQuoteStep = function(state,c){
+    if(state.escaped) state.escaped=false;
+    else if(c==='\\') state.escaped=true;
+    else if(c===state.quote) state.quote='';
+  };
+  function cssPartsDepth(c){
+    if(c==='('||c==='[')return 1;
+    if(c===')'||c===']')return -1;
+    return 0;
+  }
+  function cssPartsEnterState(state,c,next){
+    if(c==='/'&&next==='*'){state.comment=true;return 1;}
+    if(c==='"'||c==="'"){state.quote=c;return 0;}
+    return -1;
+  }
   var cssParts = function(text, separator){
-    var out=[], start=0, depth=0, quote='', escaped=false, comment=false;
+    var out=[], start=0, depth=0;
+    var state={quote:'',escaped:false,comment:false};
     for (var i=0;i<text.length;i++) {
       var c=text[i], next=i+1<text.length?text[i+1]:undefined;
-      if (comment) { if(c==='*'&&next==='/'){comment=false;i++;} continue; }
-      if (quote) { if(escaped) escaped=false; else if(c==='\\') escaped=true; else if(c===quote) quote=''; continue; }
-      if(c==='/'&&next==='*'){comment=true;i++;continue;} if(c==='"'||c==="'"){quote=c;continue;}
-      if(c==='('||c==='[') depth++; else if(c===')'||c===']') depth--;
+      if (state.comment) { if(c==='*'&&next==='/'){state.comment=false;i++;} continue; }
+      if (state.quote) { cssPartsQuoteStep(state,c); continue; }
+      var enter=cssPartsEnterState(state,c,next);
+      if(enter>=0){i+=enter;continue;}
+      depth+=cssPartsDepth(c);
       if(c===separator&&depth===0){$c.push(out,$c.slice(text,start,i));start=i+1;}
     }
     $c.push(out,$c.slice(text,start)); return out;
   };
+  function cssPreludeComma(text,i){
+    var out=', ';
+    while(i+1<text.length&&$c.test(/\s/,text[i+1]))i++;
+    return {skipTo:i,insert:out};
+  }
   function cssPrelude(text,commas){
-    var out='',quote='',escaped=false,comment=false;
+    var out='';
+    var state={quote:'',escaped:false,comment:false};
     for(var i=0;i<text.length;i++){
       var c=text[i],next=i+1<text.length?text[i+1]:undefined;
-      if(comment){if(c==='*'&&next==='/'){comment=false;i++;}continue;}
-      if(quote){out+=c;if(escaped)escaped=false;else if(c==='\\')escaped=true;else if(c===quote)quote='';continue;}
+      if(state.comment){if(c==='*'&&next==='/'){state.comment=false;i++;}continue;}
+      if(state.quote){out+=c;cssPartsQuoteStep(state,c);continue;}
       if(c==='\\'){out+=c;if(next!==undefined)out+=text[++i];continue;}
-      if(c==='/'&&next==='*'){comment=true;i++;continue;}
-      if(c==='"'||c==="'"){quote=c;out+=c;continue;}
-      if(commas&&c===','){out=$c.replace(out,/\s*$/,'')+', ';while(i+1<text.length&&$c.test(/\s/,text[i+1]))i++;}
+      if(c==='/'&&next==='*'){state.comment=true;i++;continue;}
+      if(c==='"'||c==="'"){state.quote=c;out+=c;continue;}
+      if(commas&&c===','){var step=cssPreludeComma(text,i);out=$c.replace(out,/\s*$/,'')+step.insert;i=step.skipTo;}
       else out+=c;
     }
     return $c.trim(out);
@@ -2599,7 +2665,36 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);$c.call(appliedInlineWrite,record.owner,record.source);}}
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
   function removeDeclaration(record,name){if(!record.fontFace){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands){var removed=false;$c.forEach(longhands,function(longhand){if($c.delete(record.values,longhand)){$c.splice(record.names,$c.indexOf(record.names,longhand),1);removed=true;}});if(removed)commitDeclaration(record);return '';}}var previous=$c.get(record.values,name);if(!previous)return '';$c.delete(record.values,name);$c.splice(record.names,$c.indexOf(record.names,name),1);commitDeclaration(record);return previous.text;}
-  function setDeclaration(record,name,value,priority){writableDeclaration(record);name=cssString(name);value=value===null?'':cssString(value);priority=priority==null?'':$c.toLowerCase(cssString(priority));if(!value){removeDeclaration(record,name);return;}if(cssShorthand&&!record.fontFace){if(priority&&priority!=='important')return;if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,value);if(!entries)return;$c.forEach(entries,function(entry){storeDeclaration(record,entry[0],entry[1],priority,entry[2],entry[3]);});commitDeclaration(record);return;}if(priority&&priority!=='important'||!record.fontFace&&!$c.startsWith(name,'--')&&!knownProperty(name))return;var parsed={names:[],values:new Map(),fontFace:record.fontFace};parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');var accepted=$c.get(parsed.values,name);if(!accepted&&record.fontFace&&knownProperty(name)){parsed.fontFace=false;parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');accepted=$c.get(parsed.values,name);}if(!accepted)return;storeDeclaration(record,name,accepted.text,accepted.priority);commitDeclaration(record);}
+  function setDeclarationShorthand(record,name,value,priority){
+    if(priority&&priority!=='important')return;
+    if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);
+    var entries=declarationEntries(name,value);
+    if(!entries)return;
+    $c.forEach(entries,function(entry){storeDeclaration(record,entry[0],entry[1],priority,entry[2],entry[3]);});
+    commitDeclaration(record);
+  }
+  function setDeclarationLegacyParse(record,name,value,priority){
+    var parsed={names:[],values:new Map(),fontFace:record.fontFace};
+    parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');
+    var accepted=$c.get(parsed.values,name);
+    if(!accepted&&record.fontFace&&knownProperty(name)){
+      parsed.fontFace=false;
+      parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');
+      accepted=$c.get(parsed.values,name);
+    }
+    return accepted;
+  }
+  function setDeclaration(record,name,value,priority){
+    writableDeclaration(record);
+    name=cssString(name);value=value===null?'':cssString(value);priority=priority==null?'':$c.toLowerCase(cssString(priority));
+    if(!value){removeDeclaration(record,name);return;}
+    if(cssShorthand&&!record.fontFace){setDeclarationShorthand(record,name,value,priority);return;}
+    if(priority&&priority!=='important'||!record.fontFace&&!$c.startsWith(name,'--')&&!knownProperty(name))return;
+    var accepted=setDeclarationLegacyParse(record,name,value,priority);
+    if(!accepted)return;
+    storeDeclaration(record,name,accepted.text,accepted.priority);
+    commitDeclaration(record);
+  }
   // Typed OM writes (StylePropertyMap.set / append): Chrome stores the CSSStyleValue, so a
   // longhand keeps the value's own serialization (calc() sums in their order, products,
   // percentages) instead of the specified-value spelling setProperty applies (turbo-dom#97).
@@ -3069,24 +3164,29 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // one's (a sheet appended: an emotion test run adds a <style> per rule); the earlier build
   // then drops it and indexes afresh if it is used again.
   var cssLastBuckets=null;
+  function cssBucketReuseStart(build){
+    var last=cssLastBuckets;
+    if(!last||last.build.buckets!==last.index||last.build.lists.length>=build.lists.length)return 0;
+    var start=last.build.lists.length;
+    for(var at=0;at<start;at++)if(last.build.lists[at]!==build.lists[at])return 0;
+    return start;
+  }
+  function cssBucketAddEntry(index,entry,si){
+    var at=index.entries.length,keys=entry.bucketKeys;
+    if(keys===undefined)keys=entry.bucketKeys=entry.scopes?null:cssRuleKeys($c.trim(String(entry.rule.selectorText||'')));
+    $c.push(index.entries,entry);$c.push(index.sheet,si);
+    if(!keys){$c.push(index.unkeyed,at);return;}
+    for(var ki=0;ki<keys.length;ki++){var list=index.keyed[keys[ki]];if(!list)list=index.keyed[keys[ki]]=[];if(list[list.length-1]!==at)$c.push(list,at);}
+  }
   function cssBucketIndex(build){
     var index=build.buckets;if(index)return index;
-    var start=0,last=cssLastBuckets;
-    if(last&&last.build.buckets===last.index&&last.build.lists.length<build.lists.length){
-      start=last.build.lists.length;
-      for(var at=0;at<start;at++)if(last.build.lists[at]!==build.lists[at]){start=0;break;}
-    }
+    var start=cssBucketReuseStart(build),last=cssLastBuckets;
     if(start){index=last.index;last.build.buckets=null;}
     else index={__proto__:null,entries:[],sheet:[],unkeyed:[],keyed:{__proto__:null}};
     build.buckets=index;cssLastBuckets={__proto__:null,build:build,index:index};
     for(var si=start;si<build.lists.length;si++){
       var entries=build.lists[si];
-      for(var ri=0;ri<entries.length;ri++){
-        var at=index.entries.length,entry=entries[ri],keys=entry.bucketKeys;if(keys===undefined)keys=entry.bucketKeys=entry.scopes?null:cssRuleKeys($c.trim(String(entry.rule.selectorText||'')));
-        $c.push(index.entries,entry);$c.push(index.sheet,si);
-        if(!keys){$c.push(index.unkeyed,at);continue;}
-        for(var ki=0;ki<keys.length;ki++){var list=index.keyed[keys[ki]];if(!list)list=index.keyed[keys[ki]]=[];if(list[list.length-1]!==at)$c.push(list,at);}
-      }
+      for(var ri=0;ri<entries.length;ri++)cssBucketAddEntry(index,entries[ri],si);
     }
     return index;
   }
@@ -3107,26 +3207,40 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     return out;
   }
   var cssUnkeyedCompound=/^::?(?:host|slotted|part)(?![\w-])/i;
+  function cssRuleKeysIsSeparator(c){return c===' '||c==='\t'||c==='\n'||c==='\r'||c==='\f'||c==='>'||c==='+'||c==='~';}
+  function cssRuleKeysIsReject(c){return c==='\\'||c==='&'||c==='|';}
+  function cssRuleKeysSkip(c,text,index){
+    if(c==='"'||c==="'")return {next:computedStringEnd(text,index)};
+    if(c==='[')return {next:cssBracketEnd(text,index)};
+    return null;
+  }
+  function cssRuleKeysDepthDelta(c){return c==='('?1:c===')'?-1:0;}
+  function cssRuleKeysHandleDot(text,index,c,key){
+    var ident=cssApply(cssZoomExec,computedIdent,[$c.slice(text,index+1)]);
+    if(!ident)return null;
+    return {key:key||(c+$c.toLowerCase(ident[0])),skip:ident[0].length};
+  }
+  function cssRuleKeysTopChar(text,index,c,keys,key){
+    if(c===','){if(!key)return null;$c.push(keys,key);return {key:null,skip:0};}
+    if(cssRuleKeysIsSeparator(c))return {key:null,skip:0};
+    if(c===':'&&cssApply(cssZoomExec,cssUnkeyedCompound,[$c.slice(text,index)]))return null;
+    if(c==='.'||c==='#')return cssRuleKeysHandleDot(text,index,c,key);
+    return {key:key,skip:0};
+  }
   function cssRuleKeys(text){
     if($c.indexOf(text,'\\')>=0)return null;
     var keys=[],key=null,depth=0;
     for(var index=0;index<text.length;index++){
       var c=text[index];
-      if(c==='\\'||c==='&'||c==='|')return null;
-      if(c==='"'||c==="'"){index=computedStringEnd(text,index);continue;}
-      if(c==='['){index=cssBracketEnd(text,index);continue;}
-      if(c==='('){depth++;continue;}
-      if(c===')'){depth--;continue;}
+      if(cssRuleKeysIsReject(c))return null;
+      var skip=cssRuleKeysSkip(c,text,index);
+      if(skip){index=skip.next;continue;}
+      var delta=cssRuleKeysDepthDelta(c);
+      if(delta){depth+=delta;continue;}
       if(depth)continue;
-      if(c===','){if(!key)return null;$c.push(keys,key);key=null;}
-      else if(c===' '||c==='\t'||c==='\n'||c==='\r'||c==='\f'||c==='>'||c==='+'||c==='~')key=null;
-      else if(c===':'&&cssApply(cssZoomExec,cssUnkeyedCompound,[$c.slice(text,index)]))return null;
-      else if(c==='.'||c==='#'){
-        var ident=cssApply(cssZoomExec,computedIdent,[$c.slice(text,index+1)]);
-        if(!ident)return null;
-        if(!key)key=c+$c.toLowerCase(ident[0]);
-        index+=ident[0].length;
-      }
+      var step=cssRuleKeysTopChar(text,index,c,keys,key);
+      if(!step)return null;
+      key=step.key;index+=step.skip;
     }
     if(!key)return null;
     $c.push(keys,key);
@@ -3322,6 +3436,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function adoptionRecord(value){var record=sheetRecords.get(value);if(!record)throw new TypeError('The value is not a CSSStyleSheet');return record;}
   function adoptionDocument(owner){var type=cssApply(adoptionNodeCheck,owner,[]);if(type===9)return owner;if(type===11&&cssApply(adoptionShadowCheck,owner,[]))return cssApply(adoptionOwner,owner,[]);throw new TypeError('Illegal invocation');}
   function adoptionAllowed(owner,value){var record=adoptionRecord(value);if(!record.constructed||record.constructorDocument!==adoptionDocument(owner))throw new adoptionDOMException('The stylesheet cannot be adopted','NotAllowedError');}
+  function adoptionDefineIndex(descriptor,i,index){
+    if(adoptionOwn(descriptor,'get')||adoptionOwn(descriptor,'set')||adoptionOwn(descriptor,'configurable')&&!descriptor.configurable||adoptionOwn(descriptor,'enumerable')&&!descriptor.enumerable||adoptionOwn(descriptor,'writable')&&!descriptor.writable)return false;
+    return adoptionOwn(descriptor,'value')?index(i,descriptor.value):true;
+  }
+  function adoptionDefineLength(descriptor,length){
+    if(adoptionOwn(descriptor,'get')||adoptionOwn(descriptor,'set')||adoptionOwn(descriptor,'writable')&&!descriptor.writable)return false;
+    return adoptionOwn(descriptor,'value')?length(descriptor.value):true;
+  }
   function createAdoption(owner){
     var target=[],state={__proto__:null,target:target,proxy:null};
     function length(value){var n=+value;if(n<0||n>4294967295||n!==adoptionFloor(n))throw new RangeError('Invalid array length');if(n<target.length)target.length=n;return true;}
@@ -3330,7 +3452,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       preventExtensions:function(){return false;},
       set:function(target,key,value,receiver){invalidateComputedStyles();var i=cssIndex(key);if(key==='length')return length(value);return i>=0&&i<4294967295?index(i,value):adoptionSet(target,key,value,receiver);},
       deleteProperty:function(target,key){invalidateComputedStyles();var i=cssIndex(key);if(i>=0&&i<target.length){target.length=i;return true;}return adoptionDelete(target,key);},
-      defineProperty:function(target,key,descriptor){invalidateComputedStyles();var i=cssIndex(key);if(i>=0&&i<4294967295){if(adoptionOwn(descriptor,'get')||adoptionOwn(descriptor,'set')||adoptionOwn(descriptor,'configurable')&&!descriptor.configurable||adoptionOwn(descriptor,'enumerable')&&!descriptor.enumerable||adoptionOwn(descriptor,'writable')&&!descriptor.writable)return false;return adoptionOwn(descriptor,'value')?index(i,descriptor.value):true;}if(key==='length'){if(adoptionOwn(descriptor,'get')||adoptionOwn(descriptor,'set')||adoptionOwn(descriptor,'writable')&&!descriptor.writable)return false;return adoptionOwn(descriptor,'value')?length(descriptor.value):true;}return adoptionDefine(target,key,descriptor);}
+      defineProperty:function(target,key,descriptor){invalidateComputedStyles();var i=cssIndex(key);if(i>=0&&i<4294967295)return adoptionDefineIndex(descriptor,i,index);if(key==='length')return adoptionDefineLength(descriptor,length);return adoptionDefine(target,key,descriptor);}
     });
     return state;
   }
@@ -3406,18 +3528,21 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // sets value to ''. userEvent.type relies on this (isValidDateOrTimeValue clones, assigns, and
     // checks the value stuck) to commit the typed value + fire onChange only once a full valid date
     // is entered. Without it, partials commit and the controlled reset mangles the result.
+    var validForTypePatterns = {
+      date: /^\d{4}-\d{2}-\d{2}$/,
+      time: /^\d{2}:\d{2}(:\d{2})?$/,
+      month: /^\d{4}-\d{2}$/,
+      'datetime-local': /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/,
+      number: /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/
+    };
     var validForType = function(el, v){
       var t = $c.toLowerCase($getAttr(el, 'type') || 'text');
       // Range, the date/time family and textarea newlines follow Chromium (input_members.js).
       var sanitized = __ns.sanitizeControlValue ? __ns.sanitizeControlValue(el, t, v) : undefined;
       if (sanitized !== undefined) return sanitized;
-      if (t === 'date') return $c.test(/^\d{4}-\d{2}-\d{2}$/, v) ? v : '';
-      if (t === 'time') return $c.test(/^\d{2}:\d{2}(:\d{2})?$/, v) ? v : '';
-      if (t === 'month') return $c.test(/^\d{4}-\d{2}$/, v) ? v : '';
-      if (t === 'datetime-local') return $c.test(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, v) ? v : '';
-      // A number input only retains a valid floating-point number; an invalid/partial value ('.', '-')
-      // becomes '' (HTML value-sanitization), which is what lets components see the empty-string clear.
-      if (t === 'number') return (v === '' || $c.test(/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/, v)) ? v : '';
+      if (t === 'number') return (v === '' || $c.test(validForTypePatterns.number, v)) ? v : '';
+      var pattern = validForTypePatterns[t];
+      if (pattern) return $c.test(pattern, v) ? v : '';
       return v;
     };
     // Live input/textarea values have a dirty flag, separate from their defaults.
@@ -3485,17 +3610,28 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var selEndDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).end:null;},set:function(value){selectionRequire(this);var state=selectionState(this),end=value===null?0:+value>>>0;selectionUpdate(this,selectionMin(state.start,end),end,state.direction);}};
     var selDirDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).direction:null;},set:function(value){selectionRequire(this);var state=selectionState(this);selectionUpdate(this,state.start,state.end,value===null?'none':selectionText(value));}};
     function setControlSelectionRange(start,end){if(arguments.length<2)throw new selectionTypeError('setSelectionRange requires two arguments');start=+start>>>0;end=+end>>>0;var direction=arguments.length<3||arguments[2]===undefined?'none':selectionText(arguments[2]);selectionRequire(this);selectionUpdate(this,start,end,direction);}
+    function setControlRangeTextApplyMode(self,mode,state,start,end,replacement,next){
+      if(mode==='select'){selectionUpdate(self,start,next,'none');return;}
+      if(mode==='start'){selectionUpdate(self,start,start,'none');return;}
+      if(mode==='end'){selectionUpdate(self,next,next,'none');return;}
+      var delta=replacement.length-(end-start),oldStart=state.start,oldEnd=state.end;
+      selectionUpdate(self,oldStart>end?oldStart+delta:oldStart>start?start:oldStart,oldEnd>end?oldEnd+delta:oldEnd>start?next:oldEnd,'none');
+    }
+    function setControlRangeTextMode(args){
+      var mode=args.length<4||args[3]===undefined?'preserve':selectionText(args[3]);
+      if(mode!=='select'&&mode!=='start'&&mode!=='end'&&mode!=='preserve')throw new selectionTypeError('Invalid selection mode');
+      return mode;
+    }
     function setControlRangeText(replacement){
       if(arguments.length===0||arguments.length===2)throw new selectionTypeError('setRangeText requires one or at least three arguments');
       replacement=selectionText(replacement);var state=selectionState(this),start=state.start,end=state.end;
       if(arguments.length>=3){start=+arguments[1]>>>0;end=+arguments[2]>>>0;}
-      var mode=arguments.length<4||arguments[3]===undefined?'preserve':selectionText(arguments[3]);
-      if(mode!=='select'&&mode!=='start'&&mode!=='end'&&mode!=='preserve')throw new selectionTypeError('Invalid selection mode');
+      var mode=setControlRangeTextMode(arguments);
       selectionRequire(this);if(start>end)throw new selectionException('The start exceeds the end','IndexSizeError');
       var value=selectionValue(this),length=value.length;start=selectionMin(start,length);end=selectionMin(end,length);
-      var oldStart=state.start,oldEnd=state.end,next=start+replacement.length;
+      var next=start+replacement.length;
       selectionApply(valDesc.set,this,[value.slice(0,start)+replacement+value.slice(end)]);
-      if(mode==='select')selectionUpdate(this,start,next,'none');else if(mode==='start')selectionUpdate(this,start,start,'none');else if(mode==='end')selectionUpdate(this,next,next,'none');else{var delta=replacement.length-(end-start);selectionUpdate(this,oldStart>end?oldStart+delta:oldStart>start?start:oldStart,oldEnd>end?oldEnd+delta:oldEnd>start?next:oldEnd,'none');}
+      setControlRangeTextApplyMode(this,mode,state,start,end,replacement,next);
     }
     var baseProto = compatibilityElementPrototype = Object.getPrototypeOf(orig.call(d,'span'));
     // Reflected IDL attributes on every element: setting el.src / el.href (script/img/link/a — a DOM
@@ -3525,23 +3661,30 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // character data, recursively-equal children). Recurses via a helper (not
     // child.isEqualNode) so it works even on node types that miss the method.
     if (!baseProto.isEqualNode) {
+      var __nodeAttrsEq = function(a, b){
+        var aa = $call($N.nativeAttributes, a), ba = $call($N.nativeAttributes, b);
+        if (aa.length !== ba.length) return false;
+        for (var i = 0; i < aa.length; i++) {
+          if ($call($N.getAttribute, b, $call($N['attr.name'], aa[i])) !== $call($N['attr.value'], aa[i])) return false;
+        }
+        return true;
+      };
+      var __nodeChildrenEq = function(a, b){
+        var ac = $call($N.firstChild, a), bc = $call($N.firstChild, b);
+        for (; ac !== null && bc !== null; ac = $call($N.nextSibling, ac), bc = $call($N.nextSibling, bc)) { if (!__nodeEq(ac, bc)) return false; }
+        return ac === bc;
+      };
       var __nodeEq = function(a, b){
         if (a === b) return true;
         if (!a || !b) return false;
         var type = $call($N.nodeType, a);
         if (type !== $call($N.nodeType, b) || $call($N.nodeName, a) !== $call($N.nodeName, b)) return false;
         if (type === 1) {
-          var aa = $call($N.nativeAttributes, a), ba = $call($N.nativeAttributes, b);
-          if (aa.length !== ba.length) return false;
-          for (var i = 0; i < aa.length; i++) {
-            if ($call($N.getAttribute, b, $call($N['attr.name'], aa[i])) !== $call($N['attr.value'], aa[i])) return false;
-          }
+          if (!__nodeAttrsEq(a, b)) return false;
         } else if (($call($N.nodeValue, a) || '') !== ($call($N.nodeValue, b) || '')) {
           return false;
         }
-        var ac = $call($N.firstChild, a), bc = $call($N.firstChild, b);
-        for (; ac !== null && bc !== null; ac = $call($N.nextSibling, ac), bc = $call($N.nextSibling, bc)) { if (!__nodeEq(ac, bc)) return false; }
-        return ac === bc;
+        return __nodeChildrenEq(a, b);
       };
       baseProto.isEqualNode = function(other){ return __nodeEq(this, other); };
       if (!baseProto.isSameNode) baseProto.isSameNode = function(other){ return this === other; };
@@ -3652,16 +3795,24 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var optionStates = new WeakMap(), emptySelects = new WeakSet();
       var isSelected = function(o){ return $c.has(optionStates,o) ? $c.get(optionStates,o) : $hasAttr(o, 'selected'); };
       var selectNumber = Number;
+      var optionGroupDisabled = function(opt){
+        var group = $apply(optionParent, opt, []);
+        return group && $apply(optionKind, group, []) === 1 && optionName(group) === 'optgroup' && $hasAttr(group, 'disabled');
+      };
+      var firstEnabledOption = function(os){
+        for (var j = 0; j < os.length; j++) {
+          if (!$hasAttr(os[j], 'disabled') && !optionGroupDisabled(os[j])) return os[j];
+        }
+        return null;
+      };
       var selectionOf = function(sel){
         var os = optionsOf(sel), chosen = [];
         for (var i=0;i<os.length;i++) if (isSelected(os[i])) $c.push(chosen, os[i]);
         var multiple = $hasAttr(sel, 'multiple');
         if (!multiple && chosen.length > 1) chosen = [chosen[chosen.length-1]];
         if (!chosen.length && !multiple && selectNumber($getAttr(sel, 'size') || 0) <= 1 && !$c.has(emptySelects,sel)) {
-          for (var j=0;j<os.length;j++) {
-            var group = $apply(optionParent, os[j], []);
-            if (!$hasAttr(os[j], 'disabled') && !(group && $apply(optionKind, group, []) === 1 && optionName(group) === 'optgroup' && $hasAttr(group, 'disabled'))) { $c.push(chosen, os[j]); break; }
-          }
+          var fallback = firstEnabledOption(os);
+          if (fallback) $c.push(chosen, fallback);
         }
         return chosen;
       };
