@@ -5,6 +5,13 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## Unreleased
+
+### Fixed
+
+- turbo-dom-browser-env: getComputedStyle `width` / `height` report the used value of a rendered box (Chrome 156): an embedder with a layout sets `layoutUsedSize` on the engine namespace (`(element) => [border-box width, height, content-box width, height]` or `null`), box-sizing picks the box and the px value serializes like Blink (`%g`, ties to even: `5.32812px`). Elements Chrome reports the computed value for — display none / contents (also under a display:none ancestor), non-atomic inline elements, SVG children other than rect / image / foreignObject — read their declared value or `auto` instead of `""`, and a display:none percentage stays a percentage. Without a layout a rendered box keeps its declared value. turbo-surf installs the hook to close its width column (turbo-dom#316; control: case `used-size` of `computed_defaults_chrome156.json`).
+- turbo-dom-browser-env: getComputedStyle resolves the CSS-wide keywords `initial` / `inherit` / `unset` / `revert` for the properties its computed defaults know, so `background-color: initial` reads `rgba(0, 0, 0, 0)` instead of `initial` (turbo-dom#317; control: case `css-wide-keywords`).
+
 ## [0.7.1] — 2026-11-05
 
 ### Added

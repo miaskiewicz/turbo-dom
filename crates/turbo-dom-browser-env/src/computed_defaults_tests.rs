@@ -339,7 +339,6 @@ fn used_size_mismatches(engine: &str, keep: impl Fn(&str) -> bool) -> Vec<String
 /// elements, SVG children other than rect / image / foreignObject; "" disconnected
 /// (case `used-size`).
 #[test]
-#[ignore = "turbo-dom#316: fails until the fix"]
 fn used_sizes_match_chrome156_control_with_embedder_layout() {
     let found = used_size_mismatches(
         "const boxes = BOXES; __tsNs.layoutUsedSize = (el) => boxes[el.id] ?? null;",
@@ -360,7 +359,6 @@ fn used_sizes_match_chrome156_control_with_embedder_layout() {
 /// undeclared size stays "" (no used value to report) and a percentage resolves against a px
 /// ancestor.
 #[test]
-#[ignore = "turbo-dom#316: fails until the fix"]
 fn used_sizes_without_a_layout_report_computed_values() {
     let known = |path: &str| {
         let id = path.split('.').nth(1).unwrap_or("");
@@ -404,7 +402,6 @@ fn used_sizes_without_a_layout_report_computed_values() {
 /// turbo-dom#316: a returned declaration reads the used size from the embedder's layout on
 /// every access, so a layout change shows without a DOM change.
 #[test]
-#[ignore = "turbo-dom#316: fails until the fix"]
 fn used_sizes_follow_the_embedder_layout_live() {
     let value = run_with(
         "<!doctype html><body><div id=a></div></body>",
