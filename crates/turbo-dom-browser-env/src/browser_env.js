@@ -1527,8 +1527,6 @@
   // 27's behaviour for vitest parity: no matchMedia / MediaQueryList / MediaQueryListEvent,
   // and a media list applies only when one of its items is exactly `screen` (jsdom's
   // forEachMatchingSheetRuleOfElement); an @import also applies with no media list.
-  // jsdom mode also runs no CSS transitions / animations and hides Web Animations
-  // (animations.js setJsdomAnimations).
   var mediaMode = 'chrome', jsdomHidden = null;
   function jsdomScreen(text){ var items = $c.split(String(text), ','); for (var i = 0; i < items.length; i++) if ($c.trim(items[i]) === 'screen') return true; return false; }
   __ns.setMediaMode = function(mode){
@@ -1537,7 +1535,6 @@
     var names = ['matchMedia', 'MediaQueryList', 'MediaQueryListEvent'];
     if (mode === 'jsdom') { jsdomHidden = names.map(function(name){ var d = Object.getOwnPropertyDescriptor(g, name); delete g[name]; return d; }); }
     else { names.forEach(function(name, i){ if (jsdomHidden[i]) Object.defineProperty(g, name, jsdomHidden[i]); }); jsdomHidden = null; }
-    if (__ns.setJsdomAnimations) __ns.setJsdomAnimations(mode === 'jsdom');
     invalidateComputedStyles();
   };
   __ns.withMediaView = function(target, run){ var outer = mediaView; mediaView = target; try { return run(); } finally { mediaView = outer; } };

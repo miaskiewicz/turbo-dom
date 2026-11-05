@@ -49,12 +49,13 @@ pub(super) fn run_probe(html: &str, probe: &str, frozen: bool) -> serde_json::Va
     run_probe_in(html, probe, frozen, None)
 }
 
-/// [`run_probe`] with the embedder's media mode set after install (`None` keeps the default).
+/// [`run_probe`] with the embedder's CSS transitions switch set after install (`None` keeps
+/// the default).
 fn run_probe_in(
     html: &str,
     probe: &str,
     frozen: bool,
-    mode: Option<MediaMode>,
+    transitions: Option<bool>,
 ) -> serde_json::Value {
     super::tests::init_v8();
     let isolate = &mut crate::browser_env::tests::new_isolate();
@@ -62,8 +63,8 @@ fn run_probe_in(
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     install_with_html(scope, html);
-    if let Some(mode) = mode {
-        set_media_mode(scope, mode);
+    if let Some(enabled) = transitions {
+        set_css_transitions(scope, enabled);
     }
     run_js(scope, &format!("globalThis.__frozenTimeline = {frozen};"));
     run_js(scope, LOOP);
@@ -387,11 +388,11 @@ fn recorded(json: &str, probe: &str, key: &str, version: &str) -> serde_json::Va
     control["result"].clone()
 }
 
-// MediaMode::Jsdom (turbo-test's default, for vitest parity): jsdom 27.4.0 has no Web
+// CSS transitions off (turbo-test's default, for vitest parity): jsdom 27.4.0 has no Web
 // Animations and runs no CSS transitions or @keyframes animations, so getComputedStyle reports
 // the end value at once and no transition / animation event fires.
 #[test]
-fn jsdom_mode_transitions_match_jsdom27_control() {
+fn css_transitions_off_match_jsdom27_control() {
     let probe = include_str!("jsdom_transitions_probe.js");
     let expected = recorded(
         include_str!("jsdom_transitions_jsdom27.json"),
@@ -399,14 +400,14 @@ fn jsdom_mode_transitions_match_jsdom27_control() {
         "jsdom",
         "27.4.0",
     );
-    let actual = run_probe_in(TRANSITIONS_HTML, probe, false, Some(MediaMode::Jsdom));
+    let actual = run_probe_in(TRANSITIONS_HTML, probe, false, Some(false));
     assert_eq!(actual, expected);
 }
 
-// MediaMode::Chrome (the default) keeps Chrome 156's transitions, @keyframes animations and
+// CSS transitions on (the default) keeps Chrome 156's transitions, @keyframes animations and
 // their events, explicitly set or not.
 #[test]
-fn chrome_mode_transitions_match_chrome156_control() {
+fn css_transitions_on_match_chrome156_control() {
     let probe = include_str!("jsdom_transitions_probe.js");
     let expected = recorded(
         include_str!("jsdom_transitions_chrome156.json"),
@@ -421,7 +422,7 @@ fn chrome_mode_transitions_match_chrome156_control() {
     expected["events"] = serde_json::json!([]);
     assert_eq!(run_probe(TRANSITIONS_HTML, probe, false), expected);
     assert_eq!(
-        run_probe_in(TRANSITIONS_HTML, probe, false, Some(MediaMode::Chrome)),
+        run_probe_in(TRANSITIONS_HTML, probe, false, Some(true)),
         expected
     );
 }

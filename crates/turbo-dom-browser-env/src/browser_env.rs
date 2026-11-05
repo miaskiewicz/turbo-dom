@@ -2046,8 +2046,7 @@ pub fn set_form_submission_blocked(scope: &mut v8::PinScope, blocked: bool) {
     });
 }
 
-/// The embedder's browser-parity mode: how `window.matchMedia`, getComputedStyle's `@media` /
-/// `@import` media lists and CSS transitions / animations behave.
+/// How `window.matchMedia` and getComputedStyle's `@media` / `@import` media lists behave.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MediaMode {
     /// Chrome's: a live `MediaQueryList` and media lists evaluated against the viewport.
@@ -2055,9 +2054,6 @@ pub enum MediaMode {
     Chrome,
     /// jsdom 27's (vitest's jsdom environment): no `matchMedia`, and a media list applies
     /// only when one of its items is exactly `screen` (an `@import` also with no list).
-    /// Like jsdom it also runs no CSS transitions or `@keyframes` animations (getComputedStyle
-    /// reports the declared value at once) and has no Web Animations surface (`animate`,
-    /// `getAnimations`, `document.timeline`, `Animation`, `CSSTransition`, `AnimationEvent`, ...).
     Jsdom,
 }
 
@@ -2073,6 +2069,28 @@ pub fn set_media_mode(scope: &mut v8::PinScope, mode: MediaMode) {
         match mode {
             MediaMode::Chrome => "__tsNs.setMediaMode('chrome')",
             MediaMode::Jsdom => "__tsNs.setMediaMode('jsdom')",
+        },
+    );
+}
+
+/// Whether the current window runs CSS transitions, `@keyframes` animations and Web
+/// Animations (installs start with them on, as Chrome). Off is jsdom 27's behaviour: no
+/// CSSTransition / CSSAnimation is created, so getComputedStyle reports the declared (end)
+/// value at once and no transition / animation event fires, and the Web Animations surface
+/// jsdom lacks (`animate`, `getAnimations`, `document.timeline`, `Animation`, `CSSTransition`,
+/// `AnimationEvent`, ...) is hidden. Independent of [`MediaMode`].
+pub fn set_css_transitions(scope: &mut v8::PinScope, enabled: bool) {
+    let id = scope
+        .get_current_context()
+        .get_slot::<DomContextId>()
+        .map_or(0, |id| id.0);
+    let _dom = DomScope::enter(id);
+    run_js(
+        scope,
+        if enabled {
+            "__tsNs.setJsdomAnimations(false)"
+        } else {
+            "__tsNs.setJsdomAnimations(true)"
         },
     );
 }

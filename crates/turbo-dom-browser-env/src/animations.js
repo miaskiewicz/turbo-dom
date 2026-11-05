@@ -1974,7 +1974,7 @@
     return collect(effect => root(effect.target) === shadow);
   }, 0);
 
-  // MediaMode::Jsdom (ns.setJsdomAnimations, from setMediaMode): jsdom 27 has no Web
+  // set_css_transitions(false) (ns.setJsdomAnimations(true)): jsdom 27 has no Web
   // Animations and runs no CSS transitions or @keyframes animations, so getComputedStyle
   // reports the declared value at once, no transition / animation events fire, and the
   // interfaces and members it lacks are hidden. Chrome restores them as they were.

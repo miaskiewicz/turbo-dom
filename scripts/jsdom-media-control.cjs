@@ -1,4 +1,4 @@
-// jsdom 27.4.0 control for browser-env's MediaMode::Jsdom (the media, transition and
+// jsdom 27.4.0 control for browser-env's MediaMode::Jsdom and set_css_transitions(false) (the media, transition and
 // animation behaviour vitest's jsdom environment has): runs a probe (an expression, possibly
 // a promise) in a fresh JSDOM and records its result.
 // Usage: JSDOM=/path/to/node_modules/jsdom node scripts/jsdom-media-control.cjs PROBE > OUT.json
