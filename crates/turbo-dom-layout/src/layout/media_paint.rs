@@ -38,6 +38,11 @@ const CLEAR: Rgba = Rgba {
 /// The panel's height.
 const HEIGHT: f32 = 54.0;
 
+/// Every panel decoration is laid out under this node id instead of the audio
+/// element's, so its subtree is not read by the live-layout snapshot's bounds
+/// (miaskiewicz/turbo-dom#364). `u32::MAX` never collides with a real box id.
+const DECORATION_ID: NodeId = NodeId(u32::MAX);
+
 const fn rgb(r: u8, g: u8, b: u8) -> Rgba {
     Rgba { r, g, b, a: 255 }
 }
@@ -53,28 +58,48 @@ const SHOW_TIME_REMAINING: f32 = 211.0;
 
 /// Add the panel to the audio box `frag`, whose content box is `(x, y, w, h)`. In a
 /// horizontal writing mode the panel spans the content width at the block end; in a
-/// vertical writing mode it is a 54 x 54 pill at the content box's physical bottom
-/// (Chrome 156's `-webkit-media-controls-enclosure`, measured via
-/// `scripts/form-native-chrome-control.mjs`'s `audio-panel-vertical-rl`). A box under
-/// 54px tall still paints the pill, clipped to the box (miaskiewicz/turbo-dom#346).
+/// vertical writing mode it is a 54 x (box's physical width) pill at the content box's
+/// inline-end strip (logical), which maps to the physical bottom
+/// (miaskiewicz/turbo-dom#363). A box under 54px tall still paints the pill and its
+/// controls at their virtual-54-tall offsets — the box clips the top of each control,
+/// Chrome 156 (miaskiewicz/turbo-dom#364). Every decoration fragment carries
+/// [`DECORATION_ID`] so the live-geometry snapshot does not include it in the audio
+/// element's `getBoundingClientRect()` subtree bounds.
 pub(crate) fn audio_panel(
     frag: &mut Fragment,
     (x, y, w, h): (f32, f32, f32, f32),
     vertical: bool,
     fonts: &FontRegistry,
 ) {
-    let ph = h.min(HEIGHT);
-    let pw = if vertical { w.min(HEIGHT) } else { w };
-    let pill_top = y + h - ph;
-    let id = frag.node_id;
-    let at = |dx: f32, dy: f32| (x + dx, pill_top + dy);
-    let pill_at = |dx: f32, dy: f32| (x + dx, pill_top + dy);
-    let mut parts = vec![rounded(id, pill_at(0.0, 0.0), (pw, ph), PANEL, ph / 2.0)];
-    // A short panel (vertical mode, a thin box or a short box): just the pill.
-    if pw < SHOW_MENU || ph < HEIGHT {
+    let (pill_x, pill_y, pw, ph) = if vertical {
+        // The pill: a `HEIGHT`-wide strip at the content's inline-end (its block-end in
+        // its own logical space, which `map_tree` rotates to the physical bottom).
+        let pw_v = HEIGHT.min(w);
+        (x + w - pw_v, y, pw_v, h)
+    } else {
+        let ph_h = h.min(HEIGHT);
+        (x, y + h - ph_h, w, ph_h)
+    };
+    let id = DECORATION_ID;
+    let virtual_top = pill_y + ph - HEIGHT;
+    let at = |dx: f32, dy: f32| (x + dx, virtual_top + dy);
+    let pill_at = |dx: f32, dy: f32| (pill_x + dx, pill_y + dy);
+    // The pill: its radius is half the shorter side (a square becomes a circle; in
+    // vertical mode the pill's rounded sides lie on the inline axis).
+    let radius = pw.min(ph) / 2.0;
+    let mut parts = vec![rounded(id, pill_at(0.0, 0.0), (pw, ph), PANEL, radius)];
+    // Vertical mode or `pw < SHOW_MENU`: just the pill.
+    if vertical || pw < SHOW_MENU {
         frag.children.extend(parts);
         return;
     }
+    // A box shorter than the full 54px panel keeps its controls at their virtual
+    // offsets (play button at `virtual_top + 11`, menu dots at `virtual_top + 20/25/30`),
+    // so Chrome's `-webkit-media-controls-panel` clips the top of each control to the
+    // content box (miaskiewicz/turbo-dom#364). A clip group over the content box
+    // (`(x, y, w, h)`) keeps the controls out of the audio box's getBoundingClientRect
+    // too, since the clipped subtree lies under `DECORATION_ID`.
+    let short = ph < HEIGHT;
     if pw >= SHOW_PLAY {
         parts.push(play(id, at(27.05, 27.0)));
     }
@@ -119,6 +144,21 @@ pub(crate) fn audio_panel(
     }
     for dy in [20.0, 25.0, 30.0] {
         parts.push(rounded(id, at(pw - 28.0, dy), (4.0, 4.0), Rgba::BLACK, 2.0));
+    }
+    if short {
+        let pill = parts.remove(0);
+        let mut clip = Fragment::new(id, x, y, w, h, shape(None, BorderEdges::default(), 0.0));
+        clip.overflow_clip = Some(super::fragment::OverflowClip {
+            x: 0.0,
+            y: 0.0,
+            width: w,
+            height: h,
+            radii: BorderRadii::ZERO,
+        });
+        clip.children = parts;
+        frag.children.push(pill);
+        frag.children.push(clip);
+        return;
     }
     frag.children.extend(parts);
 }
@@ -415,9 +455,12 @@ mod tests {
                 .any(|p| p.4 == Some(PANEL) && (p.3 - 40.0).abs() < 0.01),
             "{short:?}"
         );
-        // Vertical writing mode: no panel at all (follow-up of miaskiewicz/turbo-dom#346).
+        // Vertical writing mode (miaskiewicz/turbo-dom#363): a 54 x content-block pill
+        // at the content box's inline-end (logical). In a 54 x 300 vertical-rl box the
+        // pill is 54 x 54 at logical `x + w - 54, y`; `map_tree` rotates it to the
+        // physical bottom.
         let (v, _) = audio("writing-mode:vertical-rl;width:54px;height:300px");
-        assert!(v.iter().all(|p| p.4 != Some(PANEL)), "{v:?}");
+        assert!(v.iter().any(|p| p.4 == Some(PANEL)), "{v:?}");
     }
 
     #[test]

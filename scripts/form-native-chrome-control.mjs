@@ -123,14 +123,23 @@ const CASES = [
   ["audio-panel-99", `<audio data-cid="m" controls style="${AT};width:99px"></audio>`, { exclude: [[22, 20, 89, 44]] }],
   ["audio-panel-67", `<audio data-cid="m" controls style="${AT};width:67px"></audio>`, { exclude: [[22, 20, 57, 44]] }],
   ["audio-panel-short", `<audio data-cid="m" controls style="${AT};height:40px"></audio>`, { exclude: [[22, 20, 300, 39]] }],
+  // A shorter box still gets Chrome's `-webkit-media-controls-panel` play, timeline and
+  // menu at the virtual 54-tall panel's offsets (negative `top`); the box clips the top
+  // of each control (miaskiewicz/turbo-dom#364). The `exclude` covers the controls'
+  // glyphs so only the pill class contrast is checked.
+  ["audio-panel-short-26", `<audio data-cid="m" controls style="${AT};height:26px"></audio>`, { exclude: [[22, 20, 300, 59]] }],
+  // A vertical-rl / vertical-lr audio box gets Chrome's 54x54 panel pill at the content
+  // box's physical bottom (miaskiewicz/turbo-dom#363).
+  ["audio-panel-vertical-rl", `<audio data-cid="m" controls style="${AT};writing-mode:vertical-rl;width:54px;height:300px"></audio>`, { exclude: [[30, 268, 65, 318]] }],
+  ["audio-panel-vertical-lr", `<audio data-cid="m" controls style="${AT};writing-mode:vertical-lr;width:54px;height:300px"></audio>`, { exclude: [[30, 268, 65, 318]] }],
   // `<progress>` / `<meter>` under `appearance:none` or an author background stop
   // painting Chrome's native look: Chrome's shadow bars take over (grey / blue for
   // progress, gradients for meter; miaskiewicz/turbo-dom#346). `-pbg`: a plain author
   // background. `-pbd`: an author border too (that goes around the bars, not over them).
   ["progress-appearance-none", `<progress data-cid="m" value="0.3" style="${AT};appearance:none"></progress>`, { exclude: [] }],
   ["progress-author-background", `<progress data-cid="m" value="0.3" style="${AT};background:#ff0000"></progress>`, { exclude: [] }],
-  ["meter-appearance-none", `<meter data-cid="m" value="0.6" style="${AT};appearance:none"></meter>`, { exclude: [] }],
-  ["meter-author-background", `<meter data-cid="m" value="0.3" style="${AT};background:#ff0000"></meter>`, { exclude: [] }],
+  ["meter-appearance-none", `<meter data-cid="m" value="0.6" style="${AT};appearance:none"></meter>`, { probes: [[4, 8], [20, 8], [40, 8]], exclude: [] }],
+  ["meter-author-background", `<meter data-cid="m" value="0.3" style="${AT};background:#ff0000"></meter>`, { probes: [[4, 8], [20, 8], [40, 8]], exclude: [] }],
   // An indeterminate `<progress>` has no `value` attribute. Chrome animates a 20%-wide
   // blue bar from the inline start, one of the shadow bar painting rules above (no
   // indeterminate value means the appearance:none shadow DOM paints too). This is the
