@@ -359,6 +359,15 @@ browser_env.js: 0.7.1 perf the internal-call dispatcher passes arguments as arra
 browser_env.rs: 0.7.1 perf test-only STYLE_GENERATION_READS / SHEET_READS counters; the snapshot fingerprint folds in the engine scripts' hash (fingerprint_of)
 css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
 control_labels.rs: 0.7.0 perf turbo-dom#271 label lookups read a per-tree-version index (first element per id, label candidates per host chain) + a test-only walk counter
+browser_env.js: 0.8.0 turbo-dom#322 ns.cssSupports / cssSupportsProperty (CSS.supports from the engine grammar), if() is a substitution function, a supports declaration followed by ';' is false
+browser_env.rs: 0.8.0 turbo-dom#323 installs html_reflections.js and html_media (html_media.rs/.js) after interface_members.js; interface_parity and css_supports control test modules
+element_tokens.js: 0.8.0 turbo-dom#323 ns.defineTokenList and per-list supported tokens (relList / sizes / blocking / controlsList)
+element_relations.rs: 0.8.0 turbo-dom#323 a src attribute change runs the media element load algorithm (html_media::attribute_changed)
+form_collections.js: 0.8.0 turbo-dom#323 fieldset.elements and datalist.options live collections
+cssom_parser.rs: 0.8.0 turbo-dom#322 if() as an arbitrary substitution function with its condition grammar
+typed_om.js: 0.8.0 turbo-dom#322 anchor-name / anchor-scope / timeline-scope / position-anchor dashed-ident grammars (fixedGrammar)
+user_activation_gates.rs: 0.8.0 turbo-dom#323 ActivationQuery::Sticky and sticky_activation() for media play()'s autoplay policy
+computed_defaults_tests.rs: 0.8.0 turbo-dom#323 the test activation host answers ActivationQuery::Sticky
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -397,6 +406,7 @@ OWNED="$OWNED css_grouping_cascade_probe.js css_grouping_cascade_chrome156.json"
 OWNED="$OWNED css_cascade_specificity_probe.js css_cascade_specificity_chrome156.json"
 OWNED="$OWNED inline_style_reuse_probe.js inline_style_reuse_chrome156.json"
 OWNED="$OWNED viewport_cssom_tests.rs custom_property_colors_probe.js custom_property_colors_chrome156.json computed_custom_properties_probe.js computed_custom_properties_chrome156.json match_media_probe.js match_media_chrome156.json iframe_viewport_probe.js iframe_viewport_chrome156.json iframe_media_probe.js iframe_media_chrome156.json iframe_cascade_probe.js iframe_cascade_chrome156.json"
+OWNED="$OWNED html_reflections.js html_media.js html_media.rs interface_parity_probe.js interface_parity_cases.json interface_parity_chrome156.json interface_parity_tests.rs css_supports_probe.js css_supports_cases.json css_supports_chrome156.json css_supports_tests.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

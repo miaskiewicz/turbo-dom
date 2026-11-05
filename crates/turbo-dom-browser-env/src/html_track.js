@@ -113,22 +113,29 @@
   // A real EventTarget whose prototype is TextTrack's (addEventListener works on it).
   const Shape = function () {};
   Shape.prototype = Track.prototype;
-  const newTrack = (element) => {
+  // A track element's track reads its element; addTextTrack()'s (html_media.js) keeps the
+  // kind / label / language it was created with and starts hidden.
+  const newTrack = (element, fixed) => {
     const track = construct(g.EventTarget, [], Shape);
-    apply(mapSet, states, [track, { __proto__: null, element, mode: "disabled", cues: null, activeCues: null, handler: null }]);
+    apply(mapSet, states, [track, { __proto__: null, element, fixed, mode: fixed ? "hidden" : "disabled", cues: fixed ? newCueList() : null, activeCues: fixed ? newCueList() : null, handler: null }]);
     return track;
   };
+  ns.newTextTrack = (kind, label, language) => newTrack(null, { __proto__: null, kind, label, language });
   member(Track.prototype, "kind", function () {
-    return kindOf(stateOf(this).element);
+    const state = stateOf(this);
+    return state.fixed ? state.fixed.kind : kindOf(state.element);
   });
   member(Track.prototype, "label", function () {
-    return attribute(stateOf(this).element, "label");
+    const state = stateOf(this);
+    return state.fixed ? state.fixed.label : attribute(state.element, "label");
   });
   member(Track.prototype, "language", function () {
-    return attribute(stateOf(this).element, "srclang");
+    const state = stateOf(this);
+    return state.fixed ? state.fixed.language : attribute(state.element, "srclang");
   });
   member(Track.prototype, "id", function () {
-    return attribute(stateOf(this).element, "id");
+    const state = stateOf(this);
+    return state.fixed ? "" : attribute(state.element, "id");
   });
   const modes = { __proto__: null, disabled: 1, hidden: 1, showing: 1 };
   member(
@@ -239,14 +246,19 @@
     apply(trackBrand, this, []);
     return 0;
   });
-  member(P, "track", function () {
-    apply(trackBrand, this, []);
-    let track = apply(mapGet, tracks, [this]);
+  const trackOf = (element) => {
+    let track = apply(mapGet, tracks, [element]);
     if (!track) {
-      track = newTrack(this);
-      apply(mapSet, tracks, [this, track]);
+      track = newTrack(element, null);
+      apply(mapSet, tracks, [element, track]);
     }
     return track;
+  };
+  // html_media.js lists a media element's track element children's tracks.
+  ns.textTrackOf = trackOf;
+  member(P, "track", function () {
+    apply(trackBrand, this, []);
+    return trackOf(this);
   });
   ["NONE", "LOADING", "LOADED", "ERROR"].forEach((name, value) => {
     // Configurable until key_order.js moves them into Chrome's order and freezes them; a

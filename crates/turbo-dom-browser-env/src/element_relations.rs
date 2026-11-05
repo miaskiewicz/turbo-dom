@@ -36,6 +36,9 @@ pub(super) fn attribute_changed<'s>(
     if name == "type" {
         selection::type_changed(scope, element);
     }
+    if name == "src" {
+        html_media::attribute_changed(scope, element);
+    }
     if !name.starts_with("aria-") && !matches!(name, "popovertarget" | "commandfor" | "interestfor")
     {
         return;

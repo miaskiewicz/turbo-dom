@@ -165,6 +165,8 @@ mod css_shorthand;
 mod html_dialog;
 #[path = "html_invokers.rs"]
 mod html_invokers;
+#[path = "html_media.rs"]
+mod html_media;
 #[path = "html_popover.rs"]
 mod html_popover;
 #[path = "pointer_events.rs"]
@@ -8794,6 +8796,8 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     element_internals::install(scope);
     // After custom_elements re-creates the HTML constructors, so static members stay on them.
     run_js(scope, include_str!("interface_members.js"));
+    run_js(scope, include_str!("html_reflections.js"));
+    html_media::install(scope);
     // The event handler IDL attributes register through the final EventTarget methods,
     // captured before any page script runs (turbo-dom#172).
     run_js(scope, include_str!("window_interface.js"));

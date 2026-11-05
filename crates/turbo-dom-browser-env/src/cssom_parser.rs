@@ -139,6 +139,9 @@ fn time<'i>(input: &mut Parser<'i, '_>) -> Result<(), ParseError<'i, ()>> {
 fn deferred_value(tokens: &TokenList<'_>) -> bool {
     tokens.0.iter().any(|token| match token {
         TokenOrValue::Var(_) | TokenOrValue::Env(_) => true,
+        TokenOrValue::Function(function) if function.name.eq_ignore_ascii_case("if") => {
+            if_function(&function.arguments)
+        }
         TokenOrValue::Function(function) => deferred_value(&function.arguments),
         TokenOrValue::Token(Token::Ident(name)) => {
             ["inherit", "initial", "unset", "revert", "revert-layer"]
@@ -147,6 +150,114 @@ fn deferred_value(tokens: &TokenList<'_>) -> bool {
         }
         _ => false,
     })
+}
+
+/// CSS `if()`, an arbitrary substitution function like `var()` (turbo-dom#322): branches
+/// `<if-condition> : <declaration-value>?` separated by `;` (the last one's optional), where a
+/// condition is `else` or a `<boolean-expr>` over `style()` / `media()` / `supports()`.
+/// Chrome 156 checks this shape at parse time and substitutes at computed-value time.
+fn if_function(arguments: &TokenList<'_>) -> bool {
+    let (mut branches, mut condition, mut in_condition, mut depth) = (0, Vec::new(), true, 0usize);
+    for token in &arguments.0 {
+        match token {
+            TokenOrValue::Token(Token::WhiteSpace(_)) => continue,
+            TokenOrValue::Token(Token::Colon) if in_condition && depth == 0 => {
+                if !if_condition(&condition) {
+                    return false;
+                }
+                branches += 1;
+                in_condition = false;
+                continue;
+            }
+            TokenOrValue::Token(Token::Semicolon) if depth == 0 => {
+                // A condition without its `:`, or an empty branch (`;;`).
+                if in_condition {
+                    return false;
+                }
+                in_condition = true;
+                condition.clear();
+                continue;
+            }
+            TokenOrValue::Token(Token::ParenthesisBlock) => depth += 1,
+            TokenOrValue::Token(Token::CloseParenthesis) => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+        if in_condition {
+            condition.push(token);
+        }
+    }
+    // Only a trailing `;` may leave the last condition empty.
+    branches > 0 && (!in_condition || condition.is_empty())
+}
+
+/// An `if()` condition: `else`, or a `<boolean-expr>` of `style()` / `media()` / `supports()`
+/// tests: `not <test>`, or tests joined by one of `and` / `or`.
+fn if_condition(tokens: &[&TokenOrValue<'_>]) -> bool {
+    if let [TokenOrValue::Token(Token::Ident(name))] = tokens {
+        if name.eq_ignore_ascii_case("else") {
+            return true;
+        }
+    }
+    boolean_expression(tokens)
+}
+
+fn boolean_expression(tokens: &[&TokenOrValue<'_>]) -> bool {
+    let keyword = |token: Option<&&TokenOrValue<'_>>| match token {
+        Some(TokenOrValue::Token(Token::Ident(name))) => Some(name.to_ascii_lowercase()),
+        _ => None,
+    };
+    if keyword(tokens.first()).as_deref() == Some("not") {
+        return if_test(&tokens[1..]) == Some(tokens.len() - 1);
+    }
+    let Some(mut at) = if_test(tokens) else {
+        return false;
+    };
+    let mut operator = None;
+    while at < tokens.len() {
+        let joiner = keyword(tokens.get(at));
+        if !matches!(joiner.as_deref(), Some("and" | "or"))
+            || operator.is_some_and(|op| op != joiner)
+        {
+            return false;
+        }
+        operator = Some(joiner);
+        let Some(length) = if_test(&tokens[at + 1..]) else {
+            return false;
+        };
+        at += 1 + length;
+    }
+    true
+}
+
+/// The token count of the `if()` test that starts `tokens`: a `style()` / `media()` /
+/// `supports()` function, or a parenthesized `<boolean-expr>`.
+fn if_test(tokens: &[&TokenOrValue<'_>]) -> Option<usize> {
+    match tokens.first()? {
+        TokenOrValue::Function(function)
+            if ["style", "media", "supports"]
+                .iter()
+                .any(|name| function.name.eq_ignore_ascii_case(name)) =>
+        {
+            Some(1)
+        }
+        TokenOrValue::Token(Token::ParenthesisBlock) => {
+            let mut depth = 0usize;
+            for (index, token) in tokens.iter().enumerate() {
+                match token {
+                    TokenOrValue::Token(Token::ParenthesisBlock) => depth += 1,
+                    TokenOrValue::Token(Token::CloseParenthesis) => {
+                        depth -= 1;
+                        if depth == 0 {
+                            return boolean_expression(&tokens[1..index]).then_some(index + 1);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            None
+        }
+        _ => None,
+    }
 }
 
 pub(super) fn valid_selector(source: &str) -> bool {

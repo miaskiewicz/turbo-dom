@@ -29,7 +29,9 @@ fn probe_activation(
         .get(scope, key.into())
         .is_some_and(|value| value.is_true());
     match query {
-        ActivationQuery::Transient | ActivationQuery::HistoryAction => active,
+        ActivationQuery::Transient | ActivationQuery::HistoryAction | ActivationQuery::Sticky => {
+            active
+        }
         ActivationQuery::ConsumeTransient | ActivationQuery::ConsumeHistoryAction => {
             let inactive = v8::Boolean::new(scope, false);
             global.set(scope, key.into(), inactive.into());
