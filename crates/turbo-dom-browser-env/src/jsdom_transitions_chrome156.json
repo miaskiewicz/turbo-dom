@@ -1,0 +1,89 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "probeSha256": "ddb9e13f869fa9844fd5df665af15cf7219dd3da90b0ba60f23a53934fcfdbcd",
+  "collectorSha256": "20f101985cf532bc5b21c87d1836b52574cfc981e75a670281049791e9ae24c5",
+  "flags": [
+    "--use-mock-keychain",
+    "--password-store=basic"
+  ],
+  "errors": [],
+  "result": {
+    "interfaces": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "members": [
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "animated": "rgb(1, 2, 3)",
+    "before": [
+      "rgb(0, 0, 0)",
+      "rgb(0, 0, 0)"
+    ],
+    "after": [
+      "rgb(0, 0, 0)",
+      "rgb(0, 0, 0)"
+    ],
+    "animations": [
+      [
+        "CSSTransition",
+        "t"
+      ],
+      [
+        "CSSTransition",
+        "e"
+      ],
+      [
+        "CSSAnimation",
+        "a"
+      ]
+    ],
+    "later": [
+      "rgb(0, 0, 0)",
+      "rgb(0, 0, 100)"
+    ],
+    "events": [
+      [
+        "transitionrun",
+        "e"
+      ],
+      [
+        "transitionstart",
+        "e"
+      ],
+      [
+        "transitionrun",
+        "t"
+      ],
+      [
+        "transitionstart",
+        "t"
+      ],
+      [
+        "animationstart",
+        "a"
+      ],
+      [
+        "transitionend",
+        "e"
+      ]
+    ]
+  }
+}

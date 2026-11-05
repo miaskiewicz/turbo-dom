@@ -236,6 +236,34 @@ fn media_mode_switches_back_and_forth() {
     assert_eq!(MediaMode::default(), MediaMode::Chrome);
 }
 
+/// The media mode switch also hides jsdom's missing Web Animations surface and restores the
+/// very same bindings; switching to the current mode again changes nothing.
+#[test]
+fn media_mode_switch_restores_animation_surface() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_independent_html(scope, "<!doctype html><html><body></body></html>");
+    run_js(scope, "globalThis.__animate = Element.prototype.animate");
+    let read = "[typeof Animation, typeof AnimationEvent, typeof CSSTransition, typeof Element.prototype.animate, 'getAnimations' in ShadowRoot.prototype, 'timeline' in document].join()";
+    let chrome = run_js_string(scope, read);
+    set_media_mode(scope, MediaMode::Jsdom);
+    let jsdom = run_js_string(scope, read);
+    set_media_mode(scope, MediaMode::Jsdom);
+    let again = run_js_string(scope, read);
+    set_media_mode(scope, MediaMode::Chrome);
+    let back = run_js_string(scope, read);
+    let same = run_js_string(scope, "String(Element.prototype.animate === __animate)");
+    reset();
+    assert_eq!(chrome, "function,function,function,function,true,true");
+    assert_eq!(jsdom, "undefined,undefined,undefined,undefined,false,false");
+    assert_eq!(again, jsdom);
+    assert_eq!(back, chrome);
+    assert_eq!(same, "true");
+}
+
 fn run_js_string(scope: &mut v8::PinScope, source: &str) -> String {
     let code = v8::String::new(scope, source).unwrap();
     v8::Script::compile(scope, code, None)
