@@ -1,21 +1,29 @@
-//! Glyph coverage the way Chrome 156 on macOS paints text (miaskiewicz/turbo-dom#266).
+//! Glyph coverage the way Chrome 156 on macOS paints text (miaskiewicz/turbo-dom#266,
+//! #331).
 //!
 //! Chrome rasterizes glyphs through CoreText with font smoothing, which dilates each
-//! outline, and Skia then corrects the mask for the text colour's luminance. Measured
-//! against the frozen Chrome 156 shell (`scripts/glyph-coverage-chrome-control.mjs`,
-//! fixture Liberation Serif, 12–64px), the model here is:
+//! outline, and the edge coverage then depends on the text's luminance. Measured against
+//! the frozen Chrome 156 shell (`scripts/glyph-coverage-chrome-control.mjs`, fixture
+//! Liberation Serif, 12–64px), the model here is:
 //! - exact-area coverage (no supersampling steps);
-//! - the outline grown [`dilation`] px along each edge's normal, `0.005 * size`
-//!   (0.06 px at 12px, 0.2 at 40px, 0.32 at 64px), and lifted by the same amount, so
-//!   the baseline edge stays put and the top grows twice as much (CoreText's smoothing
-//!   grows the glyph upward);
+//! - the outline grown by a box ([`embolden_contour`]): each edge moves out [`dilation`]
+//!   (`0.0045 * size`) times the sum of its normal's |x| and |y|, so a 64px stem grows
+//!   0.29 px a side and a 45° stroke 1.41 times that (a disc — the plain normal offset —
+//!   leaves `W`, `x` and `y` 0.14 px off), and each concave vertex a little further
+//!   ([`CONCAVE_FILL`]: Chrome fills joins);
+//! - the whole run lifted by the growth plus [`LIFT`] px, so the baseline edge stays put
+//!   and the top grows (CoreText's smoothing grows the glyph upward);
 //! - horizontal pens at quarter pixels and baselines at whole pixels, Skia's subpixel
 //!   glyph positions;
-//! - Skia's mask pre-blend ([`preblend`]) for the text luminance in 3 bits, with gamma
-//!   1.8 and contrast 1.
+//! - the coverage taken through [`edge_transfer`]: linear for dark text from 28px up (a
+//!   64px stem's edge pixels step 4, 61, 123, 189 over the four pen phases), a little
+//!   darker below, and lighter for light text, by Skia's 3-bit text luminance.
 //!
-//! What stays different (CoreText's dilation is not exactly a uniform outline offset) is
-//! measured in `tests/glyph_coverage_chrome.rs`.
+//! What stays different is measured in `tests/glyph_coverage_chrome.rs`: below about
+//! 20px Chrome's vertical geometry depends on the size's pixel grid (a bar's height grows
+//! 0.02–0.22 px from one size to the next; 16px glyphs stand about 4% taller), and some
+//! features sit a fifth of a pixel off vertically (the 40px `g`'s bar), which no outline
+//! offset reproduces (#331).
 
 use tiny_skia::{Pixmap, PremultipliedColorU8, Transform};
 use turbo_dom_layout::text::FontFace;
@@ -23,15 +31,15 @@ use turbo_dom_layout::{Fragment, PositionedGlyph, Rgba};
 
 use crate::glyph::Pen;
 
-/// Paint outline `o` in `color` over `pm` (exact coverage through the colour's
-/// [`preblend`] table, then source-over).
-pub(crate) fn fill(pm: &mut Pixmap, o: &Outline, color: Rgba) {
+/// Paint outline `o` of `size` px text in `color` over `pm` (exact coverage through the
+/// colour's [`edge_transfer`] table, then source-over).
+pub(crate) fn fill(pm: &mut Pixmap, o: &Outline, color: Rgba, size: f32) {
     let Some(window) = o.bounds(pm.width(), pm.height()) else {
         return;
     };
     let mut cov = Coverage::new(window);
     cov.add(o);
-    let lut = preblend(color.r, color.g, color.b);
+    let lut = edge_transfer(luminance_class(color.r, color.g, color.b), size);
     let mut layer =
         Pixmap::new(window.2 as u32, window.3 as u32).expect("bounds() is a non-empty window");
     let alpha = f32::from(color.a) / 255.0;
@@ -52,13 +60,22 @@ pub(crate) fn fill(pm: &mut Pixmap, o: &Outline, color: Rgba) {
 }
 
 /// Outline growth per side per px of font size.
-const DILATION_PER_PX: f32 = 0.005;
-/// The pre-blend's luminance gamma.
-const GAMMA: f32 = 1.8;
-/// The pre-blend's contrast boost (full for black text, tapering to none for white).
-const CONTRAST: f32 = 1.0;
+const DILATION_PER_PX: f32 = 0.0045;
+/// The run's lift beyond its growth, in px.
+const LIFT: f32 = 0.03;
+/// A concave vertex's extra outward move, in growths per unit of the sine of its turn.
+const CONCAVE_FILL: f32 = 0.1;
+/// Dark text's edge darkening at 0px, tapering linearly to none at
+/// [`DARK_CONTRAST_UNTIL`] px: the extra exponent of `1 - (1 - c)^e`.
+const DARK_CONTRAST: f32 = 0.15;
+/// The font size from which dark text's edge transfer is linear.
+const DARK_CONTRAST_UNTIL: f32 = 28.0;
+/// White text's extra edge gamma (`c^(1 / 1.4)`) and exponent (`1 - (1 - c)^1.3`).
+const LIGHT_GAMMA: f32 = 0.4;
+const LIGHT_BOOST: f32 = 0.3;
 
-/// How far CoreText's smoothing grows a `size` px glyph along each edge normal, in px.
+/// How far CoreText's smoothing grows a `size` px glyph's horizontal and vertical
+/// edges, in px (the half-size of the box the outline is grown by).
 pub(crate) fn dilation(size: f32) -> f32 {
     DILATION_PER_PX * size
 }
@@ -87,7 +104,7 @@ pub(crate) fn run_outline(
         o.set_transform(snapped(
             xf.pre_concat(turn),
             (pen.origin_x, pen.baseline_y),
-            d,
+            d + LIFT,
         ));
         crate::glyph::trace_glyph(&face, g.glyph_id, pen, &mut o);
     }
@@ -163,8 +180,8 @@ impl Outline {
         }
     }
 
-    /// Grow every contour `d` px along its edges' outward normals (`FreeType`'s
-    /// emboldening: controls move with their polygon; holes shrink).
+    /// Grow every contour by a `2d` px box ([`embolden_contour`]; controls move with
+    /// their polygon; holes shrink).
     pub(crate) fn embolden(&mut self, d: f32) {
         self.end_contour();
         let sign = if self.signed_area() >= 0.0 { d } else { -d };
@@ -286,8 +303,11 @@ fn edge(c: &[Pt], i: usize, back: bool) -> Option<(f32, f32)> {
     })
 }
 
-/// Each point of `c` moved so both its edges shift `d` along their normals; a point
-/// at a spike sharper than `FreeType`'s limit (or of a degenerate contour) stays.
+/// Each point of `c` moved to where its two edges meet once each has moved out
+/// `d * (|nx| + |ny|)` along its normal `n` (a box's support), a concave point a further
+/// `CONCAVE_FILL * d * |sin turn|` along its bisector; a point at a spike sharper than
+/// `FreeType`'s limit (or of a degenerate contour) stays. `d`'s sign is the contour
+/// orientation's, so `n * d` points out.
 fn embolden_contour(c: &[Pt], d: f32) -> Vec<Pt> {
     (0..c.len())
         .map(|i| {
@@ -299,12 +319,32 @@ fn embolden_contour(c: &[Pt], d: f32) -> Vec<Pt> {
             if k < 0.0625 {
                 return c[i];
             }
+            let turn = a.0 * b.1 - a.1 * b.0;
+            let concave = if turn * d < 0.0 {
+                CONCAVE_FILL * d * turn.abs()
+            } else {
+                0.0
+            };
+            let (dx, dy) = box_shift(na, nb, d);
             Pt {
-                x: c[i].x + d * (na.0 + nb.0) / k,
-                y: c[i].y + d * (na.1 + nb.1) / k,
+                x: c[i].x + dx + concave * (na.0 + nb.0) / k,
+                y: c[i].y + dy + concave * (na.1 + nb.1) / k,
             }
         })
         .collect()
+}
+
+/// The shift that moves both lines of normals `na` and `nb` (unit, `k = 1 + na·nb` above
+/// the spike limit) out `d * (|nx| + |ny|)`: their meeting point, or the one shift of
+/// collinear lines.
+fn box_shift(na: (f32, f32), nb: (f32, f32), d: f32) -> (f32, f32) {
+    let support = |n: (f32, f32)| d * (n.0.abs() + n.1.abs());
+    let (ha, hb) = (support(na), support(nb));
+    let det = na.0 * nb.1 - na.1 * nb.0;
+    if det.abs() < 1e-3 {
+        return (ha * na.0, ha * na.1);
+    }
+    ((ha * nb.1 - hb * na.1) / det, (na.0 * hb - nb.0 * ha) / det)
 }
 
 /// Exact-area coverage over a `w`x`h` window whose top left is `(x0, y0)` (the signed
@@ -457,33 +497,26 @@ fn bezier(p: &[Pt], t: f32) -> Pt {
     q[0]
 }
 
-fn to_linear(v: f32) -> f32 {
-    v.powf(GAMMA)
+/// Skia's 3-bit luminance (0..=7) of text colour `(r, g, b)`: `SkComputeLuminance` of
+/// the sRGB channels (`(54r + 183g + 19b) >> 8`), top 3 bits. Pure blue (18) is class 0,
+/// with black; white is 7.
+pub(crate) fn luminance_class(r: u8, g: u8, b: u8) -> u32 {
+    ((u32::from(r) * 54 + u32::from(g) * 183 + u32::from(b) * 19) >> 8) >> 5
 }
 
-fn from_linear(v: f32) -> f32 {
-    v.powf(GAMMA.recip())
-}
-
-/// Skia's mask pre-blend table (`SkTMaskGamma_build_correcting_lut`) for text of colour
-/// `(r, g, b)`: its luminance is kept to 3 bits (replicated back to 8), the coverage is
-/// boosted by the contrast where the assumed backdrop (the opposite luminance) is light,
-/// and the table undoes the sRGB blend so the result is a blend at [`GAMMA`].
-pub(crate) fn preblend(r: u8, g: u8, b: u8) -> [f32; 256] {
-    let lum = 0.2126 * to_linear(f32::from(r) / 255.0)
-        + 0.7152 * to_linear(f32::from(g) / 255.0)
-        + 0.0722 * to_linear(f32::from(b) / 255.0);
-    let top = ((from_linear(lum) * 255.0).round() as u32) >> 5;
-    let src = ((top << 5) | (top << 2) | (top >> 1)) as f32 / 255.0;
-    let dst = 1.0 - src;
-    let (lin_src, lin_dst) = (to_linear(src), to_linear(dst));
-    let contrast = CONTRAST * lin_dst;
+/// The edge transfer of `size` px text of luminance class `class`
+/// ([`luminance_class`]): coverage `c` inks `1 - (1 - c^(1/g))^e`, where with
+/// `t = class / 7` the gamma `g = 1 + LIGHT_GAMMA * t` and the exponent
+/// `e = 1 + dark * (1 - t) + LIGHT_BOOST * t`, `dark` being [`DARK_CONTRAST`] tapering to
+/// none at [`DARK_CONTRAST_UNTIL`] px. Black text from 28px up is linear.
+pub(crate) fn edge_transfer(class: u32, size: f32) -> [f32; 256] {
+    let t = class as f32 / 7.0;
+    let dark = DARK_CONTRAST * (1.0 - size / DARK_CONTRAST_UNTIL).max(0.0);
+    let gamma = (1.0 + LIGHT_GAMMA * t).recip();
+    let e = 1.0 + dark * (1.0 - t) + LIGHT_BOOST * t;
     let mut table = [0.0; 256];
-    for (i, e) in table.iter_mut().enumerate() {
-        let raw = i as f32 / 255.0;
-        let a = (raw + (1.0 - raw) * contrast * raw).min(1.0);
-        let out = from_linear(lin_src * a + (1.0 - a) * lin_dst);
-        *e = ((out - dst) / (src - dst)).clamp(0.0, 1.0);
+    for (i, v) in table.iter_mut().enumerate() {
+        *v = 1.0 - (1.0 - (i as f32 / 255.0).powf(gamma)).powf(e);
     }
     table
 }
@@ -515,8 +548,8 @@ mod tests {
 
     #[test]
     fn dilation_grows_with_the_font_size() {
-        assert!((dilation(12.0) - 0.06).abs() < 1e-6);
-        assert!((dilation(64.0) - 0.32).abs() < 1e-6);
+        assert!((dilation(12.0) - 0.054).abs() < 1e-6);
+        assert!((dilation(64.0) - 0.288).abs() < 1e-6);
     }
 
     #[test]
@@ -606,8 +639,10 @@ mod tests {
             let outer: Vec<Pt> = o.pts[..4].to_vec();
             let xs: Vec<f32> = outer.iter().map(|p| p.x).collect();
             assert!(xs.contains(&1.5) && xs.contains(&8.5), "{xs:?}");
+            // A hole's corners are concave: 0.5 in, plus the concave fill's 0.05.
             let hole: Vec<f32> = o.pts[4..].iter().map(|p| p.x).collect();
-            assert!(hole.contains(&4.5) && hole.contains(&5.5), "{hole:?}");
+            let near = |v: f32| hole.iter().any(|x| (x - v).abs() < 1e-5);
+            assert!(near(4.55) && near(5.45), "{hole:?}");
         }
     }
 
@@ -657,19 +692,82 @@ mod tests {
     }
 
     #[test]
-    fn preblend_darkens_dark_text_and_lightens_light_text_edges() {
-        let black = preblend(0, 0, 0);
-        let white = preblend(255, 255, 255);
-        let blue = preblend(0, 0, 255);
-        assert_eq!((black[0], black[255]), (0.0, 1.0));
+    fn edge_transfer_is_linear_for_large_dark_text_and_lighter_for_light_text() {
+        let black = edge_transfer(0, 40.0);
+        for (i, v) in black.iter().enumerate() {
+            assert!((v - i as f32 / 255.0).abs() < 1e-6, "{i}: {v}");
+        }
+        // Below 28px dark text darkens: e = 1 + 0.15 * (1 - 14/28) at 14px.
+        let small = edge_transfer(0, 14.0);
+        assert!((small[128] - (1.0 - (1.0 - 128.0 / 255.0f32).powf(1.075))).abs() < 1e-6);
+        assert!(small[128] > black[128]);
+        // White: g = 1.4, e = 1.3, whatever the size.
+        let white = edge_transfer(7, 14.0);
+        assert_eq!(white, edge_transfer(7, 40.0));
+        let want = 1.0 - (1.0 - 0.5f32.powf(1.0 / 1.4)).powf(1.3);
+        assert!((white[128] - want).abs() < 0.005, "{}", white[128]);
         assert_eq!((white[0], white[255]), (0.0, 1.0));
-        // Half coverage: black ink 1 - (1 - 0.75)^(1/1.8), white 0.5^(1/1.8).
-        assert!((black[128] - 0.537).abs() < 0.01, "{}", black[128]);
-        assert!((white[128] - 0.684).abs() < 0.01, "{}", white[128]);
-        // Blue's low luminance blends almost like black.
-        assert!((blue[128] - black[128]).abs() < 0.02, "{}", blue[128]);
         // A mid grey sits between.
-        let grey = preblend(128, 128, 128);
-        assert!(grey[128] > 0.0 && grey[128] < 1.0);
+        let grey = edge_transfer(4, 40.0);
+        assert!(grey[128] > black[128] && grey[128] < white[128]);
+        // Skia's 3-bit luminance: blue is class 0, with black.
+        assert_eq!(luminance_class(0, 0, 0), 0);
+        assert_eq!(luminance_class(0, 0, 255), 0);
+        assert_eq!(luminance_class(128, 128, 128), 4);
+        assert_eq!(luminance_class(255, 255, 255), 7);
+    }
+
+    #[test]
+    fn emboldening_moves_edges_by_a_boxs_support_and_fills_concave_points() {
+        // A right triangle: the legs move out d, the 45° hypotenuse (normal (1, 1)/√2)
+        // d·√2 along its normal, so x + y = 4 becomes x + y = 4 + 2d (a disc: 4 + d·√2).
+        let mut o = Outline::new();
+        o.move_to(0.0, 0.0);
+        o.line_to(0.0, 4.0);
+        o.line_to(4.0, 0.0);
+        o.close();
+        o.embolden(0.5);
+        let corner = o.pts[0];
+        assert!(
+            (corner.x + 0.5).abs() < 1e-5 && (corner.y + 0.5).abs() < 1e-5,
+            "{corner:?}"
+        );
+        let p = o.pts[1];
+        assert!(
+            (p.x + p.y - 5.0).abs() < 1e-5 && (p.x + 0.5).abs() < 1e-5,
+            "{p:?}"
+        );
+        // Collinear edges (a point mid-side) move along their one normal.
+        let mut o = Outline::new();
+        o.move_to(0.0, 0.0);
+        o.line_to(0.0, 2.0);
+        o.line_to(0.0, 4.0);
+        o.line_to(4.0, 4.0);
+        o.line_to(4.0, 0.0);
+        o.close();
+        o.embolden(0.5);
+        assert_eq!(o.pts[1], Pt { x: -0.5, y: 2.0 });
+        // An L's inner (concave) corner at (2, 2), between the bar's top edge and the
+        // stem's right edge, moves to where those meet once moved, (2.5, 1.5), plus
+        // 0.1 * d * |sin 90°| along their bisector (1, -1).
+        let mut o = Outline::new();
+        o.move_to(0.0, 0.0);
+        o.line_to(0.0, 4.0);
+        o.line_to(4.0, 4.0);
+        o.line_to(4.0, 2.0);
+        o.line_to(2.0, 2.0);
+        o.line_to(2.0, 0.0);
+        o.close();
+        o.embolden(0.5);
+        let inner = o.pts[4];
+        let convex = o.pts[0];
+        assert!(
+            (inner.x - 2.55).abs() < 1e-5 && (inner.y - 1.45).abs() < 1e-5,
+            "{inner:?}"
+        );
+        assert!(
+            (convex.x + 0.5).abs() < 1e-5 && (convex.y + 0.5).abs() < 1e-5,
+            "{convex:?}"
+        );
     }
 }

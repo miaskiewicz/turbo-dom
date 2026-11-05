@@ -79,6 +79,7 @@ sub { vertical-align: sub }
 sup { vertical-align: super }
 table { display: table; text-align: left; box-sizing: border-box; border-spacing: 2px }
 thead { display: table-header-group }
+tbody { display: table-row-group }
 tfoot { display: table-footer-group }
 tr { display: table-row }
 caption { display: table-caption; text-align: -webkit-center }

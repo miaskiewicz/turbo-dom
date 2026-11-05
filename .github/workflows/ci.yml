@@ -216,6 +216,7 @@ jobs:
           cargo clippy -p turbo-dom-layout --all-targets -- -D warnings
           cargo clippy -p turbo-dom-layout --all-targets --features svg,perf,serde,test-support -- -D warnings
           cargo clippy -p turbo-dom-layout --all-targets --no-default-features -- -D warnings
+          cargo clippy -p turbo-dom-layout --all-targets --no-default-features --features bundled-fonts,hyphenation -- -D warnings
       - name: Test (default = bundled-fonts)
         run: cargo test -p turbo-dom-layout
       - name: Test --no-default-features (exact baseline-red list, turbo-html2pdf#28)
@@ -225,6 +226,8 @@ jobs:
           python scripts/check-baseline-red.py
           scripts/baseline-red/turbo-dom-layout-no-default-features.tsv
           -- -p turbo-dom-layout --no-default-features
+      - name: Test English-only hyphenation (no hyphenation-languages, turbo-dom#289)
+        run: cargo test -p turbo-dom-layout --no-default-features --features bundled-fonts,hyphenation
       - name: Test --features svg
         run: cargo test -p turbo-dom-layout --features svg
       - name: Test --features perf
@@ -266,12 +269,15 @@ jobs:
         run: |
           cargo clippy -p turbo-dom-raster --all-targets --features jxl -- -D warnings
           cargo test -p turbo-dom-raster --features jxl
-      - name: Clippy + check coretext / gpu-metal (macOS; the CoreText deps are macOS-only)
+      - name: Clippy + test coretext / gpu-metal (macOS; the CoreText deps are macOS-only)
         if: runner.os == 'macOS'
         run: |
           cargo clippy -p turbo-dom-raster --all-targets --features coretext,gpu-metal -- -D warnings
           cargo check -p turbo-dom-raster --features coretext
           cargo check -p turbo-dom-raster --features gpu-metal
+          # The Chrome 156 canvas controls through CoreText text and the Metal replay
+          # (turbo-dom#342; a runner without a Metal adapter replays on tiny-skia).
+          cargo test -p turbo-dom-raster --features coretext,gpu-metal
       - name: Check gpu-metal (wgpu builds on Linux too; coretext is inert there)
         if: runner.os == 'Linux'
         run: cargo check -p turbo-dom-raster --features coretext,gpu-metal

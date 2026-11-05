@@ -244,6 +244,25 @@ fn report(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _result
     report_value(scope, args.get(0));
 }
 pub(super) fn report_value(scope: &mut v8::PinScope, error: v8::Local<v8::Value>) {
+    let message = v8::Exception::create_message(scope, error);
+    let text = message.get(scope);
+    report_message(scope, error, text, message);
+}
+thread_local! {
+    /// The windows (contexts) currently reporting an exception: HTML's "in error reporting
+    /// mode". An exception reported while its window reports one fires no second error
+    /// event (Chrome 156, turbo-dom#301).
+    static REPORTING: std::cell::RefCell<Vec<v8::Global<v8::Context>>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+/// HTML "report an exception": fire a trusted, cancelable `ErrorEvent` with message `text` at
+/// the current context's window, located by `message`.
+pub(super) fn report_message(
+    scope: &mut v8::PinScope,
+    error: v8::Local<v8::Value>,
+    text: v8::Local<v8::String>,
+    message: v8::Local<v8::Message>,
+) {
     let context = scope.get_current_context();
     let Some(builder) = context.get_slot::<ErrorHook>() else {
         return;
@@ -251,8 +270,9 @@ pub(super) fn report_value(scope: &mut v8::PinScope, error: v8::Local<v8::Value>
     let Some(builder) = builder.0.to_local(scope) else {
         return;
     };
-    let message = v8::Exception::create_message(scope, error);
-    let text = message.get(scope);
+    if REPORTING.with(|reporting| reporting.borrow().iter().any(|entry| *entry == context)) {
+        return;
+    }
     let filename = message
         .get_script_resource_name(scope)
         .unwrap_or_else(|| v8::undefined(scope).into());
@@ -271,7 +291,10 @@ pub(super) fn report_value(scope: &mut v8::PinScope, error: v8::Local<v8::Value>
         return;
     };
     let target = context.global(scope);
+    let entry = v8::Global::new(scope, context);
+    REPORTING.with(|reporting| reporting.borrow_mut().push(entry));
     dispatch_host_event(scope, event, target);
+    REPORTING.with(|reporting| reporting.borrow_mut().pop());
 }
 struct ErrorHook(v8::Weak<v8::Function>);
 #[derive(Default)]

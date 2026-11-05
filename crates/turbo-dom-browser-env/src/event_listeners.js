@@ -12,6 +12,9 @@
   const splice=(value,index)=>{for(let at=index;at+1<value.length;at++)ownIndex(value,at,value[at+1]);delete value[value.length-1];value.length--;};
   const NativeTarget=make(class EventTarget extends BaseTarget{constructor(){super();native('targetSet',this,{__proto__:null,listeners:[],handlers:create(null)})}},'EventTarget',0,true,true);
   NativeTarget.prototype=BaseTarget.prototype;define(NativeTarget.prototype,'constructor',{value:NativeTarget,writable:true,configurable:true});define(NativeTarget,'prototype',{writable:false});define(g,'EventTarget',{value:NativeTarget,writable:true,configurable:true});ns.eventTargetConstructor=NativeTarget;
+  // An engine object that is an EventTarget without being constructed as one (html_media.js's
+  // TextTrackList, a named object for its indexed tracks).
+  ns.makeEventTarget=object=>{native('targetSet',object,{__proto__:null,listeners:[],handlers:create(null)});return object;};
   // Node was projected before the listener-backed constructor replaced EventTarget.
   // Keep its constructor inheritance aligned without replacing its instance prototype.
   if(getPrototype(NodeConstructor)===BaseTarget)setPrototype(NodeConstructor,NativeTarget);
@@ -70,7 +73,7 @@
   function targetUnlisten(type,callback,options){const state=targetRecord(this);if(arguments.length<2)throw new ErrorType('removeEventListener requires 2 arguments');const wanted=flatten(type,callback,options,true);for(let index=0,list=slice(state.listeners);index<list.length;index++){const record=list[index];if(!record.handler&&!record.removed&&record.type===wanted.type&&record.callback===wanted.callback&&record.capture===wanted.capture)targetRemove(this,state,record);}}
   function dispatchTarget(event,target,host=false){
     const state=targetRecord(target),record=readEvent(event);if(record.dispatching||!record.type)throw new Exception('The event is already being dispatched or uninitialized','InvalidStateError');record.dispatching=true;record.trusted=host;record.target=target;record.currentTarget=target;record.eventPhase=2;record.path=[target];
-    try{const list=slice(state.listeners);for(let index=0;index<list.length;index++){const listener=list[index];if(record.stopImmediate)break;if(listener.removed||listener.type!==record.type||listener.signal&&aborted(listener.signal))continue;if(listener.once)targetRemove(target,state,listener);record.passive=listener.passive;try{let result;if(typeof listener.callback==='function')result=apply(listener.callback,target,[event]);else result=apply(listener.callback.handleEvent,listener.callback,[event]);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}catch(error){/* Complete listener exception reporting is an embedding followup. */}finally{record.passive=false;}}}finally{record.currentTarget=null;record.eventPhase=0;record.path=[];record.dispatching=false;record.stop=false;record.stopImmediate=false;record.passive=false;}return !record.defaultPrevented;
+    try{const list=slice(state.listeners);for(let index=0;index<list.length;index++){const listener=list[index];if(record.stopImmediate)break;if(listener.removed||listener.type!==record.type||listener.signal&&aborted(listener.signal))continue;if(listener.once)targetRemove(target,state,listener);record.passive=listener.passive;try{const result=native('call',event,listener.callback,target);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{record.passive=false;}}}finally{record.currentTarget=null;record.eventPhase=0;record.path=[];record.dispatching=false;record.stop=false;record.stopImmediate=false;record.passive=false;}return !record.defaultPrevented;
   }
   for(const [name,fn]of [['addEventListener',targetListen],['removeEventListener',targetUnlisten],['dispatchEvent',function(event){targetRecord(this);if(!arguments.length)throw new ErrorType('dispatchEvent requires 1 argument');return dispatchTarget(event,this)}]])ns.eventTargetCallbacks[name]=fn;
   const registry=new Map(),get=registry.get.bind(registry),set=registry.set.bind(registry);
@@ -90,7 +93,7 @@
   function invoke(event,capture,phase){
     const state=readEvent(event),records=slice(get(state.type)||[]);state.currentTarget=g;state.eventPhase=phase;
     for(let index=0;index<records.length;index++){const record=records[index];if(state.stopImmediate)break;if(record.removed||(capture!==null&&record.capture!==capture)||record.signal&&aborted(record.signal))continue;if(record.once)remove(record);state.passive=record.passive;
-      try{if(record.handler){let args=[event],special=false;if(state.type==='error'){const values=native('error',event);if(values){args=values;special=true;}}const result=apply(record.callback,g,args);if(state.cancelable&&(special?result===true:result===false))state.defaultPrevented=true;}else if(typeof record.callback==='function')apply(record.callback,g,[event]);else apply(record.callback.handleEvent,record.callback,[event]);}catch(error){/* The embedding runtime still needs a complete listener-error reporter. */}finally{state.passive=false;}
+      try{if(record.handler){let args,special=false;if(state.type==='error'){const values=native('error',event);if(values){args=values;special=true;}}const result=native('call',event,record.callback,g,args);if(state.cancelable&&(special?result===true:result===false))state.defaultPrevented=true;}else native('call',event,record.callback,g);}finally{state.passive=false;}
     }
   }
   function dispatch(event,host=false){

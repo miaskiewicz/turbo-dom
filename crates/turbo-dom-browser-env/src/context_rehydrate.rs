@@ -129,6 +129,7 @@ const REGISTRY: &[&[Entry]] = &[
     super::focus_group::SLOTS,
     super::form_pseudo::SLOTS,
     super::html_invokers::SLOTS,
+    super::html_media::SLOTS,
     super::interest_invokers::SLOTS,
     super::pointer_events::SLOTS,
     super::range_contents::SLOTS,

@@ -1628,6 +1628,29 @@
     'will-change': (items) => { const layers = splitComponents(items, 'comma'); for (let index = 0; index < layers.length; index++) { const layer = significant(layers[index]); if (layer.length !== 1 || layer[0].type !== 'ident') return false; } return true; },
     'grid-auto-flow': (items) => { if (!items.length || items.length > 2) return false; for (let index = 0; index < items.length; index++) { const id = ident(items[index]); if (id !== 'row' && id !== 'column' && id !== 'dense') return false; } return true; },
   };
+  // The anchor positioning / scroll timeline name properties Lightning CSS does not model:
+  // a keyword, or <dashed-ident>s (a comma-separated list, or exactly one for position-anchor);
+  // their Blink keyword tables alone would admit any identifiers (turbo-dom#322).
+  const dashed = (item) => item.type === 'ident' && item.value.length > 2 && item.value[0] === '-' && item.value[1] === '-';
+  const dashedNames = (keywords, list) => (items) => {
+    if (items.length === 1 && items[0].type === 'ident' && keywords[lowerCase(items[0].value)]) return true;
+    const layers = list ? splitComponents(items, 'comma') : [items];
+    for (let index = 0; index < layers.length; index++) { const layer = significant(layers[index]); if (layer.length !== 1 || !dashed(layer[0])) return false; }
+    return true;
+  };
+  const DASHED_NAMES = {
+    __proto__: null,
+    'anchor-name': dashedNames(plainSet(['none']), true),
+    'anchor-scope': dashedNames(plainSet(['none', 'all']), true),
+    'timeline-scope': dashedNames(plainSet(['none', 'all']), true),
+    'position-anchor': dashedNames(plainSet(['auto', 'none', 'normal']), false),
+  };
+  // The answer of a grammar checked here before Lightning CSS's: false for a position with too
+  // many components, the dashed-ident properties' own answer, else undefined.
+  function fixedGrammar(name, items) {
+    if (POSITION_PROPERTIES[name] && !positionCountOk(items)) return false;
+    return DASHED_NAMES[name] ? DASHED_NAMES[name](items) : undefined;
+  }
   // Whether `text` is a valid value of a (non-custom) property: Lightning CSS's grammar when it
   // models the property, else the property's Blink keyword table for single identifiers.
   function validValue(property, text) {
@@ -1641,7 +1664,8 @@
     // -webkit-box-reflect serializes `none` but its grammar has no such keyword.
     if (property.name === '-webkit-box-reflect' && items.length === 1 && ident(items[0]) === 'none') return false;
     if (!rangeOk(property, items)) return false;
-    if (POSITION_PROPERTIES[property.name] && !positionCountOk(items)) return false;
+    const fixed = fixedGrammar(property.name, items);
+    if (fixed !== undefined) return fixed;
     const native = Native('valid', property.name, text);
     if (native === true) return true;
     // Keywords Blink lists for the property (flex-basis: content, box-shadow: none, …).

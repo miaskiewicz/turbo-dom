@@ -48,14 +48,20 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
   - `*_with_assets` adds caller-fetched images (`ImageAssets` = URL → bytes) and
     `full_page`;
   - `*_with_opts` adds `system_fonts`, which resolves against the installed fonts through
-    turbo-dom-layout's `FontRegistry::system`.
+    turbo-dom-layout's `FontRegistry::system`;
+  - `ScreenshotOptions::fonts` (for `screenshot_{png,svg}_with_options`) takes the
+    caller's `&FontRegistry` instead, so a caller that loads the page's `@font-face` sources
+    (`FontFace::from_web_font_bytes`) gets web fonts laid out with Chrome's metrics and
+    painted. The raster does not read `@font-face` rules itself.
 - **Resource discovery** (works on the parsed document, never on source text):
   `image_urls`, `image_urls_in_css`, `stylesheet_hrefs`, and `delazy_tree` /
   `delazy_images` (fill lazy `<img>`s).
 - **Canvas:** `canvas_ops_png` / `canvas_ops_rgba` replay a 2D-canvas op log. Colours go
   through turbo-dom's `rtdom::color::parse_color`. `measure_text` measures a text run (width, height) with the bundled or system faces;
   `measure_canvas_text(text, font)` is canvas `measureText`'s width for a CSS `font`
-  shorthand.
+  shorthand. Canvas text uses the bundled faces; `canvas_ops_png_with_fonts`,
+  `canvas_ops_rgba_with_fonts` and `measure_canvas_text_with_fonts` take a caller
+  `&FontRegistry` (web fonts; the `coretext` path is skipped for an `@font-face` face).
 - **WebGL:** `webgl_readback` and `webgl_metadata` work on a recorded call batch, backed
   by the GPU under `gpu-metal`.
 
@@ -87,8 +93,10 @@ so any number of tiles fill the box; fractional tiles blend their edge pixels li
 (#269). Gradients take length, double-position and repeating stops (#264). A `transform`
 on an `<img>` itself applies (#272). Form controls paint Chrome 156's native appearance
 from turbo-dom-layout's galley boxes (#255, #257). Glyphs are rasterized with exact-area
-coverage, CoreText-like outline growth and Skia's mask pre-blend; Chrome's stem darkening
-is still missing, so small and white text differ most (open: #266).
+coverage, CoreText-like box-kernel outline growth and a luminance-dependent edge transfer
+(#266, #331); the SVG screenshot's glyph paths take Skia's mask pre-blend through one
+`feComponentTransfer` filter per text luminance class (#294). Chrome's grid-dependent
+vertical geometry below about 20px is not modelled, so 12–16px text differs most.
 
 ## Gates
 
