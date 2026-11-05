@@ -7,7 +7,11 @@
 //! wgpu/lyon/pollster. Solid fills and strokes are tessellated to triangles with
 //! lyon (glyph outlines traced by [`crate::glyph`], flattened by the shared
 //! interpreter), drawn in op order — source-over for paints, replace-with-zero for
-//! `clearRect` — so blending and z-order match the tiny-skia backend. Every entry
+//! `clearRect` — so blending and z-order match the tiny-skia backend. Colours go in
+//! premultiplied and rounded to bytes the way Skia premultiplies them, and the read-back
+//! premultiplied pixels are unpremultiplied like Chrome's `getImageData` before the PNG
+//! encode (miaskiewicz/turbo-dom#342), so the PNG carries the same straight-alpha bytes
+//! as the tiny-skia backend's. Every entry
 //! point returns `Err` instead of panicking, so [`crate::canvas_ops_png`] can fall
 //! back to tiny-skia on any GPU failure.
 
@@ -119,11 +123,12 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
 }
 ";
 
-/// Source-over blend for straight-alpha source colours over a transparent target.
+/// Source-over blend for premultiplied source colours ([`premultiplied`]) over a
+/// premultiplied target.
 fn over_blend() -> wgpu::BlendState {
     wgpu::BlendState {
         color: wgpu::BlendComponent {
-            src_factor: wgpu::BlendFactor::SrcAlpha,
+            src_factor: wgpu::BlendFactor::One,
             dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
             operation: wgpu::BlendOperation::Add,
         },
@@ -257,12 +262,7 @@ impl GpuCanvas {
     /// range when the pipeline matches (draw order is preserved either way).
     fn tri(&mut self, kind: Kind, p: [(f32, f32); 3], c: Rgba) {
         let start = (self.verts.len() / 6) as u32;
-        let rgba = [
-            f32::from(c.r) / 255.0,
-            f32::from(c.g) / 255.0,
-            f32::from(c.b) / 255.0,
-            f32::from(c.a) / 255.0,
-        ];
+        let rgba = premultiplied(c).map(|v| f32::from(v) / 255.0);
         for &(x, y) in &p {
             let (nx, ny) = self.ndc(x, y);
             self.verts
@@ -473,7 +473,22 @@ fn render(gpu: &Gpu, width: u32, height: u32, canvas: &GpuCanvas) -> Result<Vec<
     drop(mapped);
     readback.unmap();
 
-    encode_png(width, height, &rgba)
+    let (pixels, _rem) = rgba.as_chunks::<4>();
+    let straight: Vec<u8> = pixels
+        .iter()
+        .flat_map(|&px| crate::paint_canvas::unpremultiply(px))
+        .collect();
+    encode_png(width, height, &straight)
+}
+
+/// `c` premultiplied to bytes the way Skia does (`SkMulDiv255Round` of each channel by
+/// the alpha), so a translucent paint blends from the same bytes as Chrome's canvas.
+fn premultiplied(c: Rgba) -> [u8; 4] {
+    let mul = |v: u8| {
+        let p = u32::from(v) * u32::from(c.a) + 128;
+        ((p + (p >> 8)) >> 8) as u8
+    };
+    [mul(c.r), mul(c.g), mul(c.b), c.a]
 }
 
 /// Round `v` up to the next multiple of `align` (a power of two).

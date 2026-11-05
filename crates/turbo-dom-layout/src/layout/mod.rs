@@ -6,6 +6,7 @@
 pub(crate) mod background;
 pub mod block;
 pub mod boxgen;
+pub(crate) mod canvas_content;
 pub(crate) mod contents;
 pub mod flex;
 pub(crate) mod form_controls;

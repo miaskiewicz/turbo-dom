@@ -3493,12 +3493,20 @@ fn replaced_image_box(
         }
         return Some(fragment);
     }
-    if !loaded && src.media == super::boxgen::Media::Canvas {
+    if src.media == super::boxgen::Media::Canvas {
         // A canvas is sized like Chrome's replaced boxes (`box-sizing`, min / max) on
-        // this path too: a content box inside its padding and border (#252).
-        let sized = super::imgsize::size_replaced_live(String::new(), intrinsic, &sizing, 1.0);
+        // this path too: a content box inside its padding and border (#252), which its
+        // drawn content, when the embedder supplies it, fills (#291).
+        let mut sized =
+            super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing, 1.0);
         let content = (sized.width, sized.height);
-        return Some(viewport_fragment(lb, bs, bx, by, content, ctx));
+        let mut fragment = viewport_fragment(lb, bs, bx, by, content, ctx);
+        if loaded {
+            physical_placement(&mut sized.placement, ctx);
+            let placement = sized.placement;
+            super::canvas_content::attach(&mut fragment, &lb.style, bs, placement, ctx.writing);
+        }
+        return Some(fragment);
     }
     let mut sized = size_replaced(src.name.clone(), intrinsic, &sizing);
     physical_placement(&mut sized.placement, ctx);

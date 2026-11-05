@@ -334,7 +334,7 @@ impl Matrix {
 }
 
 /// The bundled font registry, parsed once per process: what canvas text draws with unless
-/// the caller passes its own registry (the `*_with_fonts` entry points) — the default canvas
+/// the caller passes its own registry (the `canvas_ops_*_with_fonts` entry points) — the default canvas
 /// path never uses system fonts (deterministic/offline).
 pub(crate) fn bundled_fonts() -> &'static FontRegistry {
     static BUNDLED: std::sync::LazyLock<FontRegistry> = std::sync::LazyLock::new(FontRegistry::new);

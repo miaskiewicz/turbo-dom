@@ -55,7 +55,7 @@ pub(crate) fn replay_rgba(
 /// by the alpha (multiplied by its reciprocal) and rounded to the nearest byte, ties to even.
 /// A transparent pixel is transparent black. Checked over a 16 x 16 colour/alpha grid
 /// against Chrome 156 (`unpremultiply` in `scripts/canvas-ops-chrome-control.mjs`).
-fn unpremultiply([r, g, b, a]: [u8; 4]) -> [u8; 4] {
+pub(crate) fn unpremultiply([r, g, b, a]: [u8; 4]) -> [u8; 4] {
     if a == 0 {
         return [0, 0, 0, 0];
     }

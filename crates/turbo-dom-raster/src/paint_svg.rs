@@ -42,8 +42,82 @@ pub fn paint(
     );
     SHARED.with(|memo| memo.borrow_mut().take());
     paint_fragment(&mut svg, galley, images);
+    glyph_filters(&mut svg);
     svg.push_str("</svg>\n");
     svg
+}
+
+/// The id prefix of the glyph edge filters: `glyph-lum<class>`, one per text luminance
+/// class ([`luminance_class`]).
+const GLYPH_FILTER: &str = "glyph-lum";
+
+/// Define each glyph edge filter the document uses: Skia's pre-blend table for that
+/// luminance class ([`preblend_class`]) as an `feComponentTransfer` table on the run's
+/// coverage (its alpha) (miaskiewicz/turbo-dom#294). The raster painter's own edge
+/// transfer (`glyph_raster::edge_transfer`, #331) is linear for dark text from 28px up;
+/// an SVG viewer's coarser anti-aliasing (resvg's quarter steps) lands nearer Chrome
+/// with Skia's darker pre-blend, so the vector screenshot keeps it.
+fn glyph_filters(svg: &mut String) {
+    let marker = format!("url(#{GLYPH_FILTER}");
+    let mut used = [false; 8];
+    for (at, _) in svg.match_indices(&marker) {
+        let class = svg.as_bytes()[at + marker.len()] - b'0';
+        used[usize::from(class)] = true;
+    }
+    for class in (0..8u32).filter(|&c| used[c as usize]) {
+        let lut = preblend_class(class);
+        // One table value per 8-bit coverage: a viewer's linear interpolation between
+        // them meets the raster painter's table at every 8-bit alpha.
+        let table: Vec<String> = lut.iter().map(|v| format!("{v:.4}")).collect();
+        let _ = writeln!(
+            svg,
+            "<filter id=\"{GLYPH_FILTER}{class}\" color-interpolation-filters=\"sRGB\">\
+             <feComponentTransfer><feFuncA type=\"table\" tableValues=\"{}\"/>\
+             </feComponentTransfer></filter>",
+            table.join(" ")
+        );
+    }
+}
+
+/// The pre-blend's luminance gamma.
+const GAMMA: f32 = 1.8;
+/// The pre-blend's contrast boost (full for black text, tapering to none for white).
+const CONTRAST: f32 = 1.0;
+
+fn to_linear(v: f32) -> f32 {
+    v.powf(GAMMA)
+}
+
+fn from_linear(v: f32) -> f32 {
+    v.powf(GAMMA.recip())
+}
+
+/// The 3-bit luminance (0..=7) Skia's mask pre-blend keeps of text colour `(r, g, b)`
+/// (in [`GAMMA`] space): two text colours of one class share a pre-blend table.
+fn luminance_class(r: u8, g: u8, b: u8) -> u32 {
+    let lum = 0.2126 * to_linear(f32::from(r) / 255.0)
+        + 0.7152 * to_linear(f32::from(g) / 255.0)
+        + 0.0722 * to_linear(f32::from(b) / 255.0);
+    ((from_linear(lum) * 255.0).round() as u32) >> 5
+}
+
+/// Skia's mask pre-blend table (`SkTMaskGamma_build_correcting_lut`) of luminance class
+/// `top` ([`luminance_class`], replicated back to 8 bits): the coverage is boosted by the
+/// contrast where the assumed backdrop (the opposite luminance) is light, and the table
+/// undoes the sRGB blend so the result is a blend at [`GAMMA`].
+fn preblend_class(top: u32) -> [f32; 256] {
+    let src = ((top << 5) | (top << 2) | (top >> 1)) as f32 / 255.0;
+    let dst = 1.0 - src;
+    let (lin_src, lin_dst) = (to_linear(src), to_linear(dst));
+    let contrast = CONTRAST * lin_dst;
+    let mut table = [0.0; 256];
+    for (i, e) in table.iter_mut().enumerate() {
+        let raw = i as f32 / 255.0;
+        let a = (raw + (1.0 - raw) * contrast * raw).min(1.0);
+        let out = from_linear(lin_src * a + (1.0 - a) * lin_dst);
+        *e = ((out - dst) / (src - dst)).clamp(0.0, 1.0);
+    }
+    table
 }
 
 fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
@@ -664,8 +738,9 @@ fn paint_round_border(svg: &mut String, f: &Fragment, b: &BorderEdges, radii: &B
 /// Emit a line's glyph run as one filled `<path>` of the outline the raster painter
 /// fills ([`crate::glyph_raster::run_outline`]: snapped, lifted and emboldened like
 /// Chrome's glyphs, in page coordinates; a transparent colour or a run with no outlined
-/// glyph emits nothing). Chrome's luminance pre-blend has no SVG equivalent, so the
-/// vector screenshot's glyph edges keep a plain source-over blend.
+/// glyph emits nothing), its coverage corrected by the colour's pre-blend filter
+/// ([`glyph_filters`]). The colour's alpha is the path's `opacity`, which applies after
+/// the filter: the raster painter's `table[coverage] * alpha`.
 fn paint_text(
     svg: &mut String,
     (f, vertical, upright): (&Fragment, bool, bool),
@@ -680,9 +755,20 @@ fn paint_text(
     let run =
         crate::glyph_raster::run_outline((f, vertical && upright), glyphs, face, font_size, frame);
     let d = run.svg_path();
-    if !d.is_empty() {
-        let _ = writeln!(svg, "<path d=\"{d}\" {}/>", fill_attrs(color));
+    if d.is_empty() {
+        return;
     }
+    let class = luminance_class(color.r, color.g, color.b);
+    let opacity = if color.a == 255 {
+        String::new()
+    } else {
+        format!(" opacity=\"{:.3}\"", f32::from(color.a) / 255.0)
+    };
+    let _ = writeln!(
+        svg,
+        "<path d=\"{d}\" fill=\"#{:02x}{:02x}{:02x}\"{opacity} filter=\"url(#{GLYPH_FILTER}{class})\"/>",
+        color.r, color.g, color.b
+    );
 }
 
 #[cfg(test)]
@@ -1391,9 +1477,13 @@ mod tests {
             // path is the outline Chrome fills, grown and snapped a fraction of a pixel
             // (#266).
             let got = body(&line, &HashMap::new());
-            let path = got
+            // Red's luminance class is 3: the path takes that class's pre-blend filter,
+            // defined after the content (#294).
+            let (path, filter) = got.split_once('\n').expect("a path, then its filter");
+            assert!(filter.starts_with("<filter id=\"glyph-lum3\""), "{filter}");
+            let path = path
                 .strip_prefix("<path d=\"")
-                .and_then(|p| p.strip_suffix("\" fill=\"#ff0000\"/>\n"))
+                .and_then(|p| p.strip_suffix("\" fill=\"#ff0000\" filter=\"url(#glyph-lum3)\"/>"))
                 .expect("one red path");
             let (got, want): (Vec<&str>, Vec<&str>) = (
                 path.split_whitespace().collect(),
@@ -1519,7 +1609,10 @@ mod tests {
             ink.contains(" Q") || ink.starts_with("<path d=\"Q"),
             "{ink}"
         );
-        assert!(ink.ends_with(" fill=\"#ff0000\"/>\n"), "{ink}");
+        assert!(
+            ink.contains(" fill=\"#ff0000\" filter=\"url(#glyph-lum3)\"/>\n<filter "),
+            "{ink}"
+        );
         assert_eq!(
             body(&line(" ", RED), &HashMap::new()),
             "",
@@ -1529,6 +1622,107 @@ mod tests {
             body(&line("Ag", Rgba::new(255, 0, 0, 0)), &HashMap::new()),
             ""
         );
+    }
+
+    #[test]
+    fn preblend_darkens_dark_text_and_lightens_light_text_edges() {
+        let black = preblend_class(luminance_class(0, 0, 0));
+        let white = preblend_class(luminance_class(255, 255, 255));
+        let blue = preblend_class(luminance_class(0, 0, 255));
+        assert_eq!((black[0], black[255]), (0.0, 1.0));
+        assert_eq!((white[0], white[255]), (0.0, 1.0));
+        // Half coverage: black ink 1 - (1 - 0.75)^(1/1.8), white 0.5^(1/1.8).
+        assert!((black[128] - 0.537).abs() < 0.01, "{}", black[128]);
+        assert!((white[128] - 0.684).abs() < 0.01, "{}", white[128]);
+        // Blue's low luminance blends almost like black.
+        assert!((blue[128] - black[128]).abs() < 0.02, "{}", blue[128]);
+        // A mid grey sits between.
+        let grey = preblend_class(luminance_class(128, 128, 128));
+        assert!(grey[128] > 0.0 && grey[128] < 1.0);
+        // One table per 3-bit luminance class.
+        assert_eq!(
+            (luminance_class(0, 0, 0), luminance_class(0, 0, 255)),
+            (0, 1)
+        );
+        assert_eq!(luminance_class(255, 255, 255), 7);
+    }
+
+    #[test]
+    fn glyph_runs_share_one_pre_blend_filter_per_luminance_class() {
+        // miaskiewicz/turbo-dom#294: each run's coverage goes through its text colour's
+        // pre-blend table, one filter per luminance class the document uses.
+        let face = FontRegistry::new()
+            .select(&["serif"], 400, false)
+            .unwrap()
+            .clone();
+        let glyph_id = face.shape("H")[0].glyph_id;
+        let run = |x: f32, color: Rgba| {
+            Fragment::new(
+                NodeId(0),
+                x,
+                0.0,
+                10.0,
+                20.0,
+                FragmentContent::TextLine {
+                    glyphs: vec![PositionedGlyph {
+                        glyph_id,
+                        x: 0.0,
+                        y: 15.0,
+                        text_start: 0,
+                        text_end: 0,
+                    }],
+                    text: String::new(),
+                    face: face.clone(),
+                    font_size: 20.0,
+                    color,
+                    vertical: false,
+                    upright: false,
+                },
+            )
+        };
+        let mut page = plain(0.0, 0.0, 100.0, 20.0, None);
+        page.children = vec![
+            run(0.0, Rgba::new(0, 0, 0, 255)),
+            // Black's class (0) again, at half alpha: the alpha is the path's opacity,
+            // applied after the filter.
+            run(20.0, Rgba::new(0, 0, 0, 128)),
+            run(40.0, WHITE),
+        ];
+        let svg = body(&page, &HashMap::new());
+        assert_eq!(
+            svg.matches("filter=\"url(#glyph-lum0)\"").count(),
+            2,
+            "{svg}"
+        );
+        assert!(
+            svg.contains("fill=\"#000000\" opacity=\"0.502\" filter="),
+            "{svg}"
+        );
+        assert_eq!(
+            svg.matches("filter=\"url(#glyph-lum7)\"").count(),
+            1,
+            "{svg}"
+        );
+        assert_eq!(svg.matches("<filter ").count(), 2, "{svg}");
+        // Each filter's table is the raster painter's, one value per 8-bit coverage.
+        for class in [0, 7] {
+            let def = format!(
+                "<filter id=\"glyph-lum{class}\" color-interpolation-filters=\"sRGB\">\
+                 <feComponentTransfer><feFuncA type=\"table\" tableValues=\""
+            );
+            let at = svg.find(&def).expect("filter defined") + def.len();
+            let values: Vec<f32> = svg[at..svg[at..].find('"').unwrap() + at]
+                .split(' ')
+                .map(|v| v.parse().unwrap())
+                .collect();
+            let lut = preblend_class(class);
+            assert_eq!(values.len(), 256);
+            for (v, want) in values.iter().zip(lut) {
+                assert!((v - want).abs() < 1e-4, "{class}: {v} vs {want}");
+            }
+        }
+        // No glyph, no filter.
+        assert!(!body(&plain(0.0, 0.0, 5.0, 5.0, Some(RED)), &HashMap::new()).contains("<filter"));
     }
 
     #[test]

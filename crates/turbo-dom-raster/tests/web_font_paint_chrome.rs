@@ -8,7 +8,9 @@
 //! wrong line pitch moves the runs by many pixels).
 
 use turbo_dom_layout::{FontFace, FontRegistry};
-use turbo_dom_raster::{canvas_ops_rgba_with_fonts, screenshot_png_with_fonts, Viewport};
+use turbo_dom_raster::{
+    canvas_ops_rgba_with_fonts, screenshot_png_with_options, ScreenshotOptions, Viewport,
+};
 
 fn control() -> serde_json::Value {
     serde_json::from_str(include_str!("fixtures/web_font_paint_chrome156.json")).unwrap()
@@ -83,13 +85,14 @@ fn screenshots_paint_web_fonts_from_the_caller_registry_like_chrome() {
             "<!doctype html><html><head><style>{style}</style></head><body>{}</body></html>",
             case["body"].as_str().unwrap()
         );
-        let png = screenshot_png_with_fonts(
+        let mut options = ScreenshotOptions::default();
+        options.fonts = Some(&fonts);
+        let png = screenshot_png_with_options(
             &html,
             "",
             Viewport { width, height },
             &std::collections::HashMap::new(),
-            false,
-            &fonts,
+            &options,
         )
         .unwrap();
         let pm = tiny_skia::Pixmap::decode_png(&png).unwrap();

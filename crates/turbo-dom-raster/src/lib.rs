@@ -21,6 +21,7 @@
 //! fetch, or any entry in a hydration trail.
 
 mod avif;
+mod canvas_content;
 mod canvas_ops;
 #[cfg(test)]
 mod form_native_chrome_tests;
@@ -120,6 +121,7 @@ pub fn canvas_ops_rgba_with_fonts(
 fn canvas_too_large(width: u32, height: u32) -> bool {
     u64::from(width) * u64::from(height) > 268_435_456
 }
+pub use canvas_content::{CanvasContent, CanvasContents};
 pub use style_extract::{
     delazy_images, delazy_tree, image_urls, image_urls_in_css, stylesheet_hrefs,
 };
@@ -262,8 +264,9 @@ pub fn screenshot_png_with_opts(
     full_page: bool,
     system_fonts: bool,
 ) -> Result<Vec<u8>, String> {
-    let fonts = font_registry(system_fonts);
-    screenshot_png_with_fonts(html, external_css, viewport, images, full_page, &fonts)
+    let mut options = ScreenshotOptions::default();
+    (options.full_page, options.system_fonts) = (full_page, system_fonts);
+    screenshot_png_with_options(html, external_css, viewport, images, &options)
 }
 
 /// [`screenshot_svg_with_assets`] plus `system_fonts` (see
@@ -276,52 +279,84 @@ pub fn screenshot_svg_with_opts(
     full_page: bool,
     system_fonts: bool,
 ) -> Result<String, String> {
-    let fonts = font_registry(system_fonts);
-    screenshot_svg_with_fonts(html, external_css, viewport, images, full_page, &fonts)
+    let mut options = ScreenshotOptions::default();
+    (options.full_page, options.system_fonts) = (full_page, system_fonts);
+    screenshot_svg_with_options(html, external_css, viewport, images, &options)
 }
 
-/// [`screenshot_png_with_assets`] laid out and painted with the caller's `fonts` in place of
-/// the bundled (or system) set: the page's text resolves against that registry, so a caller
-/// that loads the page's `@font-face` sources (with
-/// [`FontFace::from_web_font_bytes`](turbo_dom_layout::FontFace::from_web_font_bytes), on top
-/// of [`FontRegistry::new`] or a clone of [`FontRegistry::system`]) gets them laid out with
-/// Chrome's web-font metrics and painted (miaskiewicz/turbo-dom#304). The raster does no
-/// I/O and does not read `@font-face` rules itself.
-pub fn screenshot_png_with_fonts(
+/// The switches and embedder-supplied inputs of a `*_with_options` screenshot beyond the
+/// page, its stylesheets and its images. Start from [`ScreenshotOptions::default`] (every
+/// switch off, nothing supplied) and set the fields you need; new fields are added with a
+/// default that keeps today's render.
+#[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
+pub struct ScreenshotOptions<'a> {
+    /// Paint the full content height instead of the viewport height (see
+    /// [`screenshot_png_with_assets`]).
+    pub full_page: bool,
+    /// Resolve fonts against the installed system fonts too (see
+    /// [`screenshot_png_with_opts`]).
+    pub system_fonts: bool,
+    /// What the page drew into its `<canvas>` elements, painted in their boxes
+    /// (miaskiewicz/turbo-dom#291; see [`CanvasContents`]). `None`: every canvas is blank.
+    pub canvases: Option<&'a CanvasContents>,
+    /// The faces the page lays out and paints with, in place of the bundled set (and of
+    /// `system_fonts`): a caller that loads the page's `@font-face` sources (with
+    /// [`FontFace::from_web_font_bytes`](turbo_dom_layout::FontFace::from_web_font_bytes), on
+    /// top of [`FontRegistry::new`] or a clone of [`FontRegistry::system`]) gets them laid out
+    /// with Chrome's web-font metrics and painted (miaskiewicz/turbo-dom#304). The raster does
+    /// no I/O and does not read `@font-face` rules itself. `None`: the bundled (or system) set.
+    pub fonts: Option<&'a FontRegistry>,
+}
+
+impl ScreenshotOptions<'_> {
+    /// Lay out with the caller's [`fonts`](Self::fonts), else the bundled (or, with
+    /// `system_fonts`, system) registry.
+    fn with_fonts<T>(&self, draw: impl FnOnce(&FontRegistry) -> T) -> T {
+        match self.fonts {
+            Some(fonts) => draw(fonts),
+            None => draw(&font_registry(self.system_fonts)),
+        }
+    }
+}
+
+/// Lay `html` out at `viewport` and paint it into a PNG, with caller-fetched
+/// `external_css` and `images` (see [`screenshot_png_with_assets`]) and `options`.
+pub fn screenshot_png_with_options(
     html: &str,
     external_css: &str,
     viewport: Viewport,
     images: &ImageAssets,
-    full_page: bool,
-    fonts: &FontRegistry,
+    options: &ScreenshotOptions,
 ) -> Result<Vec<u8>, String> {
     let mut decoded = image_paint::decode_all(images);
     // Recover inline `data:` image masks/backgrounds the fetch step skips (nothing
     // to fetch) — e.g. Wikipedia's TOC-toggle chevron mask-image.
     image_paint::add_data_uri_images(&mut decoded, external_css, html);
-    let tree = parse_document(html, &mut decoded);
-    let galley = lay_out(&tree, external_css, viewport, &decoded, fonts);
+    let tree = parse_document(html, &mut decoded, options);
+    let galley =
+        options.with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts));
     let bg = canvas_background(&galley);
-    let height = paint_height(&galley, viewport, full_page);
+    let height = paint_height(&galley, viewport, options.full_page);
     paint_png::paint(&galley, viewport.width, height, bg, &decoded)
 }
 
-/// [`screenshot_svg_with_assets`] with the caller's `fonts` (see
-/// [`screenshot_png_with_fonts`]).
-pub fn screenshot_svg_with_fonts(
+/// [`screenshot_png_with_options`] as a standalone SVG document (images embed as base64
+/// `data:` URIs).
+pub fn screenshot_svg_with_options(
     html: &str,
     external_css: &str,
     viewport: Viewport,
     images: &ImageAssets,
-    full_page: bool,
-    fonts: &FontRegistry,
+    options: &ScreenshotOptions,
 ) -> Result<String, String> {
     let mut decoded = image_paint::decode_all(images);
     image_paint::add_data_uri_images(&mut decoded, external_css, html);
-    let tree = parse_document(html, &mut decoded);
-    let galley = lay_out(&tree, external_css, viewport, &decoded, fonts);
+    let tree = parse_document(html, &mut decoded, options);
+    let galley =
+        options.with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts));
     let bg = canvas_background(&galley);
-    let height = paint_height(&galley, viewport, full_page);
+    let height = paint_height(&galley, viewport, options.full_page);
     Ok(paint_svg::paint(
         &galley,
         viewport.width,
@@ -437,11 +472,20 @@ pub fn screenshot(html: &str, viewport: Viewport, format: Format) -> Result<Vec<
 /// elements with `<img>`s whose rasterized SVGs join `decoded` — the engine has no
 /// inline-SVG painter (miaskiewicz/turbo-dom#25: elements of the tree, never `<svg` text).
 /// The document's `<img src="data:…">` images are decoded from their URLs into `decoded`
-/// (miaskiewicz/turbo-dom#27: no caller bytes needed).
-fn parse_document(html: &str, decoded: &mut image_paint::DecodedAssets) -> Tree {
+/// (miaskiewicz/turbo-dom#27: no caller bytes needed). The embedder's canvas contents join
+/// `decoded` under their canvases' names (miaskiewicz/turbo-dom#291), counted before the
+/// inline `<svg>`s (and any canvas in one) are replaced.
+fn parse_document(
+    html: &str,
+    decoded: &mut image_paint::DecodedAssets,
+    options: &ScreenshotOptions,
+) -> Tree {
     let mut tree = parse_html_tree(html);
     style_extract::delazy_tree(&mut tree);
     image_paint::add_img_data_urls(decoded, &tree);
+    if let Some(canvases) = options.canvases {
+        canvas_content::add_canvases(decoded, &tree, canvases);
+    }
     let inline_svgs = image_paint::inline_svg_to_img(&mut tree);
     image_paint::add_inline_svg_assets(decoded, &inline_svgs);
     tree

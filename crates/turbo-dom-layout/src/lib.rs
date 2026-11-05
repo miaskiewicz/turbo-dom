@@ -40,6 +40,7 @@ pub use html_layout::{
     CidBox, HtmlOptions,
 };
 pub use image::{ImageResolver, NoImages};
+pub use layout::canvas_content::{canvas_bitmap_size, canvas_image_name};
 pub use layout::fragment::{
     BorderRadii, BoxShadow, BreakMeta, ClipRect, CornerRadii, Fragment, FragmentContent,
     GradientStop, ImagePlacement, LinearGradient, NodeId, OverflowClip, PositionedGlyph,

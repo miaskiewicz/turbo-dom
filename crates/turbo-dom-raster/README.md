@@ -49,8 +49,8 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
     `full_page`;
   - `*_with_opts` adds `system_fonts`, which resolves against the installed fonts through
     turbo-dom-layout's `FontRegistry::system`;
-  - `screenshot_png_with_fonts` / `screenshot_svg_with_fonts` take the caller's
-    `&FontRegistry` instead, so a caller that loads the page's `@font-face` sources
+  - `ScreenshotOptions::fonts` (for `screenshot_{png,svg}_with_options`) takes the
+    caller's `&FontRegistry` instead, so a caller that loads the page's `@font-face` sources
     (`FontFace::from_web_font_bytes`) gets web fonts laid out with Chrome's metrics and
     painted. The raster does not read `@font-face` rules itself.
 - **Resource discovery** (works on the parsed document, never on source text):
@@ -93,8 +93,10 @@ so any number of tiles fill the box; fractional tiles blend their edge pixels li
 (#269). Gradients take length, double-position and repeating stops (#264). A `transform`
 on an `<img>` itself applies (#272). Form controls paint Chrome 156's native appearance
 from turbo-dom-layout's galley boxes (#255, #257). Glyphs are rasterized with exact-area
-coverage, CoreText-like outline growth and Skia's mask pre-blend; Chrome's stem darkening
-is still missing, so small and white text differ most (open: #266).
+coverage, CoreText-like box-kernel outline growth and a luminance-dependent edge transfer
+(#266, #331); the SVG screenshot's glyph paths take Skia's mask pre-blend through one
+`feComponentTransfer` filter per text luminance class (#294). Chrome's grid-dependent
+vertical geometry below about 20px is not modelled, so 12–16px text differs most.
 
 ## Gates
 

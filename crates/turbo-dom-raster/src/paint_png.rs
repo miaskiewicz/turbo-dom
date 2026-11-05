@@ -1330,7 +1330,7 @@ fn paint_text(
         return;
     }
     let run = crate::glyph_raster::run_outline((f, upright), glyphs, face, font_size, xf);
-    crate::glyph_raster::fill(pm, &run, color);
+    crate::glyph_raster::fill(pm, &run, color, font_size);
 }
 
 #[cfg(test)]
