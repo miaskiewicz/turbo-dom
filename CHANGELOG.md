@@ -81,6 +81,13 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-raster: `coretext` / `gpu-metal` canvas output matches the Chrome 156 controls
+  (#342).** The Metal canvas replay blended straight-alpha colours, so a translucent paint
+  over a transparent canvas stored premultiplied bytes in the PNG and colours blended a
+  level off; it now feeds colours premultiplied the way Skia rounds them and unpremultiplies
+  the read-back like `getImageData`. CoreText canvas text declines a named family CoreText
+  does not have (it used to substitute Helvetica for bundled or web fonts), so those trace
+  the registry's glyphs. The macOS raster CI job now runs the suite with both features.
 - **turbo-dom-raster: glyph edges closer to Chrome 156 (#266, #331).** The PNG painter grows
   each glyph outline by a box (`0.0045 * size` px: each edge moves `d * (|nx| + |ny|)`, so
   diagonal strokes of `W`, `x` and `y` no longer sit 0.14 px off), fills concave joins a
