@@ -1108,7 +1108,10 @@
     if(!computedKeyEqual(entry,key))return null;
     if(entry.state!==null&&entry.state!==styleStateEpoch())return null;
     if(!computedMediaUnchanged(entry.media))return null;
-    if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
+    // No top-layer / font-context probe: entering or leaving the top layer moves the key (open
+    // attribute, the fullscreen stack bumps the tree), font defaults, parent and root feed no
+    // cascaded declaration, and the UA-table flag changes only in a retired document, which
+    // has no computed style.
     return entry.base;
   }
   function computedBaseCapture(decl,priorities,uaValues){
@@ -1201,7 +1204,7 @@
         // turbo-test#227: a style volatile only after its cascaded declarations (a running
         // animation or transition, the fullscreen element's viewport size) keeps them.
         var out=base.out;
-        if(out&&unchanged&&!out.volatile)computedSnapshotSet(computedBaseCache,el,{__proto__:null,base:out,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:out.stateRead?state:null,media:out.media,probe:computedCacheProbe(el)});
+        if(out&&unchanged&&!out.volatile)computedSnapshotSet(computedBaseCache,el,{__proto__:null,base:out,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:out.stateRead?state:null,media:out.media});
         else if(!base.use)computedSnapshotSet(computedBaseCache,el,null);
       }
       else{var stored={__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps,stable:null};computedSnapshotSet(computedStyleCache,el,stored);if(computedStampEqual(before,computedWorldStamp(el)))computedMarkStable(el,stored);}
