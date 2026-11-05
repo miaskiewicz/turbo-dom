@@ -393,6 +393,10 @@ pub(super) fn set_html_unsafe<'s>(
         let objects = register(scope, roots);
         (wrap(scope, fragment), objects)
     };
+    // Template contents and declarative root state live on wrappers made in this
+    // detached fragment's component; the moved nodes join the target's only when
+    // ownership is next reconciled, which a large document defers past this call.
+    dom_ownership::pin_until_reconciled(scope, source);
     // Innermost roots first: no raw parser content fragment may enter adoption.
     for root in roots.iter().rev() {
         template_contents::realize(scope, *root);
