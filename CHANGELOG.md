@@ -164,6 +164,22 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout: vertical `<audio controls>` panel, short-panel controls, `<meter>`
+  shadow gradient under `appearance:none` / author background (turbo-dom#363, #364, #365).**
+  A vertical `<audio controls>` box (`writing-mode: vertical-rl` / `vertical-lr`) now
+  paints a 54 x content-block pill at the content box's inline-end (logical), which
+  `map_tree` rotates to the physical bottom like Chrome 156 (a 54 x 54 pill at the box's
+  bottom for a narrow `54 x 300` box). A horizontal box shorter than 54px keeps the
+  play button, timeline and menu dots painted at the virtual 54-tall panel's offsets:
+  the controls clip to the content box through a decoration clip group so they do not
+  enlarge the audio element's `getBoundingClientRect()` subtree bounds. A `<meter>`
+  with `appearance: none` or an author background now paints Chrome's shadow bars: a
+  white `#efefef` track across the middle half of the box with the value region filled
+  in `#78ab34` (the optimum-value gradient midpoint). Every audio-panel decoration
+  now carries a sentinel `DECORATION_ID` so the live-layout snapshot does not include
+  it in the audio element's subtree bounds (turbo-dom#364). Chrome 156 control: new
+  `audio-panel-{vertical-rl,vertical-lr,short-26}` cases and inside-box probes on
+  `meter-{appearance-none,author-background}` of `form_native_chrome156.json`.
 - **turbo-dom-layout: `<audio controls>` panel size variants, `<progress>` shadow bars and
   indeterminate first frame (turbo-dom#346).** The audio panel paints at Chrome 156's
   measured width thresholds (`-webkit-media-controls-*`): time-remaining from 211px,

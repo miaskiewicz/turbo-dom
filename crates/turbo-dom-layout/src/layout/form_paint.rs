@@ -57,6 +57,8 @@ const EVEN_LESS_GOOD: Rgba = rgb(0xd8, 0x3b, 0x01);
 const SHADOW_TRACK: Rgba = rgb(0x80, 0x80, 0x80);
 /// A determinate `<progress>`'s shadow value bar (above).
 const SHADOW_VALUE: Rgba = rgb(0x00, 0x80, 0x00);
+/// A `<meter>`'s shadow value bar's dark-green gradient midpoint (above).
+const METER_SHADOW_VALUE: Rgba = rgb(0x78, 0xab, 0x34);
 
 const fn rgb(r: u8, g: u8, b: u8) -> Rgba {
     Rgba { r, g, b, a: 255 }
@@ -74,13 +76,18 @@ pub(crate) fn apply(
 ) {
     let mode = WritingMode::of(style);
     if !native(control, style, frag, mode) {
-        // A `<progress>` with `appearance:none` or an author background still shows
-        // Chrome's shadow bars (grey track + green value, or blue indeterminate first
-        // frame; miaskiewicz/turbo-dom#346). A `<meter>`'s shadow DOM paints a gradient
-        // which this layer does not try to reproduce — the test assertions skip the
-        // meter's inside.
-        if matches!(control, Control::Progress) {
-            shadow_progress(attrs, frag);
+        // The native look is turned off (`appearance:none` or an author
+        // background/gradient). Chrome still paints its shadow DOM bars:
+        // - `<progress>` shows a grey #808080 track with a green value bar (or the
+        //   blue first-frame bar when indeterminate; miaskiewicz/turbo-dom#346).
+        // - `<meter>` shows the optimum gradient's mid colour across the whole bar,
+        //   under `appearance:none` and under an author background (Chrome 156's
+        //   shadow DOM's `::-webkit-meter-bar` / `::-webkit-meter-optimum-value`
+        //   gradient; miaskiewicz/turbo-dom#365).
+        match control {
+            Control::Progress => shadow_progress(attrs, frag),
+            Control::Meter => shadow_meter(attrs, frag),
+            _ => {}
         }
         return;
     }
@@ -412,6 +419,28 @@ fn gauge(control: Control, attrs: &[Attr], frag: &mut Fragment) {
             (x + w * 0.05, top),
             (w * 0.14, bar_h),
             ACCENT,
+            None,
+            0.0,
+        ));
+    }
+    frag.content = bare();
+    frag.children.splice(0..0, parts);
+}
+
+/// A `<meter>`'s shadow-DOM painting under `appearance:none` or an author background
+/// (Chrome 156, miaskiewicz/turbo-dom#365): the optimum value bar's gradient midpoint
+/// colour #78ab34 across the whole content box, covering any author background.
+fn shadow_meter(attrs: &[Attr], frag: &mut Fragment) {
+    let (x, y, w, h) = (frag.x, frag.y, frag.width, frag.height);
+    let (top, bar_h) = (y + h / 4.0, h / 2.0);
+    let (ratio, _) = meter_value(attrs);
+    let mut parts = vec![rect(frag, (x, top), (w, bar_h), FACE, None, 0.0)];
+    if ratio > 0.0 {
+        parts.push(rect(
+            frag,
+            (x, top),
+            (w * ratio as f32, bar_h),
+            METER_SHADOW_VALUE,
             None,
             0.0,
         ));

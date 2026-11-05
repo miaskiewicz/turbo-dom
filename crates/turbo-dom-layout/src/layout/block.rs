@@ -3512,7 +3512,7 @@ fn replaced_image_box(
         // A media default box: no aspect ratio, like an iframe's (#252).
         let natural = (intrinsic.width as f32, intrinsic.height as f32);
         let mut fragment = embedded_viewport_fragment(lb, bs, (bx, by), cb_width, natural, ctx);
-        if lb.audio_controls() && !ctx.writing.vertical() {
+        if lb.audio_controls() {
             let b = bs.border.widths();
             let content = (
                 fragment.x + b.left + bs.padding.left,
@@ -3520,7 +3520,12 @@ fn replaced_image_box(
                 fragment.width - b.horizontal() - bs.padding.horizontal(),
                 fragment.height - b.vertical() - bs.padding.vertical(),
             );
-            super::media_paint::audio_panel(&mut fragment, content, false, ctx.fonts);
+            super::media_paint::audio_panel(
+                &mut fragment,
+                content,
+                ctx.writing.vertical(),
+                ctx.fonts,
+            );
         }
         return Some(fragment);
     }
