@@ -233,8 +233,10 @@ function sumApplyOperator(op, current, next) {
     const b = sumScalar(next);
     return b === null ? null : { current: sumScale(current, 1 / b) };
   }
-  if (op.kind === 'delim' && (op.value === '+' || op.value === '-')) return { current: next, flush: op.value === '+' ? 1 : -1 };
-  return null;
+  // The remaining case is +/- by precondition: every caller of sumTerms (the only caller of
+  // sumApplyOperator) runs after functionValid / checkedSum, which rejects any other operator
+  // at an odd position. Chrome 156 fixture-exercised in test/css-shorthand-chrome.test.mjs.
+  return { current: next, flush: op.value === '+' ? 1 : -1 };
 }
 function sumTerms(inner) {
   // Operands alternate with operators; products bind first.

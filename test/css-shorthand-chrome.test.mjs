@@ -60,6 +60,14 @@ test("the module's shorthand table (shorthandNames / longhands / canonical) is C
   assert.equal(longhands('color'), null);
 });
 
+test('an unterminated url() ending with a lone backslash uses the U+FFFD replacement (CSS Syntax escape fallback)', async () => {
+  // CSS Syntax Level 3 § 4.3.7 "consume an escaped code point": when a `\` is immediately
+  // followed by EOF, the escape returns U+FFFD. tokReadUrlEscape covers that fallback for
+  // the url() token (`url(abc\` with no closing `)`), which Chrome also reads as `url(abc�)`.
+  const { longhandValue } = await import('../src/runtime/css-shorthand.mjs');
+  assert.equal(longhandValue('background-image', 'url(abc\\').text, 'url("abc�")');
+});
+
 test('an overflowing length reads back clamped to the largest float like Chrome 156 (#262)', () => {
   // Chrome 156: `el.style.borderRadius = "1e39px"` (and `1` followed by 400 zeros) reads
   // back `3.40282e+38px`, as the Rust port (crates/turbo-dom/tests/css_shorthand_api.rs).
