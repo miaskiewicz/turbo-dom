@@ -9,12 +9,59 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- turbo-dom-layout: `INDETERMINATE_ATTR`, the attribute a live embedder adds to a checkbox's
+  `StyledElement` (from `live::snapshot`'s `post_cascade` hook) when a script set its
+  `indeterminate` IDL flag; the checkbox then paints Chrome's indeterminate dash
+  (turbo-dom#293).
+
+### Fixed
+
+- **turbo-dom-layout: `<progress>` / `<meter>`, indeterminate checkboxes and vertical controls
+  look native (turbo-dom#293).** A `<progress>` / `<meter>` is Chrome's `10em` / `5em` by `1em`
+  inline-block (logical, so `16 x 160` in a vertical mode) whose children do not render, its
+  baseline its bottom lowered by `vertical-align: -0.2em`, painted as Chrome's rounded bar
+  (half the box tall, `#efefef` in a `#b2b2b2` / `#cbcbcb` frame) filled to its value: a
+  progress in `#0075ff`, a meter in its value's region colour (optimum / suboptimal / even less
+  good; HTML's min / max / low / high / optimum defaults and clamping). An indeterminate checkbox
+  paints Chrome's white dash on blue. Every control keeps its native look in `vertical-lr` /
+  `vertical-rl` instead of falling back to its CSS border: drawn in its logical space, so a
+  range, progress or meter runs down its inline axis and a menu list's chevron points along the
+  block axis, while the check, dash and chevron glyphs keep their physical shape. Chrome 156
+  control: `form_native_chrome156.json` (`scripts/form-native-chrome-control.mjs`); tests:
+  `turbo-dom-raster` `form_native_chrome_tests`. An indeterminate progress shows its track (Chrome
+  animates a bar over it).
+- **turbo-dom-layout: `<audio controls>` paints Chrome's media control panel (turbo-dom#292).**
+  The `#f1f3f4` pill over the content box with the greyed-out play button, the `0:00 / 0:00`
+  time display, the timeline, the greyed-out volume button and the menu button, at Chrome's
+  positions (the timeline stretching with the box). Same control and tests (`audio-*`).
+- **turbo-dom-browser-env: a `<button>`'s computed `background-color` is `rgb(239, 239, 239)`
+  (turbo-dom#318).** Buttons and `<input type=button|submit|reset>` get html.css's ButtonFace as a
+  UA declaration below every author rule and inline style (it read `rgba(0, 0, 0, 0)`). Control:
+  `computed_form_background_chrome156.json`.
 - turbo-dom-layout: `Intrinsic::natural_ratio: Option<f32>` and `Intrinsic::ratio_only(width, height, ratio, has_alpha)`, an image with a natural aspect ratio and no natural size, and `svg::natural_sizing(bytes) -> Option<((f32, f32), Option<f32>)>` (`svg::natural_size` plus that ratio). `image::probe_natural` returns it for an SVG whose root has a `viewBox` and neither `width` nor `height` (`width`/`height` stay Chrome's `naturalWidth`/`naturalHeight`). Breaking for struct literals of `Intrinsic` (use `..Intrinsic::new(..)`); `Intrinsic` is `Eq` by a manual impl (turbo-dom#320).
 
 ### Fixed
 
 - **turbo-dom-layout: an SVG `<img>` with only a `viewBox` sizes from its ratio.** An auto-sized one is as wide as its containing block allows (less its margins, padding and border), the height a layout unit first and the width from it, under `width` / `height` / `min-*` / `max-*` and in a vertical writing mode; it contributes no width to a shrink-to-fit container (float, inline-block, table), like Chrome 156. It laid out at its 225x150 reported size. Control: `svg_image_ratio_chrome156.json` (`scripts/svg-image-ratio-chrome-control.mjs`; turbo-dom#320, turbo-surf#161).
 - **turbo-dom-layout: a ratio-only SVG `<img>` flex or grid item is sized like Chrome 156.** As a row flex item its base size is the container's inner width less its margins, exactly (a 400px row gives 400 x 266.65625; it laid out at its 225x150 reported size), with `min-width: auto` keeping it from shrinking below that, a definite stretched height giving the width through the ratio, and height constraints sizing it as in block layout; a column flex item stretches to the container's width, and a grid item fills its area. The flexed width is its used width. A width-constrained auto-sized one now also derives its width from the layout-unit height in block layout (`max-width: 287px` is 286.984375 x 191.328125). Control: the flex and grid rows of `svg_image_ratio_chrome156.json`, which now run in every feature configuration (turbo-dom#326).
+- **turbo-dom-layout: `hyphens: auto` hyphenates the languages Chrome 156 on macOS does,
+  not just English.** en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb / no, nl, pl, pt, ro, ru, sk, sv, uk break at the TeX `hyph-*` patterns' points (the `hyphenation`
+  crate's, the patterns Chrome's Minikin dictionaries on Linux, Windows and Android are built
+  from) under the new default-on `hyphenation-languages` cargo feature (~3 MB of embedded
+  patterns; `default-features = false, features = ["bundled-fonts", "hyphenation"]` keeps
+  the ~90 KB English-only build). Outside English a capitalized word hyphenates, as in Blink.
+  Chrome on macOS uses the system dictionary, whose points differ for 8 of the 330 words of
+  the new control (en `international`, `extraordinary`; es `desarrollo`; pl
+  `odpowiedzialność`, `szczególnie`, `elektryczność`, `chrząszcz`; cs `knihovna`); the test
+  pins exactly those. API: `AutoHyphens` gains a `language: HyphenationLanguage` field (a new
+  `#[non_exhaustive]` enum with `HyphenationLanguage::from_locale`). Controls:
+  `hyphens/chrome156.json` (new per-language cases) and `hyphens/words-chrome156.json`
+  (`scripts/fixture-font-chrome-controls.mjs`) (turbo-dom#289).
+
+- turbo-dom-browser-env: getComputedStyle `width` / `height` report the used value of a rendered box (Chrome 156): an embedder with a layout sets `layoutUsedSize` on the engine namespace (`(element) => [border-box width, height, content-box width, height]` or `null`), box-sizing picks the box and the px value serializes like Blink (`%g`, ties to even: `5.32812px`). Elements Chrome reports the computed value for — display none / contents (also under a display:none ancestor), non-atomic inline elements, SVG children other than rect / image / foreignObject — read their declared value or `auto` instead of `""`, and a display:none percentage stays a percentage. Without a layout a rendered box keeps its declared value. turbo-surf installs the hook to close its width column (turbo-dom#316; control: case `used-size` of `computed_defaults_chrome156.json`).
+- turbo-dom-browser-env: getComputedStyle resolves the CSS-wide keywords `initial` / `inherit` / `unset` / `revert` for the properties its computed defaults know, so `background-color: initial` reads `rgba(0, 0, 0, 0)` instead of `initial` (turbo-dom#317; control: case `css-wide-keywords`).
+- **turbo-dom-layout: a point in a table's border-spacing hits the table.** `cssom_view::hit::elements_at_point` no longer returns a row or row group for a point between cells, between rows or row groups, or in a row's missing cell slot: rows and row groups are not hit targets (a floated or absolutely positioned one is blockified and still hits), as in Chrome 156. The UA sheet gives `<tbody>` `display: table-row-group` (layout unchanged), and a row-spanning cell spans the vertical border-spacing between its rows (its height and the rows it grows). Chrome 156 control: `table-spacing-*` / `table-rowspan-spacing` in `scripts/live-geometry-chrome-control.mjs` (turbo-dom#321, turbo-surf#162; the spread of a spanning cell's excess height over its rows is turbo-dom#327).
+- **turbo-dom-layout: an SVG `<img>` with only a `viewBox` sizes from its ratio.** An auto-sized one is as wide as its containing block allows (less its margins, padding and border), the height a layout unit first and the width from it, under `width` / `height` / `min-*` / `max-*` and in a vertical writing mode; it contributes no width to a shrink-to-fit container (float, inline-block, table), like Chrome 156. It laid out at its 225x150 reported size. As a row flex item it still does (turbo-dom#326). Control: `svg_image_ratio_chrome156.json` (`scripts/svg-image-ratio-chrome-control.mjs`; turbo-dom#320, turbo-surf#161).
 - **turbo-dom-layout: no `font-family` resolves to the initial `serif`.** A box with no font-family declaration up the tree selected the registry's first face; it now selects `serif` (Times on macOS, Chrome's default). The line box of a 16px default `<p>` is 18px at `layout_scale` 1 and 18.5px at 2, as in Chrome at DSF 1 and 2 (Blink rounds font metrics in device pixels): turbo-surf#158's 18.5px is its `layout_scale: 2.0` on a DPR-1 page. Control: `default_line_box_chrome156.json` (`scripts/default-line-box-chrome-control.mjs`; turbo-dom#319).
 - **turbo-dom-browser-env: `setHTML` / `setHTMLUnsafe` / `template.innerHTML` keep template
   contents and declarative shadow roots through a GC.** Past 256 live wrappers a mutating call
@@ -26,6 +73,18 @@ at the time); this file reconstructs them from history.
   fragment, and with it its ownership component, now stays pinned until the next reconcile. This
   was the intermittent `sanitizer_api_matches_chrome_156` failure (turbo-dom#324). Test:
   `set_html_wrappers_survive_collection_before_a_deferred_reconcile`.
+- **turbo-dom-layout: a row-spanning cell taller than its rows spreads the excess over
+  them like Chrome 156** instead of growing only the last row. Rowspan cells are taken by
+  end row, then the later-starting first; each one's excess over its rows and the
+  border-spacing (or collapsed grid lines) between them goes equally to the spanned rows
+  after the first where another rowspan cell starts, else to its unconstrained rows (no
+  fixed `height` on the row or a single-row cell; percentage heights do not constrain) in
+  proportion to their heights, else to all its rows by height, else to the last row, in
+  1/64 px shares. Collapsed tables weigh each row by its extent between grid-line centres.
+  Control: the `table-rowspan-*` cases of `scripts/html-document-chrome-control.mjs`
+  (turbo-dom#327). A definite-height table's extra height still treats percent-height rows
+  as auto rows (`table-extra-percent-*`, held out).
+- **turbo-dom-layout: a point in a table's border-spacing hits the table.** `cssom_view::hit::elements_at_point` no longer returns a row or row group for a point between cells, between rows or row groups, or in a row's missing cell slot: rows and row groups are not hit targets (a floated or absolutely positioned one is blockified and still hits), as in Chrome 156. The UA sheet gives `<tbody>` `display: table-row-group` (layout unchanged), and a row-spanning cell spans the vertical border-spacing between its rows (its height and the rows it grows). Chrome 156 control: `table-spacing-*` / `table-rowspan-spacing` in `scripts/live-geometry-chrome-control.mjs` (turbo-dom#321, turbo-surf#162; the spread of a spanning cell's excess height over its rows is turbo-dom#327).
 
 ## [0.7.1] — 2026-11-05
 
