@@ -319,6 +319,9 @@ pub(super) fn set_html<'s>(
         .expect("installed document");
         wrap(scope, fragment)
     };
+    // Nested template contents live on wrappers made in this detached fragment's
+    // component until the (possibly deferred) reconcile re-places them (turbo-dom#324).
+    dom_ownership::pin_until_reconciled(scope, source);
     realize(scope, source);
     let _target = DomScope::for_object(scope, content);
     let target = handle_of(scope, content).expect("template contents are wrapped fragments");
