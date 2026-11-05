@@ -754,14 +754,16 @@
     return nest(result);
   }
   const maybeSimplifySumOrProduct = (node) => node && (isAddOrSub(node) || isMulOrDiv(node)) && !nestedIntermediate(node) ? simplifySumOrProduct(node) : node;
+  function clampReduction(operands) {
+    const low = operands[0], value = operands[1], high = operands[2];
+    if (value.t === 'kw') return null;
+    if (low.t === 'kw' && high.t === 'kw') return unnest(value);
+    if (low.t === 'kw') return createComparison([value, high], 'min');
+    if (high.t === 'kw') return createComparison([low, value], 'max');
+    return undefined;
+  }
   function createComparison(operands, op) {
-    if (op === 'clamp') {
-      const low = operands[0], value = operands[1], high = operands[2];
-      if (value.t === 'kw') return null;
-      if (low.t === 'kw' && high.t === 'kw') return unnest(value);
-      if (low.t === 'kw') return createComparison([value, high], 'min');
-      if (high.t === 'kw') return createComparison([low, value], 'max');
-    }
+    if (op === 'clamp') { const r = clampReduction(operands); if (r !== undefined) return r; }
     let type = null;
     for (let index = 0; index < operands.length; index++) { if (operands[index].t === 'kw') return null; type = index ? addTypes(type, nodeType(operands[index])) : nodeType(operands[index]); if (!type) return null; }
     let eager = true;
@@ -1024,19 +1026,28 @@
     const ordered = list(); for (let index = values.length - 1; index >= 0; index--) push(ordered, values[index]);
     return createVariadic(node.op === ADD || node.op === SUB ? 'sum' : 'product', toArray(ordered));
   }
+  function numericToNodeSumOrProduct(record) {
+    let node = numericToNode(record.values[0]);
+    for (let index = 1; index < record.values.length; index++) {
+      const next = numericToNode(record.values[index]);
+      node = node && next ? createOperation(node, next, record.kind === 'sum' ? ADD : MUL) : null;
+    }
+    return node;
+  }
+  function numericToNodeMinMax(record) {
+    const operands = list();
+    for (let index = 0; index < record.values.length; index++) push(operands, numericToNode(record.values[index]));
+    return createComparison(operands, record.kind);
+  }
   // CSSNumericValue::ToCalcExpressionNode.
   function numericToNode(value) {
     const record = numericRecord(value);
     switch (record.kind) {
       case 'unit': return lit(record.value, record.unit);
-      case 'sum': case 'product': {
-        let node = numericToNode(record.values[0]);
-        for (let index = 1; index < record.values.length; index++) { const next = numericToNode(record.values[index]); node = node && next ? createOperation(node, next, record.kind === 'sum' ? ADD : MUL) : null; }
-        return node;
-      }
+      case 'sum': case 'product': return numericToNodeSumOrProduct(record);
       case 'negate': { const inner = numericToNode(record.value); return inner ? simplified(lit(-1, 'number'), inner, MUL) : null; }
       case 'invert': { const inner = numericToNode(record.value); return inner ? createOperation(lit(1, 'number'), inner, DIV) : null; }
-      case 'min': case 'max': { const operands = list(); for (let index = 0; index < record.values.length; index++) push(operands, numericToNode(record.values[index])); return createComparison(operands, record.kind); }
+      case 'min': case 'max': return numericToNodeMinMax(record);
       case 'clamp': return createComparison([numericToNode(record.lower), numericToNode(record.value), numericToNode(record.upper)], 'clamp');
     }
     return null;
