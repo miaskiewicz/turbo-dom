@@ -527,6 +527,20 @@ pub(super) fn subscription_count() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// turbo-dom#301: a listener's exception is reported (a trusted, cancelable ErrorEvent at
+    /// the window with the throw site) before the next listener runs, on generic, node, window,
+    /// document and AbortSignal targets; an exception thrown while reporting is not reported
+    /// again; `reportError` reports like Chrome 156 (`listener_errors_chrome156.json`).
+    #[test]
+    fn listener_exceptions_are_reported_like_chrome156() {
+        use super::super::reference_target::probe_harness::{control, differences, run};
+        let probe = include_str!("listener_errors_probe.js");
+        let expected = control(include_str!("listener_errors_chrome156.json"), probe);
+        let actual = run(probe);
+        let mut out = Vec::new();
+        differences("result", &actual, &expected, &mut out);
+        assert!(out.is_empty(), "{}", out.join("\n"));
+    }
     #[test]
     fn foreign_events_and_nodes_keep_their_native_window_owner() {
         super::super::tests::init_v8();
