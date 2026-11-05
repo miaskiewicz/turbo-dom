@@ -503,6 +503,19 @@ const STICKY_MORE_CASES = [
     [[0, 0], [150, 0], [400, 0]],
   ],
 ];
+// miaskiewicz/turbo-dom#376: a `<math>` element exists in live layout. Until the
+// native MathML layout lands, a `<math>` root takes placeholder box metrics — an
+// empty one matches Chrome 156's own empty `<math>` box exactly (0×0, placed on
+// the body's first line baseline as an inline-block), and subsequent block content
+// starts on the next line like Chrome.
+const MATHML_CASES = [
+  { id: "math-empty", html: DOC("", `<math data-cid="m"></math>`) },
+  {
+    id: "math-empty-then-p",
+    html: DOC("p{margin:0}", `<math data-cid="m"></math><p data-cid="p">after</p>`),
+  },
+];
+
 const CASES = [
   // turbo-surf#31 C: position:absolute/fixed blockify an inline (display computes to
   // block; CSS 2.1 §9.7) and it lays out as an out-of-flow box.
@@ -985,6 +998,7 @@ const CASES = [
       scroll: { [scroller || "sc"]: [left, top] },
     })),
   ),
+  ...MATHML_CASES,
   // miaskiewicz/turbo-dom#295: sticky inline boxes in scrolled scrollers.
   ...STICKY_CASES.flatMap(([id, body, offsets, scrollers]) =>
     offsets.map(([left, top]) => ({

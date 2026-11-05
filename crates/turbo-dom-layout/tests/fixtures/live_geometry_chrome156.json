@@ -19296,6 +19296,47 @@
    ]
   },
   {
+   "id": "math-empty",
+   "html": "<!doctype html><style></style><math data-cid=\"m\"></math>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 8,
+     "y": 22,
+     "width": 0,
+     "height": 0,
+     "display": "math",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "math-empty-then-p",
+   "html": "<!doctype html><style>p{margin:0}</style><math data-cid=\"m\"></math><p data-cid=\"p\">after</p>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "m",
+     "x": 8,
+     "y": 22,
+     "width": 0,
+     "height": 0,
+     "display": "math",
+     "position": "static"
+    },
+    {
+     "cid": "p",
+     "x": 8,
+     "y": 26,
+     "width": 1264,
+     "height": 18,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
    "id": "sticky-inline-top-0-0",
    "html": "<!doctype html><style>body{margin:0;font:16px/20px \"Liberation Serif\"}.sc{position:relative;overflow:auto;margin:20px 0 0 30px;border:2px solid;padding:3px}</style><div class=\"sc\" data-cid=\"sc\" style=\"width:200px;height:60px\"><div data-cid=\"cb\" style=\"height:200px\">a<br>b<br><span data-cid=\"s\" style=\"position:sticky;top:5px\">st<b data-cid=\"sb\">x</b></span> c</div><div style=\"height:300px\"></div></div>",
    "fonts": true,
