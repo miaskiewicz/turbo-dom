@@ -1,0 +1,65 @@
+{
+  "browser": "Chrome/156.0.8078.80",
+  "v8": "15.6.75.27",
+  "recordedAt": "2026-11-05T13:12:06.193Z",
+  "fixture": "computed_form_background_probe.js",
+  "probeSha256": "cd2cdb39729b55992c4123f76948f4b7e279979ec6cc853d73024baab286e5cf",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--disable-extensions"
+  ],
+  "result": {
+    "rows": [
+      {
+        "name": "button",
+        "backgroundColor": "rgb(239, 239, 239)"
+      },
+      {
+        "name": "input-button",
+        "backgroundColor": "rgb(239, 239, 239)"
+      },
+      {
+        "name": "input-submit",
+        "backgroundColor": "rgb(239, 239, 239)"
+      },
+      {
+        "name": "input-reset",
+        "backgroundColor": "rgb(239, 239, 239)"
+      },
+      {
+        "name": "input-upper-type",
+        "backgroundColor": "rgb(239, 239, 239)"
+      },
+      {
+        "name": "div",
+        "backgroundColor": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "name": "author-rule",
+        "backgroundColor": "rgb(4, 5, 6)"
+      },
+      {
+        "name": "author-universal",
+        "backgroundColor": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "name": "author-shorthand",
+        "backgroundColor": "rgb(7, 8, 9)"
+      },
+      {
+        "name": "inline",
+        "backgroundColor": "rgb(10, 11, 12)"
+      },
+      {
+        "name": "inherit",
+        "backgroundColor": "rgb(1, 2, 3)"
+      },
+      {
+        "name": "revert",
+        "backgroundColor": "rgb(239, 239, 239)"
+      }
+    ]
+  }
+}
