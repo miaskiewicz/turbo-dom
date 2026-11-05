@@ -52,10 +52,11 @@ PATCHES = [
     "v8-teardown-tests.patch",  # turbo-surf release-deps teardown tests (tests/test_api.rs)
     "lib-test-init.patch",      # upstream lib tests both initialized V8; share the Once
     "doctests.patch",           # src/scope.rs doc examples compile and run (turbo-dom#182)
+    "incumbent-context.patch",  # PinScope::get_incumbent_context() (turbo-dom#367, turbo-surf#90)
 ]
 # Our regression tests, copied into the generated crate as explicit [[test]]
 # targets (upstream sets autotests = false).
-OWN_TESTS = ["interceptor_should_throw", "release_v8_teardown", "weak_teardown", "fork_marker"]
+OWN_TESTS = ["interceptor_should_throw", "release_v8_teardown", "weak_teardown", "fork_marker", "incumbent_context"]
 # Upstream packaging records and upstream-only developer files; Cargo regenerates the
 # first three for the renamed package and rust-toolchain.toml would pin rustup to
 # upstream's channel inside the generated directory.

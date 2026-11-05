@@ -21,6 +21,15 @@ at the time); this file reconstructs them from history.
   effective selector (`:is(parent)`) and prepending `& ` for a nested selector that doesn't
   start with one. Chrome 156 control: `css_nesting_chrome156.json`. The last open half of
   turbo-dom#340 is now done.
+- **turbo-dom-v8: `PinScope::get_incumbent_context()` (turbo-dom#367, turbo-surf#90).**
+  Added a Rust accessor for V8's `Isolate::GetIncumbentContext()`, needed for
+  HTML's incumbent-realm concept (populates `MessageEvent.source` on cross-realm
+  `postMessage`). Upstream rusty_v8 150.4 has no `v8__Isolate__GetIncumbentContext`
+  wrapper in `binding.cc`, so the extern links directly to V8's exported member
+  symbol — `Local<Context>` is a trivially-copyable one-pointer wrapper,
+  ABI-compatible with the `*const Context` the sibling context accessors use.
+  Added via `patches/incumbent-context.patch` with a regression test
+  (`tests/incumbent_context.rs`); pins regenerated.
 - **turbo-dom-browser-env: media element follow-ups (turbo-dom#339).**
   - `HTMLMediaElement.captureStream()` returns a new `MediaStream`. `MediaStream` is a real,
     constructible interface (`id` a random v4 UUID, `clone()`, the track getters, the
