@@ -3,7 +3,7 @@
   // Intrinsics captured at install time: the engine's load / insertion paths never call a
   // page-replaced builtin (miaskiewicz/turbo-dom#172).
   var $apply=Reflect.apply,$gopd=Object.getOwnPropertyDescriptor,$def=Object.defineProperty,$create=Object.create;
-  var $wmGet=WeakMap.prototype.get,$wmSet=WeakMap.prototype.set,$lower=String.prototype.toLowerCase;
+  var $wmGet=WeakMap.prototype.get,$wmSet=WeakMap.prototype.set,$lower=String.prototype.toLowerCase,$String=String;
   var $jsonStringifyNative=JSON.stringify,$JSON=JSON,$jsonStringify=function(value){return $apply($jsonStringifyNative,$JSON,[value]);};
   var $fromCodePoint=String.fromCodePoint,$imul=Math.imul,$Mround=Math.round,$Mmin=Math.min;
   var $call=function(f,receiver,...rest){return $apply(f,receiver,rest);};
@@ -665,6 +665,9 @@
   var firstLineProperties = cssPropertySet(pseudoFontProperties + ' ' + pseudoTextProperties + ' color opacity visibility');
   var highlightProperties = cssPropertySet('color background-color text-decoration text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-shadow text-emphasis-color -webkit-text-fill-color -webkit-text-stroke -webkit-text-stroke-color -webkit-text-stroke-width stroke-color fill-color stroke-width');
   var highlightPseudoNames = cssPropertySet('selection highlight spelling-error grammar-error target-text search-text');
+  // turbo-dom#374: computed `<color>` longhands Chrome 156 serializes as rgb() / rgba()
+  // (`color` and pseudos' `background-color` are canonicalized earlier in computeStyle).
+  var computedColorLonghands = ['background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'border-block-start-color', 'border-block-end-color', 'border-inline-start-color', 'border-inline-end-color', 'outline-color', 'text-decoration-color', 'text-emphasis-color', 'column-rule-color', 'caret-color', 'accent-color', 'fill', 'stroke', 'flood-color', 'lighting-color', 'stop-color', '-webkit-text-fill-color', '-webkit-text-stroke-color'];
   function pseudoAccepts(kind){
     if (kind === 'marker') return function(name){ return markerProperties[name] === true; };
     if (kind === 'first-line') return function(name){ return firstLineProperties[name] === true; };
@@ -1749,6 +1752,17 @@
     if (connected && !pseudo && layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')
       decl.overflow = decl['overflow-x'] === decl['overflow-y'] ? decl['overflow-x'] : decl['overflow-x'] + ' ' + decl['overflow-y'];
     if (pseudo && typeof decl['background-color'] === 'string') decl['background-color'] = decl.backgroundColor = normalizeComputedColor(decl['background-color']);
+    // turbo-dom#374: Chrome 156 serializes every `<color>` longhand in computed style as
+    // rgb() / rgba() / the authored string for a value it does not recognize; a named
+    // keyword (`red`) reads back as `rgb(255, 0, 0)`. `color` and (for pseudos)
+    // `background-color` are already normalized above; normalize the rest here.
+    if (connected) {
+      for (var ci = 0; ci < computedColorLonghands.length; ci++) {
+        var colorProp = computedColorLonghands[ci];
+        var colorValue = decl[colorProp];
+        if (typeof colorValue === 'string' && colorValue) decl[colorProp] = decl[camel(colorProp)] = normalizeComputedColor(colorValue);
+      }
+    }
     var usedPx = function(node, axis, depth){
       if (!node || depth > 32) return null;
       var raw;try{raw=node===el?decl[axis]:computedSnapshotValue(parentStyle(node),axis);}catch(e){return null;}
@@ -2988,8 +3002,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // declaration; two are a property name (no surrounding whitespace) and a value (no
   // !important). selector() conditions are checked against the document element.
   function cssSupportsScope(){var root=g.document&&g.document.documentElement;return root||g.document.createElement('div');}
-  __ns.cssSupports=function(text){text=$c.trim(String(text));var el=cssSupportsScope();return cssSupportsCondition(text,el)||cssSupportsCondition('('+text+')',el);};
-  __ns.cssSupportsProperty=function(property,value){property=String(property);value=String(value);if(!$c.test(/^(--)?[^\s:;!{}()]+$/,property)||$c.test(/!\s*important\s*$/i,value)||$c.slice(property,0,2)!=='--'&&cssParts(value,';').length>1)return false;return cssSupportsDeclaration(property+': '+value);};
+  __ns.cssSupports=function(text){text=$c.trim($String(text));var el=cssSupportsScope();return cssSupportsCondition(text,el)||cssSupportsCondition('('+text+')',el);};
+  __ns.cssSupportsProperty=function(property,value){property=$String(property);value=$String(value);if(!$c.test(/^(--)?[^\s:;!{}()]+$/,property)||$c.test(/!\s*important\s*$/i,value)||$c.slice(property,0,2)!=='--'&&cssParts(value,';').length>1)return false;return cssSupportsDeclaration(property+': '+value);};
   // A condition is fixed for the engine, so it is evaluated once per text.
   function cssSupportsMatches(text,el){var cached=cssSupportsCache[text];if(cached===undefined)cached=cssSupportsCache[text]=cssSupportsCondition(text,el);return cached;}
   // 0: unconditional; 1: under @media that matches now; 2: under @media that does not.
