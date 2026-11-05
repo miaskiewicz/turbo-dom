@@ -49,6 +49,19 @@ at the time); this file reconstructs them from history.
   the PNG painter. Against Chrome 156, white text's SVG residual drops from a mean of
   14.6–38.6 to 6.2–21.4 per pixel (`tests/glyph_coverage_chrome.rs`), and the
   overflow-glyph-ink edge tolerances drop from 17 / 41 to 11 / 32 (turbo-dom#294).
+- **turbo-dom-layout: `hyphens: auto` hyphenates the languages Chrome 156 on macOS does,
+  not just English.** en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb / no, nl, pl, pt, ro, ru, sk, sv, uk break at the TeX `hyph-*` patterns' points (the `hyphenation`
+  crate's, the patterns Chrome's Minikin dictionaries on Linux, Windows and Android are built
+  from) under the new default-on `hyphenation-languages` cargo feature (~3 MB of embedded
+  patterns; `default-features = false, features = ["bundled-fonts", "hyphenation"]` keeps
+  the ~90 KB English-only build). Outside English a capitalized word hyphenates, as in Blink.
+  Chrome on macOS uses the system dictionary, whose points differ for 8 of the 330 words of
+  the new control (en `international`, `extraordinary`; es `desarrollo`; pl
+  `odpowiedzialność`, `szczególnie`, `elektryczność`, `chrząszcz`; cs `knihovna`); the test
+  pins exactly those. API: `AutoHyphens` gains a `language: HyphenationLanguage` field (a new
+  `#[non_exhaustive]` enum with `HyphenationLanguage::from_locale`). Controls:
+  `hyphens/chrome156.json` (new per-language cases) and `hyphens/words-chrome156.json`
+  (`scripts/fixture-font-chrome-controls.mjs`) (turbo-dom#289).
 
 - turbo-dom-browser-env: getComputedStyle `width` / `height` report the used value of a rendered box (Chrome 156): an embedder with a layout sets `layoutUsedSize` on the engine namespace (`(element) => [border-box width, height, content-box width, height]` or `null`), box-sizing picks the box and the px value serializes like Blink (`%g`, ties to even: `5.32812px`). Elements Chrome reports the computed value for — display none / contents (also under a display:none ancestor), non-atomic inline elements, SVG children other than rect / image / foreignObject — read their declared value or `auto` instead of `""`, and a display:none percentage stays a percentage. Without a layout a rendered box keeps its declared value. turbo-surf installs the hook to close its width column (turbo-dom#316; control: case `used-size` of `computed_defaults_chrome156.json`).
 - turbo-dom-browser-env: getComputedStyle resolves the CSS-wide keywords `initial` / `inherit` / `unset` / `revert` for the properties its computed defaults know, so `background-color: initial` reads `rgba(0, 0, 0, 0)` instead of `initial` (turbo-dom#317; control: case `css-wide-keywords`).
