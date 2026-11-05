@@ -82,7 +82,7 @@ impl HyphenationLanguage {
         let mut subtags = locale.split('-');
         let primary = subtags.next().unwrap_or_default();
         let language = Self::from_subtags(primary, subtags.next())?;
-        language.embedded().then_some(language)
+        embedded(language).then_some(language)
     }
 
     fn from_subtags(primary: &str, region: Option<&str>) -> Option<Self> {
@@ -111,12 +111,6 @@ impl HyphenationLanguage {
             ("uk", _) => Self::Ukrainian,
             _ => return None,
         })
-    }
-
-    /// Whether this build embeds the language's dictionary.
-    fn embedded(self) -> bool {
-        cfg!(feature = "hyphenation-languages")
-            || (cfg!(feature = "hyphenation") && self == Self::EnglishUS)
     }
 
     /// Blink leaves capitalized words alone in English only.
@@ -153,6 +147,20 @@ impl HyphenationLanguage {
             Self::Ukrainian => Language::Ukrainian,
         }
     }
+}
+
+/// Whether this build embeds the language's dictionary: every one under
+/// `hyphenation-languages`.
+#[cfg(feature = "hyphenation-languages")]
+fn embedded(_: HyphenationLanguage) -> bool {
+    true
+}
+
+/// Whether this build embeds the language's dictionary: en-US alone under
+/// `hyphenation`, none without it.
+#[cfg(not(feature = "hyphenation-languages"))]
+fn embedded(language: HyphenationLanguage) -> bool {
+    cfg!(feature = "hyphenation") && language == HyphenationLanguage::EnglishUS
 }
 
 /// A run's `hyphens: auto` settings in a supported language: the language and the
