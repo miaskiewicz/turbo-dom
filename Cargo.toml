@@ -113,7 +113,6 @@ v8_enable_v8_checks = []
 [lib]
 name = "v8"
 path = "src/lib.rs"
-doctest = false
 
 [[example]]
 name = "cppgc"
@@ -265,6 +264,10 @@ path = "tests/weak_teardown.rs"
 [[test]]
 name = "fork_marker"
 path = "tests/fork_marker.rs"
+
+[[test]]
+name = "incumbent_context"
+path = "tests/incumbent_context.rs"
 
 [package.metadata.turbo-dom-v8]
 upstream-package = "v8"

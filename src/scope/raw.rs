@@ -227,6 +227,24 @@ unsafe extern "C" {
   pub(super) fn v8__Isolate__GetEnteredOrMicrotaskContext(
     isolate: *mut RealIsolate,
   ) -> *const Context;
+  // `v8::Isolate::GetIncumbentContext()` is not wrapped by the prebuilt
+  // binding.cc (upstream rusty_v8 150.4 has no `v8__Isolate__GetIncumbentContext`
+  // wrapper), so call V8's exported member function directly via its C++
+  // mangled symbol. `Local<Context>` is a trivially-copyable one-pointer
+  // wrapper, ABI-compatible with the `*const Context` return the sibling
+  // accessors use. Needed for HTML's incumbent-realm concept
+  // (postMessage `event.source`; turbo-surf#90).
+  #[cfg_attr(
+    not(target_env = "msvc"),
+    link_name = "_ZN2v87Isolate19GetIncumbentContextEv"
+  )]
+  #[cfg_attr(
+    target_env = "msvc",
+    link_name = "?GetIncumbentContext@Isolate@v8@@QEAA?AV?$Local@VContext@v8@@@2@XZ"
+  )]
+  pub(super) fn v8__Isolate__GetIncumbentContext(
+    isolate: *mut RealIsolate,
+  ) -> *const Context;
   pub(super) fn v8__Isolate__ThrowException(
     isolate: *mut RealIsolate,
     exception: *const Value,

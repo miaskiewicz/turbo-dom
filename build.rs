@@ -107,7 +107,9 @@ fn main() {
   // Build from source
   if env_bool("V8_FROM_SOURCE") {
     if !Path::new("v8/BUILD.gn").is_file() {
-      panic!("turbo-dom-v8 ships Rust sources for the official prebuilt SDK only; V8_FROM_SOURCE needs the complete upstream v8 {UPSTREAM_V8_VERSION} source payload (crates/turbo-dom-v8/README.md in miaskiewicz/turbo-dom).");
+      panic!(
+        "turbo-dom-v8 ships Rust sources for the official prebuilt SDK only; V8_FROM_SOURCE needs the complete upstream v8 {UPSTREAM_V8_VERSION} source payload (crates/turbo-dom-v8/README.md in miaskiewicz/turbo-dom)."
+      );
     }
     if is_asan && env::var_os("OPT_LEVEL").unwrap_or_default() == "0" {
       panic!(
