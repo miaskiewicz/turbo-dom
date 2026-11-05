@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "listener_errors_probe.js",
-  "probeSha256": "dad633b4bf2b5f6a166f43e150cea38acc2bfd56755cf7bc90b5403ad6e65eb1",
+  "probeSha256": "2e62f0f267f80873484e8a396392117b2b30508ce85894eb059703f05fd81237",
   "collectorSha256": "9f74b347e01fa1d91859d5f7965cbc5f53085366af04171b1389e30b403dddec",
   "flags": [
     "--headless=new",
@@ -654,6 +654,210 @@
           153,
           85,
           null
+        ]
+      ]
+    },
+    "thrownObjects": {
+      "value": [
+        [
+          "Uncaught custom",
+          163,
+          70
+        ],
+        [
+          "Uncaught 1,2",
+          163,
+          70
+        ],
+        [
+          "Uncaught function named() {}",
+          163,
+          70
+        ],
+        [
+          "Uncaught exception",
+          163,
+          70
+        ],
+        [
+          "Uncaught Error: sub",
+          161,
+          108
+        ],
+        [
+          "Uncaught Error: patched",
+          160,
+          21
+        ],
+        [
+          "Uncaught exception",
+          163,
+          70
+        ],
+        [
+          "Uncaught NotFoundError: dom",
+          163,
+          70
+        ],
+        [
+          "Uncaught Renamed: renamed",
+          161,
+          238
+        ]
+      ],
+      "log": [
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught custom",
+          "",
+          163,
+          70,
+          "undefined:undefined"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught 1,2",
+          "",
+          163,
+          70,
+          "undefined:undefined"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught function named() {}",
+          "",
+          163,
+          70,
+          null
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught exception",
+          "",
+          163,
+          70,
+          "undefined:undefined"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: sub",
+          "",
+          161,
+          108,
+          "Error:sub"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Error: patched",
+          "",
+          160,
+          21,
+          "Error:patched"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught exception",
+          "",
+          163,
+          70,
+          "undefined:undefined"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught NotFoundError: dom",
+          "",
+          163,
+          70,
+          "NotFoundError:dom"
+        ],
+        [
+          "error",
+          "[object ErrorEvent]",
+          "error",
+          true,
+          false,
+          true,
+          false,
+          2,
+          true,
+          true,
+          "Uncaught Renamed: renamed",
+          "",
+          161,
+          238,
+          "Renamed:renamed"
         ]
       ]
     }

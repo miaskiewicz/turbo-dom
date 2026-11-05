@@ -153,6 +153,17 @@
     for (const value of [new Error('reported'), 'reported text', null]) values.push(reportError(value));
     return [shape, missing, values];
   });
+  run('thrownObjects', () => {
+    // A thrown non-Error object reads as String(value) ("exception" when that throws); a thrown
+    // Error is located where it was created, any other value where it was thrown.
+    class Sub extends Error {}
+    const patched = new Error('patched'); patched.toString = () => 'not used';
+    const values = [{ toString() { return 'custom'; } }, [1, 2], function named() {}, Object.create(null), new Sub('sub'), patched, { toString() { throw new Error('toString'); } }, new DOMException('dom', 'NotFoundError'), Object.assign(new Error('renamed'), { name: 'Renamed' })];
+    const target = new EventTarget();
+    for (const value of values) target.addEventListener('o', () => { throw value; });
+    target.dispatchEvent(new Event('o'));
+    return log.map((row) => [row[10], row[12], row[13]]);
+  });
   reporting = false;
   return out;
 })()

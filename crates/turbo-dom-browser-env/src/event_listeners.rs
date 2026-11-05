@@ -87,6 +87,10 @@ fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv
         rv.set(v8::Array::new_with_elements(scope, &values).into());
         return;
     }
+    if operation == "call" {
+        call_operation(scope, &args, object, &mut rv);
+        return;
+    }
     if operation == "event" {
         if let Some(record) = event_record(scope, object) {
             rv.set(record.into());
@@ -109,9 +113,148 @@ fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv
         rv.set(value);
     }
 }
+/// `native('call', event, callback, receiver, handlerArguments?)`: run one listener of
+/// `event` from the script dispatch paths and return what it returned.
+fn call_operation<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: &v8::FunctionCallbackArguments,
+    event: v8::Local<v8::Object>,
+    rv: &mut v8::ReturnValue,
+) {
+    let mut values = vec![event.into()];
+    if let Ok(list) = v8::Local::<v8::Array>::try_from(args.get(4)) {
+        values = (0..list.length())
+            .filter_map(|index| list.get_index(scope, index))
+            .collect();
+    }
+    if let Called::Returned(value) = call_listener(scope, event, args.get(2), args.get(3), &values)
+    {
+        rv.set(value);
+    }
+}
+
+/// How one listener call ended ([`call_listener`]).
+pub(super) enum Called<'s> {
+    /// The callback returned this value.
+    Returned(v8::Local<'s, v8::Value>),
+    /// The callback threw (the exception was reported) or was not called.
+    Threw,
+    /// Execution is terminating: the termination was handed back to the caller.
+    Terminated,
+}
+
+/// DOM "inner invoke" for one listener of `event`: call `callback` (a function, with
+/// `receiver` as `this`, or an object's `handleEvent`, with the object as `this`). An
+/// exception it throws is reported at the callback's window (located like Chrome 156), and the
+/// event's did-listeners-throw flag is set (turbo-dom#301). Like Chrome 156, an object
+/// whose `handleEvent` is not callable is skipped without a report.
+pub(super) fn call_listener<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    event: v8::Local<v8::Object>,
+    callback: v8::Local<v8::Value>,
+    receiver: v8::Local<v8::Value>,
+    args: &[v8::Local<v8::Value>],
+) -> Called<'s> {
+    let Ok(object) = v8::Local::<v8::Object>::try_from(callback) else {
+        return Called::Threw;
+    };
+    let (result, caught) = {
+        v8::tc_scope!(let scope, scope);
+        let result = if let Ok(function) = v8::Local::<v8::Function>::try_from(callback) {
+            function.call(scope, receiver, args)
+        } else {
+            get_prop(scope, object, "handleEvent")
+                .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+                .and_then(|function| function.call(scope, callback, args))
+        };
+        // A terminated listener ends the dispatch: hand the caught termination back.
+        if scope.has_terminated() {
+            scope.rethrow();
+            return Called::Terminated;
+        }
+        if scope.is_execution_terminating() {
+            return Called::Terminated;
+        }
+        // Like Chrome 156, a thrown Error is located where it was created, any other value
+        // where it was thrown.
+        let caught = scope.exception().map(|exception| {
+            let message = match scope.message() {
+                Some(message) if !exception.is_native_error() => message,
+                _ => v8::Exception::create_message(scope, exception),
+            };
+            (exception, message)
+        });
+        (result, caught)
+    };
+    let Some((exception, message)) = caught else {
+        return result.map_or(Called::Threw, Called::Returned);
+    };
+    let text = uncaught_text(scope, exception, message);
+    if let Some(record) = event_record(scope, event) {
+        let yes = v8::Boolean::new(scope, true);
+        set_prop(scope, record, "threw", yes.into());
+    }
+    let context = object
+        .get_creation_context(scope)
+        .unwrap_or_else(|| scope.get_current_context());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    custom_elements::report_message(scope, exception, text, message);
+    Called::Threw
+}
+
+/// The reported message of a thrown value, like Chrome 156: V8's ("Uncaught Error: boom",
+/// "Uncaught 42") for an Error or a primitive; for any other object `"Uncaught " +
+/// String(value)`, or "Uncaught exception" when that conversion throws.
+fn uncaught_text<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    exception: v8::Local<v8::Value>,
+    message: v8::Local<v8::Message>,
+) -> v8::Local<'s, v8::String> {
+    if !exception.is_object() || exception.is_native_error() {
+        return message.get(scope);
+    }
+    let converted = {
+        v8::tc_scope!(let scope, scope);
+        exception.to_string(scope)
+    };
+    let prefix = v8::String::new(scope, "Uncaught ").unwrap();
+    converted
+        .and_then(|text| v8::String::concat(scope, prefix, text))
+        .unwrap_or_else(|| v8::String::new(scope, "Uncaught exception").unwrap())
+}
+
+/// Window `reportError(e)`: report `e` like an uncaught exception (HTML).
+fn report_error(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    if args.length() == 0 {
+        let message = v8::String::new(
+            scope,
+            "Failed to execute 'reportError' on 'Window': 1 argument required, but only 0 present.",
+        )
+        .unwrap();
+        let error = v8::Exception::type_error(scope, message);
+        scope.throw_exception(error);
+        return;
+    }
+    custom_elements::report_value(scope, args.get(0));
+}
+
 pub(super) fn install(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__windowListenerNative", records);
+    if let Some(function) = v8::FunctionTemplate::builder(ext!(FunctionCallback, report_error))
+        .length(1)
+        .build(scope)
+        .get_function(scope)
+    {
+        // invariant: engine-built name, far below V8's string length limit
+        let name = v8::String::new(scope, "reportError").unwrap();
+        function.set_name(name);
+        global.set(scope, name.into(), function.into());
+    }
     run_js(scope, include_str!("event_listeners.js"));
     for (name, family) in [
         ("__captureWindowEventPhase", 0),
@@ -540,6 +683,57 @@ mod tests {
         let mut out = Vec::new();
         differences("result", &actual, &expected, &mut out);
         assert!(out.is_empty(), "{}", out.join("\n"));
+    }
+    /// turbo-dom#301 / turbo-surf#148: the host dispatch tells the embedder whether a listener
+    /// of that dispatch threw (generic, node, handler, window and handleEvent listeners), not
+    /// counting nested dispatches, and the flag starts clear for every dispatch.
+    #[test]
+    fn host_dispatch_reports_whether_its_own_listeners_threw() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        super::super::install(scope);
+        run_js(scope, "globalThis.reports=0;addEventListener('error',()=>reports++);globalThis.quiet=new EventTarget();quiet.addEventListener('x',()=>{});globalThis.loud=new EventTarget();loud.addEventListener('x',()=>{throw new Error('loud')});loud.addEventListener('x',()=>{});globalThis.nested=new EventTarget();nested.addEventListener('x',()=>loud.dispatchEvent(new Event('x')));globalThis.node=document.createElement('div');document.body.append(node);node.onclick=()=>{throw 1};globalThis.inner=document.createElement('p');document.body.append(inner);addEventListener('up',()=>{throw 2});globalThis.object=new EventTarget();object.addEventListener('x',{handleEvent(){throw 3}});globalThis.reused=new Event('x');");
+        let cases: [(&str, &str, bool); 8] = [
+            ("quiet", "new Event('x')", false),
+            ("loud", "new Event('x')", true),
+            ("nested", "new Event('x')", false),
+            ("node", "new MouseEvent('click',{bubbles:true})", true),
+            ("inner", "new Event('up',{bubbles:true})", true),
+            ("window", "new Event('up')", true),
+            ("object", "reused", true),
+            ("quiet", "reused", false),
+        ];
+        for (target, event, threw) in cases {
+            let source = v8::String::new(scope, &format!("[{target},{event}]")).unwrap();
+            let pair = v8::Script::compile(scope, source, None)
+                .and_then(|script| script.run(scope))
+                .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
+                .unwrap();
+            let target_object = pair.get_index(scope, 0).unwrap().to_object(scope).unwrap();
+            let event_object = pair.get_index(scope, 1).unwrap().to_object(scope).unwrap();
+            assert_eq!(
+                dispatch_host_event_did_listeners_throw(scope, event_object, target_object),
+                threw,
+                "{target} {event}"
+            );
+        }
+        let source = v8::String::new(scope, "reports").unwrap();
+        let reports = v8::Script::compile(scope, source, None)
+            .and_then(|script| script.run(scope))
+            .unwrap();
+        assert_eq!(reports.int32_value(scope), Some(6));
+        // Not an event: the dispatch throws its TypeError and no listener ran.
+        let plain = v8::Object::new(scope);
+        let global = context.global(scope);
+        v8::tc_scope!(let scope, scope);
+        assert!(!dispatch_host_event_did_listeners_throw(
+            scope, plain, global
+        ));
+        assert!(scope.has_caught());
+        reset();
     }
     #[test]
     fn foreign_events_and_nodes_keep_their_native_window_owner() {
