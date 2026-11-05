@@ -36,6 +36,7 @@ pub(super) fn recording() -> bool {
     custom_elements::recording()
         || ENABLED.with(std::cell::Cell::get)
         || script_state::recording()
+        || html_media::recording()
         || DOM.with(|state| {
             state
                 .borrow()
@@ -124,6 +125,7 @@ pub(super) fn child_list(
         .unwrap_or_default();
     let native_event = event;
     shadow_slots::mutation(scope, &native_event);
+    html_media::mutation(&native_event);
     let consumer = consumer(scope);
     if !observers.is_empty() || custom_elements::reactions_active(scope) || consumer.is_some() {
         #[cfg(test)]
@@ -569,6 +571,7 @@ pub(super) fn flush(scope: &mut v8::PinScope) {
         let _owner = DomScope::enter(id);
         for native_event in events {
             shadow_slots::mutation(scope, &native_event.event);
+            html_media::mutation(&native_event.event);
             let consumer = consumer(scope);
             if !observers.is_empty()
                 || custom_elements::reactions_active(scope)

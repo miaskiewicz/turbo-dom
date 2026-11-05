@@ -1,0 +1,1339 @@
+{
+  "browser": "Chrome/156.0.8078.80",
+  "v8": "15.6.75.27",
+  "casesSha256": "87169e72694cdc7bdd960b66bf472c57422e41bca0d10ff87ba525e63c0cc2b3",
+  "probeSha256": "af122339607c81eafe816e42b8c932556d339c53932cc3ab8a5bb1bbd1d6a848",
+  "collectorSha256": "671661dee7acadfab3a3ef76ea9a97e1f2f3d99987c9d0cdf0ab8c42410c09ff",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "html-media-events",
+      "result": {
+        "interfaces": {
+          "MediaStream": {
+            "proto": {
+              "id": [
+                "accessor",
+                [
+                  "get id",
+                  0
+                ],
+                "undefined",
+                true,
+                true
+              ],
+              "active": [
+                "accessor",
+                [
+                  "get active",
+                  0
+                ],
+                "undefined",
+                true,
+                true
+              ],
+              "onaddtrack": [
+                "accessor",
+                [
+                  "get onaddtrack",
+                  0
+                ],
+                [
+                  "set onaddtrack",
+                  1
+                ],
+                true,
+                true
+              ],
+              "onremovetrack": [
+                "accessor",
+                [
+                  "get onremovetrack",
+                  0
+                ],
+                [
+                  "set onremovetrack",
+                  1
+                ],
+                true,
+                true
+              ],
+              "onactive": [
+                "accessor",
+                [
+                  "get onactive",
+                  0
+                ],
+                [
+                  "set onactive",
+                  1
+                ],
+                true,
+                true
+              ],
+              "oninactive": [
+                "accessor",
+                [
+                  "get oninactive",
+                  0
+                ],
+                [
+                  "set oninactive",
+                  1
+                ],
+                true,
+                true
+              ],
+              "addTrack": [
+                "value",
+                [
+                  "addTrack",
+                  1
+                ],
+                true,
+                true,
+                true
+              ],
+              "clone": [
+                "value",
+                [
+                  "clone",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "getAudioTracks": [
+                "value",
+                [
+                  "getAudioTracks",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "getTrackById": [
+                "value",
+                [
+                  "getTrackById",
+                  1
+                ],
+                true,
+                true,
+                true
+              ],
+              "getTracks": [
+                "value",
+                [
+                  "getTracks",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "getVideoTracks": [
+                "value",
+                [
+                  "getVideoTracks",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "removeTrack": [
+                "value",
+                [
+                  "removeTrack",
+                  1
+                ],
+                true,
+                true,
+                true
+              ],
+              "constructor": [
+                "value",
+                [
+                  "MediaStream",
+                  0
+                ],
+                true,
+                false,
+                true
+              ],
+              "Symbol(Symbol.toStringTag)": [
+                "value",
+                "MediaStream",
+                false,
+                false,
+                true
+              ]
+            },
+            "ctor": {
+              "length": [
+                "value",
+                0,
+                false,
+                false,
+                true
+              ],
+              "name": [
+                "value",
+                "MediaStream",
+                false,
+                false,
+                true
+              ],
+              "prototype": [
+                "value",
+                "[object MediaStream]",
+                false,
+                false,
+                false
+              ]
+            },
+            "parent": "EventTarget",
+            "call": "throw TypeError: Failed to construct 'MediaStream': Please use the 'new' operator, this DOM object constructor cannot be called as a function.",
+            "global": [
+              "value",
+              [
+                "MediaStream",
+                0
+              ],
+              true,
+              false,
+              true
+            ]
+          },
+          "MediaStreamTrack": {
+            "proto": {
+              "kind": [
+                "accessor",
+                [
+                  "get kind",
+                  0
+                ],
+                "undefined",
+                true,
+                true
+              ],
+              "id": [
+                "accessor",
+                [
+                  "get id",
+                  0
+                ],
+                "undefined",
+                true,
+                true
+              ],
+              "label": [
+                "accessor",
+                [
+                  "get label",
+                  0
+                ],
+                "undefined",
+                true,
+                true
+              ],
+              "enabled": [
+                "accessor",
+                [
+                  "get enabled",
+                  0
+                ],
+                [
+                  "set enabled",
+                  1
+                ],
+                true,
+                true
+              ],
+              "muted": [
+                "accessor",
+                [
+                  "get muted",
+                  0
+                ],
+                "undefined",
+                true,
+                true
+              ],
+              "onmute": [
+                "accessor",
+                [
+                  "get onmute",
+                  0
+                ],
+                [
+                  "set onmute",
+                  1
+                ],
+                true,
+                true
+              ],
+              "onunmute": [
+                "accessor",
+                [
+                  "get onunmute",
+                  0
+                ],
+                [
+                  "set onunmute",
+                  1
+                ],
+                true,
+                true
+              ],
+              "readyState": [
+                "accessor",
+                [
+                  "get readyState",
+                  0
+                ],
+                "undefined",
+                true,
+                true
+              ],
+              "onended": [
+                "accessor",
+                [
+                  "get onended",
+                  0
+                ],
+                [
+                  "set onended",
+                  1
+                ],
+                true,
+                true
+              ],
+              "stats": [
+                "accessor",
+                [
+                  "get stats",
+                  0
+                ],
+                "undefined",
+                true,
+                true
+              ],
+              "contentHint": [
+                "accessor",
+                [
+                  "get contentHint",
+                  0
+                ],
+                [
+                  "set contentHint",
+                  1
+                ],
+                true,
+                true
+              ],
+              "applyConstraints": [
+                "value",
+                [
+                  "applyConstraints",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "clone": [
+                "value",
+                [
+                  "clone",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "getCapabilities": [
+                "value",
+                [
+                  "getCapabilities",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "getConstraints": [
+                "value",
+                [
+                  "getConstraints",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "getSettings": [
+                "value",
+                [
+                  "getSettings",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "stop": [
+                "value",
+                [
+                  "stop",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "oncapturehandlechange": [
+                "accessor",
+                [
+                  "get oncapturehandlechange",
+                  0
+                ],
+                [
+                  "set oncapturehandlechange",
+                  1
+                ],
+                true,
+                true
+              ],
+              "getCaptureHandle": [
+                "value",
+                [
+                  "getCaptureHandle",
+                  0
+                ],
+                true,
+                true,
+                true
+              ],
+              "constructor": [
+                "value",
+                [
+                  "MediaStreamTrack",
+                  0
+                ],
+                true,
+                false,
+                true
+              ],
+              "Symbol(Symbol.toStringTag)": [
+                "value",
+                "MediaStreamTrack",
+                false,
+                false,
+                true
+              ]
+            },
+            "ctor": {
+              "length": [
+                "value",
+                0,
+                false,
+                false,
+                true
+              ],
+              "name": [
+                "value",
+                "MediaStreamTrack",
+                false,
+                false,
+                true
+              ],
+              "prototype": [
+                "value",
+                "[object MediaStreamTrack]",
+                false,
+                false,
+                false
+              ]
+            },
+            "parent": "EventTarget",
+            "call": "throw TypeError: Illegal constructor",
+            "global": [
+              "value",
+              [
+                "MediaStreamTrack",
+                0
+              ],
+              true,
+              false,
+              true
+            ]
+          },
+          "TrackEvent": {
+            "proto": {
+              "track": [
+                "accessor",
+                [
+                  "get track",
+                  0
+                ],
+                "undefined",
+                true,
+                true
+              ],
+              "constructor": [
+                "value",
+                [
+                  "TrackEvent",
+                  1
+                ],
+                true,
+                false,
+                true
+              ],
+              "Symbol(Symbol.toStringTag)": [
+                "value",
+                "TrackEvent",
+                false,
+                false,
+                true
+              ]
+            },
+            "ctor": {
+              "length": [
+                "value",
+                1,
+                false,
+                false,
+                true
+              ],
+              "name": [
+                "value",
+                "TrackEvent",
+                false,
+                false,
+                true
+              ],
+              "prototype": [
+                "value",
+                "[object TrackEvent]",
+                false,
+                false,
+                false
+              ]
+            },
+            "parent": "Event",
+            "call": "throw TypeError: Failed to construct 'TrackEvent': Please use the 'new' operator, this DOM object constructor cannot be called as a function.",
+            "global": [
+              "value",
+              [
+                "TrackEvent",
+                1
+              ],
+              true,
+              false,
+              true
+            ]
+          }
+        },
+        "captureStreamMember": [
+          "value",
+          [
+            "captureStream",
+            0
+          ],
+          true,
+          true,
+          true
+        ],
+        "stream": [
+          [
+            "[object MediaStream]",
+            true,
+            false,
+            0,
+            0,
+            0,
+            true,
+            false
+          ],
+          false,
+          false,
+          [
+            "[object MediaStream]",
+            true,
+            false,
+            0,
+            0,
+            0,
+            true,
+            false
+          ],
+          false,
+          null,
+          null,
+          "throw TypeError: Failed to execute 'getTrackById' on 'MediaStream': 1 argument required, but only 0 present.",
+          "throw TypeError: Failed to execute 'addTrack' on 'MediaStream': parameter 1 is not of type 'MediaStreamTrack'.",
+          "throw TypeError: Failed to execute 'addTrack' on 'MediaStream': parameter 1 is not of type 'MediaStreamTrack'.",
+          "throw TypeError: Failed to execute 'addTrack' on 'MediaStream': 1 argument required, but only 0 present.",
+          "throw TypeError: Failed to execute 'removeTrack' on 'MediaStream': parameter 1 is not of type 'MediaStreamTrack'.",
+          "throw TypeError: Failed to execute 'removeTrack' on 'MediaStream': 1 argument required, but only 0 present.",
+          [
+            "[object MediaStream]",
+            true,
+            false,
+            0,
+            0,
+            0,
+            true,
+            false
+          ],
+          false,
+          true,
+          true,
+          [
+            "[object MediaStream]",
+            true,
+            false,
+            0,
+            0,
+            0,
+            true,
+            false
+          ],
+          [
+            "[object MediaStream]",
+            true,
+            false,
+            0,
+            0,
+            0,
+            true,
+            false
+          ],
+          [
+            "[object MediaStream]",
+            true,
+            false,
+            0,
+            0,
+            0,
+            true,
+            false
+          ],
+          [
+            "[object MediaStream]",
+            true,
+            false,
+            0,
+            0,
+            0,
+            true,
+            false
+          ],
+          false,
+          "throw TypeError: Failed to construct 'MediaStream': Overload resolution failed.",
+          "throw TypeError: Failed to construct 'MediaStream': Overload resolution failed.",
+          "throw TypeError: Failed to construct 'MediaStream': Overload resolution failed.",
+          "throw TypeError: Failed to construct 'MediaStream': Overload resolution failed.",
+          "throw TypeError: Failed to construct 'MediaStream': Overload resolution failed.",
+          "throw TypeError: Failed to construct 'MediaStream': Failed to convert value to 'MediaStreamTrack'.",
+          "throw TypeError: Failed to construct 'MediaStream': Failed to convert value to 'MediaStreamTrack'.",
+          "throw Error: boom",
+          "throw TypeError: Illegal invocation",
+          "throw TypeError: Illegal invocation",
+          "throw TypeError: Illegal invocation",
+          "throw TypeError: Illegal invocation",
+          16,
+          true,
+          [
+            null,
+            null,
+            null,
+            null
+          ],
+          true,
+          true,
+          null,
+          1,
+          "throw TypeError: Illegal invocation",
+          "throw TypeError: Illegal invocation",
+          "throw TypeError: Illegal invocation",
+          "throw TypeError: Illegal invocation",
+          "throw TypeError: Illegal invocation",
+          "err:TypeError:Failed to execute 'applyConstraints' on 'MediaStreamTrack': Illegal invocation"
+        ],
+        "srcObject": [
+          true,
+          3,
+          "",
+          [
+            "loadstart:20p"
+          ],
+          2,
+          0,
+          "NaN",
+          null,
+          "",
+          false,
+          "pending",
+          [
+            "loadstart:20p",
+            "volumechange:20r",
+            "play:20r",
+            "waiting:20r"
+          ],
+          false,
+          true,
+          false,
+          "err:AbortError:The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22",
+          [
+            "loadstart:20p",
+            "volumechange:20r",
+            "play:20r",
+            "waiting:20r",
+            "timeupdate:20p",
+            "pause:20p"
+          ],
+          3,
+          null,
+          [
+            "loadstart:20p",
+            "volumechange:20r",
+            "play:20r",
+            "waiting:20r",
+            "timeupdate:20p",
+            "pause:20p",
+            "abort:30p",
+            "emptied:30p"
+          ],
+          0,
+          2,
+          null,
+          "",
+          [
+            "loadstart:20p",
+            "volumechange:20r",
+            "play:20r",
+            "waiting:20r",
+            "timeupdate:20p",
+            "pause:20p",
+            "abort:30p",
+            "emptied:30p",
+            "loadstart:30p",
+            "error:30p",
+            "emptied:30p",
+            "loadstart:20p"
+          ],
+          [
+            "loadstart:20p",
+            "volumechange:20r",
+            "play:20r",
+            "waiting:20r",
+            "timeupdate:20p",
+            "pause:20p",
+            "abort:30p",
+            "emptied:30p",
+            "loadstart:30p",
+            "error:30p",
+            "emptied:30p",
+            "loadstart:20p",
+            "abort:30p",
+            "emptied:30p",
+            "loadstart:20p",
+            "abort:30p",
+            "emptied:30p",
+            "loadstart:20p"
+          ],
+          false,
+          "err:NotAllowedError:play() failed because the user didn't interact with the document first. https://goo.gl/xX8pDD",
+          [
+            "loadstart:20p"
+          ],
+          true,
+          [
+            "loadstart:20p"
+          ],
+          2,
+          "throw TypeError: Failed to set the 'srcObject' property on 'HTMLMediaElement': The provided value is not of type '(MediaSourceHandle or MediaStream)'.",
+          "throw TypeError: Failed to set the 'srcObject' property on 'HTMLMediaElement': The provided value is not of type '(MediaSourceHandle or MediaStream)'.",
+          "throw TypeError: Failed to set the 'srcObject' property on 'HTMLMediaElement': The provided value is not of type '(MediaSourceHandle or MediaStream)'."
+        ],
+        "sources": {
+          "bogus": [
+            3,
+            [
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "noSrc": [
+            3,
+            [
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "emptySrc": [
+            3,
+            [
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "typeless": [
+            3,
+            [
+              [
+                "loadstart:20p"
+              ],
+              "a"
+            ]
+          ],
+          "two": [
+            3,
+            [
+              [
+                "loadstart:20p"
+              ],
+              "b"
+            ]
+          ],
+          "fragment": [
+            3,
+            [
+              "loadstart:30p",
+              "error@aC",
+              "error@bC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "waiting": [
+            3,
+            [
+              "loadstart:30p",
+              "error@aC"
+            ],
+            2,
+            3,
+            [
+              "loadstart:30p",
+              "error@aC",
+              "loadstart:30p",
+              "error@aC",
+              "error@bC"
+            ],
+            2,
+            [
+              [
+                "loadstart:30p",
+                "error@aC",
+                "loadstart:30p",
+                "error@aC",
+                "error@bC",
+                "loadstart:20p"
+              ],
+              "c"
+            ]
+          ],
+          "waitingBefore": [
+            2,
+            [
+              [
+                "loadstart:30p",
+                "error@aC",
+                "loadstart:20p"
+              ],
+              "b"
+            ]
+          ],
+          "waitingTwice": [
+            2,
+            [
+              "loadstart:30p",
+              "error@aC",
+              "loadstart:30p",
+              "error@cC",
+              "error@aC",
+              "error@bC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "pending": [
+            3,
+            [
+              "loadstart:30p",
+              "error@aC",
+              "error@bC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "loadPending": [
+            2,
+            [
+              "loadstart:30p",
+              "error@aC",
+              "emptied:20p",
+              "loadstart:30p",
+              "error@aC",
+              "error@bC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "innerHTML": [
+            3,
+            2,
+            [
+              "loadstart:30p"
+            ],
+            3,
+            "",
+            null
+          ],
+          "innerHTMLTypeless": [
+            3,
+            [
+              [
+                "loadstart:20p"
+              ],
+              "b"
+            ]
+          ],
+          "insertAdjacentHTML": [
+            3,
+            [
+              "loadstart:30p"
+            ],
+            3,
+            "",
+            null
+          ],
+          "replaceChildren": [
+            3,
+            [
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "replaceChild": [
+            2,
+            [
+              "loadstart:30p",
+              "error@aC",
+              "loadstart:30p",
+              "error@bC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "textContent": [
+            0,
+            [],
+            0,
+            "",
+            null
+          ],
+          "nested": [
+            0,
+            [],
+            0,
+            "",
+            null
+          ],
+          "afterLoad": [
+            0,
+            3,
+            [
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "connected": [
+            3,
+            [
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "removeSource": [
+            3,
+            [
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "srcPresent": [
+            3,
+            3,
+            [
+              "loadstart:30p",
+              "error:30p"
+            ],
+            3,
+            "",
+            4
+          ],
+          "srcRemoved": [
+            3,
+            2,
+            [
+              "loadstart:30p",
+              "error:30p",
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            "",
+            4
+          ],
+          "moved": [
+            2,
+            [
+              "loadstart:30p",
+              "error@aC",
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            2,
+            [
+              "loadstart:30p",
+              "error@aC",
+              "loadstart:30p",
+              "error@aC",
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            "",
+            null
+          ],
+          "subtree": [
+            2,
+            [
+              "loadstart:30p",
+              "error@aC",
+              "loadstart:30p",
+              "error@aC"
+            ],
+            3,
+            [
+              "loadstart:30p",
+              "error@aC",
+              "loadstart:30p",
+              "error@aC"
+            ],
+            0,
+            "",
+            null
+          ],
+          "parsed": [
+            3,
+            2,
+            [
+              "loadstart:30p",
+              "error@bC"
+            ],
+            3,
+            [
+              "loadstart:30p",
+              "error@bC"
+            ],
+            0,
+            "",
+            null
+          ],
+          "play": [
+            "pending",
+            false,
+            [
+              "volumechange:30r",
+              "play:30r",
+              "waiting:30r",
+              "loadstart:30r",
+              "error@aC"
+            ],
+            3,
+            "",
+            null
+          ]
+        },
+        "trackEvent": [
+          [
+            "x",
+            null,
+            false,
+            false,
+            false,
+            false,
+            "[object TrackEvent]"
+          ],
+          true,
+          true,
+          null,
+          null,
+          null,
+          "throw TypeError: Failed to construct 'TrackEvent': Failed to read the 'track' property from 'TrackEventInit': The provided value is not of type '(AudioTrack or TextTrack or VideoTrack)'.",
+          "throw TypeError: Failed to construct 'TrackEvent': Failed to read the 'track' property from 'TrackEventInit': The provided value is not of type '(AudioTrack or TextTrack or VideoTrack)'.",
+          "throw TypeError: Failed to construct 'TrackEvent': The provided value is not of type 'TrackEventInit'.",
+          [
+            true,
+            true,
+            true
+          ],
+          "throw Error: bubbles",
+          "throw TypeError: Failed to construct 'TrackEvent': 1 argument required, but only 0 present.",
+          "throw TypeError: Failed to construct 'TrackEvent': Please use the 'new' operator, this DOM object constructor cannot be called as a function.",
+          "throw TypeError: Failed to construct 'TrackEvent': Cannot convert a Symbol value to a string",
+          "throw TypeError: Illegal invocation",
+          "throw NotSupportedError: Failed to execute 'createEvent' on 'Document': The provided event type ('TrackEvent') is invalid."
+        ],
+        "trackEvents": [
+          "sync:0:hidden",
+          "addtrack:[object TrackEvent]:one:1",
+          "change:[object Event]:-:1",
+          "modes:3",
+          "change:[object Event]:-:1",
+          "change:[object Event]:-:1",
+          "unchanged",
+          "append:7:disabled",
+          "addtrack:[object TrackEvent]:two:2",
+          "change:[object Event]:-:2",
+          "remove:10",
+          "removetrack:[object TrackEvent]:two:1",
+          "addtrack:[object TrackEvent]:two:2",
+          "reappend",
+          "cleared:14",
+          "removetrack:[object TrackEvent]:two:1",
+          "nested:1"
+        ],
+        "listHandlers": [
+          "onaddtrack:a",
+          "onaddtrack:b",
+          "|",
+          "|",
+          "onremovetrack:a",
+          "onremovetrack:b",
+          "|",
+          "onaddtrack:c",
+          "onremovetrack:c",
+          "onaddtrack:d",
+          "|",
+          "onaddtrack:x",
+          "onremovetrack:x",
+          "onaddtrack:x",
+          "|",
+          "onremovetrack:x",
+          "onaddtrack:x",
+          "onremovetrack:x",
+          "|",
+          "onaddtrack:added",
+          "onchange",
+          "onchange",
+          "|",
+          "onremovetrack:d",
+          "object",
+          null
+        ],
+        "sameTask": [
+          0,
+          [
+            "remove:q"
+          ],
+          [],
+          0
+        ],
+        "selection": {
+          "subtitles": [
+            "disabled0,disabled0,disabled0",
+            "showing3,disabled0,disabled0",
+            "add,add,add,change,error3"
+          ],
+          "captions": [
+            "disabled0,disabled0,disabled0",
+            "showing3,disabled0,disabled0",
+            "add,add,add,change,error3"
+          ],
+          "descriptions": [
+            "disabled0,disabled0,disabled0",
+            "showing3,disabled0,disabled0",
+            "add,add,add,change,error3"
+          ],
+          "chapters": [
+            "disabled0,disabled0,disabled0",
+            "showing3,disabled0,disabled0",
+            "add,add,add,change,error3"
+          ],
+          "metadata": [
+            "disabled0,disabled0,disabled0",
+            "hidden3,hidden3,disabled0",
+            "add,add,add,change,error3,change,error3"
+          ],
+          "hiddenAlone": "hidden",
+          "showingAlone": "showing",
+          "visibleThenHidden": "showing,showing",
+          "visibleThenPlain": "showing,showing",
+          "visibleThenDefault": "showing,showing",
+          "visibleThenTwo": "showing,showing,disabled",
+          "addedVisible": "showing,showing",
+          "addedVisibleDefault": "showing,showing",
+          "addedHidden": "hidden,showing",
+          "addedWasVisible": "hidden,disabled",
+          "reinserted": "showing,disabled",
+          "removedVisible": "showing,showing",
+          "visibleOff": "disabled,disabled",
+          "chaptersVisible": "showing,showing",
+          "metadataVisible": "showing,showing,disabled",
+          "descriptionsDefault": "showing,showing",
+          "twoGroups": "showing,disabled",
+          "autoThenPlain": "showing,showing",
+          "autoThenDefault": "showing,showing",
+          "autoHiddenThenDefault": "hidden,showing",
+          "scriptHiddenThenDefault": "hidden,showing",
+          "disabledBeforeSelection": "showing",
+          "autoDisabledReinserted": "showing",
+          "removedBeforeSelection": "showing",
+          "defaultLater": "disabled,showing",
+          "chaptersConfigured": "disabled,showing",
+          "metadataLater": "hidden,hidden",
+          "metadataAdded": "disabled,hidden",
+          "metadataRemoved": "disabled,disabled",
+          "order": [
+            "add",
+            "change",
+            "track error",
+            "loadstart:30p",
+            "source error",
+            "|",
+            "add",
+            "loadstart:30p",
+            "source error",
+            "change",
+            "track error"
+          ]
+        },
+        "processing": [
+          0,
+          0,
+          3,
+          [
+            "error3",
+            "onerror"
+          ],
+          0,
+          3,
+          [
+            "error3",
+            "onerror"
+          ],
+          0,
+          3,
+          3,
+          3,
+          0,
+          0,
+          true
+        ],
+        "played": {
+          "pending": [
+            true,
+            true,
+            true
+          ],
+          "loaded": [
+            true,
+            true
+          ],
+          "readBack": [
+            false,
+            true,
+            false,
+            true
+          ],
+          "shared": [
+            true,
+            true,
+            true
+          ],
+          "twice": [
+            false,
+            true,
+            true
+          ],
+          "captured": [
+            true,
+            false
+          ],
+          "cloned": [
+            true,
+            false,
+            false
+          ],
+          "unset": [
+            false,
+            null
+          ]
+        },
+        "parsed": [
+          3,
+          "hidden3,showing3,disabled0",
+          3,
+          "hidden3,showing3,disabled0",
+          "hidden",
+          3,
+          "hidden3,hidden3",
+          [
+            "add",
+            "change"
+          ],
+          3
+        ]
+      }
+    }
+  ]
+}

@@ -48,14 +48,20 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
   - `*_with_assets` adds caller-fetched images (`ImageAssets` = URL → bytes) and
     `full_page`;
   - `*_with_opts` adds `system_fonts`, which resolves against the installed fonts through
-    turbo-dom-layout's `FontRegistry::system`.
+    turbo-dom-layout's `FontRegistry::system`;
+  - `ScreenshotOptions::fonts` (for `screenshot_{png,svg}_with_options`) takes the
+    caller's `&FontRegistry` instead, so a caller that loads the page's `@font-face` sources
+    (`FontFace::from_web_font_bytes`) gets web fonts laid out with Chrome's metrics and
+    painted. The raster does not read `@font-face` rules itself.
 - **Resource discovery** (works on the parsed document, never on source text):
   `image_urls`, `image_urls_in_css`, `stylesheet_hrefs`, and `delazy_tree` /
   `delazy_images` (fill lazy `<img>`s).
 - **Canvas:** `canvas_ops_png` / `canvas_ops_rgba` replay a 2D-canvas op log. Colours go
   through turbo-dom's `rtdom::color::parse_color`. `measure_text` measures a text run (width, height) with the bundled or system faces;
   `measure_canvas_text(text, font)` is canvas `measureText`'s width for a CSS `font`
-  shorthand.
+  shorthand. Canvas text uses the bundled faces; `canvas_ops_png_with_fonts`,
+  `canvas_ops_rgba_with_fonts` and `measure_canvas_text_with_fonts` take a caller
+  `&FontRegistry` (web fonts; the `coretext` path is skipped for an `@font-face` face).
 - **WebGL:** `webgl_readback` and `webgl_metadata` work on a recorded call batch, backed
   by the GPU under `gpu-metal`.
 

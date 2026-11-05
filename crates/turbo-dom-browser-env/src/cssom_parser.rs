@@ -550,18 +550,11 @@ impl<'i> DeclarationParser<'i> for CssParser {
             return Ok(format!("{property}: {value}{important};"));
         }
         let valid = input.parse_until_before(Delimiter::Bang, |input| {
-            // Lightning CSS does not model the CSS2 font-variant shorthand.
-            // Admit its measured caps subset without accepting arbitrary custom tokens.
-            if name.eq_ignore_ascii_case("font-variant") {
-                let value = input.expect_ident_cloned()?.to_ascii_lowercase();
-                input.expect_exhausted()?;
-                return Ok(matches!(value.as_str(), "normal" | "small-caps" | "initial" | "inherit" | "unset" | "revert" | "revert-layer"));
+            if let Some(valid) = engine_grammar(&name, input) {
+                return Ok(valid);
             }
-            // Lightning CSS does not model `writing-mode`; admit Chrome's keywords.
-            if name.eq_ignore_ascii_case("writing-mode") {
-                let value = input.expect_ident_cloned()?.to_ascii_lowercase();
-                input.expect_exhausted()?;
-                return Ok(WRITING_MODES.contains(&value.as_str()));
+            if let Some(valid) = keyword_property(&name, input) {
+                return valid;
             }
             // Lightning CSS does not model interest-invoker delays: `normal | <time>`, and the
             // shorthand takes one or two of those.
@@ -617,6 +610,117 @@ impl<'i> DeclarationParser<'i> for CssParser {
         };
         Ok(format!("{name}: {value}{important};"))
     }
+}
+
+/// The keyword properties Lightning CSS does not model: the CSS2 `font-variant` shorthand (its
+/// measured caps subset, without arbitrary custom tokens) and `writing-mode` (Chrome's
+/// keywords). `None` for any other property.
+fn keyword_property<'i>(
+    name: &str,
+    input: &mut Parser<'i, '_>,
+) -> Option<Result<bool, ParseError<'i, ()>>> {
+    let allowed: &[&str] = if name.eq_ignore_ascii_case("font-variant") {
+        &[
+            "normal",
+            "small-caps",
+            "initial",
+            "inherit",
+            "unset",
+            "revert",
+            "revert-layer",
+        ]
+    } else if name.eq_ignore_ascii_case("writing-mode") {
+        &WRITING_MODES
+    } else {
+        return None;
+    };
+    let mut read = || {
+        let value = input.expect_ident_cloned()?.to_ascii_lowercase();
+        input.expect_exhausted()?;
+        Ok(allowed.contains(&value.as_str()))
+    };
+    Some(read())
+}
+
+/// turbo-dom#338: Lightning CSS models neither the tree-counting functions
+/// (`sibling-index()` / `sibling-count()`) nor `shape()` (nor `clip-path: path()`). A value
+/// holding one takes the shared declaration grammar's answer (the one `el.style` and
+/// `CSS.supports` use) when that grammar decides. For a property it leaves to Lightning CSS,
+/// a tree-counting function is checked as the integer it computes to; `None` leaves any
+/// other value to Lightning CSS (a `var()` value, a property without such a function).
+fn engine_grammar(name: &str, input: &mut Parser<'_, '_>) -> Option<bool> {
+    use turbo_dom_parser::rtdom::css_shorthand::{
+        expand, is_shorthand, longhand_alias, longhand_value, Spelled,
+    };
+    let start = input.state();
+    let value = consume(input);
+    let lower = value.to_ascii_lowercase();
+    let tree = lower.contains("sibling-index(") || lower.contains("sibling-count(");
+    let name = name.to_ascii_lowercase();
+    let name = longhand_alias(&name).unwrap_or(&name);
+    let answer = match () {
+        () if !tree && !lower.contains("shape(") && !lower.contains("path(") => None,
+        () if is_shorthand(name) => Some(expand(name, &value).is_some()),
+        () => match longhand_value(name, &value) {
+            Spelled::Valid(_) => Some(true),
+            Spelled::Invalid => Some(false),
+            Spelled::Unchecked(_) if tree && !lower.contains("var(") => {
+                Some(lightning_accepts(name, &tree_counted(&lower)))
+            }
+            Spelled::Unchecked(_) => None,
+        },
+    };
+    if answer.is_none() {
+        input.reset(&start);
+    }
+    answer
+}
+
+/// `value` with each tree-counting function as the integer 1 (both compute to one or more).
+fn tree_counted(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut rest = value;
+    while let Some(at) = rest.find("sibling-") {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        let function = ["sibling-index(", "sibling-count("]
+            .iter()
+            .find(|name| tail.starts_with(**name))
+            .and_then(|name| {
+                let close = tail[name.len()..].find(')')?;
+                tail[name.len()..name.len() + close]
+                    .trim()
+                    .is_empty()
+                    .then_some(name.len() + close + 1)
+            });
+        match function {
+            Some(length) => {
+                out.push('1');
+                rest = &tail[length..];
+            }
+            None => {
+                out.push_str("sibling-");
+                rest = &tail[8..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Whether Lightning CSS parses `value` as property `name` (not as an unparsed value).
+fn lightning_accepts(name: &str, value: &str) -> bool {
+    let mut source = ParserInput::new(value);
+    let mut input = Parser::new(&mut source);
+    Property::parse(
+        PropertyId::from(lightningcss::values::string::CowArcStr::from(
+            name.to_string(),
+        )),
+        &mut input,
+        &ParserOptions::default(),
+    )
+    .is_ok_and(|property| !matches!(property, Property::Unparsed(_)))
+        && input.expect_exhausted().is_ok()
 }
 
 /// A declaration's optional `!important` and the end of its value: the suffix to serialize.

@@ -162,7 +162,7 @@ function tokenize(text) {
 
 // ------------------------------------------------------------- components ----
 const LENGTH_UNITS = new Set(['px', 'em', 'rem', 'ex', 'rex', 'ch', 'rch', 'ic', 'ric', 'cap', 'rcap', 'lh', 'rlh', 'vw', 'vh', 'vi', 'vb', 'vmin', 'vmax', 'svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax', 'cm', 'mm', 'q', 'in', 'pt', 'pc']);
-const MATH_FUNCTIONS = new Set(['calc', 'min', 'max', 'clamp', 'round', 'mod', 'rem', 'abs', 'sign', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'pow', 'sqrt', 'hypot', 'log', 'exp', 'calc-size']);
+const MATH_FUNCTIONS = new Set(['calc', 'min', 'max', 'clamp', 'round', 'mod', 'rem', 'abs', 'sign', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'pow', 'sqrt', 'hypot', 'log', 'exp', 'calc-size', 'sibling-index', 'sibling-count']);
 const IMAGE_FUNCTIONS = new Set(['linear-gradient', 'radial-gradient', 'conic-gradient', 'repeating-linear-gradient', 'repeating-radial-gradient', 'repeating-conic-gradient', '-webkit-linear-gradient', '-webkit-radial-gradient', '-webkit-repeating-linear-gradient', '-webkit-repeating-radial-gradient', '-webkit-gradient', 'image-set', '-webkit-image-set', 'cross-fade', '-webkit-cross-fade', 'paint', 'image']);
 const COLOR_FUNCTIONS = new Set(['rgb', 'rgba', 'hsl', 'hsla', 'hwb', 'lab', 'lch', 'oklab', 'oklch', 'color', 'color-mix', 'light-dark', 'contrast-color', '-webkit-device-cmyk']);
 const SYSTEM_COLORS = new Set(['currentcolor', 'transparent', 'accentcolor', 'accentcolortext', 'activetext', 'buttonborder', 'buttonface', 'buttontext', 'canvas', 'canvastext', 'field', 'fieldtext', 'graytext', 'highlight', 'highlighttext', 'linktext', 'mark', 'marktext', 'selecteditem', 'selecteditemtext', 'visitedtext', 'activeborder', 'activecaption', 'appworkspace', 'background', 'buttonhighlight', 'buttonshadow', 'captiontext', 'inactiveborder', 'inactivecaption', 'inactivecaptiontext', 'infobackground', 'infotext', 'menu', 'menutext', 'scrollbar', 'threeddarkshadow', 'threedface', 'threedhighlight', 'threedlightshadow', 'threedshadow', 'window', 'windowframe', 'windowtext', '-webkit-link', '-webkit-focus-ring-color', '-internal-quirk-inherit']);
@@ -193,12 +193,9 @@ function join(comps) {
 function sumTerms(inner) {
   // Operands alternate with operators; products bind first.
   if (inner.length % 2 === 0) return null;
-  const CONSTANTS = { e: Math.E, pi: Math.PI, infinity: Infinity, '-infinity': -Infinity, nan: NaN };
   const operand = (comp) => {
-    if (comp.kind === 'number') return [['', comp.value]];
-    if (comp.kind === 'percentage') return [['%', comp.value]];
-    if (comp.kind === 'dimension') return [[comp.unit, comp.value]];
-    if (comp.kind === 'ident') { const name = comp.value.toLowerCase(); return name in CONSTANTS ? [['', CONSTANTS[name]]] : null; }
+    const terms = literalTerms(comp);
+    if (terms) return terms;
     if (comp.kind === 'function' && comp.name === '(') { const nested = components(comp.text.slice(1, -1)); return nested && sumTerms(nested); }
     // A nested math function Chrome simplified already spells `calc(...)`.
     if (isMath(comp) && comp.text.startsWith('calc(')) {
@@ -235,6 +232,19 @@ function sumTerms(inner) {
     } else return null;
   }
   push(current, sign);
+  return canonicalTerms(terms);
+}
+const CONSTANTS = { e: Math.E, pi: Math.PI, infinity: Infinity, '-infinity': -Infinity, nan: NaN };
+/** A literal `calc()` operand's one term (a number, a percentage, a dimension, a constant), else null. */
+function literalTerms(comp) {
+  if (comp.kind === 'number') return [['', comp.value]];
+  if (comp.kind === 'percentage') return [['%', comp.value]];
+  if (comp.kind === 'dimension') return [[comp.unit, comp.value]];
+  if (comp.kind === 'ident') { const name = comp.value.toLowerCase(); return name in CONSTANTS ? [['', CONSTANTS[name]]] : null; }
+  return null;
+}
+/** Like-unit terms with absolute lengths in px and times, angles and frequencies in their canonical unit. */
+function canonicalTerms(terms) {
   // Absolute lengths combine in px.
   const ABSOLUTE = { in: 96, cm: 96 / 2.54, mm: 96 / 25.4, q: 96 / 101.6, pt: 96 / 72, pc: 16 };
   if (terms.some(([unit]) => unit in ABSOLUTE)) {
@@ -259,6 +269,7 @@ function sumTerms(inner) {
   return terms;
 }
 function calcSum(inner) {
+  if (hasTreeCounting(inner)) return treeCalcText(inner);
   const terms = sumTerms(inner);
   return terms && calcText(terms);
 }
@@ -317,7 +328,7 @@ const isMath = (c) => c.kind === 'function' && MATH_FUNCTIONS.has(c.name);
 function mathType(comp) {
   const inner = innerOf(comp);
   if (comp.text.startsWith('calc(')) return calcType(inner);
-  if (comp.name === 'sign') return 'number';
+  if (comp.name === 'sign' || comp.name === 'sibling-index' || comp.name === 'sibling-count') return 'number';
   return ['min', 'max', 'clamp', 'abs'].includes(comp.name) ? argumentsType(inner) : 'unknown';
 }
 /** A function's comma-separated arguments. */
@@ -397,8 +408,11 @@ function functionValid(name, inner) {
     const args = argumentsOf(inner);
     return args.length === 4 && args.every((arg, index) => arg.length === 1 && arg[0].kind === 'number' && (index % 2 === 1 || (arg[0].value >= 0 && arg[0].value <= 1)));
   }
-  return true;
+  return treeArgumentsValid(name, inner);
 }
+/** The tree-counting functions take no arguments. */
+const treeArgumentsValid = (name, inner) => !TREE_COUNTING.has(name) || inner.length === 0;
+const TREE_COUNTING = new Set(['sibling-index', 'sibling-count']);
 /** `calc()` of simplified terms: numbers, then percentages, then units in ASCII order. */
 function calcText(terms) {
   if (terms.length === 1 && !Number.isFinite(terms[0][1])) {
@@ -457,6 +471,227 @@ function absSign(name, inner) {
   // `sign()` keeps a (signed) zero and NaN.
   return name === 'abs' ? calcText([[term[0], Math.abs(term[1])]]) : calcText([['', term[1] === 0 || Number.isNaN(term[1]) ? term[1] : Math.sign(term[1])]]);
 }
+// ------------------------------------------------------ shape() (#338) ----
+// Lockstep port of rtdom/css_shorthand/shape.rs: `shape(<fill-rule>? from <position>,
+// <shape-command>#)` with Chrome 156's spelling (the default `nonzero` rule, `from origin` /
+// `from start` anchors, `ccw` / `small` / `rotate 0deg` arc flags left out).
+function shapePositionText(comps) {
+  if (comps.length === 3) return null;
+  const point = position(comps);
+  return point && `${point[0]} ${point[1]}`;
+}
+function coordinatePair(comps) {
+  if (comps.length !== 2) return null;
+  const [x, y] = comps.map((c) => lengthPercentage(c, true));
+  return x === null || y === null ? null : `${x} ${y}`;
+}
+/** A control point: a position (`to` commands) or a pair anchored `from start | end | origin`. */
+function controlPoint(comps, absolute) {
+  if (comps.length === 4) {
+    const anchor = isIdent(comps[2], ['from']) ? keyword(comps[3], ['start', 'end', 'origin']) : null;
+    const pair = anchor && coordinatePair(comps.slice(0, 2));
+    if (!pair) return null;
+    return anchor === (absolute ? 'origin' : 'start') ? pair : `${pair} from ${anchor}`;
+  }
+  return absolute ? shapePositionText(comps) : coordinatePair(comps);
+}
+/** `to <position>` or `by <coordinate-pair>`: [text, absolute], or null. */
+function endPoint(comps) {
+  const way = comps.length ? keyword(comps[0], ['to', 'by']) : null;
+  const text = way === 'to' ? shapePositionText(comps.slice(1)) : way === 'by' ? coordinatePair(comps.slice(1)) : null;
+  return text === null ? null : [`${way} ${text}`, way === 'to'];
+}
+/** `with <control-point> [/ <control-point>]?`. */
+function shapeControls(comps, absolute, two) {
+  // splitEnd cut the end point at the `with`.
+  if (!comps.length) return null;
+  const points = split(comps.slice(1), isSlash);
+  if (points.length > (two ? 2 : 1)) return null;
+  const texts = points.map((point) => controlPoint(point, absolute));
+  return texts.includes(null) ? null : `with ${texts.join(' / ')}`;
+}
+/** The end point at the front of `comps` (up to a `stop` keyword) and the rest: [text, absolute, rest]. */
+function splitEnd(comps, stop) {
+  const at = comps.findIndex((comp, index) => index > 0 && isIdent(comp, stop));
+  const end = endPoint(at < 0 ? comps : comps.slice(0, at));
+  return end && [...end, at < 0 ? [] : comps.slice(at)];
+}
+function axisLine(comps, sides) {
+  if (comps.length !== 2) return null;
+  const way = keyword(comps[0], ['to', 'by']);
+  const value = way === 'to' ? keyword(comps[1], sides) ?? lengthPercentage(comps[1], true) : way === 'by' ? lengthPercentage(comps[1], true) : null;
+  return value === null ? null : `${way} ${value}`;
+}
+/** `of <length-percentage>{1,2}` at the front of `rest`: the components it used, or 0. */
+function arcRadii(rest, parts) {
+  const values = [];
+  for (const comp of rest.slice(1, 3)) { const value = lengthPercentage(comp, true); if (value === null) break; values.push(value); }
+  parts.radii = values.join(' ');
+  return values.length && values.length + 1;
+}
+/** One arc part at the front of `rest` into `parts`: the components it used, or 0. */
+function arcPart(rest, parts) {
+  const word = ident(rest[0]);
+  if (word === 'of' && parts.radii === undefined) return arcRadii(rest, parts);
+  const flag = (word === 'cw' || word === 'ccw') ? 'sweep' : (word === 'large' || word === 'small') ? 'size' : null;
+  if (flag && parts[flag] === undefined) { parts[flag] = word; return 1; }
+  if (word === 'rotate' && parts.rotate === undefined && rest[1] && angleStrict(rest[1]) !== null) { parts.rotate = rest[1]; return 2; }
+  return 0;
+}
+/** `arc <end> [of <lp>{1,2}] && [cw | ccw]? && [large | small]? && [rotate <angle>]?`. */
+function arcCommand(comps) {
+  const end = splitEnd(comps, ['of', 'cw', 'ccw', 'large', 'small', 'rotate']);
+  if (!end) return null;
+  const parts = {};
+  for (let rest = end[2]; rest.length;) { const used = arcPart(rest, parts); if (!used) return null; rest = rest.slice(used); }
+  if (!parts.radii) return null;
+  let out = `${end[0]} of ${parts.radii}`;
+  if (parts.sweep === 'cw') out += ' cw';
+  if (parts.size === 'large') out += ' large';
+  const rotate = parts.rotate;
+  return rotate && !(rotate.kind === 'dimension' && rotate.value === 0) ? `${out} rotate ${rotate.text}` : out;
+}
+/** `curve` / `smooth`: the end point, then the control point(s) (`smooth`'s optional). */
+function curveCommand(rest, curve) {
+  const end = splitEnd(rest, ['with']);
+  if (!end) return null;
+  if (!curve && !end[2].length) return end[0];
+  const controls = shapeControls(end[2], end[1], curve);
+  return controls === null ? null : `${end[0]} ${controls}`;
+}
+const SHAPE_COMMANDS = {
+  close: (rest) => (rest.length ? null : ''),
+  move: (rest) => { const end = endPoint(rest); return end && end[0]; },
+  hline: (rest) => axisLine(rest, ['left', 'center', 'right', 'x-start', 'x-end']),
+  vline: (rest) => axisLine(rest, ['top', 'center', 'bottom', 'y-start', 'y-end']),
+  curve: (rest) => curveCommand(rest, true),
+  smooth: (rest) => curveCommand(rest, false),
+  arc: arcCommand,
+};
+SHAPE_COMMANDS.line = SHAPE_COMMANDS.move;
+/** One `<shape-command>`. */
+function shapeCommand(comps) {
+  const name = comps.length ? ident(comps[0]) : null;
+  const parse = name !== null && Object.hasOwn(SHAPE_COMMANDS, name) ? SHAPE_COMMANDS[name] : null;
+  const text = parse && parse(comps.slice(1));
+  if (text === null || text === undefined) return null;
+  return text ? `${name} ${text}` : name;
+}
+/** A `shape()` function in Chrome's spelling, or null when Chrome rejects it. */
+function shapeText(comp) {
+  const items = split(innerOf(comp), isComma);
+  // One trailing comma is dropped.
+  if (items.length > 2 && !items[items.length - 1].length) items.pop();
+  let head = items[0];
+  const rule = head.length && isIdent(head[0], ['nonzero', 'evenodd']) ? ident(head[0]) : null;
+  if (rule) head = head.slice(1);
+  const from = head.length && isIdent(head[0], ['from']) ? shapePositionText(head.slice(1)) : null;
+  if (from === null || items.length < 2) return null;
+  const parts = [`from ${from}`];
+  for (const item of items.slice(1)) { const command = shapeCommand(item); if (command === null) return null; parts.push(command); }
+  return `shape(${rule === 'evenodd' ? 'evenodd ' : ''}${parts.join(', ')})`;
+}
+/** `shape() || <box>` (`fallback` left out), or null when `comps` hold no valid shape(). */
+function shapeWithBox(comps, boxes, fallback) {
+  const isShape = (c) => functionNamed(c, ['shape']) !== null;
+  let shape = null, box = null;
+  if (comps.length === 1) [shape] = comps;
+  else if (comps.length === 2) [shape, box] = isShape(comps[0]) ? comps : [comps[1], comps[0]];
+  if (!shape || !isShape(shape)) return null;
+  const text = shapeText(shape);
+  const name = box && keyword(box, boxes);
+  if (text === null || (box && name === null)) return null;
+  return name && name !== fallback ? `${text} ${name}` : text;
+}
+// ----------------------------------------------- tree-counting math (#338) ----
+// Math expressions Chrome keeps unresolved at parse time because an operand is only known at
+// computed-value time: the tree-counting functions `sibling-index()` / `sibling-count()`.
+// Lockstep port of rtdom/css_shorthand/math.rs: literal factors of a product multiply into one
+// leading coefficient, literal terms of a sum add up in front, nested sums and products
+// flatten, a product in a sum (or a sum in a product) is parenthesized.
+/** Whether `comps` hold a tree-counting function, nested ones included. */
+const hasTreeCounting = (comps) => comps.some((comp) => comp.kind === 'function' && (comp.text.includes('sibling-index()') || comp.text.includes('sibling-count()')));
+/** Add like-unit `terms` into `into`, negated when `negative`. */
+function addTerms(into, terms, negative) {
+  for (const [unit, value] of terms) {
+    const existing = into.find((term) => term[0] === unit);
+    if (existing) existing[1] += negative ? -value : value;
+    else into.push([unit, negative ? -value : value]);
+  }
+}
+function treeOperand(comp) {
+  const terms = literalTerms(comp);
+  if (terms) return { kind: 'literal', terms: canonicalTerms(terms) };
+  if (comp.kind === 'function' && comp.name === '(') return treeSum(components(comp.text.slice(1, -1)));
+  // A nested math function Chrome simplified already spells `calc(...)`.
+  if (comp.text.startsWith('calc(')) return treeSum(components(comp.text.slice(5, -1)));
+  return { kind: 'function', text: comp.text };
+}
+/** A checked `calc()` sum: operands at even positions, operators between them. */
+function treeSum(comps) {
+  const literals = [], rest = [];
+  let start = 0, negative = false;
+  for (let index = 1; index <= comps.length; index += 2) {
+    const next = comps[index];
+    if (next && !(next.kind === 'delim' && (next.value === '+' || next.value === '-'))) continue;
+    const expr = treeProduct(comps.slice(start, index));
+    if (expr.kind === 'literal') addTerms(literals, expr.terms, negative);
+    else if (expr.kind === 'sum') { addTerms(literals, expr.literals, negative); for (const [minus, term] of expr.rest) rest.push([minus !== negative, term]); }
+    else rest.push([negative, expr]);
+    negative = !!next && next.value === '-';
+    start = index + 1;
+  }
+  if (!rest.length) return { kind: 'literal', terms: literals };
+  if (!literals.length && rest.length === 1 && !rest[0][0]) return rest[0][1];
+  return { kind: 'sum', literals, rest };
+}
+/** Fold one product operand into the coefficient and factors. */
+function treeFactor(coefficient, factors, expr, divisor) {
+  if (expr.kind === 'literal' && expr.terms.length === 1) {
+    const [unit, value] = expr.terms[0];
+    if (divisor) coefficient[1] /= value;
+    else { coefficient[1] *= value; if (unit) coefficient[0] = unit; }
+  } else if (expr.kind === 'product' && !divisor) {
+    coefficient[1] *= expr.coefficient[1];
+    if (expr.coefficient[0]) coefficient[0] = expr.coefficient[0];
+    factors.push(...expr.factors);
+  } else factors.push([divisor, expr]);
+}
+/** A checked product: operands at even positions, `*` / `/` between them. */
+function treeProduct(comps) {
+  const coefficient = ['', 1], factors = [];
+  for (let index = 0; index < comps.length; index += 2) {
+    const divisor = index > 0 && (comps[index - 1].kind === 'slash' || comps[index - 1].value === '/');
+    treeFactor(coefficient, factors, treeOperand(comps[index]), divisor);
+  }
+  if (!factors.length) return { kind: 'literal', terms: [coefficient] };
+  if (coefficient[0] === '' && coefficient[1] === 1 && factors.length === 1 && !factors[0][0]) return factors[0][1];
+  return { kind: 'product', coefficient, factors };
+}
+const literalText = (terms) => calcText(terms.map((term) => [...term])).slice(5, -1);
+/** `calc()`'s text without the wrapper; `(...)` around a nested sum or product. */
+function treeText(expr, grouped) {
+  if (expr.kind === 'function') return expr.text;
+  let body;
+  if (expr.kind === 'literal') body = literalText(expr.terms);
+  else if (expr.kind === 'sum') {
+    body = expr.literals.length ? literalText(expr.literals) : '';
+    // The first term is never subtracted.
+    for (const [minus, term] of expr.rest) body += (body ? (minus ? ' - ' : ' + ') : '') + treeText(term, true);
+  } else {
+    const [unit, value] = expr.coefficient;
+    // A unitless 1 is left out before a multiplied factor.
+    body = unit === '' && value === 1 && !expr.factors[0][0] ? '' : literalText([[unit, value]]);
+    for (const [divisor, factor] of expr.factors) body += (body ? (divisor ? ' / ' : ' * ') : '') + treeText(factor, true);
+  }
+  return grouped ? `(${body})` : body;
+}
+/** `calc(<sum>)` holding a tree-counting function: a lone function without the wrapper. */
+function treeCalcText(inner) {
+  const expr = treeSum(inner);
+  return expr.kind === 'function' ? expr.text : `calc(${treeText(expr, false)})`;
+}
+const treeArgumentText = (argument) => treeText(treeSum(argument), false);
 /**
  * The arguments of a math function Chrome keeps: each a simplified sum without the `calc()`
  * wrapper (`min(1px, calc(1px + 1em))` is `min(1px, 1em + 1px)`), or as written.
@@ -464,6 +699,7 @@ function absSign(name, inner) {
 function sumArguments(inner) {
   return argumentsOf(inner).map((argument) => {
     const terms = isNone(argument) ? null : sumTerms(argument);
+    if (!terms && hasTreeCounting(argument)) return treeArgumentText(argument);
     return terms ? calcText(terms).slice(5, -1) : join(argument);
   }).join(', ');
 }
@@ -2539,7 +2775,8 @@ function radiusPair(comps) {
 }
 const flexBasis = (comps) => single(comps, (c) => keyword(c, ['auto', 'content', 'min-content', 'max-content', 'fit-content']) ?? lengthPercentage(c, false));
 const fontSize = (comps) => single(comps, (c) => keyword(c, FONT_SIZES) ?? lengthPercentage(c, false));
-const fontWeight = (comps) => single(comps, (c) => keyword(c, ['normal', 'bold', 'bolder', 'lighter']) ?? (c.kind === 'number' && c.value >= 1 && c.value <= 1000 ? number(c, false) : null));
+const fontWeight = (comps) => single(comps, (c) => keyword(c, ['normal', 'bold', 'bolder', 'lighter']) ?? (c.kind !== 'number' || (c.value >= 1 && c.value <= 1000) ? number(c, false) : null));
+// (A literal weight is in [1, 1000]; a math function is checked when computed.)
 function fontStyle(comps) {
   if (comps.length === 1) return keyword(comps[0], ['normal', 'italic', 'oblique']);
   if (comps.length === 2 && isIdent(comps[0], ['oblique'])) return oblique(comps[1]);
@@ -2584,12 +2821,20 @@ function gridAreas(comps) {
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return 'none';
   return areasText(comps.map(areaRow));
 }
-const offsetPath = (comps) => single(comps, (c) => {
+const COORD_BOXES = ['content-box', 'padding-box', 'border-box', 'fill-box', 'stroke-box', 'view-box'];
+/** `clip-path`'s `shape() || <geometry-box>` and `path()`; the embedder's grammar decides the rest. */
+const clipPath = (comps) => shapeWithBox(comps, [...COORD_BOXES, 'margin-box'], 'border-box') ?? single(comps, (c) => {
+  const value = functionNamed(c, ['path']);
+  return value !== null && pathDataValid(value) ? pathText(value) : null;
+});
+/** `shape-outside`'s `shape() || <shape-box>`; the embedder's grammar decides the rest. */
+const shapeOutside = (comps) => shapeWithBox(comps, ['margin-box', 'border-box', 'padding-box', 'content-box'], 'margin-box');
+const offsetPath = (comps) => (comps.some((c) => functionNamed(c, ['shape']) !== null) ? shapeWithBox(comps, COORD_BOXES, 'border-box') : single(comps, (c) => {
   if (isIdent(c, ['none'])) return 'none';
-  const value = functionNamed(c, ['path', 'ray', 'circle', 'ellipse', 'inset', 'polygon', 'xywh', 'rect', 'shape']) ?? url(c);
+  const value = functionNamed(c, ['path', 'ray', 'circle', 'ellipse', 'inset', 'polygon', 'xywh', 'rect']) ?? url(c);
   if (value === null || (value.startsWith('path(') && !pathDataValid(value))) return null;
   return value.startsWith('path(') ? pathText(value) : value;
-});
+}));
 // A percentage calc() stays as written.
 const opacityV = (comps) => single(comps, (c) => number(c, true) ?? (c.kind === 'percentage' ? cssNumber(c.value / 100) : mathOf(c, isLengthUnit, true, false) && c.text.includes('%') ? c.text : null));
 const DISPLAY_KEYWORDS = ['none', 'contents', 'block', 'inline', 'inline-block', 'flow-root', 'flex', 'inline-flex', 'grid', 'inline-grid', 'table', 'inline-table', 'table-row-group', 'table-header-group', 'table-footer-group', 'table-row', 'table-cell', 'table-column-group', 'table-column', 'table-caption', 'list-item', 'ruby', 'ruby-text', 'math', '-webkit-box', '-webkit-inline-box'];
@@ -2699,6 +2944,7 @@ add(['text-decoration-style'], (c) => keywords(c, ['solid', 'double', 'dotted', 
 add(['list-style-position'], (c) => keywords(c, ['inside', 'outside']));
 add(['list-style-image'], (c) => single(c, (x) => image(x) ?? keyword(x, ['none'])), false);
 add(['z-index'], zIndex);
+add(['order'], (comps) => single(comps, (c) => integer(c, -Infinity)));
 add(['width', 'height', 'min-width', 'min-height', 'block-size', 'inline-size', 'min-block-size', 'min-inline-size'], sizeV);
 add(['max-width', 'max-height', 'max-block-size', 'max-inline-size'], maxSizeV);
 add(['column-count'], (c) => single(c, (x) => keyword(x, ['auto']) ?? integer(x, 1)));
@@ -2745,6 +2991,8 @@ add(['text-wrap-style'], (c) => keywords(c, ['auto', 'balance', 'stable', 'prett
 add(['overflow-wrap'], (c) => keywords(c, ['normal', 'break-word', 'anywhere']));
 add(['grid-template-areas'], gridAreas);
 add(['offset-path'], offsetPath);
+add(['clip-path'], clipPath, false);
+add(['shape-outside'], shapeOutside, false);
 add(['opacity'], opacityV);
 add(['display'], display, false);
 add(['animation-name'], animationNames);
@@ -2799,5 +3047,6 @@ export function longhandValue(name, value) {
   if (!grammar) return { valid: null, text: genericSpelling(name, comps) };
   const text = grammar[0](comps);
   if (text !== null) return { valid: true, text };
-  return grammar[1] ? { valid: false } : { valid: null, text: genericSpelling(name, comps) };
+  // A lenient grammar's rejection of a shape() is final: no embedder grammar knows shape() (#338).
+  return grammar[1] || comps.some((c) => functionNamed(c, ['shape']) !== null) ? { valid: false } : { valid: null, text: genericSpelling(name, comps) };
 }

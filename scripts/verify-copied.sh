@@ -369,6 +369,9 @@ cssom_parser.rs: 0.8.0 turbo-dom#322 if() as an arbitrary substitution function 
 typed_om.js: 0.8.0 turbo-dom#322 anchor-name / anchor-scope / timeline-scope / position-anchor dashed-ident grammars (fixedGrammar)
 user_activation_gates.rs: 0.8.0 turbo-dom#323 ActivationQuery::Sticky and sticky_activation() for media play()'s autoplay policy
 computed_defaults_tests.rs: 0.8.0 turbo-dom#323 the test activation host answers ActivationQuery::Sticky
+browser_env.rs: 0.8.0 turbo-dom#339 wrapping an audio / video / source / track element turns on html_media's mutation recording (html_media::observe); method and setter calls run html_media's pending insertion steps after the mutation flush; clear_interface_records clears them; html_media_events control test module
+mutation_observers.rs: 0.8.0 turbo-dom#339 recording() includes html_media::recording(); childList records reach html_media::mutation
+event_listeners.js: 0.8.0 turbo-dom#339 ns.makeEventTarget gives an engine object (html_media.js's TextTrackList) a listener record
 browser_env.js: 0.8.0 turbo-dom#318 buttons and button-like inputs compute html.css's ButtonFace background-color, rgb(239, 239, 239)
 css_live_tests.rs: 0.8.0 turbo-dom#318 button UA background-color vs its Chrome 156 control
 "
@@ -411,8 +414,11 @@ OWNED="$OWNED css_grouping_cascade_probe.js css_grouping_cascade_chrome156.json"
 OWNED="$OWNED css_cascade_specificity_probe.js css_cascade_specificity_chrome156.json"
 OWNED="$OWNED inline_style_reuse_probe.js inline_style_reuse_chrome156.json"
 OWNED="$OWNED viewport_cssom_tests.rs custom_property_colors_probe.js custom_property_colors_chrome156.json computed_custom_properties_probe.js computed_custom_properties_chrome156.json match_media_probe.js match_media_chrome156.json iframe_viewport_probe.js iframe_viewport_chrome156.json iframe_media_probe.js iframe_media_chrome156.json iframe_cascade_probe.js iframe_cascade_chrome156.json"
+OWNED="$OWNED html_media_events_probe.js html_media_events_cases.json html_media_events_chrome156.json html_media_events_tests.rs"
 OWNED="$OWNED html_reflections.js html_media.js html_media.rs interface_parity_probe.js interface_parity_cases.json interface_parity_chrome156.json interface_parity_tests.rs create_event_probe.js create_event_cases.json create_event_chrome156.json css_supports_probe.js css_supports_cases.json css_supports_chrome156.json css_supports_tests.rs"
 OWNED="$OWNED listener_errors_probe.js listener_errors_chrome156.json"
+# turbo-dom#338 (tree-counting math, shape()) and #340 (Animation rangeStart / rangeEnd) Chrome 156 controls.
+OWNED="$OWNED css_tree_counting_shape_probe.js css_tree_counting_shape_cases.json css_tree_counting_shape_chrome156.json css_tree_counting_shape_tests.rs animation_range_probe.js animation_range_cases.json animation_range_chrome156.json animation_range_tests.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

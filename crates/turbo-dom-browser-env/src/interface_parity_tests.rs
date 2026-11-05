@@ -170,8 +170,10 @@ fn mismatches_report_leaf_differences() {
 /// What the binding does where Chrome would fetch: a src URL becomes currentSrc and the
 /// fetch never completes (NETWORK_LOADING, HAVE_NOTHING, loadstart only; a new src aborts it,
 /// its events seeing NETWORK_NO_SOURCE while the next selection is pending); a parsed element
-/// starts where its resource selection got; setSinkId() knows only the default device; a src
-/// attribute on a non-media element loads nothing.
+/// starts where its resource selection got, except that the sources an innerHTML inserts run
+/// their insertion steps (turbo-dom#339: NETWORK_NO_SOURCE at once, as Chrome 156 reads it,
+/// and the source's URL from the selection's task); setSinkId() knows only the default device;
+/// a src attribute on a non-media element loads nothing.
 #[test]
 fn media_without_a_pipeline_stalls_where_chrome_would_fetch() {
     let probe = r#"(async () => {
@@ -187,6 +189,8 @@ fn media_without_a_pipeline_stalls_where_chrome_would_fetch() {
       const host = document.createElement('div');
       host.innerHTML = '<video src=""></video><audio src="a.ogg"></audio><video><source src="b.mp4"></video><video></video>';
       const parsed = [...host.children].map((m) => [m.networkState, m.currentSrc, m.error && m.error.code]);
+      await tick();
+      parsed.push([host.children[2].networkState, host.children[2].currentSrc]);
       const sink = await v.setSinkId('speakers').catch((error) => error.name + ': ' + error.message);
       const img = document.createElement('img');
       img.src = 'x.png';
@@ -197,7 +201,7 @@ fn media_without_a_pipeline_stalls_where_chrome_would_fetch() {
         run_probe(probe, cases),
         serde_json::json!({
             "fetched": [2, 0, "http://localhost/clip.webm", ["loadstart2"], "http://localhost/other.webm", ["loadstart2", "abort3", "emptied3", "loadstart2"]],
-            "parsed": [[3, "", 4], [2, "http://localhost/a.ogg", null], [2, "http://localhost/b.mp4", null], [0, "", null]],
+            "parsed": [[3, "", 4], [2, "http://localhost/a.ogg", null], [3, "", null], [0, "", null], [2, "http://localhost/b.mp4"]],
             "sink": "NotFoundError: Requested device not found",
             "sinkId": "",
             "img": "x.png",

@@ -68,6 +68,8 @@ const MATH_FUNCTIONS: &[&str] = &[
     "log",
     "exp",
     "calc-size",
+    "sibling-index",
+    "sibling-count",
 ];
 const IMAGE_FUNCTIONS: &[&str] = &[
     "linear-gradient",
@@ -345,6 +347,9 @@ fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
                         return None;
                     }
                     let text = match name.as_str() {
+                        "calc" if super::math::has_tree_counting(&inner) => {
+                            Some(super::math::calc_text_of(&inner))
+                        }
                         "calc" => calc_sum(&inner),
                         "min" | "max" | "clamp" => min_max(&name, &inner),
                         "abs" | "sign" => abs_sign(&name, &inner),
@@ -410,7 +415,28 @@ fn calc_sum(inner: &[Comp]) -> Option<String> {
     sum_terms(inner).map(calc_text)
 }
 
-type Terms = Vec<(String, f64)>;
+pub(super) type Terms = Vec<(String, f64)>;
+
+/// A literal `calc()` operand's one term: a number, a percentage, a dimension or a constant
+/// (`calc_type` admits only the constants as identifiers: the last one is `nan`).
+pub(super) fn literal(comp: &Comp) -> Option<Terms> {
+    Some(match &comp.kind {
+        Kind::Number { value, .. } => vec![(String::new(), f64::from(*value))],
+        Kind::Percentage(value) => vec![("%".to_string(), f64::from(*value))],
+        Kind::Dimension { value, unit } => vec![(unit.clone(), f64::from(*value))],
+        Kind::Ident(name) => {
+            let value = match name.to_ascii_lowercase().as_str() {
+                "e" => std::f64::consts::E,
+                "pi" => std::f64::consts::PI,
+                "infinity" => f64::INFINITY,
+                "-infinity" => f64::NEG_INFINITY,
+                _ => f64::NAN,
+            };
+            vec![(String::new(), value)]
+        }
+        _ => return None,
+    })
+}
 
 /// The like-unit terms of a sum of products (operands: literals, the constants, nested
 /// parentheses / `calc()`, one-unit `min()` / `max()` / `clamp()`), absolute lengths combined
@@ -423,28 +449,17 @@ fn sum_terms(inner: &[Comp]) -> Option<Vec<(String, f64)>> {
     }
     let nested = |comp: &Comp, open: usize| components(&comp.text[open..comp.text.len() - 1]);
     let operand = |comp: &Comp| -> Option<Terms> {
-        Some(match &comp.kind {
-            Kind::Number { value, .. } => vec![(String::new(), f64::from(*value))],
-            Kind::Percentage(value) => vec![("%".to_string(), f64::from(*value))],
-            Kind::Dimension { value, unit } => vec![(unit.clone(), f64::from(*value))],
-            // `calc_type` admits only the constants as identifiers: the last one is `nan`.
-            Kind::Ident(name) => {
-                let value = match name.to_ascii_lowercase().as_str() {
-                    "e" => std::f64::consts::E,
-                    "pi" => std::f64::consts::PI,
-                    "infinity" => f64::INFINITY,
-                    "-infinity" => f64::NEG_INFINITY,
-                    _ => f64::NAN,
-                };
-                vec![(String::new(), value)]
-            }
-            Kind::Function(name) if name == "(" => sum_terms(&nested(comp, 1)?)?,
+        if let Some(terms) = literal(comp) {
+            return Some(terms);
+        }
+        match &comp.kind {
+            Kind::Function(name) if name == "(" => sum_terms(&nested(comp, 1)?),
             // A nested math function Chrome simplified already spells `calc(...)`.
             Kind::Function(_) if comp.is_math() && comp.text.starts_with("calc(") => {
-                sum_terms(&nested(comp, 5)?)?
+                sum_terms(&nested(comp, 5)?)
             }
-            _ => return None,
-        })
+            _ => None,
+        }
     };
     let scalar = |terms: &Terms| match terms.as_slice() {
         [(unit, value)] if unit.is_empty() => Some(*value),
@@ -489,6 +504,12 @@ fn sum_terms(inner: &[Comp]) -> Option<Vec<(String, f64)>> {
         index += 2;
     }
     push(&mut terms, current, sign);
+    Some(canonical_terms(terms))
+}
+
+/// Like-unit terms with absolute lengths combined in px and times, angles and frequencies in
+/// their canonical unit (`calc(1ms)` is `calc(0.001s)`).
+pub(super) fn canonical_terms(mut terms: Terms) -> Terms {
     // Absolute lengths combine in px.
     let absolute = |unit: &str| match unit {
         "in" => Some(96.0),
@@ -550,7 +571,7 @@ fn sum_terms(inner: &[Comp]) -> Option<Vec<(String, f64)>> {
             terms.push((canonical.to_string(), total));
         }
     }
-    Some(terms)
+    terms
 }
 
 /// A `calc()` operand or sum's type: a number, a dimension of a category (percentages fit
@@ -659,7 +680,7 @@ fn math_type(comp: &Comp) -> Option<CalcType> {
         return calc_type(&inner);
     }
     match comp.function()? {
-        "sign" => Some(CalcType::Number),
+        "sign" | "sibling-index" | "sibling-count" => Some(CalcType::Number),
         "min" | "max" | "clamp" | "abs" => arguments_type(&inner),
         _ => Some(CalcType::Unknown),
     }
@@ -720,6 +741,8 @@ fn function_valid(name: &str, inner: &[Comp]) -> bool {
             arguments.len() == 3 && !is_none(arguments[1]) && arguments_type(inner).is_some()
         }
         "abs" | "sign" => !inner.iter().any(Comp::is_comma) && checked_sum(inner).is_some(),
+        // The tree-counting functions take no arguments.
+        "sibling-index" | "sibling-count" => inner.is_empty(),
         "rgb" | "rgba" | "hsl" | "hsla" => {
             let commas = inner.iter().filter(|comp| comp.kind == Kind::Comma).count();
             // A hue: a number, an angle, `none` (modern syntax) or a math function of those.
@@ -815,7 +838,7 @@ fn function_valid(name: &str, inner: &[Comp]) -> bool {
 }
 
 /// `calc()` of simplified terms: numbers, then percentages, then units in ASCII order.
-fn calc_text(mut terms: Vec<(String, f64)>) -> String {
+pub(super) fn calc_text(mut terms: Vec<(String, f64)>) -> String {
     let rank = |unit: &str| match unit {
         "" => 0,
         "%" => 1,
@@ -932,6 +955,9 @@ fn sum_arguments(inner: &[Comp]) -> String {
         .into_iter()
         .map(
             |argument| match (!is_none(argument)).then(|| sum_terms(argument)).flatten() {
+                None if super::math::has_tree_counting(argument) => {
+                    super::math::argument_text(argument)
+                }
                 Some(terms) => {
                     let text = calc_text(terms);
                     text[5..text.len() - 1].to_string()

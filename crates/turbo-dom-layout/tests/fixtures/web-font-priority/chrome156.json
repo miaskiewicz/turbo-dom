@@ -1,0 +1,83 @@
+{
+ "browser": "Chrome/156.0.8078.47",
+ "collectorSha256": "1e617490a53027f31088f29091e28d711c4b7c56d03e63d6a18997be7e980d1f",
+ "fontSha256": "197d9f3703b4c00af609178876a8d73e396f64fe438b2c871778566632374be3",
+ "size": 32,
+ "errors": [],
+ "web": [
+  {
+   "family": "Helvetica",
+   "weight": 400,
+   "text": "Hamburgefonstiv",
+   "width": 242.828125
+  },
+  {
+   "family": "Helvetica",
+   "weight": 400,
+   "text": "Wikipedia 1234",
+   "width": 221.140625
+  },
+  {
+   "family": "Helvetica",
+   "weight": 700,
+   "text": "Hamburgefonstiv",
+   "width": 242.828125
+  },
+  {
+   "family": "Helvetica",
+   "weight": 700,
+   "text": "Wikipedia 1234",
+   "width": 221.140625
+  },
+  {
+   "family": "WebGo",
+   "weight": 400,
+   "text": "Hamburgefonstiv",
+   "width": 242.828125
+  },
+  {
+   "family": "WebGo",
+   "weight": 400,
+   "text": "Wikipedia 1234",
+   "width": 221.140625
+  },
+  {
+   "family": "WebGo",
+   "weight": 700,
+   "text": "Hamburgefonstiv",
+   "width": 242.828125
+  },
+  {
+   "family": "WebGo",
+   "weight": 700,
+   "text": "Wikipedia 1234",
+   "width": 221.140625
+  }
+ ],
+ "installed": [
+  {
+   "family": "Helvetica",
+   "weight": 400,
+   "text": "Hamburgefonstiv",
+   "width": 241.890625
+  },
+  {
+   "family": "Helvetica",
+   "weight": 400,
+   "text": "Wikipedia 1234",
+   "width": 218.796875
+  },
+  {
+   "family": "Helvetica",
+   "weight": 700,
+   "text": "Hamburgefonstiv",
+   "width": 263.140625
+  },
+  {
+   "family": "Helvetica",
+   "weight": 700,
+   "text": "Wikipedia 1234",
+   "width": 229.15625
+  }
+ ]
+}
