@@ -9,6 +9,18 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- **turbo-dom-browser-env, turbo-dom: CSS Nesting (CSSStyleRule nested rules + their cascade,
+  turbo-dom#358).** Style rules now admit nested rules (`&`, implicit `&` for selectors that
+  start with a class / type / pseudo, `& > .b` combinators, selector lists, `:is()`-style
+  compounds, nested `@media` / `@supports` / `@container` / `@layer` / `@scope` /
+  `@starting-style`). `CSSStyleRule` gains `cssRules`, `insertRule(text, index?)` and
+  `deleteRule(index)` (a bare declaration inserted this way becomes a `CSSNestedDeclarations`,
+  as Chrome does). A new `CSSNestedDeclarations` interface wraps declaration runs that follow
+  a nested rule. `cssText` serializes multi-line in Chrome 156's authored order. The cascade
+  recurses through a style rule's nested cssRules, resolving `&` against the parent's
+  effective selector (`:is(parent)`) and prepending `& ` for a nested selector that doesn't
+  start with one. Chrome 156 control: `css_nesting_chrome156.json`. The last open half of
+  turbo-dom#340 is now done.
 - **turbo-dom-browser-env: media element follow-ups (turbo-dom#339).**
   - `HTMLMediaElement.captureStream()` returns a new `MediaStream`. `MediaStream` is a real,
     constructible interface (`id` a random v4 UUID, `clone()`, the track getters, the

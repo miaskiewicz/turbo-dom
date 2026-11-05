@@ -2606,12 +2606,35 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   var cssRuleStates=cssMap('rule');
   var cssRuleRecord=function(rule,type){var record=$c.get(cssRuleStates,rule);if(!record||type&&record.type!==type)throw new TypeError('Illegal invocation');return record;};
   function cssRuleInterface(name,parent){var ctor=__ns.makeNativeFunction(function(){throw new TypeError('Illegal constructor');},name,0,true);ctor.prototype=$O.create(parent||$O.prototype);$O.defineProperty(ctor.prototype,'constructor',{value:ctor,writable:true,configurable:true});$O.defineProperty(ctor.prototype,Symbol.toStringTag,{value:name,configurable:true});$O.defineProperty(ctor,'prototype',{writable:false});if(parent)$O.setPrototypeOf(ctor,parent.constructor);$O.defineProperty(g,name,{value:ctor,writable:true,configurable:true,enumerable:false});}
-  cssRuleInterface('CSSRule');cssRuleInterface('CSSStyleRule',g.CSSRule.prototype);cssRuleInterface('CSSImportRule',g.CSSRule.prototype);
+  cssRuleInterface('CSSRule');cssRuleInterface('CSSStyleRule',g.CSSRule.prototype);cssRuleInterface('CSSImportRule',g.CSSRule.prototype);cssRuleInterface('CSSNestedDeclarations',g.CSSRule.prototype);
   // Every CSSOM setter and mutating method drops reused computed styles (turbo-test#125).
   function cssInvalidating(fn){return function(){try{return cssApply(fn,this,arguments);}finally{invalidateComputedStyles();}};}
   function cssRuleMember(owner,name,get,set){var descriptor={enumerable:true,configurable:true,get:__ns.makeNativeFunction(get,'get '+name,0)};if(set)descriptor.set=__ns.makeNativeFunction(cssInvalidating(set),'set '+name,1);$O.defineProperty(g[owner].prototype,name,descriptor);}
   $c.forEach(['type','parentRule','parentStyleSheet'],function(name){cssRuleMember('CSSRule',name,function(){return cssRuleRecord(this)[name];});});
-  function cssRuleText(record){if(record.type===1||record.type===5){var text=declarationText(declarationRecord(record.style));return (record.type===1?record.selectorText:record.prelude)+' {'+(text?' '+text+' ':' ')+'}';}
+  // A style rule with nested cssRules (CSS Nesting, turbo-dom#358) serializes multi-line
+  // using its authored order; the fallback puts declarations before children.
+  function nestedStyleRuleText(record){
+    var out=record.selectorText+' {\n';
+    if(record.$orderOfPrint){
+      for(var $oi=0;$oi<record.$orderOfPrint.length;$oi++){
+        var $o=record.$orderOfPrint[$oi];
+        out+='  '+($o.decl||cssRuleText(cssRuleRecord($o.child)))+'\n';
+      }
+    } else {
+      var $decl=declarationText(declarationRecord(record.style));
+      if($decl)out+='  '+$decl+'\n';
+      var $list=cssItems(record.cssRules);
+      for(var $ci=0;$ci<$list.length;$ci++)out+='  '+cssRuleText(cssRuleRecord($list[$ci]))+'\n';
+    }
+    return out+'}';
+  }
+  function cssRuleText(record){
+    if(record.kind==='nested-declarations'){return declarationText(declarationRecord(record.style));}
+    if(record.type===1&&record.cssRules&&cssItems(record.cssRules).length)return nestedStyleRuleText(record);
+    if(record.type===1||record.type===5){
+      var text=declarationText(declarationRecord(record.style));
+      return (record.type===1?record.selectorText:record.prelude)+' {'+(text?' '+text+' ':' ')+'}';
+    }
     // Chrome 156: grouping rules and @keyframes list one child rule per line (turbo-dom#134).
     if((record.grouping||record.type===7)&&record.cssRules){var rules=cssItems(record.cssRules),out=(record.kind?groupPrelude(record):record.prelude)+(record.type===7?' { \n':' {\n');for(var index=0;index<rules.length;index++)out+='  '+cssRuleText(cssRuleRecord(rules[index]))+'\n';return out+'}';}
     return record.cssText;}
@@ -2648,14 +2671,228 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   cssRuleMember('CSSLayerStatementRule','nameList',function(){return $c.map(cssParts(preludeRest(groupRecord(this,{'layer-statement':1})),','),function(name){return $c.trim(name);});});
   cssRuleMember('CSSScopeRule','start',function(){return scopeParts(groupRecord(this,{scope:1}))[0];});
   cssRuleMember('CSSScopeRule','end',function(){return scopeParts(groupRecord(this,{scope:1}))[1];});
-  function insertGroupRule(rule,record,text,index){var list=cssItems(record.cssRules),i=index===undefined?0:Number(index)>>>0;if(i>list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');text=cssString(text);var source=cssNativeParse(text,false,true),parsed=source===null?cssList():parseCssRules(source,record.parentStyleSheet,rule,true);// An @import (Chrome: an import rule, however the text spells it: comments, case) is a hierarchy error.
+  function insertGroupRule(rule,record,text,index,interfaceName){var list=cssItems(record.cssRules),i=index===undefined?0:Number(index)>>>0;if(i>list.length)throw new __ns.DOMException("Failed to execute 'insertRule' on '"+(interfaceName||'CSSGroupingRule')+"': the index "+i+" must be less than or equal to the length of the rule list.",'IndexSizeError');text=cssString(text);var source=cssNativeParse(text,false,true),parsed=source===null?cssList():parseCssRules(source,record.parentStyleSheet,rule,true);// An @import (Chrome: an import rule, however the text spells it: comments, case) is a hierarchy error.
   var imported=$c.test(/^\s*@import\b/i,text)||source!==null&&$c.test(/^\s*@import\b/i,source)||parsed.length===1&&cssItems(parsed)[0].type===3;if(imported)throw new __ns.DOMException('Imports are not allowed in a grouping rule','HierarchyRequestError');if(parsed.length!==1)throw new __ns.DOMException('Expected one CSS rule','SyntaxError');$c.splice(list,i,0,cssItems(parsed)[0]);return i;}
-  function deleteGroupRule(record,index){var list=cssItems(record.cssRules),i=Number(index)>>>0;if(i>=list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');detachCssRule(list[i]);$c.splice(list,i,1);}
+  function deleteGroupRule(record,index,interfaceName){var list=cssItems(record.cssRules),i=Number(index)>>>0;if(i>=list.length)throw new __ns.DOMException("Failed to execute 'deleteRule' on '"+(interfaceName||'CSSGroupingRule')+"': the index "+i+" must be less than the length of the rule list.",'IndexSizeError');detachCssRule(list[i]);$c.splice(list,i,1);}
   cssMethod(g.CSSGroupingRule.prototype,'insertRule',1,function(text,index){var record=groupRecord(this);if(!arguments.length)throw new TypeError("Failed to execute 'insertRule' on 'CSSGroupingRule': 1 argument required, but only 0 present.");return insertGroupRule(this,record,text,index);});
   cssMethod(g.CSSGroupingRule.prototype,'deleteRule',1,function(index){var record=groupRecord(this);if(!arguments.length)throw new TypeError("Failed to execute 'deleteRule' on 'CSSGroupingRule': 1 argument required, but only 0 present.");deleteGroupRule(record,index);});
+  // turbo-dom#358: CSSStyleRule gains cssRules / insertRule / deleteRule (CSS Nesting). The
+  // rule is a grouping rule too; insertRule / deleteRule reuse insertGroupRule /
+  // deleteGroupRule, with the parent record coming from the style rule's own cssRuleStates entry.
+  cssRuleMember('CSSStyleRule','cssRules',function(){var record=cssRuleRecord(this,1);if(!record.cssRules)record.cssRules=cssList();return record.cssRules;});
+  cssMethod(g.CSSStyleRule.prototype,'insertRule',1,function(text,index){
+    var record=cssRuleRecord(this,1);if(!record.cssRules)record.cssRules=cssList();
+    if(!arguments.length)throw new TypeError("Failed to execute 'insertRule' on 'CSSStyleRule': 1 argument required, but only 0 present.");
+    text=cssString(text);var i=index===undefined?0:Number(index)>>>0,list=cssItems(record.cssRules);
+    if(i>list.length)throw new __ns.DOMException("Failed to execute 'insertRule' on 'CSSStyleRule': the index "+i+" must be less than or equal to the length of the rule list.",'IndexSizeError');
+    // A bare declaration becomes a CSSNestedDeclarations (Chrome 156).
+    if(!$c.test(/[{}]/,text)){
+      var declText=$c.trim(text);if(declText[declText.length-1]!==';')declText+=';';
+      var nested={type:0,parentStyleSheet:record.parentStyleSheet,parentRule:this,prelude:'',kind:'nested-declarations',cssText:declText};
+      nested.style=cssDeclaration(declText,null,nested);
+      var nestedRule=finishCssRule(nested);
+      cssRuleRecord(nestedRule).effectiveSelector=record.effectiveSelector||record.selectorText;
+      $c.splice(list,i,0,nestedRule);invalidateComputedStyles();return i;
+    }
+    // Nested style rule context: prepend '& ' to a selector that doesn't start with '&',
+    // through the same normalization as parseCssRules.
+    var source=cssNativeParse(text,false,true);
+    if(source!==null){
+      var braceOpen=$c.indexOf(source,'{');
+      if(braceOpen>0&&source[0]!=='@'){
+        var preludePart=$c.trim($c.slice(source,0,braceOpen)),rest=$c.slice(source,braceOpen);
+        text=nestedSelectorList(preludePart)+' '+rest;
+      } else if(source!==null) text=source;
+    }
+    var position=insertGroupRule(this,record,text,index,'CSSStyleRule');
+    // Compute effectiveSelector for the just-inserted nested rule.
+    var inserted=cssItems(record.cssRules)[position];
+    if(inserted){
+      var ir=cssRuleRecord(inserted);
+      if(ir.type===1)ir.effectiveSelector=nestedCascadeSelector(ir.selectorText,record.effectiveSelector||record.selectorText);
+    }
+    return position;
+  });
+  cssMethod(g.CSSStyleRule.prototype,'deleteRule',1,function(index){var record=cssRuleRecord(this,1);if(!record.cssRules)record.cssRules=cssList();if(!arguments.length)throw new TypeError("Failed to execute 'deleteRule' on 'CSSStyleRule': 1 argument required, but only 0 present.");deleteGroupRule(record,index,'CSSStyleRule');});
+  cssRuleMember('CSSNestedDeclarations','style',function(){return cssRuleRecord(this).style;});
   var cssRuleConstants={STYLE_RULE:1,CHARSET_RULE:2,IMPORT_RULE:3,MEDIA_RULE:4,FONT_FACE_RULE:5,PAGE_RULE:6,KEYFRAMES_RULE:7,KEYFRAME_RULE:8,MARGIN_RULE:9,NAMESPACE_RULE:10,COUNTER_STYLE_RULE:11,SUPPORTS_RULE:12,FONT_FEATURE_VALUES_RULE:14};
   $c.forEach($O.keys(cssRuleConstants),function(name){$c.forEach([g.CSSRule,g.CSSRule.prototype],function(owner){$O.defineProperty(owner,name,{value:cssRuleConstants[name],enumerable:true,configurable:true});});});
-  function finishCssRule(rule){var record={__proto__:null};$c.forEach(['type','parentRule','parentStyleSheet','cssText','selectorText','href','media','styleSheet','prelude','grouping','kind'],function(name){if($O.hasOwn(rule,name)){record[name]=rule[name];delete rule[name];}});if(rule.style){record.style=rule.style;if(record.type===1)delete rule.style;}if(rule.cssRules){record.cssRules=rule.cssRules;if(record.kind)delete rule.cssRules;}$c.set(cssRuleStates,rule,record);var kind=record.kind&&groupingInterfaces[record.kind];$O.setPrototypeOf(rule,kind?g[kind].prototype:record.type===1?g.CSSStyleRule.prototype:record.type===3?g.CSSImportRule.prototype:g.CSSRule.prototype);return rule;}
+  // turbo-dom#358 CSS Nesting. A style rule's body may hold both declarations and nested
+  // rules. splitRuleBody returns a list of {decl} | {rule:{head,body}} parts in order.
+  function splitRuleBody(text){
+    var parts=[],start=0,i=0,open;
+    while((open=scanToTopBrace(text,i))>=0){
+      var state={at:open,depth:1,quote:'',escaped:false,comment:false};
+      while(state.at<text.length-1){state.at++;if(scanStep(text,state,state.at))break;}
+      splitRuleBodyPush(parts,text,start,open,state.at);
+      i=start=state.at+1;
+    }
+    var tail=$c.trim($c.slice(text,start));
+    if(tail)$c.push(parts,{decl:tail});
+    return parts;
+  }
+  // Push a {decl} for any declarations between `start` and the rule's prelude, then the
+  // {rule} for the block [open, close].
+  function splitRuleBodyPush(parts,text,start,open,close){
+    var preludeStart=start;
+    for(var j=open-1;j>=start;j--)if(text[j]===';'){preludeStart=j+1;break;}
+    if(preludeStart>start){var declRun=$c.trim($c.slice(text,start,preludeStart));if(declRun)$c.push(parts,{decl:declRun});}
+    var head=$c.trim($c.slice(text,preludeStart,open)),body=$c.slice(text,open+1,close);
+    if(head)$c.push(parts,{rule:{head:head,body:body}});
+  }
+  // Return the position of the first `{` at depth 0, skipping comments/strings; or -1.
+  function scanToTopBrace(text,from){
+    var state={at:from-1,depth:0,quote:'',escaped:false,comment:false};
+    while(state.at<text.length-1){state.at++;var c=text[state.at];if(skipStateChar(state,c,text[state.at+1]))continue;if(c==='{')return state.at;}
+    return -1;
+  }
+  // One step of the brace scanner; returns true when the state closed back to depth 0.
+  function scanStep(text,state,i){
+    var c=text[i];if(skipStateChar(state,c,text[i+1]))return false;
+    if(c==='{')state.depth++;
+    else if(c==='}'&&--state.depth===0)return true;
+    return false;
+  }
+  // Shared lex-state transitions (comments, quotes, escapes); returns true when consumed.
+  function skipStateChar(state,c,next){
+    if(state.comment){if(c==='*'&&next==='/'){state.comment=false;state.at++;}return true;}
+    if(state.quote){if(state.escaped)state.escaped=false;else if(c==='\\')state.escaped=true;else if(c===state.quote)state.quote='';return true;}
+    if(c==='/'&&next==='*'){state.comment=true;state.at++;return true;}
+    if(c==='"'||c==="'"){state.quote=c;return true;}
+    return false;
+  }
+  // Chrome 156 prepends '& ' to a nested selector that doesn't start with '&'.
+  // Chrome 156: a nested style rule's cascade selector is the child's selector with each
+  // standalone `&` replaced by `:is(<parent>)`, and (for a selector that doesn't start with
+  // `&`) `:is(<parent>) ` prepended. We approximate the `&`-replacement with a text scan.
+  function nestedCascadeSelector(childSelector, parentEffective){
+    if(!parentEffective)return childSelector;
+    var parentIs=':is('+parentEffective+')';
+    return $c.join($c.map(cssParts(childSelector,','),function(item){
+      var trimmed=$c.trim(item);
+      if(trimmed[0]!=='&')return parentIs+' '+trimmed;
+      // Replace each '&' at token boundaries with parentIs.
+      var out='',quote='',escaped=false;
+      for(var i=0;i<trimmed.length;i++){
+        var c=trimmed[i];
+        if(quote){out+=c;if(escaped)escaped=false;else if(c==='\\')escaped=true;else if(c===quote)quote='';continue;}
+        if(c==='"'||c==="'"){out+=c;quote=c;continue;}
+        if(c==='&')out+=parentIs;
+        else out+=c;
+      }
+      return out;
+    }),', ');
+  }
+  function nestedSelectorList(selectors){
+    return $c.join($c.map(cssParts(selectors,','),function(item){
+      var trimmed=$c.trim(item);
+      if(trimmed[0]==='&')return trimmed;
+      return '& '+trimmed;
+    }),', ');
+  }
+  function finishCssRule(rule){var record={__proto__:null};$c.forEach(['type','parentRule','parentStyleSheet','cssText','selectorText','href','media','styleSheet','prelude','grouping','kind','$orderOfPrint'],function(name){if($O.hasOwn(rule,name)){record[name]=rule[name];delete rule[name];}});if(rule.style){record.style=rule.style;if(record.type===1)delete rule.style;}if(rule.cssRules){record.cssRules=rule.cssRules;if(record.kind)delete rule.cssRules;}$c.set(cssRuleStates,rule,record);var kind=record.kind&&groupingInterfaces[record.kind];var proto=kind?g[kind].prototype:record.kind==='nested-declarations'?g.CSSNestedDeclarations.prototype:record.type===1?g.CSSStyleRule.prototype:record.type===3?g.CSSImportRule.prototype:g.CSSRule.prototype;$O.setPrototypeOf(rule,proto);return rule;}
+  // A rule object about to be finished keeps its type/parentRule on the proxy itself;
+  // a finished rule carries them in its record. Walk via whichever is present.
+  // Build a style rule from its head and body (CSS Nesting splits it into decls + rules).
+  function fillStyleRule(rule,head,body,sheet){
+    rule.type=1;rule.selectorText=cssPrelude(head,true);
+    var nestedParts=splitRuleBody(body),hasNested=false;
+    for(var $ni=0;$ni<nestedParts.length;$ni++)if(nestedParts[$ni].rule){hasNested=true;break;}
+    if(!hasNested){rule.style=cssDeclaration(body,null,rule);rule.cssText=head+' { '+$c.trim(body)+' }';}
+    else fillNestedStyleRule(rule,head,sheet,nestedParts);
+  }
+  // Build an at-rule from its head and body (@media / @supports / @font-face / ...).
+  function fillAtRule(rule,head,body,sheet,parent){
+    rule.prelude=head;
+    rule.type=$c.test(/^@media\b/i,head)?4:$c.test(/^@supports\b/i,head)?12:$c.test(/^@font-face\b/i,head)?5:$c.test(/^@(-webkit-)?keyframes\b/i,head)?7:0;
+    rule.grouping=$c.test(/^@(media|supports|container|scope|starting-style|layer)\b/i,head);
+    if(rule.grouping)rule.kind=$c.toLowerCase($c.exec(/^@([a-z-]+)/i,head)[1]);
+    rule.cssText=head+($c.trim(body)?' { '+$c.trim(body)+' }':' { }');
+    if(rule.type===5)rule.style=cssDeclaration(body,null,rule,false,true);
+    else if(!$c.test(/^@(property|view-transition)\b/i,head))
+      rule.cssRules = parent && rule.grouping && hasStyleRuleAncestor(parent) ? parseNestedGroupBody(body,sheet,rule) : parseCssRules(body,sheet,rule,true);
+  }
+  // turbo-dom#358 CSS Nesting. Build a style rule whose body holds both declarations and
+  // nested rules. Merges the parent-level declarations into rule.style, builds its cssRules
+  // (CSSNestedDeclarations for a decl run that follows a nested rule), computes the cascade
+  // effectiveSelector down the nested tree, and writes the authored multi-line cssText.
+  function fillNestedStyleRule(rule,head,sheet,nestedParts){
+    var ownDecls='',children=cssList(),seenRule=false,order=[];
+    for(var $pi=0;$pi<nestedParts.length;$pi++){
+      var $part=nestedParts[$pi];
+      if($part.decl){
+        if(ownDecls)ownDecls+=' ';ownDecls+=$part.decl;
+        if(seenRule){var nestedRule=makeCssNestedDeclarationsRule(sheet,rule,$part.decl);$c.push(cssItems(children),nestedRule);$c.push(order,{child:nestedRule});}
+        else $c.push(order,{decl:$part.decl});
+      } else {
+        seenRule=true;
+        var childRule=parseOneNestedChild(sheet,rule,$part.rule.head,$part.rule.body);
+        if(childRule){$c.push(cssItems(children),childRule);$c.push(order,{child:childRule});}
+      }
+    }
+    rule.style=cssDeclaration(ownDecls,null,rule);
+    rule.cssRules=children;
+    rule.$orderOfPrint=order;
+    propagateNestedCascade(rule.selectorText,children);
+    var $text=head+' {\n';
+    for(var $oi=0;$oi<order.length;$oi++){var $o=order[$oi];$text+='  '+($o.decl||cssRuleText(cssRuleRecord($o.child)))+'\n';}
+    rule.cssText=$text+'}';
+  }
+  // Build a CSSNestedDeclarations rule for a bare declaration run.
+  function makeCssNestedDeclarationsRule(sheet,parent,declText){
+    var nested={type:0,parentStyleSheet:sheet,parentRule:parent,prelude:'',kind:'nested-declarations',cssText:declText};
+    nested.style=cssDeclaration(declText,null,nested);
+    return finishCssRule(nested);
+  }
+  // Parse one nested rule inside a style rule's body: an at-rule keeps its head; any other
+  // selector gets '& ' prepended if it doesn't start with '&' (Chrome 156).
+  function parseOneNestedChild(sheet,parent,head,body){
+    var nestedText=head[0]==='@'?head+' { '+$c.trim(body)+' }':nestedSelectorList(head)+' { '+$c.trim(body)+' }';
+    var items=cssItems(parseCssRules(nestedText,sheet,parent,true));
+    return items.length?items[0]:null;
+  }
+  // Propagate the cascade effective selector down nested cssRules (CSSStyleRule gets
+  // `&` resolved against the parent's effective selector; CSSNestedDeclarations inherit it).
+  function propagateNestedCascade(parentSel,list){
+    var items=cssItems(list);
+    for(var $ii=0;$ii<items.length;$ii++){
+      var $r=cssRuleRecord(items[$ii]);
+      if($r.kind==='nested-declarations'){$r.effectiveSelector=parentSel;continue;}
+      if($r.type===1){$r.effectiveSelector=nestedCascadeSelector($r.selectorText,parentSel);if($r.cssRules)propagateNestedCascade($r.effectiveSelector,$r.cssRules);}
+      else if($r.kind){if($r.cssRules)propagateNestedCascade(parentSel,$r.cssRules);}
+    }
+  }
+  function hasStyleRuleAncestor(rule){
+    while(rule){
+      var record=$c.get(cssRuleStates,rule),type=record?record.type:rule.type,next=record?record.parentRule:rule.parentRule;
+      if(type===1)return true;
+      rule=next;
+    }
+    return false;
+  }
+  // turbo-dom#358: a grouping at-rule nested inside a style rule admits bare
+  // declarations (CSSNestedDeclarations). Walk its body with splitRuleBody, emitting a
+  // CSSNestedDeclarations rule for each bare run and parsing each nested rule.
+  function parseNestedGroupBody(body,sheet,parent){
+    var out=cssList();
+    var parts=splitRuleBody(body);
+    for(var $pi=0;$pi<parts.length;$pi++){
+      var part=parts[$pi];
+      if(part.decl){
+        var declText=part.decl;if(declText[declText.length-1]!==';')declText+=';';
+        var nested={type:0,parentStyleSheet:sheet,parentRule:parent,prelude:'',kind:'nested-declarations',cssText:declText};
+        nested.style=cssDeclaration(declText,null,nested);
+        $c.push(cssItems(out),finishCssRule(nested));
+      } else {
+        var head2=part.rule.head,body2=part.rule.body,nestedText;
+        if(head2[0]==='@')nestedText=head2+' { '+$c.trim(body2)+' }';
+        else nestedText=nestedSelectorList(head2)+' { '+$c.trim(body2)+' }';
+        var childRules=cssItems(parseCssRules(nestedText,sheet,parent,true));
+        if(childRules.length)$c.push(cssItems(out),childRules[0]);
+      }
+    }
+    return out;
+  }
   var parseCssRules = function(text, sheet, parent, validated){
     text=String(text);if(!validated&&typeof cssNativeParse==='function')text=cssNativeParse(text);
     var out=cssList(), start=0, depth=0, quote='', escaped=false, comment=false, open=-1;
@@ -2668,10 +2905,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       else if(c==='}'&&depth>0&&--depth===0){
         var head=cssPrelude($c.slice(text,start,open),false),body=$c.slice(text,open+1,i);
         if(head){
-          var isAt=head[0]==='@',rule={};
-          rule.parentStyleSheet=sheet;rule.parentRule=parent||null;
-          if(isAt){rule.prelude=head;rule.type=$c.test(/^@media\b/i,head)?4:$c.test(/^@supports\b/i,head)?12:$c.test(/^@font-face\b/i,head)?5:$c.test(/^@(-webkit-)?keyframes\b/i,head)?7:0;rule.grouping=$c.test(/^@(media|supports|container|scope|starting-style|layer)\b/i,head);if(rule.grouping)rule.kind=$c.toLowerCase($c.exec(/^@([a-z-]+)/i,head)[1]);rule.cssText=head+($c.trim(body)?' { '+$c.trim(body)+' }':' { }');if(rule.type===5)rule.style=cssDeclaration(body,null,rule,false,true);else if(!$c.test(/^@(property|view-transition)\b/i,head))rule.cssRules=parseCssRules(body,sheet,rule,true);}
-          else {rule.type=1;rule.selectorText=cssPrelude(head,true);rule.style=cssDeclaration(body,null,rule);rule.cssText=head+' { '+$c.trim(body)+' }';}
+          var rule={parentStyleSheet:sheet,parentRule:parent||null};
+          if(head[0]==='@')fillAtRule(rule,head,body,sheet,parent);
+          else fillStyleRule(rule,head,body,sheet);
           $c.push(cssItems(out),finishCssRule(rule));
         }
         start=i+1;
@@ -2915,7 +3151,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var record=cssRuleRecord(rule),kind=record.kind;
       if(record.type===3){appliedImport(record,el,context,out);continue;}
       if(kind==='layer-statement'){var names=cssParts(preludeRest(record),',');for(var index=0;index<names.length;index++)cssLayerPath(context.layer,$c.trim(names[index]));continue;}
-      if(!kind){if(record.type===1)$c.push(out,new AppliedEntry(record,context.layer,context.media,context.scopes));continue;}
+      if(kind==='nested-declarations'){$c.push(out,new AppliedEntry(record,context.layer,context.media,context.scopes));continue;}
+      if(!kind){if(record.type===1){$c.push(out,new AppliedEntry(record,context.layer,context.media,context.scopes));if(record.cssRules)appliedGroupRules(record.cssRules,el,context,out);}continue;}
       var inner=groupContext(record,kind,el,context);
       if(inner)appliedGroupRules(record.cssRules,el,inner,out);
     }
@@ -2987,7 +3224,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // volatile when its selector matches.
   function appliedEntryMatch(el,entry,pseudo,order){
     if(noteRuleProbe)noteRuleProbe();
-    var selector=entry.rule.selectorText,matched=false,specificity=0,proximity=Infinity;
+    // A nested rule's cascade selector resolves `&` and nesting scope; see nestedCascadeSelector.
+    var selector=entry.rule.effectiveSelector||entry.rule.selectorText,matched=false,specificity=0,proximity=Infinity;
     if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
     else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
     else{try{matched=cssApply(computedStyleNativeMatches,el,[frameSelector(el,selector)]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,frameSelector(el,item));});}
@@ -3038,7 +3276,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function cssHostRule(rule,seen,budget){
     if(--budget.rules<0)throw new RangeError('Live stylesheet rule budget exceeded');
     var record=cssRuleRecord(rule),output={__proto__:null,type:record.type};
-    if(record.cssRules){output.prelude=cssHostText(record.prelude,budget);output.rules=cssHostRules(record.cssRules,seen,budget);output.cssText=record.prelude+' {';for(var index=0;index<output.rules.length;index++)output.cssText+=' '+output.rules[index].cssText;output.cssText+=' }';}else output.cssText=cssRuleText(record);
+    if(record.cssRules&&cssItems(record.cssRules).length&&record.prelude!==undefined){output.prelude=cssHostText(record.prelude,budget);output.rules=cssHostRules(record.cssRules,seen,budget);output.cssText=record.prelude+' {';for(var index=0;index<output.rules.length;index++)output.cssText+=' '+output.rules[index].cssText;output.cssText+=' }';}else output.cssText=cssRuleText(record);
     output.cssText=cssHostText(output.cssText,budget);
     if(record.type===3){output.href=cssHostText(record.href,budget);output.media=cssHostText(cssHostMedia(record.media),budget);output.styleSheet=record.styleSheet?cssHostSheet(record.styleSheet,seen,budget):null;}
     return output;

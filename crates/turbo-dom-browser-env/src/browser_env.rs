@@ -11256,14 +11256,14 @@ mod html_meta_tests;
 #[path = "animation_range_tests.rs"]
 mod animation_range_tests;
 #[cfg(test)]
-#[path = "css_nesting_tests.rs"]
-mod css_nesting_tests;
-#[cfg(test)]
 #[path = "computed_defaults_tests.rs"]
 mod computed_defaults_tests;
 #[cfg(test)]
 #[path = "css_longhand_tests.rs"]
 mod css_longhand_tests;
+#[cfg(test)]
+#[path = "css_nesting_tests.rs"]
+mod css_nesting_tests;
 #[cfg(test)]
 #[path = "css_shorthand_tests.rs"]
 mod css_shorthand_tests;
