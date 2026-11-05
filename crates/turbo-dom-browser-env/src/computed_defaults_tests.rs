@@ -471,6 +471,47 @@ fn transform_matches_chrome156_control_with_embedder_layout() {
     );
 }
 
+/// turbo-dom#374: `getComputedStyle` canonicalizes named colors in every `<color>` longhand
+/// (not just `color`) to Chrome 156's rgb() / rgba() form, so `background-color: red` reads
+/// back as `rgb(255, 0, 0)` and `border-top-color: blue` as `rgb(0, 0, 255)`.
+#[test]
+fn computed_colors_canonicalize_named_values_to_rgb() {
+    let value = run(
+        "<!doctype html><body><div id=c style='background-color:red;border-top-color:blue;outline-color:lime;caret-color:orange;text-decoration-color:fuchsia'></div></body>",
+        "(() => { const s = getComputedStyle(document.getElementById('c'));
+          return [s.backgroundColor, s.borderTopColor, s.outlineColor, s.caretColor, s.textDecorationColor,
+                  s.getPropertyValue('background-color'), s.getPropertyValue('border-top-color')]; })()",
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            "rgb(255, 0, 0)",
+            "rgb(0, 0, 255)",
+            "rgb(0, 255, 0)",
+            "rgb(255, 165, 0)",
+            "rgb(255, 0, 255)",
+            "rgb(255, 0, 0)",
+            "rgb(0, 0, 255)"
+        ])
+    );
+}
+
+/// turbo-dom#373: `em` in a transform resolves against the layout's reported font size
+/// (`layoutUsedSize(el)[4]`), not the element's declared `font-size`. An element that
+/// inherits its font-size has no declared value on itself, so without reading the layout's
+/// font size the resolver would fall back to Chrome's initial 16 and produce the wrong
+/// translation. Chrome 156 gives `matrix(1, 0, 0, 1, 24, 0)` for `translateX(2em)` on a
+/// child whose inherited font-size is 12px.
+#[test]
+fn transform_em_resolves_against_layout_reported_font_size() {
+    let value = run_with(
+        "<!doctype html><body style='font-size:12px'><div id=c style='transform:translateX(2em)'></div></body>",
+        "getComputedStyle(document.getElementById('c')).transform",
+        "__tsNs.layoutUsedSize = (el) => el.id === 'c' ? [100, 50, 100, 50, 12] : null;",
+    );
+    assert_eq!(value, serde_json::json!("matrix(1, 0, 0, 1, 24, 0)"));
+}
+
 /// turbo-dom#353 without a layout: the rows that need no box — none / an initial transform,
 /// non-percentage function lists, disconnected / host-only elements — still match. A
 /// percentage translate stays as the declared text, as Chrome also cannot resolve it before
