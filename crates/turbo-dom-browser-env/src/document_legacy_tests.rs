@@ -475,3 +475,51 @@ fn share_document_domain_requires_browsing_context_documents() {
     );
     assert_eq!(actual, serde_json::json!(["a.example.com", ""]));
 }
+
+/// The embedder's `retire_context` for the realm the called function belongs to.
+#[cfg(feature = "host-internals")]
+fn retire_own_context(scope: &mut v8::PinScope, _: v8::FunctionCallbackArguments, _: v8::ReturnValue) {
+    crate::browser_env::host_internals::retire_context(scope.get_current_context());
+}
+
+/// turbo-test#227: the only font-context input to the cascaded declarations is the html UA
+/// table's browsing-context flag, and it changes only when the embedder retires the document
+/// (`retire_context`), which moves no tree version. A retired document has no computed style at
+/// all, so a transitioning element's reused declarations are never read there: it reads ""
+/// like a plain element.
+#[cfg(feature = "host-internals")]
+#[test]
+fn a_retired_document_reads_no_reused_declarations() {
+    let value = run_probe(
+        "<!doctype html><body>",
+        r"(() => {
+          const w = __legacyChildRealm, d = w.document;
+          const s = d.createElement('style'); s.textContent = '.v { transition: opacity 100s linear; opacity: 1 } .v.dim { opacity: 0.5 }'; d.head.appendChild(s);
+          const v = d.createElement('b'), plain = d.createElement('b'); v.className = 'v'; d.body.append(v, plain);
+          const rows = [];
+          const read = () => { const a = w.getComputedStyle(v), b = w.getComputedStyle(plain); rows.push([a.fontWeight, b.fontWeight, v.getAnimations().length]); };
+          read(); v.classList.add('dim'); read(); read();
+          w.__retireContext();
+          read(); read();
+          return rows;
+        })()",
+        |scope, child| {
+            if child {
+                let global = scope.get_current_context().global(scope);
+                let name = v8::String::new(scope, "__retireContext").unwrap();
+                let function = v8::Function::new(scope, retire_own_context).unwrap();
+                global.set(scope, name.into(), function.into());
+            }
+        },
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            ["700", "700", 0],
+            ["700", "700", 1],
+            ["700", "700", 1],
+            ["", "", 1],
+            ["", "", 1]
+        ])
+    );
+}
