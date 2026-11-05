@@ -396,6 +396,7 @@ OWNED="$OWNED style_invalidation_probe.js style_invalidation_chrome156.json styl
 OWNED="$OWNED rule_bucket_tests.rs style_sharing_tests.rs"
 OWNED="$OWNED jsdom_media_jsdom27.json jsdom_media_probe.js media_override_chrome156.json media_override_probe.js"
 OWNED="$OWNED jsdom_transitions_chrome156.json jsdom_transitions_jsdom27.json jsdom_transitions_probe.js"
+OWNED="$OWNED css_animation_events_probe.js css_animation_events_cases.json css_animation_events_chrome156.json"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
 OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"

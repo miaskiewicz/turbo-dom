@@ -2075,26 +2075,45 @@ pub fn set_media_mode(scope: &mut v8::PinScope, mode: MediaMode) {
     );
 }
 
-/// Whether the current window runs CSS transitions, `@keyframes` animations and Web
-/// Animations (installs start with them on, as Chrome). Off is jsdom 27's behaviour: no
-/// CSSTransition / CSSAnimation is created, so getComputedStyle reports the declared (end)
-/// value at once and no transition / animation event fires, and the Web Animations surface
-/// jsdom lacks (`animate`, `getAnimations`, `document.timeline`, `Animation`, `CSSTransition`,
-/// `AnimationEvent`, ...) is hidden. Independent of [`MediaMode`].
+/// Whether the current window runs CSS transitions (turbo-dom#313). **On by default**: every
+/// install starts with it on, as Chrome, so an embedder that never calls this keeps Chrome's
+/// behaviour. On, a transitioned property's computed-value change creates a `CSSTransition`
+/// that animates the property and dispatches `transitionrun`, `transitionstart`,
+/// `transitionend` and `transitioncancel` (`TransitionEvent`) as Chrome 156 does. Off (jsdom
+/// 27's behaviour, for turbo-test's vitest parity), no `CSSTransition` is created, so
+/// getComputedStyle reports the declared (end) value at once and no transition event fires.
+///
+/// Independent of [`set_css_animations`] (`@keyframes` animations) and of [`MediaMode`]. With
+/// both switches off the Web Animations surface jsdom lacks (`animate`, `getAnimations`,
+/// `document.timeline`, `Animation`, `CSSTransition`, `AnimationEvent`, ...) is hidden too;
+/// turning either back on restores the same bindings. `TransitionEvent` always stays.
 pub fn set_css_transitions(scope: &mut v8::PinScope, enabled: bool) {
+    set_css_switch(scope, "setCssTransitions", enabled);
+}
+
+/// Whether the current window runs CSS `@keyframes` animations (turbo-dom#313). **On by
+/// default**: every install starts with it on, as Chrome, so an embedder that never calls
+/// this keeps Chrome's behaviour. On, an element's `animation-name` naming a `@keyframes`
+/// rule creates a `CSSAnimation` that animates the element and dispatches `animationstart`,
+/// `animationiteration`, `animationend` and `animationcancel` (`AnimationEvent`) as Chrome
+/// 156 does. Off (jsdom 27's behaviour, for turbo-test's vitest parity), no `CSSAnimation` is
+/// created, so getComputedStyle reports the element's own value and no animation event
+/// fires. Script animations (`Element.animate`) are not CSS animations and are unaffected.
+///
+/// Independent of [`set_css_transitions`] and of [`MediaMode`]; with both switches off the
+/// Web Animations surface jsdom lacks is hidden (see [`set_css_transitions`]).
+pub fn set_css_animations(scope: &mut v8::PinScope, enabled: bool) {
+    set_css_switch(scope, "setCssAnimations", enabled);
+}
+
+/// Run one of animations.js's CSS switches in the current window's DOM.
+fn set_css_switch(scope: &mut v8::PinScope, switch: &str, enabled: bool) {
     let id = scope
         .get_current_context()
         .get_slot::<DomContextId>()
         .map_or(0, |id| id.0);
     let _dom = DomScope::enter(id);
-    run_js(
-        scope,
-        if enabled {
-            "__tsNs.setJsdomAnimations(false)"
-        } else {
-            "__tsNs.setJsdomAnimations(true)"
-        },
-    );
+    run_js(scope, &format!("__tsNs.{switch}({enabled})"));
 }
 
 /// First connected document base attribute, read without guest getters.
