@@ -7,6 +7,8 @@
 //!   the flag as [`turbo_dom_layout::INDETERMINATE_ATTR`], as a live embedder does from
 //!   its `post_cascade` hook;
 //! - `vertical-*`: every control turned in `vertical-lr` / `vertical-rl` (#293);
+//! - `vline-*`: every control on a `vertical-lr` / `vertical-rl` line, in an absolutely
+//!   positioned and a static wrapper (miaskiewicz/turbo-dom#345);
 //! - `audio-*`: the `<audio controls>` panel (miaskiewicz/turbo-dom#292).
 //!
 //! Each case is laid out at Chrome's 1280x800 viewport and painted through `paint_png` and
@@ -225,6 +227,11 @@ fn indeterminate_checkboxes_paint_a_dash_like_chrome_156() {
 #[test]
 fn vertical_controls_turn_like_chrome_156() {
     assert_like_chrome("vertical-");
+}
+
+#[test]
+fn controls_sit_on_a_vertical_lines_central_baseline_like_chrome_156() {
+    assert_like_chrome("vline-");
 }
 
 #[test]

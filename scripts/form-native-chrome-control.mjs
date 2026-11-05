@@ -137,6 +137,27 @@ for (const mode of ["vertical-lr", "vertical-rl"]) {
   }
 }
 
+// Every control on a vertical line of 20px fixture serif (its text transparent) between
+// two letters, in an absolutely positioned wrapper at (20, 20) and in a static one (a
+// 20px padding): placed on the line's central baseline (miaskiewicz/turbo-dom#345).
+// Each control's layout is checked in [`vertical-*`] above; here only those whose
+// baseline the fix for miaskiewicz/turbo-dom#345 covers (toggles, progress, meter).
+// The other controls' central-baseline placement needs its own pre-existing-bug work
+// (follow-up issues in the PR body).
+const VERTICAL_LINE = [
+  ["checkbox", `<input data-cid="m" type="checkbox" checked>`],
+  ["radio", `<input data-cid="m" type="radio" checked>`],
+  ["progress", `<progress data-cid="m" value="0.3"></progress>`],
+  ["meter", `<meter data-cid="m" value="0.3"></meter>`],
+];
+for (const mode of ["vertical-lr", "vertical-rl"]) {
+  for (const [kind, control] of VERTICAL_LINE) {
+    const line = (style) => `<div data-cid="w" style="${style}writing-mode:${mode};font:20px 'Liberation Serif';color:transparent">x${control}x</div>`;
+    CASES.push([`vline-${kind}-${mode.slice(9)}-abs`, line(`${AT};`), {}]);
+    CASES.push([`vline-${kind}-${mode.slice(9)}-static`, `<div style="padding:20px">${line("")}</div>`, {}]);
+  }
+}
+
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
 function decodePng(png) {
   let off = 8;
