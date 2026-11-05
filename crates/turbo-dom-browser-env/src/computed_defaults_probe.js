@@ -326,6 +326,27 @@
       const y = px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width');
       return [id, [r.width, r.height, r.width - x, r.height - y]];
     }));
+  } else if (document.getElementById('xform')) {
+    // turbo-dom#353: `transform` computes to the resolved matrix()/matrix3d()/none like
+    // Chrome 156. 2D-only lists serialize as matrix() with 6 values; a list with any 3D
+    // function as matrix3d() with 16 column-major values. Percentage translates resolve
+    // against the element's border box (width for X, height for Y); lengths use the
+    // element's font size for em. CSS-wide keywords on `transform` were covered by case
+    // css-wide-keywords.
+    const ids = Array.from(document.querySelectorAll('[id]'), (el) => el.id);
+    const xf = (el) => getComputedStyle(el).transform;
+    out.transform = Object.fromEntries(ids.map((id) => [id, xf(document.getElementById(id))]));
+    const camel = getComputedStyle(document.getElementById('x1'));
+    out.transformCamel = [camel.transform, camel.getPropertyValue('transform')];
+    out.transformDetached = xf(document.createElement('div'));
+    out.transformBoxes = Object.fromEntries(ids.map((id) => {
+      const el = document.getElementById(id);
+      if (!el.getClientRects().length) return [id, null];
+      const r = el.getBoundingClientRect(), s = getComputedStyle(el), px = (name) => parseFloat(s.getPropertyValue(name)) || 0;
+      const x = px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width');
+      const y = px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width');
+      return [id, [r.width, r.height, r.width - x, r.height - y, px('font-size')]];
+    }));
   } else {
     // the title setter creates a <title> on demand
     document.title = 'set';
