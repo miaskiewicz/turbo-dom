@@ -138,7 +138,6 @@ fn a_running_transition_reuses_its_cascaded_declarations() {
     assert_eq!(value["running"], 1);
 }
 
-
 /// Runs `body` (which returns the values to compare) with sharing on, then again over the same
 /// tree with sharing off after a CSSOM change that drops every reused style.
 fn shared_and_fresh(html: &str, setup: &str, read: &str) -> serde_json::Value {
@@ -279,4 +278,3 @@ fn fallback_trees_never_share() {
         assert_eq!(value["fresh"], value["shared"], "{value}");
     }
 }
-

@@ -478,7 +478,11 @@ fn share_document_domain_requires_browsing_context_documents() {
 
 /// The embedder's `retire_context` for the realm the called function belongs to.
 #[cfg(feature = "host-internals")]
-fn retire_own_context(scope: &mut v8::PinScope, _: v8::FunctionCallbackArguments, _: v8::ReturnValue) {
+fn retire_own_context(
+    scope: &mut v8::PinScope,
+    _: v8::FunctionCallbackArguments,
+    _: v8::ReturnValue,
+) {
     crate::browser_env::host_internals::retire_context(scope.get_current_context());
 }
 
