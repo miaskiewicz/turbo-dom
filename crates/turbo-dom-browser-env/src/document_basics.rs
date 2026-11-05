@@ -546,7 +546,14 @@ pub fn dispatch<'s>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue,
 ) {
+    count_crossing();
     let operation = args.get(0).to_rust_string_lossy(scope);
+    if operation == "epoch" {
+        if let Some(view) = mutation_epoch_view(scope) {
+            rv.set(view.into());
+        }
+        return;
+    }
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return type_error(scope);
     };
@@ -575,14 +582,37 @@ pub fn dispatch<'s>(
             let data = dom_units(scope, args.get(4)).expect("string data");
             replace_character_data(scope, handle, offset as usize, count as usize, &data);
         }
-        "stamp" => {
-            let stamp =
-                with_tree(|tree| format!("{}:{}", DOM_ID.with(|id| id.get()), tree.version))
-                    .unwrap_or_default();
-            // invariant: engine-built name, far below V8's string length limit
-            rv.set(v8::String::new(scope, &stamp).unwrap().into());
+        "body" if kind == 9 => {
+            // HTML's body element: the document element's first html body/frameset child.
+            let found = with_tree(|tree| {
+                let root = tree
+                    .children(handle)
+                    .into_iter()
+                    .find(|node| tree.node_type_id(*node) == 1)?;
+                tree.children(root).into_iter().find(|node| {
+                    tree.node_type_id(*node) == 1
+                        && tree.namespace_id(*node) == 0
+                        && matches!(tree.local_name(*node), Some("body" | "frameset"))
+                })
+            })
+            .flatten();
+            rv.set(wrap_opt(scope, found));
         }
-
+        "elementChildren" if matches!(kind, 1 | 9 | 11) => {
+            let rows: Vec<Handle> = with_tree(|tree| {
+                tree.children(handle)
+                    .into_iter()
+                    .filter(|node| tree.node_type_id(*node) == 1)
+                    .collect()
+            })
+            .unwrap_or_default();
+            // Built whole: no element store reaches a page-patched Array.prototype setter.
+            let rows: Vec<v8::Local<v8::Value>> = rows
+                .into_iter()
+                .map(|row| wrap(scope, row).into())
+                .collect();
+            rv.set(v8::Array::new_with_elements(scope, &rows).into());
+        }
         "state" if kind == 9 => {
             let existing = DOM.with(|dom| {
                 dom.borrow()

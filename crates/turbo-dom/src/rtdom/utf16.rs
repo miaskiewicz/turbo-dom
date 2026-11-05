@@ -276,7 +276,7 @@ impl Tree {
     /// Create character data without a scalar-value conversion at the host boundary.
     pub fn create_text_node_utf16(&mut self, units: &[u16]) -> Handle {
         let node = self.push_node(NewNode::Text(DomString::from_units(units)));
-        self.bump();
+        self.bump_unscoped();
         node
     }
     pub fn create_processing_instruction_utf16(&mut self, target: &str, units: &[u16]) -> Handle {
@@ -287,12 +287,12 @@ impl Tree {
     /// Create an XML CDATA section. DOM bindings reject `]]>` and HTML documents first.
     pub fn create_cdata_section_utf16(&mut self, units: &[u16]) -> Handle {
         let node = self.push_node(NewNode::CData(DomString::from_units(units)));
-        self.bump();
+        self.bump_unscoped();
         node
     }
     pub fn create_comment_utf16(&mut self, units: &[u16]) -> Handle {
         let node = self.push_node(NewNode::Comment(DomString::from_units(units)));
-        self.bump();
+        self.bump_unscoped();
         node
     }
     /// Set character or descendant text while retaining the ordinary mutation path.

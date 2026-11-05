@@ -30,7 +30,8 @@ impl Tree {
             self.custom_states.remove(&node);
         }
         if changed {
-            self.bump();
+            self.bump_node(node);
+            self.bump_form_change(node, "");
         }
         changed
     }
@@ -46,7 +47,8 @@ impl Tree {
     /// Clear native states without attributes or mutation records. Returns whether changed.
     pub fn clear_custom_states(&mut self, node: Handle) -> bool {
         if self.custom_states.remove(&node).is_some() {
-            self.bump();
+            self.bump_node(node);
+            self.bump_form_change(node, "");
             true
         } else {
             false

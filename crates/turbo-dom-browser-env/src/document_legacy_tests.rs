@@ -297,3 +297,233 @@ fn oversized_all_collection_named_refusal_throws_range_error() {
         "RangeError: Invalid string length"
     );
 }
+
+/// How the embedder wires a domain-probe cluster's origins.
+#[derive(Clone, Copy, PartialEq)]
+enum Sharing {
+    /// Single-document embedder: every document keeps its own origin.
+    None,
+    /// Each child shares the top document's origin.
+    Top,
+    /// The srcdoc child shares the about:blank child's, which shares the top's.
+    Chained,
+}
+
+/// One agent cluster as turbo-surf builds it: a top document plus an initial
+/// `about:blank` and an `about:srcdoc` child realm whose origins the embedder
+/// wires with `share_document_domain` (Blink's inherited `SecurityOrigin` is
+/// one object); `setup` configures the top realm. The probe sees the children
+/// as `__domainFrames.{blank,srcdoc}`.
+fn run_domain_probe(
+    probe: &str,
+    sharing: Sharing,
+    setup: impl Fn(&mut v8::PinScope),
+) -> serde_json::Value {
+    super::super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    let blank_html = "<!doctype html><html><head></head><body></body></html>";
+    let value = {
+        v8::scope!(let scope, isolate);
+        let top = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, top);
+        install_with_html(scope, blank_html);
+        setup(scope);
+        let mut origin = document(scope);
+        let frames = v8::Object::new(scope);
+        for (name, url) in [("blank", "about:blank"), ("srcdoc", "about:srcdoc")] {
+            let child = v8::Context::new(scope, Default::default());
+            child.set_security_token(top.get_security_token(scope));
+            {
+                let child_scope = &mut v8::ContextScope::new(scope, child);
+                install_independent_html(child_scope, blank_html);
+                set_base(child_scope, url);
+                let child_document = document(child_scope);
+                if sharing != Sharing::None {
+                    assert!(share_document_domain(child_scope, child_document, origin));
+                }
+                if sharing == Sharing::Chained {
+                    origin = child_document;
+                }
+            }
+            let key = v8::String::new(scope, name).unwrap();
+            let global = child.global(scope);
+            frames.create_data_property(scope, key.into(), global.into());
+        }
+        let global = top.global(scope);
+        let key = v8::String::new(scope, "__domainFrames").unwrap();
+        global.create_data_property(scope, key.into(), frames.into());
+        let probe = probe.trim().trim_end_matches(';');
+        let source = format!("(async()=>({probe}))().then(value=>globalThis.domainResult=JSON.stringify(value),error=>globalThis.domainResult='ERROR '+String(error&&error.stack||error));");
+        let code = v8::String::new(scope, &source).unwrap();
+        v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        scope.perform_microtask_checkpoint();
+        let code = v8::String::new(scope, "globalThis.domainResult||'unsettled'").unwrap();
+        v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .to_rust_string_lossy(scope)
+    };
+    reset();
+    clear_interface_records(isolate);
+    serde_json::from_str(&value).unwrap_or_else(|_| panic!("{value}"))
+}
+
+/// The domain control, after checking it was captured from this exact probe
+/// and case list by the frozen chrome-headless-shell 156 oracle.
+fn domain_control() -> (serde_json::Value, Vec<serde_json::Value>) {
+    use sha2::{Digest, Sha256};
+    let probe = include_str!("document_domain_probe.js");
+    let cases = include_bytes!("document_domain_cases.json");
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("document_domain_chrome156.json")).unwrap();
+    assert_eq!(control["browser"], "HeadlessChrome/156.0.8078.47");
+    assert_eq!(control["v8"], "15.6.75.19");
+    assert_eq!(control["timeZone"], "UTC");
+    assert_eq!(control["errors"], serde_json::json!([]));
+    assert_eq!(
+        control["probeSha256"],
+        format!("{:x}", Sha256::digest(probe.as_bytes()))
+    );
+    assert_eq!(
+        control["casesSha256"],
+        format!("{:x}", Sha256::digest(cases))
+    );
+    let cases: Vec<serde_json::Value> = serde_json::from_slice(cases).unwrap();
+    assert_eq!(control["result"].as_array().unwrap().len(), cases.len());
+    (control, cases)
+}
+
+fn check_domain_control(sharing: Sharing) {
+    let (control, cases) = domain_control();
+    for (index, case) in cases.iter().enumerate() {
+        let facts = navigation(case);
+        let https = case["https"] == true;
+        let actual = run_domain_probe(include_str!("document_domain_probe.js"), sharing, |scope| {
+            set_base(scope, &facts.origin);
+            // Chrome honours Origin-Agent-Cluster only in a secure context.
+            if let Some(keyed) = facts.keyed.filter(|_| https) {
+                let document = document(scope);
+                assert!(set_document_origin_keyed(scope, document, keyed));
+            }
+        });
+        let expected = &control["result"][index];
+        assert_eq!(expected["id"], case["id"]);
+        assert_eq!(actual, expected["result"], "Chrome case {}", case["id"]);
+    }
+}
+
+/// turbo-dom#284: a document.domain set in any document of the cluster (top,
+/// initial about:blank, srcdoc) relaxes all three; refusals, the origin-keyed
+/// no-op and another realm's accessor match Chrome 156.
+#[test]
+fn shared_document_domain_matches_chrome156_control() {
+    check_domain_control(Sharing::Top);
+}
+
+/// Sharing with a document that already shares another's origin joins that
+/// origin, so a chain of frames is still one cluster.
+#[test]
+fn chained_document_domain_matches_chrome156_control() {
+    check_domain_control(Sharing::Chained);
+}
+
+/// Without the hook every document keeps its own origin: the about:blank and
+/// srcdoc children of a single-document embedder report an opaque origin's
+/// empty domain and refuse assignment, and the top document relaxes alone.
+#[test]
+fn unshared_documents_keep_their_own_domain() {
+    let actual = run_domain_probe(
+        "(() => { const f = __domainFrames, set = (d, v) => { try { d.domain = v; return d.domain; } catch (e) { return e.name; } }; \
+         return [set(document, 'example.com'), f.blank.document.domain, set(f.srcdoc.document, 'example.com'), f.srcdoc.document.domain, document.domain]; })()",
+        Sharing::None,
+        |scope| set_base(scope, "http://a.example.com/"),
+    );
+    assert_eq!(
+        actual,
+        serde_json::json!(["example.com", "", "SecurityError", "", "example.com"])
+    );
+}
+
+/// The hook refuses anything but two browsing-context documents, and sharing a
+/// document with itself keeps (or restores) its own origin.
+#[test]
+fn share_document_domain_requires_browsing_context_documents() {
+    let actual = run_domain_probe(
+        "[document.domain, __domainFrames.blank.document.domain]",
+        Sharing::None,
+        |scope| {
+            set_base(scope, "http://a.example.com/");
+            let top = document(scope);
+            let code =
+                v8::String::new(scope, "document.implementation.createHTMLDocument('x')").unwrap();
+            let inert = v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap()
+                .to_object(scope)
+                .unwrap();
+            assert!(!share_document_domain(scope, inert, top));
+            assert!(!share_document_domain(scope, top, inert));
+            let plain = v8::Object::new(scope);
+            assert!(!share_document_domain(scope, plain, top));
+            assert!(share_document_domain(scope, top, top));
+        },
+    );
+    assert_eq!(actual, serde_json::json!(["a.example.com", ""]));
+}
+
+/// The embedder's `retire_context` for the realm the called function belongs to.
+#[cfg(feature = "host-internals")]
+fn retire_own_context(
+    scope: &mut v8::PinScope,
+    _: v8::FunctionCallbackArguments,
+    _: v8::ReturnValue,
+) {
+    crate::browser_env::host_internals::retire_context(scope.get_current_context());
+}
+
+/// turbo-test#227: the only font-context input to the cascaded declarations is the html UA
+/// table's browsing-context flag, and it changes only when the embedder retires the document
+/// (`retire_context`), which moves no tree version. A retired document has no computed style at
+/// all, so a transitioning element's reused declarations are never read there: it reads ""
+/// like a plain element.
+#[cfg(feature = "host-internals")]
+#[test]
+fn a_retired_document_reads_no_reused_declarations() {
+    let value = run_probe(
+        "<!doctype html><body>",
+        r"(() => {
+          const w = __legacyChildRealm, d = w.document;
+          const s = d.createElement('style'); s.textContent = '.v { transition: opacity 100s linear; opacity: 1 } .v.dim { opacity: 0.5 }'; d.head.appendChild(s);
+          const v = d.createElement('b'), plain = d.createElement('b'); v.className = 'v'; d.body.append(v, plain);
+          const rows = [];
+          const read = () => { const a = w.getComputedStyle(v), b = w.getComputedStyle(plain); rows.push([a.fontWeight, b.fontWeight, v.getAnimations().length]); };
+          read(); v.classList.add('dim'); read(); read();
+          w.__retireContext();
+          read(); read();
+          return rows;
+        })()",
+        |scope, child| {
+            if child {
+                let global = scope.get_current_context().global(scope);
+                let name = v8::String::new(scope, "__retireContext").unwrap();
+                let function = v8::Function::new(scope, retire_own_context).unwrap();
+                global.set(scope, name.into(), function.into());
+            }
+        },
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            ["700", "700", 0],
+            ["700", "700", 1],
+            ["700", "700", 1],
+            ["", "", 1],
+            ["", "", 1]
+        ])
+    );
+}

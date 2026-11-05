@@ -1,0 +1,40 @@
+{
+  "jsdom": "27.4.0",
+  "probeSha256": "ddb9e13f869fa9844fd5df665af15cf7219dd3da90b0ba60f23a53934fcfdbcd",
+  "result": {
+    "interfaces": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ],
+    "members": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "animated": "rgb(9, 9, 9)",
+    "before": [
+      "rgb(0, 0, 0)",
+      "rgb(0, 0, 0)"
+    ],
+    "after": [
+      "rgb(0, 0, 200)",
+      "rgb(0, 0, 100)"
+    ],
+    "animations": null,
+    "later": [
+      "rgb(0, 0, 200)",
+      "rgb(0, 0, 100)"
+    ],
+    "events": []
+  }
+}

@@ -46,12 +46,26 @@ const LOOP: &str = r#"(() => {
 })();"#;
 
 pub(super) fn run_probe(html: &str, probe: &str, frozen: bool) -> serde_json::Value {
+    run_probe_in(html, probe, frozen, None)
+}
+
+/// [`run_probe`] with the embedder's CSS transitions switch set after install (`None` keeps
+/// the default).
+fn run_probe_in(
+    html: &str,
+    probe: &str,
+    frozen: bool,
+    transitions: Option<bool>,
+) -> serde_json::Value {
     super::tests::init_v8();
     let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     install_with_html(scope, html);
+    if let Some(enabled) = transitions {
+        set_css_transitions(scope, enabled);
+    }
     run_js(scope, &format!("globalThis.__frozenTimeline = {frozen};"));
     run_js(scope, LOOP);
     v8::tc_scope!(let scope, scope);
@@ -318,7 +332,8 @@ fn animations_request_frames_only_when_needed() {
         actual[0][5], false,
         "an endless animation must not keep frames scheduled"
     );
-    assert_eq!(actual[1], serde_json::json!(["finished", ""]));
+    // An unset margin computes to 0px in Chrome 156 (turbo-dom#305, computed_defaults_chrome156.json).
+    assert_eq!(actual[1], serde_json::json!(["finished", "0px"]));
 }
 
 // Without an embedding frame host the document timeline is inactive: animations stay pending
@@ -357,4 +372,57 @@ fn mismatches_report_differences_and_unexpected_keys() {
     assert_eq!(out.len(), 2, "{out:?}");
     assert!(out[0].starts_with(".a[1]"), "{out:?}");
     assert_eq!(out[1], ".c: unexpected true");
+}
+
+const TRANSITIONS_HTML: &str = "<!doctype html><html><head></head><body></body></html>";
+
+/// A control's result, after checking it was recorded from `probe` (`key` names the recorder:
+/// `jsdom` for scripts/jsdom-media-control.cjs, `browser` for scripts/media-chrome-control.mjs).
+fn recorded(json: &str, probe: &str, key: &str, version: &str) -> serde_json::Value {
+    let control: serde_json::Value = serde_json::from_str(json).unwrap();
+    assert_eq!(control[key], version);
+    assert_eq!(
+        control["probeSha256"],
+        format!("{:x}", Sha256::digest(probe.as_bytes()))
+    );
+    control["result"].clone()
+}
+
+// CSS transitions off (turbo-test's default, for vitest parity): jsdom 27.4.0 has no Web
+// Animations and runs no CSS transitions or @keyframes animations, so getComputedStyle reports
+// the end value at once and no transition / animation event fires.
+#[test]
+fn css_transitions_off_match_jsdom27_control() {
+    let probe = include_str!("jsdom_transitions_probe.js");
+    let expected = recorded(
+        include_str!("jsdom_transitions_jsdom27.json"),
+        probe,
+        "jsdom",
+        "27.4.0",
+    );
+    let actual = run_probe_in(TRANSITIONS_HTML, probe, false, Some(false));
+    assert_eq!(actual, expected);
+}
+
+// CSS transitions on (the default) keeps Chrome 156's transitions, @keyframes animations and
+// their events, explicitly set or not.
+#[test]
+fn css_transitions_on_match_chrome156_control() {
+    let probe = include_str!("jsdom_transitions_probe.js");
+    let expected = recorded(
+        include_str!("jsdom_transitions_chrome156.json"),
+        probe,
+        "browser",
+        "HeadlessChrome/156.0.8078.47",
+    );
+    // The binding dispatches no transition / animation events yet (turbo-dom#313); every
+    // other row is Chrome's.
+    let mut expected = expected;
+    assert_ne!(expected["events"], serde_json::json!([]));
+    expected["events"] = serde_json::json!([]);
+    assert_eq!(run_probe(TRANSITIONS_HTML, probe, false), expected);
+    assert_eq!(
+        run_probe_in(TRANSITIONS_HTML, probe, false, Some(true)),
+        expected
+    );
 }

@@ -137,6 +137,7 @@ mod document_legacy;
 mod interceptor_mode;
 pub use document_legacy::{
     set_document_domain_sandboxed, set_document_last_modified, set_document_origin_keyed,
+    share_document_domain,
 };
 #[path = "dom_implementation.rs"]
 mod dom_implementation;
@@ -532,7 +533,39 @@ thread_local! {
     static TREE_SERIAL: std::cell::Cell<u64> = const { std::cell::Cell::new(1) };
 }
 
+thread_local! {
+    /// The mutation epoch (0.7.1): one f64 the engine bumps on every tree write or new tree on
+    /// this thread, shared with document_basics.js as a Float64Array so a cached live
+    /// collection re-reads its rows only after a mutation, with no native call per read.
+    static MUTATION_EPOCH: v8::SharedRef<v8::BackingStore> =
+        v8::ArrayBuffer::new_backing_store_from_boxed_slice(vec![0u8; 8].into_boxed_slice())
+            .make_shared();
+}
+
+/// Advance the mutation epoch: every cached live collection re-reads its rows on next use.
+fn bump_mutation_epoch() {
+    MUTATION_EPOCH.with(|store| {
+        let mut bytes = [0u8; 8];
+        for (byte, cell) in bytes.iter_mut().zip(store.iter()) {
+            *byte = cell.get();
+        }
+        let next = (f64::from_ne_bytes(bytes) + 1.0).to_ne_bytes();
+        for (cell, byte) in store.iter().zip(next) {
+            cell.set(byte);
+        }
+    });
+}
+
+/// A Float64Array view of the mutation epoch for this isolate.
+fn mutation_epoch_view<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+) -> Option<v8::Local<'s, v8::Float64Array>> {
+    let buffer = MUTATION_EPOCH.with(|store| v8::ArrayBuffer::with_backing_store(scope, store));
+    v8::Float64Array::new(scope, buffer, 0, 1)
+}
+
 fn next_tree_serial() -> u64 {
+    bump_mutation_epoch();
     TREE_SERIAL.with(|serial| {
         let next = serial.get();
         serial.set(next + 1);
@@ -1574,7 +1607,9 @@ fn with_tree_mut<R>(f: impl FnOnce(&mut Tree) -> R) -> Option<R> {
                 s.tree.stop_recording();
             }
             s.ownership_dirty = true;
-            f(&mut s.tree)
+            let result = f(&mut s.tree);
+            bump_mutation_epoch();
+            result
         })
     })
 }
@@ -2009,6 +2044,55 @@ pub fn set_form_submission_blocked(scope: &mut v8::PinScope, blocked: bool) {
             dom.form_submission_blocked = blocked;
         }
     });
+}
+
+/// How `window.matchMedia` and getComputedStyle's `@media` / `@import` media lists behave.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MediaMode {
+    /// Chrome's: a live `MediaQueryList` and media lists evaluated against the viewport.
+    #[default]
+    Chrome,
+    /// jsdom 27's (vitest's jsdom environment): no `matchMedia`, and a media list applies
+    /// only when one of its items is exactly `screen` (an `@import` also with no list).
+    Jsdom,
+}
+
+/// Set the current window's [`MediaMode`] (installs start in [`MediaMode::Chrome`]).
+pub fn set_media_mode(scope: &mut v8::PinScope, mode: MediaMode) {
+    let id = scope
+        .get_current_context()
+        .get_slot::<DomContextId>()
+        .map_or(0, |id| id.0);
+    let _dom = DomScope::enter(id);
+    run_js(
+        scope,
+        match mode {
+            MediaMode::Chrome => "__tsNs.setMediaMode('chrome')",
+            MediaMode::Jsdom => "__tsNs.setMediaMode('jsdom')",
+        },
+    );
+}
+
+/// Whether the current window runs CSS transitions, `@keyframes` animations and Web
+/// Animations (installs start with them on, as Chrome). Off is jsdom 27's behaviour: no
+/// CSSTransition / CSSAnimation is created, so getComputedStyle reports the declared (end)
+/// value at once and no transition / animation event fires, and the Web Animations surface
+/// jsdom lacks (`animate`, `getAnimations`, `document.timeline`, `Animation`, `CSSTransition`,
+/// `AnimationEvent`, ...) is hidden. Independent of [`MediaMode`].
+pub fn set_css_transitions(scope: &mut v8::PinScope, enabled: bool) {
+    let id = scope
+        .get_current_context()
+        .get_slot::<DomContextId>()
+        .map_or(0, |id| id.0);
+    let _dom = DomScope::enter(id);
+    run_js(
+        scope,
+        if enabled {
+            "__tsNs.setJsdomAnimations(false)"
+        } else {
+            "__tsNs.setJsdomAnimations(true)"
+        },
+    );
 }
 
 /// First connected document base attribute, read without guest getters.
@@ -5524,33 +5608,90 @@ fn invalid_form_action(raw: &str) -> String {
     result.push_str(suffix);
     result
 }
+fn labels_factory_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Private> {
+    // invariant: engine-built name, far below V8's string length limit
+    let name = v8::String::new(scope, "turbo.forms.labels-factory").unwrap();
+    v8::Private::for_api(scope, Some(name))
+}
+
+/// Set `rv` to the control's live `labels` list from form_collections.js's factory (it
+/// caches the list on the element), called in the element's creation context.
+fn labels_list(scope: &mut v8::PinScope, node: v8::Local<v8::Object>, rv: &mut v8::ReturnValue) {
+    let Some(context) = node.get_creation_context(scope) else {
+        return;
+    };
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let global = context.global(scope);
+    let key = labels_factory_key(scope);
+    if let Some(callback) = global
+        .get_private(scope, key)
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    {
+        let receiver = v8::undefined(scope);
+        if let Some(value) = callback.call(scope, receiver.into(), &[node.into()]) {
+            rv.set(value);
+        }
+    }
+}
+
+/// The whole `labels` getter in one crossing (0.7.1): brand check, the hidden input's null,
+/// then the element's one live list (made once by the JS factory, cached on the element).
+fn labels_getter(
+    scope: &mut v8::PinScope,
+    node: v8::Local<v8::Object>,
+    handle: Handle,
+    tag: &str,
+    rv: &mut v8::ReturnValue,
+) {
+    let branded = with_tree(|tree| {
+        tree.node_type_id(handle) == 1
+            && tree.namespace_id(handle) == 0
+            && tree.local_name(handle) == Some(tag)
+    })
+    .unwrap_or(false);
+    if !branded {
+        let message = v8::String::new(scope, "Illegal invocation").unwrap();
+        let error = v8::Exception::type_error(scope, message);
+        scope.throw_exception(error);
+        return;
+    }
+    if tag == "input" && control_labels::hidden(handle) {
+        rv.set(v8::null(scope).into());
+        return;
+    }
+    // invariant: engine-built name, far below V8's string length limit
+    let name = v8::String::new(scope, "turbo.forms.private.control-labels").unwrap();
+    let key = v8::Private::for_api(scope, Some(name));
+    match node
+        .get_private(scope, key)
+        .filter(|value| !value.is_undefined())
+    {
+        Some(value) => rv.set(value),
+        None => labels_list(scope, node, rv),
+    }
+}
+
 fn form_controls_native(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
+    count_crossing();
     let operation = args.get(0).to_rust_string_lossy(scope);
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return;
     };
     if operation == "install-labels" || operation == "labels-list" {
-        let Some(context) = node.get_creation_context(scope) else {
-            return;
-        };
-        let scope = &mut v8::ContextScope::new(scope, context);
-        let global = context.global(scope);
-        let name = v8::String::new(scope, "turbo.forms.labels-factory").unwrap();
-        let key = v8::Private::for_api(scope, Some(name));
         if operation == "install-labels" {
+            let Some(context) = node.get_creation_context(scope) else {
+                return;
+            };
+            let scope = &mut v8::ContextScope::new(scope, context);
+            let global = context.global(scope);
+            let key = labels_factory_key(scope);
             global.set_private(scope, key, args.get(2));
-        } else if let Some(callback) = global
-            .get_private(scope, key)
-            .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-        {
-            let receiver = v8::undefined(scope);
-            if let Some(value) = callback.call(scope, receiver.into(), &[node.into()]) {
-                rv.set(value);
-            }
+        } else {
+            labels_list(scope, node, &mut rv);
         }
         return;
     }
@@ -5571,9 +5712,6 @@ fn form_controls_native(
         return;
     };
     match operation.as_str() {
-        "labels-hidden" => {
-            rv.set(v8::Boolean::new(scope, control_labels::hidden(handle)).into());
-        }
         "labels-rows" => {
             let rows = control_labels::labels(scope, handle);
             let array = v8::Array::new(scope, rows.len() as i32);
@@ -5599,6 +5737,10 @@ fn form_controls_native(
             if let Some(value) = node.get_private(scope, key) {
                 rv.set(value);
             }
+        }
+        "labels" => {
+            let tag = args.get(2).to_rust_string_lossy(scope);
+            labels_getter(scope, node, handle, &tag, &mut rv);
         }
         "html-element" => {
             rv.set(
@@ -6656,6 +6798,7 @@ fn dom_accessor_dispatch(
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
+    count_crossing();
     let receiver = args.this();
     let (_dom, handle) = enter_node(scope, receiver);
     let mut buffer = [std::mem::MaybeUninit::<u8>::uninit(); 256];
@@ -6755,6 +6898,20 @@ fn dom_accessor_dispatch(
             views.1.push(weak);
         }
     });
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Engine-JS -> native crossings through the DOM natives the perf gates watch
+    /// (`dom_accessor_dispatch`, `document_basics::dispatch`, `form_controls_native`).
+    pub(crate) static NATIVE_CROSSINGS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Count one native crossing (tests only; the perf gate in `perf_gates_tests`).
+#[inline]
+fn count_crossing() {
+    #[cfg(test)]
+    NATIVE_CROSSINGS.with(|calls| calls.set(calls.get() + 1));
 }
 
 #[cfg(test)]
@@ -7517,6 +7674,19 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         "__computedStyleSelectorVersion",
         computed_style_selector_version,
     );
+    bind_method(
+        scope,
+        global,
+        "__computedStyleGeneration",
+        computed_style_generation,
+    );
+    bind_method(
+        scope,
+        global,
+        "__computedStyleFilter",
+        computed_style_filter,
+    );
+    bind_method(scope, global, "__computedStyleTouch", computed_style_touch);
     #[cfg(test)]
     bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
     #[cfg(test)]
@@ -7525,10 +7695,25 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     bind_method(scope, global, "__noteStyleLookup", note_style_lookup);
     #[cfg(test)]
     bind_method(scope, global, "__noteEntryBuild", note_entry_build);
+    #[cfg(test)]
+    bind_method(scope, global, "__noteSheetRead", note_sheet_read);
+    #[cfg(test)]
+    bind_method(scope, global, "__noteRuleProbe", note_rule_probe);
+    #[cfg(test)]
+    bind_method(scope, global, "__noteStyleShare", note_style_share);
+    #[cfg(test)]
+    bind_method(scope, global, "__styleShareOff", style_share_off);
     bind_method(scope, global, "__cssomEpoch", cssom_epoch);
     bind_method(scope, global, "__styleStateEpoch", style_state_epoch);
     bind_method(scope, global, "__bumpStyleState", bump_style_state_native);
     bind_method(scope, global, "__bumpCssomEpoch", bump_cssom_epoch);
+    bind_method(
+        scope,
+        global,
+        "__cssomStructureEpoch",
+        cssom_structure_epoch,
+    );
+    bind_method(scope, global, "__bumpCssomStructure", bump_cssom_structure);
 }
 
 thread_local! {
@@ -7537,6 +7722,10 @@ thread_local! {
     /// another realm's element (a parent reading an iframe's), and a CSSOM edit runs in the realm
     /// that owns the sheet, so a per-realm epoch left the reader's reuse stale.
     static CSSOM_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// The CSSOM structure epoch (turbo-dom#307): bumped with `CSSOM_EPOCH` by every CSSOM change
+    /// except a rule declaration write, which no rule entry reads. A sheet's rule entries are
+    /// kept across entry builds while it holds; shared by every realm like `CSSOM_EPOCH`.
+    static CSSOM_STRUCTURE_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 thread_local! {
@@ -7657,6 +7846,28 @@ fn entry_builds() -> u64 {
     ENTRY_BUILDS.with(std::cell::Cell::get)
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Owner stylesheet-list rereads on this thread (the test-only `__noteSheetRead` hook).
+    static SHEET_READS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The owner stylesheet-list rereads counted so far (see `SHEET_READS`).
+#[cfg(test)]
+pub(super) fn sheet_reads() -> u64 {
+    SHEET_READS.with(std::cell::Cell::get)
+}
+
+/// Counts one owner stylesheet-list reread (the test-only `__noteSheetRead` hook).
+#[cfg(test)]
+fn note_sheet_read(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    SHEET_READS.with(|reads| reads.set(reads.get() + 1));
+}
+
 /// Counts one cascade rule-entry list build (the test-only `__noteEntryBuild` hook).
 #[cfg(test)]
 fn note_entry_build(
@@ -7665,6 +7876,71 @@ fn note_entry_build(
     _rv: v8::ReturnValue,
 ) {
     ENTRY_BUILDS.with(|builds| builds.set(builds.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Style rules a cascade tested against an element on this thread (the test-only
+    /// `__noteRuleProbe` hook, turbo-dom#307): the rule buckets skip rules whose rightmost
+    /// compound names a class or id the element lacks.
+    static RULE_PROBES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The style rules tested so far (see `RULE_PROBES`).
+#[cfg(test)]
+fn rule_probes() -> u64 {
+    RULE_PROBES.with(std::cell::Cell::get)
+}
+
+/// Counts one style rule tested against an element (the test-only `__noteRuleProbe` hook).
+#[cfg(test)]
+fn note_rule_probe(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    RULE_PROBES.with(|probes| probes.set(probes.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Computed styles a cascade took from a same-signature sibling instead of matching rules
+    /// (the test-only `__noteStyleShare` hook, turbo-dom#307), and whether sharing is switched
+    /// off (the test-only `__styleShareOff` hook: the differential test's fresh-cascade oracle).
+    static STYLE_SHARES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    static STYLE_SHARE_OFF: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The styles shared so far (see `STYLE_SHARES`).
+#[cfg(test)]
+fn style_shares() -> u64 {
+    STYLE_SHARES.with(std::cell::Cell::get)
+}
+
+/// Switches style sharing off (`true`) or on for this thread's cascades.
+#[cfg(test)]
+fn set_style_share_off(off: bool) {
+    STYLE_SHARE_OFF.with(|cell| cell.set(off));
+}
+
+/// Counts one shared computed style (the test-only `__noteStyleShare` hook).
+#[cfg(test)]
+fn note_style_share(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    STYLE_SHARES.with(|shares| shares.set(shares.get() + 1));
+}
+
+/// Whether sharing is switched off (the test-only `__styleShareOff` hook).
+#[cfg(test)]
+fn style_share_off(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    rv.set(v8::Boolean::new(scope, STYLE_SHARE_OFF.with(std::cell::Cell::get)).into());
 }
 
 /// The current CSSOM epoch (see `CSSOM_EPOCH`).
@@ -7684,6 +7960,27 @@ fn bump_cssom_epoch(
     _args: v8::FunctionCallbackArguments,
     _result: v8::ReturnValue,
 ) {
+    CSSOM_EPOCH.with(|epoch| epoch.set(epoch.get() + 1));
+}
+
+/// The current CSSOM structure epoch (see `CSSOM_STRUCTURE_EPOCH`).
+fn cssom_structure_epoch(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    let epoch = CSSOM_STRUCTURE_EPOCH.with(std::cell::Cell::get);
+    result.set(v8::Number::new(scope, epoch as f64).into());
+}
+
+/// Advance both the CSSOM epoch and the structure epoch: a stylesheet, rule or adoption change
+/// (anything but a rule declaration write).
+fn bump_cssom_structure(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    CSSOM_STRUCTURE_EPOCH.with(|epoch| epoch.set(epoch.get() + 1));
     CSSOM_EPOCH.with(|epoch| epoch.set(epoch.get() + 1));
 }
 
@@ -7731,6 +8028,122 @@ fn computed_style_selector_version(
         }
     }) {
         result.set(v8::Number::new(scope, version as f64).into());
+    }
+}
+
+/// `__computedStyleGeneration(node, scope)`: the style generation of `node`
+/// (`Tree::style_generation`, turbo-dom#279) — what moves when a mutation reaches `node` or an
+/// ancestor, plus by `scope`'s bits the child lists along that chain (1 forward, 2 both ways)
+/// and form validity (4). `undefined` for anything but a node, and when the tree has a shadow
+/// root (its scoped sheets are not analysed: the caller keys on the tree-wide version).
+#[cfg(test)]
+thread_local! {
+    /// `__computedStyleGeneration` calls on this thread: one per full computed-style cache key
+    /// (the perf gate in `perf_gates_tests`).
+    static STYLE_GENERATION_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+/// The `__computedStyleGeneration` calls counted so far (see `STYLE_GENERATION_READS`).
+#[cfg(test)]
+pub(super) fn style_generation_reads() -> usize {
+    STYLE_GENERATION_READS.with(std::cell::Cell::get)
+}
+fn computed_style_generation(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    #[cfg(test)]
+    STYLE_GENERATION_READS.with(|reads| reads.set(reads.get() + 1));
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let bits = args.get(1).uint32_value(scope).unwrap_or(0);
+    let style_scope = turbo_dom_parser::rtdom::StyleScope {
+        siblings: if bits & 2 != 0 {
+            turbo_dom_parser::rtdom::Siblings::Both
+        } else if bits & 1 != 0 {
+            turbo_dom_parser::rtdom::Siblings::Forward
+        } else {
+            turbo_dom_parser::rtdom::Siblings::None
+        },
+        forms: bits & 4 != 0,
+    };
+    let _owner = DomScope::for_object(scope, node);
+    let Some(handle) = handle_of(scope, node) else {
+        return;
+    };
+    let generation = with_tree(|tree| {
+        (!tree.has_shadow_roots()).then(|| tree.style_generation(handle, style_scope))
+    });
+    if let Some(Some(generation)) = generation {
+        result.set(v8::Number::new(scope, generation as f64).into());
+    }
+}
+
+/// `__computedStyleFilter(owner, features)`: report the class names, ids and attribute names
+/// (`{classes, ids, attributes}` arrays of strings) the owner's selectors name to its tree
+/// (`Tree::set_style_filter`, turbo-dom#279), or `null` to follow every attribute write.
+fn computed_style_filter(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let filter = v8::Local::<v8::Object>::try_from(args.get(1))
+        .ok()
+        .map(|features| {
+            let mut read = |name: &str| {
+                let mut set = Vec::<Box<str>>::new();
+                let key = v8::String::new(scope, name).unwrap();
+                if let Some(list) = features
+                    .get(scope, key.into())
+                    .and_then(|list| v8::Local::<v8::Array>::try_from(list).ok())
+                {
+                    for index in 0..list.length() {
+                        if let Some(value) = list.get_index(scope, index) {
+                            set.push(value.to_rust_string_lossy(scope).into_boxed_str());
+                        }
+                    }
+                }
+                set
+            };
+            turbo_dom_parser::rtdom::StyleFilter {
+                classes: read("classes").into_iter().collect(),
+                ids: read("ids").into_iter().collect(),
+                attributes: read("attributes").into_iter().collect(),
+            }
+        });
+    let _owner = DomScope::for_object(scope, node);
+    if handle_of(scope, node).is_some() {
+        with_tree_mut(|tree| tree.set_style_filter(filter));
+    }
+}
+
+/// `__computedStyleTouch(elements, quiet)`: move the style generation of each node of the
+/// array (`Tree::invalidate_style`): the elements a sheet added to the document can select,
+/// or (`quiet`: the tree version stays) the targets an animation joined or left.
+fn computed_style_touch(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    let Ok(list) = v8::Local::<v8::Array>::try_from(args.get(0)) else {
+        return;
+    };
+    let quiet = args.get(1).is_true();
+    for index in 0..list.length() {
+        let Some(node) = list
+            .get_index(scope, index)
+            .and_then(|node| v8::Local::<v8::Object>::try_from(node).ok())
+        else {
+            continue;
+        };
+        let _owner = DomScope::for_object(scope, node);
+        if let Some(handle) = handle_of(scope, node) {
+            with_tree_mut(|tree| tree.invalidate_style(handle, quiet));
+        }
     }
 }
 
@@ -7942,15 +8355,30 @@ pub fn snapshot_references() -> (&'static [v8::ExternalReference], u64) {
     let references: &'static [v8::ExternalReference] =
         unsafe { std::slice::from_raw_parts(start as *const v8::ExternalReference, len) };
     let anchor = snapshot_references as *const () as usize;
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for reference in references {
+    let offsets = references.iter().map(|reference| {
         // SAFETY: every table entry is a function pointer (`external_refs::table`).
-        let offset = (unsafe { reference.pointer } as usize).wrapping_sub(anchor) as u64;
+        (unsafe { reference.pointer } as usize).wrapping_sub(anchor) as u64
+    });
+    let hash = fingerprint_of(
+        offsets,
+        crate_surface::startup_snapshot::engine_sources_hash(),
+    );
+    (references, hash)
+}
+
+/// The blob fingerprint: an FNV-1a hash of the callbacks' offsets, then of the engine scripts'
+/// hash (the blob holds both).
+pub(crate) fn fingerprint_of(offsets: impl Iterator<Item = u64>, sources: u64) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for offset in offsets {
         for byte in offset.to_le_bytes() {
             hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
         }
     }
-    (references, hash)
+    for byte in sources.to_le_bytes() {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
+    }
+    hash
 }
 
 /// A startup blob and its external reference table ([`snapshot_blob`]).
@@ -10805,6 +11233,9 @@ mod shadow_events_tests;
 #[cfg(test)]
 #[path = "svg_mathml_element_tests.rs"]
 mod svg_mathml_element_tests;
+#[cfg(test)]
+#[path = "viewport_cssom_tests.rs"]
+mod viewport_cssom_tests;
 
 #[cfg(test)]
 #[path = "css_live_tests.rs"]

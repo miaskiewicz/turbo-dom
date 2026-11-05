@@ -344,6 +344,19 @@ browser_env.js: 0.7.0 turbo-dom#273 getComputedStyle applies style rules nested 
 css_admission_tests.rs: 0.7.0 turbo-dom#273 grouping-rule cascade vs its Chrome 156 control
 browser_env.js: 0.7.0 turbo-dom#275 the computed-style cascade orders rules by Selectors 4 specificity; turbo-dom#276 @scope proximity, :scope bound to the scoping root, & as :where(:scope)
 browser_env.rs: 0.7.0 turbo-dom#275 __parseCssNative 'specificity' mode (the cascade parser's complex selectors with their specificity)
+browser_env.js: 0.7.1 turbo-dom#279 subtree-scoped style invalidation: reused computed styles key on Tree::style_generation by the sheets' selector scope, the style filter, rule-set invalidation of added sheets, animation targets' generations
+browser_env.rs: 0.7.1 turbo-dom#279 __computedStyleGeneration / __computedStyleFilter / __computedStyleTouch natives
+animations.js: 0.7.1 turbo-dom#279 the effect-target index reports the targets it left and joined to invalidateAnimatedStyles
+css_live_tests.rs: 0.7.1 turbo-dom#279 style_invalidation_tests submodule; the reuse test mutates an attribute no style filter skips
+browser_env.js: 0.7.1 turbo-dom#307 rule buckets: a cascade skips style rules whose rightmost compound names no class or id the element carries; test-only __noteRuleProbe hook
+browser_env.rs: 0.7.1 turbo-dom#307 test-only __noteRuleProbe native (RULE_PROBES counter)
+css_live_tests.rs: 0.7.1 turbo-dom#307 __cssTestRuleProbes getter and the rule_bucket_tests submodule
+browser_env.js: 0.7.1 turbo-dom#307 part 2 style sharing between same-signature siblings, kept per-sheet rule entries, an unchanged sheet list keeps its identity, the last bucket index extended; turbo-test#227 part 2 cascaded declarations reused under a volatile (animated) style; test-only __noteStyleShare / __styleShareOff hooks
+browser_env.rs: 0.7.1 turbo-dom#307 part 2 CSSOM structure epoch natives (__cssomStructureEpoch / __bumpCssomStructure); test-only STYLE_SHARES counter and STYLE_SHARE_OFF switch
+css_live_tests.rs: 0.7.1 turbo-dom#307 part 2 __cssTestStyleShares / __cssTestStyleShareOff and the style_sharing_tests submodule
+form_checked_state.rs: 0.7.1 perf the checked-radio owner scan runs once per (document, tree version); test-only OWNER_SCANS counter
+browser_env.js: 0.7.1 perf the internal-call dispatcher passes arguments as array literals; stable computed styles reused at an unchanged world stamp; the owner's sheet list holds while either tree version does; test-only __noteSheetRead hook
+browser_env.rs: 0.7.1 perf test-only STYLE_GENERATION_READS / SHEET_READS counters; the snapshot fingerprint folds in the engine scripts' hash (fingerprint_of)
 css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
 control_labels.rs: 0.7.0 perf turbo-dom#271 label lookups read a per-tree-version index (first element per id, label candidates per host chain) + a test-only walk counter
 "
@@ -353,6 +366,7 @@ OWNED="$OWNED patched_builtins_members_probe.js patched_builtins_members_chrome1
 OWNED="$OWNED canvas_style_probe.js canvas_style_chrome156.json canvas_style_tests.rs canvas_state_probe.js canvas_state_chrome156.json canvas_measure_text_probe.js canvas_measure_text_chrome156.json canvas_measure_text_tests.rs canvas_text.rs canvas_text_metrics_interface_probe.js canvas_text_metrics_interface_chrome156.json canvas_text_attributes_probe.js canvas_text_attributes_chrome156.json canvas_spacing_units_probe.js canvas_spacing_units_chrome156.json canvas_ic_unit_probe.js canvas_ic_unit_chrome156.json"
 OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_mathml_element_probe.js svg_mathml_element_cases.json svg_mathml_element_chrome156.json svg_mathml_element_tests.rs"
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
+OWNED="$OWNED document_domain_probe.js document_domain_cases.json document_domain_chrome156.json"
 OWNED="$OWNED dom_ownership_alloc_tests.rs dom_ownership_scale_tests.rs perf_gates_tests.rs"
 OWNED="$OWNED install_split_tests.rs external_refs.rs startup_snapshot.rs startup_snapshot_tests.rs context_rehydrate.rs context_rehydrate_tests.rs snapshot_rehydrate_tests.rs template_data.rs"
 OWNED="$OWNED engine_namespace_tests.rs engine_namespace_probe.js window_interface_probe.js window_interface_chrome156.json window_interface.js"
@@ -368,6 +382,10 @@ OWNED="$OWNED native_guards_hostile_probe.js native_guards_hostile_chrome156.jso
 OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
 OWNED="$OWNED activation_focus_probe.js activation_focus_chrome156.json selector_errors_probe.js selector_errors_chrome156.json"
 OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
+OWNED="$OWNED style_invalidation_probe.js style_invalidation_chrome156.json style_invalidation_tests.rs"
+OWNED="$OWNED rule_bucket_tests.rs style_sharing_tests.rs"
+OWNED="$OWNED jsdom_media_jsdom27.json jsdom_media_probe.js media_override_chrome156.json media_override_probe.js"
+OWNED="$OWNED jsdom_transitions_chrome156.json jsdom_transitions_jsdom27.json jsdom_transitions_probe.js"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
 OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"
@@ -378,6 +396,7 @@ OWNED="$OWNED css_grouping_rules_probe.js css_grouping_rules_chrome156.json"
 OWNED="$OWNED css_grouping_cascade_probe.js css_grouping_cascade_chrome156.json"
 OWNED="$OWNED css_cascade_specificity_probe.js css_cascade_specificity_chrome156.json"
 OWNED="$OWNED inline_style_reuse_probe.js inline_style_reuse_chrome156.json"
+OWNED="$OWNED viewport_cssom_tests.rs custom_property_colors_probe.js custom_property_colors_chrome156.json computed_custom_properties_probe.js computed_custom_properties_chrome156.json match_media_probe.js match_media_chrome156.json iframe_viewport_probe.js iframe_viewport_chrome156.json iframe_media_probe.js iframe_media_chrome156.json iframe_cascade_probe.js iframe_cascade_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

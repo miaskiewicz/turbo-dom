@@ -1,0 +1,64 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "probeSha256": "5f563297dae4919972c65d6b09f091e842ae6e87764d9e9fd845c9e7d96a663d",
+  "collectorSha256": "c8a12247067ebd632b2a1631b1d87bd26fa6a6bd0c00e62c20970022ad25688b",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "--theme-color": {
+      "value": "#ff0000",
+      "cssText": "--theme-color: #ff0000;"
+    },
+    "--color": {
+      "value": "#ff0000",
+      "cssText": "--color: #ff0000;"
+    },
+    "--bg-color": {
+      "value": "#ff0000",
+      "cssText": "--bg-color: #ff0000;"
+    },
+    "--x": {
+      "value": "#ff0000",
+      "cssText": "--x: #ff0000;"
+    },
+    "color": {
+      "value": "rgb(255, 0, 0)",
+      "cssText": "color: rgb(255, 0, 0);"
+    },
+    "background-color": {
+      "value": "rgb(255, 0, 0)",
+      "cssText": "background-color: rgb(255, 0, 0);"
+    },
+    "mixed": {
+      "short": "#AbC",
+      "spaced": "#00ff00",
+      "named": "red",
+      "cssText": "--short-color: #AbC; --spaced-color: #00ff00; --named-color: red;"
+    },
+    "attribute": {
+      "custom": "#123456",
+      "color": "rgb(18, 52, 86)",
+      "cssText": "--attr-color: #123456; color: rgb(18, 52, 86);"
+    },
+    "cssText": {
+      "custom": "#0000ff",
+      "border": "rgb(0, 0, 255)",
+      "cssText": "--text-color: #0000ff; border-color: rgb(0, 0, 255);"
+    }
+  }
+}

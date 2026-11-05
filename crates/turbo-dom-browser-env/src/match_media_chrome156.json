@@ -1,0 +1,277 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "probeSha256": "c64177ff94e2b88893f023b03c852771564b6866d5a69fa18fc284fd17483a26",
+  "collectorSha256": "c8a12247067ebd632b2a1631b1d87bd26fa6a6bd0c00e62c20970022ad25688b",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "queries": {
+      "(min-width: 600px)": [
+        true,
+        "(min-width: 600px)"
+      ],
+      "(max-width: 600px)": [
+        false,
+        "(max-width: 600px)"
+      ],
+      "(min-width: 1024px)": [
+        true,
+        "(min-width: 1024px)"
+      ],
+      "(min-width: 1025px)": [
+        false,
+        "(min-width: 1025px)"
+      ],
+      "(width: 1024px)": [
+        true,
+        "(width: 1024px)"
+      ],
+      "(height: 768px)": [
+        true,
+        "(height: 768px)"
+      ],
+      "(min-height: 800px)": [
+        false,
+        "(min-height: 800px)"
+      ],
+      "(orientation: landscape)": [
+        true,
+        "(orientation: landscape)"
+      ],
+      "(orientation: portrait)": [
+        false,
+        "(orientation: portrait)"
+      ],
+      "screen": [
+        true,
+        "screen"
+      ],
+      "print": [
+        false,
+        "print"
+      ],
+      "all": [
+        true,
+        "all"
+      ],
+      "not print": [
+        true,
+        "not print"
+      ],
+      "only screen and (min-width: 100px)": [
+        true,
+        "only screen and (min-width: 100px)"
+      ],
+      "not screen and (min-width: 100px)": [
+        false,
+        "not screen and (min-width: 100px)"
+      ],
+      "screen, print": [
+        true,
+        "screen, print"
+      ],
+      "print, (max-width: 100px)": [
+        false,
+        "print, (max-width: 100px)"
+      ],
+      "(min-width: 100px) and (max-width: 2000px)": [
+        true,
+        "(min-width: 100px) and (max-width: 2000px)"
+      ],
+      "(aspect-ratio: 4/3)": [
+        true,
+        "(aspect-ratio: 4 / 3)"
+      ],
+      "(min-aspect-ratio: 1/1)": [
+        true,
+        "(min-aspect-ratio: 1 / 1)"
+      ],
+      "(max-aspect-ratio: 1/1)": [
+        false,
+        "(max-aspect-ratio: 1 / 1)"
+      ],
+      "(min-resolution: 1dppx)": [
+        true,
+        "(min-resolution: 1dppx)"
+      ],
+      "(min-resolution: 2dppx)": [
+        false,
+        "(min-resolution: 2dppx)"
+      ],
+      "(resolution: 96dpi)": [
+        true,
+        "(resolution: 96dpi)"
+      ],
+      "(-webkit-min-device-pixel-ratio: 1)": [
+        true,
+        "(-webkit-min-device-pixel-ratio: 1)"
+      ],
+      "(prefers-color-scheme: dark)": [
+        false,
+        "(prefers-color-scheme: dark)"
+      ],
+      "(prefers-color-scheme: light)": [
+        true,
+        "(prefers-color-scheme: light)"
+      ],
+      "(prefers-reduced-motion: reduce)": [
+        false,
+        "(prefers-reduced-motion: reduce)"
+      ],
+      "(prefers-reduced-motion: no-preference)": [
+        true,
+        "(prefers-reduced-motion: no-preference)"
+      ],
+      "(hover: hover)": [
+        true,
+        "(hover: hover)"
+      ],
+      "(pointer: fine)": [
+        true,
+        "(pointer: fine)"
+      ],
+      "(any-hover: hover)": [
+        true,
+        "(any-hover: hover)"
+      ],
+      "(color)": [
+        true,
+        "(color)"
+      ],
+      "(monochrome)": [
+        false,
+        "(monochrome)"
+      ],
+      "(min-width: 40em)": [
+        true,
+        "(min-width: 40em)"
+      ],
+      "(max-width: 63.9375em)": [
+        false,
+        "(max-width: 63.9375em)"
+      ],
+      "(min-width: 600px": [
+        true,
+        "(min-width: 600px)"
+      ],
+      "garbage": [
+        false,
+        "garbage"
+      ],
+      "": [
+        true,
+        ""
+      ],
+      "(width >= 600px)": [
+        true,
+        "(width >= 600px)"
+      ],
+      "(400px <= width <= 1100px)": [
+        true,
+        "(400px <= width <= 1100px)"
+      ],
+      "(width < 1024px)": [
+        false,
+        "(width < 1024px)"
+      ],
+      "(min-width: 600px) , print": [
+        true,
+        "(min-width: 600px), print"
+      ],
+      "(MIN-WIDTH: 600PX)": [
+        true,
+        "(min-width: 600px)"
+      ],
+      "not all and (monochrome)": [
+        true,
+        "not all and (monochrome)"
+      ]
+    },
+    "shape": {
+      "tag": "[object MediaQueryList]",
+      "isList": true,
+      "isTarget": true,
+      "onchange": null,
+      "protoKeys": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "own": [],
+      "distinct": true
+    },
+    "narrow": [
+      false,
+      true,
+      500,
+      768,
+      true
+    ],
+    "wide": [
+      true,
+      false,
+      1024
+    ],
+    "log": [
+      [
+        "legacy",
+        "change",
+        false,
+        "(min-width: 800px)",
+        true,
+        true
+      ],
+      [
+        "listener",
+        false
+      ],
+      [
+        "onchange",
+        false
+      ],
+      [
+        "narrow",
+        true,
+        "(max-width: 600px)"
+      ],
+      [
+        "narrow",
+        false,
+        "(max-width: 600px)"
+      ],
+      [
+        "legacy",
+        "change",
+        true,
+        "(min-width: 800px)",
+        true,
+        true
+      ],
+      [
+        "listener",
+        true
+      ],
+      [
+        "onchange",
+        true
+      ]
+    ]
+  }
+}

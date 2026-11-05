@@ -74,6 +74,7 @@ fn get_callback<'s>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue,
 ) {
+    count_crossing();
     if let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(0)) {
         if let Some(value) = get(scope, object) {
             rv.set(value);

@@ -1,0 +1,442 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "probeSha256": "18a6e6066abe659b70f9e0ed5ed3d7c72eae1d97ec2568ec24ed5ad03a64ce12",
+  "collectorSha256": "c8a12247067ebd632b2a1631b1d87bd26fa6a6bd0c00e62c20970022ad25688b",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "child": [
+      [
+        "rgb(0, 128, 0)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "0px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(0, 128, 0)",
+        "rgb(1, 1, 1)",
+        "7px",
+        "0px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(4, 5, 6)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "8px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "inline"
+      ],
+      [
+        "rgb(0, 0, 0)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "0px",
+        "16px",
+        "",
+        "inline"
+      ]
+    ],
+    "parent": [
+      [
+        "rgb(0, 128, 0)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "0px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(0, 128, 0)",
+        "rgb(1, 1, 1)",
+        "7px",
+        "0px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(4, 5, 6)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "8px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "inline"
+      ],
+      [
+        "rgb(0, 0, 0)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "0px",
+        "16px",
+        "",
+        "inline"
+      ]
+    ],
+    "outer": [
+      [
+        "rgb(1, 2, 3)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "6px",
+        "16px",
+        "",
+        "block"
+      ],
+      [
+        "rgb(1, 2, 3)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "6px",
+        "16px",
+        "",
+        "block"
+      ]
+    ],
+    "wide": [
+      700,
+      [
+        [
+          "rgb(0, 0, 255)",
+          "rgb(1, 1, 1)",
+          "5px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(0, 0, 255)",
+          "rgb(1, 1, 1)",
+          "7px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(4, 5, 6)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "8px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "inline"
+        ],
+        [
+          "rgb(0, 0, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "16px",
+          "",
+          "inline"
+        ]
+      ],
+      [
+        [
+          "rgb(0, 0, 255)",
+          "rgb(1, 1, 1)",
+          "5px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(0, 0, 255)",
+          "rgb(1, 1, 1)",
+          "7px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(4, 5, 6)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "8px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "inline"
+        ],
+        [
+          "rgb(0, 0, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "16px",
+          "",
+          "inline"
+        ]
+      ]
+    ],
+    "narrow": [
+      300,
+      [
+        [
+          "rgb(0, 128, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(0, 128, 0)",
+          "rgb(255, 0, 0)",
+          "7px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(4, 5, 6)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "8px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "inline"
+        ],
+        [
+          "rgb(0, 0, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "16px",
+          "",
+          "inline"
+        ]
+      ],
+      [
+        [
+          "rgb(0, 128, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(0, 128, 0)",
+          "rgb(255, 0, 0)",
+          "7px",
+          "0px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "block"
+        ],
+        [
+          "rgb(4, 5, 6)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "8px",
+          "20px",
+          "rgb(10, 20, 30)",
+          "inline"
+        ],
+        [
+          "rgb(0, 0, 0)",
+          "rgb(1, 1, 1)",
+          "0px",
+          "0px",
+          "16px",
+          "",
+          "inline"
+        ]
+      ]
+    ],
+    "injected": [
+      [
+        "rgb(0, 128, 0)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "12px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(7, 8, 9)",
+        "rgb(1, 1, 1)",
+        "11px",
+        "0px",
+        "16px",
+        "",
+        "inline"
+      ],
+      [
+        "rgb(7, 8, 9)",
+        "rgb(1, 1, 1)",
+        "11px",
+        "0px",
+        "16px",
+        "",
+        "inline"
+      ]
+    ],
+    "restored": [
+      [
+        "rgb(0, 0, 255)",
+        "rgb(1, 1, 1)",
+        "5px",
+        "12px",
+        "20px",
+        "rgb(10, 20, 30)",
+        "block"
+      ],
+      [
+        "rgb(7, 8, 9)",
+        "rgb(1, 1, 1)",
+        "0px",
+        "0px",
+        "16px",
+        "",
+        "inline"
+      ]
+    ],
+    "document": {
+      "kinds": [
+        [
+          "[object HTMLHtmlElement]",
+          "html",
+          "document"
+        ],
+        [
+          "[object HTMLHeadElement]",
+          "head",
+          "html"
+        ],
+        [
+          "[object HTMLBodyElement]",
+          "body",
+          "html"
+        ]
+      ],
+      "tree": [
+        [
+          "head",
+          "body"
+        ],
+        [
+          "title",
+          "style"
+        ],
+        [
+          "p"
+        ]
+      ],
+      "attributes": [
+        "fr",
+        "r",
+        "b"
+      ],
+      "queries": [
+        true,
+        true,
+        true,
+        1
+      ],
+      "styles": [
+        [
+          "rgb(0, 0, 128)",
+          "rgb(1, 2, 3)",
+          "block",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "none",
+          "0px"
+        ],
+        [
+          "rgb(0, 0, 128)",
+          "rgba(0, 0, 0, 0)",
+          "block",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "none",
+          "0px"
+        ],
+        [
+          "rgb(0, 0, 128)",
+          "rgba(0, 0, 0, 0)",
+          "block",
+          "8px",
+          "8px",
+          "5px",
+          "0px",
+          "solid",
+          "3px"
+        ],
+        [
+          "rgb(0, 0, 128)",
+          "rgba(0, 0, 0, 0)",
+          "block",
+          "16px",
+          "0px",
+          "0px",
+          "4px",
+          "none",
+          "0px"
+        ]
+      ],
+      "bodyFromParent": [
+        "8px",
+        "5px"
+      ]
+    },
+    "blank": [
+      [
+        "[object HTMLHtmlElement]",
+        "html",
+        null
+      ],
+      [
+        "[object HTMLHeadElement]",
+        "head",
+        "html"
+      ],
+      [
+        "[object HTMLBodyElement]",
+        "body",
+        "html"
+      ],
+      [
+        "head",
+        "body"
+      ],
+      "8px"
+    ]
+  }
+}

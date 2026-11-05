@@ -26,8 +26,11 @@
 
   // ---- Arrays without consulting (possibly patched) Array.prototype ------------------------
   const list = () => { const result = []; setProto(result, null); return result; };
-  const push = (array, value) => { define(array, array.length, { __proto__: null, value, writable: true, enumerable: true, configurable: true }); return array; };
-  const toArray = (array) => { const result = []; for (let index = 0; index < array.length; index++) define(result, index, { __proto__: null, value: array[index], writable: true, enumerable: true, configurable: true }); return result; };
+  // One reused null-prototype row descriptor (no literal per element); cleared after each define.
+  const rowDescriptor = Object.create(null); rowDescriptor.value = undefined; rowDescriptor.writable = true; rowDescriptor.enumerable = true; rowDescriptor.configurable = true;
+  const defineRow = (array, index, value) => { rowDescriptor.value = value; define(array, index, rowDescriptor); rowDescriptor.value = undefined; };
+  const push = (array, value) => { defineRow(array, array.length, value); return array; };
+  const toArray = (array) => { const result = []; for (let index = 0; index < array.length; index++) defineRow(result, index, array[index]); return result; };
   const plain = (array) => { const result = list(); for (let index = 0; index < array.length; index++) push(result, array[index]); return result; };
 
   // ---- Error helpers in Chrome's binding wording ---------------------------------------------

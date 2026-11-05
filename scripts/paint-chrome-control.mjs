@@ -806,6 +806,43 @@ const CASES = [
     html: DOC(html),
     probes: probes.map(([dx, dy]) => [20 + dx, 20 + dy]),
   })),
+  // miaskiewicz/turbo-dom#283 (`author-border-*`): any author border declaration on a
+  // button (or an <input> button type) turns its native appearance off, so the CSS
+  // border paints, even one equal to the UA's (`border-width:2px`); with and without an
+  // author background. 42x22 border-box controls at (20, 20), no text; probes are
+  // box-relative (corners, edges, the 1px / 2px / 3px rings, the face).
+  ...(() => {
+    const BORDERS = [
+      ["shorthand", "border:3px solid #ff0000"],
+      ["width", "border-width:2px"],
+      ["width-4", "border-width:4px"],
+      ["style", "border-style:solid"],
+      ["color", "border-color:#0000ff"],
+      ["none", "border:none"],
+      ["top-color", "border-top-color:#0000ff"],
+    ];
+    const probes = [[0, 0], [20, 0], [20, 1], [20, 2], [20, 3], [0, 11], [1, 11], [2, 11], [3, 11], [20, 11], [41, 11], [40, 11], [39, 11], [20, 21], [20, 20], [20, 19], [41, 21]];
+    const control = (tag, style) =>
+      tag === "button"
+        ? `<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px;${style}"></button>`
+        : `<input data-cid="m" type="${tag}" value="" style="${at(20, 20)};font-family:'Fira Code';width:42px;height:22px;${style}">`;
+    const cases = [];
+    for (const [kind, border] of BORDERS) {
+      for (const [bgKind, bg] of [["", ""], ["-bg", ";background-color:#ffff00"]]) {
+        cases.push([`button-${kind}${bgKind}`, control("button", border + bg)]);
+      }
+    }
+    for (const tag of ["button", "submit", "reset"]) {
+      for (const [kind, border] of [BORDERS[0], BORDERS[1], BORDERS[3]]) {
+        cases.push([`input-${tag}-${kind}`, control(tag, border)]);
+      }
+    }
+    return cases.map(([kind, html]) => ({
+      id: `author-border-${kind}`,
+      html: DOC(html),
+      probes: probes.map(([dx, dy]) => [20 + dx, 20 + dy]),
+    }));
+  })(),
   // miaskiewicz/turbo-dom#256 (`cascade-bg-*`): the `background` shorthand sets every
   // background longhand at its own cascade position, so it and the longhands cascade by
   // origin, `!important`, specificity and order like any declarations: an author shorthand
@@ -884,6 +921,32 @@ const CASES = [
     html: DOC(`<div data-cid="m" style="${at(20, 20)};writing-mode:${mode};width:20px;height:40px;border:4px ${style} #767676"></div>`),
     probes: [[14, 1], [1, 24], [14, 46], [26, 24]].map(([dx, dy]) => [20 + dx, 20 + dy]),
   })),
+  // miaskiewicz/turbo-dom#303 (`currentcolor-*`): a border without a colour, or with
+  // `currentcolor` spelled out, paints in the element's `color` (its own, inherited, or the
+  // initial black; a button's buttontext); an `inset` / `outset` one shades Blink's
+  // #eeeeee instead. Each case is a 40x20 box (a <button>: 48x28
+  // border box) with a 4px border at (20, 20); probes are box-relative: top, left,
+  // bottom, right, the face.
+  ...[
+    ["shorthand", "border:4px solid;color:#ff0000"],
+    ["initial-black", "border:4px solid"],
+    ["explicit-shorthand", "border:4px solid currentColor;color:#0000ff"],
+    ["explicit-longhand", "border:4px solid #00ff00;border-color:currentcolor;color:#ff0000"],
+    ["per-side", "color:#ff0000;border-top:4px solid;border-right:4px solid #00ff00;border-bottom:4px solid #00ff00;border-bottom-color:currentcolor;border-left:4px solid #0000ff;border-left-color:currentColor"],
+    ["outset", "border:4px outset;color:#ff0000"],
+    ["inset-explicit", "border:4px inset currentcolor;color:#0000ff"],
+  ]
+    .map(([kind, style]) => [kind, `<div data-cid="m" style="${at(20, 20)};width:40px;height:20px;${style}"></div>`])
+    .concat([
+      ["inherited", `<div style="color:#0000ff"><div data-cid="m" style="${at(20, 20)};width:40px;height:20px;border:4px solid"></div></div>`],
+      ["button", `<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:48px;height:28px;border:4px solid"></button>`],
+      ["button-color", `<button data-cid="m" style="${at(20, 20)};font-family:'Fira Code';width:48px;height:28px;border:4px solid;color:#0000ff"></button>`],
+    ])
+    .map(([kind, html]) => ({
+      id: `currentcolor-${kind}`,
+      html: DOC(html),
+      probes: [[20, 1], [1, 14], [20, 26], [46, 14], [24, 14]].map(([dx, dy]) => [20 + dx, 20 + dy]),
+    })),
   // The `appearance: none` text field's UA `2px inset` border, bottom and right; a button
   // with an author background keeps the UA `2px outset` border in black.
   {

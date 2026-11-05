@@ -24,6 +24,7 @@ use super::fragment::{
 };
 use super::imgsize::{size_replaced, SizeCtx, SizedImage};
 use super::inline::{self, InlineRun};
+use super::sticky::StickyConstraint;
 use super::value::{
     resolve_box_style, BoxSizing, BoxStyle, Float, LengthPct, Position, ResolveCtx, VAlign,
     DEFAULT_FONT_SIZE,
@@ -107,20 +108,20 @@ pub(crate) struct Ctx<'a> {
     /// clamped to their containing block's content box and so waits for its used
     /// height (miaskiewicz/turbo-dom#218). Drained by that block's layout.
     pub(crate) sticky_pending: Vec<StickyPending>,
+    /// The nearest scrollport and the recorded sticky constraints (#295).
+    pub(crate) sticky: super::sticky::StickyState,
 }
 
-/// A sticky box's vertical constraints: its node, `top` / `bottom` insets and
-/// vertical margins (`auto` as 0).
+/// A sticky box awaiting its vertical shift: its node, its constraints (its horizontal
+/// shift already applied) and the scrollport it sticks to.
 #[derive(Clone)]
 pub(crate) struct StickyPending {
     node_id: NodeId,
     /// An inline sticky box's fragments and its content's (text, nested inlines,
     /// atoms), shifted with it; empty for a block box (its fragment moves whole).
     members: HashSet<NodeId>,
-    top: Option<f32>,
-    bottom: Option<f32>,
-    margin_top: f32,
-    margin_bottom: f32,
+    constraint: StickyConstraint,
+    view: [f32; 4],
 }
 
 /// A placed float's margin box in absolute galley coordinates, plus which edge
@@ -980,27 +981,20 @@ fn inline_sticky(
                 cb_width: cw,
             },
         );
-        let room = (cx + cw - rect.2).max(0.0);
-        let back = (rect.0 - cx).max(0.0);
-        let dx = if let Some(left) = kbs.inset_left.resolve(cw) {
-            (left - rect.0).clamp(0.0, room)
-        } else {
-            kbs.inset_right
-                .resolve(cw)
-                .map_or(0.0, |right| (ctx.root_w - right - rect.2).clamp(-back, 0.0))
-        };
+        let (view, scroller) = ctx.sticky.view((ctx.root_w, viewport_height(ctx)));
+        let mut constraint = sticky_constraint(&kbs, cw, [0.0; 4], scroller);
+        let dx = constraint.shift(
+            [rect.0, rect.1, rect.2, rect.3],
+            [cx, 0.0, cx + cw, 0.0],
+            view,
+        )[0];
+        constraint.applied[0] = dx;
         translate_members(frags, &members, dx, 0.0);
-        let px = |inset: LengthPct| match inset {
-            LengthPct::Px(v) => Some(v),
-            _ => None,
-        };
         ctx.sticky_pending.push(StickyPending {
             node_id: *node_id,
             members,
-            top: px(kbs.inset_top),
-            bottom: px(kbs.inset_bottom),
-            margin_top: 0.0,
-            margin_bottom: 0.0,
+            constraint,
+            view,
         });
     }
 }
@@ -1839,21 +1833,60 @@ fn zero_or_auto(value: LengthPct) -> bool {
 /// (rather than the bare `margin-top`) so a child's margin escaping a
 /// borderless/paddingless parent stacks the parent against its sibling correctly.
 fn leading_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
-    lb.leading_margin_cached(memo_key(cw, fs), || leading_margin_walk(lb, bs, cw, fs))
+    if quirky_container(lb) {
+        // Rare (a quirks document's `<body>`): not memoized, its walk drops quirk margins.
+        return leading_margin_walk(lb, bs, cw, fs, true);
+    }
+    lb.leading_margin_cached(memo_key(cw, fs), || {
+        leading_margin_walk(lb, bs, cw, fs, false)
+    })
 }
 
-fn leading_margin_walk(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
+/// The leading margin walk; `quirky` while it runs at the start of a quirky container,
+/// where the quirks.css margins of the empty boxes it collapses through are ignored,
+/// however deeply nested (Chrome 156, miaskiewicz/turbo-dom#282).
+fn leading_margin_walk(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32, quirky: bool) -> f32 {
     let mut m = bs.margin.top;
     if top_margins_collapse_through(lb, bs) {
         for (child, cbs) in inflow_children(lb, cw, fs) {
-            m = collapse_margins(m, leading_margin(child, &cbs, cw, fs));
+            let leading = if quirky {
+                leading_margin_walk(child, &cbs, cw, fs, true)
+            } else {
+                leading_margin(child, &cbs, cw, fs)
+            };
+            m = collapse_margins(m, leading);
             if !self_collapsing(child, &cbs, cw) {
                 break;
             }
-            m = collapse_margins(m, cbs.margin.bottom);
+            m = collapse_margins(m, start_bottom_margin(quirky, child, &cbs));
         }
     }
     m
+}
+
+/// Whether `lb` is a quirky container (a quirks-mode `<body>`, `<td>` or `<th>`).
+fn quirky_container(lb: &LayoutBox) -> bool {
+    lb.style.get(crate::style::QUIRKY_CONTAINER).is_some()
+}
+
+/// The bottom margin an empty child adds to a leading margin run: none for a quirks.css
+/// margin at the start of a quirky container (`quirky`), which Chrome 156 ignores there
+/// (miaskiewicz/turbo-dom#282).
+fn start_bottom_margin(quirky: bool, child: &LayoutBox, cbs: &BoxStyle) -> f32 {
+    if quirky && super::value::quirks_margin_block_end(&child.style) {
+        0.0
+    } else {
+        cbs.margin.bottom
+    }
+}
+
+/// All the margins an empty (self-collapsing) child collapses through at the start of a
+/// quirky container, its quirks.css ones ignored ([`leading_margin_walk`]).
+fn quirky_collapsed_through(kid: &LayoutBox, kbs: &BoxStyle, cw: f32, fs: f32) -> f32 {
+    collapse_margins(
+        leading_margin_walk(kid, kbs, cw, fs, true),
+        start_bottom_margin(true, kid, kbs),
+    )
 }
 
 /// Whether a block's last in-flow child's bottom margin can collapse through its bottom
@@ -1940,7 +1973,7 @@ fn layout_block_flow(
     cw: f32,
     bs: &BoxStyle,
     ctx: &mut Ctx,
-    boundaries: (bool, bool),
+    boundaries: (bool, bool, bool),
 ) -> (Vec<Fragment>, f32) {
     let fs = bs.font_size;
     let mut frags = Vec::new();
@@ -1955,6 +1988,9 @@ fn layout_block_flow(
     // its caller: the first in-flow child's, and past it each following child's while
     // the earlier ones are empty (self-collapsing; miaskiewicz/turbo-dom#76).
     let mut hoisting = boundaries.0;
+    // Whether the flow is still at the start of a quirky container (`boundaries.2`): its
+    // empty children's quirks.css margins are ignored (miaskiewicz/turbo-dom#282).
+    let mut quirky_start = boundaries.2;
     let mut empty_inline = Vec::new();
     for kid in kids {
         let kbs = resolve(kid, cw, fs);
@@ -1984,7 +2020,14 @@ fn layout_block_flow(
         // The box's leading (collapsed) top margin — suppressed while this container
         // hoists it out its own top edge (parent/child collapse), else the child's
         // `margin-top` collapsed with any margins that escape ITS borderless top.
-        let fragment = layout_flow_child(kid, &kbs, (cx, cw, fs), &mut hoisting, &mut flow, ctx);
+        let fragment = layout_flow_child(
+            kid,
+            &kbs,
+            (cx, cw, fs),
+            (&mut hoisting, &mut quirky_start),
+            &mut flow,
+            ctx,
+        );
         flush_empty_inline(&mut empty_inline, (cx, fragment.y), cw, fs, ctx, &mut frags);
         frags.push(fragment);
     }
@@ -2015,17 +2058,30 @@ fn layout_block_flow(
 /// x, width and font size). While `hoisting`, the child's leading margin was applied by
 /// this box's caller; an empty (self-collapsing) child's own margins were too, so it
 /// leaves nothing pending and the hoisting goes on past it (miaskiewicz/turbo-dom#76).
+/// While `quirky_start` (the start of a quirky container's own flow), an empty child
+/// leaves only its non-quirks.css margins pending (miaskiewicz/turbo-dom#282).
 fn layout_flow_child(
     kid: &LayoutBox,
     kbs: &BoxStyle,
     (cx, cw, fs): (f32, f32, f32),
-    hoisting: &mut bool,
+    (hoisting, quirky_start): (&mut bool, &mut bool),
     flow: &mut FlowRun,
     ctx: &mut Ctx,
 ) -> Fragment {
-    let leading = child_leading(kid, kbs, cw, fs, *hoisting);
-    let empty = *hoisting && self_collapsing(kid, kbs, cw);
+    let self_collapses = self_collapsing(kid, kbs, cw);
+    let empty = *hoisting && self_collapses;
+    let quirky_empty = *quirky_start && !*hoisting && self_collapses;
+    let leading = if quirky_empty {
+        leading_margin_walk(kid, kbs, cw, fs, true)
+    } else {
+        child_leading(kid, kbs, cw, fs, *hoisting)
+    };
+    let before = flow.pending;
     let fragment = layout_in_flow_kid(kid, leading, cx, cw, fs, flow, ctx);
+    if quirky_empty {
+        flow.pending = collapse_margins(before, quirky_collapsed_through(kid, kbs, cw, fs));
+    }
+    *quirky_start &= self_collapses;
     if empty {
         flow.pending = 0.0;
     } else {
@@ -2189,18 +2245,22 @@ fn layout_in_flow_kid(
         frag.translate(hx, 0.0);
     }
     if kbs.position == Position::Sticky {
-        frag.translate(sticky_dx(kbs, &frag, cx, cw, ctx.root_w), 0.0);
-        let px = |inset: LengthPct| match inset {
-            LengthPct::Px(v) => Some(v),
-            _ => None,
-        };
+        let (view, scroller) = ctx.sticky.view((ctx.root_w, viewport_height(ctx)));
+        let m = kbs.margin;
+        let mut constraint =
+            sticky_constraint(kbs, cw, [m.top, m.right, m.bottom, m.left], scroller);
+        let dx = constraint.shift(
+            [frag.x, 0.0, frag.x + frag.width, 0.0],
+            [cx, 0.0, cx + cw, 0.0],
+            view,
+        )[0];
+        constraint.applied[0] = dx;
+        frag.translate(dx, 0.0);
         ctx.sticky_pending.push(StickyPending {
             node_id: frag.node_id,
             members: HashSet::new(),
-            top: px(kbs.inset_top),
-            bottom: px(kbs.inset_bottom),
-            margin_top: kbs.margin.top,
-            margin_bottom: kbs.margin.bottom,
+            constraint,
+            view,
         });
     }
     // Advance the cursor by the box's height at its *unshifted* flow position. A
@@ -2218,34 +2278,56 @@ fn layout_in_flow_kid(
     frag
 }
 
-/// The horizontal shift of an in-flow block `position: sticky` box in an unscrolled
-/// document (CSS Position 3 §3.4, miaskiewicz/turbo-dom#216, #218): it moves right
-/// when its static border edge is left of its `left` threshold (the scrollport origin
-/// plus the inset), else left when its right edge is past its `right` threshold (the
-/// viewport width `vw` less the inset), and its margin box never leaves its
-/// containing block's content box (`cx`, `cw`).
-fn sticky_dx(kbs: &BoxStyle, frag: &Fragment, cx: f32, cw: f32, vw: f32) -> f32 {
-    let room = (cx + cw - kbs.margin.right - (frag.x + frag.width)).max(0.0);
-    if let Some(left) = kbs.inset_left.resolve(cw) {
-        return (left - frag.x).clamp(0.0, room);
+/// A sticky box's constraints (miaskiewicz/turbo-dom#216, #218, #295): its insets
+/// (`left` / `right` resolved against the containing block width `cw`, `top` / `bottom`
+/// in px), its `margins` and the scroll container it sticks to; the containing block
+/// and the applied shift are filled in as layout learns them.
+fn sticky_constraint(
+    kbs: &BoxStyle,
+    cw: f32,
+    margins: [f32; 4],
+    scroller: Option<NodeId>,
+) -> StickyConstraint {
+    let px = |inset: LengthPct| match inset {
+        LengthPct::Px(v) => Some(v),
+        _ => None,
+    };
+    StickyConstraint {
+        insets: [
+            px(kbs.inset_top),
+            kbs.inset_right.resolve(cw),
+            px(kbs.inset_bottom),
+            kbs.inset_left.resolve(cw),
+        ],
+        margins,
+        containing_block: NodeId(0),
+        scroller,
+        applied: [0.0; 2],
     }
-    let back = (frag.x - kbs.margin.left - cx).max(0.0);
-    kbs.inset_right.resolve(cw).map_or(0.0, |right| {
-        (vw - right - (frag.x + frag.width)).clamp(-back, 0.0)
-    })
+}
+
+/// The viewport height sticky `bottom` thresholds read: the initial containing
+/// block's, else the root's.
+fn viewport_height(ctx: &Ctx) -> f32 {
+    if ctx.icb_h > 0.0 {
+        ctx.icb_h
+    } else {
+        ctx.root_h
+    }
 }
 
 /// Shift the sticky children recorded since `mark` vertically, now that their
-/// containing block's content box (`top`, height `h`) is known: down to a `top`
-/// threshold, else up to a `bottom` one (the viewport height `vh` less the inset),
-/// with the margin box kept inside the content box (miaskiewicz/turbo-dom#218).
+/// containing block's (`cb`) content box (`top`, height `h`) is known: down to a `top`
+/// threshold, else up to a `bottom` one (the scrollport's bottom less the inset),
+/// with the margin box kept inside the content box (miaskiewicz/turbo-dom#218), and
+/// record each one's constraints (#295).
 fn place_sticky_kids(
     children: &mut [Fragment],
     mark: usize,
-    (top, h, vh): (f32, f32, f32),
+    (cb, top, h): (NodeId, f32, f32),
     ctx: &mut Ctx,
 ) {
-    for sticky in ctx.sticky_pending.split_off(mark) {
+    for mut sticky in ctx.sticky_pending.split_off(mark) {
         let rect = if sticky.members.is_empty() {
             children
                 .iter()
@@ -2254,16 +2336,15 @@ fn place_sticky_kids(
         } else {
             union_rect(children.iter(), sticky.node_id)
         };
-        let Some((_, y0, _, y1)) = rect else {
+        let Some((x0, y0, x1, y1)) = rect else {
             continue;
         };
-        let down = (top + h - sticky.margin_bottom - y1).max(0.0);
-        let up = (y0 - sticky.margin_top - top).max(0.0);
-        let dy = match (sticky.top, sticky.bottom) {
-            (Some(t), _) => (t - y0).clamp(0.0, down),
-            (None, Some(b)) => (vh - b - y1).clamp(-up, 0.0),
-            _ => 0.0,
-        };
+        let dy = sticky
+            .constraint
+            .shift([x0, y0, x1, y1], [0.0, top, 0.0, top + h], sticky.view)[1];
+        sticky.constraint.applied[1] = dy;
+        sticky.constraint.containing_block = cb;
+        ctx.sticky.record(sticky.node_id, sticky.constraint);
         if sticky.members.is_empty() {
             if let Some(frag) = children.iter_mut().find(|f| f.node_id == sticky.node_id) {
                 frag.translate(0.0, dy);
@@ -2632,7 +2713,16 @@ fn layout_content(
             // cannot collapse through it (miaskiewicz/turbo-dom#41).
             let suppress_first = !bfc && top_margins_collapse_through(lb, bs);
             let keep_last = lb.document_root() || bfc || !bottom_margins_collapse_through(lb, bs);
-            layout_block_flow(kids, cx, cy, cw, bs, ctx, (suppress_first, keep_last))
+            let quirky = quirky_container(lb);
+            layout_block_flow(
+                kids,
+                cx,
+                cy,
+                cw,
+                bs,
+                ctx,
+                (suppress_first, keep_last, quirky),
+            )
         }
         BoxKind::Flex(kids) => super::flex::layout_flex(lb, kids, cx, cy, cw, bs.font_size, ctx),
         BoxKind::Grid(kids) => super::flex::layout_grid(lb, kids, cx, cy, cw, bs.font_size, ctx),
@@ -2809,6 +2899,15 @@ fn overflow_axes(style: &crate::ComputedStyle) -> (String, String) {
     (axis("overflow-x", 0), axis("overflow-y", 1))
 }
 
+/// Whether a box's `overflow` makes it a scroll container (an axis `hidden`, `auto`
+/// or `scroll`): the scrollport its sticky descendants stick to (#295).
+fn scroll_container(style: &crate::ComputedStyle) -> bool {
+    let (x, y) = overflow_axes(style);
+    [x, y]
+        .iter()
+        .any(|v| matches!(v.as_str(), "hidden" | "auto" | "scroll"))
+}
+
 /// The region a box's `overflow` clips its descendants to (miaskiewicz/turbo-dom#253): its
 /// padding box with the inner corner radii, when either axis is not `visible`. A
 /// `visible` axis beside a `hidden` / `auto` / `scroll` one computes to `auto` and clips;
@@ -2918,6 +3017,12 @@ fn layout_box_sized_impl(
     let saved_cb = (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h);
     let saved_abs_known = (ctx.abs_cb_h_known, ctx.abs_cb_icb);
     let own_height = resolved_live_height(bs.height, native_height_basis(bs, ctx), 0.0);
+    // The bottom of a scroll container's content box, for sticky `bottom` insets: a
+    // definite height is known now (its content height, whatever the `box-sizing`); an
+    // auto one grows to the content (#295).
+    let view_bottom = own_height.map_or(f32::INFINITY, |_| {
+        content_y + resolved_content_height(bs, 0.0, ctx)
+    });
     if contains_positioned(bs) {
         (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h) =
             positioned_child_block(bs, (bx, by, bbw), ctx);
@@ -2937,6 +3042,11 @@ fn layout_box_sized_impl(
     let bfc = force_bfc || establishes_bfc(lb, bs);
     let saved_floats = bfc.then(|| std::mem::take(&mut ctx.floats));
     let sticky_mark = ctx.sticky_pending.len();
+    let sticky_scope = ctx.sticky.enter(
+        lb.node_id,
+        scroll_container(&lb.style),
+        [content_x, content_y, content_x + content_w, view_bottom],
+    );
     let (mut children, mut content_h) =
         layout_content(lb, bs, (content_x, content_y, content_w), bfc, ctx);
     if lb.display == super::value::Display::ListItem {
@@ -2980,12 +3090,13 @@ fn layout_box_sized_impl(
     let auto_h = aspect_auto_height(bs, content_w).map_or(sized_h, |a| a.max(sized_h));
     let fill_h = resolved_content_height(bs, auto_h, ctx);
     record_dropped_end_margin(lb, bs, bfc, fill_h != content_h, ctx);
-    let vh = if ctx.icb_h > 0.0 {
-        ctx.icb_h
-    } else {
-        ctx.root_h
-    };
-    place_sticky_kids(&mut children, sticky_mark, (content_y, fill_h, vh), ctx);
+    place_sticky_kids(
+        &mut children,
+        sticky_mark,
+        (lb.node_id, content_y, fill_h),
+        ctx,
+    );
+    ctx.sticky.leave(sticky_scope);
     center_menu_list_label(lb, &mut children, (fill_h, content_h));
     let bbh = fill_h + bs.padding.vertical() + bw.vertical();
     prepend_mask_image(
@@ -3636,6 +3747,16 @@ pub(crate) fn layout_tree_recorded(
     (laid.frag, laid.table_rows.unwrap_or_default())
 }
 
+/// What a live layout produces: the galley, the used box metrics, the text capture,
+/// the native transforms and the sticky constraints, by layout node.
+pub(crate) type LiveLayout = (
+    Fragment,
+    HashMap<NodeId, UsedBoxMetrics>,
+    Option<crate::layout_snapshot::text::TextCapture>,
+    HashMap<NodeId, super::value::NativeTransform>,
+    HashMap<NodeId, StickyConstraint>,
+);
+
 pub(crate) fn layout_tree_live(
     root: &LayoutBox,
     viewport: (f32, f32),
@@ -3643,12 +3764,7 @@ pub(crate) fn layout_tree_live(
     images: &ImageCtx,
     diags: &mut Diagnostics,
     text_start: TextLayoutPolicy,
-) -> (
-    Fragment,
-    HashMap<NodeId, UsedBoxMetrics>,
-    Option<crate::layout_snapshot::text::TextCapture>,
-    HashMap<NodeId, super::value::NativeTransform>,
-) {
+) -> LiveLayout {
     let laid = layout_tree_policy(
         root,
         viewport.0,
@@ -3658,7 +3774,13 @@ pub(crate) fn layout_tree_live(
         images,
         diags,
     );
-    (laid.frag, laid.metrics, laid.text_capture, laid.transforms)
+    (
+        laid.frag,
+        laid.metrics,
+        laid.text_capture,
+        laid.transforms,
+        laid.sticky,
+    )
 }
 
 /// Everything one [`layout_tree_policy`] run produces.
@@ -3668,6 +3790,7 @@ struct PolicyLayout {
     text_capture: Option<crate::layout_snapshot::text::TextCapture>,
     transforms: HashMap<NodeId, super::value::NativeTransform>,
     table_rows: Option<std::collections::HashSet<NodeId>>,
+    sticky: HashMap<NodeId, StickyConstraint>,
 }
 
 fn layout_tree_policy(
@@ -3715,6 +3838,7 @@ fn layout_tree_policy(
         table_rows: record_rows.then(std::collections::HashSet::new),
         dropped_end_margins: HashSet::new(),
         sticky_pending: Vec::new(),
+        sticky: super::sticky::StickyState::recording(live_geometry),
         writing: super::writing::WritingMode::default(),
     };
     root.set_html_layout_policy((ctx.html_font_metrics, ctx.html_font_scale));
@@ -3737,6 +3861,7 @@ fn layout_tree_policy(
         text_capture: ctx.text_capture,
         transforms: ctx.native_transforms.unwrap_or_default(),
         table_rows: ctx.table_rows,
+        sticky: ctx.sticky.records.unwrap_or_default(),
     }
 }
 

@@ -1,0 +1,62 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "probeSha256": "d5aed105c156741a42884bf2712626b35dcc6477aaeaba796db16a63a5f454d2",
+  "collectorSha256": "c8a12247067ebd632b2a1631b1d87bd26fa6a6bd0c00e62c20970022ad25688b",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "default": [
+      300,
+      150,
+      true,
+      true
+    ],
+    "attributes": [
+      250,
+      100,
+      true,
+      true
+    ],
+    "style": [
+      400,
+      200,
+      true,
+      true
+    ],
+    "boxed": [
+      400,
+      200,
+      true,
+      true
+    ],
+    "borderBox": [
+      370,
+      170,
+      true,
+      true
+    ],
+    "liveBefore": [
+      300,
+      150
+    ],
+    "liveAfter": [
+      320,
+      240
+    ]
+  }
+}

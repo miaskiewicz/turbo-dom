@@ -109,10 +109,10 @@ fn rows(prefix: &str, value: &serde_json::Value, out: &mut Vec<(String, String)>
 /// Every control row of the cases `select` keeps, as `path: binding …, chrome …` mismatches.
 fn mismatches(select: impl Fn(&str) -> bool) -> Vec<String> {
     let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
-    assert!(control["browser"]
-        .as_str()
-        .unwrap()
-        .starts_with("Chrome/156."));
+    // Recorded by the frozen headless shell (156.0.8078.47) since turbo-dom#305, which reports
+    // itself as HeadlessChrome.
+    let browser = control["browser"].as_str().unwrap();
+    assert!(browser.starts_with("Chrome/156.") || browser.starts_with("HeadlessChrome/156."));
     assert_eq!(control["errors"], serde_json::json!([]));
     assert_eq!(
         control["probeSha256"],
@@ -155,6 +155,7 @@ fn computed_defaults_and_head_match_chrome156_control() {
                 | "pseudo-ua"
                 | "form-control-fonts"
                 | "fullscreen"
+                | "unset-properties"
         )
     });
     assert!(
@@ -254,6 +255,21 @@ fn fullscreen_matches_chrome156_control() {
     );
 }
 
+/// turbo-dom#305: properties no rule sets compute to Chrome's initial value, the inherited
+/// value or html.css's (body margin, p / ul / h1 margins, ul padding, li list style, h1 / b
+/// weights), with currentcolor resolved; a detached element still reads "" (case
+/// `unset-properties`).
+#[test]
+fn unset_properties_match_chrome156_control() {
+    let found = mismatches(|id| id == "unset-properties");
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
 /// turbo-test#125: a reused computed style follows the viewport: the fullscreen element's width /
 /// height are the viewport's, so a resize changes them although the document did not change.
 #[test]
@@ -281,6 +297,37 @@ fn computed_style_reuse_follows_viewport_changes() {
             ["1024px", "1024px", "768px"],
             ["800px", "800px", "600px"],
             ["", "", ""]
+        ])
+    );
+}
+
+/// turbo-test#227: an element with a running transition reuses its cascaded declarations only
+/// while its top layer holds: entering fullscreen adds the fullscreen UA values and leaving
+/// drops them, though neither moves the tree version (Chrome 156: fixed / 0px, then static).
+#[test]
+fn a_transitioning_element_follows_fullscreen() {
+    let value = run(
+        "<!doctype html><head><style>.v { transition: opacity 100s linear; opacity: 1 } .v.dim { opacity: 0.5 }</style></head><body><div class=v id=f>f</div></body>",
+        r"(async () => {
+          const f = document.getElementById('f'), rows = [];
+          const read = () => { const s = getComputedStyle(f); rows.push([s.position, s.top, s.opacity]); };
+          getComputedStyle(f).opacity; f.classList.add('dim'); read(); read();
+          await new Promise((done) => { globalThis.__cdpGestureDone = done; __cdpGesture('click'); });
+          await f.requestFullscreen();
+          read(); read();
+          await document.exitFullscreen();
+          read();
+          return rows;
+        })()",
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            ["static", "auto", "1"],
+            ["static", "auto", "1"],
+            ["fixed", "0px", "1"],
+            ["fixed", "0px", "1"],
+            ["static", "auto", "1"]
         ])
     );
 }

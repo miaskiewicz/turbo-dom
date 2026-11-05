@@ -189,6 +189,8 @@ pub struct LayoutSnapshot {
     unsupported_inline_sources: BTreeMap<SourceId, SnapshotError>,
     /// The fragments of list markers (miaskiewicz/turbo-dom#128) -> their list item.
     list_markers: BTreeMap<usize, SourceId>,
+    /// Each `position: sticky` source's layout node and constraints (#295).
+    sticky: BTreeMap<SourceId, (NodeId, crate::layout::sticky::StickyConstraint)>,
 }
 
 impl LayoutSnapshot {
@@ -197,6 +199,16 @@ impl LayoutSnapshot {
     #[must_use]
     pub fn list_marker_owner(&self, fragment_index: usize) -> Option<SourceId> {
         self.list_markers.get(&fragment_index).copied()
+    }
+
+    /// A `position: sticky` source's layout node and the constraints layout resolved
+    /// for it (miaskiewicz/turbo-dom#295), if it is one.
+    #[must_use]
+    pub fn sticky_constraint(
+        &self,
+        source: SourceId,
+    ) -> Option<&(NodeId, crate::layout::sticky::StickyConstraint)> {
+        self.sticky.get(&source)
     }
 
     /// Global native affine coefficients retain double precision. Native box and
@@ -584,7 +596,7 @@ fn capture_styled_with_plan(
     let (tree, mut records, next_id) = boxgen::build_sourced_tree(styled, build_sources);
     let native_units =
         text_units::native_nodes(&records, &original_text_units, !original_text.is_empty());
-    let (galley, metrics, text, transforms) = block::layout_tree_live(
+    let (galley, metrics, text, transforms, sticky) = block::layout_tree_live(
         &tree,
         (inputs.width, inputs.height),
         inputs.fonts,
@@ -608,6 +620,10 @@ fn capture_styled_with_plan(
         range_projection::collect(&fragments, &transforms, font_layout_scale.is_some());
     let source_index = sources.iter().enumerate().map(|(i, s)| (s.id, i)).collect();
     let list_markers = sources::list_markers(&fragments, &records);
+    let sticky = sticky
+        .into_iter()
+        .filter_map(|(node, constraint)| Some((records.get(&node)?.id?, (node, constraint))))
+        .collect();
     sources::index_fragments(&mut sources, &source_index, &fragments, &records);
     let exceeded = text.as_ref().is_some_and(|text| text.exceeded);
     let text_runs = text.map_or_else(Vec::new, |text| text.collect(&galley, &fragments));
@@ -628,6 +644,7 @@ fn capture_styled_with_plan(
         unsupported_svg_sources,
         unsupported_inline_sources,
         list_markers,
+        sticky,
     };
     range_projection::place_boxes(&mut snapshot);
     Ok((snapshot, exceeded))

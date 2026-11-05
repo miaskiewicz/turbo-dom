@@ -1134,7 +1134,28 @@ fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges 
     apply_side(s, prefix, "block-end", fs, basis, &mut e.bottom);
     apply_side(s, prefix, "inline-start", fs, basis, &mut e.left);
     apply_side(s, prefix, "inline-end", fs, basis, &mut e.right);
+    if prefix == "margin" && quirks_margin_block_end(s) {
+        if let Some(v) = side_value(s, UA_LOGICAL_MARGIN_BLOCK_END, fs, basis) {
+            e.bottom = v;
+        }
+    }
     e
+}
+
+/// Whether the box's block-end margin is the UA quirks.css one (no author block-end
+/// margin replaces it).
+pub(crate) fn quirks_margin_block_end(s: &ComputedStyle) -> bool {
+    s.get(UA_LOGICAL_MARGIN_BLOCK_END).is_some() && !has_block_end_margin(s)
+}
+
+/// The UA sheet's quirks-mode form margin (Chrome's quirks.css `margin-block-end: 1em`,
+/// miaskiewicz/turbo-dom#282), under any block-end margin the author sets.
+pub(crate) const UA_LOGICAL_MARGIN_BLOCK_END: &str = "-internal-ua-margin-block-end";
+
+/// Whether an author block-end margin is set (a `margin` shorthand arrives as
+/// longhands): the UA's quirks margin then gives way.
+fn has_block_end_margin(s: &ComputedStyle) -> bool {
+    s.get("margin-bottom").is_some() || s.get("margin-block-end").is_some()
 }
 
 /// Whether a `padding-*` longhand is set (an author `padding` shorthand arrives as
@@ -1326,64 +1347,109 @@ fn border_width_token(token: &str, fs: f32) -> Option<u16> {
     Some(w.round().clamp(0.0, f32::from(u16::MAX)) as u16)
 }
 
-fn parse_border_shorthand(v: Option<&str>, fs: f32) -> BorderSide {
-    let mut side = BorderSide::default();
-    let Some(text) = v else { return side };
+/// A side's declared border colour: `currentcolor` (explicit, or the initial value a
+/// shorthand without a colour sets) or a parsed colour (miaskiewicz/turbo-dom#303).
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum SideColour {
+    Current,
+    Rgba(Rgba),
+}
+
+/// A border colour token: `currentcolor` (any case), else a parsed colour.
+fn border_colour_token(token: &str) -> Option<SideColour> {
+    if token.trim().eq_ignore_ascii_case("currentcolor") {
+        Some(SideColour::Current)
+    } else {
+        parse_color(token).map(SideColour::Rgba)
+    }
+}
+
+/// One side's width and declared colour (`None`: nothing declared one).
+type DeclaredSide = (u16, Option<SideColour>);
+
+/// One side from a `border` / `border-<name>` shorthand; the colour it omits is its
+/// initial `currentcolor`.
+fn parse_border_shorthand(v: Option<&str>, fs: f32) -> DeclaredSide {
+    let Some(text) = v else { return (0, None) };
+    let mut side = (0, Some(SideColour::Current));
     for token in text.split_whitespace() {
         if let Some(w) = border_width_token(token, fs) {
-            side.width = w;
-        } else if let Some(c) = parse_color(token) {
-            side.color = Some(c);
+            side.0 = w;
+        } else if let Some(c) = border_colour_token(token) {
+            side.1 = Some(c);
         }
     }
     side
 }
 
-fn resolve_border_side(s: &ComputedStyle, name: &str, fs: f32) -> BorderSide {
+/// Side `name`'s width and colour, `currentcolor` resolved to the box's `color`; an
+/// `inset` / `outset` side's `currentcolor` paints Chrome 156's fixed #eeeeee light /
+/// #9a9a9a dark pair instead (measured: `currentcolor-outset` / `-inset-explicit`).
+/// An inset border's physical top and left (an outset one's bottom and right) are its
+/// dark sides (miaskiewicz/turbo-dom#257); `name` is a side of the box's writing-mode
+/// space, `top_or_left` whether it is a physical top or left side.
+fn resolve_border_side(s: &ComputedStyle, name: &str, fs: f32, top_or_left: bool) -> BorderSide {
     // Base: the `border` shorthand, overridden by the per-side `border-<name>`.
     let mut b = parse_border_shorthand(s.get("border"), fs);
     if let Some(v) = s.get(&format!("border-{name}")) {
         b = parse_border_shorthand(Some(v), fs);
     }
     apply_border_longhands(&mut b, s, name, fs);
-    b
+    let inset = match border_side_style(s, name) {
+        Some("inset") => Some(true),
+        Some("outset") => Some(false),
+        _ => None,
+    };
+    // A painted side no declaration coloured (`border-width` + `border-style` only)
+    // keeps the initial `currentcolor`.
+    let declared = b.1.or((b.0 > 0).then_some(SideColour::Current));
+    let color = match (declared, inset) {
+        (None, _) => None,
+        (Some(SideColour::Current), None) => Some(colour_of(s)),
+        (Some(SideColour::Current), Some(inset)) => Some(if top_or_left == inset {
+            Rgba::new(0x9a, 0x9a, 0x9a, 255)
+        } else {
+            Rgba::new(0xee, 0xee, 0xee, 255)
+        }),
+        (Some(SideColour::Rgba(c)), None) => Some(c),
+        (Some(SideColour::Rgba(c)), Some(inset)) => {
+            Some(border_style_colour(c, top_or_left == inset))
+        }
+    };
+    BorderSide { width: b.0, color }
 }
 
 /// Apply the `border-{color,width}` and `border-<name>-{width,color}` longhands over
 /// a side already parsed from the shorthands. Without this a
 /// `border:1px solid transparent` + `border-color:#72777d` (Codex's radio icon) kept
 /// the transparent colour and the circle outline was invisible.
-fn apply_border_longhands(b: &mut BorderSide, s: &ComputedStyle, name: &str, fs: f32) {
-    if let Some(c) = s.get("border-color").and_then(parse_color) {
-        b.color = Some(c);
+fn apply_border_longhands(b: &mut DeclaredSide, s: &ComputedStyle, name: &str, fs: f32) {
+    if let Some(c) = s.get("border-color").and_then(border_colour_token) {
+        b.1 = Some(c);
     }
     if let Some(w) = s
         .get("border-width")
         .and_then(|v| border_width_token(v, fs))
     {
-        b.width = w;
+        b.0 = w;
     }
     if let Some(w) = s
         .get(&format!("border-{name}-width"))
         .and_then(|v| border_width_token(v, fs))
     {
-        b.width = w;
+        b.0 = w;
     }
-    if let Some(c) = s.get(&format!("border-{name}-color")).and_then(parse_color) {
-        b.color = Some(c);
+    if let Some(c) = s
+        .get(&format!("border-{name}-color"))
+        .and_then(border_colour_token)
+    {
+        b.1 = Some(c);
     }
 }
 
 fn resolve_borders(s: &ComputedStyle, fs: f32) -> BorderEdges {
     let mode = super::writing::WritingMode::of(s);
-    let side = |i: usize, name| {
-        shade_side(
-            resolve_border_side(s, name, fs),
-            s,
-            name,
-            mode.top_or_left(i),
-        )
-    };
+    let side = |i: usize, name| resolve_border_side(s, name, fs, mode.top_or_left(i));
     BorderEdges {
         top: side(0, "top"),
         right: side(1, "right"),
@@ -1405,22 +1471,6 @@ fn border_side_style<'a>(s: &'a ComputedStyle, name: &str) -> Option<&'a str> {
 const BORDER_STYLES: [&str; 10] = [
     "none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset",
 ];
-
-/// An `inset` / `outset` side's colour as Chrome 156 paints it (miaskiewicz/turbo-dom#257):
-/// an inset border's physical top and left (an outset one's bottom and right) are its dark
-/// sides. `name` is a side of the box's own writing-mode space, `top_or_left` whether it
-/// is a physical top or left side.
-fn shade_side(mut b: BorderSide, s: &ComputedStyle, name: &str, top_or_left: bool) -> BorderSide {
-    let inset = match border_side_style(s, name) {
-        Some("inset") => true,
-        Some("outset") => false,
-        _ => return b,
-    };
-    b.color = b
-        .color
-        .map(|c| border_style_colour(c, top_or_left == inset));
-    b
-}
 
 /// The dark (`dark`) or light side's colour of an inset / outset border of colour `c`
 /// (Blink's `CalculateBorderStyleColor`): the colour darkened and lightened; a colour too
@@ -1596,6 +1646,12 @@ fn int_prop(s: &ComputedStyle, prop: &str, default: u8) -> u8 {
         .map_or(default, |n| u8::try_from(n).unwrap_or(u8::MAX))
 }
 
+/// The box's `color` (the initial black when absent or unparsed): what `currentcolor`
+/// resolves to.
+fn colour_of(s: &ComputedStyle) -> Rgba {
+    s.get("color").and_then(parse_color).unwrap_or(Rgba::BLACK)
+}
+
 fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle {
     BoxStyle {
         display: display_of(s),
@@ -1625,7 +1681,7 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
             s.get("font-style").map(str::trim),
             Some("italic" | "oblique")
         ),
-        color: s.get("color").and_then(parse_color).unwrap_or(Rgba::BLACK),
+        color: colour_of(s),
         line_height: line_height(s, fs),
         text_align: align_of(s),
         legacy_align: legacy_align_of(s),
@@ -2749,7 +2805,7 @@ mod border_longhand_tests {
             ("border".to_string(), "1px solid #000".to_string()),
             ("border-width".to_string(), "4px".to_string()),
         ]);
-        let side = resolve_border_side(&s, "top", 16.0);
+        let side = resolve_border_side(&s, "top", 16.0, true);
         assert_eq!(side.width, 4);
     }
 
@@ -2822,9 +2878,26 @@ mod border_longhand_tests {
             ]),
             [w, l, l, l]
         );
-        // No style, or a colourless border, is left as is.
+        // No style is left as is; a colourless inset border paints Chrome's
+        // #9a9a9a / #eeeeee `currentcolor` pair (miaskiewicz/turbo-dom#303).
         assert_eq!(edges(&[("border", "2px #767676")]), [w, w, w, w]);
-        assert_eq!(edges(&[("border", "2px inset")]), [None; 4]);
+        let (d0, l0) = (Some(154), Some(238));
+        assert_eq!(edges(&[("border", "2px inset")]), [d0, l0, l0, d0]);
+        let red = |pairs: &[(&str, &str)]| edges(&[pairs, &[("color", "#ff0000")]].concat());
+        assert_eq!(red(&[("border", "2px solid")]), [Some(255); 4]);
+        assert_eq!(
+            red(&[("border-width", "2px"), ("border-style", "solid")]),
+            [Some(255); 4]
+        );
+        assert_eq!(
+            red(&[
+                ("border", "2px solid #00ff00"),
+                ("border-top-color", "currentColor")
+            ]),
+            [Some(255), Some(0), Some(0), Some(0)]
+        );
+        // An unbordered side stays colourless.
+        assert_eq!(red(&[]), [None; 4]);
     }
 }
 

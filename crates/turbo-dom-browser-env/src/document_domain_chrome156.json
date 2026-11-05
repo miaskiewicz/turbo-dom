@@ -1,0 +1,436 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "timeZone": "UTC",
+  "casesSha256": "129320d7d9a9feb834a04a4d11b69e7dca3a94fe30fa35a9743c4d391967eafd",
+  "probeSha256": "2c5128fac12bded5ad88fe9d24a18df2af4b19c1ef55d885553206668f360024",
+  "collectorSha256": "ebe8665b5b6cca528cb66d8dfa5266244e340d0d8dc414d6ca5c0bc735df1721",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--host-resolver-rules=MAP * 127.0.0.1",
+    "--ignore-certificate-errors",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "site",
+      "result": {
+        "before": {
+          "top": "a.b.example.com",
+          "blank": "a.b.example.com",
+          "srcdoc": "a.b.example.com"
+        },
+        "steps": [
+          {
+            "name": "srcdoc",
+            "value": "b.example.com",
+            "result": {
+              "value": "b.example.com"
+            },
+            "after": {
+              "top": "b.example.com",
+              "blank": "b.example.com",
+              "srcdoc": "b.example.com"
+            }
+          },
+          {
+            "name": "top",
+            "value": "example.com",
+            "result": {
+              "value": "example.com"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "blank",
+            "value": "other.example",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': 'other.example' is not a suffix of 'example.com'.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "com",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': 'com' is a top-level domain.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': '' is an empty domain.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "blank",
+            "value": "a.b.example.com",
+            "result": {
+              "value": "a.b.example.com"
+            },
+            "after": {
+              "top": "a.b.example.com",
+              "blank": "a.b.example.com",
+              "srcdoc": "a.b.example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "example.com",
+            "result": {
+              "value": "example.com"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          }
+        ],
+        "crossAccessor": "example.com"
+      }
+    },
+    {
+      "id": "secure-keyed",
+      "result": {
+        "before": {
+          "top": "a.b.example.com",
+          "blank": "a.b.example.com",
+          "srcdoc": "a.b.example.com"
+        },
+        "steps": [
+          {
+            "name": "srcdoc",
+            "value": "b.example.com",
+            "result": {
+              "value": "a.b.example.com"
+            },
+            "after": {
+              "top": "a.b.example.com",
+              "blank": "a.b.example.com",
+              "srcdoc": "a.b.example.com"
+            }
+          },
+          {
+            "name": "top",
+            "value": "example.com",
+            "result": {
+              "value": "a.b.example.com"
+            },
+            "after": {
+              "top": "a.b.example.com",
+              "blank": "a.b.example.com",
+              "srcdoc": "a.b.example.com"
+            }
+          },
+          {
+            "name": "blank",
+            "value": "other.example",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': 'other.example' is not a suffix of 'a.b.example.com'.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "a.b.example.com",
+              "blank": "a.b.example.com",
+              "srcdoc": "a.b.example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "com",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': 'com' is a top-level domain.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "a.b.example.com",
+              "blank": "a.b.example.com",
+              "srcdoc": "a.b.example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': '' is an empty domain.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "a.b.example.com",
+              "blank": "a.b.example.com",
+              "srcdoc": "a.b.example.com"
+            }
+          },
+          {
+            "name": "blank",
+            "value": "a.b.example.com",
+            "result": {
+              "value": "a.b.example.com"
+            },
+            "after": {
+              "top": "a.b.example.com",
+              "blank": "a.b.example.com",
+              "srcdoc": "a.b.example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "example.com",
+            "result": {
+              "value": "a.b.example.com"
+            },
+            "after": {
+              "top": "a.b.example.com",
+              "blank": "a.b.example.com",
+              "srcdoc": "a.b.example.com"
+            }
+          }
+        ],
+        "crossAccessor": "a.b.example.com"
+      }
+    },
+    {
+      "id": "secure-site-keyed",
+      "result": {
+        "before": {
+          "top": "a.b.example.com",
+          "blank": "a.b.example.com",
+          "srcdoc": "a.b.example.com"
+        },
+        "steps": [
+          {
+            "name": "srcdoc",
+            "value": "b.example.com",
+            "result": {
+              "value": "b.example.com"
+            },
+            "after": {
+              "top": "b.example.com",
+              "blank": "b.example.com",
+              "srcdoc": "b.example.com"
+            }
+          },
+          {
+            "name": "top",
+            "value": "example.com",
+            "result": {
+              "value": "example.com"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "blank",
+            "value": "other.example",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': 'other.example' is not a suffix of 'example.com'.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "com",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': 'com' is a top-level domain.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': '' is an empty domain.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "blank",
+            "value": "a.b.example.com",
+            "result": {
+              "value": "a.b.example.com"
+            },
+            "after": {
+              "top": "a.b.example.com",
+              "blank": "a.b.example.com",
+              "srcdoc": "a.b.example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "example.com",
+            "result": {
+              "value": "example.com"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          }
+        ],
+        "crossAccessor": "example.com"
+      }
+    },
+    {
+      "id": "site-origin-keyed",
+      "result": {
+        "before": {
+          "top": "a.b.example.com",
+          "blank": "a.b.example.com",
+          "srcdoc": "a.b.example.com"
+        },
+        "steps": [
+          {
+            "name": "srcdoc",
+            "value": "b.example.com",
+            "result": {
+              "value": "b.example.com"
+            },
+            "after": {
+              "top": "b.example.com",
+              "blank": "b.example.com",
+              "srcdoc": "b.example.com"
+            }
+          },
+          {
+            "name": "top",
+            "value": "example.com",
+            "result": {
+              "value": "example.com"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "blank",
+            "value": "other.example",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': 'other.example' is not a suffix of 'example.com'.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "com",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': 'com' is a top-level domain.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "",
+            "result": {
+              "name": "SecurityError",
+              "message": "Failed to set the 'domain' property on 'Document': '' is an empty domain.",
+              "type": "[object DOMException]"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          },
+          {
+            "name": "blank",
+            "value": "a.b.example.com",
+            "result": {
+              "value": "a.b.example.com"
+            },
+            "after": {
+              "top": "a.b.example.com",
+              "blank": "a.b.example.com",
+              "srcdoc": "a.b.example.com"
+            }
+          },
+          {
+            "name": "srcdoc",
+            "value": "example.com",
+            "result": {
+              "value": "example.com"
+            },
+            "after": {
+              "top": "example.com",
+              "blank": "example.com",
+              "srcdoc": "example.com"
+            }
+          }
+        ],
+        "crossAccessor": "example.com"
+      }
+    }
+  ]
+}

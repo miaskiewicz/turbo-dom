@@ -5,9 +5,161 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [Unreleased]
+## [0.7.1] — 2026-11-05
 
-## [0.7.0] — <date TBD at tag>
+### Added
+
+- turbo-dom-browser-env: `browser_env::share_document_domain(scope, document, origin)`, an embedder hook that joins a document to another document's origin (Blink's shared `SecurityOrigin` for initial `about:blank` and `about:srcdoc` children), so a `document.domain` set in any document of the cluster relaxes all of them, with Chrome 156's getter values, SecurityError refusals and origin-keyed no-op (`document_domain_chrome156.json`). Single-document embedders are unchanged (turbo-dom#284, turbo-surf#116).
+- turbo-dom-browser-env: `browser_env::MediaMode` and `set_media_mode(scope, mode)`. `Chrome` (the default, for every embedder that does not call it) keeps the live `MediaQueryList` and evaluates `@media` / `@import` media lists against the viewport. `Jsdom` is jsdom 27.4.0's behaviour, for turbo-test's vitest parity: `matchMedia`, `MediaQueryList` and `MediaQueryListEvent` are absent, and getComputedStyle applies a top-level `@media` rule only when one of its media list items is exactly `screen` (case-sensitive; nested `@media` never), and an `@import` when it has no media list or a `screen` item, as jsdom's `forEachMatchingSheetRuleOfElement` does. Switching back restores Chrome's. jsdom control: `jsdom_media_jsdom27.json` (`scripts/jsdom-media-control.cjs`).
+- turbo-dom-browser-env: `browser_env::set_css_transitions(scope, enabled)`. On (the default, for every embedder that does not call it) keeps Chrome's CSS transitions, `@keyframes` animations and Web Animations. Off is jsdom 27.4.0's behaviour, for turbo-test's vitest parity: no CSSTransition / CSSAnimation is created, so getComputedStyle reports the declared (end) value at once and no transition / animation event fires; jsdom has no Web Animations, so `Element.prototype.animate` / `getAnimations`, `Document.prototype.getAnimations` / `timeline`, `ShadowRoot.prototype.getAnimations` and the `Animation`, `AnimationEffect`, `AnimationTimeline`, `DocumentTimeline`, `KeyframeEffect`, `AnimationPlaybackEvent`, `CSSAnimation`, `CSSTransition` and `AnimationEvent` interfaces are hidden (`TransitionEvent` stays, as in jsdom). Switching back restores the same bindings. Independent of `MediaMode`. Controls: `jsdom_transitions_jsdom27.json` and `jsdom_transitions_chrome156.json` (`scripts/media-chrome-control.mjs`; CSS animation events are turbo-dom#313).
+
+### Fixed
+
+- **turbo-dom: a tree version names one tree's state across the process.** Each tree's version
+  counter starts at its own base, so caches keyed on (document, version) outside the tree (the
+  label index, the XPath and CSS policy caches) never serve a new tree an older tree's entries.
+  turbo-test's next file on a reused worker restarted the main document's version, so a label
+  index from the previous file (stale handles) made `labels` / `getByLabelText` fail flakily in
+  full payroll runs. Test: `a_new_install_never_reuses_the_previous_trees_label_index`.
+- **turbo-dom-browser-env: the startup-snapshot fingerprint follows the engine scripts.** It
+  hashed only the native callbacks' offsets, so a JS-only engine change kept the key an embedder
+  saves its blob under, and turbo-test (whose build id does not follow a path-dependency
+  turbo-dom) reran an older build's engine scripts. Test:
+  `the_fingerprint_follows_the_engine_scripts`.
+
+- **turbo-dom-browser-env: getComputedStyle never asks a page's `window.matchMedia`.** A page
+  or test that replaces `matchMedia` (a mock) changed which `@media` / `@import` rules applied;
+  the cascade now evaluates media lists against the viewport itself, as Chrome and jsdom do.
+  Chrome 156 control: `media_override_chrome156.json` (`scripts/media-chrome-control.mjs`).
+- **turbo-dom-browser-env: `getComputedStyle` returns computed values for unset properties.**
+  A property no declaration sets no longer reads `''` on a connected element: it computes to
+  its initial value (`background-color` `rgba(0, 0, 0, 0)`, `margin-*` / `padding-*` `0px`,
+  `float` `none`, `z-index` `auto`, `flex-*`, `outline-width` `3px`, …), the parent's value
+  for inherited properties (`text-align`, `cursor`, `letter-spacing`, `list-style-*`,
+  `direction`, …) or html.css's (body's 8px margin, p / ul / h1–h6 block margins in em,
+  lists' 40px padding and disc / circle / square / decimal markers, table cells' 1px padding,
+  headings' sizes and bold weights, `b` / `strong` bolder), with `currentcolor` resolved and a
+  none-style border side 0px wide. The defaults are read lazily per property, so style
+  snapshots and their cache keys are unchanged; detached elements still read `''`. Chrome 156
+  control: the `unset-properties` case of `computed_defaults_chrome156.json` (#305).
+- **turbo-dom-browser-env: child iframe documents are real HTML documents.** A child iframe
+  document's `documentElement` / `head` / `body` are `<html>` / `<head>` / `<body>` elements
+  (`HTMLHtmlElement`, `HTMLHeadElement`, `HTMLBodyElement`; the document element's parent is
+  the document) instead of `<div>` stand-ins, a `srcdoc` is parsed as a whole document (head
+  content in `<head>`, `<html>` / `<body>` attributes kept), the document's queries see its
+  document element, its sheets' `:root` / `html` / `body` rules match, and its body takes
+  html.css's 8px margin. Chrome 156 control: `iframe_cascade_chrome156.json` `document` /
+  `blank` (#306).
+- **turbo-dom-browser-env: child iframe documents cascade their own style sheets.** A child
+  iframe document's elements (`iframe.contentDocument`, its `srcdoc` markup included) compute
+  styles from that document's own `<style>` / `<link>` sheets, inline styles, inheritance and
+  custom properties (with @supports, @layer and specificity as the top-level cascade), never
+  from the parent's rules; `getComputedStyle` from either window evaluates @media against the
+  viewport of the element's own document, so a child rule flips when the iframe resizes. Chrome
+  156 control `iframe_cascade_chrome156.json` (#299).
+- **turbo-dom-layout: `position: sticky` sticks to its scroll container and follows the
+  scroll.** A sticky box (inline or block) now takes its thresholds from its nearest scroll
+  container's content box (the viewport only when it has none) instead of always the
+  viewport, and its constraints are kept in the live snapshot
+  (`LayoutSnapshot::sticky_constraint`): `cssom_view::scroll::scroll_translation` moves a
+  sticky box and its content against the scroll offsets it is given, and the new
+  `cssom_view::scroll::sticky_offset` is what a sticky element's `offsetLeft` /
+  `offsetTop` move by. A scroll container's own line boxes add its end padding to
+  `scrollWidth` / `scrollHeight`, and an inline-level box's max-content width breaks at a
+  `<br>` (the widest line, not the whole run). Chrome 156 controls `sticky-inline-*` /
+  `sticky-more-*` in `live_geometry_chrome156.json` (#295).
+- **turbo-dom-browser-env: child iframe documents cascade their own style sheets.** A child
+  iframe document's elements (`iframe.contentDocument`, its `srcdoc` markup included) compute
+  styles from that document's own `<style>` / `<link>` sheets, inline styles, inheritance and
+  custom properties (with @supports, @layer and specificity as the top-level cascade), never
+  from the parent's rules; `getComputedStyle` from either window evaluates @media against the
+  viewport of the element's own document, so a child rule flips when the iframe resizes. Chrome
+  156 control `iframe_cascade_chrome156.json` (#299).
+- **turbo-dom-layout: quirks-mode `<form>` margin.** A quirks-mode (`BackCompat`) document's
+  forms take Chrome 156's quirks.css `margin-block-end: 1em` on the live and static HTML
+  paths (an author `margin-bottom` / `margin-block-end` replaces it; at the start of a quirks
+  `<body>`, `<td>` or `<th>` an empty form's margin is ignored, nested in empty boxes too,
+  as Blink's quirky containers do).
+  `Cascade::with_quirks` adds the rule to a caller-built cascade (#282).
+- **turbo-dom-layout / -raster: an author border turns a control's native look off.** Any
+  author `border*` declaration (the shorthand, one longhand, even a value equal to the UA's,
+  `border: none`, a radius) on a `<button>`, an `<input>` button type or another restylable
+  control drops Chrome's native appearance, so the CSS border and background paint in the
+  PNG and SVG screenshots, like Chrome 156. Square borders whose sides differ in colour now
+  meet on the corner diagonals (#283).
+- turbo-dom-browser-env: custom properties (`--*`, e.g. `--theme-color`) keep their authored
+  text in `style.setProperty` / `getPropertyValue` / `cssText`; only colour properties
+  canonicalize hex colours to `rgb()` (turbo-dom#285, Chrome 156 control
+  `custom_property_colors_chrome156.json`).
+- turbo-dom-browser-env: `getComputedStyle(el).getPropertyValue('--x')` returns the custom
+  property's specified text from inline styles, style attributes and stylesheets, inherited
+  down the tree like Chrome (turbo-dom#286, `computed_custom_properties_chrome156.json`).
+- turbo-dom-browser-env: `matchMedia` returns a real `MediaQueryList` (an `EventTarget`:
+  `matches`, `media`, `onchange`, `addListener` / `removeListener`, `change` listeners;
+  `MediaQueryListEvent`) evaluated against the window viewport (`innerWidth` /
+  `innerHeight` / `devicePixelRatio`) with Chrome headless's preference defaults, media text
+  serialized like Chrome; a `resize` dispatched on the window fires `change` on every list
+  that flipped. The JS cascade's `@media` / `@import` media evaluate the same way while
+  `matchMedia` is the binding's own; without an embedder viewport the size features never
+  match (turbo-dom#287, `match_media_chrome156.json`).
+- turbo-dom-browser-env: an `<iframe>`'s `width` / `height` attributes are reflected
+  (`HTMLIFrameElement.width` / `.height`) and map to presentational hints in the cascade
+  (author CSS wins; without them `getComputedStyle` reports 300x150). A child iframe window's
+  `innerWidth` / `innerHeight` report the iframe's live content box (its computed size, less
+  padding and border under `border-box`, rounded) and `outerWidth` / `outerHeight` the
+  top-level window's. The child window's `matchMedia` (and its `getComputedStyle`'s `@media`)
+  evaluates against that viewport and fires `change` when the iframe resizes (turbo-dom#288,
+  `iframe_viewport_chrome156.json`, `iframe_media_chrome156.json`).
+
+### Performance (turbo-dom-browser-env, 0.7.1)
+
+- `document.body` and a form control's `labels` read in one native call (was ~10 projected
+  accessor round trips); `children` re-reads its rows with one native call instead of a
+  `nodeType` dispatch per child.
+- Cached live collections (`childNodes`, `children`, `getElementsBy*`) follow a mutation epoch
+  the engine pushes on every tree write, so reads between mutations make no native call; this
+  realm's collection records are memoized in JS.
+- The computed-style font and cascade paths and the collection row appends build no
+  `{__proto__: null}` literal per call (hoisted tables, fixed-shape records, one reused row
+  descriptor).
+- Counter gates for all three in `perf_gates_tests.rs`.
+- The `$c` dispatcher passes its arguments as array literals instead of `add`'s per-element
+  `Object.defineProperty`, which cost a runtime call per argument of every internal call
+  (perf gate `internal_dispatch_defines_no_argument_rows`: 19805 -> 1146 defines).
+- A stable computed style (validated with its whole ancestor chain at unchanged tree, selector,
+  CSSOM and state versions) is reused without recomputing its cache key or revalidating its
+  ancestors: each property read and testing-library's visibility walk did both, quadratic in
+  depth (`stable_computed_styles_skip_the_key_and_ancestor_walk`: 9900 -> 0 full keys for 300
+  reads). payroll's RecurringDeductionModal: 8.9 -> 5.8 CPU-s.
+- The owner's stylesheet list holds while either tree version does: an animation joining or
+  leaving an element moves only the selector version, and every transition start or end reread
+  the list (`animation_changes_do_not_reread_the_sheet_list`: 150 -> <=4 rereads).
+- A flush skips the checked-radio form-owner scan when the tree has not changed since the last
+  one (`radio_owner_scans_run_once_per_tree_version`: 1401 -> 1 scan for 100 clicks).
+
+### Performance
+
+- **Subtree-scoped style invalidation** (#279, browser-env + `turbo-dom`). A DOM mutation no
+  longer drops every reused computed style. `Tree` keeps per-node style generations
+  (`Tree::style_generation(h, StyleScope)`): the element and its ancestors; with
+  `Siblings::Forward` (`+`, `~`, `:nth-child`, `:first-*`, `:*-of-type`, `:enabled` /
+  `:disabled`) the child-list changes a later sibling sees, with `Siblings::Both`
+  (`:last-child`, `:only-*`, `:nth-last-*`) every child-list change; with `forms` a tree-wide
+  form-validity generation (`:valid` / `:invalid` / `:user-*`). getComputedStyle classifies
+  the owner's sheets once per sheet and CSSOM epoch and keys reused styles on that
+  generation. `Tree::set_style_filter` makes writes of class tokens, ids, `role`, `tabindex`,
+  `title`, `aria-*` and `data-*` attributes no selector names move nothing. A `<style>` added
+  through the DOM (emotion's insertion) invalidates only the elements its rules can select
+  (rule-set invalidation, `Tree::invalidate_style`), and an animation joining or leaving a
+  target only that target's subtree, instead of bumping the CSSOM epoch. Fallbacks: `:has()`,
+  `:empty`, `:checked` / `:default` / `:indeterminate`, `:host`, `@scope`, unknown
+  pseudo-classes and escapes key on the tree-wide selector version; `[style]` selectors,
+  `@container`, `@import`, adopted sheets and shadow roots on the plain version; any other
+  sheet-list change bumps the CSSOM epoch. Chrome 156 control `style_invalidation_chrome156.json`
+  (`scripts/style-invalidation-chrome-control.mjs`), counter gates and a randomised
+  reused-vs-fresh differential.
+
+## [0.7.0] — 2026-11-04
 
 | crate | version |
 |---|---|

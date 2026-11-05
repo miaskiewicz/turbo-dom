@@ -5,6 +5,15 @@ fn run(html: &str, code: &str) -> serde_json::Value {
 }
 
 fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) -> serde_json::Value {
+    run_in_mode(html, code, fonts, MediaMode::Chrome)
+}
+
+fn run_in_mode(
+    html: &str,
+    code: &str,
+    fonts: Option<(&str, f64)>,
+    mode: MediaMode,
+) -> serde_json::Value {
     super::tests::init_v8();
     let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope,isolate);
@@ -14,6 +23,7 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
         assert!(set_computed_font_defaults(context, family, size));
     }
     install_with_html(scope, html);
+    set_media_mode(scope, mode);
     let global = scope.get_current_context().global(scope);
     let key = v8::String::new(scope, "document").unwrap();
     let document = global
@@ -103,6 +113,45 @@ fn run_with_font_defaults(html: &str, code: &str, fonts: Option<(&str, f64)>) ->
         let getter = v8::Function::new(scope, entry_builds).unwrap();
         let key = v8::String::new(scope, "__cssTestEntryBuilds").unwrap();
         global.set(scope, key.into(), getter.into());
+    }
+    if code.contains("__cssTestRuleProbes") {
+        // The style rules tested behind the test-only `__noteRuleProbe` hook (turbo-dom#307).
+        fn rule_probes(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::rule_probes() as f64).into());
+        }
+        let getter = v8::Function::new(scope, rule_probes).unwrap();
+        let key = v8::String::new(scope, "__cssTestRuleProbes").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
+    if code.contains("__cssTestStyleShares") {
+        // The shared computed styles behind the test-only `__noteStyleShare` hook (turbo-dom#307).
+        fn shares(
+            scope: &mut v8::PinScope,
+            _args: v8::FunctionCallbackArguments,
+            mut rv: v8::ReturnValue,
+        ) {
+            rv.set(v8::Number::new(scope, super::style_shares() as f64).into());
+        }
+        let getter = v8::Function::new(scope, shares).unwrap();
+        let key = v8::String::new(scope, "__cssTestStyleShares").unwrap();
+        global.set(scope, key.into(), getter.into());
+    }
+    if code.contains("__cssTestStyleShareOff") {
+        // Switches style sharing off (argument true) or on: the fresh-cascade oracle.
+        fn share_off(
+            scope: &mut v8::PinScope,
+            args: v8::FunctionCallbackArguments,
+            _rv: v8::ReturnValue,
+        ) {
+            super::set_style_share_off(args.get(0).boolean_value(scope));
+        }
+        let setter = v8::Function::new(scope, share_off).unwrap();
+        let key = v8::String::new(scope, "__cssTestStyleShareOff").unwrap();
+        global.set(scope, key.into(), setter.into());
     }
     if code.contains("__fontInertDoc") {
         let document = parse_html_document(scope, "<!doctype html><body><b>inert</b>", false);
@@ -832,12 +881,14 @@ fn computed_fonts_preserve_unresolved_metrics_without_fabricating_inherited_valu
         for(const id of ['p','c','g']){const style=getComputedStyle(document.getElementById(id));values.push([style.fontSize,style.lineHeight,style.font]);}
         return values;
     })())"#, Some(("serif",16.0)));
+    // <b> is html.css `font-weight: bolder` (700 in Chrome 156, turbo-dom#305,
+    // computed_defaults_chrome156.json), so its font shorthand leads with 700.
     assert_eq!(
         value,
         serde_json::json!([
             ["2ch", "calc(1em + 1ch)", "2ch / calc(1em + 1ch) serif"],
             ["2ch", "calc(1em + 1ch)", "2ch / calc(1em + 1ch) serif"],
-            ["2ch", "calc(1em + 1ch)", "2ch / calc(1em + 1ch) serif"]
+            ["2ch", "calc(1em + 1ch)", "700 2ch / calc(1em + 1ch) serif"]
         ])
     );
 }
@@ -1006,6 +1057,8 @@ fn computed_importance_tracks_live_adoption_and_inline_priority_without_public_m
           return JSON.stringify({rows,reads,shadowWidth,ordinaryFirst});
         })()"#,
     );
+    // shadowWidth: an unset border side with style none is 0px wide in Chrome 156 (turbo-dom#305,
+    // computed_defaults_chrome156.json; it read "" before).
     assert_eq!(
         actual,
         serde_json::json!({"rows":[
@@ -1014,7 +1067,7 @@ fn computed_importance_tracks_live_adoption_and_inline_priority_without_public_m
         ["7px","8px","rgb(255, 0, 0)","128px",""],
         ["11px","8px","rgb(255, 0, 0)","128px",""],
         ["11px","rgb(255, 0, 0)","128px"]
-    ],"reads":0,"shadowWidth":"","ordinaryFirst":true})
+    ],"reads":0,"shadowWidth":"0px","ordinaryFirst":true})
     );
 }
 
@@ -1073,7 +1126,7 @@ fn computed_style_reuses_the_cascade_until_the_document_changes() {
           for(let index=0;index<5;index++)rows.push(read(getComputedStyle(t)).concat(read(retained),[getComputedStyle(t.parentElement).color]));
           const repeated=runs()-mark;
           const distinct=getComputedStyle(t)!==getComputedStyle(t);
-          t.setAttribute('data-x','1');mark=runs();const after=read(retained);const mutated=runs()-mark;
+          t.setAttribute('lang','en');mark=runs();const after=read(retained);const mutated=runs()-mark;
           mark=runs();read(retained);const settled=runs()-mark;
           return JSON.stringify({first,warm:warm>=4,repeated,row:rows[0],same:rows.every(row=>JSON.stringify(row)===JSON.stringify(rows[0])),distinct,after,mutated:mutated>0,settled});
         })()"#,
@@ -1191,14 +1244,14 @@ fn computed_style_reuse_is_invalidated_by_every_cascade_input() {
 #[test]
 fn computed_style_reuse_follows_import_media_changes() {
     let value = run(
-        "<!doctype html><head><style id=s>@import url('child.css') screen; #t {height:17px}</style></head><body><div id=t></div></body>",
+        "<!doctype html><head><style id=s>@import url('child.css') (min-width: 600px); #t {height:17px}</style></head><body><div id=t></div></body>",
         r#"(()=>{
-          let screen=true;globalThis.matchMedia=query=>({matches:screen,media:query});
+          globalThis.innerWidth=1024;
           const sheet=document.getElementById('s').sheet,child=new CSSStyleSheet();
           __cssTestHost.attachImport(sheet.cssRules[0],child,'http://localhost/child.css','#t {width:33px;height:11px}',true);
           const t=document.getElementById('t'),retained=getComputedStyle(t),rows=[];
           const read=()=>rows.push([getComputedStyle(t).width,retained.width,retained.height]);
-          read();read();screen=false;read();screen=true;read();
+          read();read();innerWidth=500;read();innerWidth=1024;read();
           return JSON.stringify(rows);
         })()"#,
     );
@@ -1338,6 +1391,53 @@ fn css_animation_update_runs_once_per_style_change_gate() {
     assert_eq!(
         value,
         serde_json::json!({"first": ["1", true, true], "repeated": 0, "changed": true, "kinds": ["CSSTransition:opacity", "Animation:"], "settled": 0, "animations": ["CSSAnimation:spin"]})
+    );
+}
+
+// turbo-test#227: a transition update decides "rendered" (no display:none ancestor) from the
+// ancestor styles the same computed-style read already resolves, so reading a transitioned
+// element after a tree mutation costs no more cascade runs than reading an identical element
+// without a transition. The ancestors run transitions of their own (volatile styles, never
+// reused), as MUI form controls do.
+#[test]
+fn transition_update_resolves_no_extra_ancestor_styles_gate() {
+    let value = run(
+        "<!doctype html><head><style>.v {transition:opacity 100s linear;opacity:1} .v.dim {opacity:0.5} #t {display:block;height:1px;transition:height 100s linear}</style></head><body><div id=x></div><div class=v id=r1><div><div class=v><div><div><div><span id=t>t</span></div></div></div></div></div></div><div class=v id=r2><div><div class=v><div><div><div><span id=c>c</span></div></div></div></div></div></div></body>",
+        r#"(()=>{
+          const runs=__cssTestCascadeRuns,x=document.getElementById('x'),t=document.getElementById('t'),c=document.getElementById('c');
+          for(const v of document.querySelectorAll('.v')){getComputedStyle(v).opacity;v.classList.add('dim');getComputedStyle(v).opacity;}
+          for(const el of [t,c])getComputedStyle(el).height;
+          const cost=el=>{let total=0;for(let i=0;i<20;i++){x.textContent=String(i);const mark=runs();getComputedStyle(el).height;total+=runs()-mark;}return total;};
+          const transitioned=cost(t),control=cost(c);
+          t.style.height='5px';getComputedStyle(t).height;
+          const kinds=t.getAnimations().map(a=>a.constructor.name+':'+a.transitionProperty);
+          return JSON.stringify({extra:transitioned-control,kinds,running:document.querySelectorAll('.v')[0].getAnimations().length});
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"extra": 0, "kinds": ["CSSTransition:height"], "running": 1})
+    );
+}
+
+// turbo-test#227: an ancestor first resolved while a descendant's CSS update runs (the
+// descendant inherits from it) still records its own before-change style, so a later change
+// of the ancestor starts its transition, as Chrome's style recalc does.
+#[test]
+fn an_ancestor_resolved_inside_a_descendant_update_still_starts_its_transition() {
+    let value = run(
+        "<!doctype html><head><style>.v {transition:opacity 100s linear;opacity:1} .v.dim {opacity:0.5} #t {transition:color 100s linear}</style></head><body><div class=v id=v><span id=t>t</span></div></body>",
+        r#"(()=>{
+          const v=document.getElementById('v'),t=document.getElementById('t');
+          getComputedStyle(t).color;
+          v.classList.add('dim');
+          const opacity=getComputedStyle(v).opacity;
+          return JSON.stringify({opacity,kinds:v.getAnimations().map(a=>a.constructor.name+':'+a.transitionProperty)});
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"opacity": "1", "kinds": ["CSSTransition:opacity"]})
     );
 }
 
@@ -1649,21 +1749,21 @@ fn inline_style_reuse_matches_the_chrome_control() {
 }
 
 /// A computation that read a rule under a conditional @media is reused while every media
-/// condition it evaluated still gives the same `matchMedia` answer (a page or test can swap
-/// `matchMedia`, so the answers are checked again, not assumed): MUI puts @media rules on most
+/// condition it evaluated still gives the same answer (the viewport can change, so the
+/// answers are checked again, not assumed): MUI puts @media rules on most
 /// elements, and never reusing those styles made every read a fresh cascade.
 #[test]
 fn media_rule_styles_are_reused_until_a_media_answer_changes() {
     let value = run(
         "<style>p{color:rgb(1, 1, 1)} @media (min-width: 600px) { p { color: rgb(2, 2, 2) } }</style><body><p id=p>p</p></body>",
         r#"(()=>{
-      let wide=true;globalThis.matchMedia=query=>({matches:query.includes('600px')?wide:false,media:query});
+      globalThis.innerWidth=1024;
       const p=document.getElementById('p');
       const first=getComputedStyle(p).color;
       const before=__cssTestCascadeRuns();
       const again=getComputedStyle(p).color;
       const reused=__cssTestCascadeRuns()-before;
-      wide=false;
+      innerWidth=500;
       const narrow=getComputedStyle(p).color;
       return JSON.stringify({first,again,reused,narrow});
     })()"#,
@@ -1682,7 +1782,7 @@ fn rule_entries_are_built_once_per_sheet_list() {
     let value = run(
         "<style>@layer base { div { color: rgb(1, 1, 1) } } @media (min-width: 1px) { .t { color: rgb(2, 2, 2) } } @supports (color: red) { .u { margin: 1px } }</style><body></body>",
         r#"(()=>{
-      globalThis.matchMedia=query=>({matches:true,media:query});
+      globalThis.innerWidth=1024;
       let parent=document.body;
       for(let i=0;i<20;i++){const d=document.createElement('div');parent.appendChild(d);parent=d;}
       const t=document.createElement('p');t.className='t u';parent.appendChild(t);
@@ -1701,4 +1801,38 @@ fn rule_entries_are_built_once_per_sheet_list() {
     assert_eq!(value["inherited"], "rgb(1, 1, 1)");
     assert_eq!(value["after"], "rgb(3, 3, 3)", "a CSSOM change rebuilds");
     assert!(value["builds"].as_u64().unwrap() <= 1, "{value}");
+}
+
+#[path = "rule_bucket_tests.rs"]
+mod rule_bucket_tests;
+
+#[path = "style_sharing_tests.rs"]
+mod style_sharing_tests;
+
+#[path = "style_invalidation_tests.rs"]
+mod style_invalidation_tests;
+
+/// jsdom applies an @import's sheet when the import has no media list or one with a
+/// `screen` item; any other media list is skipped (no viewport evaluation).
+#[test]
+fn jsdom_media_mode_imports_follow_jsdom() {
+    let value = run_in_mode(
+        "<!doctype html><head></head><body></body>",
+        r#"(()=>{
+          globalThis.innerWidth=1024;const out={};
+          for(const [id,media] of [['a',''],['b','screen'],['c','print'],['d','(min-width: 1px)'],['e','print, screen'],['f','all']]){
+            const s=document.createElement('style');s.textContent=`@import url('${id}.css') ${media};`;document.head.append(s);
+            const div=document.createElement('div');div.id=id;document.body.append(div);
+            __cssTestHost.attachImport(s.sheet.cssRules[0],new CSSStyleSheet(),`http://localhost/${id}.css`,`#${id} {color:rgb(0, 0, 2)}`,true);
+            out[id]=getComputedStyle(div).color;
+          }
+          return JSON.stringify(out);
+        })()"#,
+        None,
+        MediaMode::Jsdom,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({"a":"rgb(0, 0, 2)","b":"rgb(0, 0, 2)","c":"rgb(0, 0, 0)","d":"rgb(0, 0, 0)","e":"rgb(0, 0, 2)","f":"rgb(0, 0, 0)"})
+    );
 }

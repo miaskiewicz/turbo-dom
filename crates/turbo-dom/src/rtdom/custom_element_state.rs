@@ -87,7 +87,8 @@ impl Tree {
         self.custom_element_states.insert(h, state);
         let changed = before != state;
         if changed {
-            self.bump();
+            self.bump_node(h);
+            self.bump_form_change(h, "");
         }
         changed
     }
