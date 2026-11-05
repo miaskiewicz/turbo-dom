@@ -11262,6 +11262,9 @@ mod computed_defaults_tests;
 #[path = "css_longhand_tests.rs"]
 mod css_longhand_tests;
 #[cfg(test)]
+#[path = "css_nesting_tests.rs"]
+mod css_nesting_tests;
+#[cfg(test)]
 #[path = "css_shorthand_tests.rs"]
 mod css_shorthand_tests;
 #[cfg(test)]

@@ -1,0 +1,579 @@
+{
+  "browser": "Chrome/156.0.8078.80",
+  "v8": "15.6.75.27",
+  "casesSha256": "7722b8161511b2397ef443e15e10c77436f746ba6ff46c9b9ec1f9403786c4ee",
+  "probeSha256": "f41f00582a0038ebfbd9b453cd3d3a0d0310b1c04b17cd8297af3917f91a6445",
+  "collectorSha256": "671661dee7acadfab3a3ef76ea9a97e1f2f3d99987c9d0cdf0ab8c42410c09ff",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "css-nesting",
+      "result": {
+        "results": [
+          [
+            ".outer { color: red; & .inner { color: blue; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  & .inner { color: blue; }\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& .inner { color: blue; }",
+                    "selector": "& .inner",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; .inner { color: blue; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  & .inner { color: blue; }\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& .inner { color: blue; }",
+                    "selector": "& .inner",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; &.outer { color: green; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  &.outer { color: green; }\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "&.outer { color: green; }",
+                    "selector": "&.outer",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(0, 128, 0)",
+                "rgb(0, 128, 0)",
+                "rgb(0, 128, 0)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; & > .inner { color: blue; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  & > .inner { color: blue; }\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& > .inner { color: blue; }",
+                    "selector": "& > .inner",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; & .inner { color: blue; & #c { color: lime; } } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  & .inner {\n  color: blue;\n  & #c { color: lime; }\n}\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& .inner {\n  color: blue;\n  & #c { color: lime; }\n}",
+                    "selector": "& .inner",
+                    "kind": "CSSStyleRule",
+                    "children": [
+                      {
+                        "text": "& #c { color: lime; }",
+                        "selector": "& #c",
+                        "kind": "CSSStyleRule",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 255, 0)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; @media screen { color: blue; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  @media screen {\n  color: blue;\n}\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "@media screen {\n  color: blue;\n}",
+                    "selector": null,
+                    "kind": "CSSMediaRule",
+                    "children": [
+                      {
+                        "text": "color: blue;",
+                        "selector": null,
+                        "kind": "CSSNestedDeclarations",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; @media screen { color: blue; & .inner { color: lime; } } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  @media screen {\n  color: blue;\n  & .inner { color: lime; }\n}\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "@media screen {\n  color: blue;\n  & .inner { color: lime; }\n}",
+                    "selector": null,
+                    "kind": "CSSMediaRule",
+                    "children": [
+                      {
+                        "text": "color: blue;",
+                        "selector": null,
+                        "kind": "CSSNestedDeclarations",
+                        "children": []
+                      },
+                      {
+                        "text": "& .inner { color: lime; }",
+                        "selector": "& .inner",
+                        "kind": "CSSStyleRule",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(0, 0, 255)",
+                "rgb(0, 255, 0)",
+                "rgb(0, 255, 0)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; & .inner, & #c { color: blue; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  & .inner, & #c { color: blue; }\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& .inner, & #c { color: blue; }",
+                    "selector": "& .inner, & #c",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; & .inner { color: blue } color: cyan; }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  & .inner { color: blue; }\n  color: cyan;\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& .inner { color: blue; }",
+                    "selector": "& .inner",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  },
+                  {
+                    "text": "color: cyan;",
+                    "selector": null,
+                    "kind": "CSSNestedDeclarations",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(0, 255, 255)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; &:hover .inner { color: blue; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  &:hover .inner { color: blue; }\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "&:hover .inner { color: blue; }",
+                    "selector": "&:hover .inner",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(255, 0, 0)",
+                "rgb(255, 0, 0)"
+              ]
+            }
+          ],
+          [
+            "div { color: red; .outer { color: blue; } }",
+            {
+              "sheet": {
+                "text": "div {\n  color: red;\n  & .outer { color: blue; }\n}",
+                "selector": "div",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& .outer { color: blue; }",
+                    "selector": "& .outer",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(255, 0, 0)",
+                "rgb(255, 0, 0)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; .inner { color: green; }  &.outer { color: magenta; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  & .inner { color: green; }\n  &.outer { color: magenta; }\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& .inner { color: green; }",
+                    "selector": "& .inner",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  },
+                  {
+                    "text": "&.outer { color: magenta; }",
+                    "selector": "&.outer",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 255)",
+                "rgb(0, 128, 0)",
+                "rgb(0, 128, 0)"
+              ]
+            }
+          ],
+          [
+            ".outer { & { color: red; } color: blue; }",
+            {
+              "sheet": {
+                "text": ".outer {\n  & { color: red; }\n  color: blue;\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& { color: red; }",
+                    "selector": "&",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  },
+                  {
+                    "text": "color: blue;",
+                    "selector": null,
+                    "kind": "CSSNestedDeclarations",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)"
+              ]
+            }
+          ],
+          [
+            ".a { color: red; } .outer { color: red; .inner { color: blue; } }",
+            {
+              "sheet": {
+                "text": ".a { color: red; }",
+                "selector": ".a",
+                "kind": "CSSStyleRule",
+                "children": []
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; @supports (color: red) { color: blue; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  @supports (color: red) {\n  color: blue;\n}\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "@supports (color: red) {\n  color: blue;\n}",
+                    "selector": null,
+                    "kind": "CSSSupportsRule",
+                    "children": [
+                      {
+                        "text": "color: blue;",
+                        "selector": null,
+                        "kind": "CSSNestedDeclarations",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; @layer x { color: blue; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  @layer x {\n  color: blue;\n}\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "@layer x {\n  color: blue;\n}",
+                    "selector": null,
+                    "kind": "CSSLayerBlockRule",
+                    "children": [
+                      {
+                        "text": "color: blue;",
+                        "selector": null,
+                        "kind": "CSSNestedDeclarations",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(255, 0, 0)",
+                "rgb(255, 0, 0)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; & { color: blue; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  & { color: blue; }\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& { color: blue; }",
+                    "selector": "&",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 255)"
+              ]
+            }
+          ],
+          [
+            ".outer { color: red; & .inner { .deep { color: blue; } } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  color: red;\n  & .inner {\n  & .deep { color: blue; }\n}\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& .inner {\n  & .deep { color: blue; }\n}",
+                    "selector": "& .inner",
+                    "kind": "CSSStyleRule",
+                    "children": [
+                      {
+                        "text": "& .deep { color: blue; }",
+                        "selector": "& .deep",
+                        "kind": "CSSStyleRule",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(255, 0, 0)",
+                "rgb(255, 0, 0)"
+              ]
+            }
+          ],
+          [
+            ".outer { .inner { color: blue; } color: red; .inner { color: green; } }",
+            {
+              "sheet": {
+                "text": ".outer {\n  & .inner { color: blue; }\n  color: red;\n  & .inner { color: green; }\n}",
+                "selector": ".outer",
+                "kind": "CSSStyleRule",
+                "children": [
+                  {
+                    "text": "& .inner { color: blue; }",
+                    "selector": "& .inner",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  },
+                  {
+                    "text": "color: red;",
+                    "selector": null,
+                    "kind": "CSSNestedDeclarations",
+                    "children": []
+                  },
+                  {
+                    "text": "& .inner { color: green; }",
+                    "selector": "& .inner",
+                    "kind": "CSSStyleRule",
+                    "children": []
+                  }
+                ]
+              },
+              "colors": [
+                "rgb(255, 0, 0)",
+                "rgb(0, 128, 0)",
+                "rgb(0, 128, 0)"
+              ]
+            }
+          ]
+        ],
+        "mutations": [
+          [
+            "after .inner insert",
+            ".outer {\n  color: red;\n  & .inner { color: blue; }\n}",
+            [
+              "rgb(255, 0, 0)",
+              "rgb(0, 0, 255)",
+              "rgb(0, 0, 255)"
+            ]
+          ],
+          [
+            "after nested-nested insert",
+            ".outer {\n  color: red;\n  & .inner {\n  color: blue;\n  & #c { color: lime; }\n}\n}",
+            [
+              "rgb(255, 0, 0)",
+              "rgb(0, 0, 255)",
+              "rgb(0, 255, 0)"
+            ]
+          ],
+          [
+            "after delete first",
+            ".outer { color: red; }",
+            [
+              "rgb(255, 0, 0)",
+              "rgb(255, 0, 0)",
+              "rgb(255, 0, 0)"
+            ]
+          ],
+          [
+            "insert at index past end throws",
+            "IndexSizeError: Failed to execute 'insertRule' on 'CSSStyleRule': the index 5 must be less than or equal to the length of the rule list."
+          ],
+          [
+            "insert declaration bare throws",
+            ".outer {\n  color: red;\n  color: blue;\n}",
+            [
+              "rgb(0, 0, 255)",
+              "rgb(0, 0, 255)",
+              "rgb(0, 0, 255)"
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -419,6 +419,8 @@ OWNED="$OWNED html_reflections.js html_media.js html_media.rs interface_parity_p
 OWNED="$OWNED listener_errors_probe.js listener_errors_chrome156.json"
 # turbo-dom#338 (tree-counting math, shape()) and #340 (Animation rangeStart / rangeEnd) Chrome 156 controls.
 OWNED="$OWNED css_tree_counting_shape_probe.js css_tree_counting_shape_cases.json css_tree_counting_shape_chrome156.json css_tree_counting_shape_tests.rs animation_range_probe.js animation_range_cases.json animation_range_chrome156.json animation_range_tests.rs"
+# turbo-dom#358 CSS Nesting Chrome 156 control.
+OWNED="$OWNED css_nesting_probe.js css_nesting_cases.json css_nesting_chrome156.json css_nesting_tests.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

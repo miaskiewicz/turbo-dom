@@ -283,6 +283,11 @@ struct CssParser {
     keyframes: bool,
     font_face: bool,
     raw_descriptors: bool,
+    /// Nested inside a style rule's body (turbo-dom#358): the group at-rules that admit
+    /// nested rules (`@media`, `@supports`, `@container`, `@scope`, `@starting-style`,
+    /// `@layer`) also admit bare declarations (CSSNestedDeclarations). Set on the parser
+    /// that walks a style rule's body.
+    nested: bool,
 }
 
 fn consume(input: &mut Parser<'_, '_>) -> String {
@@ -410,10 +415,15 @@ impl<'i> QualifiedRuleParser<'i> for CssParser {
         _: &ParserState,
         input: &mut Parser<'i, 't>,
     ) -> Result<String, ParseError<'i, ()>> {
+        // A style rule's body is a nesting context (turbo-dom#358): children at-rules admit
+        // bare declarations (CSSNestedDeclarations).
+        let was = self.nested;
+        self.nested = !self.keyframes;
         let body = RuleBodyParser::new(input, self)
             .filter_map(Result::ok)
             .collect::<Vec<_>>()
             .join(" ");
+        self.nested = was;
         Ok(format!("{prelude} {{ {body} }}"))
     }
 }
@@ -866,6 +876,22 @@ impl<'i> AtRuleParser<'i> for CssParser {
                 ..Default::default()
             };
             RuleBodyParser::new(input, &mut declarations)
+                .filter_map(Result::ok)
+                .collect::<Vec<_>>()
+                .join(" ")
+        } else if self.nested
+            && matches!(
+                name.as_str(),
+                "media" | "supports" | "container" | "scope" | "starting-style" | "layer"
+            )
+        {
+            // Nested inside a style rule's body (turbo-dom#358): the group at-rule admits
+            // bare declarations (CSSNestedDeclarations) and nested style rules.
+            let mut nested = CssParser {
+                nested: true,
+                ..Default::default()
+            };
+            RuleBodyParser::new(input, &mut nested)
                 .filter_map(Result::ok)
                 .collect::<Vec<_>>()
                 .join(" ")
