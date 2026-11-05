@@ -810,8 +810,10 @@
   }
   function wantsFrame(record) {
     if (!timelineActive(record.timeline)) return false;
-    if (record.task !== null) return true;
+    if (record.task !== null || (record.css && cssEventDue(record))) return true;
     if (playState(record) !== 'running') return false;
+    // A running CSS animation reaches its next iteration (its next event) even without an end.
+    if (record.css && cssKindOn(record.css.kind)) return record.rate !== 0;
     return record.rate > 0 ? effectEnd(record) !== Infinity : record.rate < 0;
   }
   function schedule() {
@@ -821,7 +823,8 @@
   function prune() {
     for (let at = 0, all = list(); at < all.length; at++) { const animation = all[at];
       const record = animations.get(animation);
-      if (record.task !== null || record.finishTask || playState(record) === 'running' || relevant(record)) continue;
+      // A CSS animation stays until its next frame samples its last phase change.
+      if (record.task !== null || record.finishTask || playState(record) === 'running' || relevant(record) || (record.css && cssEventDue(record))) continue;
       apply(setDelete, live, [animation]);
       const effect = record.effect ? effects.get(record.effect) : null;
       if (effect && effect.target) index(animation, effect.target, null);
@@ -947,6 +950,7 @@
     updateFinished(animation, record, false, false);
   }
   function cancel(animation, record) {
+    if (record.css) record.css.cancelTime = currentTime(record);
     if (playState(record) !== 'idle') {
       resetPendingTasks(animation, record);
       reject(record.finished);
@@ -955,6 +959,7 @@
     }
     record.hold = null;
     record.start = null;
+    if (record.css) cssSample(record);
   }
   function setEffect(animation, record, effect) {
     if (effect === record.effect) return;
@@ -1001,7 +1006,14 @@
   function frameUpdate() {
     frameRequested = false;
     const ordered = sortBy(list(), animation => animations.get(animation).seq);
-    for (let i = 0; i < ordered.length; i++) { const record = animations.get(ordered[i]); if (timelineActive(record.timeline)) updateFinished(ordered[i], record, false, false); }
+    for (let i = 0; i < ordered.length; i++) {
+      const record = animations.get(ordered[i]);
+      if (!timelineActive(record.timeline)) continue;
+      updateFinished(ordered[i], record, false, false);
+    }
+    // CSS events queue in composite order: transitions, then CSS animations, each by owner.
+    const css = byComposite(intrinsic.filter(ordered, animation => { const record = animations.get(animation); return !!record.css && timelineActive(record.timeline); }));
+    for (let i = 0; i < css.length; i++) cssSample(animations.get(css[i]));
     removeReplaced();
   }
   function frameDispatch() {
@@ -1272,6 +1284,67 @@
   finishInterface(AnimationPlaybackEvent, PlaybackDelegate, 'AnimationPlaybackEvent', EventType, EventType.prototype);
   accessor(PlaybackDelegate.prototype, 'currentTime', function () { return eventRecord(this).currentTime; });
   accessor(PlaybackDelegate.prototype, 'timelineTime', function () { return eventRecord(this).timelineTime; });
+
+  // AnimationEvent / TransitionEvent (turbo-dom#313): the events of CSS animations and
+  // transitions. The init dictionary converts its EventInit members, then its own in code-unit
+  // order: `animation` (an Animation or null), the name, `elapsedTime` (a restricted double)
+  // and `pseudoElement`. `pseudoTarget` is null: no pseudo-element runs a CSS animation here.
+  const cssEvents = store();
+  function cssEventInit(input, prefix, dictionaryName, names) {
+    const read = key => input === null ? undefined : input[key];
+    const out = { name: '', elapsed: 0, pseudo: '', animation: null };
+    for (let i = 0; i < names.length; i++) {
+      const key = names[i], value = read(key);
+      if (value === undefined) continue;
+      if (key === 'animation') {
+        if (value !== null && !(objectLike(value) && animations.has(value))) throw new ErrorType(`${member(prefix, key, dictionaryName)}Failed to convert value to 'Animation'.`);
+        out.animation = value;
+      } else if (key === 'elapsedTime') out.elapsed = finite(value, member(prefix, key, dictionaryName));
+      else if (key === 'pseudoElement') out.pseudo = string(value);
+      else out.name = string(value);
+    }
+    return out;
+  }
+  const cssEventInterface = (name, nameMember, names) => {
+    const delegate = function (type, init) {
+      requireNew(new.target, name);
+      const prefix = constructing(name);
+      if (!arguments.length) throw new ErrorType(`${prefix}1 argument required, but only 0 present.`);
+      const text = string(type);
+      const input = dictionary(init, prefix, name + 'Init');
+      const read = key => input === null ? undefined : input[key];
+      const eventInit = { __proto__: null, bubbles: !!read('bubbles'), cancelable: !!read('cancelable'), composed: !!read('composed') };
+      const record = cssEventInit(input, prefix, name + 'Init', names);
+      const event = construct(EventType, [text, eventInit], new.target);
+      record.kind = name;
+      cssEvents.set(event, record);
+      return event;
+    };
+    const constructor = make(delegate, name, 1, true, true, false);
+    finishInterface(constructor, delegate, name, EventType, EventType.prototype);
+    const own = value => { const record = objectLike(value) ? cssEvents.get(value) : undefined; if (!record || record.kind !== name) throw illegal(); return record; };
+    accessor(delegate.prototype, nameMember, function () { return own(this).name; });
+    accessor(delegate.prototype, 'elapsedTime', function () { return own(this).elapsed; });
+    accessor(delegate.prototype, 'pseudoElement', function () { return own(this).pseudo; });
+    accessor(delegate.prototype, 'animation', function () { return own(this).animation; });
+    accessor(delegate.prototype, 'pseudoTarget', function () { own(this); return null; });
+    reorder(delegate.prototype, [nameMember, 'elapsedTime', 'pseudoElement', 'animation']);
+    // Blink installs pseudoTarget after the constructor.
+    const target = getOwnDescriptor(delegate.prototype, 'pseudoTarget'), tag = getOwnDescriptor(delegate.prototype, Symbol.toStringTag);
+    delete delegate.prototype.pseudoTarget; delete delegate.prototype[Symbol.toStringTag];
+    define(delegate.prototype, 'pseudoTarget', target); define(delegate.prototype, Symbol.toStringTag, tag);
+    return constructor;
+  };
+  const AnimationEventType = cssEventInterface('AnimationEvent', 'animationName', ['animation', 'animationName', 'elapsedTime', 'pseudoElement']);
+  const TransitionEventType = cssEventInterface('TransitionEvent', 'propertyName', ['animation', 'elapsedTime', 'propertyName', 'pseudoElement']);
+  // A trusted CSS event as Chrome dispatches it: bubbling and cancelable, not composed;
+  // `elapsed` in milliseconds.
+  function cssEvent(type, record, elapsed) {
+    const css = record.css, animation = css.kind === CSS_ANIMATION;
+    const event = construct(EventType, [type, { __proto__: null, bubbles: true, cancelable: true }], animation ? AnimationEventType : TransitionEventType);
+    cssEvents.set(event, { kind: animation ? 'AnimationEvent' : 'TransitionEvent', name: animation ? css.name : css.property, elapsed: elapsed / 1000, pseudo: '', animation: css.animation });
+    return event;
+  }
 
   // Animation
   function newAnimation(object, effect, timeline) {
@@ -1576,6 +1649,10 @@
     const animation = construct(TargetType, [], constructor);
     const record = newAnimation(animation, effect, documentTimeline(apply(ownerGetter, element, []) || realmDocument));
     record.css = css;
+    css.animation = animation;
+    css.phase = 'idle';
+    css.iteration = null;
+    css.cancelTime = null;
     play(animation, record, true, '');
     track(animation);
     return animation;
@@ -1595,6 +1672,66 @@
     return out;
   }
   const cssCancel = animation => { const record = animations.get(animation); mutate(animation, record, () => cancel(animation, record)); };
+  // ---- CSS animation and transition events (turbo-dom#313) --------------------------------
+  // Blink's CSSAnimations event delegates: each CSS animation remembers the phase (and the
+  // iteration) it was last sampled in. A frame's update, and a cancel, compare them with the
+  // current ones and queue the events the change dispatches, to the owner element, in the
+  // frame's dispatch step (before its animation-frame callbacks). Elapsed times are in ms here.
+  // A switched-off kind samples without queueing.
+  const cssKindOn = kind => kind === CSS_ANIMATION ? cssAnimationsOn : cssTransitionsOn;
+  const earlyPhase = phase => phase === 'idle' || phase === 'before';
+  const cssNow = record => effectState(record) || { phase: 'idle', iteration: null };
+  function cssEventDue(record) {
+    const now = cssNow(record), css = record.css;
+    return now.phase !== css.phase || (now.phase === 'active' && now.iteration !== css.iteration);
+  }
+  function cssSample(record) {
+    const css = record.css, now = cssNow(record), out = [];
+    if (record.effect) (css.kind === CSS_ANIMATION ? animationEvents : transitionEvents)(effects.get(record.effect).timing, css, now, out);
+    css.phase = now.phase;
+    css.iteration = now.iteration;
+    if (!out.length || !cssKindOn(css.kind)) return;
+    const time = timelineTime(record.timeline);
+    for (let i = 0; i < out.length; i++) push(queue, { animation: css.owner, event: cssEvent(out[i][0], record, out[i][1]), time });
+    requestFrame();
+  }
+  // transitionrun leaving idle; transitionstart entering active / after from before (at the
+  // start delay's skipped part) or leaving after backwards (at the duration); transitionend
+  // entering after, or before backwards; transitioncancel entering idle from anything but
+  // after, at the active time it was cancelled at.
+  function transitionEvents(timing, css, now, out) {
+    const was = css.phase, phase = now.phase;
+    if (was === phase) return;
+    const startAt = max(-timing.delay, 0), duration = timing.duration;
+    if (was === 'idle') push(out, ['transitionrun', startAt]);
+    if (phase === 'idle') {
+      if (was !== 'after') push(out, ['transitioncancel', min(max(css.cancelTime - timing.delay, 0), duration)]);
+      return;
+    }
+    if (earlyPhase(was) && phase !== 'before') push(out, ['transitionstart', startAt]);
+    else if (was === 'after') push(out, ['transitionstart', duration]);
+    if (phase === 'after') push(out, ['transitionend', duration]);
+    else if (phase === 'before' && !earlyPhase(was)) push(out, ['transitionend', startAt]);
+  }
+  // animationstart entering active / after (or leaving after backwards), animationiteration on
+  // an iteration change inside active (one event, at the boundary crossed first),
+  // animationend entering after (or before backwards), animationcancel entering idle from
+  // anything but after, at the current time it was cancelled at.
+  function animationEvents(timing, css, now, out) {
+    const was = css.phase, phase = now.phase, span = timingAt(timing, null, false).active;
+    if (was === phase) {
+      if (phase === 'active' && css.iteration !== now.iteration) push(out, ['animationiteration', timing.duration * ((css.iteration > now.iteration ? now.iteration + 1 : now.iteration) - timing.iterationStart)]);
+      return;
+    }
+    if (phase === 'idle') {
+      if (was !== 'after') push(out, ['animationcancel', css.cancelTime || 0]);
+      return;
+    }
+    const intervalStart = max(min(-timing.delay, span), 0), intervalEnd = max(min(span + timing.endDelay, span), 0);
+    if (was !== 'active' && !(was === 'idle' && phase === 'before')) push(out, ['animationstart', was === 'after' ? intervalEnd : intervalStart]);
+    if (phase === 'after') push(out, ['animationend', intervalEnd]);
+    else if (!earlyPhase(was)) push(out, ['animationend', intervalStart]);
+  }
   // Keyframe offsets of a keyframe selector list (from / to / percentages).
   function keyframeOffsets(selector) {
     const out = [], parts = splitList(selector);
@@ -1804,8 +1941,7 @@
     // An element that is not rendered (itself or an ancestor display:none) runs no transitions
     // and has no before-change style: hiding cancels them, showing again starts none.
     if (hidden) {
-      for (const property in state.transitions) { const animation = state.transitions[property], status = playState(animations.get(animation)); if (status !== 'idle' && status !== 'finished') cssCancel(animation); }
-      state.transitions = create(null);
+      cssDropTransitions(state, null);
       state.values = create(null);
       return;
     }
@@ -1829,6 +1965,17 @@
       state.transitions[property] = cssCreate(CSSTransition, element, [from, to], timing, { kind: CSS_TRANSITION, owner: element, property, generation: cssGeneration = generation });
     }
     for (const property in state.values) if (!seen[property]) delete state.values[property];
+    cssDropTransitions(state, seen);
+  }
+  // A transition whose property is no longer transitioned (or, without `kept`, every one) is
+  // dropped; a running one is cancelled.
+  function cssDropTransitions(state, kept) {
+    for (const property in state.transitions) {
+      if (kept && kept[property]) continue;
+      const animation = state.transitions[property], status = playState(animations.get(animation));
+      if (status !== 'idle' && status !== 'finished') cssCancel(animation);
+      delete state.transitions[property];
+    }
   }
   // Everything one update reads: the animation-* / transition-* lists, display, each animation
   // name's @keyframes rule and each transitioned property's underlying value (inherited values
@@ -1838,7 +1985,7 @@
   // the update runs once per style change, not once per computed-style read (a running
   // animation recomputes the style on every read).
   const CSS_INPUTS = ['animation-name', 'animation-duration', 'animation-delay', 'animation-iteration-count', 'animation-direction', 'animation-fill-mode', 'animation-timing-function', 'animation-play-state', 'transition-property', 'transition-duration', 'transition-delay', 'transition-timing-function', 'display'];
-  const cssUpdates = store();
+  let cssUpdates = store();
   function cssInputs(read, underlying) {
     const out = [];
     for (let i = 0; i < CSS_INPUTS.length; i++) push(out, read(CSS_INPUTS[i]));
@@ -1854,7 +2001,7 @@
     return true;
   }
   function cssUpdate(element, read, inherited, snapshots, ownDisplay) {
-    if (jsdomMode || cssBusy.get(element)) return;
+    if (!cssAnyOn || cssBusy.get(element)) return;
     const declared = read('animation-name') || read('transition-property');
     if (!declared && !cssStates.has(element)) return;
     cssBusy.set(element, true);
@@ -1863,12 +2010,15 @@
       const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(read, underlying), last = cssUpdates.get(element);
       if (stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs)) return;
       if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
-      const hidden = read('display') === 'none' || !renderedFrom(element, snapshots, ownDisplay ? ownDisplay() : '');
-      cssAnimations(element, read, underlying, hidden);
-      cssTransitions(element, read, underlying, hidden);
+      cssRun(element, read, underlying, read('display') === 'none' || !renderedFrom(element, snapshots, ownDisplay ? ownDisplay() : ''));
       // Stamped after the update: the invalidation its own animations cause is not a new input.
       cssUpdates.set(element, { stamp: stamp && ns.computedStyleStamp(element), inputs });
     } finally { cssBusy.set(element, false); }
+  }
+  // The switched-on kinds' update (set_css_animations / set_css_transitions).
+  function cssRun(element, read, underlying, hidden) {
+    if (cssAnimationsOn) cssAnimations(element, read, underlying, hidden);
+    if (cssTransitionsOn) cssTransitions(element, read, underlying, hidden);
   }
   // getAnimations() flushes style: every element of the tree resolves its style once.
   function cssFlush(node) {
@@ -1974,21 +2124,27 @@
     return collect(effect => root(effect.target) === shadow);
   }, 0);
 
-  // set_css_transitions(false) (ns.setJsdomAnimations(true)): jsdom 27 has no Web
-  // Animations and runs no CSS transitions or @keyframes animations, so getComputedStyle
-  // reports the declared value at once, no transition / animation events fire, and the
-  // interfaces and members it lacks are hidden. Chrome restores them as they were.
-  let jsdomMode = false, jsdomHidden = null;
+  // set_css_transitions / set_css_animations (turbo-dom#313): each kind runs, and dispatches
+  // its events, only while its switch is on (both are, as in Chrome). Off is jsdom 27's: no
+  // CSS transition / @keyframes animation is created, so getComputedStyle reports the
+  // declared value at once and no event of that kind fires. With both off the Web Animations
+  // interfaces and members jsdom lacks are hidden too; either switch back on restores them as
+  // they were. A switch change re-runs every element's next CSS update.
+  let cssTransitionsOn = true, cssAnimationsOn = true, cssAnyOn = true, jsdomHidden = null;
   const jsdomSurface = [[g, 'Animation'], [g, 'AnimationEffect'], [g, 'AnimationTimeline'], [g, 'DocumentTimeline'], [g, 'KeyframeEffect'],
     [g, 'AnimationPlaybackEvent'], [g, 'CSSAnimation'], [g, 'CSSTransition'], [g, 'AnimationEvent'], [elementPrototype, 'animate'],
     [elementPrototype, 'getAnimations'], [g.Document.prototype, 'getAnimations'], [g.Document.prototype, 'timeline']];
   if (g.ShadowRoot) push(jsdomSurface, [g.ShadowRoot.prototype, 'getAnimations']);
-  ns.setJsdomAnimations = function (on) {
-    if (on === jsdomMode) return;
-    jsdomMode = on;
-    if (on) jsdomHidden = intrinsic.map(jsdomSurface, ([object, name]) => { const descriptor = getOwnDescriptor(object, name); delete object[name]; return descriptor; });
+  function cssSwitched() {
+    cssUpdates = store();
+    cssAnyOn = cssTransitionsOn || cssAnimationsOn;
+    const hide = !cssAnyOn;
+    if (hide === (jsdomHidden !== null)) return;
+    if (hide) jsdomHidden = intrinsic.map(jsdomSurface, ([object, name]) => { const descriptor = getOwnDescriptor(object, name); delete object[name]; return descriptor; });
     else { for (let i = 0; i < jsdomSurface.length; i++) if (jsdomHidden[i]) define(jsdomSurface[i][0], jsdomSurface[i][1], jsdomHidden[i]); jsdomHidden = null; }
-  };
+  }
+  ns.setCssTransitions = function (on) { cssTransitionsOn = !!on; cssSwitched(); };
+  ns.setCssAnimations = function (on) { cssAnimationsOn = !!on; cssSwitched(); };
 
   // The embedding's rendering-frame host. A runtime with its own frame scheduler installs it
   // once; otherwise a timer-driven default keeps document timelines advancing.

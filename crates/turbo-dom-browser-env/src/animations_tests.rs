@@ -425,12 +425,29 @@ fn css_transitions_on_match_chrome156_control() {
         "HeadlessChrome/156.0.8078.47",
     );
     assert_ne!(expected["events"], serde_json::json!([]));
-    assert_eq!(run_probe(TRANSITIONS_HTML, probe, false), expected);
+    let expected = by_target(expected);
+    assert_eq!(
+        by_target(run_probe(TRANSITIONS_HTML, probe, false)),
+        expected
+    );
     let on = Switches {
         transitions: Some(true),
         animations: Some(true),
     };
-    assert_eq!(run_probe_in(TRANSITIONS_HTML, probe, false, on), expected);
+    assert_eq!(
+        by_target(run_probe_in(TRANSITIONS_HTML, probe, false, on)),
+        expected
+    );
+}
+
+/// A probe result with its `events` rows stably sorted by target id: each target's own event
+/// order is kept, while the order across targets (which Chrome dispatches in its animation
+/// update order, Blink's allocation order of the animations, not observable through the DOM)
+/// is not compared. css_animation_events_chrome156.json records which frame dispatches each.
+fn by_target(mut result: serde_json::Value) -> serde_json::Value {
+    let rows = result["events"].as_array_mut().unwrap();
+    rows.sort_by(|a, b| a[1].as_str().cmp(&b[1].as_str()));
+    result
 }
 
 /// The Chrome 156 control's rows with only `transition*` events (`transitions`) or only
@@ -474,7 +491,10 @@ fn css_transitions_off_keeps_animations() {
         transitions: Some(false),
         animations: None,
     };
-    assert_eq!(run_probe_in(TRANSITIONS_HTML, probe, false, off), expected);
+    assert_eq!(
+        by_target(run_probe_in(TRANSITIONS_HTML, probe, false, off)),
+        by_target(expected)
+    );
 }
 
 // set_css_animations(false) alone (turbo-dom#313): no @keyframes animation runs and no
@@ -504,7 +524,10 @@ fn css_animations_off_keeps_transitions() {
         transitions: None,
         animations: Some(false),
     };
-    assert_eq!(run_probe_in(TRANSITIONS_HTML, probe, false, off), expected);
+    assert_eq!(
+        by_target(run_probe_in(TRANSITIONS_HTML, probe, false, off)),
+        by_target(expected)
+    );
 }
 
 // transition* / animation* events (turbo-dom#313) against Chrome 156 on the advancing virtual
