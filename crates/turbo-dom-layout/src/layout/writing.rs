@@ -221,7 +221,7 @@ impl Relabel {
     }
 
     /// `radii` (physical corners of the source space) in the target space.
-    fn radii(self, radii: BorderRadii) -> BorderRadii {
+    pub(crate) fn radii(self, radii: BorderRadii) -> BorderRadii {
         let corners = radii.corners();
         BorderRadii::from_corners(std::array::from_fn(|target| {
             let (edge, side) = CORNER_SIDES[target];
@@ -235,7 +235,7 @@ impl Relabel {
     }
 
     /// `border` (sides of the source space) in the target space.
-    fn border(self, border: BorderEdges) -> BorderEdges {
+    pub(crate) fn border(self, border: BorderEdges) -> BorderEdges {
         let source = [border.top, border.right, border.bottom, border.left];
         BorderEdges {
             top: source[self.sides[0]],

@@ -42,6 +42,9 @@ struct RowRef<'a> {
     /// so an empty spacer row (`<tr style="height:5px">`, common in table layouts
     /// like Hacker News) reserves its space instead of collapsing to zero.
     min_height: f32,
+    /// The row has a fixed (non-percentage) `height`: a rowspan cell's excess skips it
+    /// while an unconstrained row can take it (miaskiewicz/turbo-dom#327).
+    fixed_height: bool,
     repeat: Option<RepeatKind>,
     /// The row's `break-inside: avoid`, carried to its fragment's break hints
     /// (miaskiewicz/turbo-dom#158).
@@ -81,6 +84,7 @@ fn row_ref(row: &LayoutBox, repeat: Option<RepeatKind>) -> RowRef<'_> {
         position: position_of(&row.style),
         cells: cells_of(row),
         min_height: row_min_height(row),
+        fixed_height: has_fixed_height(row),
         repeat,
         avoid_break_inside: break_inside_avoid_of(&row.style),
         break_before: break_rule_of(&row.style, "break-before"),
@@ -96,6 +100,15 @@ fn row_min_height(row: &LayoutBox) -> f32 {
         .and_then(|v| parse_px(v, DEFAULT_FONT_SIZE))
         .unwrap_or(0.0_f32)
         .max(0.0)
+}
+
+/// The box's `height` is a fixed length (not `auto` or a percentage), as Chrome's
+/// table rows and cells read "constrained".
+fn has_fixed_height(lb: &LayoutBox) -> bool {
+    lb.style
+        .get("height")
+        .and_then(|v| parse_px(v, DEFAULT_FONT_SIZE))
+        .is_some()
 }
 
 /// A row group (`<tbody>` / `<thead>` / `<tfoot>`) and the run of collected rows it
@@ -972,22 +985,21 @@ fn layout_cells_collapsed<'a>(
 
 /// Content+padding height per row for a collapsed table: the tallest cell's own
 /// content+padding (its laid border box minus its vertical borders), floored by the
-/// row's explicit `height`. A `rowspan` cell that overflows its rows grows the last.
-fn collapse_row_heights(laid: &[LaidCell], rows: &[RowRef]) -> Vec<f32> {
+/// row's explicit `height`. A `rowspan` cell that overflows its rows (and the grid
+/// lines between them) spreads the excess over them ([`spread_rowspans`]), weighed by
+/// each row's extent between its grid-line centres (`horiz`), as Chrome sizes a row by
+/// its cells' border boxes with half of each collapsed border.
+fn collapse_row_heights(laid: &[LaidCell], rows: &[RowRef], horiz: &[f32]) -> Vec<f32> {
     let cp = |c: &LaidCell| (c.frag.height - cell_border(c.p.lb).vertical()).max(0.0);
+    let half = |a: usize, b: usize| (horiz[a] + horiz[b]) / 2.0;
     let mut h: Vec<f32> = rows.iter().map(|r| r.min_height).collect();
     for c in laid.iter().filter(|c| c.p.rowspan == 1) {
         h[c.p.row] = h[c.p.row].max(cp(c));
     }
-    for c in laid.iter().filter(|c| c.p.rowspan > 1) {
-        let (start, span) = (c.p.row, c.p.rowspan);
-        let have: f32 = h[start..start + span].iter().sum();
-        let need = cp(c);
-        if need > have {
-            h[start + span - 1] += need - have;
-        }
-    }
-    h
+    let mut ext: Vec<f32> = (0..h.len()).map(|r| h[r] + half(r, r + 1)).collect();
+    let need = |c: &LaidCell| cp(c) + half(c.p.row, c.p.row + c.p.rowspan);
+    spread_rowspans(&mut ext, laid, rows, need, 0.0);
+    (0..h.len()).map(|r| ext[r] - half(r, r + 1)).collect()
 }
 
 /// A placed table grid: the collected rows and their cells positioned on the
@@ -1047,7 +1059,7 @@ fn layout_table_collapsed(
     let line_x = line_centers(&col_cp, &vert);
     let laid = layout_cells_collapsed(placed, &line_x, &vert, fs, ctx);
     let horiz = hborders(placed, nrows, &table.style);
-    let mut row_cp = collapse_row_heights(&laid, rows);
+    let mut row_cp = collapse_row_heights(&laid, rows, &horiz);
     // Each row's extent between its grid-line centres weighs its share of the extra.
     let weights: Vec<f32> = (0..nrows)
         .map(|r| row_cp[r] + (horiz[r] + horiz[r + 1]) / 2.0)
@@ -1119,15 +1131,83 @@ fn layout_cells<'a>(
         .collect()
 }
 
-fn expand_rows(h: &mut [f32], c: &LaidCell) {
-    let (start, span) = (c.p.row, c.p.rowspan);
-    let have: f32 = h[start..start + span].iter().sum();
-    if c.content_h > have {
-        h[start + span - 1] += c.content_h - have;
+/// Grow the rows under every row-spanning cell until it fits them and the vertical
+/// border-spacing `vs` between them, like Chrome 156's (unstandardised) rowspan
+/// distribution (miaskiewicz/turbo-dom#327): the cells are taken by end row, then the
+/// later-starting (shorter) first; `need` is a cell's height to fit.
+fn spread_rowspans(
+    h: &mut [f32],
+    laid: &[LaidCell],
+    rows: &[RowRef],
+    need: impl Fn(&LaidCell) -> f32,
+    vs: f32,
+) {
+    let mut spans: Vec<&LaidCell> = laid.iter().filter(|c| c.p.rowspan > 1).collect();
+    spans.sort_by_key(|c| (c.p.row + c.p.rowspan, std::cmp::Reverse(c.p.row)));
+    let facts = SpanRows::of(laid, rows);
+    for c in spans {
+        let (start, span) = (c.p.row, c.p.rowspan);
+        let excess = need(c) - spanned(h, start, span) - vs * (span - 1) as f32;
+        if excess > 0.0 {
+            facts.grow(h, start..start + span, excess);
+        }
     }
 }
 
-fn row_heights(laid: &[LaidCell], rows: &[RowRef]) -> Vec<f32> {
+/// Which rows a rowspan cell's excess prefers: rows where a rowspan cell starts, and
+/// rows constrained by a fixed `height` (their own or a single-row cell's).
+struct SpanRows {
+    originating: Vec<bool>,
+    constrained: Vec<bool>,
+}
+
+impl SpanRows {
+    fn of(laid: &[LaidCell], rows: &[RowRef]) -> Self {
+        let mut originating = vec![false; rows.len()];
+        let mut constrained: Vec<bool> = rows.iter().map(|r| r.fixed_height).collect();
+        for c in laid {
+            if c.p.rowspan > 1 {
+                originating[c.p.row] = true;
+            } else if has_fixed_height(c.p.lb) {
+                constrained[c.p.row] = true;
+            }
+        }
+        Self {
+            originating,
+            constrained,
+        }
+    }
+
+    /// Give `excess` to the rows of `range`: equally to those (after the first) where
+    /// another rowspan cell starts, else by size to the unconstrained rows, else by
+    /// size to all of them, else to the last.
+    fn grow(&self, h: &mut [f32], range: std::ops::Range<usize>, excess: f32) {
+        let originating: Vec<usize> = (range.start + 1..range.end)
+            .filter(|&r| self.originating[r])
+            .collect();
+        let unconstrained: Vec<usize> = range.clone().filter(|&r| !self.constrained[r]).collect();
+        let all: Vec<usize> = range.collect();
+        let sized = |idx: &[usize]| idx.iter().map(|&r| h[r]).sum::<f32>() > 0.0;
+        let (idx, by_size) = if !originating.is_empty() {
+            (originating, false)
+        } else if sized(&unconstrained) {
+            (unconstrained, true)
+        } else if sized(&all) {
+            (all, true)
+        } else {
+            (vec![all[all.len() - 1]], false)
+        };
+        let weights: Vec<f32> = idx
+            .iter()
+            .map(|&r| if by_size { h[r] } else { 1.0 })
+            .collect();
+        for (&r, add) in idx.iter().zip(shares(excess, &weights)) {
+            h[r] += add;
+        }
+    }
+}
+
+fn row_heights(laid: &[LaidCell], rows: &[RowRef], vs: f32) -> Vec<f32> {
     // Seed each row at its explicit `height` floor (empty spacer rows), then grow
     // to fit content.
     let mut h: Vec<f32> = rows.iter().map(|r| r.min_height).collect();
@@ -1136,11 +1216,7 @@ fn row_heights(laid: &[LaidCell], rows: &[RowRef]) -> Vec<f32> {
             h[c.p.row] = h[c.p.row].max(c.content_h);
         }
     }
-    for c in laid {
-        if c.p.rowspan > 1 {
-            expand_rows(&mut h, c);
-        }
-    }
+    spread_rowspans(&mut h, laid, rows, |c| c.content_h, vs);
     h
 }
 
@@ -1170,7 +1246,10 @@ fn spanned(row_h: &[f32], start: usize, span: usize) -> f32 {
 }
 
 fn position_cell(c: LaidCell, geom: &Geom, cx: f32, cy: f32) -> Fragment {
-    let cell_h = spanned(&geom.row_h, c.p.row, c.p.rowspan);
+    // From its first row's top to its last row's bottom: a spanning cell also spans the
+    // border-spacing between its rows (miaskiewicz/turbo-dom#321).
+    let last = c.p.row + c.p.rowspan - 1;
+    let cell_h = geom.row_y[last] + geom.row_h[last] - geom.row_y[c.p.row];
     let dy = valign_offset(c.valign, cell_h, c.content_h);
     let mut frag = c.frag;
     frag.translate(cx + geom.col_x[c.p.col], cy + geom.row_y[c.p.row]);
@@ -1707,7 +1786,7 @@ pub(crate) fn layout_table(
     let inner = (cw - hs * (ncols as f32 + 1.0)).max(0.0);
     let cols = column_widths(&table.style, &placed, ncols, inner, ctx.fonts);
     let laid = layout_cells(&placed, &cols, hs, fs, ctx);
-    let mut row_h = row_heights(&laid, &rows);
+    let mut row_h = row_heights(&laid, &rows, vs);
     let nrows = row_h.len();
     let spacing = vs * (nrows as f32 + 1.0);
     let weights = row_h.clone();
