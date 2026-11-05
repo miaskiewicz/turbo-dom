@@ -254,67 +254,78 @@
   }
 
   // CSSNumericSumValue: terms of value × unit-exponent map (canonical units).
+  function sumValueUnit(record) {
+    const units = create(null);
+    if (record.unit !== 'number') units[canonicalIfPossible(record.unit)] = 1;
+    return [{ value: record.value * UNITS[record.unit].factor, units }];
+  }
+  function sumValueSum(record) {
+    const terms = [];
+    for (let index = 0; index < record.values.length; index++) {
+      const child = sumValue(record.values[index]);
+      if (!child) return null;
+      for (let at = 0; at < child.length; at++) {
+        const term = child[at]; let found = -1;
+        for (let existing = 0; existing < terms.length; existing++) if (sameUnits(terms[existing].units, term.units)) { found = existing; break; }
+        if (found < 0) push(terms, { value: term.value, units: term.units }); else terms[found].value += term.value;
+      }
+    }
+    const first = typeOfUnits(terms[0].units);
+    for (let index = 0; index < terms.length; index++) if (!addTypes(first, typeOfUnits(terms[index].units))) return null;
+    return terms;
+  }
+  function sumValueProduct(record) {
+    let terms = [{ value: 1, units: create(null) }];
+    for (let index = 0; index < record.values.length; index++) {
+      const child = sumValue(record.values[index]);
+      if (!child) return null;
+      const next = [];
+      for (let a = 0; a < terms.length; a++) for (let b = 0; b < child.length; b++) push(next, { value: terms[a].value * child[b].value, units: multiplyUnits(terms[a].units, child[b].units) });
+      terms = next;
+    }
+    return terms;
+  }
+  function sumValueNegate(record) {
+    const child = sumValue(record.value);
+    if (!child) return null;
+    for (let index = 0; index < child.length; index++) child[index].value *= -1;
+    return child;
+  }
+  function sumValueInvert(record) {
+    const child = sumValue(record.value);
+    if (!child || child.length !== 1) return null;
+    const units = create(null), keys = ownKeys(child[0].units);
+    for (let index = 0; index < keys.length; index++) units[keys[index]] = -child[0].units[keys[index]];
+    return [{ value: 1 / child[0].value, units }];
+  }
+  function sumValueMinMax(record) {
+    let current = sumValue(record.values[0]);
+    if (!current || current.length !== 1) return null;
+    for (let index = 0; index < record.values.length; index++) {
+      const child = sumValue(record.values[index]);
+      if (!child || child.length !== 1 || !sameUnits(child[0].units, current[0].units)) return null;
+      if (record.kind === 'min' ? child[0].value < current[0].value : child[0].value > current[0].value) current = child;
+    }
+    return current;
+  }
+  function sumValueClamp(record) {
+    const lower = sumValue(record.lower);
+    const parts = [record.lower, record.value, record.upper];
+    for (let index = 0; index < 3; index++) { const child = sumValue(parts[index]); if (!child || child.length !== 1 || !sameUnits(child[0].units, lower[0].units)) return null; }
+    const middle = sumValue(record.value), upper = sumValue(record.upper);
+    middle[0].value = mathMax(lower[0].value, mathMin(middle[0].value, upper[0].value));
+    return middle;
+  }
   function sumValue(value) {
     const record = numericRecord(value);
     switch (record.kind) {
-      case 'unit': {
-        const units = create(null);
-        if (record.unit !== 'number') units[canonicalIfPossible(record.unit)] = 1;
-        return [{ value: record.value * UNITS[record.unit].factor, units }];
-      }
-      case 'sum': {
-        const terms = [];
-        for (let index = 0; index < record.values.length; index++) {
-          const child = sumValue(record.values[index]);
-          if (!child) return null;
-          for (let at = 0; at < child.length; at++) {
-            const term = child[at]; let found = -1;
-            for (let existing = 0; existing < terms.length; existing++) if (sameUnits(terms[existing].units, term.units)) { found = existing; break; }
-            if (found < 0) push(terms, { value: term.value, units: term.units }); else terms[found].value += term.value;
-          }
-        }
-        // Every term's type must add to the first's.
-        const first = typeOfUnits(terms[0].units);
-        for (let index = 0; index < terms.length; index++) if (!addTypes(first, typeOfUnits(terms[index].units))) return null;
-        return terms;
-      }
-      case 'product': {
-        let terms = [{ value: 1, units: create(null) }];
-        for (let index = 0; index < record.values.length; index++) {
-          const child = sumValue(record.values[index]);
-          if (!child) return null;
-          const next = [];
-          for (let a = 0; a < terms.length; a++) for (let b = 0; b < child.length; b++) push(next, { value: terms[a].value * child[b].value, units: multiplyUnits(terms[a].units, child[b].units) });
-          terms = next;
-        }
-        return terms;
-      }
-      case 'negate': { const child = sumValue(record.value); if (!child) return null; for (let index = 0; index < child.length; index++) child[index].value *= -1; return child; }
-      case 'invert': {
-        const child = sumValue(record.value);
-        if (!child || child.length !== 1) return null;
-        const units = create(null), keys = ownKeys(child[0].units);
-        for (let index = 0; index < keys.length; index++) units[keys[index]] = -child[0].units[keys[index]];
-        return [{ value: 1 / child[0].value, units }];
-      }
-      case 'min': case 'max': {
-        let current = sumValue(record.values[0]);
-        if (!current || current.length !== 1) return null;
-        for (let index = 0; index < record.values.length; index++) {
-          const child = sumValue(record.values[index]);
-          if (!child || child.length !== 1 || !sameUnits(child[0].units, current[0].units)) return null;
-          if (record.kind === 'min' ? child[0].value < current[0].value : child[0].value > current[0].value) current = child;
-        }
-        return current;
-      }
-      case 'clamp': {
-        const lower = sumValue(record.lower);
-        const parts = [record.lower, record.value, record.upper];
-        for (let index = 0; index < 3; index++) { const child = sumValue(parts[index]); if (!child || child.length !== 1 || !sameUnits(child[0].units, lower[0].units)) return null; }
-        const middle = sumValue(record.value), upper = sumValue(record.upper);
-        middle[0].value = mathMax(lower[0].value, mathMin(middle[0].value, upper[0].value));
-        return middle;
-      }
+      case 'unit': return sumValueUnit(record);
+      case 'sum': return sumValueSum(record);
+      case 'product': return sumValueProduct(record);
+      case 'negate': return sumValueNegate(record);
+      case 'invert': return sumValueInvert(record);
+      case 'min': case 'max': return sumValueMinMax(record);
+      case 'clamp': return sumValueClamp(record);
     }
     return null;
   }
@@ -350,28 +361,32 @@
     }
   }
   // Typed OM's own serialization (CSSNumericValue::BuildCSSText).
+  const numericOpen = (nested, parenLess) => parenLess ? '' : nested ? '(' : 'calc(';
+  const numericClose = (parenLess) => parenLess ? '' : ')';
+  function numericTextSumOrProduct(record, nested, parenLess) {
+    let text = numericOpen(nested, parenLess);
+    text += numericText(record.values[0], true, false);
+    for (let index = 1; index < record.values.length; index++) {
+      const argument = numericRecord(record.values[index]);
+      if (record.kind === 'sum' && argument.kind === 'negate') text += ' - ' + numericText(argument.value, true, false);
+      else if (record.kind === 'product' && argument.kind === 'invert') text += ' / ' + numericText(argument.value, true, false);
+      else text += (record.kind === 'sum' ? ' + ' : ' * ') + numericText(record.values[index], true, false);
+    }
+    return text + numericClose(parenLess);
+  }
+  function numericTextMinMax(record) {
+    let text = record.kind + '(';
+    for (let index = 0; index < record.values.length; index++) text += (index ? ', ' : '') + numericText(record.values[index], true, true);
+    return text + ')';
+  }
   function numericText(value, nested, parenLess) {
     const record = numericRecord(value);
     switch (record.kind) {
       case 'unit': return formatNumber(record.value, record.unit);
-      case 'sum': case 'product': {
-        let text = parenLess ? '' : nested ? '(' : 'calc(';
-        text += numericText(record.values[0], true, false);
-        for (let index = 1; index < record.values.length; index++) {
-          const argument = numericRecord(record.values[index]);
-          if (record.kind === 'sum' && argument.kind === 'negate') text += ' - ' + numericText(argument.value, true, false);
-          else if (record.kind === 'product' && argument.kind === 'invert') text += ' / ' + numericText(argument.value, true, false);
-          else text += (record.kind === 'sum' ? ' + ' : ' * ') + numericText(record.values[index], true, false);
-        }
-        return parenLess ? text : text + ')';
-      }
-      case 'negate': return (parenLess ? '' : nested ? '(' : 'calc(') + '-' + numericText(record.value, true, false) + (parenLess ? '' : ')');
-      case 'invert': return (parenLess ? '' : nested ? '(' : 'calc(') + '1 / ' + numericText(record.value, true, false) + (parenLess ? '' : ')');
-      case 'min': case 'max': {
-        let text = record.kind + '(';
-        for (let index = 0; index < record.values.length; index++) text += (index ? ', ' : '') + numericText(record.values[index], true, true);
-        return text + ')';
-      }
+      case 'sum': case 'product': return numericTextSumOrProduct(record, nested, parenLess);
+      case 'negate': return numericOpen(nested, parenLess) + '-' + numericText(record.value, true, false) + numericClose(parenLess);
+      case 'invert': return numericOpen(nested, parenLess) + '1 / ' + numericText(record.value, true, false) + numericClose(parenLess);
+      case 'min': case 'max': return numericTextMinMax(record);
       case 'clamp': return 'clamp(' + numericText(record.lower, true, true) + ', ' + numericText(record.value, true, true) + ', ' + numericText(record.upper, true, true) + ')';
     }
     return '';
@@ -668,15 +683,24 @@
     if (operand.t === 'op' && operand.op === 'invert') return unnest(operand.operands[0]);
     return { __proto__: null, t: 'op', op: 'invert', operands: [operand], type: negateType(nodeType(operand)), nested: false };
   }
+  function evaluateReduce(values, seed, pick, signBit) {
+    let result = seed;
+    for (let index = 0; index < values.length; index++) {
+      const operand = values[index];
+      if (result === 0 && operand === 0 && signBit(1 / operand)) result = operand;
+      else result = isNaNValue(operand) || isNaNValue(result) ? NaN : pick(result, operand);
+    }
+    return result;
+  }
   function evaluate(values, op) {
     switch (op) {
       case ADD: return values[0] + values[1];
       case SUB: return values[0] - values[1];
       case MUL: return values[0] * values[1];
       case DIV: return values[0] / values[1];
-      case 'min': { let minimum = values[0]; for (let index = 0; index < values.length; index++) { const operand = values[index]; if (minimum === 0 && operand === 0 && (1 / operand < 0)) minimum = operand; else minimum = isNaNValue(operand) || isNaNValue(minimum) ? NaN : mathMin(minimum, operand); } return minimum; }
-      case 'max': { let maximum = values[0]; for (let index = 0; index < values.length; index++) { const operand = values[index]; if (maximum === 0 && operand === 0 && (1 / operand > 0)) maximum = operand; else maximum = isNaNValue(operand) || isNaNValue(maximum) ? NaN : mathMax(maximum, operand); } return maximum; }
-      case 'clamp': { const minimum = evaluate([values[1], values[2]], 'min'); return evaluate([values[0], minimum], 'max'); }
+      case 'min': return evaluateReduce(values, values[0], mathMin, (s) => s < 0);
+      case 'max': return evaluateReduce(values, values[0], mathMax, (s) => s > 0);
+      case 'clamp': return evaluate([values[0], evaluate([values[1], values[2]], 'min')], 'max');
     }
     return NaN;
   }
@@ -686,23 +710,38 @@
     const type = op === ADD || op === SUB ? addTypes(nodeType(left), nodeType(right)) : op === MUL ? multiplyTypes(nodeType(left), nodeType(right)) : multiplyTypes(nodeType(left), negateType(nodeType(right)));
     return !(type && category({ t: 'op', type }) === 'intermediate');
   }
+  function distributeOver(outer, scalar, side, op) {
+    const left = side === 'left' ? outer.operands[0] : scalar, rightA = side === 'left' ? scalar : outer.operands[0];
+    const leftB = side === 'left' ? outer.operands[1] : scalar, rightB = side === 'left' ? scalar : outer.operands[1];
+    const a = simplified(left, rightA, op), b = simplified(leftB, rightB, op);
+    if (!a || !b) return null;
+    const result = simplified(a, b, outer.op);
+    return result ? nest(result) : null;
+  }
+  const bothLiteralOperands = (node) => node.operands[0].t === 'lit' && node.operands[1].t === 'lit';
   function distribute(left, right, op) {
     if (op !== MUL && op !== DIV) return null;
     if (category(left) === 'intermediate' || category(right) === 'intermediate') return null;
-    const allLiterals = (node) => node.operands[0].t === 'lit' && node.operands[1].t === 'lit';
-    if (isAddOrSub(left) && allLiterals(left) && right.t === 'lit' && category(right) === 'number') {
-      const a = simplified(left.operands[0], right, op), b = simplified(left.operands[1], right, op);
-      if (!a || !b) return null;
-      const result = simplified(a, b, left.op);
-      return result ? nest(result) : null;
-    }
-    if (isAddOrSub(right) && allLiterals(right) && left.t === 'lit' && category(left) === 'number' && op !== DIV) {
-      const a = simplified(left, right.operands[0], op), b = simplified(left, right.operands[1], op);
-      if (!a || !b) return null;
-      const result = simplified(a, b, right.op);
-      return result ? nest(result) : null;
-    }
+    if (isAddOrSub(left) && bothLiteralOperands(left) && right.t === 'lit' && category(right) === 'number') return distributeOver(left, right, 'left', op);
+    if (isAddOrSub(right) && bothLiteralOperands(right) && left.t === 'lit' && category(left) === 'number' && op !== DIV) return distributeOver(right, left, 'right', op);
     return null;
+  }
+  function simplifiedAddSub(left, right, op, leftCategory, rightCategory) {
+    if (leftCategory !== rightCategory) return createOperation(left, right, op);
+    if (left.unit === right.unit) return lit(evaluate([left.value, right.value], op), left.unit);
+    const leftUnit = UNITS[left.unit], rightUnit = UNITS[right.unit];
+    if (leftUnit.category !== 'other' && leftUnit.category !== 'percent' && leftUnit.category === rightUnit.category) {
+      const canonical = CANONICAL[leftUnit.category];
+      if (canonical) return lit(evaluate([left.value * leftUnit.factor, right.value * rightUnit.factor], op), canonical);
+    }
+    return createOperation(left, right, op);
+  }
+  function simplifiedMulDiv(left, right, op, rightCategory) {
+    if (rightCategory !== 'number' && op === DIV) return null;
+    const numberSide = literalNumber(left) ? left : literalNumber(right) ? right : null;
+    if (!numberSide) return createOperation(left, right, op);
+    const other = numberSide === left ? right : left;
+    return lit(evaluate([other.value, numberSide.value], op), other.unit);
   }
   // CreateArithmeticOperationSimplified.
   function simplified(left, right, op) {
@@ -712,23 +751,8 @@
     if (!canSimplifyArithmetic(left, right, op)) return createOperation(left, right, op);
     const leftCategory = category(left), rightCategory = category(right);
     if (leftCategory === 'number' && rightCategory === 'number') return lit(evaluate([left.value, right.value], op), 'number');
-    if (op === ADD || op === SUB) {
-      if (leftCategory === rightCategory) {
-        if (left.unit === right.unit) return lit(evaluate([left.value, right.value], op), left.unit);
-        const leftUnit = UNITS[left.unit], rightUnit = UNITS[right.unit];
-        if (leftUnit.category !== 'other' && leftUnit.category !== 'percent' && leftUnit.category === rightUnit.category) {
-          const canonical = CANONICAL[leftUnit.category];
-          if (canonical) return lit(evaluate([left.value * leftUnit.factor, right.value * rightUnit.factor], op), canonical);
-        }
-      }
-    } else {
-      if (rightCategory !== 'number' && op === DIV) return null;
-      const numberSide = literalNumber(left) ? left : literalNumber(right) ? right : null;
-      if (!numberSide) return createOperation(left, right, op);
-      const other = numberSide === left ? right : left;
-      return lit(evaluate([other.value, numberSide.value], op), other.unit);
-    }
-    return createOperation(left, right, op);
+    if (op === ADD || op === SUB) return simplifiedAddSub(left, right, op, leftCategory, rightCategory);
+    return simplifiedMulDiv(left, right, op, rightCategory);
   }
   // Collect the terms of an add/sub (or mul) tree, flipping signs inside nested subtractions.
   function traverse(root, op, visit) {
@@ -750,8 +774,8 @@
     }
   }
   // MaybeSimplifySumOrProductNode.
-  function simplifySumOrProduct(root) {
-    const multiply = isMulOrDiv(root), combined = create(null), children = list();
+  function simplifySumOrProductCombine(root, multiply) {
+    const combined = create(null), children = list();
     traverse(root, multiply ? MUL : ADD, (node, op) => {
       if (node.t === 'lit') {
         const value = op === SUB ? -node.value : node.value;
@@ -759,25 +783,34 @@
       }
       push(children, { node, op });
     });
-    let factor = 1;
-    if (multiply && 'number' in combined) factor = combined.number;
+    return { combined, children };
+  }
+  function simplifySumOrProductStep(item, multiply, combined, factorRef, used) {
+    let { node, op } = item;
+    if (multiply && node.t === 'lit' && node.unit === 'number') return { skip: true };
+    if (node.t === 'lit' && node.unit in combined) {
+      let value = combined[node.unit];
+      if (multiply) { value *= factorRef.factor; factorRef.factor = 1; } else { op = (value < 0 || (value === 0 && 1 / value < 0)) ? SUB : ADD; value = mathAbs(value); }
+      node = lit(value, node.unit);
+    }
+    if (node.t === 'lit') { if (used[node.unit]) return { skip: true }; used[node.unit] = true; }
+    return { node, op };
+  }
+  function simplifySumOrProduct(root) {
+    const multiply = isMulOrDiv(root);
+    const { combined, children } = simplifySumOrProductCombine(root, multiply);
+    const factorRef = { factor: multiply && 'number' in combined ? combined.number : 1 };
     const used = create(null); let result = null;
     for (let index = 0; index < children.length; index++) {
-      let { node, op } = children[index];
-      if (multiply && node.t === 'lit' && node.unit === 'number') continue;
-      if (node.t === 'lit' && node.unit in combined) {
-        let value = combined[node.unit];
-        if (multiply) { value *= factor; factor = 1; } else { op = (value < 0 || (value === 0 && 1 / value < 0)) ? SUB : ADD; value = mathAbs(value); }
-        node = lit(value, node.unit);
-      }
-      if (node.t === 'lit') { if (used[node.unit]) continue; used[node.unit] = true; }
-      if (!result) { result = op === SUB && node.t === 'lit' ? lit(-node.value, node.unit) : unnest(node); continue; }
-      result = simplified(result, node, op);
+      const step = simplifySumOrProductStep(children[index], multiply, combined, factorRef, used);
+      if (step.skip) continue;
+      if (!result) { result = step.op === SUB && step.node.t === 'lit' ? lit(-step.node.value, step.node.unit) : unnest(step.node); continue; }
+      result = simplified(result, step.node, step.op);
       if (!result) return null;
     }
     if (multiply) {
-      if (!result) result = lit(factor, 'number');
-      else if (factor !== 1) { result = simplified(result, lit(factor, 'number'), MUL); if (!result) return null; }
+      if (!result) result = lit(factorRef.factor, 'number');
+      else if (factorRef.factor !== 1) { result = simplified(result, lit(factorRef.factor, 'number'), MUL); if (!result) return null; }
     }
     return nest(result);
   }
