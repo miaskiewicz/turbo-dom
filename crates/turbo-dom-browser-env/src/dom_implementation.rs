@@ -114,104 +114,25 @@ fn invoke<'s>(
 ) -> Option<v8::Local<'s, v8::Value>> {
     let operation = args.get(0).to_rust_string_lossy(scope);
     let receiver = v8::Local::<v8::Object>::try_from(args.get(1)).ok()?;
-    if operation == "implementation" {
-        let _dom = DomScope::for_object(scope, receiver);
-        let handle = handle_of(scope, receiver)?;
-        if with_tree(|tree| tree.node_type_id(handle)) != Some(9) {
-            return None;
-        }
-        let state = record(scope, receiver).or_else(|| null_record(scope))?;
-        if let Some(implementation) = field(scope, state, "nativeImplementation") {
-            return Some(implementation);
-        }
-        let prototype = args.get(2).to_object(scope)?;
-        let template = v8::ObjectTemplate::new(scope);
-        template.set_internal_field_count(1);
-        let object = template.new_instance(scope)?;
-        if object.set_prototype(scope, prototype.into()) != Some(true) {
-            return None;
-        }
-        let implementation_record = null_record(scope)?;
-        let kind = key(scope, "DOMImplementation")?;
-        put(scope, implementation_record, "kind", kind.into())?;
-        put(scope, implementation_record, "document", receiver.into())?;
-        if !collection_records::set(scope, object, implementation_record.into()) {
-            return None;
-        }
-        put(scope, state, "nativeImplementation", object.into())?;
-        if !collection_records::set(scope, receiver, state.into()) {
-            return None;
-        }
-        return Some(object.into());
-    }
-    if operation == "baseURI" {
-        let _owner = DomScope::for_object(scope, receiver);
-        handle_of(scope, receiver)?;
-        return key(scope, "about:blank").map(Into::into);
-    }
-    if matches!(
-        operation.as_str(),
-        "contentType" | "view" | "url" | "encoding"
-    ) {
-        let _dom = DomScope::for_object(scope, receiver);
-        let handle = handle_of(scope, receiver)?;
-        if with_tree(|tree| tree.node_type_id(handle)) != Some(9) {
-            return None;
-        }
-        if operation == "contentType" {
-            let value = record(scope, receiver)
-                .and_then(|record| field(scope, record, "nativeContentType"));
-            return value.or_else(|| key(scope, "text/html").map(Into::into));
-        }
-        if operation == "encoding" {
-            return key(scope, "UTF-8").map(Into::into);
-        }
-        if operation == "url" {
+    match operation.as_str() {
+        "implementation" => return invoke_implementation(scope, args, receiver),
+        "baseURI" => {
+            let _owner = DomScope::for_object(scope, receiver);
+            handle_of(scope, receiver)?;
             return key(scope, "about:blank").map(Into::into);
         }
-        let active = DOM.with(|state| {
-            state
-                .borrow()
-                .as_ref()
-                .is_some_and(|state| state.browsing_context)
-        });
-        if !active {
-            return Some(v8::null(scope).into());
+        "contentType" | "view" | "url" | "encoding" => {
+            return invoke_document_prop(scope, receiver, &operation);
         }
-        let context = receiver.get_creation_context(scope)?;
-        return Some(context.global(scope).into());
-    }
-    if operation == "qualifiedName" {
-        let _dom = DomScope::for_object(scope, receiver);
-        let handle = handle_of(scope, receiver)?;
-        if with_tree(|tree| tree.node_type_id(handle)) != Some(1) {
-            return Some(v8::undefined(scope).into());
-        }
-        let root = with_tree(Tree::root)?;
-        let doc = wrap(scope, root);
-        let Some(state) = record(scope, doc) else {
-            return Some(v8::undefined(scope).into());
-        };
-        let Some(content) = field(scope, state, "nativeContentType") else {
-            return Some(v8::undefined(scope).into());
-        };
-        if content.to_rust_string_lossy(scope) == "text/html" {
-            return Some(v8::undefined(scope).into());
-        }
-        let name = with_tree(|tree| tree.qualified_name_utf16(handle)).flatten()?;
-        return Some(unit_string(scope, &name).into());
+        "qualifiedName" => return invoke_qualified_name(scope, receiver),
+        _ => {}
     }
     let owner = document(scope, receiver)?;
     if operation == "check" {
         return Some(v8::undefined(scope).into());
     }
     if operation == "doctype" {
-        let name = dom_units(scope, args.get(2))?;
-        let public = dom_units(scope, args.get(3))?;
-        let system = dom_units(scope, args.get(4))?;
-        let _dom = DomScope::for_object(scope, owner);
-        let node = with_tree_mut(|tree| tree.create_document_type_units(&name, &public, &system))?;
-        return Some(wrap(scope, node).into());
+        return invoke_doctype(scope, args, owner);
     }
     let doc = parse_html_document(
         scope,
@@ -219,25 +140,164 @@ fn invoke<'s>(
         false,
     );
     if operation == "html" {
-        if args.get(2).boolean_value(scope) {
-            let title = dom_units(scope, args.get(3))?;
-            let _dom = DomScope::for_object(scope, doc);
-            with_tree_mut(|tree| {
-                let head = tree.query_selector("head")?;
-                let element = tree.create_element("title");
-                let text = tree.create_text_node_utf16(&title);
-                tree.append_child(element, text);
-                tree.append_child(head, element);
-                Some(())
-            })
-            .flatten()?;
-        }
-        initialize(scope, doc, "text/html")?;
-        return Some(doc.into());
+        return invoke_html(scope, args, doc);
     }
     if operation != "xml" {
         return None;
     }
+    invoke_xml(scope, args, doc)
+}
+
+fn invoke_implementation<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: &v8::FunctionCallbackArguments<'s>,
+    receiver: v8::Local<'s, v8::Object>,
+) -> Option<v8::Local<'s, v8::Value>> {
+    let _dom = DomScope::for_object(scope, receiver);
+    let handle = handle_of(scope, receiver)?;
+    if with_tree(|tree| tree.node_type_id(handle)) != Some(9) {
+        return None;
+    }
+    let state = record(scope, receiver).or_else(|| null_record(scope))?;
+    if let Some(implementation) = field(scope, state, "nativeImplementation") {
+        return Some(implementation);
+    }
+    let prototype = args.get(2).to_object(scope)?;
+    let template = v8::ObjectTemplate::new(scope);
+    template.set_internal_field_count(1);
+    let object = template.new_instance(scope)?;
+    if object.set_prototype(scope, prototype.into()) != Some(true) {
+        return None;
+    }
+    let implementation_record = null_record(scope)?;
+    let kind = key(scope, "DOMImplementation")?;
+    put(scope, implementation_record, "kind", kind.into())?;
+    put(scope, implementation_record, "document", receiver.into())?;
+    if !collection_records::set(scope, object, implementation_record.into()) {
+        return None;
+    }
+    put(scope, state, "nativeImplementation", object.into())?;
+    if !collection_records::set(scope, receiver, state.into()) {
+        return None;
+    }
+    Some(object.into())
+}
+
+fn invoke_document_prop<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    receiver: v8::Local<'s, v8::Object>,
+    operation: &str,
+) -> Option<v8::Local<'s, v8::Value>> {
+    let _dom = DomScope::for_object(scope, receiver);
+    let handle = handle_of(scope, receiver)?;
+    if with_tree(|tree| tree.node_type_id(handle)) != Some(9) {
+        return None;
+    }
+    match operation {
+        "contentType" => record(scope, receiver)
+            .and_then(|record| field(scope, record, "nativeContentType"))
+            .or_else(|| key(scope, "text/html").map(Into::into)),
+        "encoding" => key(scope, "UTF-8").map(Into::into),
+        "url" => key(scope, "about:blank").map(Into::into),
+        _ => {
+            let active = DOM.with(|state| {
+                state
+                    .borrow()
+                    .as_ref()
+                    .is_some_and(|state| state.browsing_context)
+            });
+            if !active {
+                return Some(v8::null(scope).into());
+            }
+            let context = receiver.get_creation_context(scope)?;
+            Some(context.global(scope).into())
+        }
+    }
+}
+
+fn invoke_qualified_name<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    receiver: v8::Local<'s, v8::Object>,
+) -> Option<v8::Local<'s, v8::Value>> {
+    let _dom = DomScope::for_object(scope, receiver);
+    let handle = handle_of(scope, receiver)?;
+    if with_tree(|tree| tree.node_type_id(handle)) != Some(1) {
+        return Some(v8::undefined(scope).into());
+    }
+    let root = with_tree(Tree::root)?;
+    let doc = wrap(scope, root);
+    let Some(state) = record(scope, doc) else {
+        return Some(v8::undefined(scope).into());
+    };
+    let Some(content) = field(scope, state, "nativeContentType") else {
+        return Some(v8::undefined(scope).into());
+    };
+    if content.to_rust_string_lossy(scope) == "text/html" {
+        return Some(v8::undefined(scope).into());
+    }
+    let name = with_tree(|tree| tree.qualified_name_utf16(handle)).flatten()?;
+    Some(unit_string(scope, &name).into())
+}
+
+fn invoke_doctype<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: &v8::FunctionCallbackArguments<'s>,
+    owner: v8::Local<'s, v8::Object>,
+) -> Option<v8::Local<'s, v8::Value>> {
+    let name = dom_units(scope, args.get(2))?;
+    let public = dom_units(scope, args.get(3))?;
+    let system = dom_units(scope, args.get(4))?;
+    let _dom = DomScope::for_object(scope, owner);
+    let node = with_tree_mut(|tree| tree.create_document_type_units(&name, &public, &system))?;
+    Some(wrap(scope, node).into())
+}
+
+fn invoke_html<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: &v8::FunctionCallbackArguments<'s>,
+    doc: v8::Local<'s, v8::Object>,
+) -> Option<v8::Local<'s, v8::Value>> {
+    if args.get(2).boolean_value(scope) {
+        let title = dom_units(scope, args.get(3))?;
+        let _dom = DomScope::for_object(scope, doc);
+        with_tree_mut(|tree| {
+            let head = tree.query_selector("head")?;
+            let element = tree.create_element("title");
+            let text = tree.create_text_node_utf16(&title);
+            tree.append_child(element, text);
+            tree.append_child(head, element);
+            Some(())
+        })
+        .flatten()?;
+    }
+    initialize(scope, doc, "text/html")?;
+    Some(doc.into())
+}
+
+fn attach_xml_doctype<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: &v8::FunctionCallbackArguments<'s>,
+    doc: v8::Local<'s, v8::Object>,
+) -> Option<()> {
+    let doctype = args.get(4).to_object(scope)?;
+    {
+        let _dom = DomScope::for_object(scope, doctype);
+        let handle = handle_of(scope, doctype)?;
+        if with_tree(|tree| tree.node_type_id(handle)) != Some(10) {
+            return None;
+        }
+    }
+    let node = document_basics::adopt(scope, doc, doctype).ok()?;
+    let _dom = DomScope::for_object(scope, doc);
+    let handle = handle_of(scope, node)?;
+    with_tree_mut(|tree| tree.append_child(tree.root(), handle))
+}
+
+fn invoke_xml<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: &v8::FunctionCallbackArguments<'s>,
+    doc: v8::Local<'s, v8::Object>,
+) -> Option<v8::Local<'s, v8::Value>> {
     let namespace = if args.get(2).is_null() {
         None
     } else {
@@ -254,18 +314,7 @@ fn invoke<'s>(
         })?;
     }
     if !args.get(4).is_null_or_undefined() {
-        let doctype = args.get(4).to_object(scope)?;
-        {
-            let _dom = DomScope::for_object(scope, doctype);
-            let handle = handle_of(scope, doctype)?;
-            if with_tree(|tree| tree.node_type_id(handle)) != Some(10) {
-                return None;
-            }
-        }
-        let node = document_basics::adopt(scope, doc, doctype).ok()?;
-        let _dom = DomScope::for_object(scope, doc);
-        let handle = handle_of(scope, node)?;
-        with_tree_mut(|tree| tree.append_child(tree.root(), handle))?;
+        attach_xml_doctype(scope, args, doc)?;
     }
     if !qualified.is_empty() {
         let _dom = DomScope::for_object(scope, doc);

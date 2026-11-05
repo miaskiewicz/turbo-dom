@@ -559,50 +559,8 @@ impl<'i> DeclarationParser<'i> for CssParser {
             let important = important(input)?;
             return Ok(format!("{property}: {value}{important};"));
         }
-        let valid = input.parse_until_before(Delimiter::Bang, |input| {
-            if let Some(valid) = engine_grammar(&name, input) {
-                return Ok(valid);
-            }
-            if let Some(valid) = keyword_property(&name, input) {
-                return valid;
-            }
-            // Lightning CSS does not model interest-invoker delays: `normal | <time>`, and the
-            // shorthand takes one or two of those.
-            if let Some(count) = interest_delay_arity(&name) {
-                let mut values = 0;
-                while !input.is_exhausted() {
-                    let valid = input
-                        .try_parse(|input| input.expect_ident_matching("normal"))
-                        .is_ok()
-                        || input.try_parse(time).is_ok();
-                    if !valid {
-                        return Ok(false);
-                    }
-                    values += 1;
-                }
-                return Ok(values >= 1 && values <= count);
-            }
-            // Lightning CSS reads a shadow's `none` as an unparsed value; Chrome keeps it.
-            if matches!(
-                name.to_ascii_lowercase().as_str(),
-                "box-shadow" | "-webkit-box-shadow" | "text-shadow"
-            ) && input
-                .try_parse(|input| {
-                    input.expect_ident_matching("none")?;
-                    input.expect_exhausted()
-                })
-                .is_ok()
-            {
-                return Ok(true);
-            }
-            let property=Property::parse(
-                PropertyId::from(lightningcss::values::string::CowArcStr::from(name.to_string())),
-                input,
-                &ParserOptions::default(),
-            )
-            .map_err(|_| input.new_custom_error(()))?;
-            Ok(!matches!(&property, Property::Unparsed(property) if !deferred_value(&property.value)))
-        })?;
+        let valid =
+            input.parse_until_before(Delimiter::Bang, |input| parse_value_body(&name, input))?;
         if !valid {
             return Err(input.new_custom_error(()));
         }
@@ -620,6 +578,56 @@ impl<'i> DeclarationParser<'i> for CssParser {
         };
         Ok(format!("{name}: {value}{important};"))
     }
+}
+
+fn parse_value_body<'i>(
+    name: &CowRcStr<'i>,
+    input: &mut Parser<'i, '_>,
+) -> Result<bool, ParseError<'i, ()>> {
+    if let Some(valid) = engine_grammar(name, input) {
+        return Ok(valid);
+    }
+    if let Some(valid) = keyword_property(name, input) {
+        return valid;
+    }
+    // Lightning CSS does not model interest-invoker delays: `normal | <time>`, and the
+    // shorthand takes one or two of those.
+    if let Some(count) = interest_delay_arity(name) {
+        let mut values = 0;
+        while !input.is_exhausted() {
+            let valid = input
+                .try_parse(|input| input.expect_ident_matching("normal"))
+                .is_ok()
+                || input.try_parse(time).is_ok();
+            if !valid {
+                return Ok(false);
+            }
+            values += 1;
+        }
+        return Ok(values >= 1 && values <= count);
+    }
+    // Lightning CSS reads a shadow's `none` as an unparsed value; Chrome keeps it.
+    if matches!(
+        name.to_ascii_lowercase().as_str(),
+        "box-shadow" | "-webkit-box-shadow" | "text-shadow"
+    ) && input
+        .try_parse(|input| {
+            input.expect_ident_matching("none")?;
+            input.expect_exhausted()
+        })
+        .is_ok()
+    {
+        return Ok(true);
+    }
+    let property = Property::parse(
+        PropertyId::from(lightningcss::values::string::CowArcStr::from(
+            name.to_string(),
+        )),
+        input,
+        &ParserOptions::default(),
+    )
+    .map_err(|_| input.new_custom_error(()))?;
+    Ok(!matches!(&property, Property::Unparsed(property) if !deferred_value(&property.value)))
 }
 
 /// The keyword properties Lightning CSS does not model: the CSS2 `font-variant` shorthand (its

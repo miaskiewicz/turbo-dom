@@ -434,6 +434,59 @@ pub(super) fn convert_variadic<'s>(
     Some(nodes)
 }
 
+fn collect_incoming_input<'s>(
+    tree: &Tree,
+    owner: u64,
+    parent: Handle,
+    input: &Prepared<'s>,
+    result: &mut Vec<Prepared<'s>>,
+    consumed: &mut std::collections::HashSet<NodeIdentity>,
+    fragments: &mut std::collections::HashSet<NodeIdentity>,
+) -> Result<(), &'static str> {
+    match input {
+        Prepared::Text(..) => {
+            result.push(input.clone());
+            return Ok(());
+        }
+        Prepared::Node(node) => {
+            if !matches!(node.kind, 1 | 3 | 4 | 7 | 8 | 10 | 11) {
+                return Err("HierarchyRequestError");
+            }
+            if node.identity.0 == owner {
+                let mut ancestor = Some(parent);
+                let mut visited = std::collections::HashSet::new();
+                while let Some(current) = ancestor {
+                    if current == node.identity.1 || !visited.insert(current) {
+                        return Err("HierarchyRequestError");
+                    }
+                    ancestor = tree.parent(current).or_else(|| tree.shadow_host(current));
+                }
+            }
+            let expanded = if node.kind == 11 {
+                if !fragments.insert(node.identity) {
+                    return Ok(());
+                }
+                node.children
+                    .iter()
+                    .filter(|child| !consumed.contains(&child.identity))
+                    .cloned()
+                    .collect::<Vec<_>>()
+            } else {
+                vec![node.clone()]
+            };
+            for child in expanded {
+                if child.shadow || !matches!(child.kind, 1 | 3 | 4 | 7 | 8 | 10) {
+                    return Err("HierarchyRequestError");
+                }
+                result.retain(|prior| prior.identity() != Some(child.identity));
+                consumed.insert(child.identity);
+                result.push(Prepared::Node(child));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn incoming_plan<'s>(
     tree: &Tree,
     owner: u64,
@@ -455,44 +508,15 @@ fn incoming_plan<'s>(
     let mut consumed = std::collections::HashSet::new();
     let mut fragments = std::collections::HashSet::new();
     for input in incoming {
-        match input {
-            Prepared::Text(..) => result.push(input.clone()),
-            Prepared::Node(node) => {
-                if !matches!(node.kind, 1 | 3 | 4 | 7 | 8 | 10 | 11) {
-                    return Err("HierarchyRequestError");
-                }
-                if node.identity.0 == owner {
-                    let mut ancestor = Some(parent);
-                    let mut visited = std::collections::HashSet::new();
-                    while let Some(current) = ancestor {
-                        if current == node.identity.1 || !visited.insert(current) {
-                            return Err("HierarchyRequestError");
-                        }
-                        ancestor = tree.parent(current).or_else(|| tree.shadow_host(current));
-                    }
-                }
-                let expanded = if node.kind == 11 {
-                    if !fragments.insert(node.identity) {
-                        continue;
-                    }
-                    node.children
-                        .iter()
-                        .filter(|child| !consumed.contains(&child.identity))
-                        .cloned()
-                        .collect::<Vec<_>>()
-                } else {
-                    vec![node.clone()]
-                };
-                for child in expanded {
-                    if child.shadow || !matches!(child.kind, 1 | 3 | 4 | 7 | 8 | 10) {
-                        return Err("HierarchyRequestError");
-                    }
-                    result.retain(|prior| prior.identity() != Some(child.identity));
-                    consumed.insert(child.identity);
-                    result.push(Prepared::Node(child));
-                }
-            }
-        }
+        collect_incoming_input(
+            tree,
+            owner,
+            parent,
+            input,
+            &mut result,
+            &mut consumed,
+            &mut fragments,
+        )?;
     }
     if tree.node_type_id(parent) == 9 {
         let original = tree
