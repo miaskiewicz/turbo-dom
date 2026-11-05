@@ -340,7 +340,12 @@ fn large_tree() -> bool {
     })
 }
 
-fn pin_until_reconciled(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) {
+/// Keep `object` strongly reachable until the next `reconcile_all` (the end of this call when
+/// it reconciles eagerly). Its ownership component comes along: every wrapper placed with it,
+/// e.g. the wrappers a call creates in a detached source fragment before moving its children
+/// elsewhere. Only a reconcile re-places those moved wrappers; until then nothing else
+/// reaches them (turbo-dom#324).
+pub(super) fn pin_until_reconciled(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) {
     let global = v8::Global::new(scope, object);
     DEFERRED_PINS.with(|pins| pins.borrow_mut().push(global));
 }
