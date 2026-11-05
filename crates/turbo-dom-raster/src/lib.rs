@@ -126,13 +126,13 @@ pub use style_extract::{
     delazy_images, delazy_tree, image_urls, image_urls_in_css, stylesheet_hrefs,
 };
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use turbo_dom_layout::text::{FontRegistry, SystemFontPolicy};
 use turbo_dom_layout::turbo_dom::Tree;
 use turbo_dom_layout::{
-    layout_html_tree_in_viewport, parse_html_tree, Diagnostics, Fragment, FragmentContent,
-    HtmlOptions, ImageCtx, Rgba,
+    layout_html_tree_in_viewport_with, parse_html_tree, Attr, Diagnostics, Fragment,
+    FragmentContent, HtmlOptions, ImageCtx, Rgba, StyledNode, Tag, INDETERMINATE_ATTR,
 };
 
 /// Fetched image bytes keyed by their reference — the raw `<img src>` /
@@ -307,6 +307,27 @@ pub struct ScreenshotOptions<'a> {
     /// with Chrome's web-font metrics and painted (miaskiewicz/turbo-dom#304). The raster does
     /// no I/O and does not read `@font-face` rules itself. `None`: the bundled (or system) set.
     pub fonts: Option<&'a FontRegistry>,
+    /// The IDL-state flags a script set in the live DOM — the state the HTML markup does
+    /// not carry — handed over for the snapshot to paint
+    /// (miaskiewicz/turbo-dom#293, #371; see [`IdlStates`]). `None`: no IDL state is set,
+    /// every control paints from its markup alone (today's default).
+    pub idl_states: Option<&'a IdlStates>,
+}
+
+/// The IDL-state flags a live embedder (turbo-surf) carries into a static screenshot — the
+/// state a script set at runtime that the serialized HTML does not express. Fields key
+/// elements by their tree-order index among `document.querySelectorAll(...)` for the
+/// matching selector (the same keying scheme as [`CanvasContents`]); an element with no
+/// entry keeps its markup state (miaskiewicz/turbo-dom#371).
+#[derive(Debug, Clone, Default)]
+pub struct IdlStates {
+    /// The tree-order indices of `<input>` elements (as
+    /// `document.querySelectorAll('input')` enumerates them) whose IDL `indeterminate`
+    /// flag a script has set to `true`: a checkbox at one of these indices paints the
+    /// Chrome indeterminate dash, checked or not, exactly as
+    /// [`turbo_dom_layout::INDETERMINATE_ATTR`] on its styled box (any other control
+    /// ignores the flag, like Chrome).
+    pub indeterminate_inputs: HashSet<usize>,
 }
 
 impl ScreenshotOptions<'_> {
@@ -334,8 +355,8 @@ pub fn screenshot_png_with_options(
     // to fetch) — e.g. Wikipedia's TOC-toggle chevron mask-image.
     image_paint::add_data_uri_images(&mut decoded, external_css, html);
     let tree = parse_document(html, &mut decoded, options);
-    let galley =
-        options.with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts));
+    let galley = options
+        .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
     let bg = canvas_background(&galley);
     let height = paint_height(&galley, viewport, options.full_page);
     paint_png::paint(&galley, viewport.width, height, bg, &decoded)
@@ -353,8 +374,8 @@ pub fn screenshot_svg_with_options(
     let mut decoded = image_paint::decode_all(images);
     image_paint::add_data_uri_images(&mut decoded, external_css, html);
     let tree = parse_document(html, &mut decoded, options);
-    let galley =
-        options.with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts));
+    let galley = options
+        .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
     let bg = canvas_background(&galley);
     let height = paint_height(&galley, viewport, options.full_page);
     Ok(paint_svg::paint(
@@ -502,6 +523,7 @@ fn lay_out(
     viewport: Viewport,
     images: &image_paint::DecodedAssets,
     fonts: &FontRegistry,
+    screenshot_options: &ScreenshotOptions,
 ) -> Fragment {
     let Viewport { width, height } = viewport;
     // Tell the cascade the viewport HEIGHT so `@media (min-height/max-height:…)`
@@ -524,16 +546,55 @@ fn lay_out(
     };
     // The initial containing block is the viewport: `position: fixed` boxes and
     // absolutely positioned ones it contains anchor `bottom` / `%` insets to its
-    // height (miaskiewicz/turbo-dom#81).
-    layout_html_tree_in_viewport(
+    // height (miaskiewicz/turbo-dom#81). The post-cascade hook carries the live
+    // IDL state (today: the `indeterminate` checkbox flag) a screenshot has no
+    // script to set onto the matching styled boxes (miaskiewicz/turbo-dom#371).
+    layout_html_tree_in_viewport_with(
         tree,
         "",
         (width as f32, height as f32),
         fonts,
         &image_ctx,
         &options,
+        |styled| apply_idl_states(styled, screenshot_options.idl_states),
         &mut diags,
     )
+}
+
+/// Push [`INDETERMINATE_ATTR`] onto each `<input>` whose tree-order index among the
+/// document's `<input>` elements (as `document.querySelectorAll('input')` enumerates them)
+/// is in [`IdlStates::indeterminate_inputs`]. `None` or an empty set is a no-op, so the
+/// styled document (and the render) is byte-for-byte unchanged when no IDL state is set.
+fn apply_idl_states(styled: &mut [StyledNode], idl_states: Option<&IdlStates>) {
+    let Some(states) = idl_states else { return };
+    if states.indeterminate_inputs.is_empty() {
+        return;
+    }
+    let mut index = 0usize;
+    mark_indeterminate_inputs(styled, &states.indeterminate_inputs, &mut index);
+}
+
+fn mark_indeterminate_inputs(
+    nodes: &mut [StyledNode],
+    indices: &HashSet<usize>,
+    index: &mut usize,
+) {
+    for node in nodes {
+        let StyledNode::Element(el) = node else {
+            continue;
+        };
+        let is_input = matches!(&el.tag, Tag::Html(name) if name == "input");
+        if is_input {
+            if indices.contains(index) {
+                el.attrs.push(Attr {
+                    name: INDETERMINATE_ATTR.into(),
+                    value: String::new(),
+                });
+            }
+            *index += 1;
+        }
+        mark_indeterminate_inputs(&mut el.children, indices, index);
+    }
 }
 
 #[cfg(test)]
