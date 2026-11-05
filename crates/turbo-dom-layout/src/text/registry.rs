@@ -216,6 +216,8 @@ impl FontRegistry {
         }
     }
 
+    /// Register a caller face. An `@font-face` face ([`FontFace::from_web_font_bytes`])
+    /// shadows every non-web face of its family, whichever was added first.
     pub fn add(&mut self, face: FontFace) {
         self.native_glyphs = std::sync::Arc::default();
         self.faces.push(face);
@@ -394,10 +396,14 @@ impl FontRegistry {
         self.faces.iter().chain(self.bundled.iter())
     }
 
+    /// The closest face of family `name`. A family declared by `@font-face` faces is served
+    /// by them alone: Chrome never matches an installed face of the same name against it, even
+    /// for a weight or style only the installed family has (miaskiewicz/turbo-dom#304,
+    /// `tests/fixtures/web-font-priority/chrome156.json`).
     fn best_in_family(&self, name: &str, weight: u16, italic: bool) -> Option<&FontFace> {
         self.all()
             .filter(|f| family_matches(f, name))
-            .min_by_key(|f| score(f, weight, italic))
+            .min_by_key(|f| (!f.is_web_font(), score(f, weight, italic)))
     }
 
     /// Select the best face for a family list + weight/style, falling back to the
@@ -418,8 +424,12 @@ impl FontRegistry {
         italic: bool,
         ch: char,
     ) -> Option<&FontFace> {
+        // As in `best_in_family`, a web family's glyphs come from its web faces only.
+        let web = self
+            .all()
+            .any(|f| f.is_web_font() && family_matches(f, name));
         self.all()
-            .filter(|f| family_matches(f, name) && f.has_glyph(ch))
+            .filter(|f| f.is_web_font() == web && family_matches(f, name) && f.has_glyph(ch))
             .min_by_key(|f| score(f, weight, italic))
     }
 
