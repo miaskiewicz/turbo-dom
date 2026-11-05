@@ -128,6 +128,29 @@ pub const ENGINE_NAMESPACE_PARAM: &str = "__tsNs";
 /// (miaskiewicz/turbo-dom#222): no registered `Symbol.for` key, no property any page
 /// object reflects. Only Rust (this function) and the scripts run through
 /// [`run_engine_script`] reach it.
+///
+/// Embedder-settable hooks on the namespace (missing ⇒ the binding's fallback):
+///
+/// - `layoutUsedSize(element)`: `[borderBoxWidth, borderBoxHeight, contentBoxWidth,
+///   contentBoxHeight]` in unzoomed CSS px for a rendered box, else `null`. Optional
+///   fifth entry `fontSizePx` enables `em` resolution in `getComputedStyle(el).transform`
+///   (miaskiewicz/turbo-dom#353): without it, `em` in a transform resolves against the
+///   element's own declared `font-size`, so a `translateX(2em)` on an element that
+///   inherits its font-size falls back to the initial 16 px (turbo-dom#373).
+///   `getComputedStyle`'s `width` / `height` then read the used value of a rendered box
+///   like Chrome 156; percentage translates in `transform` resolve against the border box
+///   (turbo-dom#316). Without a `layoutUsedSize` a rendered box reports its declared size
+///   (or `""`), and a transform list with a percentage keeps its declared text.
+/// - `cssSupports(text)` / `cssSupportsProperty(property, value)`: the cascade's
+///   declaration grammar, for an embedder's `CSS.supports()`. String coercion of the
+///   arguments goes through a private `String` primordial captured at install
+///   (miaskiewicz/turbo-dom#322, #370).
+/// - `resolveTransform(text, element, fontSizePx)` (internal, set by the binding's
+///   engine scripts, not an embedder knob): the pre-resolved `matrix()` /
+///   `matrix3d()` / `none` serialization of a `transform` declaration under an element's
+///   border box and font size, called from `getComputedStyle` so `transform` reports the
+///   resolved value Chrome 156 reports (turbo-dom#353). Returns `null` to keep the
+///   declared text.
 pub fn engine_namespace<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8::Object>> {
     let global = scope.get_current_context().global(scope);
     engine_namespace_of(scope, global)
