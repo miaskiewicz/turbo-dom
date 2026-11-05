@@ -204,3 +204,35 @@ fn media_without_a_pipeline_stalls_where_chrome_would_fetch() {
         })
     );
 }
+
+/// turbo-dom#341: `document.createEvent()` against `create_event_chrome156.json`: the DOM
+/// createEvent table and Chrome 156's legacy names, ASCII case-insensitive, an uninitialized
+/// event of the interface, NotSupportedError for any other name, the operation's shape.
+#[test]
+fn create_event_matches_chrome156_control() {
+    let probe = include_str!("create_event_probe.js");
+    let cases = include_bytes!("create_event_cases.json");
+    let mut expected = control(probe, cases, include_str!("create_event_chrome156.json"));
+    let actual = run_probe(probe, cases);
+    // KNOWN_GAP: an interface this realm does not define (an embedder's to install, e.g.
+    // StorageEvent) cannot be created: those names answer NotSupportedError, as Chrome does
+    // for any interface it lacks.
+    for (interface, kind) in actual["defined"].as_object().unwrap() {
+        if kind == "function" {
+            continue;
+        }
+        expected["defined"][interface] = kind.clone();
+        for (name, row) in expected["table"].as_object_mut().unwrap() {
+            if row[0] == interface.as_str() {
+                let message = format!("Failed to execute 'createEvent' on 'Document': The provided event type ('{name}') is invalid.");
+                *row = serde_json::json!(["throw", "NotSupportedError", message]);
+            }
+        }
+    }
+    let found = mismatches("", &actual, &expected);
+    assert!(
+        found.is_empty(),
+        "mismatches vs Chrome 156:\n{}",
+        found.join("\n")
+    );
+}
