@@ -1514,15 +1514,19 @@ fn scale_colour(c: Rgba, multiplier: impl Fn(f32) -> f32) -> Rgba {
     }
 }
 
+/// The `font-family` list; with no declaration anywhere up the tree, the initial value
+/// `serif` (Chrome's default font: Times on macOS; miaskiewicz/turbo-dom#319), not the
+/// registry's first face.
 fn font_families(s: &ComputedStyle) -> Vec<String> {
-    s.get("font-family")
-        .map(|v| {
+    s.get("font-family").map_or_else(
+        || vec!["serif".to_owned()],
+        |v| {
             v.split(',')
                 .map(|f| f.trim().trim_matches(['"', '\'']).to_string())
                 .filter(|f| !f.is_empty())
                 .collect()
-        })
-        .unwrap_or_default()
+        },
+    )
 }
 
 fn font_weight(s: &ComputedStyle) -> u16 {

@@ -27,6 +27,23 @@
     ["limit-suffix", "en", "width:60px;hyphens:auto;hyphenate-limit-chars:auto auto 5", "characteristics"],
     ["limit-short", "en", "width:30px;hyphens:auto;hyphenate-limit-chars:5 1 1", "paper"],
     ["serif", "en", "width:70px;hyphens:auto;font-family:'Liberation Serif'", "characteristics development"],
+    // turbo-dom#289: the other languages Chrome on macOS hyphenates; a capitalized word
+    // hyphenates outside English.
+    ["de-words", "de", "width:90px;hyphens:auto", "Silbentrennung Geschwindigkeit wunderbar"],
+    ["de-region", "de-CH", "width:70px;hyphens:auto", "Zusammenarbeit"],
+    ["de-caps", "de", "width:80px;hyphens:auto", "SILBENTRENNUNG"],
+    ["fr-words", "fr", "width:80px;hyphens:auto", "développement gouvernement bibliothèque"],
+    ["fr-capitalized", "fr-CA", "width:70px;hyphens:auto", "International"],
+    ["es-words", "es", "width:80px;hyphens:auto", "internacional extraordinario murciélago"],
+    ["nl-words", "nl", "width:80px;hyphens:auto", "onafhankelijkheid ziekenhuis"],
+    ["pl-words", "pl", "width:80px;hyphens:auto", "międzynarodowy przedsiębiorstwo"],
+    ["en-gb", "en-GB", "width:80px;hyphens:auto", "characteristics typography"],
+    ["en-gb-capitalized", "en-GB", "width:60px;hyphens:auto", "International"],
+    ["it-words", "it", "width:80px;hyphens:auto", "internazionale"],
+    ["ru-words", "ru", "width:80px;hyphens:auto", "международный университет"],
+    ["lang-span-de", "en", "width:80px;hyphens:auto", "<span lang=\"de\">Geschwindigkeit</span> Characteristics"],
+    ["unsupported-nn", "nn", "width:60px;hyphens:auto", "internasjonal"],
+    ["unsupported-tr", "tr", "width:60px;hyphens:auto", "uluslararası"],
   ];
   const out = [];
   for (const [id, lang, style, text] of cases) {

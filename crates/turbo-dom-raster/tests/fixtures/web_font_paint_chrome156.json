@@ -1,0 +1,177 @@
+{
+ "browser": "Chrome/156.0.8078.47",
+ "collectorSha256": "2e65e0423a11bd5a929f8028c00d6a2dc48afba34ae5cab2c3b8b436db56bd64",
+ "faces": {
+  "WebGo": {
+   "file": "Go-Regular.ttf",
+   "sha256": "197d9f3703b4c00af609178876a8d73e396f64fe438b2c871778566632374be3"
+  },
+  "WebPlex": {
+   "file": "ibm-plex-mono/IBMPlexMono-Regular.ttf",
+   "sha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46"
+  }
+ },
+ "viewport": [
+  640,
+  240
+ ],
+ "pageStyle": "body{margin:0;background:#fff;color:#000}",
+ "errors": [],
+ "screenshots": [
+  {
+   "name": "go-64",
+   "body": "<div style=\"font:64px WebGo\">Hamburg Waves</div>",
+   "columns": [
+    [
+     5,
+     41
+    ],
+    [
+     49,
+     81
+    ],
+    [
+     86,
+     131
+    ],
+    [
+     140,
+     168
+    ],
+    [
+     175,
+     202
+    ],
+    [
+     211,
+     227
+    ],
+    [
+     230,
+     259
+    ],
+    [
+     282,
+     341
+    ],
+    [
+     344,
+     376
+    ],
+    [
+     377,
+     409
+    ],
+    [
+     411,
+     441
+    ],
+    [
+     448,
+     473
+    ]
+   ],
+   "rows": [
+    [
+     10,
+     73
+    ]
+   ]
+  },
+  {
+   "name": "plex-lines",
+   "body": "<div style=\"font:20px WebPlex\">X<br>X<br>X<br>X</div>",
+   "columns": [
+    [
+     1,
+     11
+    ]
+   ],
+   "rows": [
+    [
+     6,
+     20
+    ],
+    [
+     31,
+     45
+    ],
+    [
+     56,
+     70
+    ],
+    [
+     81,
+     95
+    ]
+   ]
+  }
+ ],
+ "canvas": {
+  "width": 1200,
+  "height": 160,
+  "baseline": [
+   10,
+   120
+  ],
+  "font": "96px WebGo",
+  "text": "Hamburg Waves",
+  "measureText": 714.890625,
+  "columns": [
+   [
+    17,
+    72
+   ],
+   [
+    83,
+    131
+   ],
+   [
+    140,
+    206
+   ],
+   [
+    220,
+    262
+   ],
+   [
+    272,
+    312
+   ],
+   [
+    326,
+    351
+   ],
+   [
+    356,
+    398
+   ],
+   [
+    433,
+    521
+   ],
+   [
+    526,
+    574
+   ],
+   [
+    576,
+    623
+   ],
+   [
+    627,
+    672
+   ],
+   [
+    682,
+    720
+   ]
+  ],
+  "rows": [
+   [
+    45,
+    140
+   ]
+  ]
+ }
+}

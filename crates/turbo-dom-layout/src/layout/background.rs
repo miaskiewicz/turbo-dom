@@ -299,6 +299,27 @@ fn tile_size(size: Size, source: &Source, (aw, ah): (f32, f32)) -> (f32, f32) {
     }
 }
 
+/// The offset of an `object`-sized replaced object in its `area` box under an
+/// `object-position` value (the `background-position` grammar, CSS Images 3 §5.6):
+/// `50% 50%` when unset or invalid (miaskiewicz/turbo-dom#291).
+pub(crate) fn object_position(
+    value: Option<&str>,
+    font_size: f32,
+    area: (f32, f32),
+    object: (f32, f32),
+) -> (f32, f32) {
+    let tokens: Vec<String> = css_value_tokens(value.unwrap_or_default())
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    let center = Axis {
+        from_end: false,
+        offset: LengthPct::Pct(50.0),
+    };
+    let (x, y) = parse_position(&tokens, font_size).unwrap_or((center, center));
+    (place(x, area.0, object.0), place(y, area.1, object.1))
+}
+
 fn place(axis: Axis, area: f32, tile: f32) -> f32 {
     let offset = match axis.offset {
         LengthPct::Pct(p) => (area - tile) * p / 100.0,
