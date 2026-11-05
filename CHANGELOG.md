@@ -9,6 +9,30 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- **turbo-dom-browser-env: CSS transitions and animations dispatch their events
+  (turbo-dom#313).** A `CSSTransition` fires `transitionrun`, `transitionstart`,
+  `transitionend` and `transitioncancel`, a `CSSAnimation` `animationstart`,
+  `animationiteration`, `animationend` and `animationcancel`, as Chrome 156 does: trusted,
+  bubbling, cancelable `TransitionEvent` / `AnimationEvent`s on the owner element, in the
+  rendering frame after the phase change and before its animation-frame callbacks, with
+  Blink's elapsed times (negative delays, skipped phases, backwards seeks, one
+  `animationiteration` per sample, cancel times) and `event.animation`. `AnimationEvent` and
+  `TransitionEvent` are real interfaces now (constructor, init dictionary, brand checks,
+  `animation`, `pseudoTarget`), no longer empty placeholders. A transition whose property
+  leaves `transition-property` is cancelled. A running CSS animation keeps frames requested
+  for its next iteration. Chrome control: `css_animation_events_chrome156.json`
+  (`scripts/animations-chrome-control.mjs`); the `jsdom_transitions_chrome156.json` events
+  row is asserted now.
+- turbo-dom-browser-env: `browser_env::set_css_animations(scope, enabled)`, on by default:
+  off runs no `@keyframes` animation and fires no animation event (jsdom 27).
+
+### Changed
+
+- **turbo-dom-browser-env: `set_css_transitions` covers CSS transitions only (turbo-dom#313).**
+  `set_css_transitions(scope, false)` now stops CSS transitions and their events alone;
+  `@keyframes` animations follow the new `set_css_animations`. The Web Animations surface
+  jsdom lacks is hidden only with both switches off. jsdom 27 parity (turbo-test) is
+  `set_css_transitions(scope, false)` plus `set_css_animations(scope, false)`.
 - **turbo-dom-raster: `<canvas>` content in screenshots.** Since #252 a canvas laid out as a
   replaced box but painted only its frame and background: the snapshot HTML carries no canvas
   pixels. `screenshot_png_with_options` / `screenshot_svg_with_options` take a
