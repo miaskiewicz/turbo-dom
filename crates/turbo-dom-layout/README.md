@@ -109,10 +109,11 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   (`blink_advances`). `cmap` provides the reverse cmap for text extraction.
 - **Images** (`image`): `ImageResolver` / `NoImages`, `probe` (header size and EXIF
   orientation for PNG / JPEG / GIF / WebP / BMP / ICO / AVIF / JPEG XL, and SVG under
-  `svg`), `probe_natural` (`naturalWidth/Height`), `PngFrame` (the one PNG decode),
+  `svg`), `probe_natural` (`naturalWidth/Height`; an SVG with only a `viewBox` also carries
+  `Intrinsic::natural_ratio`, so layout sizes it from the ratio), `PngFrame` (the one PNG decode),
   `decode_data_url`. Truncated bodies follow Blink's load decision.
 - **SVG** (`svg`, under `svg-rasterize`): `svg::rasterize(bytes, scale, Oversize)` and
-  `natural_size`.
+  `natural_size` / `natural_sizing` (the natural size plus a bare ratio).
 - **Live documents** (`live`, "surf mode"): `live::capture` / `live::snapshot` over an
   embedder's composed tree. They take pre-matched rules (`PreMatched`) and inline
   overrides, with fixed budgets; failures are `LiveError`.
