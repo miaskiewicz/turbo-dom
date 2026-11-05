@@ -199,16 +199,21 @@
     apply(wmSet, editMemo, [node, value]);
     return value;
   }
+  function contentEditableFromAttr(el) {
+    if (namespaceOf(el) !== HTML) return undefined;
+    const value = attr(el, 'contenteditable');
+    if (value === null) return undefined;
+    const v = lower(value);
+    if (v === '' || v === 'true') return 'rich';
+    if (v === 'plaintext-only') return 'plain';
+    if (v === 'false') return null;
+    return undefined;
+  }
   function computeEditState(node) {
     let el = isElement(node) ? node : parentOf(node);
     for (; el !== null && typeOf(el) === 1; el = parentOf(el)) {
-      if (namespaceOf(el) !== HTML) continue;
-      const value = attr(el, 'contenteditable');
-      if (value === null) continue;
-      const v = lower(value);
-      if (v === '' || v === 'true') return 'rich';
-      if (v === 'plaintext-only') return 'plain';
-      if (v === 'false') return null;
+      const r = contentEditableFromAttr(el);
+      if (r !== undefined) return r;
     }
     if (el !== null && typeOf(el) === 11) return null;
     const owner = node && typeOf(node) === 9 ? node : ownerOf(node);
@@ -252,25 +257,32 @@
         emit(CHAR, node, i); lineStart = false; lastSpace = null;
       }
     }
+    function isAtomicChild(child, name) {
+      if (name && atomicNames[name] && name !== 'wbr') return true;
+      if (editableRoot && !isEditable(child)) return true;
+      if (namespaceOf(child) !== HTML && (localOf(child) === 'svg' || localOf(child) === 'math')) return true;
+      return false;
+    }
+    function emitAtomicChild(child, display) {
+      if (isBlockDisplay(display)) { endLine(); emit(BATOM, child, -1); lineStart = true; }
+      else { emit(ATOM, child, -1); lineStart = false; lastSpace = null; }
+    }
+    function walkChild(child, ws, mode) {
+      const type = typeOf(child);
+      if (type === 3) { text(child, mode); return; }
+      if (type !== 1) return;
+      const display = displayOf(child);
+      if (display === 'none') return;
+      const name = nameOf(child);
+      if (name === 'br') { if (mode !== 1) endLine(); emit(BR, child, -1); lineStart = true; lastSpace = null; return; }
+      if (isAtomicChild(child, name)) { emitAtomicChild(child, display); return; }
+      if (name === 'wbr') return;
+      if (isBlockDisplay(display)) { endLine(); emit(BS, child, -1); walk(child, whiteSpaceOf(child, ws)); endLine(); emit(BE, child, -1); return; }
+      walk(child, whiteSpaceOf(child, ws));
+    }
     function walk(node, ws) {
       const mode = preserveMode(ws);
-      for (let child = firstOf(node); child !== null; child = nextOf(child)) {
-        const type = typeOf(child);
-        if (type === 3) { text(child, mode); continue; }
-        if (type !== 1) continue;
-        const display = displayOf(child);
-        if (display === 'none') continue;
-        const name = nameOf(child);
-        if (name === 'br') { if (mode !== 1) endLine(); emit(BR, child, -1); lineStart = true; lastSpace = null; continue; }
-        const island = editableRoot && !isEditable(child);
-        if ((name && atomicNames[name] && name !== 'wbr') || island || (namespaceOf(child) !== HTML && (localOf(child) === 'svg' || localOf(child) === 'math'))) {
-          if (isBlockDisplay(display)) { endLine(); emit(BATOM, child, -1); lineStart = true; } else { emit(ATOM, child, -1); lineStart = false; lastSpace = null; }
-          continue;
-        }
-        if (name === 'wbr') continue;
-        if (isBlockDisplay(display)) { endLine(); emit(BS, child, -1); walk(child, whiteSpaceOf(child, ws)); endLine(); emit(BE, child, -1); continue; }
-        walk(child, whiteSpaceOf(child, ws));
-      }
+      for (let child = firstOf(node); child !== null; child = nextOf(child)) walkChild(child, ws, mode);
     }
     let ws = 'normal';
     for (let n = parentOf(root); n !== null && typeOf(n) === 1; n = parentOf(n)) { const own = whiteSpaceOf(n, null); if (own !== null) { ws = own; break; } }
@@ -570,6 +582,49 @@
     const n = NumberValue(v);
     return n === n && n >= 1 && n <= 1000 ? n : parent;
   }
+  function applyTagStyle(s, name) {
+    if (boldNames[name]) s.weight = name === 'b' || name === 'strong' ? weightNumber('bolder', s.weight) : 700;
+    if (italicNames[name]) s.italic = true;
+    if (name === 'u' || name === 'ins') s.underline = true;
+    if (name === 's' || name === 'strike' || name === 'del') s.strike = true;
+    if (name === 'sub') { s.script = 'sub'; s.size = s.size / 1.2; }
+    if (name === 'sup') { s.script = 'super'; s.size = s.size / 1.2; }
+    if (name === 'small') s.size = s.size / 1.2;
+    if (name === 'big') s.size = s.size * 1.2;
+    if (headingSizes[name]) s.size = 16 * headingSizes[name];
+  }
+  function applyAlignTag(s, el, name) {
+    if (name === 'center' || (name && attr(el, 'align') !== null && isBlock(el))) {
+      const a = name === 'center' ? 'center' : lower(attr(el, 'align'));
+      if (a === 'center' || a === 'left' || a === 'right' || a === 'justify') s.align = a;
+    }
+    if (name === 'th') s.align = 'center';
+  }
+  function applyFontElement(s, el) {
+    const color = attr(el, 'color'); if (color !== null) { const c = parseColor(color, true); if (c) s.color = c; }
+    const face = attr(el, 'face'); if (face !== null) s.family = face;
+    const size = attr(el, 'size'); if (size !== null) { const n = legacySizeNumber(size); if (n) s.size = legacyPixels[n]; }
+  }
+  function applyFontDecl(s, prop, value, v) {
+    if (prop === 'font-weight') { s.weight = weightNumber(value, s.weight); return true; }
+    if (prop === 'font-style') { s.italic = v === 'italic' || v === 'oblique'; return true; }
+    if (prop === 'font-family') { s.family = value; return true; }
+    if (prop === 'font-size') { const px = cssPixels(v, s.size); if (px) s.size = px; return true; }
+    return false;
+  }
+  function applyColorDecl(s, prop, value) {
+    if (prop === 'color') { const c = parseColor(value, false); if (c) s.color = c; return true; }
+    if (prop === 'background-color' || prop === 'background') { const c = parseColor(value, false); if (c && c !== 'rgba(0, 0, 0, 0)') s.background = c; return true; }
+    return false;
+  }
+  function applyDeclaration(s, el, prop, value) {
+    const v = lower(value);
+    if (applyFontDecl(s, prop, value, v)) return;
+    if (applyColorDecl(s, prop, value)) return;
+    if (prop === 'text-decoration' || prop === 'text-decoration-line') { if (find(v, 'underline') >= 0) s.underline = true; if (find(v, 'line-through') >= 0) s.strike = true; return; }
+    if (prop === 'vertical-align') { if (v === 'sub' || v === 'super') s.script = v; return; }
+    if (prop === 'text-align' && isBlock(el)) s.align = v === 'start' ? 'left' : v === 'end' ? 'right' : v;
+  }
   // Inherited text style at an element: weight, slant, decorations in effect, script, color, family, size.
   function styleAt(node) {
     const els = list();
@@ -578,36 +633,12 @@
     s.weight = 400; s.italic = false; s.underline = false; s.strike = false; s.script = 'baseline'; s.color = null; s.background = null; s.family = null; s.size = 16; s.link = false; s.align = null;
     for (let i = els.length - 1; i >= 0; i--) {
       const el = els[i], name = nameOf(el);
-      if (boldNames[name]) s.weight = name === 'b' || name === 'strong' ? weightNumber('bolder', s.weight) : 700;
-      if (italicNames[name]) s.italic = true;
-      if (name === 'u' || name === 'ins') s.underline = true;
-      if (name === 's' || name === 'strike' || name === 'del') s.strike = true;
-      if (name === 'sub') { s.script = 'sub'; s.size = s.size / 1.2; }
-      if (name === 'sup') { s.script = 'super'; s.size = s.size / 1.2; }
-      if (name === 'small') s.size = s.size / 1.2;
-      if (name === 'big') s.size = s.size * 1.2;
-      if (headingSizes[name]) s.size = 16 * headingSizes[name];
+      applyTagStyle(s, name);
       if (name === 'a' && hasAttr(el, 'href')) { s.underline = true; s.link = true; s.color = 'rgb(0, 0, 238)'; }
-      if (name === 'font') {
-        const color = attr(el, 'color'); if (color !== null) { const c = parseColor(color, true); if (c) s.color = c; }
-        const face = attr(el, 'face'); if (face !== null) s.family = face;
-        const size = attr(el, 'size'); if (size !== null) { const n = legacySizeNumber(size); if (n) s.size = legacyPixels[n]; }
-      }
-      if (name === 'center' || (name && attr(el, 'align') !== null && isBlock(el))) { const a = name === 'center' ? 'center' : lower(attr(el, 'align')); if (a === 'center' || a === 'left' || a === 'right' || a === 'justify') s.align = a; }
-      if (name === 'th') s.align = 'center';
+      if (name === 'font') applyFontElement(s, el);
+      applyAlignTag(s, el, name);
       const d = declarations(el);
-      for (let j = 0; j < d.length; j++) {
-        const prop = d[j][0], value = d[j][1], v = lower(value);
-        if (prop === 'font-weight') s.weight = weightNumber(value, s.weight);
-        else if (prop === 'font-style') s.italic = v === 'italic' || v === 'oblique';
-        else if (prop === 'text-decoration' || prop === 'text-decoration-line') { if (find(v, 'underline') >= 0) s.underline = true; if (find(v, 'line-through') >= 0) s.strike = true; }
-        else if (prop === 'vertical-align') { if (v === 'sub' || v === 'super') s.script = v; }
-        else if (prop === 'color') { const c = parseColor(value, false); if (c) s.color = c; }
-        else if (prop === 'background-color' || prop === 'background') { const c = parseColor(value, false); if (c && c !== 'rgba(0, 0, 0, 0)') s.background = c; }
-        else if (prop === 'font-family') s.family = value;
-        else if (prop === 'font-size') { const px = cssPixels(v, s.size); if (px) s.size = px; }
-        else if (prop === 'text-align' && isBlock(el)) s.align = v === 'start' ? 'left' : v === 'end' ? 'right' : v;
-      }
+      for (let j = 0; j < d.length; j++) applyDeclaration(s, el, d[j][0], d[j][1]);
     }
     return s;
   }
@@ -649,33 +680,44 @@
     while (at < table.length) { const a = find(table, ' ', at), b = find(table, ' ', a + 1), end = b < 0 ? table.length : b; namedColors[sub(table, at, a)] = sub(table, a + 1, end); at = end + 1; }
   })();
   const hexDigit = c => c >= 48 && c <= 57 ? c - 48 : c >= 97 && c <= 102 ? c - 87 : c >= 65 && c <= 70 ? c - 55 : -1;
+  function looksLikeLegacyHex6(v) {
+    if (v[0] === '#' || v.length !== 6) return false;
+    for (let i = 0; i < 6; i++) if (hexDigit(code(v, i)) < 0) return false;
+    return true;
+  }
+  function parseHexColor(v) {
+    const h = sub(v, 1); const d = list();
+    for (let i = 0; i < h.length; i++) { const x = hexDigit(code(h, i)); if (x < 0) return null; push(d, x); }
+    if (d.length === 3 || d.length === 4) return [d[0] * 17, d[1] * 17, d[2] * 17, d.length === 4 ? d[3] * 17 / 255 : 1];
+    if (d.length === 6 || d.length === 8) return [d[0] * 16 + d[1], d[2] * 16 + d[3], d[4] * 16 + d[5], d.length === 8 ? (d[6] * 16 + d[7]) / 255 : 1];
+    return null;
+  }
+  function splitRgbArgs(body) {
+    const parts = list(); let cur = '';
+    for (let i = 0; i < body.length; i++) { const c = body[i]; if (c === ',' || c === ' ' || c === '/') { if (cur) push(parts, cur); cur = ''; } else cur += c; }
+    if (cur) push(parts, cur);
+    return parts;
+  }
+  function parseRgbFunction(v, open) {
+    const fn = sub(v, 0, open);
+    if (fn !== 'rgb' && fn !== 'rgba') return null;
+    const parts = splitRgbArgs(sub(v, open + 1, v.length - 1));
+    if (parts.length !== 3 && parts.length !== 4) return null;
+    const out = list();
+    for (let i = 0; i < 3; i++) { const p = parts[i], pct = p[p.length - 1] === '%', n = NumberValue.parseFloat(p); if (n !== n) return null; push(out, MathMax(0, MathMin(255, MathRound(pct ? n * 2.55 : n)))); }
+    let alpha = 1;
+    if (parts.length === 4) { const p = parts[3], n = NumberValue.parseFloat(p); if (n !== n) return null; alpha = MathMax(0, MathMin(1, p[p.length - 1] === '%' ? n / 100 : n)); }
+    push(out, alpha);
+    return out;
+  }
   function rgbOf(value, legacy) {
     let v = lower(trim(value));
     if (v === 'transparent') return [0, 0, 0, 0];
     if (namedColors[v]) v = '#' + namedColors[v];
-    else if (legacy && v[0] !== '#' && v.length === 6 && hexDigit(code(v, 0)) >= 0 && hexDigit(code(v, 1)) >= 0 && hexDigit(code(v, 2)) >= 0 && hexDigit(code(v, 3)) >= 0 && hexDigit(code(v, 4)) >= 0 && hexDigit(code(v, 5)) >= 0) v = '#' + v;
-    if (v[0] === '#') {
-      const h = sub(v, 1); const d = list();
-      for (let i = 0; i < h.length; i++) { const x = hexDigit(code(h, i)); if (x < 0) return null; push(d, x); }
-      if (d.length === 3 || d.length === 4) return [d[0] * 17, d[1] * 17, d[2] * 17, d.length === 4 ? d[3] * 17 / 255 : 1];
-      if (d.length === 6 || d.length === 8) return [d[0] * 16 + d[1], d[2] * 16 + d[3], d[4] * 16 + d[5], d.length === 8 ? (d[6] * 16 + d[7]) / 255 : 1];
-      return null;
-    }
+    else if (legacy && looksLikeLegacyHex6(v)) v = '#' + v;
+    if (v[0] === '#') return parseHexColor(v);
     const open = find(v, '(');
-    if (open > 0 && v[v.length - 1] === ')') {
-      const fn = sub(v, 0, open);
-      if (fn !== 'rgb' && fn !== 'rgba') return null;
-      let body = sub(v, open + 1, v.length - 1), parts = list(), cur = '';
-      for (let i = 0; i < body.length; i++) { const c = body[i]; if (c === ',' || c === ' ' || c === '/') { if (cur) push(parts, cur); cur = ''; } else cur += c; }
-      if (cur) push(parts, cur);
-      if (parts.length !== 3 && parts.length !== 4) return null;
-      const out = list();
-      for (let i = 0; i < 3; i++) { const p = parts[i], pct = p[p.length - 1] === '%', n = NumberValue.parseFloat(p); if (n !== n) return null; push(out, MathMax(0, MathMin(255, MathRound(pct ? n * 2.55 : n)))); }
-      let alpha = 1;
-      if (parts.length === 4) { const p = parts[3], n = NumberValue.parseFloat(p); if (n !== n) return null; alpha = MathMax(0, MathMin(1, p[p.length - 1] === '%' ? n / 100 : n)); }
-      push(out, alpha);
-      return out;
-    }
+    if (open > 0 && v[v.length - 1] === ')') return parseRgbFunction(v, open);
     return null;
   }
   function serializeRgb(c) {
@@ -694,16 +736,25 @@
   // (a set: underline / line-through), vertical-align, color, background-color, font-family, font-size.
   function newStyle() { const s = record(); return s; }
   function styleIsEmpty(s) { for (const k in s) return false; return true; }
-  // Does `el` carry one of the desired properties (tag equivalent, presentational or CSS)?
-  function conflicts(style, el) {
-    const name = nameOf(el);
-    if (!name) return false;
+  function conflictsTagWeight(style, name) {
     if ('font-weight' in style && (name === 'b' || name === 'strong')) return true;
     if ('font-style' in style && (name === 'i' || name === 'em')) return true;
-    if ('text-decoration-line' in style && (name === 'u' || name === 's' || name === 'strike')) return true;
     if ('vertical-align' in style && (name === 'sub' || name === 'sup')) return true;
-    if (name === 'font' && (('color' in style && hasAttr(el, 'color')) || ('font-family' in style && hasAttr(el, 'face')) || ('font-size' in style && hasAttr(el, 'size')))) return true;
+    return false;
+  }
+  function conflictsTagDecoration(style, name) {
+    if ('text-decoration-line' in style && (name === 'u' || name === 's' || name === 'strike')) return true;
     if ('link' in style && name === 'a') return true;
+    return false;
+  }
+  function conflictsFontAttr(style, el, name) {
+    if (name !== 'font') return false;
+    if ('color' in style && hasAttr(el, 'color')) return true;
+    if ('font-family' in style && hasAttr(el, 'face')) return true;
+    if ('font-size' in style && hasAttr(el, 'size')) return true;
+    return false;
+  }
+  function conflictsDeclared(style, el) {
     const d = declarations(el);
     for (let i = 0; i < d.length; i++) {
       const p = d[i][0];
@@ -711,35 +762,50 @@
     }
     return false;
   }
+  // Does `el` carry one of the desired properties (tag equivalent, presentational or CSS)?
+  function conflicts(style, el) {
+    const name = nameOf(el);
+    if (!name) return false;
+    if (conflictsTagWeight(style, name)) return true;
+    if (conflictsTagDecoration(style, name)) return true;
+    if (conflictsFontAttr(style, el, name)) return true;
+    return conflictsDeclared(style, el);
+  }
   function decorationRemoves(style, name) {
     const set = style['text-decoration-line'];
     if (name === 'u') return !set.underline;
     return !set.strike;
   }
+  function shouldStripTag(style, name) {
+    if ('font-weight' in style && (name === 'b' || name === 'strong')) return true;
+    if ('font-style' in style && (name === 'i' || name === 'em')) return true;
+    if ('text-decoration-line' in style && (name === 'u' || name === 's' || name === 'strike') && decorationRemoves(style, name)) return true;
+    if ('vertical-align' in style && (name === 'sub' || name === 'sup')) return true;
+    return false;
+  }
+  function stripFontAttrs(style, el) {
+    if ('color' in style) removeAttr(el, 'color');
+    if ('font-family' in style) removeAttr(el, 'face');
+    if ('font-size' in style) removeAttr(el, 'size');
+  }
+  function stripStyleDecls(style, el) {
+    const d = declarations(el);
+    if (!d.length) return;
+    const keep = list(); let changed = false;
+    for (let i = 0; i < d.length; i++) {
+      const p = d[i][0];
+      if (p in style || (p === 'text-decoration' && 'text-decoration-line' in style)) { changed = true; continue; }
+      push(keep, [p, normalizeValue(p, d[i][1])]);
+    }
+    if (changed) setAttr(el, 'style', serializeDeclarations(keep));
+  }
   // Removes the desired properties from `el`; returns the element that remains in its place (or null).
   function removeStyleFrom(style, el) {
     const name = nameOf(el);
-    let tag = false;
-    if ('font-weight' in style && (name === 'b' || name === 'strong')) tag = true;
-    if ('font-style' in style && (name === 'i' || name === 'em')) tag = true;
-    if ('text-decoration-line' in style && (name === 'u' || name === 's' || name === 'strike') && decorationRemoves(style, name)) tag = true;
-    if ('vertical-align' in style && (name === 'sub' || name === 'sup')) tag = true;
     if ('link' in style && name === 'a') { unwrap(el); return null; }
-    if (name === 'font') {
-      if ('color' in style) removeAttr(el, 'color');
-      if ('font-family' in style) removeAttr(el, 'face');
-      if ('font-size' in style) removeAttr(el, 'size');
-    }
-    const d = declarations(el);
-    if (d.length) {
-      const keep = list(); let changed = false;
-      for (let i = 0; i < d.length; i++) {
-        const p = d[i][0];
-        if (p in style || (p === 'text-decoration' && 'text-decoration-line' in style)) { changed = true; continue; }
-        push(keep, [p, normalizeValue(p, d[i][1])]);
-      }
-      if (changed) setAttr(el, 'style', serializeDeclarations(keep));
-    }
+    const tag = shouldStripTag(style, name);
+    if (name === 'font') stripFontAttrs(style, el);
+    stripStyleDecls(style, el);
     if (tag) return replaceWithSpanOrRemove(el);
     if ((name === 'span' || name === 'font') && unstyled(el)) { unwrap(el); return null; }
     return el;
@@ -759,6 +825,41 @@
     for (let n = parentOf(node); n !== null && isElement(n) && !isBlock(n) && isEditable(n) && rootEditable(n) !== n; n = parentOf(n)) if (conflicts(style, n)) result = n;
     return result;
   }
+  function wrapOneChildWithPushed(child, pushedEl, style) {
+    const wrapper = cloneShallow(pushedEl);
+    if (hasAttr(wrapper, 'style')) apply(removeAttrF, wrapper, ['style']);
+    removeAttr(pushedEl, 'id');
+    const d = declarations(pushedEl), keep = list();
+    for (let k = 0; k < d.length; k++) if (d[k][0] in style) push(keep, [d[k][0], d[k][1]]);
+    if (keep.length) apply(setAttrF, wrapper, ['style', attr(pushedEl, 'style')]);
+    surround(child, child, wrapper);
+  }
+  function processPushDownChild(child, target, pushed, style) {
+    if (parentOf(child) === null) return null;
+    if (!contains(child, target) && pushed.length) {
+      for (let j = 0; j < pushed.length; j++) wrapOneChildWithPushed(child, pushed[j], style);
+    }
+    if (child === target || contains(child, target)) return child;
+    return null;
+  }
+  function pushDownStep(current, target, pushed, style) {
+    const children = list();
+    for (let c = firstOf(current); c !== null; c = nextOf(c)) push(children, c);
+    let styled = false;
+    if (conflicts(style, current)) { push(pushed, current); styled = true; }
+    if (styled) {
+      const replaced = removeStyleFrom(style, current);
+      if (replaced !== null) current = replaced;
+    }
+    let next = null;
+    for (let i = 0; i < children.length; i++) {
+      const r = processPushDownChild(children[i], target, pushed, style);
+      if (r !== null) next = r;
+    }
+    if (next === null) return null;
+    if (styled && isElement(next) && next !== target && !hasAttr(next, 'style')) setAttr(next, 'style', '');
+    return next;
+  }
   // Blink's PushDownInlineStyleAroundNode: removes conflicting ancestors of `target` and re-wraps the
   // siblings off the path with clones of the removed elements.
   function pushDown(style, target) {
@@ -767,35 +868,8 @@
     let current = highest;
     const pushed = list();
     while (current !== null && current !== target && contains(current, target)) {
-      const children = list();
-      for (let c = firstOf(current); c !== null; c = nextOf(c)) push(children, c);
-      let styled = false;
-      if (conflicts(style, current)) { push(pushed, current); styled = true; }
-      const clones = list();
-      for (let i = 0; i < pushed.length; i++) { const c = cloneShallow(pushed[i]); push(clones, c); }
-      if (styled) {
-        const replaced = removeStyleFrom(style, current);
-        if (replaced !== null) current = replaced;
-      }
-      let next = null;
-      for (let i = 0; i < children.length; i++) {
-        const child = children[i];
-        if (parentOf(child) === null) continue;
-        if (!contains(child, target) && pushed.length) {
-          for (let j = 0; j < pushed.length; j++) {
-            const wrapper = cloneShallow(pushed[j]);
-            if (hasAttr(wrapper, 'style')) apply(removeAttrF, wrapper, ['style']);
-            removeAttr(pushed[j], 'id');
-            const d = declarations(pushed[j]), keep = list();
-            for (let k = 0; k < d.length; k++) if (d[k][0] in style) push(keep, [d[k][0], d[k][1]]);
-            if (keep.length) apply(setAttrF, wrapper, ['style', attr(pushed[j], 'style')]);
-            surround(child, child, wrapper);
-          }
-        }
-        if (child === target || contains(child, target)) next = child;
-      }
+      const next = pushDownStep(current, target, pushed, style);
       if (next === null) break;
-      if (styled && isElement(next) && next !== target && !hasAttr(next, 'style')) setAttr(next, 'style', '');
       current = next;
     }
   }
@@ -808,45 +882,74 @@
     if (previousSibling !== null && isElement(previousSibling) && isEditable(previousSibling) && identical(previousSibling, element)) mergeIdentical(previousSibling, element);
     return element;
   }
+  function changeWeight(style, at, change, cssOut, css) {
+    if (!('font-weight' in style)) return;
+    const want = weightNumber(style['font-weight'], at.weight) >= 600, have = at.weight >= 600;
+    if (want === have) return;
+    if (want && !css) push(change.tags, 'b');
+    else push(cssOut, ['font-weight', want ? 'bold' : 'normal']);
+  }
+  function changeStyleProp(style, at, change, cssOut, css) {
+    if (!('font-style' in style)) return;
+    const want = style['font-style'] === 'italic';
+    if (want === at.italic) return;
+    if (want && !css) push(change.tags, 'i');
+    else push(cssOut, ['font-style', want ? 'italic' : 'normal']);
+  }
+  function changeDecoration(style, at, change, cssOut, css) {
+    if (!('text-decoration-line' in style)) return;
+    const set = style['text-decoration-line'];
+    const addU = set.underline && !at.underline, addS = set.strike && !at.strike;
+    if (css) { if (addU || addS) push(cssOut, ['text-decoration-line', addU && addS ? 'underline line-through' : addU ? 'underline' : 'line-through']); return; }
+    if (addU) push(change.tags, 'u');
+    if (addS) push(change.tags, 'strike');
+  }
+  function changeVAlign(style, at, change, cssOut, css) {
+    if (!('vertical-align' in style)) return;
+    const want = style['vertical-align'];
+    if (want === at.script) return;
+    if (!css && want === 'sub') push(change.tags, 'sub');
+    else if (!css && want === 'super') push(change.tags, 'sup');
+    else push(cssOut, ['vertical-align', want]);
+  }
+  function changeColor(style, at, fontAttrs, cssOut, css) {
+    if (!('color' in style)) return;
+    const want = parseColor(style.color, false), have = at.color || defaultColor();
+    if (want === null || want === have) return;
+    if (!css) push(fontAttrs, ['color', hexColor(rgbOf(style.color, false))]);
+    else push(cssOut, ['color', style.color]);
+  }
+  function changeFontFamily(style, at, fontAttrs, cssOut, css) {
+    if (!('font-family' in style)) return;
+    const want = style['font-family'], have = at.family || defaultFamily();
+    if (want === have) return;
+    if (!css) push(fontAttrs, ['face', want]);
+    else push(cssOut, ['font-family', want]);
+  }
+  function changeFontSize(style, at, fontAttrs, cssOut, css) {
+    if (!('font-size' in style)) return;
+    const want = style['font-size'];
+    if (legacyPixels[want] === at.size) return;
+    if (!css) push(fontAttrs, ['size', StringValue(want)]);
+    else push(cssOut, ['font-size', legacyKeywords[want]]);
+  }
+  function changeBgColor(style, at, cssOut) {
+    if (!('background-color' in style)) return;
+    const want = parseColor(style['background-color'], false);
+    if (want !== null && want !== 'rgba(0, 0, 0, 0)' && want !== at.background) push(cssOut, ['background-color', style['background-color']]);
+  }
   // The changes `style` needs at `node` given its current inherited style.
   function styleChange(style, node, css) {
-    const at = styleAt(node), change = record(), cssOut = list();
+    const at = styleAt(node), change = record(), cssOut = list(), fontAttrs = list();
     change.tags = list(); change.font = null; change.css = '';
-    if ('font-weight' in style) {
-      const want = weightNumber(style['font-weight'], at.weight) >= 600, have = at.weight >= 600;
-      if (want !== have) { if (want && !css) push(change.tags, 'b'); else push(cssOut, ['font-weight', want ? 'bold' : 'normal']); }
-    }
-    if ('font-style' in style) {
-      const want = style['font-style'] === 'italic';
-      if (want !== at.italic) { if (want && !css) push(change.tags, 'i'); else push(cssOut, ['font-style', want ? 'italic' : 'normal']); }
-    }
-    if ('text-decoration-line' in style) {
-      const set = style['text-decoration-line'];
-      const addU = set.underline && !at.underline, addS = set.strike && !at.strike;
-      if (css) { if (addU || addS) push(cssOut, ['text-decoration-line', addU && addS ? 'underline line-through' : addU ? 'underline' : 'line-through']); }
-      else { if (addU) push(change.tags, 'u'); if (addS) push(change.tags, 'strike'); }
-    }
-    if ('vertical-align' in style) {
-      const want = style['vertical-align'];
-      if (want !== at.script) { if (!css && want === 'sub') push(change.tags, 'sub'); else if (!css && want === 'super') push(change.tags, 'sup'); else push(cssOut, ['vertical-align', want]); }
-    }
-    const fontAttrs = list();
-    if ('color' in style) {
-      const want = parseColor(style.color, false), have = at.color || defaultColor();
-      if (want !== null && want !== have) { if (!css) push(fontAttrs, ['color', hexColor(rgbOf(style.color, false))]); else push(cssOut, ['color', style.color]); }
-    }
-    if ('font-family' in style) {
-      const want = style['font-family'], have = at.family || defaultFamily();
-      if (want !== have) { if (!css) push(fontAttrs, ['face', want]); else push(cssOut, ['font-family', want]); }
-    }
-    if ('font-size' in style) {
-      const want = style['font-size'];
-      if (legacyPixels[want] !== at.size) { if (!css) push(fontAttrs, ['size', StringValue(want)]); else push(cssOut, ['font-size', legacyKeywords[want]]); }
-    }
-    if ('background-color' in style) {
-      const want = parseColor(style['background-color'], false);
-      if (want !== null && want !== 'rgba(0, 0, 0, 0)' && want !== at.background) push(cssOut, ['background-color', style['background-color']]);
-    }
+    changeWeight(style, at, change, cssOut, css);
+    changeStyleProp(style, at, change, cssOut, css);
+    changeDecoration(style, at, change, cssOut, css);
+    changeVAlign(style, at, change, cssOut, css);
+    changeColor(style, at, fontAttrs, cssOut, css);
+    changeFontFamily(style, at, fontAttrs, cssOut, css);
+    changeFontSize(style, at, fontAttrs, cssOut, css);
+    changeBgColor(style, at, cssOut);
     if (fontAttrs.length) change.font = fontAttrs;
     if (cssOut.length) change.css = serializeDeclarations(cssOut);
     return change;
@@ -867,25 +970,40 @@
   const defaultColor = () => defaultStyle().color;
   function changeIsEmpty(change) { return !change.tags.length && change.font === null && !change.css && !change.link; }
   // Blink's ApplyInlineStyleChange: font element first (outermost), then a style span, then tags.
-  function applyChange(startNode, endNode, change, doc) {
+  function findStyleContainers(startNode, endNode) {
     let fontContainer = null, styleContainer = null, s = startNode, e = endNode;
     for (let container = s; container !== null && s === e; container = firstOf(container)) {
-      if (nameOf(container) === 'font') fontContainer = container;
       const name = nameOf(container);
+      if (name === 'font') fontContainer = container;
       if (name && (name === 'span' || ((styleContainer === null || nameOf(styleContainer) !== 'span') && firstOf(container) !== null))) styleContainer = container;
       if (firstOf(container) === null) break;
       s = firstOf(container); e = lastOf(container);
     }
-    if (change.font !== null) {
-      if (fontContainer !== null) { for (let i = 0; i < change.font.length; i++) setAttr(fontContainer, change.font[i][0], change.font[i][1]); }
-      else { const font = createElement(doc, 'font'); for (let i = 0; i < change.font.length; i++) apply(setAttrF, font, [change.font[i][0], change.font[i][1]]); surround(s, e, font); }
+    return { __proto__: null, fontContainer, styleContainer, s, e };
+  }
+  function applyFontChange(fontContainer, change, doc, s, e) {
+    if (fontContainer !== null) {
+      for (let i = 0; i < change.font.length; i++) setAttr(fontContainer, change.font[i][0], change.font[i][1]);
+      return;
     }
-    if (change.css) {
-      if (styleContainer !== null && nameOf(styleContainer) === 'span') {
-        const existing = attr(styleContainer, 'style');
-        setAttr(styleContainer, 'style', existing !== null && trim(existing) !== '' ? serializeDeclarations(declarations(styleContainer)) + ' ' + change.css : change.css);
-      } else { const span = createElement(doc, 'span'); apply(setAttrF, span, ['style', change.css]); surround(s, e, span); }
+    const font = createElement(doc, 'font');
+    for (let i = 0; i < change.font.length; i++) apply(setAttrF, font, [change.font[i][0], change.font[i][1]]);
+    surround(s, e, font);
+  }
+  function applyCssChange(styleContainer, change, doc, s, e) {
+    if (styleContainer !== null && nameOf(styleContainer) === 'span') {
+      const existing = attr(styleContainer, 'style');
+      setAttr(styleContainer, 'style', existing !== null && trim(existing) !== '' ? serializeDeclarations(declarations(styleContainer)) + ' ' + change.css : change.css);
+      return;
     }
+    const span = createElement(doc, 'span');
+    apply(setAttrF, span, ['style', change.css]);
+    surround(s, e, span);
+  }
+  function applyChange(startNode, endNode, change, doc) {
+    const c = findStyleContainers(startNode, endNode), s = c.s, e = c.e;
+    if (change.font !== null) applyFontChange(c.fontContainer, change, doc, s, e);
+    if (change.css) applyCssChange(c.styleContainer, change, doc, s, e);
     for (let i = 0; i < change.tags.length; i++) surround(s, e, createElement(doc, change.tags[i]));
     if (change.link) { const a = createElement(doc, 'a'); apply(setAttrF, a, ['href', change.link]); surround(s, e, a); }
   }
@@ -974,21 +1092,36 @@
     applyToNodeRange(doc, style, startNode, pastEnd, css);
     return null;
   }
-  function applyToNodeRange(doc, style, startNode, pastEnd, css) {
+  function shouldSkipRangeNode(node, pastEnd) {
+    if (!isEditable(node)) return 'skip';
+    if (!isElement(node)) return null;
+    if (displayOf(node) === 'none') return 'skip';
+    if (isBlock(node)) return 'skip';
+    if (firstOf(node) === null) return null;
+    if ((pastEnd !== null && contains(node, pastEnd)) || !isEditable(parentOf(node))) return 'skip';
+    if (atomicNames[nameOf(node)]) return 'atomic';
+    return null;
+  }
+  function extendRun(node, pastEnd) {
+    let runEnd = node;
+    for (let sibling = nextOf(node); sibling !== null && sibling !== pastEnd && !(pastEnd !== null && contains(sibling, pastEnd)) && (!isBlock(sibling) || contains(sibling, runEnd)); sibling = nextOf(runEnd)) runEnd = sibling;
+    return runEnd;
+  }
+  function collectStyleRuns(startNode, pastEnd) {
     const runs = list();
     for (let node = startNode, next; node !== null && node !== pastEnd; node = next) {
       next = nodeAfter(node);
-      if (!isEditable(node) || (isElement(node) && displayOf(node) === 'none')) continue;
-      if (isElement(node) && isBlock(node)) continue;
-      if (isElement(node) && firstOf(node) !== null) {
-        if ((pastEnd !== null && contains(node, pastEnd)) || !isEditable(parentOf(node))) continue;
-        if (atomicNames[nameOf(node)]) { next = nodeAfterSkipping(node); continue; }
-      }
-      const runStart = node; let runEnd = node;
-      for (let sibling = nextOf(node); sibling !== null && sibling !== pastEnd && !(pastEnd !== null && contains(sibling, pastEnd)) && (!isBlock(sibling) || contains(sibling, runEnd)); sibling = nextOf(runEnd)) runEnd = sibling;
+      const decision = shouldSkipRangeNode(node, pastEnd);
+      if (decision === 'skip') continue;
+      if (decision === 'atomic') { next = nodeAfterSkipping(node); continue; }
+      const runEnd = extendRun(node, pastEnd);
       next = nodeAfterSkipping(runEnd);
-      push(runs, [runStart, runEnd]);
+      push(runs, [node, runEnd]);
     }
+    return runs;
+  }
+  function applyToNodeRange(doc, style, startNode, pastEnd, css) {
+    const runs = collectStyleRuns(startNode, pastEnd);
     for (let i = 0; i < runs.length; i++) {
       const run = runs[i];
       if (parentOf(run[0]) === null) continue;
@@ -1047,22 +1180,22 @@
     if (t === null || sel === null || !sel.caret || !same(t.at, sel.start) || t.range !== currentRange(editor.doc)) return null;
     return t.style;
   }
+  // Blink compares the keyword with the computed numeric weight, which never matches.
+  function prepareStyleKeep(key, v, at) {
+    if (key === 'font-weight') return true;
+    if (key === 'font-style') return (v === 'italic') !== at.italic;
+    if (key === 'text-decoration-line') return v.underline !== at.underline || v.strike !== at.strike;
+    if (key === 'vertical-align') return v !== at.script;
+    if (key === 'color') return parseColor(v, false) !== (at.color || defaultColor());
+    if (key === 'font-family') return v !== (at.family || defaultFamily());
+    if (key === 'font-size') return legacyPixels[v] !== at.size;
+    if (key === 'background-color') return parseColor(v, false) !== at.background;
+    return true;
+  }
   // Removes properties already in effect at the caret (EditingStyle::PrepareToApplyAt).
   function prepareStyleAt(style, node) {
     const at = styleAt(node), out = record();
-    for (const key in style) {
-      const v = style[key];
-      // Blink compares the keyword with the computed numeric weight, which never matches.
-      if (key === 'font-weight') out[key] = v;
-      else if (key === 'font-style') { if ((v === 'italic') !== at.italic) out[key] = v; }
-      else if (key === 'text-decoration-line') { if (v.underline !== at.underline || v.strike !== at.strike) out[key] = v; }
-      else if (key === 'vertical-align') { if (v !== at.script) out[key] = v; }
-      else if (key === 'color') { if (parseColor(v, false) !== (at.color || defaultColor())) out[key] = v; }
-      else if (key === 'font-family') { if (v !== (at.family || defaultFamily())) out[key] = v; }
-      else if (key === 'font-size') { if (legacyPixels[v] !== at.size) out[key] = v; }
-      else if (key === 'background-color') { if (parseColor(v, false) !== at.background) out[key] = v; }
-      else out[key] = v;
-    }
+    for (const key in style) { const v = style[key]; if (prepareStyleKeep(key, v, at)) out[key] = v; }
     return out;
   }
   // The inline style at `node` expressed as a desired style (for type-over after a delete).
@@ -1086,6 +1219,48 @@
     return false;
   }
   function removeAndPrune(node, stop) { const parent = parentOf(node); removeNode(node); if (parent !== null) pruneEmptyAncestors(parent, stop); }
+  function collectDeleteDoomed(start, end) {
+    const doomed = list();
+    for (let n = isText(start.c) ? nodeAfterSkipping(start.c) : (childAt(start.c, start.o) || nodeAfterSkipping(start.c)); n !== null;) {
+      const b = before(n), a = after(n);
+      if (compare(b, end) >= 0) break;
+      if (compare(start, b) <= 0 && compare(a, end) <= 0) { push(doomed, n); n = nodeAfterSkipping(n); continue; }
+      n = nodeAfter(n);
+    }
+    return doomed;
+  }
+  function pruneEdgeTextIfEmpty(node, block) {
+    if (isText(node) && !dataOf(node).length && parentOf(node) !== null) removeAndPrune(node, block);
+  }
+  function mergeBlocksAfterDelete(doc, root, caret, endMark, endBlock) {
+    const from = marked(endMark), to = marked(caret);
+    const joined = moveParagraph(doc, root, from, to, endBlock);
+    if (joined) { caret.c = joined.c; caret.o = joined.o; }
+    let block = endBlock;
+    while (block !== null && block !== root && connectedOf(block) && !hasRenderedContent(block) && !contains(block, marked(caret).c)) { const parent = parentOf(block); removeNode(block); block = parent; }
+  }
+  function deleteCrossRange(doc, root, start, end, startBlock, endBlock, caret, endMark, merge) {
+    const doomed = collectDeleteDoomed(start, end);
+    if (isText(start.c)) deleteText(start.c, start.o, dataOf(start.c).length - start.o);
+    if (isText(end.c)) deleteText(end.c, 0, end.o);
+    for (let i = 0; i < doomed.length; i++) if (parentOf(doomed[i]) !== null) removeNode(doomed[i]);
+    pruneEdgeTextIfEmpty(end.c, endBlock);
+    pruneEdgeTextIfEmpty(start.c, startBlock);
+    if (isElement(start.c)) pruneEmptyAncestors(start.c, startBlock);
+    if (merge && startBlock !== endBlock && connectedOf(endBlock)) mergeBlocksAfterDelete(doc, root, caret, endMark, endBlock);
+  }
+  function finalizeDeleteCaret(doc, at, root) {
+    const block = blockOf(at.c, root);
+    if (!hasRenderedContent(block)) {
+      const br = createElement(doc, 'br');
+      insertAt(br, at);
+      return before(br);
+    }
+    const c = canonical(at);
+    if (c !== null) at = c;
+    rebalanceAt(at);
+    return canonical(marked(mark(at))) || at;
+  }
   function deleteRange(doc, root, start, end, merge) {
     const editor = editorOf(doc);
     // Type-over keeps the style of the deleted start that differs from the surviving context.
@@ -1098,67 +1273,52 @@
     if (start.c === end.c && isText(start.c)) {
       deleteText(start.c, start.o, end.o - start.o);
       if (!dataOf(start.c).length) removeAndPrune(start.c, startBlock);
-    } else {
-      const doomed = list();
-      for (let n = isText(start.c) ? nodeAfterSkipping(start.c) : (childAt(start.c, start.o) || nodeAfterSkipping(start.c)); n !== null;) {
-        const b = before(n), a = after(n);
-        if (compare(b, end) >= 0) break;
-        if (compare(start, b) <= 0 && compare(a, end) <= 0) { push(doomed, n); n = nodeAfterSkipping(n); continue; }
-        n = nodeAfter(n);
-      }
-      if (isText(start.c)) deleteText(start.c, start.o, dataOf(start.c).length - start.o);
-      if (isText(end.c)) deleteText(end.c, 0, end.o);
-      for (let i = 0; i < doomed.length; i++) if (parentOf(doomed[i]) !== null) removeNode(doomed[i]);
-      if (isText(end.c) && !dataOf(end.c).length && parentOf(end.c) !== null) removeAndPrune(end.c, endBlock);
-      if (isText(start.c) && !dataOf(start.c).length && parentOf(start.c) !== null) removeAndPrune(start.c, startBlock);
-      else if (isElement(start.c)) pruneEmptyAncestors(start.c, startBlock);
-      if (merge && startBlock !== endBlock && connectedOf(endBlock)) {
-        const from = marked(endMark), to = marked(caret);
-        const joined = moveParagraph(doc, root, from, to, endBlock);
-        if (joined) { caret.c = joined.c; caret.o = joined.o; }
-        let block = endBlock;
-        while (block !== null && block !== root && connectedOf(block) && !hasRenderedContent(block) && !contains(block, marked(caret).c)) { const parent = parentOf(block); removeNode(block); block = parent; }
-      }
-    }
-    let at = marked(caret);
-    const block = blockOf(at.c, root);
-    if (!hasRenderedContent(block)) {
-      const br = createElement(doc, 'br');
-      insertAt(br, at);
-      at = before(br);
-    } else {
-      const c = canonical(at);
-      if (c !== null) at = c;
-      rebalanceAt(at);
-      at = canonical(marked(mark(at))) || at;
-    }
+    } else deleteCrossRange(doc, root, start, end, startBlock, endBlock, caret, endMark, merge);
+    const at = finalizeDeleteCaret(doc, marked(caret), root);
     const kept = prepareStyleAt(deletedStyle, at.c);
     if (!styleIsEmpty(kept) && richly(at.c)) editor.pendingTyping = kept;
     return at;
   }
-  // Moves the paragraph starting at `from` (to the next paragraph boundary) to `to`, merging text.
-  function moveParagraph(doc, root, from, to, sourceBlock) {
-    let first;
+  function paragraphMoveFirst(from, sourceBlock) {
     if (isText(from.c)) {
-      if (from.o >= dataOf(from.c).length) first = nodeAfterSkipping(from.c);
-      else { if (from.o > 0) splitText(from.c, from.o); first = from.c; }
-    } else first = childAt(from.c, from.o) || (from.c === sourceBlock ? null : nodeAfterSkipping(from.c));
-    if (first === null || !contains(sourceBlock, first)) return null;
-    let top = first;
-    while (parentOf(top) !== sourceBlock && parentOf(top) !== null) { const parent = parentOf(top); if (prevOf(top) !== null) splitElement(parent, top); top = parent; }
+      if (from.o >= dataOf(from.c).length) return nodeAfterSkipping(from.c);
+      if (from.o > 0) splitText(from.c, from.o);
+      return from.c;
+    }
+    return childAt(from.c, from.o) || (from.c === sourceBlock ? null : nodeAfterSkipping(from.c));
+  }
+  function splitToBlockChild(top, sourceBlock) {
+    while (parentOf(top) !== sourceBlock && parentOf(top) !== null) {
+      const parent = parentOf(top);
+      if (prevOf(top) !== null) splitElement(parent, top);
+      top = parent;
+    }
+    return top;
+  }
+  function collectParagraphNodes(top) {
     const nodes = list();
     for (let n = top; n !== null; n = nextOf(n)) {
       if (nameOf(n) === 'br') { removeNode(n); break; }
       if (isBlock(n)) break;
       push(nodes, n);
     }
-    if (!nodes.length) return null;
+    return nodes;
+  }
+  function resolveMoveTarget(to) {
     let target = to;
     if (isText(target.c) && target.o > 0 && target.o < dataOf(target.c).length) { splitText(target.c, target.o); target = before(target.c); }
-    let anchorParent, anchorRef;
-    if (isText(target.c)) { anchorParent = parentOf(target.c); anchorRef = target.o === 0 ? target.c : nextOf(target.c); }
-    else { anchorParent = target.c; anchorRef = childAt(target.c, target.o); }
-    for (let i = 0; i < nodes.length; i++) moveNode(nodes[i], anchorParent, anchorRef);
+    if (isText(target.c)) return { __proto__: null, parent: parentOf(target.c), ref: target.o === 0 ? target.c : nextOf(target.c) };
+    return { __proto__: null, parent: target.c, ref: childAt(target.c, target.o) };
+  }
+  // Moves the paragraph starting at `from` (to the next paragraph boundary) to `to`, merging text.
+  function moveParagraph(doc, root, from, to, sourceBlock) {
+    const first = paragraphMoveFirst(from, sourceBlock);
+    if (first === null || !contains(sourceBlock, first)) return null;
+    const top = splitToBlockChild(first, sourceBlock);
+    const nodes = collectParagraphNodes(top);
+    if (!nodes.length) return null;
+    const anchor = resolveMoveTarget(to);
+    for (let i = 0; i < nodes.length; i++) moveNode(nodes[i], anchor.parent, anchor.ref);
     const head = nodes[0];
     if (isText(head)) { const previous = prevOf(head), offset = previous !== null && isText(previous) ? dataOf(previous).length : 0; mergeTextsAround(head); return P(head, offset); }
     return before(head);
@@ -1174,26 +1334,100 @@
   }
   // Backspace boundaries: a code point, keeping emoji sequences (ZWJ, variation selectors, flags,
   // keycaps, modifiers) together.
-  function backwardBoundary(text, offset) {
-    const cp = at => { const c = code(text, at - 1); if (c >= 0xdc00 && c <= 0xdfff && at >= 2) { const h = code(text, at - 2); if (h >= 0xd800 && h <= 0xdbff) return [((h - 0xd800) << 10) + (c - 0xdc00) + 0x10000, 2]; } return [c, 1]; };
-    let at = offset;
-    let [c, n] = cp(at); at -= n;
-    const regional = x => x >= 0x1f1e6 && x <= 0x1f1ff;
-    if (c === 0xfe0f || c === 0x20e3 || (c >= 0x1f3fb && c <= 0x1f3ff)) { while (at > 0) { const [p, m] = cp(at); at -= m; if (p !== 0xfe0f && p !== 0x20e3 && !(p >= 0x1f3fb && p <= 0x1f3ff)) break; } }
-    while (at > 0) { const [p, m] = cp(at); if (p !== 0x200d) break; at -= m; if (at <= 0) break; const [q, k] = cp(at); at -= k; if (q === 0xfe0f && at > 0) { const [r, j] = cp(at); at -= j; } }
-    if (regional(c) && at > 0) { let count = 0, scan = at; while (scan > 0) { const [p, m] = cp(scan); if (!regional(p)) break; count++; scan -= m; } if (count % 2 === 1) at -= 2; }
+  function codePointBefore(text, at) {
+    const c = code(text, at - 1);
+    if (c >= 0xdc00 && c <= 0xdfff && at >= 2) {
+      const h = code(text, at - 2);
+      if (h >= 0xd800 && h <= 0xdbff) return [((h - 0xd800) << 10) + (c - 0xdc00) + 0x10000, 2];
+    }
+    return [c, 1];
+  }
+  function skipEmojiExtendersBackward(text, at) {
+    while (at > 0) {
+      const [p, m] = codePointBefore(text, at);
+      const isExt = p === 0xfe0f || p === 0x20e3 || (p >= 0x1f3fb && p <= 0x1f3ff);
+      if (!isExt) break;
+      at -= m;
+    }
     return at;
+  }
+  function skipZwjSequencesBackward(text, at) {
+    while (at > 0) {
+      const [p, m] = codePointBefore(text, at);
+      if (p !== 0x200d) break;
+      at -= m;
+      if (at <= 0) break;
+      const [q, k] = codePointBefore(text, at);
+      at -= k;
+      if (q === 0xfe0f && at > 0) { const [, j] = codePointBefore(text, at); at -= j; }
+    }
+    return at;
+  }
+  const isRegionalIndicator = x => x >= 0x1f1e6 && x <= 0x1f1ff;
+  function adjustRegionalPair(text, c, at) {
+    if (!isRegionalIndicator(c) || at <= 0) return at;
+    let count = 0, scan = at;
+    while (scan > 0) {
+      const [p, m] = codePointBefore(text, scan);
+      if (!isRegionalIndicator(p)) break;
+      count++;
+      scan -= m;
+    }
+    if (count % 2 === 1) at -= 2;
+    return at;
+  }
+  function backwardBoundary(text, offset) {
+    let at = offset;
+    const [c, n] = codePointBefore(text, at); at -= n;
+    if (c === 0xfe0f || c === 0x20e3 || (c >= 0x1f3fb && c <= 0x1f3ff)) at = skipEmojiExtendersBackward(text, at);
+    at = skipZwjSequencesBackward(text, at);
+    at = adjustRegionalPair(text, c, at);
+    return at;
+  }
+  function codePointAt(text, i) {
+    const c = code(text, i);
+    if (c >= 0xd800 && c <= 0xdbff && i + 1 < text.length) {
+      const l = code(text, i + 1);
+      if (l >= 0xdc00 && l <= 0xdfff) return [((c - 0xd800) << 10) + (l - 0xdc00) + 0x10000, 2];
+    }
+    return [c, 1];
+  }
+  const EXTEND_RANGES = [[0x300, 0x36f], [0x1ab0, 0x1aff], [0x1dc0, 0x1dff], [0x20d0, 0x20ff], [0xfe20, 0xfe2f], [0x1f3fb, 0x1f3ff], [0xe0020, 0xe007f]];
+  function isExtendCodePoint(c) {
+    if (c === 0xfe0f || c === 0xfe0e || c === 0x200d) return true;
+    for (let i = 0; i < EXTEND_RANGES.length; i++) { if (c >= EXTEND_RANGES[i][0] && c <= EXTEND_RANGES[i][1]) return true; }
+    return false;
   }
   function forwardBoundary(text, offset) {
     let at = offset;
-    const cpAt = i => { const c = code(text, i); if (c >= 0xd800 && c <= 0xdbff && i + 1 < text.length) { const l = code(text, i + 1); if (l >= 0xdc00 && l <= 0xdfff) return [((c - 0xd800) << 10) + (l - 0xdc00) + 0x10000, 2]; } return [c, 1]; };
-    const extend = c => (c >= 0x300 && c <= 0x36f) || (c >= 0x1ab0 && c <= 0x1aff) || (c >= 0x1dc0 && c <= 0x1dff) || (c >= 0x20d0 && c <= 0x20ff) || (c >= 0xfe20 && c <= 0xfe2f) || c === 0xfe0f || c === 0xfe0e || c === 0x200d || (c >= 0x1f3fb && c <= 0x1f3ff) || (c >= 0xe0020 && c <= 0xe007f);
-    let [c, n] = cpAt(at); at += n;
+    const [c, n] = codePointAt(text, at); at += n;
     if (code(text, at - n) === 13 && code(text, at) === 10) return at + 1;
     let joined = false;
-    while (at < text.length) { const [p, m] = cpAt(at); if (extend(p)) { at += m; joined = p === 0x200d; continue; } if (joined) { at += m; joined = false; continue; } break; }
-    if (c >= 0x1f1e6 && c <= 0x1f1ff && at < text.length) { const [p, m] = cpAt(at); if (p >= 0x1f1e6 && p <= 0x1f1ff) at += m; }
+    while (at < text.length) {
+      const [p, m] = codePointAt(text, at);
+      if (isExtendCodePoint(p)) { at += m; joined = p === 0x200d; continue; }
+      if (joined) { at += m; joined = false; continue; }
+      break;
+    }
+    if (c >= 0x1f1e6 && c <= 0x1f1ff && at < text.length) { const [p, m] = codePointAt(text, at); if (p >= 0x1f1e6 && p <= 0x1f1ff) at += m; }
     return at;
+  }
+  function singleCharDeleteRange(item, caret, forward) {
+    const text = dataOf(item.n);
+    if (forward) { const s = P(item.n, item.o); return [s, P(item.n, forwardBoundary(text, item.o)), false]; }
+    const e = caret.c === item.n ? caret : P(item.n, item.o + 1);
+    return [P(item.n, backwardBoundary(text, item.o + 1)), e, false];
+  }
+  function deleteSideStart(items, lo, caret, forward) {
+    if (forward) return caret;
+    if (items[lo].t === BE || items[lo].t === BS) return candidate(items, lo);
+    return itemStart(items[lo]);
+  }
+  function deleteSideEnd(items, hi, caret, forward) {
+    if (!forward) return caret;
+    const last = items[hi - 1];
+    if (last.t === BE || last.t === BS) return candidate(items, hi);
+    return itemEnd(last);
   }
   // TypingCommand::DeleteKeyPressed / ForwardDeleteKeyPressed for a caret: returns the range to delete.
   function deletionRange(root, caret, forward) {
@@ -1203,34 +1437,51 @@
     const lo = forward ? k : j, hi = forward ? j : k;
     let hasBlock = false;
     for (let i = lo; i < hi; i++) if (items[i].t === BS || items[i].t === BE) hasBlock = true;
-    if (!hasBlock && hi - lo === 1 && items[lo].t === CHAR) {
-      const item = items[lo], text = dataOf(item.n);
-      if (forward) { const s = P(item.n, item.o); return [s, P(item.n, forwardBoundary(text, item.o)), false]; }
-      const e = caret.c === item.n ? caret : P(item.n, item.o + 1);
-      return [P(item.n, backwardBoundary(text, item.o + 1)), e, false];
-    }
-    const start = forward ? caret : (items[lo].t === BE || items[lo].t === BS ? candidate(items, lo) : itemStart(items[lo]));
-    const end = forward ? (items[hi - 1].t === BE || items[hi - 1].t === BS ? candidate(items, hi) : itemEnd(items[hi - 1])) : caret;
+    if (!hasBlock && hi - lo === 1 && items[lo].t === CHAR) return singleCharDeleteRange(items[lo], caret, forward);
+    const start = deleteSideStart(items, lo, caret, forward);
+    const end = deleteSideEnd(items, hi, caret, forward);
     return [start, end, hasBlock];
   }
 
   // ---- insertion -----------------------------------------------------------------------------------
   function isPlaceholder(items, k) { return k < items.length && items[k].t === BR && items[k].o < 0 && startOfParagraph(items, k) && endOfBlock(items, k); }
+  function canFastReplaceText(sel, text, typing) {
+    if (typing !== null || sel.start.c !== sel.end.c || !isText(sel.start.c)) return false;
+    if (!text.length) return false;
+    if (find(text, ' ') >= 0 || find(text, '\t') >= 0 || find(text, '\n') >= 0) return false;
+    return true;
+  }
+  function resolveInsertTextStart(doc, root, sel, text, typing, editor) {
+    if (sel.caret) return { __proto__: null, start: sel.start, typing };
+    if (canFastReplaceText(sel, text, typing)) {
+      replaceText(sel.start.c, sel.start.o, sel.end.o - sel.start.o, text);
+      return { __proto__: null, start: P(sel.start.c, sel.start.o + text.length), typing, done: true };
+    }
+    const start = deleteRange(doc, root, sel.start, sel.end, true);
+    if (editor.pendingTyping) { typing = mergeStyles(editor.pendingTyping, typing); editor.pendingTyping = null; }
+    return { __proto__: null, start, typing };
+  }
+  function removePlaceholderAt(items, k, start) {
+    if (!isPlaceholder(items, k)) return start;
+    const br = items[k].n;
+    start = upstream(items, k) || before(br);
+    const m = mark(start);
+    removeNode(br);
+    return marked(m);
+  }
+  function isAllSpace(text) {
+    for (let i = 0; i < text.length; i++) if (!isSpace(code(text, i))) return false;
+    return true;
+  }
   // Blink's InsertTextCommand for one run without newlines; returns the caret after the text.
   function insertTextRun(doc, root, sel, text, typing) {
     const editor = editorOf(doc);
-    let start;
-    if (!sel.caret) {
-      if (typing === null && sel.start.c === sel.end.c && isText(sel.start.c) && find(text, ' ') < 0 && find(text, '\t') < 0 && find(text, '\n') < 0 && text.length) {
-        replaceText(sel.start.c, sel.start.o, sel.end.o - sel.start.o, text);
-        return P(sel.start.c, sel.start.o + text.length);
-      }
-      start = deleteRange(doc, root, sel.start, sel.end, true);
-      if (editor.pendingTyping) { typing = mergeStyles(editor.pendingTyping, typing); editor.pendingTyping = null; }
-    } else start = sel.start;
+    const prep = resolveInsertTextStart(doc, root, sel, text, typing, editor);
+    if (prep.done) return prep.start;
+    let start = prep.start; typing = prep.typing;
     if (!text.length) return start;
     const items = streamOf(root), k = gapOf(items, start);
-    if (isPlaceholder(items, k)) { const br = items[k].n; start = upstream(items, k) || before(br); const m = mark(start); removeNode(br); start = marked(m); }
+    start = removePlaceholderAt(items, k, start);
     start = canonical(start) || start;
     if (text === '\t' && richly(start.c)) return insertTab(doc, start);
     if (!isText(start.c)) { const node = createText(doc, ''); insertAt(node, start); start = P(node, 0); }
@@ -1238,9 +1489,7 @@
     insertText(node, offset, text);
     let end = P(node, offset + text.length);
     rebalanceAt(end);
-    let onlySpace = true;
-    for (let i = 0; i < text.length; i++) if (!isSpace(code(text, i))) onlySpace = false;
-    if (!onlySpace) rebalanceAt(P(node, offset));
+    if (!isAllSpace(text)) rebalanceAt(P(node, offset));
     end = P(node, offset + text.length);
     if (typing !== null && !styleIsEmpty(typing)) {
       const range = applyInlineStyle(doc, typing, P(node, offset), end, editor.css);
@@ -1283,68 +1532,89 @@
   function ancestorsInsideBlock(node, block) { const out = list(); for (let n = isElement(node) ? node : parentOf(node); n !== null && n !== block; n = parentOf(n)) push(out, n); return out; }
   function cloneHierarchy(ancestors, block) { let parent = block; for (let i = ancestors.length - 1; i >= 0; i--) { const c = cloneShallow(ancestors[i]); apply(removeAttrF, c, ['id']); appendNode(c, parent); parent = c; } return parent; }
   function listChild(node, root) { for (let n = node; n !== null && n !== root; n = parentOf(n)) { const name = nameOf(n); if (name === 'li' || name === 'dd' || name === 'dt') return n; } return null; }
+  function paragraphBlocksLineBreak(sname, startBlock) {
+    return sname === 'td' || sname === 'th' || sname === 'form' || sname === 'pre' || sname === 'listing' || sname === 'xmp' || parentOf(startBlock) === null;
+  }
+  // Breaking out of an empty list item.
+  function breakOutOfEmptyListItem(doc, pos, root, editor) {
+    const li = listChild(pos.c, root);
+    if (li === null || nameOf(li) !== 'li' || hasRenderedContentExceptPlaceholder(li)) return null;
+    const listEl = parentOf(li);
+    if (listEl === null || (nameOf(listEl) !== 'ul' && nameOf(listEl) !== 'ol') || nextOf(li) !== null) return null;
+    const block = createElement(doc, editor.separator);
+    insertAfter(block, listEl);
+    removeNode(li);
+    if (firstOf(listEl) === null) removeNode(listEl);
+    appendNode(createElement(doc, 'br'), block);
+    return P(block, 0);
+  }
+  function pickBlockToInsert(doc, editor, startBlock, isRoot, last, sname) {
+    if (isRoot) return { __proto__: null, block: createElement(doc, editor.separator), nest: true };
+    if (last && headingNames[sname]) return { __proto__: null, block: createElement(doc, editor.separator), nest: false };
+    return { __proto__: null, block: cloneShallow(startBlock), nest: false };
+  }
+  function insertParagraphAtEnd(doc, editor, pos, items, k, startBlock, blockToInsert, nest, first) {
+    if (nest) {
+      if (first && !lineBreakAt(items, k)) { const extra = createElement(doc, editor.separator); appendNode(extra, startBlock); appendNode(createElement(doc, 'br'), extra); }
+      appendNode(blockToInsert, startBlock);
+    } else insertAfter(blockToInsert, startBlock);
+    const parent = cloneHierarchy(ancestorsInsideBlock(pos.c, startBlock), blockToInsert);
+    appendNode(createElement(doc, 'br'), parent);
+    return P(parent, 0);
+  }
+  function insertParagraphAtStart(doc, pos, startBlock, blockToInsert, nest) {
+    const ref = nest ? firstOf(startBlock) : startBlock;
+    const insertion = canonicalForward(pos) || pos;
+    insertNode(blockToInsert, parentOf(ref), ref);
+    const parent = cloneHierarchy(ancestorsInsideBlock(insertion.c, startBlock), blockToInsert);
+    appendNode(createElement(doc, 'br'), parent);
+    return insertion;
+  }
+  function resolveParagraphSplitAt(pos, startBlock) {
+    const at = canonicalForward(pos) || pos;
+    if (isText(at.c) && at.o > 0 && at.o < dataOf(at.c).length) { splitText(at.c, at.o); return P(at.c, 0); }
+    if (isText(at.c) && at.o >= dataOf(at.c).length) {
+      const n = nodeAfterSkipping(at.c);
+      return n !== null && contains(startBlock, n) ? before(n) : P(startBlock, lengthOf(startBlock));
+    }
+    return at;
+  }
+  // SplitTreeToNode(splitTo, startBlock): split each inline ancestor at the path.
+  function findParagraphMoveStart(at, startBlock) {
+    if (at.c === startBlock) return childAt(startBlock, at.o);
+    let top = isText(at.c) ? at.c : (childAt(at.c, at.o) || at.c);
+    while (parentOf(top) !== startBlock && parentOf(top) !== null) {
+      const parent = parentOf(top);
+      if (prevOf(top) !== null) splitElement(parent, top);
+      top = parent;
+    }
+    return top;
+  }
+  // General case: split at the caret and move the rest of the paragraph's block content.
+  function insertParagraphGeneral(pos, startBlock, blockToInsert, nest) {
+    const at = resolveParagraphSplitAt(pos, startBlock);
+    if (nest) appendNode(blockToInsert, startBlock); else insertAfter(blockToInsert, startBlock);
+    const n = findParagraphMoveStart(at, startBlock);
+    for (let m = n; m !== null && m !== blockToInsert;) { const next = nextOf(m); moveNode(m, blockToInsert, null); m = next; }
+    return P(blockToInsert, 0);
+  }
   // Blink's InsertParagraphSeparatorCommand.
   function insertParagraph(doc, root, caret) {
     const editor = editorOf(doc);
-    let items = streamOf(root), k = gapOf(items, caret);
+    const items = streamOf(root), k = gapOf(items, caret);
     const pos = candidate(items, k) || caret;
     const startBlock = blockOf(pos.c, root);
     const sname = nameOf(startBlock);
-    if (sname === 'td' || sname === 'th' || sname === 'form' || sname === 'pre' || sname === 'listing' || sname === 'xmp' || parentOf(startBlock) === null) return insertLineBreak(doc, root, caret);
-    // Breaking out of an empty list item.
-    const li = listChild(pos.c, root);
-    if (li !== null && nameOf(li) === 'li' && !hasRenderedContentExceptPlaceholder(li)) {
-      const listEl = parentOf(li);
-      if (listEl !== null && (nameOf(listEl) === 'ul' || nameOf(listEl) === 'ol') && nextOf(li) === null) {
-        const block = createElement(doc, editor.separator);
-        insertAfter(block, listEl);
-        removeNode(li);
-        if (firstOf(listEl) === null) removeNode(listEl);
-        appendNode(createElement(doc, 'br'), block);
-        return P(block, 0);
-      }
-    }
+    if (paragraphBlocksLineBreak(sname, startBlock)) return insertLineBreak(doc, root, caret);
+    const listBreak = breakOutOfEmptyListItem(doc, pos, root, editor);
+    if (listBreak !== null) return listBreak;
     const first = startOfBlock(items, k), last = endOfBlock(items, k);
     const isRoot = startBlock === root;
-    let blockToInsert, nest = false;
-    if (isRoot) { blockToInsert = createElement(doc, editor.separator); nest = true; }
-    else if (last && headingNames[sname]) blockToInsert = createElement(doc, editor.separator);
-    else blockToInsert = cloneShallow(startBlock);
-    if (last) {
-      if (nest) {
-        if (first && !lineBreakAt(items, k)) { const extra = createElement(doc, editor.separator); appendNode(extra, startBlock); appendNode(createElement(doc, 'br'), extra); }
-        appendNode(blockToInsert, startBlock);
-      } else insertAfter(blockToInsert, startBlock);
-      const parent = cloneHierarchy(ancestorsInsideBlock(pos.c, startBlock), blockToInsert);
-      appendNode(createElement(doc, 'br'), parent);
-      return P(parent, 0);
-    }
-    if (first) {
-      let ref;
-      if (!nest) ref = startBlock;
-      else ref = firstOf(startBlock);
-      const insertion = canonicalForward(pos) || pos;
-      insertNode(blockToInsert, parentOf(ref), ref);
-      const parent = cloneHierarchy(ancestorsInsideBlock(insertion.c, startBlock), blockToInsert);
-      appendNode(createElement(doc, 'br'), parent);
-      return insertion;
-    }
-    // General case: split at the caret and move the rest of the paragraph's block content.
-    let at = canonicalForward(pos) || pos;
-    if (isText(at.c) && at.o > 0 && at.o < dataOf(at.c).length) { splitText(at.c, at.o); at = P(at.c, 0); }
-    else if (isText(at.c) && at.o >= dataOf(at.c).length) { const n = nodeAfterSkipping(at.c); at = n !== null && contains(startBlock, n) ? before(n) : P(startBlock, lengthOf(startBlock)); }
-    if (nest) appendNode(blockToInsert, startBlock); else insertAfter(blockToInsert, startBlock);
-    let n;
-    if (at.c === startBlock) n = childAt(startBlock, at.o);
-    else {
-      let splitTo = isText(at.c) ? at.c : (childAt(at.c, at.o) || at.c);
-      // SplitTreeToNode(splitTo, startBlock): split each inline ancestor at the path.
-      let top = splitTo;
-      while (parentOf(top) !== startBlock && parentOf(top) !== null) { const parent = parentOf(top); if (prevOf(top) !== null) splitElement(parent, top); top = parent; }
-      n = top;
-    }
-    for (let m = n; m !== null && m !== blockToInsert;) { const next = nextOf(m); moveNode(m, blockToInsert, null); m = next; }
-    return P(blockToInsert, 0);
+    const pick = pickBlockToInsert(doc, editor, startBlock, isRoot, last, sname);
+    const blockToInsert = pick.block, nest = pick.nest;
+    if (last) return insertParagraphAtEnd(doc, editor, pos, items, k, startBlock, blockToInsert, nest, first);
+    if (first) return insertParagraphAtStart(doc, pos, startBlock, blockToInsert, nest);
+    return insertParagraphGeneral(pos, startBlock, blockToInsert, nest);
   }
   function hasRenderedContentExceptPlaceholder(block) {
     const items = streamOf(block);
@@ -1378,49 +1648,78 @@
     const last = nodes[nodes.length - 1];
     return { __proto__: null, first: nodes[0], last, end: after(last) };
   }
+  function isBlockInsertionNode(n) {
+    return isElement(n) && blockNames[nameOf(n)] && nameOf(n) !== 'hr';
+  }
+  function flattenInsertedBlocks(doc, nodes) {
+    const flat = list();
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      if (!isBlockInsertionNode(n)) { push(flat, n); continue; }
+      if (flat.length && nameOf(flat[flat.length - 1]) !== 'br') push(flat, createElement(doc, 'br'));
+      const kids = list(); for (let c = firstOf(n); c !== null; c = nextOf(c)) push(kids, c);
+      for (let j = 0; j < kids.length; j++) { apply(removeChildF, n, [kids[j]]); push(flat, kids[j]); }
+    }
+    return flat;
+  }
+  function countBlockInsertionNodes(nodes) {
+    let blocks = 0;
+    for (let i = 0; i < nodes.length; i++) if (isBlockInsertionNode(nodes[i])) blocks++;
+    return blocks;
+  }
+  function tryDirectTextInsert(nodes, caret) {
+    if (nodes.length !== 1 || !isText(nodes[0])) return null;
+    const pos = canonical(caret) || caret;
+    if (!isText(pos.c)) return null;
+    const s = dataOf(nodes[0]);
+    insertText(pos.c, pos.o, s);
+    return P(pos.c, pos.o + s.length);
+  }
+  function mergeInsertedFirst(firstIn) {
+    if (isText(firstIn)) { mergeTextsAround(firstIn); return; }
+    let f = firstIn;
+    while (isElement(f) && firstOf(f) !== null && !atomicNames[nameOf(f)]) f = firstOf(f);
+    if (isText(f) && f !== firstIn) mergeTextsAround(f);
+  }
+  function mergeInsertedLastText(lastIn) {
+    if (parentOf(lastIn) === null) return;
+    const next = nextOf(lastIn);
+    if (next !== null && isText(next)) { insertText(lastIn, dataOf(lastIn).length, dataOf(next)); removeNode(next); }
+  }
+  function applyTrailingBreak(doc, root, end) {
+    const items = streamOf(root), k = gapOf(items, end);
+    let j = k; while (j < items.length && !boundaryType(items[j].t)) j++;
+    const at = j < items.length ? itemStart(items[j]) : P(root, lengthOf(root));
+    const m = mark(end);
+    insertAt(createElement(doc, 'br'), j > k ? itemEnd(items[j - 1]) : at);
+    return marked(m);
+  }
+  function computeTrailingBreak(nodes, blocks, caret, root) {
+    if (blocks !== 1 || nodes.length !== 1) return false;
+    return blockOf((canonical(caret) || caret).c, root) === root;
+  }
   function insertHTML(doc, root, sel, markup) {
-    let caret = sel.caret ? sel.start : deleteRange(doc, root, sel.start, sel.end, true);
+    const caret = sel.caret ? sel.start : deleteRange(doc, root, sel.start, sel.end, true);
     editorOf(doc).pendingTyping = null;
     let nodes = parseFragment(doc, markup);
     if (!nodes.length) return caret;
     if (!richly(root)) nodes = [createText(doc, textContentOf(nodes))];
-    if (nodes.length === 1 && isText(nodes[0])) {
-      const pos = canonical(caret) || caret;
-      if (isText(pos.c)) { const s = dataOf(nodes[0]); insertText(pos.c, pos.o, s); return P(pos.c, pos.o + s.length); }
-    }
-    let blocks = 0;
-    for (let i = 0; i < nodes.length; i++) if (isElement(nodes[i]) && blockNames[nameOf(nodes[i])] && nameOf(nodes[i]) !== 'hr') blocks++;
+    const direct = tryDirectTextInsert(nodes, caret);
+    if (direct !== null) return direct;
+    const blocks = countBlockInsertionNodes(nodes);
     let flat = nodes, trailingBreak = false;
     if (blocks) {
-      flat = list();
-      for (let i = 0; i < nodes.length; i++) {
-        const n = nodes[i];
-        if (isElement(n) && blockNames[nameOf(n)] && nameOf(n) !== 'hr') {
-          if (flat.length && nameOf(flat[flat.length - 1]) !== 'br') push(flat, createElement(doc, 'br'));
-          const kids = list(); for (let c = firstOf(n); c !== null; c = nextOf(c)) push(kids, c);
-          for (let j = 0; j < kids.length; j++) { apply(removeChildF, n, [kids[j]]); push(flat, kids[j]); }
-        } else push(flat, n);
-      }
-      trailingBreak = blocks === 1 && nodes.length === 1 && blockOf((canonical(caret) || caret).c, root) === root;
+      flat = flattenInsertedBlocks(doc, nodes);
+      trailingBreak = computeTrailingBreak(nodes, blocks, caret, root);
       if (!flat.length) return caret;
     }
     const inserted = insertNodesAt(doc, root, flat, caret, false);
-    const endMark = blocks && isText(inserted.last) ? mark(P(inserted.last, dataOf(inserted.last).length)) : mark(inserted.end);
-    if (isText(inserted.first)) mergeTextsAround(inserted.first);
-    else { let f = inserted.first; while (isElement(f) && firstOf(f) !== null && !atomicNames[nameOf(f)]) f = firstOf(f); if (isText(f) && f !== inserted.first) mergeTextsAround(f); }
-    if (blocks && isText(inserted.last) && parentOf(inserted.last) !== null) {
-      const lastText = inserted.last, next = nextOf(lastText);
-      if (next !== null && isText(next)) { insertText(lastText, dataOf(lastText).length, dataOf(next)); removeNode(next); }
-    }
-    let end = blocks && isText(inserted.last) ? marked(endMark) : (canonical(marked(endMark)) || marked(endMark));
-    if (trailingBreak) {
-      const items = streamOf(root), k = gapOf(items, end);
-      let j = k; while (j < items.length && !boundaryType(items[j].t)) j++;
-      const at = j < items.length ? itemStart(items[j]) : P(root, lengthOf(root));
-      const m = mark(end);
-      insertAt(createElement(doc, 'br'), j > k ? itemEnd(items[j - 1]) : at);
-      end = marked(m);
-    }
+    const trailingText = blocks && isText(inserted.last);
+    const endMark = trailingText ? mark(P(inserted.last, dataOf(inserted.last).length)) : mark(inserted.end);
+    mergeInsertedFirst(inserted.first);
+    if (trailingText) mergeInsertedLastText(inserted.last);
+    let end = trailingText ? marked(endMark) : (canonical(marked(endMark)) || marked(endMark));
+    if (trailingBreak) end = applyTrailingBreak(doc, root, end);
     return end;
   }
   function insertElement(doc, root, sel, element) {
@@ -1431,102 +1730,180 @@
   }
 
   // ---- paragraphs ------------------------------------------------------------------------------------
+  function expandParagraphRange(items, ks, ke, sel) {
+    if (!sel.caret && ke > ks && startOfParagraph(items, ke)) {
+      let j = ke - 1;
+      while (j > ks && !isCandidateGap(items, j)) j--;
+      ke = j;
+    }
+    while (ks > 0 && !boundaryType(items[ks - 1].t)) ks--;
+    return [ks, ke];
+  }
+  function paragraphEndGap(items, k) {
+    let e = k;
+    while (e < items.length && !boundaryType(items[e].t)) e++;
+    return e;
+  }
+  function skipBlockBoundaries(items, k) {
+    while (k < items.length && (items[k - 1].t === BE || items[k - 1].t === BS) && (items[k].t === BS || items[k].t === BE)) k++;
+    return k;
+  }
   // Paragraph ranges [startGap, endGap] covering the selection.
   function paragraphsOf(items, sel) {
-    let ks = gapOf(items, sel.start), ke = gapOf(items, sel.end);
-    if (!sel.caret && ke > ks && startOfParagraph(items, ke)) { let j = ke - 1; while (j > ks && !isCandidateGap(items, j)) j--; ke = j; }
-    while (ks > 0 && !boundaryType(items[ks - 1].t)) ks--;
+    const r = expandParagraphRange(items, gapOf(items, sel.start), gapOf(items, sel.end), sel);
+    const ks = r[0], ke = r[1];
     const out = list();
     let k = ks;
     while (k <= ke && k <= items.length) {
-      let e = k; while (e < items.length && !boundaryType(items[e].t)) e++;
+      const e = paragraphEndGap(items, k);
       if (e > k || (e === k && e < items.length && items[e].t === BR)) push(out, [k, e]);
       if (e >= items.length) break;
-      k = e + 1;
-      while (k < items.length && (items[k - 1].t === BE || items[k - 1].t === BS) && (items[k].t === BS || items[k].t === BE)) k++;
+      k = skipBlockBoundaries(items, e + 1);
       if (k > ke) break;
     }
     return out;
   }
+  function resolveParagraphBoundaries(s, e) {
+    let first, last;
+    if (isText(s.c)) {
+      if (s.o > 0) {
+        const sameNode = e.c === s.c;
+        splitText(s.c, s.o);
+        first = s.c;
+        if (sameNode) e.o -= s.o;
+      } else first = s.c;
+    } else first = childAt(s.c, s.o);
+    if (isText(e.c)) {
+      if (e.o < dataOf(e.c).length) { last = splitText(e.c, e.o); if (first === e.c) first = last; }
+      else last = e.c;
+    } else last = e.o > 0 ? childAt(e.c, e.o - 1) : childAt(e.c, 0);
+    return [first, last];
+  }
+  function hoistFirstToBlockChild(first, block) {
+    while (parentOf(first) !== block && parentOf(first) !== null) {
+      const parent = parentOf(first);
+      if (prevOf(first) !== null) splitElement(parent, first);
+      first = parent;
+    }
+    return first;
+  }
+  function hoistLastToBlockChild(last, block) {
+    while (parentOf(last) !== block && parentOf(last) !== null) {
+      const parent = parentOf(last);
+      if (nextOf(last) !== null) { const clone = splitElement(parent, nextOf(last)); last = clone; }
+      else last = parent;
+    }
+    return last;
+  }
   // Splits so that the paragraph [startGap, endGap) is a sibling range under its block.
   function isolateParagraph(items, p, block) {
     const s = itemStart(items[p[0]]), e = p[1] > p[0] ? itemEnd(items[p[1] - 1]) : itemStart(items[p[0]]);
-    let first, last;
-    if (isText(s.c)) { if (s.o > 0) { if (e.c === s.c) { splitText(s.c, s.o); first = s.c; e.o -= s.o; } else { splitText(s.c, s.o); first = s.c; } } else first = s.c; }
-    else first = childAt(s.c, s.o);
-    if (isText(e.c)) { if (e.o < dataOf(e.c).length) { last = splitText(e.c, e.o); if (first === e.c) first = last; } else last = e.c; }
-    else last = e.o > 0 ? childAt(e.c, e.o - 1) : childAt(e.c, 0);
+    const bounds = resolveParagraphBoundaries(s, e);
+    let first = bounds[0], last = bounds[1];
     if (first === null || last === null) return null;
-    while (parentOf(first) !== block && parentOf(first) !== null) { const parent = parentOf(first); if (prevOf(first) !== null) splitElement(parent, first); first = parent; }
-    while (parentOf(last) !== block && parentOf(last) !== null) { const parent = parentOf(last); if (nextOf(last) !== null) { const clone = splitElement(parent, nextOf(last)); last = clone; } else last = parent; }
+    first = hoistFirstToBlockChild(first, block);
+    last = hoistLastToBlockChild(last, block);
     return [first, last];
   }
   function siblingsBetween(first, last) { const out = list(); for (let n = first; n !== null; n = nextOf(n)) { push(out, n); if (n === last) break; } return out; }
 
   // ---- block commands --------------------------------------------------------------------------------
+  function pruneEmptyBlockAncestors(b, root, stop) {
+    while (b !== null && b !== root && connectedOf(b) && !hasRenderedContent(b) && !contains(b, stop)) {
+      const parent = parentOf(b);
+      removeNode(b);
+      b = parent;
+    }
+  }
+  function wholeBlockFormatRef(cur, p, block, root, blockElement) {
+    const whole = startOfBlock(cur, p[0]) && endOfBlock(cur, p[1]);
+    if (blockElement !== null || block === root || !formatBlockNames[nameOf(block)] || !whole || contains(block, root)) return null;
+    return block;
+  }
+  function placeFormatBlockElement(doc, blockElement, iso, insertionRef, tag) {
+    if (blockElement !== null) {
+      if (firstOf(blockElement) !== null) appendNode(createElement(doc, 'br'), blockElement);
+      return blockElement;
+    }
+    blockElement = createElement(doc, tag);
+    const ref = insertionRef !== null ? insertionRef : iso[0];
+    insertNode(blockElement, parentOf(ref), ref);
+    if (insertionRef !== null && hasAttr(insertionRef, 'style')) setAttr(blockElement, 'style', attr(insertionRef, 'style'));
+    return blockElement;
+  }
+  function formatBlockParagraph(doc, root, cur, p, blockElement, tag) {
+    if (p[1] <= p[0] && !(p[0] < cur.length && cur[p[0]].t === BR)) return blockElement;
+    const block = blockOf(cur[p[0]].n, root);
+    const insertionRef = wholeBlockFormatRef(cur, p, block, root, blockElement);
+    if (insertionRef !== null && nameOf(block) === tag) return blockElement;
+    const iso = isolateParagraph(cur, p, block);
+    if (iso === null) return blockElement;
+    const nodes = siblingsBetween(iso[0], iso[1]);
+    const trailing = nextOf(iso[1]);
+    blockElement = placeFormatBlockElement(doc, blockElement, iso, insertionRef, tag);
+    for (let j = 0; j < nodes.length; j++) moveNode(nodes[j], blockElement, null);
+    if (trailing !== null && nameOf(trailing) === 'br' && parentOf(trailing) === block) removeNode(trailing);
+    pruneEmptyBlockAncestors(block, root, blockElement);
+    return blockElement;
+  }
   function formatBlock(doc, root, sel, tag) {
     const items = streamOf(root), paragraphs = paragraphsOf(items, sel);
     let blockElement = null;
     for (let i = 0; i < paragraphs.length; i++) {
       const cur = streamOf(root);
       const p = paragraphsOf(cur, sel)[i] || paragraphs[i];
-      if (p[1] <= p[0] && !(p[0] < cur.length && cur[p[0]].t === BR)) continue;
-      const startItem = cur[p[0]];
-      const block = blockOf(startItem.n, root);
-      const whole = startOfBlock(cur, p[0]) && endOfBlock(cur, p[1]);
-      let insertionRef = null;
-      if (blockElement === null && block !== root && formatBlockNames[nameOf(block)] && whole && !contains(block, root)) {
-        if (nameOf(block) === tag) continue;
-        insertionRef = block;
-      }
-      const iso = isolateParagraph(cur, p, block);
-      if (iso === null) continue;
-      const nodes = siblingsBetween(iso[0], iso[1]);
-      const trailing = nextOf(iso[1]);
-      if (blockElement === null) {
-        blockElement = createElement(doc, tag);
-        const ref = insertionRef !== null ? insertionRef : iso[0];
-        insertNode(blockElement, parentOf(ref), ref);
-        if (insertionRef !== null && hasAttr(insertionRef, 'style')) setAttr(blockElement, 'style', attr(insertionRef, 'style'));
-      } else if (firstOf(blockElement) !== null) appendNode(createElement(doc, 'br'), blockElement);
-      for (let j = 0; j < nodes.length; j++) moveNode(nodes[j], blockElement, null);
-      if (trailing !== null && nameOf(trailing) === 'br' && parentOf(trailing) === block) removeNode(trailing);
-      let b = block;
-      while (b !== null && b !== root && connectedOf(b) && !hasRenderedContent(b) && !contains(b, blockElement)) { const parent = parentOf(b); removeNode(b); b = parent; }
+      blockElement = formatBlockParagraph(doc, root, cur, p, blockElement, tag);
     }
     return blockElement !== null;
   }
   const listNames = { __proto__: null, ul: 1, ol: 1 };
   function enclosingList(node, root) { for (let n = node; n !== null && n !== root; n = parentOf(n)) if (listNames[nameOf(n)]) return n; return null; }
+  function replaceListType(doc, startList, tag) {
+    const replacement = createElement(doc, tag);
+    const attrs = attributeList(startList);
+    for (let i = 0; i < attrs.length; i++) apply(setAttrF, replacement, [attrs[i][0], attrs[i][1]]);
+    insertNode(replacement, parentOf(startList), startList);
+    for (let n = firstOf(startList); n !== null;) { const next = nextOf(n); moveNode(n, replacement, null); n = next; }
+    removeNode(startList);
+  }
+  function splitListAfterItem(startList, item) {
+    const tail = cloneShallow(startList);
+    apply(removeAttrF, tail, ['id']);
+    insertAfter(tail, startList);
+    for (let n = nextOf(item); n !== null;) { const next = nextOf(n); moveNode(n, tail, null); n = next; }
+    return tail;
+  }
+  function unwrapOneListItem(doc, startList, root, sel) {
+    const item = listChild(sel.start.c, root);
+    if (item === null) return;
+    const parent = parentOf(startList);
+    const hasBefore = prevOf(item) !== null, hasAfter = nextOf(item) !== null;
+    const ref = hasAfter ? splitListAfterItem(startList, item) : startList;
+    const kids = list(); for (let c = firstOf(item); c !== null; c = nextOf(c)) push(kids, c);
+    for (let i = 0; i < kids.length; i++) moveNode(kids[i], parent, ref);
+    if ((hasAfter && !isBlock(parent)) || (hasAfter && parent === root)) insertNode(createElement(doc, 'br'), parent, ref);
+    removeNode(item);
+    if (!hasBefore) removeNode(startList);
+  }
+  function wrapParagraphInListItem(doc, root, cur, p, listEl, tag) {
+    const block = blockOf(cur[p[0]].n, root);
+    const iso = isolateParagraph(cur, p, block);
+    if (iso === null) return listEl;
+    const nodes = siblingsBetween(iso[0], iso[1]);
+    const trailing = nextOf(iso[1]);
+    if (listEl === null) { listEl = createElement(doc, tag); insertNode(listEl, parentOf(iso[0]), iso[0]); }
+    const li = createElement(doc, 'li');
+    appendNode(li, listEl);
+    for (let j = 0; j < nodes.length; j++) moveNode(nodes[j], li, null);
+    if (trailing !== null && nameOf(trailing) === 'br' && parentOf(trailing) === block) removeNode(trailing);
+    pruneEmptyBlockAncestors(block, root, listEl);
+    return listEl;
+  }
   function insertList(doc, root, sel, tag) {
-    const editor = editorOf(doc);
     const startList = enclosingList(sel.start.c, root), endList = enclosingList(sel.end.c, root);
     if (startList !== null && startList === endList) {
-      if (nameOf(startList) !== tag) {
-        const replacement = createElement(doc, tag);
-        const attrs = attributeList(startList);
-        for (let i = 0; i < attrs.length; i++) apply(setAttrF, replacement, [attrs[i][0], attrs[i][1]]);
-        insertNode(replacement, parentOf(startList), startList);
-        for (let n = firstOf(startList); n !== null;) { const next = nextOf(n); moveNode(n, replacement, null); n = next; }
-        removeNode(startList);
-        return null;
-      }
-      const item = listChild(sel.start.c, root);
-      if (item === null) return null;
-      const parent = parentOf(startList);
-      const hasBefore = prevOf(item) !== null, hasAfter = nextOf(item) !== null;
-      let ref = startList;
-      if (hasAfter) {
-        const tail = cloneShallow(startList); apply(removeAttrF, tail, ['id']);
-        insertAfter(tail, startList);
-        for (let n = nextOf(item); n !== null;) { const next = nextOf(n); moveNode(n, tail, null); n = next; }
-        ref = tail;
-      }
-      const kids = list(); for (let c = firstOf(item); c !== null; c = nextOf(c)) push(kids, c);
-      for (let i = 0; i < kids.length; i++) moveNode(kids[i], parent, ref);
-      if (hasAfter && !isBlock(parent) || (hasAfter && parent === root)) insertNode(createElement(doc, 'br'), parent, ref);
-      removeNode(item);
-      if (!hasBefore) removeNode(startList);
+      if (nameOf(startList) !== tag) { replaceListType(doc, startList, tag); return null; }
+      unwrapOneListItem(doc, startList, root, sel);
       return null;
     }
     const items = streamOf(root), paragraphs = paragraphsOf(items, sel);
@@ -1535,18 +1912,7 @@
     for (let i = 0; i < paragraphs.length; i++) {
       const cur = streamOf(root);
       const p = paragraphsOf(cur, sel)[i] || paragraphs[i];
-      const block = blockOf(cur[p[0]].n, root);
-      const iso = isolateParagraph(cur, p, block);
-      if (iso === null) continue;
-      const nodes = siblingsBetween(iso[0], iso[1]);
-      const trailing = nextOf(iso[1]);
-      if (listEl === null) { listEl = createElement(doc, tag); insertNode(listEl, parentOf(iso[0]), iso[0]); }
-      const li = createElement(doc, 'li');
-      appendNode(li, listEl);
-      for (let j = 0; j < nodes.length; j++) moveNode(nodes[j], li, null);
-      if (trailing !== null && nameOf(trailing) === 'br' && parentOf(trailing) === block) removeNode(trailing);
-      let b = block;
-      while (b !== null && b !== root && connectedOf(b) && !hasRenderedContent(b) && !contains(b, listEl)) { const parent = parentOf(b); removeNode(b); b = parent; }
+      listEl = wrapParagraphInListItem(doc, root, cur, p, listEl, tag);
     }
     if (listEl !== null && paragraphs.length === 1) return P(firstOf(listEl), 0);
     return null;
@@ -1598,43 +1964,83 @@
 
   // ---- transactions and undo ----------------------------------------------------------------------------
   function snapshot(sel) { return sel === null ? null : [sel.raw.anchor, sel.raw.focus]; }
+  function runBodyWithJournal(body, sel) {
+    const ops = list(), saved = journal;
+    journal = ops;
+    let result;
+    try { result = body(sel); } finally { journal = saved; }
+    return { __proto__: null, ops, result };
+  }
+  function resolveEndRoot(endSel, startRoot) {
+    if (endSel === null) return startRoot;
+    const r = connectedOf(endSel[0].c) ? rootEditable(endSel[0].c) : startRoot;
+    return r === null ? startRoot : r;
+  }
+  function isContinuingStep(editor, kind, open) {
+    if (kind === null || open === null || editor.undo[editor.undo.length - 1] !== open || !editor.openValid) return false;
+    return kind === 'insert' || kind === 'forward' || open.kind === kind;
+  }
+  function makeNewStep(ops, kind, result, sel, startRoot) {
+    const step = record();
+    step.ops = ops; step.kind = kind;
+    step.start = result && result.startSelection ? result.startSelection : snapshot(sel);
+    step.startRoot = startRoot;
+    return step;
+  }
+  function appendToOpenStep(step, ops, result) {
+    for (let i = 0; i < ops.length; i++) push(step.ops, ops[i]);
+    if (result && result.extendStart && step.start !== null) step.start = result.extendStart(step.start);
+  }
+  function pushUndoStep(editor, step) {
+    push(editor.undo, step);
+    if (editor.undo.length > 1000) {
+      const kept = list();
+      for (let i = 1; i < editor.undo.length; i++) push(kept, editor.undo[i]);
+      editor.undo = kept;
+    }
+    editor.redo = list();
+  }
+  function fireInputToRoots(startRoot, endRoot, inputType, data) {
+    const sr = startRoot !== null && connectedOf(startRoot) ? startRoot : null;
+    const er = endRoot !== null && connectedOf(endRoot) ? endRoot : null;
+    fireInput(sr, er, inputType, data);
+  }
+  function applyEndSel(doc, endSel) {
+    if (endSel === null || endSel[0] === null || !connectedOf(endSel[0].c)) return;
+    if (endSel[2]) setRangeSelection(doc, endSel[0], endSel[1]);
+    else setSelection(doc, endSel[0], endSel[1]);
+  }
+  function updateTypingAfterEdit(editor, result, now) {
+    if (!(result && result.keepTyping)) editor.typing = null;
+    else if (editor.typing !== null && now !== null && now.caret) { editor.typing.at = now.start; editor.typing.range = editor.openRange; }
+    if (editor.pendingTyping && now !== null && now.caret) editor.typing = { __proto__: null, at: now.start, style: editor.pendingTyping, range: editor.openRange };
+    editor.pendingTyping = null;
+  }
   // Runs `body` recording its DOM primitives; registers or extends the undo step, fires `input` at the
   // editing hosts and moves the selection (Blink's Editor::AppliedEditing).
   function edit(doc, kind, inputType, data, body, always) {
     const editor = editorOf(doc), sel = visibleSelection(doc);
     if (sel === null) return false;
-    const ops = list(), saved = journal;
-    journal = ops;
-    let result;
-    try { result = body(sel); } finally { journal = saved; }
+    const run = runBodyWithJournal(body, sel);
+    const ops = run.ops, result = run.result;
     if (!ops.length && !always) return result !== undefined && result !== null && result.selection !== undefined;
     const startRoot = sel.root;
-    let endSel = result && result.selection ? result.selection : null;
-    let endRoot = endSel !== null && connectedOf(endSel[0].c) ? rootEditable(endSel[0].c) : startRoot;
-    if (endRoot === null) endRoot = startRoot;
-    const open = editor.open;
-    const continuing = kind !== null && open !== null && editor.undo[editor.undo.length - 1] === open && (kind === 'insert' || kind === 'forward' || open.kind === kind) && editor.openValid;
-    let step;
-    if (continuing) { step = open; for (let i = 0; i < ops.length; i++) push(step.ops, ops[i]); if (result && result.extendStart && step.start !== null) step.start = result.extendStart(step.start); }
-    else {
-      step = record(); step.ops = ops; step.kind = kind; step.start = result && result.startSelection ? result.startSelection : snapshot(sel); step.startRoot = startRoot;
-    }
+    const endSel = result && result.selection ? result.selection : null;
+    const endRoot = resolveEndRoot(endSel, startRoot);
+    const continuing = isContinuingStep(editor, kind, editor.open);
+    const step = continuing ? editor.open : makeNewStep(ops, kind, result, sel, startRoot);
+    if (continuing) appendToOpenStep(step, ops, result);
     step.endRoot = endRoot;
-    fireInput(startRoot !== null && connectedOf(startRoot) ? startRoot : null, endRoot !== null && connectedOf(endRoot) ? endRoot : null, inputType, data);
-    if (endSel !== null && endSel[0] !== null && connectedOf(endSel[0].c)) {
-      if (endSel[2]) setRangeSelection(doc, endSel[0], endSel[1]); else setSelection(doc, endSel[0], endSel[1]);
-    }
+    fireInputToRoots(startRoot, endRoot, inputType, data);
+    applyEndSel(doc, endSel);
     const now = visibleSelection(doc);
     step.end = snapshot(now);
-    if (!continuing) { push(editor.undo, step); if (editor.undo.length > 1000) { const kept = list(); for (let i = 1; i < editor.undo.length; i++) push(kept, editor.undo[i]); editor.undo = kept; } editor.redo = list(); }
+    if (!continuing) pushUndoStep(editor, step);
     editor.open = kind !== null ? step : null;
     editor.openSelection = now === null ? null : [now.start, now.end];
     editor.openValid = true;
     editor.openRange = currentRange(doc);
-    if (!(result && result.keepTyping)) editor.typing = null;
-    else if (editor.typing !== null && now !== null && now.caret) { editor.typing.at = now.start; editor.typing.range = editor.openRange; }
-    if (editor.pendingTyping && now !== null && now.caret) { editor.typing = { __proto__: null, at: now.start, style: editor.pendingTyping, range: editor.openRange }; }
-    editor.pendingTyping = null;
+    updateTypingAfterEdit(editor, result, now);
     return true;
   }
   // An open typing step only continues while the selection is where the last edit left it.
@@ -1721,23 +2127,46 @@
     editor.openValid = true;
     dispatch(el, inputEvent('input', inputType, data, false));
   }
+  function flattenControlText(text) {
+    let flat = '';
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === '\r' && text[i + 1] === '\n') continue;
+      flat += ch === '\n' || ch === '\r' ? ' ' : ch;
+    }
+    return flat;
+  }
+  function splitTextLines(text) {
+    const lines = list(); let at = 0;
+    for (;;) {
+      const nl = find(text, '\n', at);
+      if (nl < 0) { push(lines, sub(text, at)); return lines; }
+      push(lines, sub(text, at, nl));
+      at = nl + 1;
+    }
+  }
+  function insertControlLine(doc, c, line, hasSelection) {
+    if (!line.length && !hasSelection) return;
+    controlEdit(doc, c, 'insert', 'insertText', line, (v, a, b) => [sub(v, 0, a) + line + sub(v, b), a + line.length]);
+  }
+  function insertControlNewline(doc, c) {
+    controlEdit(doc, c, 'insert', 'insertText', null, (v, a, b) => [sub(v, 0, a) + '\n' + sub(v, b), a + 1]);
+  }
   function controlInsertText(doc, c, text) {
     if (!c.area) {
-      let flat = '';
-      for (let i = 0; i < text.length; i++) { const ch = text[i]; if (ch === '\r' && text[i + 1] === '\n') continue; flat += ch === '\n' || ch === '\r' ? ' ' : ch; }
+      const flat = flattenControlText(text);
       if (!flat.length) { const st = controlState(c.el); if (st[1] === st[2]) return true; }
       controlEdit(doc, c, 'insert', 'insertText', flat, (v, a, b) => [sub(v, 0, a) + flat + sub(v, b), a + flat.length]);
       return true;
     }
-    const lines = list(); let at = 0;
-    for (;;) { const nl = find(text, '\n', at); if (nl < 0) { push(lines, sub(text, at)); break; } push(lines, sub(text, at, nl)); at = nl + 1; }
+    const lines = splitTextLines(text);
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (line.length || (i === 0 && lines.length === 1)) {
         const st = controlState(c.el);
-        if (line.length || st[1] !== st[2]) controlEdit(doc, c, 'insert', 'insertText', line, (v, a, b) => [sub(v, 0, a) + line + sub(v, b), a + line.length]);
+        insertControlLine(doc, c, line, st[1] !== st[2]);
       }
-      if (i < lines.length - 1) controlEdit(doc, c, 'insert', 'insertText', null, (v, a, b) => [sub(v, 0, a) + '\n' + sub(v, b), a + 1]);
+      if (i < lines.length - 1) insertControlNewline(doc, c);
     }
     return true;
   }
@@ -1936,42 +2365,51 @@
     }, true);
     return true;
   }
+  function splitBoundaryTexts(a, b) {
+    const inText = p => isText(p.c) && p.o > 0 && p.o < dataOf(p.c).length;
+    if (inText(a)) { const node = a.c, sameNode = b.c === node; splitText(node, a.o); if (sameNode) b = P(node, b.o - a.o); a = P(node, 0); }
+    if (inText(b)) { const node = b.c; const prefix = splitText(node, b.o); if (a.c === node) a = P(prefix, a.o); b = P(prefix, dataOf(prefix).length); }
+    return [a, b];
+  }
+  // Split removable ancestors at the boundaries so the selected part can be unwrapped alone.
+  function splitAroundFilter(node, atStart, filter) {
+    for (let n = node; parentOf(n) !== null && !isBlock(parentOf(n)) && rootEditable(parentOf(n)) !== parentOf(n);) {
+      const parent = parentOf(n);
+      if (filter(parent)) {
+        if (atStart && prevOf(n) !== null) splitElement(parent, n);
+        if (!atStart && nextOf(n) !== null) splitElement(parent, nextOf(n));
+      }
+      n = parent;
+    }
+  }
+  function collectDoomedForStyle(top, startNode, endNode, filter) {
+    const doomed = list();
+    for (let n = top; n !== null; n = nodeAfter(n)) {
+      if (!contains(top, n)) break;
+      if (isElement(n) && n !== top && filter(n) && visiblyContained(n, P(parentOf(startNode), indexOf(startNode)), P(parentOf(endNode), indexOf(endNode) + 1))) push(doomed, n);
+    }
+    return doomed;
+  }
+  function processDoomedStyle(doomed, style) {
+    for (let i = 0; i < doomed.length; i++) {
+      const el = doomed[i];
+      if (parentOf(el) === null) continue;
+      if (nameOf(el) === 'a' && style === 'link') { unwrap(el); continue; }
+      if (style !== 'format') continue;
+      if (removableFormat[nameOf(el)]) { unwrap(el); continue; }
+      if (hasAttr(el, 'style')) { removeAttr(el, 'style'); if (nameOf(el) === 'span' && !attributeList(el).length) unwrap(el); }
+    }
+  }
   function removeStyled(doc, style, inputType, filter) {
-    const editor = editorOf(doc);
     edit(doc, null, inputType, null, s => {
-      let a = s.start, b = s.end;
-      const inText = p => isText(p.c) && p.o > 0 && p.o < dataOf(p.c).length;
-      if (inText(a)) { const node = a.c, sameNode = b.c === node; splitText(node, a.o); if (sameNode) b = P(node, b.o - a.o); a = P(node, 0); }
-      if (inText(b)) { const node = b.c; const prefix = splitText(node, b.o); if (a.c === node) a = P(prefix, a.o); b = P(prefix, dataOf(prefix).length); }
+      const ab = splitBoundaryTexts(s.start, s.end);
+      const a = ab[0], b = ab[1];
       const startNode = a.c, endNode = b.c;
-      // Split removable ancestors at the boundaries so the selected part can be unwrapped alone.
-      const splitAround = (node, atStart) => {
-        for (let n = node; parentOf(n) !== null && !isBlock(parentOf(n)) && rootEditable(parentOf(n)) !== parentOf(n);) {
-          const parent = parentOf(n);
-          if (filter(parent)) {
-            if (atStart && prevOf(n) !== null) splitElement(parent, n);
-            if (!atStart && nextOf(n) !== null) splitElement(parent, nextOf(n));
-          }
-          n = parent;
-        }
-      };
-      splitAround(startNode, true);
-      splitAround(endNode, false);
-      const doomed = list();
+      splitAroundFilter(startNode, true, filter);
+      splitAroundFilter(endNode, false, filter);
       const top = rootEditable(startNode) || startNode;
-      for (let n = top; n !== null; n = nodeAfter(n)) {
-        if (!contains(top, n)) break;
-        if (isElement(n) && n !== top && filter(n) && visiblyContained(n, P(parentOf(startNode), indexOf(startNode)), P(parentOf(endNode), indexOf(endNode) + 1))) push(doomed, n);
-      }
-      for (let i = 0; i < doomed.length; i++) {
-        const el = doomed[i];
-        if (parentOf(el) === null) continue;
-        if (nameOf(el) === 'a' && style === 'link') { unwrap(el); continue; }
-        if (style === 'format') {
-          if (removableFormat[nameOf(el)]) { unwrap(el); continue; }
-          if (hasAttr(el, 'style')) { removeAttr(el, 'style'); if (nameOf(el) === 'span' && !attributeList(el).length) unwrap(el); }
-        }
-      }
+      const doomed = collectDoomedForStyle(top, startNode, endNode, filter);
+      processDoomedStyle(doomed, style);
       return { __proto__: null, selection: [P(startNode, 0), P(endNode, isText(endNode) ? dataOf(endNode).length : lengthOf(endNode)), true] };
     }, true);
     return true;
@@ -2063,25 +2501,36 @@
     if (s && first !== null && last !== null) apply(selSetF, s, [first.c, first.o, last.c, last.o]);
     return true;
   }
+  function buildFindText(items) {
+    let text = '';
+    const map = list();
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.t === CHAR) { let c = dataOf(it.n)[it.o]; if (c === NBSP) c = ' '; text += c; push(map, i); continue; }
+      if (it.t === BR || it.t === BS || it.t === BE || it.t === BATOM) {
+        if (text.length && text[text.length - 1] !== '\n') { text += '\n'; push(map, -1); }
+      }
+    }
+    return { __proto__: null, text: lower(text), map };
+  }
+  function findStartIndex(items, map, sel) {
+    if (sel === null) return 0;
+    const k = gapOf(items, sel.end);
+    let from = 0;
+    while (from < map.length && (map[from] < 0 || map[from] < k)) from++;
+    return from;
+  }
   function execFindString(doc, value) {
     if (!value.length) return false;
     const root = rootElementOf(doc);
     if (root === null) return false;
     const items = buildStream(root);
-    let text = '';
-    const map = list();
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i];
-      if (it.t === CHAR) { let c = dataOf(it.n)[it.o]; if (c === NBSP) c = ' '; text += c; push(map, i); }
-      else if (it.t === BR || it.t === BS || it.t === BE || it.t === BATOM) { if (text.length && text[text.length - 1] !== '\n') { text += '\n'; push(map, -1); } }
-    }
-    text = lower(text);
+    const built = buildFindText(items);
+    const text = built.text, map = built.map;
     let needle = '';
     for (let i = 0; i < value.length; i++) { const c = value[i]; needle += c === NBSP ? ' ' : c; }
     needle = lower(needle);
-    const sel = visibleSelection(doc);
-    let from = 0;
-    if (sel !== null) { const k = gapOf(items, sel.end); while (from < map.length && (map[from] < 0 || map[from] < k)) from++; }
+    const from = findStartIndex(items, map, visibleSelection(doc));
     let hit = find(text, needle, from);
     if (hit < 0) hit = find(text, needle, 0);
     if (hit < 0) return false;
@@ -2092,19 +2541,24 @@
     if (s) apply(selSetF, s, [a.n, a.o, b.n, b.o + 1]);
     return true;
   }
+  function transposeTargets(sel) {
+    const root = sel.root, items = streamOf(root), k = gapOf(items, sel.start);
+    const next = endOfParagraph(items, k) ? k : nextGap(items, k);
+    if (next < 0) return null;
+    const previous = prevGap(items, next);
+    if (previous < 0) return null;
+    const previous2 = prevGap(items, previous);
+    if (previous2 < 0) return null;
+    for (let i = previous2; i < next; i++) if (items[i].t !== CHAR) return null;
+    if (next - previous2 !== 2) return null;
+    return { __proto__: null, a: items[previous2], b: items[next - 1] };
+  }
   function execTranspose(doc) {
     const sel = editableSelection(doc);
     if (sel === null || !sel.caret) return true;
-    const root = sel.root, items = streamOf(root), k = gapOf(items, sel.start);
-    const next = endOfParagraph(items, k) ? k : nextGap(items, k);
-    if (next < 0) return true;
-    const previous = prevGap(items, next);
-    if (previous < 0) return true;
-    const previous2 = prevGap(items, previous);
-    if (previous2 < 0) return true;
-    for (let i = previous2; i < next; i++) if (items[i].t !== CHAR) return true;
-    if (next - previous2 !== 2) return true;
-    const a = items[previous2], b = items[next - 1];
+    const t = transposeTargets(sel);
+    if (t === null) return true;
+    const a = t.a, b = t.b;
     const text = dataOf(a.n)[a.o] + dataOf(b.n)[b.o];
     const transposed = text[1] + text[0];
     const start = P(a.n, a.o), end = P(b.n, b.o + 1);
@@ -2124,6 +2578,27 @@
   function execUnselect(doc) { const s = selectionOf(doc); if (s) apply(selClearF, s, []); const editor = editorOf(doc); editor.open = null; editor.typing = null; return true; }
   // Chrome hands printing to the embedder; the engine prints through window.print when the embedder provides it.
   function execPrint() { if (originalPrint !== null) apply(originalPrint, g, []); return true; }
+  function collectFontSizeTexts(a, b) {
+    const texts = list();
+    for (let n = a.c; n !== null; n = nodeAfter(n)) {
+      if (isText(n) && dataOf(n).length) push(texts, n);
+      if (n === b.c) break;
+    }
+    return texts;
+  }
+  function applyFontSizeToText(doc, t, delta) {
+    const size = styleAt(t).size + delta, parent = parentOf(t);
+    if (nameOf(parent) === 'span' && firstOf(parent) === t && lastOf(parent) === t && attributeList(parent).length === 1 && hasAttr(parent, 'style')) {
+      const d = declarations(parent), keep = list();
+      for (let j = 0; j < d.length; j++) if (d[j][0] !== 'font-size') push(keep, d[j]);
+      push(keep, ['font-size', StringValue(size) + 'px']);
+      setAttr(parent, 'style', serializeDeclarations(keep));
+      return;
+    }
+    const span = createElement(doc, 'span');
+    apply(setAttrF, span, ['style', 'font-size: ' + StringValue(size) + 'px;']);
+    surround(t, t, span);
+  }
   function execFontSizeDelta(doc, value) {
     const delta = NumberValue.parseFloat(value);
     const sel = richSelection(doc);
@@ -2131,21 +2606,10 @@
     if (delta !== delta) return applyStyleCommand(doc, record(), '');
     if (sel.caret) return true;
     edit(doc, null, '', null, s => {
-      let a = s.start, b = s.end;
-      const inText = p => isText(p.c) && p.o > 0 && p.o < dataOf(p.c).length;
-      if (inText(a)) { const node = a.c, sameNode = b.c === node; splitText(node, a.o); if (sameNode) b = P(node, b.o - a.o); a = P(node, 0); }
-      if (inText(b)) { const node = b.c; const prefix = splitText(node, b.o); if (a.c === node) a = P(prefix, a.o); b = P(prefix, dataOf(prefix).length); }
-      const texts = list();
-      for (let n = a.c; n !== null; n = nodeAfter(n)) { if (isText(n) && dataOf(n).length) push(texts, n); if (n === b.c) break; }
-      for (let i = 0; i < texts.length; i++) {
-        const t = texts[i], size = styleAt(t).size + delta, parent = parentOf(t);
-        if (nameOf(parent) === 'span' && firstOf(parent) === t && lastOf(parent) === t && attributeList(parent).length === 1 && hasAttr(parent, 'style')) {
-          const d = declarations(parent), keep = list();
-          for (let j = 0; j < d.length; j++) if (d[j][0] !== 'font-size') push(keep, d[j]);
-          push(keep, ['font-size', StringValue(size) + 'px']);
-          setAttr(parent, 'style', serializeDeclarations(keep));
-        } else { const span = createElement(doc, 'span'); apply(setAttrF, span, ['style', 'font-size: ' + StringValue(size) + 'px;']); surround(t, t, span); }
-      }
+      const ab = splitBoundaryTexts(s.start, s.end);
+      const a = ab[0], b = ab[1];
+      const texts = collectFontSizeTexts(a, b);
+      for (let i = 0; i < texts.length; i++) applyFontSizeToText(doc, texts[i], delta);
       return { __proto__: null, selection: [a, b, true] };
     }, true);
     return true;
@@ -2345,6 +2809,29 @@
     return p;
   }
   function staticRange(start, end) { return new StaticRangeType({ __proto__: null, startContainer: start.c, startOffset: start.o, endContainer: end.c, endOffset: end.o }); }
+  function dispatchUserInputBeforeInput(doc, sel, inputType, data) {
+    const ranges = list();
+    if (inputType === 'deleteContentBackward' || inputType === 'deleteContentForward') {
+      const forward = inputType === 'deleteContentForward';
+      const r = sel.caret ? deletionRange(sel.root, sel.start, forward) : [sel.start, sel.end];
+      if (r === null) push(ranges, staticRange(sel.start, sel.start));
+      else push(ranges, staticRange(r[0], r[2] && !forward ? mostBackward(r[1]) : r[1]));
+    } else push(ranges, staticRange(sel.start, sel.end));
+    return fireBeforeInput(sel.root, inputType, inputType === 'insertText' ? data : null, ranges);
+  }
+  function runUserInputCommand(doc, inputType, data) {
+    if (inputType === 'insertText') { execInsertText(doc, data); return; }
+    if (inputType === 'deleteContentBackward') { execDelete(doc, false); return; }
+    if (inputType === 'deleteContentForward') { execDelete(doc, true); return; }
+    if (inputType === 'insertParagraph') { execParagraph(doc, false); return; }
+    if (inputType === 'insertLineBreak') execParagraph(doc, true);
+  }
+  // Keyboard input still reaches a focused editing host whose document selection moved into
+  // static content: beforeinput fires there and nothing is edited.
+  function userInputNoSelection(doc, active, inputType, data) {
+    const raw = rawSelection(doc);
+    if (active !== null && isElement(active) && isEditable(active) && raw !== null) fireBeforeInput(active, inputType, inputType === 'insertText' ? data : null, [staticRange(raw.start, raw.end)]);
+  }
   function userInput(target, inputType, data) {
     const doc = typeOf(target) === 9 ? target : ownerOf(target);
     if (doc !== document) return false;
@@ -2355,27 +2842,10 @@
       if (active !== null && editContexts && editContexts.contextOf(active) !== null)
         return editContexts.input(active, inputType, data, (element, type, value) => fireBeforeInput(element, type, value, list()));
       const sel = editableSelection(doc);
-      if (sel === null) {
-        // Keyboard input still reaches a focused editing host whose document selection moved into
-        // static content: beforeinput fires there and nothing is edited.
-        const raw = rawSelection(doc);
-        if (active !== null && isElement(active) && isEditable(active) && raw !== null) fireBeforeInput(active, inputType, inputType === 'insertText' ? data : null, [staticRange(raw.start, raw.end)]);
-        return false;
-      }
-      const ranges = list();
-      if (inputType === 'deleteContentBackward' || inputType === 'deleteContentForward') {
-        const forward = inputType === 'deleteContentForward';
-        const r = sel.caret ? deletionRange(sel.root, sel.start, forward) : [sel.start, sel.end];
-        if (r === null) push(ranges, staticRange(sel.start, sel.start));
-        else push(ranges, staticRange(r[0], r[2] && !forward ? mostBackward(r[1]) : r[1]));
-      } else push(ranges, staticRange(sel.start, sel.end));
-      if (!fireBeforeInput(sel.root, inputType, inputType === 'insertText' ? data : null, ranges)) return true;
+      if (sel === null) { userInputNoSelection(doc, active, inputType, data); return false; }
+      if (!dispatchUserInputBeforeInput(doc, sel, inputType, data)) return true;
       refreshOpen(doc);
-      if (inputType === 'insertText') execInsertText(doc, data);
-      else if (inputType === 'deleteContentBackward') execDelete(doc, false);
-      else if (inputType === 'deleteContentForward') execDelete(doc, true);
-      else if (inputType === 'insertParagraph') execParagraph(doc, false);
-      else if (inputType === 'insertLineBreak') execParagraph(doc, true);
+      runUserInputCommand(doc, inputType, data);
       return true;
     } finally { marks = list(); streamCache = null; }
   }
