@@ -253,6 +253,28 @@ const CASES = [
     probes: quads(20, 10, 64, 40),
   },
   {
+    // `object-fit` / `object-position` are physical in a vertical writing mode too: the
+    // contained 80x50 sits at the physical bottom of the 80x80 box.
+    id: "vertical-rl-contain-position",
+    html: DOC(
+      `<div style="${pos(20, 10)};writing-mode:vertical-rl">` +
+        canvas(`width="64" height="40"`, "width:80px;height:80px;object-fit:contain;object-position:0 100%") +
+        "</div>",
+    ),
+    canvases: [bitmap(0, [64, 40])],
+    probes: [...quads(20, 40, 80, 50), [60, 20]],
+  },
+  {
+    id: "vertical-lr-cover-position",
+    html: DOC(
+      `<div style="${pos(20, 10)};writing-mode:vertical-lr">` +
+        canvas(`width="64" height="40"`, "width:40px;height:80px;object-fit:cover;object-position:100% 0") +
+        "</div>",
+    ),
+    canvases: [bitmap(0, [64, 40])],
+    probes: [[30, 30], [50, 30], [30, 70], [50, 70], [62, 30]],
+  },
+  {
     // An inline canvas in a block's flow.
     id: "inline-in-flow",
     html: DOC(`<div style="${pos(20, 10)};line-height:0">${canvas(`width="64" height="40"`, "")}</div>`),

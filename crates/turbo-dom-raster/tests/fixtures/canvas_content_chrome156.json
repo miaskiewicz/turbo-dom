@@ -2080,6 +2080,182 @@
    ]
   },
   {
+   "id": "vertical-rl-contain-position",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:10px;writing-mode:vertical-rl\"><canvas width=\"64\" height=\"40\" style=\"width:80px;height:80px;object-fit:contain;object-position:0 100%\"></canvas></div></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 40,
+     "y": 52,
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 80,
+     "y": 52,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 40,
+     "y": 77,
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 80,
+     "y": 77,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 60,
+     "y": 20,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "vertical-lr-cover-position",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:10px;writing-mode:vertical-lr\"><canvas width=\"64\" height=\"40\" style=\"width:40px;height:80px;object-fit:cover;object-position:100% 0\"></canvas></div></body></html>",
+   "canvases": [
+    {
+     "index": 0,
+     "bitmap": {
+      "size": [
+       64,
+       40
+      ],
+      "quadrants": [
+       [
+        255,
+        0,
+        0,
+        255
+       ],
+       [
+        0,
+        255,
+        0,
+        255
+       ],
+       [
+        0,
+        0,
+        255,
+        255
+       ],
+       [
+        255,
+        255,
+        0,
+        255
+       ]
+      ]
+     }
+    }
+   ],
+   "probes": [
+    {
+     "x": 30,
+     "y": 30,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 50,
+     "y": 30,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 30,
+     "y": 70,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 50,
+     "y": 70,
+     "rgb": [
+      255,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 62,
+     "y": 30,
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
    "id": "inline-in-flow",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:10px;line-height:0\"><canvas width=\"64\" height=\"40\" style=\"\"></canvas></div></body></html>",
    "canvases": [

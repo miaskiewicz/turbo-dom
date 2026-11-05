@@ -98,7 +98,11 @@ fn differences() -> Vec<String> {
                 ("png", [p.red(), p.green(), p.blue()]),
                 ("svg", [s.red(), s.green(), s.blue()]),
             ] {
-                if got.iter().zip(chrome).any(|(&g, c)| g.abs_diff(c) > TOLERANCE) {
+                if got
+                    .iter()
+                    .zip(chrome)
+                    .any(|(&g, c)| g.abs_diff(c) > TOLERANCE)
+                {
                     failures.push(format!("{id} {kind} ({x},{y}): {got:?}, Chrome {chrome:?}"));
                 }
             }

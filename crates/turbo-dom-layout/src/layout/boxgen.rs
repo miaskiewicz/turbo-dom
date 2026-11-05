@@ -1886,10 +1886,13 @@ fn image_of(el: &StyledElement) -> Option<ImageSource> {
 fn media_source(el: &StyledElement) -> Option<ImageSource> {
     let (name, fallback, media) = match media_element(el)? {
         "canvas" => (
-            String::new(),
-            (
-                canvas_dimension(attr_value(&el.attrs, "width"), 300),
-                canvas_dimension(attr_value(&el.attrs, "height"), 150),
+            // Its drawn content, when the embedder resolves it (#291).
+            el.source
+                .map(super::canvas_content::canvas_image_name)
+                .unwrap_or_default(),
+            super::canvas_content::canvas_bitmap_size(
+                attr_value(&el.attrs, "width"),
+                attr_value(&el.attrs, "height"),
             ),
             Media::Canvas,
         ),
@@ -1925,17 +1928,6 @@ pub(crate) fn media_element(el: &StyledElement) -> Option<&'static str> {
 /// Whether `el` is an `<embed>` without a source, which Chrome 156 renders no box for.
 pub(crate) fn unrendered_embed(el: &StyledElement) -> bool {
     media_element(el) == Some("embed") && attr_value(&el.attrs, "src").is_none_or(str::is_empty)
-}
-
-/// A canvas `width` / `height` attribute: a valid non-negative integer (HTML's rules:
-/// leading whitespace, an optional `+`, the leading digits), else `default`.
-fn canvas_dimension(value: Option<&str>, default: u32) -> u32 {
-    let value = value
-        .unwrap_or_default()
-        .trim_start_matches([' ', '\t', '\n', '\x0c', '\r']);
-    let value = value.strip_prefix('+').unwrap_or(value);
-    let digits = value.len() - value.trim_start_matches(|c: char| c.is_ascii_digit()).len();
-    value[..digits].parse().unwrap_or(default)
 }
 
 /// The intrinsic size of Chrome's broken-image icon.

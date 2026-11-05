@@ -7,6 +7,24 @@ at the time); this file reconstructs them from history.
 
 ## Unreleased
 
+### Added
+
+- **turbo-dom-raster: `<canvas>` content in screenshots.** Since #252 a canvas laid out as a
+  replaced box but painted only its frame and background: the snapshot HTML carries no canvas
+  pixels. `screenshot_png_with_options` / `screenshot_svg_with_options` take a
+  `ScreenshotOptions` (`full_page`, `system_fonts`, `canvases`; `#[non_exhaustive]`, start
+  from `default()`), whose `canvases: Option<&CanvasContents>` maps each canvas's index among
+  the document's `<canvas>` elements in tree order (`querySelectorAll('canvas')` order) to a
+  `CanvasContent`: `Ops(json)` (the `ctx._ops` op log `canvas_ops_png` replays, run at the
+  canvas's `width` x `height`) or `Rgba { width, height, pixels }` (straight-alpha RGBA8). The
+  bitmap paints in the canvas's content box like Chrome 156: scaled by `object-fit`, placed by
+  `object-position`, inside border and padding, clipped to the content box and its rounded
+  corners, under the box's transform, upright in vertical writing modes; PNG and SVG. The
+  `*_with_opts` entries are unchanged (they delegate). turbo-dom-layout: `canvas_image_name`
+  (the `ImageResolver` name a canvas box loads its content by) and `canvas_bitmap_size`.
+  Control: `canvas_content_chrome156.json` (`scripts/canvas-content-chrome-control.mjs`)
+  (turbo-dom#291).
+
 ### Fixed
 
 - **turbo-dom-browser-env: `setHTML` / `setHTMLUnsafe` / `template.innerHTML` keep template
