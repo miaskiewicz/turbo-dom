@@ -286,47 +286,56 @@ fn capture(scope: &mut v8::PinScope, root: Handle, document_scope: bool) -> &'st
                 return "layout";
             }
         }
-        let mut names = std::collections::HashSet::new();
-        let mut stack = vec![(root, None::<Handle>)];
-        while let Some((node, parent)) = stack.pop() {
-            let style = boxes.style(node);
-            let display = boxes.specified(node, &style);
-            if display == Display::None {
-                continue;
-            }
-            if let Some(parent) = parent.filter(|&parent| {
-                html(tree, parent, "details") && !tree.has_attribute(parent, "open")
-            }) {
-                let summary = tree
-                    .children(parent)
-                    .into_iter()
-                    .find(|&candidate| html(tree, candidate, "summary"));
-                if summary != Some(node) {
-                    continue;
-                }
-            }
-            if display != Display::Contents {
-                let mut name = get_property_value(&style, "view-transition-name")
-                    .trim()
-                    .to_owned();
-                if name.is_empty() && document_scope && node == root {
-                    name = "root".into();
-                }
-                if !matches!(name.as_str(), "" | "none" | "auto" | "match-element")
-                    && !names.insert(name)
-                {
-                    return "names";
-                }
-            }
-            for child in tree.children(node).into_iter().rev() {
-                if tree.node_type_id(child) == 1 {
-                    stack.push((child, Some(node)));
-                }
-            }
-        }
-        ""
+        collect_capture_names(tree, &boxes, root, document_scope)
     })
     .unwrap_or("layout")
+}
+
+fn collect_capture_names(
+    tree: &Tree,
+    boxes: &Boxes<'_>,
+    root: Handle,
+    document_scope: bool,
+) -> &'static str {
+    let mut names = std::collections::HashSet::new();
+    let mut stack = vec![(root, None::<Handle>)];
+    while let Some((node, parent)) = stack.pop() {
+        let style = boxes.style(node);
+        let display = boxes.specified(node, &style);
+        if display == Display::None {
+            continue;
+        }
+        if let Some(parent) = parent
+            .filter(|&parent| html(tree, parent, "details") && !tree.has_attribute(parent, "open"))
+        {
+            let summary = tree
+                .children(parent)
+                .into_iter()
+                .find(|&candidate| html(tree, candidate, "summary"));
+            if summary != Some(node) {
+                continue;
+            }
+        }
+        if display != Display::Contents {
+            let mut name = get_property_value(&style, "view-transition-name")
+                .trim()
+                .to_owned();
+            if name.is_empty() && document_scope && node == root {
+                name = "root".into();
+            }
+            if !matches!(name.as_str(), "" | "none" | "auto" | "match-element")
+                && !names.insert(name)
+            {
+                return "names";
+            }
+        }
+        for child in tree.children(node).into_iter().rev() {
+            if tree.node_type_id(child) == 1 {
+                stack.push((child, Some(node)));
+            }
+        }
+    }
+    ""
 }
 
 fn set_active(node: Handle, types: Option<Vec<String>>) {
