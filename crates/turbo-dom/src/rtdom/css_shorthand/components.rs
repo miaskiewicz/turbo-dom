@@ -724,10 +724,6 @@ fn arguments_type(inner: &[Comp]) -> Option<CalcType> {
         })
 }
 
-/// Structural checks Chrome makes before keeping a function: `calc()` / `min()` / `max()` /
-/// `clamp()` / `abs()` / `sign()` take type-checked sums (`clamp()` bounds may be `none`),
-/// `rgb()` / `hsl()` have three channels (and an alpha) in one syntax with an angle or number
-/// hue, `linear()` stops a number and at most two percentages, `cubic-bezier()` four numbers.
 fn rgb_hsl_valid(name: &str, inner: &[Comp]) -> bool {
     let commas = inner.iter().filter(|comp| comp.kind == Kind::Comma).count();
     let hue = |comp: &Comp| match &comp.kind {
@@ -759,6 +755,10 @@ fn rgb_hsl_valid(name: &str, inner: &[Comp]) -> bool {
     }
 }
 
+/// Structural checks Chrome makes before keeping a function: `calc()` / `min()` / `max()` /
+/// `clamp()` / `abs()` / `sign()` take type-checked sums (`clamp()` bounds may be `none`),
+/// `rgb()` / `hsl()` have three channels (and an alpha) in one syntax with an angle or number
+/// hue, `linear()` stops a number and at most two percentages, `cubic-bezier()` four numbers.
 fn function_valid(name: &str, inner: &[Comp]) -> bool {
     match name {
         "calc" => checked_sum(inner).is_some(),

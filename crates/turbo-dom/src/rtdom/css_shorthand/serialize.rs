@@ -136,12 +136,12 @@ fn ser_column_rule_inset(v: &Values<'_>, grammar: &str) -> String {
     } else {
         "row"
     };
-    rule_inset(&v, kind)
+    rule_inset(v, kind)
 }
 
 fn ser_rule_inset(v: &Values<'_>) -> String {
-    let column = rule_inset(&v, "column");
-    if column == rule_inset(&v, "row") {
+    let column = rule_inset(v, "column");
+    if column == rule_inset(v, "row") {
         column
     } else {
         String::new()

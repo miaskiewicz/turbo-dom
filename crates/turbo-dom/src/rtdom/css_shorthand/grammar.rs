@@ -192,10 +192,10 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
         v
     } else if let Some(v) = expand_composite_grammars_3(grammar, comps) {
         v
-    } else if let Some(v) = expand_composite_grammars_3b(grammar, comps) {
-        v
     } else {
-        return None;
+        // Each family helper returns `None` both for a grammar outside its family and for
+        // one it failed to parse, so a failed parse falls through to here as `None` too.
+        expand_composite_grammars_3b(grammar, comps)?
     };
     Some(Parsed::Values(values))
 }
@@ -2100,6 +2100,15 @@ pub(super) fn font_family(comps: &[Comp]) -> Option<String> {
     Some(families.join(", "))
 }
 
+/// What a single parse step did with the components at its position.
+#[derive(Clone, Copy)]
+enum Step {
+    /// Nothing there for this step.
+    Skip,
+    /// Took this many components.
+    Took(usize),
+}
+
 #[allow(clippy::type_complexity)]
 fn parse_font_prefix(
     comps: &[Comp],
@@ -2121,7 +2130,7 @@ fn parse_font_prefix(
             at += 1;
             continue;
         }
-        if let Some(advance) = try_font_style(comps, at, &mut style)? {
+        if let Step::Took(advance) = try_font_style(comps, at, &mut style)? {
             at += advance;
             continue;
         }
@@ -2142,15 +2151,15 @@ fn parse_font_prefix(
     Some((style, caps, weight, stretch, at))
 }
 
-/// Returns `None` on an invalid oblique angle, `Some(None)` when nothing matched,
-/// or `Some(Some(advance))` when the style was set (advance is 1 or 2).
-fn try_font_style(comps: &[Comp], at: usize, style: &mut Option<String>) -> Option<Option<usize>> {
+/// `None` on an invalid oblique angle, else whether the style was set and how many
+/// components it took (1, or 2 with an angle).
+fn try_font_style(comps: &[Comp], at: usize, style: &mut Option<String>) -> Option<Step> {
     if style.is_some() {
-        return Some(None);
+        return Some(Step::Skip);
     }
     let comp = &comps[at];
     let Some(value) = comp.keyword(&["italic", "oblique"]) else {
-        return Some(None);
+        return Some(Step::Skip);
     };
     if value == "oblique" {
         if let Some(angle) = comps
@@ -2158,11 +2167,11 @@ fn try_font_style(comps: &[Comp], at: usize, style: &mut Option<String>) -> Opti
             .filter(|c| matches!(c.kind, Kind::Dimension { .. }) && c.angle().is_some())
         {
             *style = Some(oblique(angle)?);
-            return Some(Some(2));
+            return Some(Step::Took(2));
         }
     }
     *style = Some(value);
-    Some(Some(1))
+    Some(Step::Took(1))
 }
 
 fn try_font_caps(comp: &Comp, caps: &mut Option<String>) -> bool {
@@ -2556,7 +2565,6 @@ pub(super) fn areas_text(rows: &[Vec<String>]) -> Option<String> {
     )
 }
 
-/// `grid-template`: rows, columns, areas.
 fn parse_grid_template_rows(rows: &[Comp]) -> Option<(Vec<Vec<String>>, Vec<String>)> {
     let mut areas = Vec::new();
     let mut tracks = Vec::new();
@@ -2597,6 +2605,7 @@ fn parse_grid_template_rows(rows: &[Comp]) -> Option<(Vec<Vec<String>>, Vec<Stri
     Some((areas, tracks))
 }
 
+/// `grid-template`: rows, columns, areas.
 fn grid_template(comps: &[Comp]) -> Option<(String, String, String)> {
     if let [only] = comps {
         if only.is_ident(&["none"]) {
@@ -3089,7 +3098,7 @@ fn layer_step(
             return Some(1);
         }
     }
-    if let Some(used) = layer_position_step(comps, at, out)? {
+    if let Step::Took(used) = layer_position_step(comps, at, out)? {
         return Some(used);
     }
     if out.repeat.is_none() {
@@ -3104,7 +3113,7 @@ fn layer_step(
             return Some(1);
         }
     }
-    if let Some(used) = layer_box_step(comp, out, boxes)? {
+    if let Step::Took(used) = layer_box_step(comp, out, boxes)? {
         return Some(used);
     }
     if mask {
@@ -3114,13 +3123,13 @@ fn layer_step(
     }
 }
 
-/// `<bg-position> [/ <bg-size>]`: `Some(None)` when no position starts at `at`.
-fn layer_position_step(comps: &[Comp], at: usize, out: &mut Layer) -> Option<Option<usize>> {
+/// `<bg-position> [/ <bg-size>]`: `Skip` when no position starts at `at`.
+fn layer_position_step(comps: &[Comp], at: usize, out: &mut Layer) -> Option<Step> {
     if out.position.is_some() {
-        return Some(None);
+        return Some(Step::Skip);
     }
     let Some((used, value)) = layer_position(&comps[at..]) else {
-        return Some(None);
+        return Some(Step::Skip);
     };
     out.position = Some(value);
     let mut consumed = used;
@@ -3129,17 +3138,17 @@ fn layer_position_step(comps: &[Comp], at: usize, out: &mut Layer) -> Option<Opt
         out.size = Some(size);
         consumed += 1 + more;
     }
-    Some(Some(consumed))
+    Some(Step::Took(consumed))
 }
 
-/// An origin / clip box keyword: `Some(None)` when `comp` is not one, `None` when both
+/// An origin / clip box keyword: `Skip` when `comp` is not one, `None` when both
 /// are already set.
-fn layer_box_step(comp: &Comp, out: &mut Layer, boxes: &[&str]) -> Option<Option<usize>> {
+fn layer_box_step(comp: &Comp, out: &mut Layer, boxes: &[&str]) -> Option<Step> {
     if out.clip.is_some() && out.origin.is_some() {
-        return Some(None);
+        return Some(Step::Skip);
     }
     let Some(value) = kw(comp, boxes) else {
-        return Some(None);
+        return Some(Step::Skip);
     };
     let clip_only = value == "text" || value == "no-clip";
     if out.origin.is_none() && !clip_only {
@@ -3149,7 +3158,7 @@ fn layer_box_step(comp: &Comp, out: &mut Layer, boxes: &[&str]) -> Option<Option
     } else {
         return None;
     }
-    Some(Some(1))
+    Some(Step::Took(1))
 }
 
 fn layer_mask_step(comp: &Comp, out: &mut Layer) -> Option<usize> {

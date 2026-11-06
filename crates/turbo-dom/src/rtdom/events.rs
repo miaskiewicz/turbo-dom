@@ -139,7 +139,6 @@ impl Dom {
         })
     }
 
-    /// Dispatch. Returns `!default_prevented` (the DOM `dispatchEvent` contract).
     fn run_dispatch_phases(
         &mut self,
         target: Handle,
@@ -209,6 +208,7 @@ impl Dom {
         }
     }
 
+    /// Dispatch. Returns `!default_prevented` (the DOM `dispatchEvent` contract).
     pub fn dispatch_event(&mut self, target: Handle, event: &mut Event) -> bool {
         // Build the ancestor path target..root (one walk).
         let mut path = vec![target];

@@ -231,6 +231,7 @@ fn check_selector_row(
     check_rtdom_cascade(html, sel, row, tags, &mut fail);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn check_per_element_matches(
     tree: &Tree,
     els: &[Handle],

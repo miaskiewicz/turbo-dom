@@ -132,9 +132,8 @@ pub fn expand(name: &str, value: &str) -> Option<Vec<Longhand>> {
     })
 }
 
-/// `getPropertyValue(shorthand)`: the shorthand serialized from the block's longhands, or `""`
-/// when a longhand is missing, importance is mixed, or the values have no shorthand spelling.
-#[must_use]
+/// The shorthand text when every longhand holds the same CSS-wide keyword or the same
+/// pending (unexpanded) shorthand value; `None` to serialize the longhands instead.
 fn uniform_shorthand_value(values: &[Declaration<'_>], entry: &table::Entry) -> Option<String> {
     let first = values[0];
     if !(first.pending.is_some() || CSS_WIDE.contains(&first.value))
@@ -158,6 +157,9 @@ fn uniform_shorthand_value(values: &[Declaration<'_>], entry: &table::Entry) -> 
     Some(first.value.to_string())
 }
 
+/// `getPropertyValue(shorthand)`: the shorthand serialized from the block's longhands, or `""`
+/// when a longhand is missing, importance is mixed, or the values have no shorthand spelling.
+#[must_use]
 pub fn shorthand_value(name: &str, declarations: &[Declaration<'_>]) -> String {
     let Some(entry) = table::entry(name) else {
         return String::new();

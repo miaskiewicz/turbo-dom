@@ -474,8 +474,6 @@ pub(super) fn serialize<'s>(
 ) -> Vec<u16> {
     serialize_with(scope, root, outer, None)
 }
-/// Serialize with `getHTML` shadow options; hosts whose root is selected emit a
-/// declarative `<template>` before their light children.
 enum Task<'s> {
     Node(v8::Local<'s, v8::Object>, bool),
     Close(Vec<u16>),
@@ -497,6 +495,8 @@ fn shadow<'s>(
     }
 }
 
+/// Serialize with `getHTML` shadow options; hosts whose root is selected emit a
+/// declarative `<template>` before their light children.
 pub(super) fn serialize_with<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     root: v8::Local<'s, v8::Object>,

@@ -690,10 +690,6 @@ fn viewport_rtl(styles: &SourceStyles, root: SourceId) -> bool {
         .is_some_and(|entry| has_value(&entry.style, "direction", "rtl"))
 }
 
-/// Viewport scrollable overflow: the initial containing block plus every
-/// in-flow or absolute descendant edge not owned by a nested clipping box. An RTL
-/// viewport's overflow extends left instead (offsets `min_x..=0`), its content past
-/// the right edge unreachable, as an LTR one's past the left edge.
 fn extend_viewport_bounds(
     fragment: &crate::layout_snapshot::SnapshotFragment,
     styles: &SourceStyles,
@@ -776,6 +772,10 @@ fn extend_viewport_bounds(
     }
 }
 
+/// Viewport scrollable overflow: the initial containing block plus every
+/// in-flow or absolute descendant edge not owned by a nested clipping box. An RTL
+/// viewport's overflow extends left instead (offsets `min_x..=0`), its content past
+/// the right edge unreachable, as an LTR one's past the left edge.
 pub fn viewport_metrics(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,

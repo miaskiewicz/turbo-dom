@@ -109,15 +109,6 @@ impl Tree {
         }
     }
 
-    /// Reclaim components unreachable from the document and supplied native
-    /// pins. A retained descendant pins its complete composed component,
-    /// including its ancestors, siblings, shadow trees and owned Attr nodes.
-    /// Pending native mutation events are implicit pins until drained.
-    ///
-    /// No visible DOM mutation, mutation record, version increment or handle
-    /// renumbering occurs. All checks precede the atomic storage replacement.
-    /// Callers must supply *all* independently retained native handles. Omitted
-    /// handles can be collected; this API cannot discover external Rust copies.
     fn charge_preflight(
         &self,
         work: &mut usize,
@@ -291,6 +282,15 @@ impl Tree {
         Ok(())
     }
 
+    /// Reclaim components unreachable from the document and supplied native
+    /// pins. A retained descendant pins its complete composed component,
+    /// including its ancestors, siblings, shadow trees and owned Attr nodes.
+    /// Pending native mutation events are implicit pins until drained.
+    ///
+    /// No visible DOM mutation, mutation record, version increment or handle
+    /// renumbering occurs. All checks precede the atomic storage replacement.
+    /// Callers must supply *all* independently retained native handles. Omitted
+    /// handles can be collected; this API cannot discover external Rust copies.
     pub fn collect_unreachable(
         &mut self,
         pins: &[Handle],
