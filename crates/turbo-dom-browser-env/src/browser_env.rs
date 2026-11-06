@@ -8196,6 +8196,26 @@ pub fn install(scope: &mut v8::PinScope) {
     );
 }
 
+/// Marker set by [`mark_worker_context`]: install* calls into this context skip installing
+/// the DOM template (`window`, `document`, `Element`, …) onto `globalThis` and return early.
+struct WorkerContextMarker;
+
+/// Mark `context` as a worker context so later install* calls into it skip installing the
+/// window/document DOM template onto its `globalThis`. For embedders (turbo-surf #203) that
+/// run the binding in a Worker-shaped global scope that owns its own globals.
+///
+/// Minimum opt-out hook for miaskiewicz/turbo-dom#385 landed in 0.8.0; the full
+/// `install_worker_global_scope(scope, context)` helper (DedicatedWorkerGlobalScope `self`,
+/// `importScripts`, structured-clone helpers) lands in 0.8.1.
+pub fn mark_worker_context(context: v8::Local<v8::Context>) {
+    context.set_slot(std::rc::Rc::new(WorkerContextMarker));
+}
+
+/// True if `context` was tagged with [`mark_worker_context`].
+fn is_worker_context(context: v8::Local<v8::Context>) -> bool {
+    context.get_slot::<WorkerContextMarker>().is_some()
+}
+
 pub fn install_with_html(scope: &mut v8::PinScope, html: &str) {
     // A loaded page parses `<?target data?>` like Chrome (turbo-dom#135).
     install_with_tree(scope, Tree::parse_with_processing_instructions(html));
@@ -8236,6 +8256,11 @@ pub fn install_with_utf16_source_positions(scope: &mut v8::PinScope, units: &[u1
     );
 }
 fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
+    // turbo-dom#385: a context the embedder tagged with `mark_worker_context` skips the
+    // DOM install — no window/document template is written onto its globalThis.
+    if is_worker_context(scope.get_current_context()) {
+        return;
+    }
     if snapshot_path() {
         #[cfg(test)]
         let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);

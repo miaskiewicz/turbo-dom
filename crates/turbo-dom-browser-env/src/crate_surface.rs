@@ -117,6 +117,10 @@ mod snapshot_rehydrate_tests;
 #[path = "engine_namespace_tests.rs"]
 mod engine_namespace_tests;
 
+#[cfg(test)]
+#[path = "worker_context_tests.rs"]
+mod worker_context_tests;
+
 /// The parameter name under which [`run_engine_script`] hands an engine script the
 /// realm's engine namespace.
 pub const ENGINE_NAMESPACE_PARAM: &str = "__tsNs";
