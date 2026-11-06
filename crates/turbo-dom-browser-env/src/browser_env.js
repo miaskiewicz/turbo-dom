@@ -157,14 +157,16 @@
   // namespace, a V8 private on the global (turbo-dom#222): page script cannot name it, and
   // each engine script receives it as its `__tsNs` parameter (run_engine_script).
   var __ns = __tsNs;
+  // Moves a native hook the embedder put on the global onto the engine namespace.
+  function adoptNsHook(globalName, key){ if (typeof g[globalName] === 'function') { __ns[key] = g[globalName]; delete g[globalName]; } }
   // The uncurried captured builtins, for the engine files that run after this bootstrap.
   __ns.intrinsics=$c;
-  if (typeof g.__parseCssNative === 'function') { __ns.parseCssNative = g.__parseCssNative; delete g.__parseCssNative; }
-  if (typeof g.__cssShorthandNative === 'function') { __ns.cssShorthandNative = g.__cssShorthandNative; delete g.__cssShorthandNative; }
+  adoptNsHook('__parseCssNative', 'parseCssNative');
+  adoptNsHook('__cssShorthandNative', 'cssShorthandNative');
   var cssShorthand = __ns.cssShorthandNative;
   var cssNativeParse=__ns.parseCssNative,cssSetPrototype=Object.setPrototypeOf,cssApply=Reflect.apply,cssMapGet=Function.prototype.call.bind(Map.prototype.get),cssTagUpper=Function.prototype.call.bind(String.prototype.toUpperCase);
   var computedSnapshotMap=WeakMap,computedSnapshotGet=Function.prototype.call.bind(WeakMap.prototype.get),computedSnapshotSet=Function.prototype.call.bind(WeakMap.prototype.set);
-  if (typeof g.__domAccessor === 'function') { __ns.domAccessor = g.__domAccessor; delete g.__domAccessor; }
+  adoptNsHook('__domAccessor', 'domAccessor');
   computedStyleNativeOwner=__ns.domAccessor('ownerDocument',false,'Node');
   computedStyleNativeTag=__ns.domAccessor('tagName',false,'Element');
   computedStyleNativeNamespace=__ns.domAccessor('namespaceURI',false,'Element');
@@ -181,18 +183,21 @@
     $c.forEach([['width','300px'],['height','150px']],function(pair){var text=cssApply(computedStyleNativeAttribute,el,[pair[0]]),match=text==null?null:$c.exec(/^[\t\n\f\r ]*(\d+(?:\.\d+)?)(%?)/,text);hints[pair[0]]=match?(+match[1])+(match[2]?'%':'px'):pair[1];});
     return hints;
   }
-  if (typeof g.__nativeDOMFunction === 'function') { __ns.makeNativeFunction = g.__nativeDOMFunction; delete g.__nativeDOMFunction; }
-  if (typeof g.__nativeNamedObject === 'function') { __ns.makeNamedObject = g.__nativeNamedObject; delete g.__nativeNamedObject; }
-  if (typeof g.navigator === 'undefined') g.navigator = { userAgent: 'turbo-test', platform: 'rust', language: 'en-US', languages: ['en-US'], clipboard: {}, maxTouchPoints: 0 };
-  // Top-level window self-references (browsers + jsdom + vitest): a non-framed window is its own
-  // parent/top, and `self`/`frames` alias the window. `window === globalThis` here, so point them at
-  // g. Configurable so a test can stub framing (Object.defineProperty(window,'parent',{value:...})).
-  // Without these, `window.parent !== window` reads as "always inside an iframe" and silently breaks
-  // top-level/iframe detection that works under vitest.
-  $c.forEach(['self', 'parent', 'top', 'frames'], function(k){
-    if (g[k] !== g) { try { Object.defineProperty(g, k, { value: g, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g[k] = g; } catch(e2){} } }
-  });
-  if (typeof g.frameElement === 'undefined') { try { Object.defineProperty(g, 'frameElement', { value: null, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g.frameElement = null; } catch(e2){} } }
+  adoptNsHook('__nativeDOMFunction', 'makeNativeFunction');
+  adoptNsHook('__nativeNamedObject', 'makeNamedObject');
+  function installWindowSelfReferences(){
+    if (typeof g.navigator === 'undefined') g.navigator = { userAgent: 'turbo-test', platform: 'rust', language: 'en-US', languages: ['en-US'], clipboard: {}, maxTouchPoints: 0 };
+    // Top-level window self-references (browsers + jsdom + vitest): a non-framed window is its own
+    // parent/top, and `self`/`frames` alias the window. `window === globalThis` here, so point them at
+    // g. Configurable so a test can stub framing (Object.defineProperty(window,'parent',{value:...})).
+    // Without these, `window.parent !== window` reads as "always inside an iframe" and silently breaks
+    // top-level/iframe detection that works under vitest.
+    $c.forEach(['self', 'parent', 'top', 'frames'], function(k){
+      if (g[k] !== g) { try { Object.defineProperty(g, k, { value: g, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g[k] = g; } catch(e2){} } }
+    });
+    if (typeof g.frameElement === 'undefined') { try { Object.defineProperty(g, 'frameElement', { value: null, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g.frameElement = null; } catch(e2){} } }
+  }
+  installWindowSelfReferences();
   // ---- CSS shorthand expansion ----------------------------------------------------------------
   // Computed-style reads resolve longhands (marginTop, borderWidth, backgroundColor, rowGap,
   // flexBasis) of shorthands from the UA tables and Web Animations keyframes: rtdom's Chrome 156
@@ -2033,17 +2038,20 @@
     if(el&&!pseudo)computedSnapshotSet(snapshots,el,snapshot);
     return snapshot;
   }
-  if (typeof g.requestAnimationFrame === 'undefined') g.requestAnimationFrame = function(cb){ return setTimeout(function(){ cb(Date.now()); }, 0); };
-  if (typeof g.cancelAnimationFrame === 'undefined') g.cancelAnimationFrame = function(id){ clearTimeout(id); };
   var ownMatchMedia = null;
-  if (typeof g.matchMedia === 'undefined') ownMatchMedia = g.matchMedia = function(q){ return __ns.matchMedia(q); };
-  if (typeof g.scrollTo === 'undefined') g.scrollTo = function(){};
-  // Window operations are not constructors: no own `prototype` (turbo-dom#221).
-  ['getComputedStyle','requestAnimationFrame','cancelAnimationFrame','matchMedia','scrollTo'].forEach(function(name){
-    var fn=g[name];
-    if(typeof fn==='function'&&Object.prototype.hasOwnProperty.call(fn,'prototype')&&__ns.makeNativeFunction)g[name]=__ns.makeNativeFunction(fn,name,name==='scrollTo'?0:1);
-  });
-  if (ownMatchMedia) ownMatchMedia = g.matchMedia;
+  function installWindowOperations(){
+    if (typeof g.requestAnimationFrame === 'undefined') g.requestAnimationFrame = function(cb){ return setTimeout(function(){ cb(Date.now()); }, 0); };
+    if (typeof g.cancelAnimationFrame === 'undefined') g.cancelAnimationFrame = function(id){ clearTimeout(id); };
+    if (typeof g.matchMedia === 'undefined') ownMatchMedia = g.matchMedia = function(q){ return __ns.matchMedia(q); };
+    if (typeof g.scrollTo === 'undefined') g.scrollTo = function(){};
+    // Window operations are not constructors: no own `prototype` (turbo-dom#221).
+    ['getComputedStyle','requestAnimationFrame','cancelAnimationFrame','matchMedia','scrollTo'].forEach(function(name){
+      var fn=g[name];
+      if(typeof fn==='function'&&Object.prototype.hasOwnProperty.call(fn,'prototype')&&__ns.makeNativeFunction)g[name]=__ns.makeNativeFunction(fn,name,name==='scrollTo'?0:1);
+    });
+    if (ownMatchMedia) ownMatchMedia = g.matchMedia;
+  }
+  installWindowOperations();
   // The cascade evaluates media text directly against the viewport (no MediaQueryList per
   // rule); like Chrome (and jsdom) it never asks a page's replacement window.matchMedia.
   // A child iframe window's getComputedStyle evaluates @media against its own viewport.
@@ -2066,9 +2074,12 @@
   __ns.withMediaView = function(target, run){ var outer = mediaView; mediaView = target; try { return run(); } finally { mediaView = outer; } };
   // `Image(width, height)` is the native legacy factory in html_image.js (turbo-dom#23); image
   // loading (load / error events, natural size) is the host's (record.imageHost).
-  if (typeof g.location === 'undefined' || g.location == null) {
-    g.location = { href: 'http://localhost/', origin: 'http://localhost', protocol: 'http:', host: 'localhost', hostname: 'localhost', port: '', pathname: '/', search: '', hash: '', assign: function(){}, replace: function(){}, reload: function(){}, toString: function(){ return this.href; } };
+  function installLocationFallback(){
+    if (typeof g.location === 'undefined' || g.location == null) {
+      g.location = { href: 'http://localhost/', origin: 'http://localhost', protocol: 'http:', host: 'localhost', hostname: 'localhost', port: '', pathname: '/', search: '', hash: '', assign: function(){}, replace: function(){}, reload: function(){}, toString: function(){ return this.href; } };
+    }
   }
+  installLocationFallback();
   // DOM interface constructors (for `instanceof` / global presence). Stubs; identity not enforced.
   // Event records stay private: readonly Web-IDL getters and native dispatch
   // share this state without exposing writable bookkeeping to page scripts.
@@ -2630,14 +2641,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   iface('DOMTokenList', function(o){ return o != null && typeof o === 'object' && typeof o.length === 'number' && typeof o.toggle === 'function'; });
   // Audio(src) — a real HTMLAudioElement built through the DOM (so it participates in
   // the tree + carries the media API stubs below), matching `new Audio(url)`.
-  if (typeof g.Audio === 'undefined') {
-    g.Audio = function Audio(src){
-      var el = d.createElement('audio');
-      if (src != null) { try { el.src = String(src); } catch(e){} }
-      return el;
-    };
-    try { g.Audio.prototype = (g.HTMLAudioElement && g.HTMLAudioElement.prototype) || {}; } catch(e){}
+  function installAudioFactory(){
+    if (typeof g.Audio === 'undefined') {
+      g.Audio = function Audio(src){
+        var el = d.createElement('audio');
+        if (src != null) { try { el.src = String(src); } catch(e){} }
+        return el;
+      };
+      try { g.Audio.prototype = (g.HTMLAudioElement && g.HTMLAudioElement.prototype) || {}; } catch(e){}
+    }
   }
+  installAudioFactory();
   // Media-element methods on the shared element prototype (headless has no audio/video
   // pipeline; these no-op so `el.play()`/`.load()` don't throw and `.play()` still
   // returns a promise as the spec requires). `canPlayType` reports no support.
@@ -2652,17 +2666,20 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // second thread, so it doesn't spawn one (the worker body doesn't run); it queues
   // postMessage + exposes onmessage/onerror + terminate so apps that construct a
   // Worker (analytics, off-main-thread hashing) don't throw and degrade gracefully.
-  if (typeof g.Worker === 'undefined') {
-    // An EventTarget subclass with no own instance state (turbo-dom#221).
-    var workerHandlers = new WeakMap();
-    g.Worker = function Worker(url){ if (new.target === undefined) throw new TypeError("Failed to construct 'Worker': Please use the 'new' operator, this DOM object constructor cannot be called as a function."); var worker = Reflect.construct(g.EventTarget, [], new.target); workerHandlers.set(worker, {}); return worker; };
-    Object.setPrototypeOf(g.Worker, g.EventTarget);
-    Object.setPrototypeOf(g.Worker.prototype, g.EventTarget.prototype);
-    g.Worker.prototype.postMessage = function(){};
-    g.Worker.prototype.terminate = function(){};
-    ['onmessage','onmessageerror','onerror'].forEach(function(name){ Object.defineProperty(g.Worker.prototype, name, { enumerable: true, configurable: true, get: function(){ var h = workerHandlers.get(this); return h && h[name] || null; }, set: function(value){ var h = workerHandlers.get(this); if (h) h[name] = typeof value === 'function' || (value && typeof value === 'object') ? value : null; } }); });
-    if (typeof g.SharedWorker === 'undefined') { g.SharedWorker = function SharedWorker(url){ this.url = String(url || ''); this.port = { postMessage: function(){}, start: function(){}, close: function(){}, addEventListener: function(){}, removeEventListener: function(){}, onmessage: null }; }; }
+  function installWorkerStubs(){
+    if (typeof g.Worker === 'undefined') {
+      // An EventTarget subclass with no own instance state (turbo-dom#221).
+      var workerHandlers = new WeakMap();
+      g.Worker = function Worker(url){ if (new.target === undefined) throw new TypeError("Failed to construct 'Worker': Please use the 'new' operator, this DOM object constructor cannot be called as a function."); var worker = Reflect.construct(g.EventTarget, [], new.target); workerHandlers.set(worker, {}); return worker; };
+      Object.setPrototypeOf(g.Worker, g.EventTarget);
+      Object.setPrototypeOf(g.Worker.prototype, g.EventTarget.prototype);
+      g.Worker.prototype.postMessage = function(){};
+      g.Worker.prototype.terminate = function(){};
+      ['onmessage','onmessageerror','onerror'].forEach(function(name){ Object.defineProperty(g.Worker.prototype, name, { enumerable: true, configurable: true, get: function(){ var h = workerHandlers.get(this); return h && h[name] || null; }, set: function(value){ var h = workerHandlers.get(this); if (h) h[name] = typeof value === 'function' || (value && typeof value === 'object') ? value : null; } }); });
+      if (typeof g.SharedWorker === 'undefined') { g.SharedWorker = function SharedWorker(url){ this.url = String(url || ''); this.port = { postMessage: function(){}, start: function(){}, close: function(){}, addEventListener: function(){}, removeEventListener: function(){}, onmessage: null }; }; }
+    }
   }
+  installWorkerStubs();
   // Extra HTML*Element constructors the base ctor list omits. App bundles reference these for
   // feature-detect / instanceof / subclassing (MUI's Dialog touches HTMLDialogElement); an
   // undefined reference aborts the chunk mid-hydration, blanking the tree. Single-tag elements get
@@ -3195,29 +3212,40 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     }
     return out;
   }
+  // parseCssRules' comment / string state: cssScanSkip steps over them and returns how many
+  // characters it consumed (0 when text[i] is outside both).
+  function CssRuleScan(){this.quote='';this.escaped=false;this.comment=false;}
+  function cssScanSkip(scan,c,next){
+    if(scan.comment){if(c==='*'&&next==='/'){scan.comment=false;return 2;}return 1;}
+    if(scan.quote){if(scan.escaped)scan.escaped=false;else if(c==='\\')scan.escaped=true;else if(c===scan.quote)scan.quote='';return 1;}
+    if(c==='/'&&next==='*'){scan.comment=true;return 2;}
+    if(c==='"'||c==="'"){scan.quote=c;return 1;}
+    return 0;
+  }
+  // A `head { body }` block: an at-rule or a style rule.
+  function cssPushBlockRule(out,text,start,open,close,sheet,parent){
+    var head=cssPrelude($c.slice(text,start,open),false),body=$c.slice(text,open+1,close);
+    if(!head)return;
+    var rule={parentStyleSheet:sheet,parentRule:parent||null};
+    if(head[0]==='@')fillAtRule(rule,head,body,sheet,parent);
+    else fillStyleRule(rule,head,body,sheet);
+    $c.push(cssItems(out),finishCssRule(rule));
+  }
+  // A top-level `;` statement: @import or an @layer statement.
+  function cssPushStatementRule(out,statement,sheet,parent){
+    var imported=$c.exec(/^@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*(.*)$/i,statement);
+    if(imported){var rule={};rule.type=3;rule.href=imported[1];rule.media=makeMedia(imported[2]||'');rule.styleSheet=null;rule.parentStyleSheet=sheet;rule.parentRule=parent||null;rule.cssText=statement+';';$c.push(cssItems(out),finishCssRule(rule));}
+    else if($c.test(/^@layer\s/i,statement)){var layer={};layer.type=0;layer.kind='layer-statement';layer.prelude=statement;layer.parentStyleSheet=sheet;layer.parentRule=parent||null;layer.cssText=statement+';';$c.push(cssItems(out),finishCssRule(layer));}
+  }
   var parseCssRules = function(text, sheet, parent, validated){
     text=String(text);if(!validated&&typeof cssNativeParse==='function')text=cssNativeParse(text);
-    var out=cssList(), start=0, depth=0, quote='', escaped=false, comment=false, open=-1;
+    var out=cssList(), start=0, depth=0, scan=new CssRuleScan(), open=-1;
     for(var i=0;i<text.length;i++){
-      var c=text[i],next=i+1<text.length?text[i+1]:undefined;
-      if(comment){if(c==='*'&&next==='/'){comment=false;i++;}continue;}
-      if(quote){if(escaped)escaped=false;else if(c==='\\')escaped=true;else if(c===quote)quote='';continue;}
-      if(c==='/'&&next==='*'){comment=true;i++;continue;} if(c==='"'||c==="'"){quote=c;continue;}
+      var c=text[i],next=i+1<text.length?text[i+1]:undefined,skip=cssScanSkip(scan,c,next);
+      if(skip){i+=skip-1;continue;}
       if(c==='{' ){if(depth++===0)open=i;}
-      else if(c==='}'&&depth>0&&--depth===0){
-        var head=cssPrelude($c.slice(text,start,open),false),body=$c.slice(text,open+1,i);
-        if(head){
-          var rule={parentStyleSheet:sheet,parentRule:parent||null};
-          if(head[0]==='@')fillAtRule(rule,head,body,sheet,parent);
-          else fillStyleRule(rule,head,body,sheet);
-          $c.push(cssItems(out),finishCssRule(rule));
-        }
-        start=i+1;
-      } else if(c===';'&&depth===0){
-        var statement=$c.trim($c.slice(text,start,i)),imported=$c.exec(/^@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*(.*)$/i,statement);
-        if(imported){var rule={};rule.type=3;rule.href=imported[1];rule.media=makeMedia(imported[2]||'');rule.styleSheet=null;rule.parentStyleSheet=sheet;rule.parentRule=parent||null;rule.cssText=statement+';';$c.push(cssItems(out),finishCssRule(rule));}
-        else if($c.test(/^@layer\s/i,statement)){var layer={};layer.type=0;layer.kind='layer-statement';layer.prelude=statement;layer.parentStyleSheet=sheet;layer.parentRule=parent||null;layer.cssText=statement+';';$c.push(cssItems(out),finishCssRule(layer));}start=i+1;
-      }
+      else if(c==='}'&&depth>0&&--depth===0){cssPushBlockRule(out,text,start,open,i,sheet,parent);start=i+1;}
+      else if(c===';'&&depth===0){cssPushStatementRule(out,$c.trim($c.slice(text,start,i)),sheet,parent);start=i+1;}
     }
     return out;
   };
@@ -3687,7 +3715,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // documentMode ABSENT) so React uses the modern input/change path, not the IE change polyfill —
   // otherwise fireEvent.change never fires onChange.
   d.oninput = null; d.onchange = null; d.onclick = null; d.onkeydown = null; d.onkeyup = null;
-  if (!d.head) { try { d.head = d.createElement('head'); if (d.documentElement) d.documentElement.appendChild(d.head); } catch(e){} }
+  function ensureDocumentHead(){
+    if (!d.head) { try { d.head = d.createElement('head'); if (d.documentElement) d.documentElement.appendChild(d.head); } catch(e){} }
+  }
+  ensureDocumentHead();
   // NOTE: document.createElementNS uses the native binding (namespace-aware: SVG/MathML elements keep
   // their namespace + case-preserved attributes like viewBox). Previously aliased to createElement.
   // NOTE: document.addEventListener/removeEventListener/dispatchEvent use the native binding (the
@@ -4531,60 +4562,63 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // (DataTableCore fullscreen) reaches our instances. Only affects methods that aren't own per
     // instance (own native methods still shadow). The genuine fullscreen API is installed by
     // user_activation_gates.js.
-    try {
-      if (g.HTMLElement) g.HTMLElement.prototype = baseProto;
-      if (g.Element) g.Element.prototype = baseProto;
-      if (g.Node) g.Node.prototype = baseProto;
-      // Lazy `<style>.sheet` for EVERY <style> — server-rendered ones (from the HTML
-      // parse / innerHTML) never pass through `createElement`, yet emotion /
-      // styled-components hydrate by calling `styleEl.sheet.insertRule(...)` on them.
-      // Without a `.sheet` that throws and aborts the chunk, blanking the styling.
-      // CSSOM mutations stay separate from the DOM text, just as in browsers.
-      // Defined on the shared element prototype and
-      // WITHOUT a descriptor guard (the NON_MASKING interceptor makes every lookup
-      // report a descriptor, so a guard would wrongly skip). Caches per element.
-      currentSheetGetter=function(){
-          var tag = cssApply(sheetTagName,this,[]);
-          if (!tag) return null;
-          tag=cssTagUpper(tag);if(tag!=='STYLE'&&tag!=='LINK')return null;
-          var cached=elementSheets.get(this);
-          // A child iframe document's <style> / <link> has a sheet (turbo-dom#299).
-          if (!computedConnected(this)) {if(cached)detachSheet(cached.sheet);elementSheets.delete(this);return null;}
-          if(tag==='LINK')return cached?cached.sheet:null;
-          if(!cssApply(inlineSheetAllowed,this,[])){if(cached)detachSheet(cached.sheet);elementSheets.set(this,{sheet:null,text:null});return null;}
-          var text=cssApply(sheetTextContent,this,[])||'';
-          if (!cached || !cached.sheet || cached.text!==text) {
-            if(cached)detachSheet(cached.sheet);
-            cached={sheet:mkSheet(this),text:text};elementSheets.set(this,cached);
-          }
-          return cached.sheet;
-        };
-      Object.defineProperty(baseProto, 'sheet', {configurable:true,get:currentSheetGetter});
-      var docProto = Object.getPrototypeOf(d) || baseProto;
-      // Documents without a browsing context list their own sheets too (turbo-dom#163).
-      var otherDocumentSheets=new WeakMap(),otherSheetsGet=WeakMap.prototype.get,otherSheetsSet=WeakMap.prototype.set,sheetsQuery=d.querySelectorAll;
-      __ns.documentSheetsDescriptor={configurable:true,enumerable:true,get:function(){
-        if(this===d)return documentSheets;
-        var doc=this,list=cssApply(otherSheetsGet,otherDocumentSheets,[doc]);
-        if(!list){list=cssList('StyleSheetList',function(){var out=[],found=cssApply(sheetsQuery,doc,['style,link']);for(var i=0;i<found.length;i++){var sheet=cssApply(currentSheetGetter,found[i],[]);if(sheet)out.push(sheet);}return out;});cssApply(otherSheetsSet,otherDocumentSheets,[doc,list]);}
-        return list;
-      }};
-      if (g.Document) g.Document.prototype = docProto;
-      if (g.HTMLDocument) g.HTMLDocument.prototype = docProto;
-      // NB: define these directly (NOT guarded by Object.getOwnPropertyDescriptor) — the all-Rust
-      // DOM's NON_MASKING name interceptor intercepts every absent property (returns undefined), so
-      // getOwnPropertyDescriptor synthesizes a truthy descriptor and a `if (!descriptor)` guard would
-      // wrongly skip the define. A real own accessor still shadows the interceptor once defined.
-      try { Object.defineProperty(d, 'fullscreenElement', { configurable: true, writable: true, value: null }); } catch(e){}
-      // Document lifecycle/visibility — our document is always fully parsed and "foregrounded".
-      // Components gate hydration / effects on these (readyState === 'complete', visibilityState).
-      try { Object.defineProperty(d, 'readyState', { configurable: true, get: function(){ return 'complete'; } }); } catch(e){}
-      try { Object.defineProperty(d, 'visibilityState', { configurable: true, get: function(){ return 'visible'; } }); } catch(e){}
-      try { Object.defineProperty(d, 'hidden', { configurable: true, get: function(){ return false; } }); } catch(e){}
-      // No hit-testing without layout → elementFromPoint(s) resolve to nothing.
-      d.elementFromPoint = function(){ return null; };
-      d.elementsFromPoint = function(){ return []; };
-    } catch(e){}
+    function aliasShimPrototypes(){
+      try {
+        if (g.HTMLElement) g.HTMLElement.prototype = baseProto;
+        if (g.Element) g.Element.prototype = baseProto;
+        if (g.Node) g.Node.prototype = baseProto;
+        // Lazy `<style>.sheet` for EVERY <style> — server-rendered ones (from the HTML
+        // parse / innerHTML) never pass through `createElement`, yet emotion /
+        // styled-components hydrate by calling `styleEl.sheet.insertRule(...)` on them.
+        // Without a `.sheet` that throws and aborts the chunk, blanking the styling.
+        // CSSOM mutations stay separate from the DOM text, just as in browsers.
+        // Defined on the shared element prototype and
+        // WITHOUT a descriptor guard (the NON_MASKING interceptor makes every lookup
+        // report a descriptor, so a guard would wrongly skip). Caches per element.
+        currentSheetGetter=function(){
+            var tag = cssApply(sheetTagName,this,[]);
+            if (!tag) return null;
+            tag=cssTagUpper(tag);if(tag!=='STYLE'&&tag!=='LINK')return null;
+            var cached=elementSheets.get(this);
+            // A child iframe document's <style> / <link> has a sheet (turbo-dom#299).
+            if (!computedConnected(this)) {if(cached)detachSheet(cached.sheet);elementSheets.delete(this);return null;}
+            if(tag==='LINK')return cached?cached.sheet:null;
+            if(!cssApply(inlineSheetAllowed,this,[])){if(cached)detachSheet(cached.sheet);elementSheets.set(this,{sheet:null,text:null});return null;}
+            var text=cssApply(sheetTextContent,this,[])||'';
+            if (!cached || !cached.sheet || cached.text!==text) {
+              if(cached)detachSheet(cached.sheet);
+              cached={sheet:mkSheet(this),text:text};elementSheets.set(this,cached);
+            }
+            return cached.sheet;
+          };
+        Object.defineProperty(baseProto, 'sheet', {configurable:true,get:currentSheetGetter});
+        var docProto = Object.getPrototypeOf(d) || baseProto;
+        // Documents without a browsing context list their own sheets too (turbo-dom#163).
+        var otherDocumentSheets=new WeakMap(),otherSheetsGet=WeakMap.prototype.get,otherSheetsSet=WeakMap.prototype.set,sheetsQuery=d.querySelectorAll;
+        __ns.documentSheetsDescriptor={configurable:true,enumerable:true,get:function(){
+          if(this===d)return documentSheets;
+          var doc=this,list=cssApply(otherSheetsGet,otherDocumentSheets,[doc]);
+          if(!list){list=cssList('StyleSheetList',function(){var out=[],found=cssApply(sheetsQuery,doc,['style,link']);for(var i=0;i<found.length;i++){var sheet=cssApply(currentSheetGetter,found[i],[]);if(sheet)out.push(sheet);}return out;});cssApply(otherSheetsSet,otherDocumentSheets,[doc,list]);}
+          return list;
+        }};
+        if (g.Document) g.Document.prototype = docProto;
+        if (g.HTMLDocument) g.HTMLDocument.prototype = docProto;
+        // NB: define these directly (NOT guarded by Object.getOwnPropertyDescriptor) — the all-Rust
+        // DOM's NON_MASKING name interceptor intercepts every absent property (returns undefined), so
+        // getOwnPropertyDescriptor synthesizes a truthy descriptor and a `if (!descriptor)` guard would
+        // wrongly skip the define. A real own accessor still shadows the interceptor once defined.
+        try { Object.defineProperty(d, 'fullscreenElement', { configurable: true, writable: true, value: null }); } catch(e){}
+        // Document lifecycle/visibility — our document is always fully parsed and "foregrounded".
+        // Components gate hydration / effects on these (readyState === 'complete', visibilityState).
+        try { Object.defineProperty(d, 'readyState', { configurable: true, get: function(){ return 'complete'; } }); } catch(e){}
+        try { Object.defineProperty(d, 'visibilityState', { configurable: true, get: function(){ return 'visible'; } }); } catch(e){}
+        try { Object.defineProperty(d, 'hidden', { configurable: true, get: function(){ return false; } }); } catch(e){}
+        // No hit-testing without layout → elementFromPoint(s) resolve to nothing.
+        d.elementFromPoint = function(){ return null; };
+        d.elementsFromPoint = function(){ return []; };
+      } catch(e){}
+    }
+    aliasShimPrototypes();
   })();
   // ---- Range + Selection (real model over rtdom) ----------------------------------------------
   // The no-op stubs were enough for libraries that merely construct a Range, but contenteditable
@@ -4674,17 +4708,20 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   });
   Object.defineProperty(Range.prototype,Symbol.toStringTag,{value:'Range',configurable:true});
   d.createRange=function(){return new Range();};
-  if(g.Range===undefined) g.Range=Range;
-  if (!d.getRootNode) d.getRootNode = function(){ return d; };
-  // document.write / writeln: parse the written markup and append it to <body>. Real browsers splice
-  // at the parser position; our scripts run post-parse, so appending is the faithful no-JS-engine
-  // behavior (e.g. a script that writes one element per item).
-  if (!d.write || !d.writeln) {
-    var docWrite = function(){ var html = Array.prototype.join.call(arguments, ''); var tmp = d.createElement('div'); tmp.innerHTML = html; var target = d.body || d.documentElement; if (!target) return; var kids = Array.prototype.slice.call(tmp.childNodes); for (var i=0;i<kids.length;i++) target.appendChild(kids[i]); };
-    if (!d.write) d.write = docWrite;
-    if (!d.writeln) d.writeln = function(){ docWrite(Array.prototype.join.call(arguments, '') + '\n'); };
+  function installDocumentFallbacks(){
+    if(g.Range===undefined) g.Range=Range;
+    if (!d.getRootNode) d.getRootNode = function(){ return d; };
+    // document.write / writeln: parse the written markup and append it to <body>. Real browsers splice
+    // at the parser position; our scripts run post-parse, so appending is the faithful no-JS-engine
+    // behavior (e.g. a script that writes one element per item).
+    if (!d.write || !d.writeln) {
+      var docWrite = function(){ var html = Array.prototype.join.call(arguments, ''); var tmp = d.createElement('div'); tmp.innerHTML = html; var target = d.body || d.documentElement; if (!target) return; var kids = Array.prototype.slice.call(tmp.childNodes); for (var i=0;i<kids.length;i++) target.appendChild(kids[i]); };
+      if (!d.write) d.write = docWrite;
+      if (!d.writeln) d.writeln = function(){ docWrite(Array.prototype.join.call(arguments, '') + '\n'); };
+    }
+    if (g.__addGetElems) { g.__addGetElems(d); try { delete g.__addGetElems; } catch(e){} }
   }
-  if (g.__addGetElems) { g.__addGetElems(d); try { delete g.__addGetElems; } catch(e){} }
+  installDocumentFallbacks();
   // Selection lives in selection.js (installed natively after the form-control modules).
 
   // ── <iframe> second realm (bridged, same-isolate) ───────────────────────────────
@@ -4869,13 +4906,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // Build (once) a bridged child realm for the <iframe> `hostEl`. `parentWin` defaults
     // to the top window `g`. Returns the child window; also sets hostEl.contentWindow /
     // contentDocument. Reused by turbo-surf's render tier for the reCAPTCHA bframe.
+    function frameSrcOf(hostEl){ return hostEl && (hostEl.src || (hostEl.getAttribute && hostEl.getAttribute('src'))); }
+    function frameParentOrigin(parentWin){ return (parentWin.location && parentWin.location.origin) || originOf(parentWin.location && parentWin.location.href) || ''; }
+    function frameProtocolOf(childOrigin){ return (childOrigin.split(':')[0] || 'about') + ':'; }
     __ns.makeFrameRealm = function(hostEl, parentWin, createWindow){
       parentWin = parentWin || g;
       if (hostEl && hostEl.__realm) return hostEl.__realm;
       var childDoc = makeChildDocument();
-      var srcAttr = hostEl && (hostEl.src || (hostEl.getAttribute && hostEl.getAttribute('src')));
+      var srcAttr = frameSrcOf(hostEl);
       var childOrigin = originOf(srcAttr);
-      var parentOrigin = (parentWin.location && parentWin.location.origin) || originOf(parentWin.location && parentWin.location.href) || '';
+      var parentOrigin = frameParentOrigin(parentWin);
       var wl = {}; // the child window's own event listeners
       var childWin, parentView;
       childWin = typeof createWindow === 'function' ? createWindow() : {};
@@ -4884,7 +4924,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         origin: childOrigin, length: 0, frames: [], devicePixelRatio: 1,
         innerWidth: 0, innerHeight: 0, outerWidth: 0, outerHeight: 0, screenX: 0, screenY: 0,
         location: { href: String(srcAttr || 'about:blank'), origin: childOrigin,
-          protocol: (childOrigin.split(':')[0] || 'about') + ':',
+          protocol: frameProtocolOf(childOrigin),
           host: childOrigin.replace(/^https?:\/\//,''),
           hostname: childOrigin.replace(/^https?:\/\//,'').split(':')[0],
           port: '', pathname: '/', search: '', hash: '',
