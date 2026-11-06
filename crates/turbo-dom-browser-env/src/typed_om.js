@@ -1892,8 +1892,9 @@
     const key = lowerCase(item.unit);
     return UNITS[key] && key !== 'number' && key !== 'percent' ? unitValue(item.value, key) : null;
   }
-  function genericValueBlock(property, item, mode) {
-    if (item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)]) { const node = parseMathComponent(item); return node ? nodeToNumeric(node) : null; }
+  // Math functions, colors and images (url tokens and url() functions) in CreateStyleValue's order.
+  function genericValueOther(property, item, mode) {
+    if (item.block && item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)]) { const node = parseMathComponent(item); return node ? nodeToNumeric(node) : null; }
     if (isColor(item)) return unsupported(colorText(item, mode), property.name);
     if (isUrl(item) && property.meta && hasType(property.meta, 'Image')) return imageValue('url(' + serializeString(urlString(item)) + ')');
     return null;
@@ -1907,9 +1908,7 @@
     if (item.type === 'number') return genericValueNumber(property, meta, item);
     if (item.type === 'percentage') return ALPHA[property.name] ? unitValue(item.value / 100, 'number') : unitValue(item.value, 'percent');
     if (item.type === 'dimension') return genericValueDimension(item);
-    if (item.block) return genericValueBlock(property, item, mode);
-    if (isColor(item)) return unsupported(colorText(item, mode), property.name);
-    return null;
+    return genericValueOther(property, item, mode);
   }
   const colorText = (item, mode) => mode.normalize(plain([item]));
   // Position syntax (css-values-4 <position>) as a CSSValuePair of x and y offsets.

@@ -8,26 +8,23 @@
   // the embedding's control covers those.
   const out = {};
   const N = (x) => (Object.is(x, -0) ? '-0' : Number.isFinite(x) ? x : String(x));
-  const fillDescription = (v, o, d) => {
-    if (v instanceof CSSUnitValue) { o.v = N(v.value); o.u = v.unit; return; }
-    if (v instanceof CSSMathClamp) { o.l = d(v.lower); o.v = d(v.value); o.up = d(v.upper); return; }
-    if (v instanceof CSSMathValue) { o.op = v.operator; if ('values' in v) o.vs = [...v.values].map(d); else o.v = d(v.value); return; }
-    if (v instanceof CSSKeywordValue) { o.v = v.value; return; }
-    if (v instanceof CSSUnparsedValue) { o.vs = [...v].map(d); return; }
-    if (v instanceof CSSVariableReferenceValue) { o.var = v.variable; o.fb = d(v.fallback); return; }
-    if (v instanceof CSSTransformValue) { o.is2D = v.is2D; o.vs = [...v].map(d); return; }
-    if (v instanceof CSSPositionValue) { o.x = d(v.x); o.y = d(v.y); return; }
-    if (v instanceof CSSTransformComponent) { o.is2D = v.is2D; for (const k of ['x', 'y', 'z', 'angle', 'ax', 'ay', 'length']) if (k in v) o[k] = d(v[k]); }
-  };
   const describe = (v, depth = 0) => {
     if (v === undefined) return '<undefined>';
     if (v === null || typeof v !== 'object') return typeof v === 'number' ? N(v) : v;
     if (depth > 6) return '<deep>';
-    if (Array.isArray(v)) return v.map((x) => describe(x, depth + 1));
     const d = (x) => describe(x, depth + 1);
     const o = { t: Object.getPrototypeOf(v) ? Object.getPrototypeOf(v).constructor.name : null };
     try { o.s = String(v).split(location.origin).join('<origin>'); } catch (e) { o.s = '!' + e.name; }
-    fillDescription(v, o, d);
+    if (v instanceof CSSUnitValue) { o.v = N(v.value); o.u = v.unit; }
+    else if (v instanceof CSSMathClamp) { o.l = d(v.lower); o.v = d(v.value); o.up = d(v.upper); }
+    else if (v instanceof CSSMathValue) { o.op = v.operator; if ('values' in v) o.vs = [...v.values].map(d); else o.v = d(v.value); }
+    else if (v instanceof CSSKeywordValue) o.v = v.value;
+    else if (v instanceof CSSUnparsedValue) o.vs = [...v].map(d);
+    else if (v instanceof CSSVariableReferenceValue) { o.var = v.variable; o.fb = d(v.fallback); }
+    else if (v instanceof CSSTransformValue) { o.is2D = v.is2D; o.vs = [...v].map(d); }
+    else if (v instanceof CSSPositionValue) { o.x = d(v.x); o.y = d(v.y); }
+    else if (v instanceof CSSTransformComponent) { o.is2D = v.is2D; for (const k of ['x', 'y', 'z', 'angle', 'ax', 'ay', 'length']) if (k in v) o[k] = d(v[k]); }
+    else if (Array.isArray(v)) return v.map(d);
     return o;
   };
   const run = (f) => { try { return describe(f()); } catch (e) { return { e: e.name, m: e.message }; } };
