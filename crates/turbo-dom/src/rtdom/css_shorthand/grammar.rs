@@ -165,6 +165,42 @@ fn slashes(comps: &[Comp]) -> Vec<&[Comp]> {
 const BORDER_IMAGE_INITIAL: [&str; 5] = ["none", "100%", "1", "0", "stretch"];
 
 pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
+    if grammar == "font" {
+        return font(comps);
+    }
+    let values = if let Some(v) = expand_box_grammars(grammar, comps) {
+        v
+    } else if let Some(v) = expand_logical_pair_grammars(grammar, comps) {
+        v
+    } else if let Some(v) = expand_logical_border_grammars(grammar, comps) {
+        v
+    } else if let Some(v) = expand_logical_border_grammars_2(grammar, comps) {
+        v
+    } else if let Some(v) = expand_corner_shape_grammars(grammar, comps) {
+        v
+    } else if let Some(v) = expand_rule_and_corner_grammars(grammar, comps) {
+        v
+    } else if let Some(v) = expand_rule_inset_grammars(grammar, comps) {
+        v
+    } else if let Some(v) = expand_rule_inset_grammars_2(grammar, comps) {
+        v
+    } else if let Some(v) = expand_composite_grammars(grammar, comps) {
+        v
+    } else if let Some(v) = expand_composite_grammars_2(grammar, comps) {
+        v
+    } else if let Some(v) = expand_composite_grammars_2b(grammar, comps) {
+        v
+    } else if let Some(v) = expand_composite_grammars_3(grammar, comps) {
+        v
+    } else if let Some(v) = expand_composite_grammars_3b(grammar, comps) {
+        v
+    } else {
+        return None;
+    };
+    Some(Parsed::Values(values))
+}
+
+fn expand_box_grammars(grammar: &str, comps: &[Comp]) -> Option<Vec<(&'static str, String)>> {
     let values = match grammar {
         "margin" => named(
             &["margin-top", "margin-right", "margin-bottom", "margin-left"],
@@ -237,6 +273,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
         "border-radius" | "-webkit-border-radius" => {
             border_radius(comps, grammar == "-webkit-border-radius")?
         }
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_logical_pair_grammars(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "margin-block" => named(
             &["margin-block-start", "margin-block-end"],
             pair(comps, margin_v)?,
@@ -277,6 +323,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
             &["scroll-padding-inline-start", "scroll-padding-inline-end"],
             pair(comps, scroll_padding_v)?,
         ),
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_logical_border_grammars(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "border-block-width" => named(
             &["border-block-start-width", "border-block-end-width"],
             pair(comps, line_width)?,
@@ -289,6 +345,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
             &["border-block-start-color", "border-block-end-color"],
             pair(comps, color)?,
         ),
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_logical_border_grammars_2(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "border-inline-width" => named(
             &["border-inline-start-width", "border-inline-end-width"],
             pair(comps, line_width)?,
@@ -318,6 +384,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
             &["interest-delay-start", "interest-delay-end"],
             pair(comps, delay_v)?,
         ),
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_corner_shape_grammars(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "corner-top-shape" => named(
             &["corner-top-left-shape", "corner-top-right-shape"],
             pair(comps, corner_shape)?,
@@ -350,6 +426,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
             &["corner-start-end-shape", "corner-end-end-shape"],
             pair(comps, corner_shape)?,
         ),
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_rule_and_corner_grammars(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "column-rule-inset-cap" => named(
             &["column-rule-inset-cap-start", "column-rule-inset-cap-end"],
             pair(comps, rule_inset_v)?,
@@ -394,6 +480,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
             &["row-rule-inset-cap-end", "row-rule-inset-junction-end"],
             &single(comps, rule_inset_v)?,
         ),
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_rule_inset_grammars(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "column-rule-inset" => rule_inset(comps, "column")?,
         "row-rule-inset" => rule_inset(comps, "row")?,
         "rule-inset" => {
@@ -419,6 +515,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
                 ("column-rule-inset-junction-end", end),
             ]
         }
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_rule_inset_grammars_2(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "rule-inset-start" => same(
             &[
                 "column-rule-inset-cap-start",
@@ -461,6 +567,13 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
             &["marker-start", "marker-mid", "marker-end"],
             &single(comps, marker_v)?,
         ),
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_composite_grammars(grammar: &str, comps: &[Comp]) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "contain-intrinsic-size" => contain_intrinsic_size(comps)?,
         "place-content" => place_content(comps)?,
         "place-items" => place_items(comps)?,
@@ -502,6 +615,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
             side(comps, grammar, [INITIAL, INITIAL, INITIAL])?
         }
         "column-rule" | "row-rule" => side(comps, grammar, ["medium", "none", "currentcolor"])?,
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_composite_grammars_2(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "border-block" | "border-inline" => {
             let [width, style, color] = line(comps, ["medium", "none", "currentcolor"])?;
             let start = format!("{grammar}-start");
@@ -549,6 +672,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
             }
             out
         }
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_composite_grammars_2b(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "outline" => {
             let parsed = any_order(comps, &[&one(color), &one(outline_style), &one(line_width)])?;
             names_or_initial(&["outline-color", "outline-style", "outline-width"], parsed)
@@ -596,6 +729,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
             names_or_initial(&["text-wrap-mode", "text-wrap-style"], parsed)
         }
         "white-space" => white_space(comps)?,
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_composite_grammars_3(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "font-synthesis" => font_synthesis(comps)?,
         "text-box" => text_box(comps)?,
         "position-try" => position_try(comps)?,
@@ -603,7 +746,6 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
         "view-timeline" => view_timeline(comps)?,
         "font-variant" => font_variant(comps)?,
         "flex" => flex(comps)?,
-        "font" => return font(comps),
         "grid-area" => grid_area(comps)?,
         "grid-row" => grid_lines(comps, "grid-row-start", "grid-row-end")?,
         "grid-column" => grid_lines(comps, "grid-column-start", "grid-column-end")?,
@@ -615,6 +757,16 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
                 ("grid-template-areas", areas),
             ]
         }
+        _ => return None,
+    };
+    Some(values)
+}
+
+fn expand_composite_grammars_3b(
+    grammar: &str,
+    comps: &[Comp],
+) -> Option<Vec<(&'static str, String)>> {
+    let values = match grammar {
         "grid" => grid(comps)?,
         "border-image" => {
             let [source, slice, width, outset, repeat] = border_image(comps, false)?;
@@ -646,9 +798,9 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
         "transition" | "-webkit-transition" => transition(comps)?,
         "animation" | "-webkit-animation" => animation(comps)?,
         "timeline-trigger" => timeline_trigger(comps)?,
-        _ => unreachable!("every table entry's grammar has a parser here (table::tests)"),
+        _ => return None,
     };
-    Some(Parsed::Values(values))
+    Some(values)
 }
 
 /// Interned longhand names built from parts (`border-top-width`, ...).
@@ -1794,25 +1946,32 @@ pub(super) fn serialize_identifier(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
     let mut out = String::new();
     for (index, &c) in chars.iter().enumerate() {
-        let code = u32::from(c);
-        if c == '\0' {
-            unreachable!("cssparser reads U+0000 in a string as U+FFFD");
-        } else if (0x1..=0x1f).contains(&code)
-            || code == 0x7f
-            || (index == 0 && c.is_ascii_digit())
-            || (index == 1 && c.is_ascii_digit() && chars[0] == '-')
-        {
-            let _ = write!(out, "\\{code:x} ");
-        } else if index == 0 && c == '-' && chars.len() == 1 {
-            out.push_str("\\-");
-        } else if code >= 0x80 || c == '-' || c == '_' || c.is_ascii_alphanumeric() {
-            out.push(c);
-        } else {
-            out.push('\\');
-            out.push(c);
-        }
+        serialize_identifier_char(&chars, index, c, &mut out);
     }
     out
+}
+
+fn serialize_identifier_char(chars: &[char], index: usize, c: char, out: &mut String) {
+    let code = u32::from(c);
+    if c == '\0' {
+        unreachable!("cssparser reads U+0000 in a string as U+FFFD");
+    } else if needs_hex_escape(chars, index, c, code) {
+        let _ = write!(out, "\\{code:x} ");
+    } else if index == 0 && c == '-' && chars.len() == 1 {
+        out.push_str("\\-");
+    } else if code >= 0x80 || c == '-' || c == '_' || c.is_ascii_alphanumeric() {
+        out.push(c);
+    } else {
+        out.push('\\');
+        out.push(c);
+    }
+}
+
+fn needs_hex_escape(chars: &[char], index: usize, c: char, code: u32) -> bool {
+    (0x1..=0x1f).contains(&code)
+        || code == 0x7f
+        || (index == 0 && c.is_ascii_digit())
+        || (index == 1 && c.is_ascii_digit() && chars[0] == '-')
 }
 /// A quoted animation name: an identifier unless it is empty (invalid) or reads as `none`,
 /// a CSS-wide keyword or `default` (kept quoted).
@@ -1941,12 +2100,16 @@ pub(super) fn font_family(comps: &[Comp]) -> Option<String> {
     Some(families.join(", "))
 }
 
-fn font(comps: &[Comp]) -> Option<Parsed> {
-    if let [only] = comps {
-        if let Some(name) = only.keyword(SYSTEM_FONTS) {
-            return Some(Parsed::Pending(name));
-        }
-    }
+#[allow(clippy::type_complexity)]
+fn parse_font_prefix(
+    comps: &[Comp],
+) -> Option<(
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    usize,
+)> {
     let mut style = None;
     let mut caps = None;
     let mut weight = None;
@@ -1958,49 +2121,95 @@ fn font(comps: &[Comp]) -> Option<Parsed> {
             at += 1;
             continue;
         }
-        if style.is_none() {
-            if let Some(value) = comp.keyword(&["italic", "oblique"]) {
-                if value == "oblique" {
-                    if let Some(angle) = comps
-                        .get(at + 1)
-                        .filter(|c| matches!(c.kind, Kind::Dimension { .. }) && c.angle().is_some())
-                    {
-                        style = Some(oblique(angle)?);
-                        at += 2;
-                        continue;
-                    }
-                }
-                style = Some(value);
-                at += 1;
-                continue;
-            }
+        if let Some(advance) = try_font_style(comps, at, &mut style)? {
+            at += advance;
+            continue;
         }
-        if caps.is_none() {
-            if let Some(value) = comp.keyword(&["small-caps"]) {
-                caps = Some(value);
-                at += 1;
-                continue;
-            }
+        if try_font_caps(comp, &mut caps) {
+            at += 1;
+            continue;
         }
-        if weight.is_none() {
-            if let Some(value) = comp
-                .keyword(&["bold", "bolder", "lighter"])
-                .or_else(|| comp.number(false).filter(|_| matches!(comp.kind, Kind::Number { value, .. } if (1.0..=1000.0).contains(&value))))
-            {
-                weight = Some(value);
-                at += 1;
-                continue;
-            }
+        if try_font_weight(comp, &mut weight) {
+            at += 1;
+            continue;
         }
-        if stretch.is_none() {
-            if let Some(value) = comp.keyword(STRETCHES) {
-                stretch = Some(value);
-                at += 1;
-                continue;
-            }
+        if try_font_stretch(comp, &mut stretch) {
+            at += 1;
+            continue;
         }
         break;
     }
+    Some((style, caps, weight, stretch, at))
+}
+
+/// Returns `None` on an invalid oblique angle, `Some(None)` when nothing matched,
+/// or `Some(Some(advance))` when the style was set (advance is 1 or 2).
+fn try_font_style(comps: &[Comp], at: usize, style: &mut Option<String>) -> Option<Option<usize>> {
+    if style.is_some() {
+        return Some(None);
+    }
+    let comp = &comps[at];
+    let Some(value) = comp.keyword(&["italic", "oblique"]) else {
+        return Some(None);
+    };
+    if value == "oblique" {
+        if let Some(angle) = comps
+            .get(at + 1)
+            .filter(|c| matches!(c.kind, Kind::Dimension { .. }) && c.angle().is_some())
+        {
+            *style = Some(oblique(angle)?);
+            return Some(Some(2));
+        }
+    }
+    *style = Some(value);
+    Some(Some(1))
+}
+
+fn try_font_caps(comp: &Comp, caps: &mut Option<String>) -> bool {
+    if caps.is_some() {
+        return false;
+    }
+    if let Some(value) = comp.keyword(&["small-caps"]) {
+        *caps = Some(value);
+        return true;
+    }
+    false
+}
+
+fn try_font_weight(comp: &Comp, weight: &mut Option<String>) -> bool {
+    if weight.is_some() {
+        return false;
+    }
+    if let Some(value) = comp.keyword(&["bold", "bolder", "lighter"]).or_else(|| {
+        comp.number(false).filter(
+            |_| matches!(comp.kind, Kind::Number { value, .. } if (1.0..=1000.0).contains(&value)),
+        )
+    }) {
+        *weight = Some(value);
+        return true;
+    }
+    false
+}
+
+fn try_font_stretch(comp: &Comp, stretch: &mut Option<String>) -> bool {
+    if stretch.is_some() {
+        return false;
+    }
+    if let Some(value) = comp.keyword(STRETCHES) {
+        *stretch = Some(value);
+        return true;
+    }
+    false
+}
+
+fn font(comps: &[Comp]) -> Option<Parsed> {
+    if let [only] = comps {
+        if let Some(name) = only.keyword(SYSTEM_FONTS) {
+            return Some(Parsed::Pending(name));
+        }
+    }
+    let (style, caps, weight, stretch, at) = parse_font_prefix(comps)?;
+    let mut at = at;
     let size_comp = comps.get(at)?;
     let size = size_comp
         .keyword(FONT_SIZES)
@@ -2348,32 +2557,7 @@ pub(super) fn areas_text(rows: &[Vec<String>]) -> Option<String> {
 }
 
 /// `grid-template`: rows, columns, areas.
-fn grid_template(comps: &[Comp]) -> Option<(String, String, String)> {
-    if let [only] = comps {
-        if only.is_ident(&["none"]) {
-            return Some(("none".into(), "none".into(), "none".into()));
-        }
-    }
-    let has_strings = comps.iter().any(|c| c.string().is_some());
-    let parts = slashes(comps);
-    if !has_strings {
-        let [rows, columns] = parts.as_slice() else {
-            return None;
-        };
-        return Some((track_list(rows)?, track_list(columns)?, "none".into()));
-    }
-    let (rows, columns) = match parts.as_slice() {
-        [rows] => (*rows, None),
-        // The explicit columns of the areas form take no `repeat()`.
-        [rows, columns]
-            if !columns
-                .iter()
-                .any(|c| c.function_named(&["repeat"]).is_some()) =>
-        {
-            (*rows, Some(track_list(columns)?))
-        }
-        _ => return None,
-    };
+fn parse_grid_template_rows(rows: &[Comp]) -> Option<(Vec<Vec<String>>, Vec<String>)> {
     let mut areas = Vec::new();
     let mut tracks = Vec::new();
     let mut at = 0;
@@ -2410,6 +2594,36 @@ fn grid_template(comps: &[Comp]) -> Option<(String, String, String)> {
         }
         names(&mut at, &mut tracks);
     }
+    Some((areas, tracks))
+}
+
+fn grid_template(comps: &[Comp]) -> Option<(String, String, String)> {
+    if let [only] = comps {
+        if only.is_ident(&["none"]) {
+            return Some(("none".into(), "none".into(), "none".into()));
+        }
+    }
+    let has_strings = comps.iter().any(|c| c.string().is_some());
+    let parts = slashes(comps);
+    if !has_strings {
+        let [rows, columns] = parts.as_slice() else {
+            return None;
+        };
+        return Some((track_list(rows)?, track_list(columns)?, "none".into()));
+    }
+    let (rows, columns) = match parts.as_slice() {
+        [rows] => (*rows, None),
+        // The explicit columns of the areas form take no `repeat()`.
+        [rows, columns]
+            if !columns
+                .iter()
+                .any(|c| c.function_named(&["repeat"]).is_some()) =>
+        {
+            (*rows, Some(track_list(columns)?))
+        }
+        _ => return None,
+    };
+    let (areas, tracks) = parse_grid_template_rows(rows)?;
     // Adjacent line-name blocks merge (`[a] [b]` -> `[a b]`).
     let mut merged: Vec<String> = Vec::new();
     for track in tracks {
@@ -2509,6 +2723,81 @@ pub(super) fn collapse4(values: &[String]) -> String {
     super::serialize::box_text(full)
 }
 
+/// The `<slice> [/ <width> [/ <outset>]]` run starting at `at`: the slice text, the
+/// index after the run, and the optional width / outset.
+#[allow(clippy::type_complexity)]
+fn parse_slice_width_outset(
+    comps: &[Comp],
+    at: usize,
+    webkit: bool,
+) -> Option<(String, usize, Option<String>, Option<String>)> {
+    let mut at = at;
+    let (values, fill) = parse_slice_values(comps, &mut at);
+    if values.is_empty() {
+        return None;
+    }
+    let mut text = collapse4(&values);
+    if fill || webkit {
+        text.push_str(" fill");
+    }
+    let mut width = None;
+    let mut outset = None;
+    if comps.get(at).is_some_and(Comp::is_slash) {
+        at += 1;
+        let w = border_image_quad(comps, &mut at, |c| {
+            c.number(false)
+                .or_else(|| c.length_percentage(false))
+                .or_else(|| kw(c, &["auto"]))
+        });
+        let mut o = None;
+        if comps.get(at).is_some_and(Comp::is_slash) {
+            at += 1;
+            o = border_image_quad(comps, &mut at, |c| {
+                c.number(false).or_else(|| c.length(false))
+            });
+            o.as_ref()?;
+        } else if w.is_none() {
+            return None;
+        }
+        width = w;
+        outset = o;
+    }
+    Some((text, at, width, outset))
+}
+
+fn parse_slice_values(comps: &[Comp], at: &mut usize) -> (Vec<String>, bool) {
+    let mut values = Vec::new();
+    let mut fill = false;
+    while let Some(comp) = comps.get(*at) {
+        if comp.is_ident(&["fill"]) && !fill {
+            fill = true;
+        } else if fill && !values.is_empty() {
+            // `fill` goes before or after the numbers, not between them.
+            break;
+        } else if let Some(value) = comp
+            .number(false)
+            .or_else(|| comp.percentage(false))
+            .filter(|_| values.len() < 4)
+        {
+            values.push(value);
+        } else {
+            break;
+        }
+        *at += 1;
+    }
+    (values, fill)
+}
+
+/// Up to four `ty` components starting at `at`, collapsed; `None` when there are none.
+fn border_image_quad(comps: &[Comp], at: &mut usize, ty: Ty) -> Option<String> {
+    let mut values = Vec::new();
+    while let Some(value) = comps.get(*at).and_then(ty).filter(|_| values.len() < 4) {
+        values.push(value);
+        *at += 1;
+    }
+    (!values.is_empty()).then(|| collapse4(&values))
+}
+
 /// `border-image` / `-webkit-mask-box-image`: source, slice, width, outset, repeat
 /// (`None` = omitted).
 fn border_image(comps: &[Comp], webkit: bool) -> Option<[Option<String>; 5]> {
@@ -2540,64 +2829,11 @@ fn border_image(comps: &[Comp], webkit: bool) -> Option<[Option<String>; 5]> {
             }
         }
         if slice.is_none() {
-            let mut values = Vec::new();
-            let mut fill = false;
-            while let Some(comp) = comps.get(at) {
-                if comp.is_ident(&["fill"]) && !fill {
-                    fill = true;
-                } else if fill && !values.is_empty() {
-                    // `fill` goes before or after the numbers, not between them.
-                    break;
-                } else if let Some(value) = comp
-                    .number(false)
-                    .or_else(|| comp.percentage(false))
-                    .filter(|_| values.len() < 4)
-                {
-                    values.push(value);
-                } else {
-                    break;
-                }
-                at += 1;
-            }
-            if values.is_empty() {
-                return None;
-            }
-            let mut text = collapse4(&values);
-            if fill || webkit {
-                text.push_str(" fill");
-            }
+            let (text, next_at, w, o) = parse_slice_width_outset(comps, at, webkit)?;
             slice = Some(text);
-            let quad = |at: &mut usize, ty: Ty| -> Option<Option<String>> {
-                let mut values = Vec::new();
-                while let Some(value) = comps.get(*at).and_then(ty).filter(|_| values.len() < 4) {
-                    values.push(value);
-                    *at += 1;
-                }
-                Ok::<_, ()>(if values.is_empty() {
-                    None
-                } else {
-                    Some(collapse4(&values))
-                })
-                .ok()
-            };
-            if comps.get(at).is_some_and(Comp::is_slash) {
-                at += 1;
-                let w = quad(&mut at, |c| {
-                    c.number(false)
-                        .or_else(|| c.length_percentage(false))
-                        .or_else(|| kw(c, &["auto"]))
-                })?;
-                let mut o = None;
-                if comps.get(at).is_some_and(Comp::is_slash) {
-                    at += 1;
-                    o = quad(&mut at, |c| c.number(false).or_else(|| c.length(false)))?;
-                    o.as_ref()?;
-                } else if w.is_none() {
-                    return None;
-                }
-                width = w;
-                outset = o;
-            }
+            at = next_at;
+            width = w;
+            outset = o;
             continue;
         }
         return None;
@@ -2637,6 +2873,83 @@ pub(super) fn path_text(text: &str) -> String {
     format!("{}\"{}\")", &text[..start], tokens.join(" "))
 }
 
+/// `offset-anchor` from the part after the slash (`None` = invalid).
+fn offset_anchor(anchor: Option<&[Comp]>) -> Option<String> {
+    match anchor {
+        None => Some("auto".to_string()),
+        Some([only]) if only.is_ident(&["auto"]) => Some("auto".into()),
+        // Three-value positions are background-only.
+        Some([_, _, _]) => None,
+        Some(anchor) => {
+            let (x, y) = position(anchor)?;
+            Some(format!("{x} {y}"))
+        }
+    }
+}
+
+/// The leading `offset-position` of `main` and the index after it (`None` = invalid).
+fn offset_leading_position(main: &[Comp]) -> Option<(String, usize)> {
+    let Some(first) = main.first() else {
+        return Some(("normal".to_string(), 0));
+    };
+    if first.is_ident(&["auto", "normal"]) {
+        return Some((first.ident()?, 1));
+    }
+    let part = |c: &Comp| {
+        c.keyword(&["left", "right", "top", "bottom", "center"])
+            .is_some()
+            || c.length_percentage(true).is_some()
+    };
+    for len in (1..=4).rev() {
+        let Some(slice) = main.get(..len).filter(|slice| slice.iter().all(part)) else {
+            continue;
+        };
+        if let Some((x, y)) = position(slice) {
+            if len == 3 {
+                return None;
+            }
+            return Some((format!("{x} {y}"), len));
+        }
+    }
+    Some(("normal".to_string(), 0))
+}
+
+/// The `offset-path` at `at` and the distance / rotate after it: `Some(None)` when no
+/// path starts there, `None` when it is invalid.
+#[allow(clippy::type_complexity)]
+fn offset_path_tail(
+    main: &[Comp],
+    at: usize,
+) -> Option<Option<(String, Option<String>, Option<String>)>> {
+    let Some(comp) = main.get(at) else {
+        return Some(None);
+    };
+    let found = if comp.is_ident(&["none"]) {
+        Some("none".to_string())
+    } else {
+        comp.function_named(&[
+            "path", "ray", "url", "circle", "ellipse", "inset", "polygon", "xywh", "rect", "shape",
+        ])
+        .or_else(|| comp.url())
+    };
+    let Some(value) = found else {
+        return Some(None);
+    };
+    let path = if value.starts_with("path(") {
+        if !path_data_valid(&value) {
+            return None;
+        }
+        path_text(&value)
+    } else {
+        value
+    };
+    let parsed = any_order(
+        &main[at + 1..],
+        &[&one(|c| c.length_percentage(true)), &rotate_part],
+    )?;
+    Some(Some((path, parsed[0].clone(), parsed[1].clone())))
+}
+
 fn offset(comps: &[Comp]) -> Option<Out> {
     let parts = slashes(comps);
     let (main, anchor) = match parts.as_slice() {
@@ -2644,77 +2957,19 @@ fn offset(comps: &[Comp]) -> Option<Out> {
         [main, anchor] => (*main, Some(*anchor)),
         _ => return None,
     };
-    let anchor = match anchor {
-        None => "auto".to_string(),
-        Some([only]) if only.is_ident(&["auto"]) => "auto".into(),
-        // Three-value positions are background-only.
-        Some([_, _, _]) => return None,
-        Some(anchor) => {
-            let (x, y) = position(anchor)?;
-            format!("{x} {y}")
-        }
-    };
-    let mut at = 0;
-    let mut position_value = "normal".to_string();
-    if let Some(first) = main.first() {
-        if first.is_ident(&["auto", "normal"]) {
-            position_value = first.ident()?;
-            at = 1;
-        } else {
-            for len in (1..=4).rev() {
-                if let Some(slice) = main.get(..len) {
-                    if slice.iter().all(|c| {
-                        c.keyword(&["left", "right", "top", "bottom", "center"])
-                            .is_some()
-                            || c.length_percentage(true).is_some()
-                    }) {
-                        if let Some((x, y)) = position(slice) {
-                            if len == 3 {
-                                return None;
-                            }
-                            position_value = format!("{x} {y}");
-                            at = len;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
+    let anchor = offset_anchor(anchor)?;
+    let (position_value, mut at) = offset_leading_position(main)?;
     let mut path = "none".to_string();
     let mut distance = "0px".to_string();
     let mut rotate = "auto".to_string();
-    if let Some(comp) = main.get(at) {
-        let found = if comp.is_ident(&["none"]) {
-            Some("none".to_string())
-        } else {
-            comp.function_named(&[
-                "path", "ray", "url", "circle", "ellipse", "inset", "polygon", "xywh", "rect",
-                "shape",
-            ])
-            .or_else(|| comp.url())
-        };
-        if let Some(value) = found {
-            path = if value.starts_with("path(") {
-                if !path_data_valid(&value) {
-                    return None;
-                }
-                path_text(&value)
-            } else {
-                value
-            };
-            at += 1;
-            let parsed = any_order(
-                &main[at..],
-                &[&one(|c| c.length_percentage(true)), &rotate_part],
-            )?;
-            at = main.len();
-            if let Some(value) = parsed[0].clone() {
-                distance = value;
-            }
-            if let Some(value) = parsed[1].clone() {
-                rotate = value;
-            }
+    if let Some((p, d, r)) = offset_path_tail(main, at)? {
+        path = p;
+        at = main.len();
+        if let Some(value) = d {
+            distance = value;
+        }
+        if let Some(value) = r {
+            rotate = value;
         }
     }
     if at != main.len() || (main.is_empty() && parts.len() == 1) {
@@ -2817,6 +3072,110 @@ struct Layer {
     mode: Option<String>,
 }
 
+/// One component (or run) of a background / mask layer at `at`: how many components it
+/// consumed, or `None` when it fits no part (the layer is invalid).
+fn layer_step(
+    comps: &[Comp],
+    at: usize,
+    out: &mut Layer,
+    boxes: &[&str],
+    mask: bool,
+    last: bool,
+) -> Option<usize> {
+    let comp = &comps[at];
+    if out.image.is_none() {
+        if let Some(value) = comp.image().or_else(|| kw(comp, &["none"])) {
+            out.image = Some(value);
+            return Some(1);
+        }
+    }
+    if let Some(used) = layer_position_step(comps, at, out)? {
+        return Some(used);
+    }
+    if out.repeat.is_none() {
+        if let Some((used, value)) = repeat_style(&comps[at..]) {
+            out.repeat = Some(value);
+            return Some(used);
+        }
+    }
+    if !mask && out.attachment.is_none() {
+        if let Some(value) = kw(comp, &["scroll", "fixed", "local"]) {
+            out.attachment = Some(value);
+            return Some(1);
+        }
+    }
+    if let Some(used) = layer_box_step(comp, out, boxes)? {
+        return Some(used);
+    }
+    if mask {
+        layer_mask_step(comp, out)
+    } else {
+        layer_color_step(comp, out, last)
+    }
+}
+
+/// `<bg-position> [/ <bg-size>]`: `Some(None)` when no position starts at `at`.
+fn layer_position_step(comps: &[Comp], at: usize, out: &mut Layer) -> Option<Option<usize>> {
+    if out.position.is_some() {
+        return Some(None);
+    }
+    let Some((used, value)) = layer_position(&comps[at..]) else {
+        return Some(None);
+    };
+    out.position = Some(value);
+    let mut consumed = used;
+    if comps.get(at + used).is_some_and(Comp::is_slash) {
+        let (more, size) = bg_size(&comps[at + used + 1..])?;
+        out.size = Some(size);
+        consumed += 1 + more;
+    }
+    Some(Some(consumed))
+}
+
+/// An origin / clip box keyword: `Some(None)` when `comp` is not one, `None` when both
+/// are already set.
+fn layer_box_step(comp: &Comp, out: &mut Layer, boxes: &[&str]) -> Option<Option<usize>> {
+    if out.clip.is_some() && out.origin.is_some() {
+        return Some(None);
+    }
+    let Some(value) = kw(comp, boxes) else {
+        return Some(None);
+    };
+    let clip_only = value == "text" || value == "no-clip";
+    if out.origin.is_none() && !clip_only {
+        out.origin = Some(value);
+    } else if out.clip.is_none() {
+        out.clip = Some(value);
+    } else {
+        return None;
+    }
+    Some(Some(1))
+}
+
+fn layer_mask_step(comp: &Comp, out: &mut Layer) -> Option<usize> {
+    if out.composite.is_none() {
+        if let Some(value) = kw(comp, &["add", "subtract", "intersect", "exclude"]) {
+            out.composite = Some(value);
+            return Some(1);
+        }
+    }
+    if out.mode.is_none() {
+        if let Some(value) = kw(comp, &["alpha", "luminance", "match-source"]) {
+            out.mode = Some(value);
+            return Some(1);
+        }
+    }
+    None
+}
+
+fn layer_color_step(comp: &Comp, out: &mut Layer, last: bool) -> Option<usize> {
+    if !last || out.color.is_some() {
+        return None;
+    }
+    out.color = Some(comp.color()?);
+    Some(1)
+}
+
 fn layer(comps: &[Comp], mask: bool, last: bool) -> Option<Layer> {
     let mut out = Layer {
         image: None,
@@ -2851,78 +3210,8 @@ fn layer(comps: &[Comp], mask: bool, last: bool) -> Option<Layer> {
     };
     let mut at = 0;
     while at < comps.len() {
-        let rest = &comps[at..];
-        let comp = &comps[at];
-        if out.image.is_none() {
-            if let Some(value) = comp.image().or_else(|| kw(comp, &["none"])) {
-                out.image = Some(value);
-                at += 1;
-                continue;
-            }
-        }
-        if out.position.is_none() {
-            if let Some((used, value)) = layer_position(rest) {
-                out.position = Some(value);
-                at += used;
-                if comps.get(at).is_some_and(Comp::is_slash) {
-                    let (more, size) = bg_size(&comps[at + 1..])?;
-                    out.size = Some(size);
-                    at += 1 + more;
-                }
-                continue;
-            }
-        }
-        if out.repeat.is_none() {
-            if let Some((used, value)) = repeat_style(rest) {
-                out.repeat = Some(value);
-                at += used;
-                continue;
-            }
-        }
-        if !mask && out.attachment.is_none() {
-            if let Some(value) = kw(comp, &["scroll", "fixed", "local"]) {
-                out.attachment = Some(value);
-                at += 1;
-                continue;
-            }
-        }
-        if out.clip.is_none() || out.origin.is_none() {
-            if let Some(value) = kw(comp, boxes) {
-                let clip_only = value == "text" || value == "no-clip";
-                if out.origin.is_none() && !clip_only {
-                    out.origin = Some(value);
-                } else if out.clip.is_none() {
-                    out.clip = Some(value);
-                } else {
-                    return None;
-                }
-                at += 1;
-                continue;
-            }
-        }
-        if mask {
-            if out.composite.is_none() {
-                if let Some(value) = kw(comp, &["add", "subtract", "intersect", "exclude"]) {
-                    out.composite = Some(value);
-                    at += 1;
-                    continue;
-                }
-            }
-            if out.mode.is_none() {
-                if let Some(value) = kw(comp, &["alpha", "luminance", "match-source"]) {
-                    out.mode = Some(value);
-                    at += 1;
-                    continue;
-                }
-            }
-        } else if last && out.color.is_none() {
-            if let Some(value) = comp.color() {
-                out.color = Some(value);
-                at += 1;
-                continue;
-            }
-        }
-        return None;
+        // Each step consumes at least one component, or the layer is invalid.
+        at += layer_step(comps, at, &mut out, boxes, mask, last)?;
     }
     if out.origin.is_some() && out.clip.is_none() {
         out.clip.clone_from(&out.origin);
