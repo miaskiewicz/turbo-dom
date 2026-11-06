@@ -374,6 +374,10 @@ mutation_observers.rs: 0.8.0 turbo-dom#339 recording() includes html_media::reco
 event_listeners.js: 0.8.0 turbo-dom#339 ns.makeEventTarget gives an engine object (html_media.js's TextTrackList) a listener record
 browser_env.js: 0.8.0 turbo-dom#318 buttons and button-like inputs compute html.css's ButtonFace background-color, rgb(239, 239, 239)
 css_live_tests.rs: 0.8.0 turbo-dom#318 button UA background-color vs its Chrome 156 control
+animations_chrome156.json: 0.8.0 turbo-dom#340 recapture with Animation rangeStart / rangeEnd (#369)
+trusted_types_mapping.json: 0.8.0 onchecked / onopenerchange map to TrustedScript like Chrome 156 (turbo-surf#154)
+typed_om_probe.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+view_transitions_probe.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -417,6 +421,7 @@ OWNED="$OWNED viewport_cssom_tests.rs custom_property_colors_probe.js custom_pro
 OWNED="$OWNED html_media_events_probe.js html_media_events_cases.json html_media_events_chrome156.json html_media_events_tests.rs"
 OWNED="$OWNED html_reflections.js html_media.js html_media.rs interface_parity_probe.js interface_parity_cases.json interface_parity_chrome156.json interface_parity_tests.rs create_event_probe.js create_event_cases.json create_event_chrome156.json css_supports_probe.js css_supports_cases.json css_supports_chrome156.json css_supports_tests.rs"
 OWNED="$OWNED listener_errors_probe.js listener_errors_chrome156.json"
+OWNED="$OWNED worker_context_tests.rs"
 # turbo-dom#338 (tree-counting math, shape()) and #340 (Animation rangeStart / rangeEnd) Chrome 156 controls.
 OWNED="$OWNED css_tree_counting_shape_probe.js css_tree_counting_shape_cases.json css_tree_counting_shape_chrome156.json css_tree_counting_shape_tests.rs animation_range_probe.js animation_range_cases.json animation_range_chrome156.json animation_range_tests.rs"
 # turbo-dom#358 CSS Nesting Chrome 156 control.
