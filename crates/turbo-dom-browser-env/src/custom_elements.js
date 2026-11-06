@@ -108,6 +108,17 @@
     "missing-glyph",
   ]);
   const codeUnit = String.prototype.charCodeAt;
+  // Upper-case ASCII, NUL, whitespace, "/" and ">" never appear in a valid name.
+  const forbiddenCode = (c) =>
+    (c >= 65 && c <= 90) ||
+    c === 0 ||
+    c === 9 ||
+    c === 10 ||
+    c === 12 ||
+    c === 13 ||
+    c === 32 ||
+    c === 47 ||
+    c === 62;
   const valid = (name) => {
     if (!name.length) return false;
     const first = apply(codeUnit, name, [0]);
@@ -116,18 +127,7 @@
     for (let i = 0; i < name.length; i++) {
       const c = apply(codeUnit, name, [i]);
       if (c === 45) dash = true;
-      if (
-        (c >= 65 && c <= 90) ||
-        c === 0 ||
-        c === 9 ||
-        c === 10 ||
-        c === 12 ||
-        c === 13 ||
-        c === 32 ||
-        c === 47 ||
-        c === 62
-      )
-        return false;
+      if (forbiddenCode(c)) return false;
     }
     return dash;
   };
@@ -384,11 +384,8 @@
       writable: true,
     });
   }
-  method("define", 2, function (name, constructor, options) {
-    const record = state(this);
-    if (arguments.length < 2) throw new TypeErrorValue("Two arguments required");
-    name = string(name);
-    if (!constructible(constructor)) throw new TypeErrorValue("The value is not a constructor");
+  // ElementDefinitionOptions: the `extends` local name, or undefined.
+  function definitionExtension(options) {
     let extension;
     if (options != null) {
       if (typeof options !== "object" && typeof options !== "function")
@@ -396,6 +393,80 @@
       const value = options.extends;
       if (value !== undefined) extension = string(value);
     }
+    return extension;
+  }
+  function lifecycleCallbacks(object) {
+    const callbacks = objectCreate(null);
+    const callbackNames = [
+      "connectedCallback",
+      "disconnectedCallback",
+      "connectedMoveCallback",
+      "adoptedCallback",
+      "attributeChangedCallback",
+    ];
+    for (let index = 0; index < callbackNames.length; index++) {
+      const name = callbackNames[index],
+        value = object[name];
+      if (value !== undefined) {
+        if (typeof value !== "function") throw new TypeErrorValue("Invalid lifecycle callback");
+        callbacks[name] = value;
+      }
+    }
+    return callbacks;
+  }
+  function observedAttributes(constructor) {
+    const value = constructor.observedAttributes;
+    if (value === undefined) return [];
+    if (value === null || (typeof value !== "object" && typeof value !== "function"))
+      throw new TypeErrorValue("Invalid observedAttributes sequence");
+    const iterator = value[Symbol.iterator];
+    if (typeof iterator !== "function")
+      throw new TypeErrorValue("Invalid observedAttributes sequence");
+    const iterable = {
+      [Symbol.iterator]() {
+        return apply(iterator, value, []);
+      },
+    };
+    return apply(arrayFrom, ArrayValue, [iterable, string]);
+  }
+  function formAssociatedCallbacks(object, callbacks) {
+    for (const name of [
+      "formAssociatedCallback",
+      "formResetCallback",
+      "formDisabledCallback",
+      "formStateRestoreCallback",
+    ]) {
+      const value = object[name];
+      if (value !== undefined) {
+        if (typeof value !== "function") throw new TypeErrorValue("Invalid lifecycle callback");
+        callbacks[name] = value;
+      }
+    }
+  }
+  // Upgrades the elements a new definition applies to: the document tree for the global
+  // registry, else the live roots initialized with this scoped registry.
+  function upgradeDefined(target, record, definition) {
+    if (target === registry)
+      walk(contextDocument, (node) => {
+        if (registryFor(node) === registry && definitionFor(node, registry) === definition)
+          upgraded(node, definition);
+      });
+    else
+      for (let i = 0; i < record.roots.length; i++) {
+        const root = apply(weakDeref, record.roots[i], []);
+        if (root)
+          walk(root, (node) => {
+            if (registryFor(node) === target && definitionFor(node, target) === definition)
+              upgraded(node, definition);
+          });
+      }
+  }
+  method("define", 2, function (name, constructor, options) {
+    const record = state(this);
+    if (arguments.length < 2) throw new TypeErrorValue("Two arguments required");
+    name = string(name);
+    if (!constructible(constructor)) throw new TypeErrorValue("The value is not a constructor");
+    const extension = definitionExtension(options);
     if (!valid(name)) throw new Exception("Invalid custom element name", "SyntaxError");
     if (
       mhas(record.definitions, name) ||
@@ -410,58 +481,14 @@
       const object = constructor.prototype;
       if (object === null || (typeof object !== "object" && typeof object !== "function"))
         throw new TypeErrorValue("Invalid constructor prototype");
-      const callbacks = objectCreate(null);
-      const callbackNames = [
-        "connectedCallback",
-        "disconnectedCallback",
-        "connectedMoveCallback",
-        "adoptedCallback",
-        "attributeChangedCallback",
-      ];
-      for (let index = 0; index < callbackNames.length; index++) {
-        const name = callbackNames[index],
-          value = object[name];
-        if (value !== undefined) {
-          if (typeof value !== "function") throw new TypeErrorValue("Invalid lifecycle callback");
-          callbacks[name] = value;
-        }
-      }
-      let observed = [];
-      if (callbacks.attributeChangedCallback) {
-        const value = constructor.observedAttributes;
-        if (value !== undefined) {
-          if (value === null || (typeof value !== "object" && typeof value !== "function"))
-            throw new TypeErrorValue("Invalid observedAttributes sequence");
-          const iterator = value[Symbol.iterator];
-          if (typeof iterator !== "function")
-            throw new TypeErrorValue("Invalid observedAttributes sequence");
-          const iterable = {
-            [Symbol.iterator]() {
-              return apply(iterator, value, []);
-            },
-          };
-          observed = apply(arrayFrom, ArrayValue, [iterable, string]);
-        }
-      }
+      const callbacks = lifecycleCallbacks(object);
+      const observed = callbacks.attributeChangedCallback ? observedAttributes(constructor) : [];
       const disabledValue = constructor.disabledFeatures;
       let disabledFeatures = [];
       if (disabledValue !== undefined)
         disabledFeatures = apply(arrayFrom, ArrayValue, [disabledValue, string]);
       const formAssociated = !!constructor.formAssociated;
-      if (formAssociated) {
-        for (const name of [
-          "formAssociatedCallback",
-          "formResetCallback",
-          "formDisabledCallback",
-          "formStateRestoreCallback",
-        ]) {
-          const value = object[name];
-          if (value !== undefined) {
-            if (typeof value !== "function") throw new TypeErrorValue("Invalid lifecycle callback");
-            callbacks[name] = value;
-          }
-        }
-      }
+      if (formAssociated) formAssociatedCallbacks(object, callbacks);
       return {
         disabledFeatures,
         formAssociated,
@@ -477,20 +504,7 @@
     mset(record.definitions, name, definition);
     wset(record.constructors, constructor, definition);
     if (this === registry) wset(constructors, constructor, definition);
-    if (this === registry)
-      walk(contextDocument, (node) => {
-        if (registryFor(node) === registry && definitionFor(node, registry) === definition)
-          upgraded(node, definition);
-      });
-    else
-      for (let i = 0; i < record.roots.length; i++) {
-        const root = apply(weakDeref, record.roots[i], []);
-        if (root)
-          walk(root, (node) => {
-            if (registryFor(node) === this && definitionFor(node, this) === definition)
-              upgraded(node, definition);
-          });
-      }
+    upgradeDefined(this, record, definition);
     const pending = mget(record.pending, name);
     if (pending) {
       pending.resolve(constructor);
@@ -587,15 +601,20 @@
       " ",
     ),
   );
-  const replacements = new MapValue(),
-    originals = [];
-  for (const name of keys(g)) {
-    if (typeof name !== "string" || (name !== "HTMLElement" && !/^HTML.*Element$/.test(name)))
-      continue;
-    const old = g[name];
-    if (typeof old !== "function" || !old.prototype || name === "HTMLUnknownElement") continue;
-    originals.push([name, old, getPrototype(old)]);
+  // [name, constructor, parent constructor] of every HTML element interface except HTMLUnknownElement.
+  function htmlInterfaces() {
+    const found = [];
+    for (const name of keys(g)) {
+      if (typeof name !== "string" || (name !== "HTMLElement" && !/^HTML.*Element$/.test(name)))
+        continue;
+      const old = g[name];
+      if (typeof old !== "function" || !old.prototype || name === "HTMLUnknownElement") continue;
+      found.push([name, old, getPrototype(old)]);
+    }
+    return found;
   }
+  const replacements = new MapValue(),
+    originals = htmlInterfaces();
   for (const [name, old] of originals) {
     const expected = old.prototype;
     const replacement = nativeConstructor((target, prototype, existing) => {
@@ -665,6 +684,37 @@
     report(error);
     return fallback;
   }
+  // Runs a definition's constructor for a new element: directly for the global registry, else
+  // upgrading `node` in place.
+  function constructCustom(node, definition, selected) {
+    if (selected === registry) return construct(definition.constructor, []);
+    wset(elementStates, node, {
+      definition,
+      status: "constructing",
+      owner: documentOf(node),
+      connected: false,
+    });
+    nativeState(node, "constructing");
+    const custom = nativeUpgrade(definition.constructor, node, false);
+    wget(elementStates, node).status = "custom";
+    nativeState(node, "custom");
+    return custom;
+  }
+  // A constructor's result must be a fresh, empty, parentless HTML element of the local name.
+  function constructedValid(custom, node, definition) {
+    let valid = false;
+    try {
+      valid =
+        kind(custom) === 1 &&
+        read(namespace, custom) === htmlNamespace &&
+        read(local, custom) === definition.local &&
+        documentOf(custom) === documentOf(node) &&
+        read(parentNode, custom) === null &&
+        read(childNodes, custom).length === 0 &&
+        read(attrs, custom).length === 0;
+    } catch {}
+    return valid;
+  }
   function creation(node, options) {
     let selected = options.selected === undefined ? registryFor(node) : options.selected,
       is = options.is;
@@ -687,34 +737,11 @@
     }
     let custom;
     try {
-      if (selected === registry) custom = construct(definition.constructor, []);
-      else {
-        wset(elementStates, node, {
-          definition,
-          status: "constructing",
-          owner: documentOf(node),
-          connected: false,
-        });
-        nativeState(node, "constructing");
-        custom = nativeUpgrade(definition.constructor, node, false);
-        wget(elementStates, node).status = "custom";
-        nativeState(node, "custom");
-      }
+      custom = constructCustom(node, definition, selected);
     } catch (error) {
       return failedCreation(node, definition, error);
     }
-    let valid = false;
-    try {
-      valid =
-        kind(custom) === 1 &&
-        read(namespace, custom) === htmlNamespace &&
-        read(local, custom) === definition.local &&
-        documentOf(custom) === documentOf(node) &&
-        read(parentNode, custom) === null &&
-        read(childNodes, custom).length === 0 &&
-        read(attrs, custom).length === 0;
-    } catch {}
-    if (!valid)
+    if (!constructedValid(custom, node, definition))
       return failedCreation(
         node,
         definition,
@@ -780,6 +807,25 @@
     });
   }
   const attach = Element.prototype.attachShadow;
+  const shadowReading = "Failed to execute 'attachShadow' on 'Element': Failed to read the ";
+  function shadowRootMode(rawMode) {
+    if (rawMode === undefined)
+      throw new TypeErrorValue(shadowReading + "'mode' property from 'ShadowRootInit': Required member is undefined.");
+    const mode = string(rawMode);
+    // ShadowRootMode is an enum: an invalid mode throws before later members are read.
+    if (mode !== "open" && mode !== "closed")
+      throw new TypeErrorValue(
+        shadowReading + `'mode' property from 'ShadowRootInit': The provided value '${mode}' is not a valid enum value of type ShadowRootMode.`,
+      );
+    return mode;
+  }
+  function shadowReferenceTarget(rawTarget) {
+    if (typeof rawTarget === "symbol")
+      throw new TypeErrorValue(
+        shadowReading + "'referenceTarget' property from 'ShadowRootInit': Cannot convert a Symbol value to a string",
+      );
+    return rawTarget === undefined || rawTarget === null ? null : StringValue(rawTarget);
+  }
   define(Element.prototype, "attachShadow", {
     value: make(
       function (raw) {
@@ -791,22 +837,8 @@
         if (selected !== undefined && selected !== null) state(selected);
         const delegatesFocus = !!raw.delegatesFocus,
           rawMode = raw.mode;
-        const reading = "Failed to execute 'attachShadow' on 'Element': Failed to read the ";
-        if (rawMode === undefined)
-          throw new TypeErrorValue(reading + "'mode' property from 'ShadowRootInit': Required member is undefined.");
-        const mode = string(rawMode);
-        // ShadowRootMode is an enum: an invalid mode throws before later members are read.
-        if (mode !== "open" && mode !== "closed")
-          throw new TypeErrorValue(
-            reading + `'mode' property from 'ShadowRootInit': The provided value '${mode}' is not a valid enum value of type ShadowRootMode.`,
-          );
-        const rawTarget = raw.referenceTarget;
-        if (typeof rawTarget === "symbol")
-          throw new TypeErrorValue(
-            reading + "'referenceTarget' property from 'ShadowRootInit': Cannot convert a Symbol value to a string",
-          );
-        const referenceTarget =
-            rawTarget === undefined || rawTarget === null ? null : StringValue(rawTarget),
+        const mode = shadowRootMode(rawMode);
+        const referenceTarget = shadowReferenceTarget(raw.referenceTarget),
           serializable = !!raw.serializable,
           rawAssignment = raw.slotAssignment,
           slotAssignment = rawAssignment === undefined ? "named" : string(rawAssignment);
