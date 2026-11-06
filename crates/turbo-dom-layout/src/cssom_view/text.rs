@@ -40,6 +40,52 @@ pub fn world_rect(rect: Rect, matrix: [f64; 6]) -> Rect {
         height: max(ys) - min(ys),
     }
 }
+#[allow(clippy::too_many_arguments)]
+fn caret_candidate(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+    owner: SourceId,
+    owner_matrix: Option<[f64; 6]>,
+    run: &crate::layout_snapshot::SnapshotTextRun,
+) -> Result<Option<Candidate>, String> {
+    if !run.source_ancestors.contains(&owner) {
+        return Ok(None);
+    }
+    let Some(source) = run.source_id else {
+        return Ok(None);
+    };
+    let fragment = &snapshot.fragments()[run.fragment_index];
+    let Some(local) = run_rect(snapshot, run) else {
+        return Ok(None);
+    };
+    let translation = scroll_translation(snapshot, styles, source, offsets)?;
+    if super::hit::hidden_by_clip(
+        snapshot,
+        styles,
+        (&run.source_ancestors, None),
+        offsets,
+        point,
+    )? {
+        return Ok(None);
+    }
+    let run_matrix = snapshot
+        .native_hit_transform(fragment.index)
+        .ok_or("native caret transform unavailable")?;
+    let mut rect = world_rect(local, owner_matrix.unwrap_or(run_matrix));
+    rect.x -= translation[0];
+    rect.y -= translation[1];
+    let gap = distance(point, rect);
+    Ok(Some(Candidate {
+        source,
+        above: !run.vertical && f64::from(rect.y + rect.height) < point[1],
+        gap: if run.vertical { [gap[1], gap[0]] } else { gap },
+        translation,
+        matrix: run_matrix,
+    }))
+}
+
 pub fn caret(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
@@ -67,52 +113,15 @@ pub fn caret(
     // runs (`layout_snapshot::text::TextCapture::record`, else the snapshot fails with
     // its text budget error), and one glyph per cluster.
     for run in snapshot.text_runs() {
-        if !run.source_ancestors.contains(&owner) {
-            continue;
-        }
-        let Some(source) = run.source_id else {
-            continue;
-        };
-        // visibility:hidden text still takes the caret, like Chrome 156
-        // (miaskiewicz/turbo-dom#126).
-        let fragment = &snapshot.fragments()[run.fragment_index];
-        let Some(local) = run_rect(snapshot, run) else {
-            continue;
-        };
-        let translation = scroll_translation(snapshot, styles, source, offsets)?;
-        if super::hit::hidden_by_clip(
-            snapshot,
-            styles,
-            (&run.source_ancestors, None),
-            offsets,
-            point,
-        )? {
-            continue;
-        }
-        let run_matrix = snapshot
-            .native_hit_transform(fragment.index)
-            .ok_or("native caret transform unavailable")?;
-        let mut rect = world_rect(local, owner_matrix.unwrap_or(run_matrix));
-        rect.x -= translation[0];
-        rect.y -= translation[1];
-        // A line wholly above the point ranks after every line at or below it: Chrome
-        // takes the first block whose end is past the point (a point in the gap below
-        // a block lands on the next block's first line, miaskiewicz/turbo-dom#127).
-        // A vertical line's block axis is horizontal: lines rank by their horizontal
-        // distance first (miaskiewicz/turbo-dom#239).
-        let gap = distance(point, rect);
-        let candidate = Candidate {
-            source,
-            above: !run.vertical && f64::from(rect.y + rect.height) < point[1],
-            gap: if run.vertical { [gap[1], gap[0]] } else { gap },
-            translation,
-            matrix: run_matrix,
-        };
-        if best
-            .as_ref()
-            .is_none_or(|previous| candidate.before(previous))
+        if let Some(candidate) =
+            caret_candidate(snapshot, styles, offsets, point, owner, owner_matrix, run)?
         {
-            best = Some(candidate);
+            if best
+                .as_ref()
+                .is_none_or(|previous| candidate.before(previous))
+            {
+                best = Some(candidate);
+            }
         }
     }
     let Some(Candidate {

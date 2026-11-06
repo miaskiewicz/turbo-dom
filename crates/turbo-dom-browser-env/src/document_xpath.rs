@@ -28,6 +28,100 @@ struct Snapshot {
     context: usize,
     stamp: String,
 }
+#[allow(clippy::too_many_arguments)]
+fn snapshot_node(
+    tree: &mut Tree,
+    node: Handle,
+    parent: Option<usize>,
+    depth: usize,
+    nodes: &mut Vec<Handle>,
+    rows: &mut Vec<serde_json::Value>,
+    stack: &mut Vec<(Handle, Option<usize>, usize)>,
+    bytes: &mut usize,
+) -> Result<(), &'static str> {
+    let kind = tree.node_type_id(node);
+    let index = nodes.len();
+    nodes.push(node);
+    rows.push(serde_json::Value::Null);
+    let name = (match kind {
+        7 => tree.processing_instruction_target(node),
+        10 => tree.doctype_name(node),
+        _ => tree.qualified_name(node),
+    })
+    .unwrap_or(match kind {
+        9 => "#document",
+        11 => "#document-fragment",
+        3 => "#text",
+        8 => "#comment",
+        _ => "",
+    })
+    .to_owned();
+    let local = tree.local_name(node).unwrap_or("").to_owned();
+    let namespace = tree.namespace_uri(node).map(str::to_owned);
+    let prefix = tree.prefix(node).map(str::to_owned);
+    let value = tree.node_value(node).unwrap_or_default();
+    *bytes += name.len() + local.len() + namespace.as_ref().map_or(0, String::len) + value.len();
+    if *bytes > STRING_LIMIT {
+        return Err("XPath text exceeds its byte budget");
+    }
+    let attrs = snapshot_attributes(tree, node, index, nodes, rows, bytes)?;
+    // The last column marks a shadow root: the `id()` scope of its descendants.
+    let shadow = tree.shadow_host(node).is_some();
+    rows[index] = json!([kind, name, local, namespace, prefix, value, parent, attrs, null, shadow]);
+    let children = tree.children(node);
+    if nodes.len() + stack.len() + children.len() > NODE_LIMIT {
+        return Err("XPath tree exceeds its node budget");
+    }
+    for child in children.into_iter().rev() {
+        stack.push((child, Some(index), depth + 1));
+    }
+    Ok(())
+}
+
+fn snapshot_attributes(
+    tree: &mut Tree,
+    node: Handle,
+    index: usize,
+    nodes: &mut Vec<Handle>,
+    rows: &mut Vec<serde_json::Value>,
+    bytes: &mut usize,
+) -> Result<Vec<usize>, &'static str> {
+    let mut attrs = Vec::new();
+    for attribute in tree.attributes_namespaced(node) {
+        if nodes.len() >= NODE_LIMIT {
+            return Err("XPath attributes exceed the node budget");
+        }
+        if attribute.namespace.as_deref() == Some("http://www.w3.org/2000/xmlns/") {
+            continue;
+        }
+        *bytes += attribute.value.len()
+            + attribute.qualified_name.len()
+            + attribute.local_name.len()
+            + attribute.namespace.as_ref().map_or(0, |value| value.len())
+            + attribute.prefix.as_ref().map_or(0, |value| value.len());
+        if *bytes > STRING_LIMIT {
+            return Err("XPath attributes exceed the byte budget");
+        }
+        let handle = tree
+            .attribute_node(node, attribute.namespace.as_deref(), &attribute.local_name)
+            .ok_or("XPath attribute identity is unavailable")?;
+        attrs.push(nodes.len());
+        nodes.push(handle);
+        rows.push(json!([
+            2,
+            attribute.qualified_name.to_string(),
+            attribute.local_name.to_string(),
+            attribute.namespace.as_ref().map(ToString::to_string),
+            attribute.prefix.as_ref().map(ToString::to_string),
+            attribute.value.to_string(),
+            null,
+            [],
+            index
+        ]));
+    }
+    Ok(attrs)
+}
+
 fn snapshot(tree: &mut Tree, context: Handle) -> Result<Snapshot, &'static str> {
     let mut root = tree.attribute_owner(context).unwrap_or(context);
     // The context's root: the document, a DocumentFragment, a shadow root (XPath's
@@ -54,76 +148,9 @@ fn snapshot(tree: &mut Tree, context: Handle) -> Result<Snapshot, &'static str> 
         if !visited.insert(node) || depth > DEPTH_LIMIT || nodes.len() >= NODE_LIMIT {
             return Err("XPath tree exceeds its node/depth budget");
         }
-        let kind = tree.node_type_id(node);
-        let index = nodes.len();
-        nodes.push(node);
-        rows.push(serde_json::Value::Null);
-        let name = (match kind {
-            7 => tree.processing_instruction_target(node),
-            10 => tree.doctype_name(node),
-            _ => tree.qualified_name(node),
-        })
-        .unwrap_or(match kind {
-            9 => "#document",
-            11 => "#document-fragment",
-            3 => "#text",
-            8 => "#comment",
-            _ => "",
-        })
-        .to_owned();
-        let local = tree.local_name(node).unwrap_or("").to_owned();
-        let namespace = tree.namespace_uri(node).map(str::to_owned);
-        let prefix = tree.prefix(node).map(str::to_owned);
-        let value = tree.node_value(node).unwrap_or_default();
-        bytes += name.len() + local.len() + namespace.as_ref().map_or(0, String::len) + value.len();
-        if bytes > STRING_LIMIT {
-            return Err("XPath text exceeds its byte budget");
-        }
-        let mut attrs = Vec::new();
-        for attribute in tree.attributes_namespaced(node) {
-            if nodes.len() >= NODE_LIMIT {
-                return Err("XPath attributes exceed the node budget");
-            }
-            // Namespace declarations are resolved separately, not XPath attributes.
-            if attribute.namespace.as_deref() == Some("http://www.w3.org/2000/xmlns/") {
-                continue;
-            }
-            bytes += attribute.value.len()
-                + attribute.qualified_name.len()
-                + attribute.local_name.len()
-                + attribute.namespace.as_ref().map_or(0, |value| value.len())
-                + attribute.prefix.as_ref().map_or(0, |value| value.len());
-            if bytes > STRING_LIMIT {
-                return Err("XPath attributes exceed the byte budget");
-            }
-            let handle = tree
-                .attribute_node(node, attribute.namespace.as_deref(), &attribute.local_name)
-                .ok_or("XPath attribute identity is unavailable")?;
-            attrs.push(nodes.len());
-            nodes.push(handle);
-            rows.push(json!([
-                2,
-                attribute.qualified_name.to_string(),
-                attribute.local_name.to_string(),
-                attribute.namespace.as_ref().map(ToString::to_string),
-                attribute.prefix.as_ref().map(ToString::to_string),
-                attribute.value.to_string(),
-                null,
-                [],
-                index
-            ]));
-        }
-        // The last column marks a shadow root: the `id()` scope of its descendants.
-        let shadow = tree.shadow_host(node).is_some();
-        rows[index] =
-            json!([kind, name, local, namespace, prefix, value, parent, attrs, null, shadow]);
-        let children = tree.children(node);
-        if nodes.len() + stack.len() + children.len() > NODE_LIMIT {
-            return Err("XPath tree exceeds its node budget");
-        }
-        for child in children.into_iter().rev() {
-            stack.push((child, Some(index), depth + 1));
-        }
+        snapshot_node(
+            tree, node, parent, depth, &mut nodes, &mut rows, &mut stack, &mut bytes,
+        )?;
     }
     let context = nodes
         .iter()

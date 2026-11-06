@@ -510,114 +510,7 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
     let mut i = 0;
     let mut after_pseudo_element = false;
     while i < n {
-        let c = chars[i];
-        if c.is_whitespace() {
-            while i < n && chars[i].is_whitespace() {
-                i += 1;
-            }
-            out.push(StrictTok::Ws);
-        } else if c == ',' {
-            out.push(StrictTok::Comma);
-            i += 1;
-        } else if matches!(c, '>' | '+' | '~') {
-            out.push(StrictTok::Comb);
-            i += 1;
-        } else if c == '*'
-            || (c == '|' && !matches!(out.last(), Some(StrictTok::Part | StrictTok::Type)))
-        {
-            // universal selector, or a namespace prefix (`*|`, `|`) before a type
-            if c == '*' {
-                i += 1;
-            }
-            if chars.get(i) == Some(&'|') {
-                if chars.get(i + 1) == Some(&'*') {
-                    i += 2;
-                } else if starts_ident(&chars, i + 1) {
-                    i += 1;
-                    scan_name(&chars, &mut i, is_name_char);
-                } else {
-                    return Err(SelectorError::UnexpectedChar('|'));
-                }
-            }
-            push_part(&mut out, StrictTok::Type, after_pseudo_element)?;
-        } else if c == '#' || c == '.' {
-            // an id or class name is an identifier (`#1a`, `.`, `p..x` are invalid)
-            i += 1;
-            if !starts_ident(&chars, i) {
-                return Err(SelectorError::UnexpectedChar(c));
-            }
-            scan_name(&chars, &mut i, is_name_char);
-            push_part(&mut out, StrictTok::Part, after_pseudo_element)?;
-        } else if c == '[' {
-            i += 1; // past '['
-            let attribute = scan_balanced(&chars, &mut i, '[', ']');
-            if i >= n {
-                return Err(SelectorError::UnterminatedAttribute); // no closing ']'
-            }
-            if !units::valid_attribute(&attribute) {
-                return Err(SelectorError::UnexpectedChar('['));
-            }
-            i += 1; // past ']'
-            push_part(&mut out, StrictTok::Part, after_pseudo_element)?;
-        } else if c == ':' {
-            i += 1; // past ':'
-            let double = chars.get(i) == Some(&':');
-            if double {
-                i += 1;
-            }
-            // a pseudo-class or pseudo-element name is an identifier (`p:`, `::` invalid)
-            if !starts_ident(&chars, i) {
-                return Err(SelectorError::UnexpectedChar(':'));
-            }
-            let name_start = i;
-            scan_name(&chars, &mut i, is_name_char);
-            let lower = chars[name_start..i]
-                .iter()
-                .collect::<String>()
-                .to_ascii_lowercase();
-            // only pseudo-classes may follow a pseudo-element (which ones: parse_for_cascade)
-            if double
-                || (!after_pseudo_element && LEGACY_PSEUDO_ELEMENT_NAMES.contains(&lower.as_str()))
-            {
-                after_pseudo_element = true;
-            }
-            let selector_list = matches!(lower.as_str(), "not" | "has");
-            let state = chars[name_start..i]
-                .iter()
-                .map(char::to_ascii_lowercase)
-                .eq("state".chars());
-            if i < n && chars[i] == '(' {
-                i += 1; // past '('
-                let argument = scan_balanced(&chars, &mut i, '(', ')');
-                if selector_list {
-                    lex_strict(&argument)?;
-                } else if matches!(lower.as_str(), "nth-child" | "nth-last-child") {
-                    // the `of S` part is a selector list too (`:nth-child(1 of !)`)
-                    if let Some(at) = nth_of_position(argument.as_bytes()) {
-                        lex_strict(&argument[at + 2..])?;
-                    }
-                }
-                if state
-                    && (i == n
-                        || units::state_argument(&argument.encode_utf16().collect::<Vec<_>>())
-                            .is_none())
-                {
-                    return Err(SelectorError::UnexpectedChar('('));
-                }
-                if i < n {
-                    i += 1; // past ')' (unterminated paren tolerated for older pseudos)
-                }
-            } else if state {
-                return Err(SelectorError::UnexpectedChar(':'));
-            }
-            out.push(StrictTok::Part);
-        } else if starts_ident(&chars, i) {
-            scan_name(&chars, &mut i, is_name_char);
-            // `svg|rect`: an undeclared namespace prefix (Chrome: SyntaxError)
-            push_part(&mut out, StrictTok::Type, after_pseudo_element)?;
-        } else {
-            return Err(SelectorError::UnexpectedChar(c));
-        }
+        lex_strict_step(&chars, &mut i, &mut out, &mut after_pseudo_element)?;
         if matches!(
             out.last(),
             Some(StrictTok::Ws | StrictTok::Comb | StrictTok::Comma)
@@ -626,6 +519,173 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
         }
     }
     Ok(out)
+}
+
+fn lex_strict_step(
+    chars: &[char],
+    i: &mut usize,
+    out: &mut Vec<StrictTok>,
+    after_pseudo_element: &mut bool,
+) -> Result<(), SelectorError> {
+    let c = chars[*i];
+    if let Some(result) = lex_strict_simple(chars, i, c, out) {
+        return result;
+    }
+    if c == '*' || (c == '|' && !matches!(out.last(), Some(StrictTok::Part | StrictTok::Type))) {
+        lex_universal_or_ns_prefix(chars, i, c, out, *after_pseudo_element)
+    } else if c == '#' || c == '.' {
+        *i += 1;
+        if !starts_ident(chars, *i) {
+            return Err(SelectorError::UnexpectedChar(c));
+        }
+        scan_name(chars, i, is_name_char);
+        push_part(out, StrictTok::Part, *after_pseudo_element)
+    } else if c == '[' {
+        lex_attribute(chars, i, out, *after_pseudo_element)
+    } else if c == ':' {
+        lex_pseudo(chars, i, out, after_pseudo_element)
+    } else if starts_ident(chars, *i) {
+        scan_name(chars, i, is_name_char);
+        push_part(out, StrictTok::Type, *after_pseudo_element)
+    } else {
+        Err(SelectorError::UnexpectedChar(c))
+    }
+}
+
+/// Handle whitespace, ',' and combinator tokens. Returns `Some(_)` when the character
+/// was handled (the result to propagate), `None` to let the caller continue.
+fn lex_strict_simple(
+    chars: &[char],
+    i: &mut usize,
+    c: char,
+    out: &mut Vec<StrictTok>,
+) -> Option<Result<(), SelectorError>> {
+    if c.is_whitespace() {
+        while *i < chars.len() && chars[*i].is_whitespace() {
+            *i += 1;
+        }
+        out.push(StrictTok::Ws);
+        return Some(Ok(()));
+    }
+    if c == ',' {
+        out.push(StrictTok::Comma);
+        *i += 1;
+        return Some(Ok(()));
+    }
+    if matches!(c, '>' | '+' | '~') {
+        out.push(StrictTok::Comb);
+        *i += 1;
+        return Some(Ok(()));
+    }
+    None
+}
+
+fn lex_universal_or_ns_prefix(
+    chars: &[char],
+    i: &mut usize,
+    c: char,
+    out: &mut Vec<StrictTok>,
+    after_pseudo_element: bool,
+) -> Result<(), SelectorError> {
+    if c == '*' {
+        *i += 1;
+    }
+    if chars.get(*i) == Some(&'|') {
+        if chars.get(*i + 1) == Some(&'*') {
+            *i += 2;
+        } else if starts_ident(chars, *i + 1) {
+            *i += 1;
+            scan_name(chars, i, is_name_char);
+        } else {
+            return Err(SelectorError::UnexpectedChar('|'));
+        }
+    }
+    push_part(out, StrictTok::Type, after_pseudo_element)
+}
+
+fn lex_attribute(
+    chars: &[char],
+    i: &mut usize,
+    out: &mut Vec<StrictTok>,
+    after_pseudo_element: bool,
+) -> Result<(), SelectorError> {
+    *i += 1; // past '['
+    let attribute = scan_balanced(chars, i, '[', ']');
+    if *i >= chars.len() {
+        return Err(SelectorError::UnterminatedAttribute);
+    }
+    if !units::valid_attribute(&attribute) {
+        return Err(SelectorError::UnexpectedChar('['));
+    }
+    *i += 1; // past ']'
+    push_part(out, StrictTok::Part, after_pseudo_element)
+}
+
+fn lex_pseudo(
+    chars: &[char],
+    i: &mut usize,
+    out: &mut Vec<StrictTok>,
+    after_pseudo_element: &mut bool,
+) -> Result<(), SelectorError> {
+    let n = chars.len();
+    *i += 1; // past ':'
+    let double = chars.get(*i) == Some(&':');
+    if double {
+        *i += 1;
+    }
+    if !starts_ident(chars, *i) {
+        return Err(SelectorError::UnexpectedChar(':'));
+    }
+    let name_start = *i;
+    scan_name(chars, i, is_name_char);
+    let lower = chars[name_start..*i]
+        .iter()
+        .collect::<String>()
+        .to_ascii_lowercase();
+    if double || (!*after_pseudo_element && LEGACY_PSEUDO_ELEMENT_NAMES.contains(&lower.as_str())) {
+        *after_pseudo_element = true;
+    }
+    let selector_list = matches!(lower.as_str(), "not" | "has");
+    let state = chars[name_start..*i]
+        .iter()
+        .map(char::to_ascii_lowercase)
+        .eq("state".chars());
+    if *i < n && chars[*i] == '(' {
+        lex_pseudo_argument(chars, i, n, &lower, selector_list, state)?;
+    } else if state {
+        return Err(SelectorError::UnexpectedChar(':'));
+    }
+    out.push(StrictTok::Part);
+    Ok(())
+}
+
+fn lex_pseudo_argument(
+    chars: &[char],
+    i: &mut usize,
+    n: usize,
+    lower: &str,
+    selector_list: bool,
+    state: bool,
+) -> Result<(), SelectorError> {
+    *i += 1; // past '('
+    let argument = scan_balanced(chars, i, '(', ')');
+    if selector_list {
+        lex_strict(&argument)?;
+    } else if matches!(lower, "nth-child" | "nth-last-child") {
+        if let Some(at) = nth_of_position(argument.as_bytes()) {
+            lex_strict(&argument[at + 2..])?;
+        }
+    }
+    if state
+        && (*i == n
+            || units::state_argument(&argument.encode_utf16().collect::<Vec<_>>()).is_none())
+    {
+        return Err(SelectorError::UnexpectedChar('('));
+    }
+    if *i < n {
+        *i += 1;
+    }
+    Ok(())
 }
 
 /// Push a non-pseudo simple selector, rejecting one that follows a pseudo-element in the
@@ -1775,6 +1835,67 @@ impl Tree {
     }
 }
 
+fn compound_classes_match(tree: &Tree, h: Handle, c: &Compound) -> bool {
+    if c.classes.is_empty() {
+        return true;
+    }
+    let Some(cv) = tree.get_attribute_ns_borrowed(h, None, "class") else {
+        return false;
+    };
+    for cls in &c.classes {
+        if !has_class(cv, cls)
+            || (!tree.attribute_is_scalar(h, "class")
+                && !tree
+                    .get_attribute_ns_utf16(h, None, "class")
+                    .is_some_and(|units| {
+                        units::has_class_units(&units, &cls.encode_utf16().collect::<Vec<_>>())
+                    }))
+        {
+            return false;
+        }
+    }
+    true
+}
+
+fn compound_attr_matches(tree: &Tree, h: Handle, a: &Attr) -> bool {
+    let html = tree.namespace_uri(h) == Some("http://www.w3.org/1999/xhtml");
+    let name = if html {
+        a.html_name.as_deref().unwrap_or(&a.name)
+    } else {
+        &a.name
+    };
+    if a.any_namespace {
+        let AttrMatch::Units(m) = &a.m else {
+            unreachable!("namespaced attribute selectors are unit records")
+        };
+        return tree.local_attributes(h).any(|(local, value)| {
+            local == name && m.matches(&value.encode_utf16().collect::<Vec<_>>())
+        });
+    }
+    match &a.m {
+        AttrMatch::Units(m) => tree
+            .get_attribute_ns_utf16(h, None, name)
+            .is_some_and(|got| {
+                m.matches_case(
+                    &got,
+                    name == "type"
+                        && html
+                        && matches!(tree.local_name(h), Some("input" | "button" | "ol")),
+                )
+            }),
+        _ => match tree.get_attribute_ns_borrowed(h, None, name) {
+            Some(got) => {
+                a.m.matches(got)
+                    && (tree.attribute_is_scalar(h, name)
+                        || tree
+                            .get_attribute_ns_utf16(h, None, name)
+                            .is_some_and(|got| UnitAttrMatch::scalar(&a.m).matches(&got)))
+            }
+            _ => false,
+        },
+    }
+}
+
 fn matches_compound<N: Navigator + ?Sized>(nav: &N, h: Handle, c: &Compound) -> bool {
     let tree = nav.tree();
     if tree.node_type(h) != NodeType::Element {
@@ -1800,65 +1921,12 @@ fn matches_compound<N: Navigator + ?Sized>(nav: &N, h: Handle, c: &Compound) -> 
             return false;
         }
     }
-    if !c.classes.is_empty() {
-        let Some(cv) = tree.get_attribute_ns_borrowed(h, None, "class") else {
-            return false;
-        };
-        for cls in &c.classes {
-            if !has_class(cv, cls)
-                || (!tree.attribute_is_scalar(h, "class")
-                    && !tree
-                        .get_attribute_ns_utf16(h, None, "class")
-                        .is_some_and(|units| {
-                            units::has_class_units(&units, &cls.encode_utf16().collect::<Vec<_>>())
-                        }))
-            {
-                return false;
-            }
-        }
+    if !compound_classes_match(tree, h, c) {
+        return false;
     }
     for a in &c.attrs {
-        let html = tree.namespace_uri(h) == Some("http://www.w3.org/1999/xhtml");
-        let name = if html {
-            a.html_name.as_deref().unwrap_or(&a.name)
-        } else {
-            &a.name
-        };
-        if a.any_namespace {
-            // `[*|a]` is built by the unit parser only (`Attr::namespaced`)
-            let AttrMatch::Units(m) = &a.m else {
-                unreachable!("namespaced attribute selectors are unit records")
-            };
-            let found = tree.local_attributes(h).any(|(local, value)| {
-                local == name && m.matches(&value.encode_utf16().collect::<Vec<_>>())
-            });
-            if !found {
-                return false;
-            }
-            continue;
-        }
-        match &a.m {
-            AttrMatch::Units(m)
-                if tree
-                    .get_attribute_ns_utf16(h, None, name)
-                    .is_some_and(|got| {
-                        m.matches_case(
-                            &got,
-                            name == "type"
-                                && html
-                                && matches!(tree.local_name(h), Some("input" | "button" | "ol")),
-                        )
-                    }) => {}
-            AttrMatch::Units(_) => return false,
-            _ => match tree.get_attribute_ns_borrowed(h, None, name) {
-                Some(got)
-                    if a.m.matches(got)
-                        && (tree.attribute_is_scalar(h, name)
-                            || tree
-                                .get_attribute_ns_utf16(h, None, name)
-                                .is_some_and(|got| UnitAttrMatch::scalar(&a.m).matches(&got))) => {}
-                _ => return false,
-            },
+        if !compound_attr_matches(tree, h, a) {
+            return false;
         }
     }
     c.pseudos.iter().all(|p| matches_pseudo(nav, h, p))

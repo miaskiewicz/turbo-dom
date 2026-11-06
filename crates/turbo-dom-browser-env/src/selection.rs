@@ -746,103 +746,194 @@ fn plain_text(
     // A row / table end's newline, held until more content follows.
     let mut row_end = false;
     for event in events.iter().take(end).skip(begin) {
-        if row_end && matches!(event, Event::Piece(_) | Event::Start(..)) {
-            out.push(10);
-            last = 10;
-            row_end = false;
-        }
-        if another {
-            out.push(10);
-            last = 10;
-            another = false;
-        }
-        match *event {
-            Event::Piece(piece) => {
-                match piece {
-                    Piece::Atomic { .. } => last = 0,
-                    piece => {
-                        last = unit_of(&piece);
-                        out.push(last);
-                        if let Piece::Text { more, .. } = piece {
-                            for unit in more.into_iter().filter(|unit| *unit != 0) {
-                                out.push(unit);
-                                last = unit;
-                            }
-                        }
-                        text_node = true;
-                    }
-                }
-                emitted = true;
-            }
-            Event::Start(node, kind) => match kind {
-                Kind::Block { body: false, .. } | Kind::Row | Kind::Table => {
-                    let represent = if emitted {
-                        last != 10
-                    } else if node == start.0 || !descendant(node) {
-                        node != start.0
-                    } else if start.1 == 0 {
-                        false
-                    } else if kind == Kind::Row || kind == Kind::Table {
-                        true
-                    } else {
-                        // Same line only when the start canonicalizes forward into this block.
-                        canonical_start.is_some() || edge
-                    };
-                    if represent && (emitted || last != 10) {
-                        out.push(10);
-                        last = 10;
-                    }
-                }
-                Kind::Cell => {
-                    // A tab before every rendered table cell (any display: table-cell box)
-                    // but its row's first.
-                    let mut sibling = tree.previous_sibling(node);
-                    let mut previous_cell = false;
-                    while let Some(current) = sibling {
-                        if cells.contains(&current) {
-                            previous_cell = true;
-                            break;
-                        }
-                        sibling = tree.previous_sibling(current);
-                    }
-                    if emitted && previous_cell {
-                        out.push(9);
-                        last = 9;
-                    }
-                }
-                _ => {}
-            },
-            Event::End(kind) => {
-                if let Kind::Block { body: false, extra } = kind {
-                    // The block's own line end carries a pending row end.
-                    row_end = false;
-                    if emitted && text_node {
-                        if last != 10 {
-                            out.push(10);
-                            another = extra;
-                        } else if extra {
-                            out.push(10);
-                        }
-                        last = 10;
-                    }
-                } else if (kind == Kind::Row || kind == Kind::Table)
-                    && emitted
-                    && text_node
-                    && last != 10
-                {
-                    // Emitted only when content follows: no newline after a table that
-                    // ends the range (Chrome 156).
-                    row_end = true;
-                }
-            }
-            Event::Edge(..) => edge = true,
-            Event::Marker(_) => {}
-        }
+        plain_text_event(
+            tree,
+            event,
+            start,
+            canonical_start,
+            &cells,
+            &descendant,
+            &mut out,
+            &mut last,
+            &mut emitted,
+            &mut text_node,
+            &mut another,
+            &mut edge,
+            &mut row_end,
+        );
     }
     if another {
         out.push(10);
     }
     out
+}
+
+#[allow(clippy::too_many_arguments)]
+fn plain_text_event(
+    tree: &Tree,
+    event: &Event,
+    start: (Handle, usize),
+    canonical_start: Option<(usize, usize)>,
+    cells: &HashSet<Handle>,
+    descendant: &dyn Fn(Handle) -> bool,
+    out: &mut Vec<u16>,
+    last: &mut u16,
+    emitted: &mut bool,
+    text_node: &mut bool,
+    another: &mut bool,
+    edge: &mut bool,
+    row_end: &mut bool,
+) {
+    if *row_end && matches!(event, Event::Piece(_) | Event::Start(..)) {
+        out.push(10);
+        *last = 10;
+        *row_end = false;
+    }
+    if *another {
+        out.push(10);
+        *last = 10;
+        *another = false;
+    }
+    match *event {
+        Event::Piece(piece) => {
+            plain_text_piece(piece, out, last, text_node);
+            *emitted = true;
+        }
+        Event::Start(node, kind) => plain_text_start(
+            tree,
+            node,
+            kind,
+            start,
+            canonical_start,
+            cells,
+            descendant,
+            *edge,
+            *emitted,
+            out,
+            last,
+        ),
+        Event::End(kind) => {
+            plain_text_end(kind, *emitted, *text_node, last, out, another, row_end);
+        }
+        Event::Edge(..) => *edge = true,
+        Event::Marker(_) => {}
+    }
+}
+
+fn plain_text_piece(piece: Piece, out: &mut Vec<u16>, last: &mut u16, text_node: &mut bool) {
+    match piece {
+        Piece::Atomic { .. } => *last = 0,
+        piece => {
+            *last = unit_of(&piece);
+            out.push(*last);
+            if let Piece::Text { more, .. } = piece {
+                for unit in more.into_iter().filter(|unit| *unit != 0) {
+                    out.push(unit);
+                    *last = unit;
+                }
+            }
+            *text_node = true;
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn block_represent(
+    kind: Kind,
+    node: Handle,
+    start: (Handle, usize),
+    canonical_start: Option<(usize, usize)>,
+    descendant: &dyn Fn(Handle) -> bool,
+    edge: bool,
+    emitted: bool,
+    last: u16,
+) -> bool {
+    if emitted {
+        last != 10
+    } else if node == start.0 || !descendant(node) {
+        node != start.0
+    } else if start.1 == 0 {
+        false
+    } else if kind == Kind::Row || kind == Kind::Table {
+        true
+    } else {
+        canonical_start.is_some() || edge
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn plain_text_start(
+    tree: &Tree,
+    node: Handle,
+    kind: Kind,
+    start: (Handle, usize),
+    canonical_start: Option<(usize, usize)>,
+    cells: &HashSet<Handle>,
+    descendant: &dyn Fn(Handle) -> bool,
+    edge: bool,
+    emitted: bool,
+    out: &mut Vec<u16>,
+    last: &mut u16,
+) {
+    match kind {
+        Kind::Block { body: false, .. } | Kind::Row | Kind::Table => {
+            let represent = block_represent(
+                kind,
+                node,
+                start,
+                canonical_start,
+                descendant,
+                edge,
+                emitted,
+                *last,
+            );
+            if represent && (emitted || *last != 10) {
+                out.push(10);
+                *last = 10;
+            }
+        }
+        Kind::Cell => {
+            let mut sibling = tree.previous_sibling(node);
+            let mut previous_cell = false;
+            while let Some(current) = sibling {
+                if cells.contains(&current) {
+                    previous_cell = true;
+                    break;
+                }
+                sibling = tree.previous_sibling(current);
+            }
+            if emitted && previous_cell {
+                out.push(9);
+                *last = 9;
+            }
+        }
+        _ => {}
+    }
+}
+
+fn plain_text_end(
+    kind: Kind,
+    emitted: bool,
+    text_node: bool,
+    last: &mut u16,
+    out: &mut Vec<u16>,
+    another: &mut bool,
+    row_end: &mut bool,
+) {
+    if let Kind::Block { body: false, extra } = kind {
+        *row_end = false;
+        if emitted && text_node {
+            if *last != 10 {
+                out.push(10);
+                *another = extra;
+            } else if extra {
+                out.push(10);
+            }
+            *last = 10;
+        }
+    } else if (kind == Kind::Row || kind == Kind::Table) && emitted && text_node && *last != 10 {
+        *row_end = true;
+    }
 }
 
 fn scope_root(tree: &Tree, node: Handle) -> Handle {

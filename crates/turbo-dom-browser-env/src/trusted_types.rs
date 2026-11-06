@@ -198,6 +198,62 @@ pub(super) fn convert_call<'s>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn attribute_kind(
+    mapping: &serde_json::Value,
+    tag: &str,
+    ns: &str,
+    attribute: &str,
+    local: &str,
+    namespace: Option<&str>,
+    html: bool,
+    svg: bool,
+) -> Option<&'static str> {
+    if attribute_is_script(mapping, attribute, ns, namespace, html, svg) {
+        return Some("TrustedScript");
+    }
+    if attribute_is_html_scripturl(tag, attribute, namespace, html) {
+        return Some("TrustedScriptURL");
+    }
+    if html && namespace.is_none() && tag == "iframe" && attribute == "srcdoc" {
+        return Some("TrustedHTML");
+    }
+    if attribute_is_svg_scripturl(tag, local, namespace, svg) {
+        return Some("TrustedScriptURL");
+    }
+    None
+}
+
+fn attribute_is_script(
+    mapping: &serde_json::Value,
+    attribute: &str,
+    ns: &str,
+    namespace: Option<&str>,
+    html: bool,
+    svg: bool,
+) -> bool {
+    namespace.is_none()
+        && (html || svg || ns == "http://www.w3.org/1998/Math/MathML")
+        && mapping["*"]["attributes"].get(attribute).is_some()
+}
+
+fn attribute_is_html_scripturl(
+    tag: &str,
+    attribute: &str,
+    namespace: Option<&str>,
+    html: bool,
+) -> bool {
+    html && namespace.is_none()
+        && ((tag == "script" || tag == "embed") && attribute == "src"
+            || tag == "object" && matches!(attribute, "data" | "codebase"))
+}
+
+fn attribute_is_svg_scripturl(tag: &str, local: &str, namespace: Option<&str>, svg: bool) -> bool {
+    svg && tag == "script"
+        && local == "href"
+        && (namespace.is_none() || namespace == Some("http://www.w3.org/1999/xlink"))
+}
+
 pub(super) fn attribute_units<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     node: v8::Local<'s, v8::Object>,
@@ -221,26 +277,8 @@ pub(super) fn attribute_units<'s>(
         serde_json::from_str(include_str!("trusted_types_mapping.json"))
             .expect("recorded trusted sinks")
     });
-    let kind = if namespace.is_none()
-        && (html || svg || ns == "http://www.w3.org/1998/Math/MathML")
-        && mapping["*"]["attributes"].get(attribute).is_some()
-    {
-        "TrustedScript"
-    } else if html
-        && namespace.is_none()
-        && ((tag == "script" || tag == "embed") && attribute == "src"
-            || tag == "object" && matches!(attribute, "data" | "codebase"))
-    {
-        "TrustedScriptURL"
-    } else if html && namespace.is_none() && tag == "iframe" && attribute == "srcdoc" {
-        "TrustedHTML"
-    } else if svg
-        && tag == "script"
-        && local == "href"
-        && (namespace.is_none() || namespace == Some("http://www.w3.org/1999/xlink"))
-    {
-        "TrustedScriptURL"
-    } else {
+    let Some(kind) = attribute_kind(mapping, &tag, &ns, attribute, local, namespace, html, svg)
+    else {
         return dom_units(scope, input);
     };
     let owner = match (tag.as_str(), attribute) {

@@ -2703,6 +2703,17 @@ fn validate_namespace_name(
                 || attribute && c == '='
         })
     };
+    validate_name_characters(prefix, local, attribute, forbidden)?;
+    validate_namespace_binding(namespace, qualified, prefix)?;
+    Ok(effective)
+}
+
+fn validate_name_characters(
+    prefix: Option<&str>,
+    local: &str,
+    attribute: bool,
+    forbidden: impl Fn(&str, bool) -> bool,
+) -> Result<(), &'static str> {
     if prefix.is_some_and(|prefix| prefix.is_empty() || forbidden(prefix, false))
         || local.is_empty()
         || forbidden(local, attribute)
@@ -2723,6 +2734,14 @@ fn validate_namespace_name(
             return Err("InvalidCharacterError");
         }
     }
+    Ok(())
+}
+
+fn validate_namespace_binding(
+    namespace: Option<&str>,
+    qualified: &str,
+    prefix: Option<&str>,
+) -> Result<(), &'static str> {
     if prefix.is_some() && namespace.is_none()
         || prefix == Some("xml") && namespace != Some("http://www.w3.org/XML/1998/namespace")
         || (qualified == "xmlns" || prefix == Some("xmlns"))
@@ -2733,7 +2752,7 @@ fn validate_namespace_name(
     {
         return Err("NamespaceError");
     }
-    Ok(effective)
+    Ok(())
 }
 fn el_get_attribute_ns<'s, 'i>(
     scope: &mut v8::PinScope<'s, 'i>,
@@ -3576,46 +3595,33 @@ fn transform_mask(selector: &str) -> u8 {
     mask
 }
 
-fn selector_argument<'s>(
+fn throw_invalid_selector(scope: &mut v8::PinScope, node: Handle, operation: &str, scalar: &str) {
+    let interface = match with_tree(|tree| tree.node_type_id(node)) {
+        Some(9) => "Document",
+        Some(11) => "DocumentFragment",
+        _ => "Element",
+    };
+    let reason = if scalar.is_empty() {
+        "The provided selector is empty.".to_owned()
+    } else {
+        format!("'{scalar}' is not a valid selector.")
+    };
+    throw_dom_error(
+        scope,
+        "SyntaxError",
+        &format!("Failed to execute '{operation}' on '{interface}': {reason}"),
+    );
+}
+
+/// Apply the five pseudo rewrites in sequence, each transforming the running scalar form.
+fn rewrite_pseudo_selector<'s>(
     scope: &mut v8::PinScope<'s, '_>,
-    args: &v8::FunctionCallbackArguments<'s>,
     node: Handle,
-    operation: &str,
-) -> Option<(String, Vec<u16>, bool)> {
-    if !require_arguments(scope, args, 1) {
-        return None;
-    }
-    let units = dom_units(scope, args.get(0))?;
-    let facts = selector_facts(&units);
-    if !facts.valid {
-        let interface = match with_tree(|tree| tree.node_type_id(node)) {
-            Some(9) => "Document",
-            Some(11) => "DocumentFragment",
-            _ => "Element",
-        };
-        let reason = if facts.scalar.is_empty() {
-            "The provided selector is empty.".to_owned()
-        } else {
-            format!("'{}' is not a valid selector.", facts.scalar)
-        };
-        throw_dom_error(
-            scope,
-            "SyntaxError",
-            &format!("Failed to execute '{operation}' on '{interface}': {reason}"),
-        );
-        return None;
-    }
-    if !facts.pseudo {
-        return Some((facts.scalar.clone(), units, facts.unit_path));
-    }
-    #[cfg(test)]
-    SELECTOR_WORK.with(|work| work.rewrites.set(work.rewrites.get() + 1));
-    let scalar = &facts.scalar;
-    let subject_local = matches!(operation, "matches" | "webkitMatchesSelector" | "closest");
-    // Which transforms can apply is a property of the text (`transform_mask`); a transform
-    // is skipped only while the text is still the caller's (a rewrite feeds the next one).
+    scalar: &str,
+    subject_local: bool,
+) -> Option<String> {
     let mask = transform_mask(scalar);
-    let mut transformed = scalar.clone();
+    let mut transformed = scalar.to_owned();
     let mut rewritten = false;
     for bit in 0..5u8 {
         if !rewritten && mask & (1 << bit) == 0 {
@@ -3633,6 +3639,32 @@ fn selector_argument<'s>(
             transformed = next;
         }
     }
+    Some(transformed)
+}
+
+fn selector_argument<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: &v8::FunctionCallbackArguments<'s>,
+    node: Handle,
+    operation: &str,
+) -> Option<(String, Vec<u16>, bool)> {
+    if !require_arguments(scope, args, 1) {
+        return None;
+    }
+    let units = dom_units(scope, args.get(0))?;
+    let facts = selector_facts(&units);
+    if !facts.valid {
+        throw_invalid_selector(scope, node, operation, &facts.scalar);
+        return None;
+    }
+    if !facts.pseudo {
+        return Some((facts.scalar.clone(), units, facts.unit_path));
+    }
+    #[cfg(test)]
+    SELECTOR_WORK.with(|work| work.rewrites.set(work.rewrites.get() + 1));
+    let scalar = &facts.scalar;
+    let subject_local = matches!(operation, "matches" | "webkitMatchesSelector" | "closest");
+    let transformed = rewrite_pseudo_selector(scope, node, scalar, subject_local)?;
     if transformed == *scalar {
         return Some((transformed, units, facts.unit_path));
     }
@@ -4984,28 +5016,72 @@ pub fn event_callback_state(
     }
 }
 
-fn el_dispatch_event(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    mut rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(target) = receiver_handle(scope, &args, &[]) else {
-        rv.set(v8::Boolean::new(scope, true).into());
-        return;
-    };
-    let event = args.get(0);
+struct EventPathContext<'s> {
+    related_value: Option<v8::Local<'s, v8::Value>>,
+    related_node: Option<Handle>,
+    path_entries: Vec<EventPathEntry>,
+    window: Option<v8::Local<'s, v8::Object>>,
+    skip: bool,
+    shadow: bool,
+}
+
+fn build_event_path<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    record: v8::Local<'s, v8::Object>,
+    target: Handle,
+    ty: &str,
+) -> EventPathContext<'s> {
+    let composed = get_bool_prop(scope, record, "composed");
+    let related_value =
+        get_prop(scope, record, "relatedTarget").filter(|value| !value.is_null_or_undefined());
+    let related_node = related_value
+        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+        .and_then(|object| handle_of(scope, object));
+    let path_entries = event_path(scope, target, ty, composed, related_node);
+    let window = path_entries
+        .iter()
+        .any(|entry| entry.node.is_none())
+        .then(|| event_listeners::window(scope))
+        .flatten();
+    let path_entries: Vec<EventPathEntry> = path_entries
+        .into_iter()
+        .filter(|entry| entry.node.is_some() || window.is_some())
+        .collect();
+    let skip = related_node.is_some_and(|related| {
+        related != target
+            && with_tree(|tree| shadow_html::retarget(tree, related, target)) == Some(target)
+    });
+    let shadow = with_tree(|tree| {
+        path_entries
+            .iter()
+            .any(|entry| entry.node.is_some_and(|node| tree.is_shadow_root(node)))
+    })
+    .unwrap_or(false);
+    EventPathContext {
+        related_value,
+        related_node,
+        path_entries,
+        window,
+        skip,
+        shadow,
+    }
+}
+
+fn validate_dispatch_event<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    event: v8::Local<'s, v8::Value>,
+) -> Option<(v8::Local<'s, v8::Object>, v8::Local<'s, v8::Object>, String)> {
     let Ok(event_obj) = v8::Local::<v8::Object>::try_from(event) else {
         let message = v8::String::new(scope, "dispatchEvent requires an Event").unwrap();
         let error = v8::Exception::type_error(scope, message);
         scope.throw_exception(error);
-        return;
+        return None;
     };
     let Some(record) = event_record(scope, event_obj) else {
         let message = v8::String::new(scope, "Argument must be an Event").unwrap();
         let error = v8::Exception::type_error(scope, message);
         scope.throw_exception(error);
-        return;
+        return None;
     };
     let ty = get_str_prop(scope, record, "type").unwrap_or_default();
     if ty.is_empty() || get_bool_prop(scope, record, "dispatching") {
@@ -5014,27 +5090,106 @@ fn el_dispatch_event(
             "InvalidStateError",
             "The event is already being dispatched or uninitialized",
         );
-        return;
+        return None;
     }
-    event_handlers::refresh(scope, target, &format!("on{ty}"));
-    let bubbles = get_bool_prop(scope, record, "bubbles");
-    let trusted = args.data().is_true();
-    let yes = v8::Boolean::new(scope, true);
-    let no = v8::Boolean::new(scope, false);
-    let trusted = v8::Boolean::new(scope, trusted);
-    set_prop(scope, record, "dispatching", yes.into());
-    set_prop(scope, record, "trusted", trusted.into());
-    let target_node = wrap(scope, target);
-    set_prop(scope, record, "target", target_node.into());
-    // The dispatch target before shadow retargeting: light dismiss reads the hit-tested node
-    // after the dispatch (turbo-dom#119).
-    set_prop(scope, record, "hitTarget", target_node.into());
+    Some((event_obj, record, ty))
+}
 
-    // PRE-CLICK ACTIVATION: a checkbox/radio toggles `checked` BEFORE the click listeners run (per
-    // the activation-behavior spec), so React's ChangeEventPlugin — which detects checkbox change on
-    // the `click` event by reading node.checked — sees the new value. Reverted below if the click is
-    // canceled. `change`/`input` DOM events fire afterward (also below).
-    // Only a MouseEvent click has an activation target (the target or a bubbling ancestor).
+fn run_dispatch_phases(
+    scope: &mut v8::PinScope,
+    record: v8::Local<v8::Object>,
+    event_obj: v8::Local<v8::Object>,
+    path_entries: &[EventPathEntry],
+    bubbles: bool,
+    terminated: &std::cell::Cell<bool>,
+    fire: &mut dyn FnMut(&mut v8::PinScope, Handle, bool, bool) -> bool,
+    set_targets: &dyn Fn(&mut v8::PinScope, usize),
+) {
+    let mut reached_target = false;
+    for index in (0..path_entries.len()).rev() {
+        let entry = path_entries[index];
+        if terminated.get() || get_bool_prop(scope, record, "stop") {
+            break;
+        }
+        reached_target |= index == 0;
+        set_targets(scope, index);
+        match entry.node {
+            None => event_listeners::phase(scope, event_obj, true),
+            Some(node) => {
+                fire(scope, node, true, entry.adjusted.is_some());
+            }
+        }
+    }
+    for (index, entry) in path_entries.iter().copied().enumerate() {
+        if terminated.get() || !reached_target || get_bool_prop(scope, record, "stop") {
+            break;
+        }
+        if index != 0 && entry.adjusted.is_none() && !bubbles {
+            continue;
+        }
+        set_targets(scope, index);
+        match entry.node {
+            None => event_listeners::phase(scope, event_obj, false),
+            Some(node) => {
+                fire(scope, node, false, entry.adjusted.is_some());
+            }
+        }
+    }
+}
+
+fn finalize_dispatch_targets(
+    scope: &mut v8::PinScope,
+    record: v8::Local<v8::Object>,
+    path_entries: &[EventPathEntry],
+    related_value: Option<v8::Local<v8::Value>>,
+    set_targets: &dyn Fn(&mut v8::PinScope, usize),
+) {
+    let Some(last) = path_entries
+        .iter()
+        .rev()
+        .position(|entry| entry.adjusted.is_some())
+    else {
+        return;
+    };
+    let index = path_entries.len() - 1 - last;
+    set_targets(scope, index);
+    let entry = path_entries[index];
+    let clear = with_tree(|tree| {
+        [entry.adjusted, entry.related]
+            .into_iter()
+            .flatten()
+            .any(|node| tree.is_shadow_root(shadow_html::tree_root(tree, node)))
+    })
+    .unwrap_or(false);
+    if clear {
+        let null = v8::null(scope);
+        set_prop(scope, record, "target", null.into());
+        if related_value.is_some() {
+            set_prop(scope, record, "adjustedRelatedTarget", null.into());
+        }
+    }
+}
+
+struct ClickActivation {
+    activation_target: Option<Handle>,
+    checked_target: Handle,
+    click_check: Option<CheckKind>,
+    check_snapshot: Option<Vec<(Handle, bool)>>,
+    check_was: Option<bool>,
+    indeterminate_was: Option<bool>,
+}
+
+/// PRE-CLICK ACTIVATION: a checkbox/radio toggles `checked` BEFORE the click listeners run (per
+/// the activation-behavior spec), so React's ChangeEventPlugin — which detects checkbox change on
+/// the `click` event by reading node.checked — sees the new value. Reverted below if the click is
+/// canceled. `change`/`input` DOM events fire afterward (also below).
+/// Only a MouseEvent click has an activation target (the target or a bubbling ancestor).
+fn begin_click_activation(
+    scope: &mut v8::PinScope,
+    event_obj: v8::Local<v8::Object>,
+    target: Handle,
+    ty: &str,
+) -> ClickActivation {
     let activation_target = if ty == "click" {
         html_invokers::activation_target(scope, event_obj, target)
     } else {
@@ -5050,40 +5205,135 @@ fn el_dispatch_event(
         let next = if kind == CheckKind::Radio { true } else { !was };
         form_checked_state::set(checked_target, next);
     }
+    ClickActivation {
+        activation_target,
+        checked_target,
+        click_check,
+        check_snapshot,
+        check_was,
+        indeterminate_was,
+    }
+}
+
+/// DEFAULT ACTION: a non-prevented click on a submit control fires the form's `submit` event
+/// (jsdom does this natively; userEvent/fireEvent.click rely on it for form submission).
+fn dispatch_default_submission(
+    scope: &mut v8::PinScope,
+    not_prevented: bool,
+    activation_target: Option<Handle>,
+) {
+    let submission_blocked = DOM.with(|dom| {
+        dom.borrow()
+            .as_ref()
+            .is_some_and(|dom| dom.form_submission_blocked)
+    });
+    let submitter = activation_target
+        .filter(|&node| is_submit_control(node) && !html_invokers::disabled_control(node));
+    let (true, Some(submitter), false) = (not_prevented, submitter, submission_blocked) else {
+        return;
+    };
+    let Some(form) = closest_form(submitter) else {
+        return;
+    };
+    let form = wrap(scope, form);
+    let submitter = wrap(scope, submitter);
+    let Some(context) = form.get_creation_context(scope) else {
+        return;
+    };
+    let Some(dispatcher) = context.get_slot::<FormSubmissionDispatcher>() else {
+        return;
+    };
+    let dispatcher = dom_ownership::local(scope, &dispatcher.0);
+    let receiver = v8::undefined(scope);
+    v8::tc_scope!(let call_scope, scope);
+    dispatcher.call(
+        call_scope,
+        receiver.into(),
+        &[form.into(), submitter.into()],
+    );
+    if !call_scope.has_terminated() {
+        if let Some(error) = call_scope.exception() {
+            call_scope.reset();
+            custom_elements::report_value(call_scope, error);
+        }
+    }
+}
+
+/// Finish the checkbox/radio activation: a canceled click reverts the pre-toggle; otherwise fire
+/// the DOM `input` + `change` events (jsdom does this; some libs listen for them directly).
+fn finish_click_activation(
+    scope: &mut v8::PinScope,
+    not_prevented: bool,
+    checked_target: Handle,
+    click_check: Option<CheckKind>,
+    check_was: Option<bool>,
+    check_snapshot: Option<Vec<(Handle, bool)>>,
+    indeterminate_was: Option<bool>,
+) {
+    if click_check.is_none() || check_was.is_none() {
+        return;
+    }
+    if not_prevented {
+        dispatch_synthetic(scope, checked_target, "input", true, false);
+        dispatch_synthetic(scope, checked_target, "change", true, false);
+    } else if let Some(snapshot) = check_snapshot {
+        form_checked_state::restore(snapshot);
+        if let Some(previous) = indeterminate_was {
+            input_members::cancel_activation(checked_target, previous);
+        }
+    }
+}
+
+fn el_dispatch_event<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: v8::FunctionCallbackArguments<'s>,
+    mut rv: v8::ReturnValue,
+) {
+    let _dom = DomScope::for_object(scope, args.this());
+    let Some(target) = receiver_handle(scope, &args, &[]) else {
+        rv.set(v8::Boolean::new(scope, true).into());
+        return;
+    };
+    let event = args.get(0);
+    let Some((event_obj, record, ty)) = validate_dispatch_event(scope, event) else {
+        return;
+    };
+    event_handlers::refresh(scope, target, &format!("on{ty}"));
+    let bubbles = get_bool_prop(scope, record, "bubbles");
+    let trusted = args.data().is_true();
+    let yes = v8::Boolean::new(scope, true);
+    let no = v8::Boolean::new(scope, false);
+    let trusted = v8::Boolean::new(scope, trusted);
+    set_prop(scope, record, "dispatching", yes.into());
+    set_prop(scope, record, "trusted", trusted.into());
+    let target_node = wrap(scope, target);
+    set_prop(scope, record, "target", target_node.into());
+    // The dispatch target before shadow retargeting: light dismiss reads the hit-tested node
+    // after the dispatch (turbo-dom#119).
+    set_prop(scope, record, "hitTarget", target_node.into());
+
+    let ClickActivation {
+        activation_target,
+        checked_target,
+        click_check,
+        check_snapshot,
+        check_was,
+        indeterminate_was,
+    } = begin_click_activation(scope, event_obj, target, &ty);
 
     // The event path (DOM "dispatch", turbo-dom#66): from the target up through its tree;
     // a slotted node passes through its assigned slot, a shadow root through its host unless
     // the event is not composed and the root is the target's own, a document to the window.
     // Each struct keeps its shadow-adjusted target (non-null where the path enters a tree:
     // the target and each host it crosses) and its retargeted relatedTarget.
-    let composed = get_bool_prop(scope, record, "composed");
-    let related_value =
-        get_prop(scope, record, "relatedTarget").filter(|value| !value.is_null_or_undefined());
-    let related_node = related_value
-        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-        .and_then(|object| handle_of(scope, object));
-    let path_entries = event_path(scope, target, &ty, composed, related_node);
-    let window = path_entries
-        .iter()
-        .any(|entry| entry.node.is_none())
-        .then(|| event_listeners::window(scope))
-        .flatten();
-    let path_entries: Vec<EventPathEntry> = path_entries
-        .into_iter()
-        .filter(|entry| entry.node.is_some() || window.is_some())
-        .collect();
-    // A relatedTarget retargeted onto the target itself (both inside one shadow tree as seen
-    // from it) dispatches nothing, unless it is the target.
-    let skip = related_node.is_some_and(|related| {
-        related != target
-            && with_tree(|tree| shadow_html::retarget(tree, related, target)) == Some(target)
-    });
-    let shadow = with_tree(|tree| {
-        path_entries
-            .iter()
-            .any(|entry| entry.node.is_some_and(|node| tree.is_shadow_root(node)))
-    })
-    .unwrap_or(false);
+    let EventPathContext {
+        related_value,
+        related_node,
+        path_entries,
+        window,
+        skip,
+        shadow,
+    } = build_event_path(scope, record, target, &ty);
     // composedPath() as seen from `current`: the path minus closed shadow trees `current` is
     // outside of.
     let set_path = |scope: &mut v8::PinScope<'_, '_>, current: Option<Handle>| {
@@ -5136,7 +5386,7 @@ fn el_dispatch_event(
 
     // Set when a listener's call ended by execution termination: the dispatch stops there.
     let terminated = std::cell::Cell::new(false);
-    let fire =
+    let mut fire =
         |scope: &mut v8::PinScope, node_h: Handle, want_capture: bool, at_target: bool| -> bool {
             if get_bool_prop(scope, record, "stop") && !at_target {
                 return false;
@@ -5216,63 +5466,21 @@ fn el_dispatch_event(
     // AT_TARGET), then BUBBLE: target → window (non-capture listeners; AT_TARGET entries always,
     // the rest only for bubbling events). A stop set in the target's capture listeners also
     // skips its bubble listeners, as in Chrome 156 (turbo-dom#157).
-    let mut reached_target = false;
     if !skip {
-        for index in (0..path_entries.len()).rev() {
-            let entry = path_entries[index];
-            if terminated.get() || get_bool_prop(scope, record, "stop") {
-                break;
-            }
-            reached_target |= index == 0;
-            set_targets(scope, index);
-            match entry.node {
-                None => event_listeners::phase(scope, event_obj, true),
-                Some(node) => {
-                    fire(scope, node, true, entry.adjusted.is_some());
-                }
-            }
-        }
-        for (index, entry) in path_entries.iter().copied().enumerate() {
-            if terminated.get() || !reached_target || get_bool_prop(scope, record, "stop") {
-                break;
-            }
-            if index != 0 && entry.adjusted.is_none() && !bubbles {
-                continue;
-            }
-            set_targets(scope, index);
-            match entry.node {
-                None => event_listeners::phase(scope, event_obj, false),
-                Some(node) => {
-                    fire(scope, node, false, entry.adjusted.is_some());
-                }
-            }
-        }
+        run_dispatch_phases(
+            scope,
+            record,
+            event_obj,
+            &path_entries,
+            bubbles,
+            &terminated,
+            &mut fire,
+            &set_targets,
+        );
     }
     // After dispatch the target / relatedTarget are the outermost entry's, cleared when either
     // is still inside a shadow tree.
-    if let Some(last) = path_entries
-        .iter()
-        .rev()
-        .position(|entry| entry.adjusted.is_some())
-    {
-        let index = path_entries.len() - 1 - last;
-        set_targets(scope, index);
-        let entry = path_entries[index];
-        let clear = with_tree(|tree| {
-            [entry.adjusted, entry.related]
-                .into_iter()
-                .flatten()
-                .any(|node| tree.is_shadow_root(shadow_html::tree_root(tree, node)))
-        })
-        .unwrap_or(false);
-        if clear {
-            let null = v8::null(scope);
-            set_prop(scope, record, "target", null.into());
-            if related_value.is_some() {
-                set_prop(scope, record, "adjustedRelatedTarget", null.into());
-            }
-        }
-    }
+    finalize_dispatch_targets(scope, record, &path_entries, related_value, &set_targets);
     let not_prevented = !get_bool_prop(scope, record, "defaultPrevented");
     let null = v8::null(scope);
     let phase = v8::Integer::new(scope, 0);
@@ -5288,39 +5496,7 @@ fn el_dispatch_event(
         return;
     }
 
-    // DEFAULT ACTION: a non-prevented click on a submit control fires the form's `submit` event
-    // (jsdom does this natively; userEvent/fireEvent.click rely on it for form submission).
-    let submission_blocked = DOM.with(|dom| {
-        dom.borrow()
-            .as_ref()
-            .is_some_and(|dom| dom.form_submission_blocked)
-    });
-    let submitter = activation_target
-        .filter(|&node| is_submit_control(node) && !html_invokers::disabled_control(node));
-    if let (true, Some(submitter), false) = (not_prevented, submitter, submission_blocked) {
-        if let Some(form) = closest_form(submitter) {
-            let form = wrap(scope, form);
-            let submitter = wrap(scope, submitter);
-            if let Some(context) = form.get_creation_context(scope) {
-                if let Some(dispatcher) = context.get_slot::<FormSubmissionDispatcher>() {
-                    let dispatcher = dom_ownership::local(scope, &dispatcher.0);
-                    let receiver = v8::undefined(scope);
-                    v8::tc_scope!(let call_scope, scope);
-                    dispatcher.call(
-                        call_scope,
-                        receiver.into(),
-                        &[form.into(), submitter.into()],
-                    );
-                    if !call_scope.has_terminated() {
-                        if let Some(error) = call_scope.exception() {
-                            call_scope.reset();
-                            custom_elements::report_value(call_scope, error);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    dispatch_default_submission(scope, not_prevented, activation_target);
 
     if let (true, Some(activation)) = (not_prevented, activation_target) {
         html_invokers::activate(scope, event_obj, activation, target);
@@ -5332,19 +5508,15 @@ fn el_dispatch_event(
         }
     }
 
-    // Finish the checkbox/radio activation: a canceled click reverts the pre-toggle; otherwise fire
-    // the DOM `input` + `change` events (jsdom does this; some libs listen for them directly).
-    if let (Some(_kind), Some(_was)) = (click_check, check_was) {
-        if not_prevented {
-            dispatch_synthetic(scope, checked_target, "input", true, false);
-            dispatch_synthetic(scope, checked_target, "change", true, false);
-        } else if let Some(snapshot) = check_snapshot {
-            form_checked_state::restore(snapshot);
-            if let Some(previous) = indeterminate_was {
-                input_members::cancel_activation(checked_target, previous);
-            }
-        }
-    }
+    finish_click_activation(
+        scope,
+        not_prevented,
+        checked_target,
+        click_check,
+        check_was,
+        check_snapshot,
+        indeterminate_was,
+    );
 
     rv.set(v8::Boolean::new(scope, not_prevented).into());
 }
@@ -5710,6 +5882,37 @@ fn labels_getter(
     }
 }
 
+fn form_controls_install_labels(
+    scope: &mut v8::PinScope,
+    node: v8::Local<v8::Object>,
+    args: &v8::FunctionCallbackArguments,
+) {
+    let Some(context) = node.get_creation_context(scope) else {
+        return;
+    };
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let global = context.global(scope);
+    let key = labels_factory_key(scope);
+    global.set_private(scope, key, args.get(2));
+}
+
+fn form_controls_private(
+    scope: &mut v8::PinScope,
+    node: v8::Local<v8::Object>,
+    args: &v8::FunctionCallbackArguments,
+    rv: &mut v8::ReturnValue,
+) {
+    let family = args.get(2).to_rust_string_lossy(scope);
+    let name = v8::String::new(scope, &format!("turbo.forms.private.{family}")).unwrap();
+    let key = v8::Private::for_api(scope, Some(name));
+    if !args.get(3).is_undefined() {
+        node.set_private(scope, key, args.get(3));
+    }
+    if let Some(value) = node.get_private(scope, key) {
+        rv.set(value);
+    }
+}
+
 fn form_controls_native(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
@@ -5720,30 +5923,16 @@ fn form_controls_native(
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return;
     };
-    if operation == "install-labels" || operation == "labels-list" {
-        if operation == "install-labels" {
-            let Some(context) = node.get_creation_context(scope) else {
-                return;
-            };
-            let scope = &mut v8::ContextScope::new(scope, context);
-            let global = context.global(scope);
-            let key = labels_factory_key(scope);
-            global.set_private(scope, key, args.get(2));
-        } else {
-            labels_list(scope, node, &mut rv);
-        }
+    if operation == "install-labels" {
+        form_controls_install_labels(scope, node, &args);
+        return;
+    }
+    if operation == "labels-list" {
+        labels_list(scope, node, &mut rv);
         return;
     }
     if operation == "private" {
-        let family = args.get(2).to_rust_string_lossy(scope);
-        let name = v8::String::new(scope, &format!("turbo.forms.private.{family}")).unwrap();
-        let key = v8::Private::for_api(scope, Some(name));
-        if !args.get(3).is_undefined() {
-            node.set_private(scope, key, args.get(3));
-        }
-        if let Some(value) = node.get_private(scope, key) {
-            rv.set(value);
-        }
+        form_controls_private(scope, node, &args, &mut rv);
         return;
     }
     let _dom = DomScope::for_object(scope, node);

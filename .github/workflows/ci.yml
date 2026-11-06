@@ -460,7 +460,6 @@ jobs:
   complexity-rust:
     name: complexity / rust (cc <= 15)
     runs-on: ubuntu-latest
-    continue-on-error: true
     env:
       CC_CHECK_REV: 923c89f791f3a89cb089a59626a25cef0a9cbd5f
     steps:

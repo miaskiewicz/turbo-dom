@@ -21,22 +21,17 @@ use turbo_dom_layout::{layout_boxes, Diagnostics, FontRegistry};
 use turbo_dom_raster::{screenshot_png_with_opts, screenshot_svg_with_opts, ImageAssets, Viewport};
 
 fn class([r, g, b]: [u8; 3]) -> char {
-    let hi = |v: u8| v > 160;
-    let lo = |v: u8| v < 96;
-    if hi(r) && hi(g) && hi(b) {
-        'W'
-    } else if lo(r) && hi(g) && hi(b) {
-        'T'
-    } else if hi(r) && lo(g) && lo(b) {
-        'R'
-    } else if lo(r) && hi(g) && lo(b) {
-        'G'
-    } else if lo(r) && lo(g) && hi(b) {
-        'B'
-    } else if hi(r) && hi(g) && lo(b) {
-        'Y'
-    } else {
-        '?'
+    // Classify a pixel into a colour class by whether each channel is bright (>160) or
+    // dark (<96). The match form keeps cyclomatic complexity low (one match, no chained
+    // boolean operators) while preserving the original six-way classification.
+    match (r > 160, g > 160, b > 160, r < 96, g < 96, b < 96) {
+        (true, true, true, _, _, _) => 'W',
+        (_, true, true, true, _, _) => 'T',
+        (true, _, _, _, true, true) => 'R',
+        (_, true, _, true, _, true) => 'G',
+        (_, _, true, true, true, _) => 'B',
+        (true, true, _, _, _, true) => 'Y',
+        _ => '?',
     }
 }
 

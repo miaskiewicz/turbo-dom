@@ -474,6 +474,27 @@ pub(super) fn serialize<'s>(
 ) -> Vec<u16> {
     serialize_with(scope, root, outer, None)
 }
+enum Task<'s> {
+    Node(v8::Local<'s, v8::Object>, bool),
+    Close(Vec<u16>),
+}
+
+fn shadow<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    host: v8::Local<'s, v8::Object>,
+    options: &shadow_html::Serialization<'s>,
+    pending: &mut Vec<Task<'s>>,
+    out: &mut Vec<u16>,
+) {
+    if let Some((root, tag)) = shadow_html::serialized_root(scope, host, options) {
+        pending.push(Task::Close("template".encode_utf16().collect()));
+        for child in children(scope, root).into_iter().rev() {
+            pending.push(Task::Node(child, false));
+        }
+        out.extend(tag);
+    }
+}
+
 /// Serialize with `getHTML` shadow options; hosts whose root is selected emit a
 /// declarative `<template>` before their light children.
 pub(super) fn serialize_with<'s>(
@@ -482,10 +503,6 @@ pub(super) fn serialize_with<'s>(
     outer: bool,
     shadows: Option<&shadow_html::Serialization<'s>>,
 ) -> Vec<u16> {
-    enum Task<'s> {
-        Node(v8::Local<'s, v8::Object>, bool),
-        Close(Vec<u16>),
-    }
     // turbo-dom#151: the realm lookups below enter V8 and would consume a pending
     // termination; serialize nothing and leave it pending.
     if scope.is_execution_terminating() {
@@ -514,21 +531,6 @@ pub(super) fn serialize_with<'s>(
             shadow(scope, root, options, &mut pending, &mut out);
         }
     }
-    fn shadow<'s>(
-        scope: &mut v8::PinScope<'s, '_>,
-        host: v8::Local<'s, v8::Object>,
-        options: &shadow_html::Serialization<'s>,
-        pending: &mut Vec<Task<'s>>,
-        out: &mut Vec<u16>,
-    ) {
-        if let Some((root, tag)) = shadow_html::serialized_root(scope, host, options) {
-            pending.push(Task::Close("template".encode_utf16().collect()));
-            for child in children(scope, root).into_iter().rev() {
-                pending.push(Task::Node(child, false));
-            }
-            out.extend(tag);
-        }
-    }
     while let Some(task) = pending.pop() {
         if scope.is_execution_terminating() {
             return Vec::new();
@@ -547,45 +549,8 @@ pub(super) fn serialize_with<'s>(
         let kind = with_tree(|tree| tree.node_type_id(handle)).expect("installed document");
         match kind {
             1 => {
-                let (name, local, html, attributes) = with_tree(|tree| {
-                    (
-                        tree.qualified_name_utf16(handle).unwrap_or_default(),
-                        tree.local_name(handle).unwrap_or("").to_owned(),
-                        tree.namespace_id(handle) == 0,
-                        tree.attributes_units(handle),
-                    )
-                })
-                .expect("installed document");
-                scalar(&mut out, "<");
-                out.extend_from_slice(&name);
-                if !attributes
-                    .iter()
-                    .any(|attribute| attribute.qualified_name == [105, 115])
-                {
-                    if let Some(value) = custom_elements::is_value(scope, node) {
-                        scalar(&mut out, " is=\"");
-                        escaped(&mut out, &value, true);
-                        scalar(&mut out, "\"");
-                    }
-                }
-                for attribute in attributes {
-                    scalar(&mut out, " ");
-                    out.extend(attribute.qualified_name);
-                    scalar(&mut out, "=\"");
-                    escaped(&mut out, &attribute.value, true);
-                    scalar(&mut out, "\"");
-                }
-                scalar(&mut out, ">");
-                if html && void(&local) {
+                if serialize_element(scope, node, handle, &raw, shadows, &mut out, &mut pending) {
                     continue;
-                }
-                pending.push(Task::Close(name));
-                let source = ensure(scope, node).unwrap_or(node);
-                for child in children(scope, source).into_iter().rev() {
-                    pending.push(Task::Node(child, html && raw(&local)));
-                }
-                if let Some(options) = shadows {
-                    shadow(scope, node, options, &mut pending, &mut out);
                 }
             }
             // Chrome's HTML serialization writes a CDATA section as escaped text.
@@ -630,6 +595,60 @@ pub(super) fn serialize_with<'s>(
     }
     out
 }
+/// Serialize one element node: emit its opening tag, queue children and shadow (or
+/// handle a void element). Returns true when the caller should `continue` (void).
+fn serialize_element<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    node: v8::Local<'s, v8::Object>,
+    handle: Handle,
+    raw_fn: &dyn Fn(&str) -> bool,
+    shadows: Option<&shadow_html::Serialization<'s>>,
+    out: &mut Vec<u16>,
+    pending: &mut Vec<Task<'s>>,
+) -> bool {
+    let (name, local, html, attributes) = with_tree(|tree| {
+        (
+            tree.qualified_name_utf16(handle).unwrap_or_default(),
+            tree.local_name(handle).unwrap_or("").to_owned(),
+            tree.namespace_id(handle) == 0,
+            tree.attributes_units(handle),
+        )
+    })
+    .expect("installed document");
+    scalar(out, "<");
+    out.extend_from_slice(&name);
+    if !attributes
+        .iter()
+        .any(|attribute| attribute.qualified_name == [105, 115])
+    {
+        if let Some(value) = custom_elements::is_value(scope, node) {
+            scalar(out, " is=\"");
+            escaped(out, &value, true);
+            scalar(out, "\"");
+        }
+    }
+    for attribute in attributes {
+        scalar(out, " ");
+        out.extend(attribute.qualified_name);
+        scalar(out, "=\"");
+        escaped(out, &attribute.value, true);
+        scalar(out, "\"");
+    }
+    scalar(out, ">");
+    if html && void(&local) {
+        return true;
+    }
+    pending.push(Task::Close(name));
+    let source = ensure(scope, node).unwrap_or(node);
+    for child in children(scope, source).into_iter().rev() {
+        pending.push(Task::Node(child, html && raw_fn(&local)));
+    }
+    if let Some(options) = shadows {
+        shadow(scope, node, options, pending, out);
+    }
+    false
+}
+
 fn raw(tag: &str) -> bool {
     matches!(
         tag,

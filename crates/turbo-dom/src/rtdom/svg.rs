@@ -62,7 +62,6 @@ fn parse_leading_float(s: &str) -> Option<f64> {
     let bytes = s.as_bytes();
     let mut i = 0;
     let n = bytes.len();
-    // Leading whitespace (parseFloat skips it).
     while i < n && bytes[i].is_ascii_whitespace() {
         i += 1;
     }
@@ -70,37 +69,42 @@ fn parse_leading_float(s: &str) -> Option<f64> {
     if i < n && (bytes[i] == b'+' || bytes[i] == b'-') {
         i += 1;
     }
-    let mut saw_digit = false;
-    while i < n && bytes[i].is_ascii_digit() {
-        i += 1;
-        saw_digit = true;
-    }
+    let mut saw_digit = consume_digits_svg(bytes, &mut i, false);
     if i < n && bytes[i] == b'.' {
         i += 1;
-        while i < n && bytes[i].is_ascii_digit() {
-            i += 1;
-            saw_digit = true;
-        }
+        saw_digit = consume_digits_svg(bytes, &mut i, saw_digit);
     }
     if !saw_digit {
         return None;
     }
-    // Optional exponent, only consumed if it forms a valid one (mirrors parseFloat:
-    // a trailing "e" with no exponent digits is not part of the number).
-    if i < n && (bytes[i] == b'e' || bytes[i] == b'E') {
-        let mut j = i + 1;
-        if j < n && (bytes[j] == b'+' || bytes[j] == b'-') {
-            j += 1;
-        }
-        let exp_start = j;
-        while j < n && bytes[j].is_ascii_digit() {
-            j += 1;
-        }
-        if j > exp_start {
-            i = j;
-        }
-    }
+    try_consume_svg_exponent(bytes, &mut i);
     s[start..i].parse::<f64>().ok()
+}
+
+fn consume_digits_svg(bytes: &[u8], i: &mut usize, mut saw: bool) -> bool {
+    while *i < bytes.len() && bytes[*i].is_ascii_digit() {
+        *i += 1;
+        saw = true;
+    }
+    saw
+}
+
+fn try_consume_svg_exponent(bytes: &[u8], i: &mut usize) {
+    let n = bytes.len();
+    if *i >= n || (bytes[*i] != b'e' && bytes[*i] != b'E') {
+        return;
+    }
+    let mut j = *i + 1;
+    if j < n && (bytes[j] == b'+' || bytes[j] == b'-') {
+        j += 1;
+    }
+    let exp_start = j;
+    while j < n && bytes[j].is_ascii_digit() {
+        j += 1;
+    }
+    if j > exp_start {
+        *i = j;
+    }
 }
 
 /// `SVGAnimatedLength` `.baseVal.value` for `attr` on `h`. Parses the live
