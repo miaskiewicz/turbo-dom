@@ -117,7 +117,11 @@
   const UNITS = create(null);
   function unit(name, base, category, factor) { UNITS[name] = freeze({ __proto__: null, name, base, category, factor }); }
   unit('number', -1, 'number', 1); unit('percent', BASE.percent, 'percent', 1);
-  for (const name of ['em', 'ex', 'ch', 'ic', 'rem', 'lh', 'rlh', 'vw', 'vh', 'vi', 'vb', 'vmin', 'vmax', 'svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax', 'cap', 'rcap', 'rch', 'rex', 'ric']) unit(name, BASE.length, 'other', 1);
+  installRelativeLengthUnits();
+  function installRelativeLengthUnits() {
+    const names = ['em', 'ex', 'ch', 'ic', 'rem', 'lh', 'rlh', 'vw', 'vh', 'vi', 'vb', 'vmin', 'vmax', 'svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax', 'cap', 'rcap', 'rch', 'rex', 'ric'];
+    for (const name of names) unit(name, BASE.length, 'other', 1);
+  }
   unit('px', BASE.length, 'length', 1); unit('cm', BASE.length, 'length', 96 / 2.54); unit('mm', BASE.length, 'length', 96 / 2.54 / 10); unit('q', BASE.length, 'length', 96 / 2.54 / 10 / 4); unit('in', BASE.length, 'length', 96); unit('pt', BASE.length, 'length', 96 / 72); unit('pc', BASE.length, 'length', 96 / 6);
   unit('deg', BASE.angle, 'angle', 1); unit('rad', BASE.angle, 'angle', 180 / mathPI); unit('grad', BASE.angle, 'angle', 0.9); unit('turn', BASE.angle, 'angle', 360);
   unit('s', BASE.time, 'time', 1); unit('ms', BASE.time, 'time', 0.001);
@@ -219,12 +223,16 @@
   // record: {family, kind, type, ...}. kind: unit | sum | product | negate | invert | min | max | clamp.
   // Brand families: an instance passes the brand check of its own interface and every ancestor.
   const HIERARCHY = [['CSSStyleValue', []], ['CSSNumericValue', ['CSSStyleValue']], ['CSSUnitValue', ['CSSNumericValue', 'CSSStyleValue']], ['CSSMathValue', ['CSSNumericValue', 'CSSStyleValue']]];
-  for (const name of ['CSSMathSum', 'CSSMathProduct', 'CSSMathNegate', 'CSSMathInvert', 'CSSMathMin', 'CSSMathMax', 'CSSMathClamp']) push(HIERARCHY, [name, ['CSSMathValue', 'CSSNumericValue', 'CSSStyleValue']]);
-  for (const name of ['CSSKeywordValue', 'CSSUnparsedValue', 'CSSTransformValue', 'CSSImageValue', 'CSSPositionValue']) push(HIERARCHY, [name, ['CSSStyleValue']]);
-  push(HIERARCHY, ['CSSNumericArray', []]); push(HIERARCHY, ['CSSVariableReferenceValue', []]); push(HIERARCHY, ['CSSTransformComponent', []]);
-  for (const name of ['CSSTranslate', 'CSSRotate', 'CSSScale', 'CSSSkew', 'CSSSkewX', 'CSSSkewY', 'CSSPerspective', 'CSSMatrixComponent']) push(HIERARCHY, [name, ['CSSTransformComponent']]);
-  push(HIERARCHY, ['StylePropertyMapReadOnly', []]); push(HIERARCHY, ['StylePropertyMap', ['StylePropertyMapReadOnly']]);
-  for (let index = 0; index < HIERARCHY.length; index++) family(HIERARCHY[index][0], HIERARCHY[index][1]);
+  installHierarchy();
+  function installHierarchy() {
+    const mathValueParents = ['CSSMathValue', 'CSSNumericValue', 'CSSStyleValue'];
+    for (const name of ['CSSMathSum', 'CSSMathProduct', 'CSSMathNegate', 'CSSMathInvert', 'CSSMathMin', 'CSSMathMax', 'CSSMathClamp']) push(HIERARCHY, [name, mathValueParents]);
+    for (const name of ['CSSKeywordValue', 'CSSUnparsedValue', 'CSSTransformValue', 'CSSImageValue', 'CSSPositionValue']) push(HIERARCHY, [name, ['CSSStyleValue']]);
+    push(HIERARCHY, ['CSSNumericArray', []]); push(HIERARCHY, ['CSSVariableReferenceValue', []]); push(HIERARCHY, ['CSSTransformComponent', []]);
+    for (const name of ['CSSTranslate', 'CSSRotate', 'CSSScale', 'CSSSkew', 'CSSSkewX', 'CSSSkewY', 'CSSPerspective', 'CSSMatrixComponent']) push(HIERARCHY, [name, ['CSSTransformComponent']]);
+    push(HIERARCHY, ['StylePropertyMapReadOnly', []]); push(HIERARCHY, ['StylePropertyMap', ['StylePropertyMapReadOnly']]);
+    for (let index = 0; index < HIERARCHY.length; index++) family(HIERARCHY[index][0], HIERARCHY[index][1]);
+  }
   const KIND_INTERFACE = { __proto__: null, unit: 'CSSUnitValue', sum: 'CSSMathSum', product: 'CSSMathProduct', negate: 'CSSMathNegate', invert: 'CSSMathInvert', min: 'CSSMathMin', max: 'CSSMathMax', clamp: 'CSSMathClamp' };
   const OPERATOR = { __proto__: null, sum: 'sum', product: 'product', negate: 'negate', invert: 'invert', min: 'min', max: 'max', clamp: 'clamp' };
   const numericRecord = (value) => { const record = recordOf(value); return record && record.numeric ? record : null; };
@@ -1308,10 +1316,12 @@
   attribute('CSSUnitValue', 'value', (self) => brand(self, brandSets.CSSUnitValue).value, (self, value) => { const record = brand(self, brandSets.CSSUnitValue); record.value = toDouble(value); });
   attribute('CSSUnitValue', 'unit', (self) => { const key = brand(self, brandSets.CSSUnitValue).unit; return key; });
   attribute('CSSMathValue', 'operator', (self) => OPERATOR[brand(self, brandSets.CSSMathValue).kind]);
-  for (const name of ['CSSMathSum', 'CSSMathProduct', 'CSSMathMin', 'CSSMathMax']) attribute(name, 'values', (self) => brand(self, brandSets[name]).array);
+  installVariadicValues();
+  installClampParts();
+  function installVariadicValues() { for (const name of ['CSSMathSum', 'CSSMathProduct', 'CSSMathMin', 'CSSMathMax']) attribute(name, 'values', (self) => brand(self, brandSets[name]).array); }
   attribute('CSSMathNegate', 'value', (self) => brand(self, brandSets.CSSMathNegate).value);
   attribute('CSSMathInvert', 'value', (self) => brand(self, brandSets.CSSMathInvert).value);
-  for (const part of ['lower', 'value', 'upper']) attribute('CSSMathClamp', part, (self) => brand(self, brandSets.CSSMathClamp)[part]);
+  function installClampParts() { for (const part of ['lower', 'value', 'upper']) attribute('CSSMathClamp', part, (self) => brand(self, brandSets.CSSMathClamp)[part]); }
   attribute('CSSNumericArray', 'length', (self) => brand(self, brandSets.CSSNumericArray).values.length);
   valueIterable('CSSNumericArray', (record) => record.values);
   // Indexed getters: [LegacyUnenumerableNamedProperties]-free platform objects with own indices.
@@ -1333,7 +1343,8 @@
 
   // ---- Keywords ----------------------------------------------------------------------------------
   const KEYWORD_IDS = create(null);
-  for (let index = 0; index < registry.keywords.length; index++) KEYWORD_IDS[registry.keywords[index]] = true;
+  installKeywordIds();
+  function installKeywordIds() { for (let index = 0; index < registry.keywords.length; index++) KEYWORD_IDS[registry.keywords[index]] = true; }
   const keywordId = (text) => { const lower = lowerCase(text); return KEYWORD_IDS[lower] ? lower : null; };
   const CSS_WIDE = { __proto__: null, inherit: 1, initial: 1, unset: 1, revert: 1, 'revert-layer': 1 };
   function keywordValue(text) { return instance('CSSKeywordValue', { value: text }); }
@@ -1486,7 +1497,8 @@
     return attach(this, { family: 'CSSRotate', kind: 'rotate', x, y, z, angle: d, is2D: false });
   });
   attribute('CSSRotate', 'angle', (self) => brand(self, brandSets.CSSRotate).angle, (self, value) => { const record = brand(self, brandSets.CSSRotate); setterNumeric(value); if (!validAngle(value)) throw fail('Must pass an angle to CSSRotate'); record.angle = value; });
-  for (const axis of ['x', 'y', 'z']) attribute('CSSRotate', axis, (self) => brand(self, brandSets.CSSRotate)[axis], (self, value) => { const record = brand(self, brandSets.CSSRotate), converted = fromNumberish(value); if (!validNumber(converted)) throw fail('Must specify a number unit'); record[axis] = converted; });
+  installRotateAxes();
+  function installRotateAxes() { for (const axis of ['x', 'y', 'z']) attribute('CSSRotate', axis, (self) => brand(self, brandSets.CSSRotate)[axis], (self, value) => { const record = brand(self, brandSets.CSSRotate), converted = fromNumberish(value); if (!validNumber(converted)) throw fail('Must specify a number unit'); record[axis] = converted; }); }
   // IsValidScaleCoord: a non-unit value must resolve to a number.
   const validScale = (value) => validNumber(value);
   defineInterface('CSSScale', 'CSSTransformComponent', 2, function (x, y, z) {
@@ -1496,13 +1508,15 @@
     else if (!validScale(a) || !validScale(b) || !validScale(c)) throw fail('Must specify a number for X, Y and Z');
     return attach(this, { family: 'CSSScale', kind: 'scale', x: a, y: b, z: c === undefined ? unitValue(1, 'number') : c, is2D: c === undefined });
   });
-  for (const axis of ['x', 'y', 'z']) attribute('CSSScale', axis, (self) => brand(self, brandSets.CSSScale)[axis], (self, value) => { const record = brand(self, brandSets.CSSScale), converted = fromNumberish(value); if (!validScale(converted)) throw fail('Must specify a number unit'); record[axis] = converted; });
+  installScaleAxes();
+  function installScaleAxes() { for (const axis of ['x', 'y', 'z']) attribute('CSSScale', axis, (self) => brand(self, brandSets.CSSScale)[axis], (self, value) => { const record = brand(self, brandSets.CSSScale), converted = fromNumberish(value); if (!validScale(converted)) throw fail('Must specify a number unit'); record[axis] = converted; }); }
   defineInterface('CSSSkew', 'CSSTransformComponent', 2, function (ax, ay) {
     requireArguments(arguments, 2); requireNumeric(ax, 1); requireNumeric(ay, 2);
     if (!validAngle(ax) || !validAngle(ay)) throw fail('CSSSkew does not support non-angles');
     return attach(this, { family: 'CSSSkew', kind: 'skew', ax, ay, is2D: true });
   });
-  for (const axis of ['ax', 'ay']) attribute('CSSSkew', axis, (self) => brand(self, brandSets.CSSSkew)[axis], (self, value) => { const record = brand(self, brandSets.CSSSkew); setterNumeric(value); if (!validAngle(value)) throw fail('Must specify an angle unit'); record[axis] = value; });
+  installSkewAxes();
+  function installSkewAxes() { for (const axis of ['ax', 'ay']) attribute('CSSSkew', axis, (self) => brand(self, brandSets.CSSSkew)[axis], (self, value) => { const record = brand(self, brandSets.CSSSkew); setterNumeric(value); if (!validAngle(value)) throw fail('Must specify an angle unit'); record[axis] = value; }); }
   defineInterface('CSSSkewX', 'CSSTransformComponent', 1, function (ax) {
     requireArguments(arguments, 1); requireNumeric(ax, 1);
     if (!validAngle(ax)) throw fail('CSSSkewX does not support non-angles');
@@ -1672,7 +1686,8 @@
     if (!validTranslateXY(y)) throw fail('Must pass length or percentage to y in CSSPositionValue');
     return attach(this, { family: 'CSSPositionValue', x, y });
   });
-  for (const axis of ['x', 'y']) attribute('CSSPositionValue', axis, (self) => brand(self, brandSets.CSSPositionValue)[axis], (self, value) => { const record = brand(self, brandSets.CSSPositionValue); setterNumeric(value); if (!validTranslateXY(value)) throw fail('Must pass length or percentage to ' + axis + ' in CSSPositionValue'); record[axis] = value; });
+  installPositionAxes();
+  function installPositionAxes() { for (const axis of ['x', 'y']) attribute('CSSPositionValue', axis, (self) => brand(self, brandSets.CSSPositionValue)[axis], (self, value) => { const record = brand(self, brandSets.CSSPositionValue); setterNumeric(value); if (!validTranslateXY(value)) throw fail('Must pass length or percentage to ' + axis + ' in CSSPositionValue'); record[axis] = value; }); }
   defineInterface('CSSImageValue', 'CSSStyleValue', 0, null);
   const positionValue = (x, y) => instance('CSSPositionValue', { x, y });
   const imageValue = (text) => instance('CSSImageValue', { text });
@@ -1693,7 +1708,8 @@
 
   // ---- Property registry ------------------------------------------------------------------------
   const PROPERTIES = create(null);
-  {
+  installProperties();
+  function installProperties() {
     const names = ownKeys(registry.properties);
     for (let index = 0; index < names.length; index++) {
       const meta = registry.properties[names[index]];
@@ -2440,7 +2456,8 @@
   }, 'next', 0), writable: true, enumerable: true, configurable: true });
   define(mapIteratorPrototype, symbolTag, { __proto__: null, value: 'StylePropertyMapReadOnly Iterator', writable: false, enumerable: false, configurable: true });
   function mapIterator(self, kind) { const record = mapRecord(self), iterator = create(mapIteratorPrototype); weakSet(iteratorStates, iterator, { entries: mapEntries(record), index: 0, kind }); return iterator; }
-  {
+  installMapIterable();
+  function installMapIterable() {
     const proto = prototypes.StylePropertyMapReadOnly;
     const entries = make(function () { return mapIterator(this, 'entries'); }, 'entries', 0);
     define(proto, 'entries', { __proto__: null, value: entries, writable: true, enumerable: true, configurable: true });
@@ -2525,7 +2542,8 @@
   const computedReader = g.getComputedStyle;
   const computedGet = (style, name) => apply(declarationGet, style, [name]);
   const GROUPS = create(null);
-  { const names = ownKeys(PROPERTIES); for (let index = 0; index < names.length; index++) { const meta = PROPERTIES[names[index]]; if (!meta.group || meta.alias) continue; const [group, resolver] = meta.group; if (!GROUPS[group]) GROUPS[group] = create(null); GROUPS[group][resolver] = names[index]; } }
+  installGroups();
+  function installGroups() { const names = ownKeys(PROPERTIES); for (let index = 0; index < names.length; index++) { const meta = PROPERTIES[names[index]]; if (!meta.group || meta.alias) continue; const [group, resolver] = meta.group; if (!GROUPS[group]) GROUPS[group] = create(null); GROUPS[group][resolver] = names[index]; } }
   const LOGICAL_RESOLVERS = plainSet(['inline', 'block', 'inline-start', 'inline-end', 'block-start', 'block-end', 'start-start', 'start-end', 'end-start', 'end-end']);
   const VERTICAL_MODES = plainSet(['vertical-rl', 'vertical-lr', 'sideways-rl', 'sideways-lr']);
   function physicalResolverSides(mode, rtl) {
@@ -2668,7 +2686,8 @@
   // the legacy keywords map onto the standard ones.
   const SURROGATES = { __proto__: null, '-webkit-writing-mode': ['writing-mode', null], '-webkit-text-orientation': ['text-orientation', { __proto__: null, mixed: 'vertical-right', 'vertical-right': 'mixed' }], 'app-region': ['window-drag', null], '-webkit-box-decoration-break': ['box-decoration-break', null], '-webkit-line-break': ['line-break', null], '-webkit-ruby-position': ['ruby-position', { __proto__: null, over: 'before', under: 'after', before: 'over', after: 'under' }], '-webkit-text-combine': ['text-combine-upright', { __proto__: null, all: 'horizontal', horizontal: 'all' }] };
   const SURROGATE_OF = create(null);
-  { const names = ownKeys(SURROGATES); for (let index = 0; index < names.length; index++) SURROGATE_OF[SURROGATES[names[index]][0]] = names[index]; }
+  installSurrogateOf();
+  function installSurrogateOf() { const names = ownKeys(SURROGATES); for (let index = 0; index < names.length; index++) SURROGATE_OF[SURROGATES[names[index]][0]] = names[index]; }
   const mapKeyword = (map, text) => map && text in map ? map[text] : text;
   // The computed value text of a longhand.
   function computeText(context, name) {
@@ -2983,11 +3002,21 @@
   }, 'computedStyleMap', 0), writable: true, enumerable: true, configurable: true });
   function inlineMap(element) { let map = weakGet(inlineMaps, element); if (!map) { map = newMap('StylePropertyMap', 'inline', element); weakSet(inlineMaps, element, map); } return map; }
   define(g.HTMLElement.prototype, 'attributeStyleMap', { __proto__: null, get: make(function () { apply(htmlCheck, this, []); return inlineMap(this); }, 'get attributeStyleMap', 0), enumerable: true, configurable: true });
-  if (g.SVGElement && g.SVGElement.prototype) define(g.SVGElement.prototype, 'attributeStyleMap', { __proto__: null, get: make(function () { apply(elementCheck, this, []); if (apply(namespaceOf, this, []) !== SVG_NAMESPACE) throw new ErrorType('Illegal invocation'); return inlineMap(this); }, 'get attributeStyleMap', 0), enumerable: true, configurable: true });
-  // MathMLElement is installed only where the embedding gives MathML elements their own interface.
-  const MathML = g.MathMLElement;
-  if (typeof MathML === 'function' && MathML.prototype && getProto(MathML.prototype) === g.Element.prototype) define(MathML.prototype, 'attributeStyleMap', { __proto__: null, get: make(function () { apply(elementCheck, this, []); if (apply(namespaceOf, this, []) !== 'http://www.w3.org/1998/Math/MathML') throw new ErrorType('Illegal invocation'); return inlineMap(this); }, 'get attributeStyleMap', 0), enumerable: true, configurable: true });
-  {
+  installSvgAttributeStyleMap();
+  installMathmlAttributeStyleMap();
+  installRuleStyleMap();
+  installMemberOrder();
+  function installSvgAttributeStyleMap() {
+    if (!g.SVGElement || !g.SVGElement.prototype) return;
+    define(g.SVGElement.prototype, 'attributeStyleMap', { __proto__: null, get: make(function () { apply(elementCheck, this, []); if (apply(namespaceOf, this, []) !== SVG_NAMESPACE) throw new ErrorType('Illegal invocation'); return inlineMap(this); }, 'get attributeStyleMap', 0), enumerable: true, configurable: true });
+  }
+  function installMathmlAttributeStyleMap() {
+    // MathMLElement is installed only where the embedding gives MathML elements their own interface.
+    const MathML = g.MathMLElement;
+    if (typeof MathML !== 'function' || !MathML.prototype || getProto(MathML.prototype) !== g.Element.prototype) return;
+    define(MathML.prototype, 'attributeStyleMap', { __proto__: null, get: make(function () { apply(elementCheck, this, []); if (apply(namespaceOf, this, []) !== 'http://www.w3.org/1998/Math/MathML') throw new ErrorType('Illegal invocation'); return inlineMap(this); }, 'get attributeStyleMap', 0), enumerable: true, configurable: true });
+  }
+  function installRuleStyleMap() {
     const proto = g.CSSStyleRule.prototype;
     const descriptor = { __proto__: null, get: make(function () { apply(ruleStyle, this, []); let map = weakGet(ruleMaps, this); if (!map) { map = newMap('StylePropertyMap', 'rule', this); weakSet(ruleMaps, this, map); } return map; }, 'get styleMap', 0), enumerable: true, configurable: true };
     // Keep Chrome's member order: selectorText, style, styleMap.
@@ -3000,24 +3029,30 @@
   }
   // Blink's member order: value-iterable functions, attributes, operations, pair-iterable
   // functions, then the constructor and the symbol-keyed members.
-  {
+  function installMemberOrder() {
     const ITERABLE = plainSet(['entries', 'keys', 'values', 'forEach']);
     const names = ownKeys(prototypes);
-    for (let index = 0; index < names.length; index++) {
-      const proto = prototypes[names[index]], keys = ownKeys(proto), pair = names[index] === 'StylePropertyMapReadOnly';
-      const groups = [list(), list(), list(), list(), list()];
-      for (let at = 0; at < keys.length; at++) {
-        const key = keys[at], descriptor = Object.getOwnPropertyDescriptor(proto, key);
-        const slot = typeof key === 'symbol' ? 4 : key === 'constructor' ? 3 : ITERABLE[key] && typeof descriptor.value === 'function' ? (pair ? 2 : 0) : descriptor.get ? 1 : 2;
-        push(groups[slot], [key, descriptor]);
-      }
-      const operations = groups[2], sorted = list(), trailing = list();
-      for (let at = 0; at < operations.length; at++) push(pair && ITERABLE[operations[at][0]] ? trailing : sorted, operations[at]);
-      for (let at = 1; at < sorted.length; at++) { const entry = sorted[at]; let back = at - 1; while (back >= 0 && sorted[back][0] > entry[0]) { sorted[back + 1] = sorted[back]; back--; } sorted[back + 1] = entry; }
-      for (let at = 0; at < trailing.length; at++) push(sorted, trailing[at]);
-      groups[2] = sorted;
-      for (let group = 0; group < 5; group++) for (let at = 0; at < groups[group].length; at++) { delete proto[groups[group][at][0]]; define(proto, groups[group][at][0], groups[group][at][1]); }
+    for (let index = 0; index < names.length; index++) installMemberOrderFor(prototypes[names[index]], names[index] === 'StylePropertyMapReadOnly', ITERABLE);
+  }
+  function memberOrderSlot(key, descriptor, pair, ITERABLE) {
+    if (typeof key === 'symbol') return 4;
+    if (key === 'constructor') return 3;
+    if (ITERABLE[key] && typeof descriptor.value === 'function') return pair ? 2 : 0;
+    return descriptor.get ? 1 : 2;
+  }
+  function installMemberOrderFor(proto, pair, ITERABLE) {
+    const keys = ownKeys(proto);
+    const groups = [list(), list(), list(), list(), list()];
+    for (let at = 0; at < keys.length; at++) {
+      const key = keys[at], descriptor = Object.getOwnPropertyDescriptor(proto, key);
+      push(groups[memberOrderSlot(key, descriptor, pair, ITERABLE)], [key, descriptor]);
     }
+    const operations = groups[2], sorted = list(), trailing = list();
+    for (let at = 0; at < operations.length; at++) push(pair && ITERABLE[operations[at][0]] ? trailing : sorted, operations[at]);
+    for (let at = 1; at < sorted.length; at++) { const entry = sorted[at]; let back = at - 1; while (back >= 0 && sorted[back][0] > entry[0]) { sorted[back + 1] = sorted[back]; back--; } sorted[back + 1] = entry; }
+    for (let at = 0; at < trailing.length; at++) push(sorted, trailing[at]);
+    groups[2] = sorted;
+    for (let group = 0; group < 5; group++) for (let at = 0; at < groups[group].length; at++) { delete proto[groups[group][at][0]]; define(proto, groups[group][at][0], groups[group][at][1]); }
   }
   // CSSStyleDeclaration admits the Chrome-enabled properties Lightning CSS does not model,
   // validated by the same grammar as Typed OM.
