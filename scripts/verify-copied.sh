@@ -44,6 +44,7 @@ CRATE_SRC=crates/turbo-dom-browser-env/src
 EXCLUDES="bin bundler.rs coverage.rs coverage_branch.rs esm_cjs.rs graph.rs launcher.rs napi_host.rs runner.rs transform.rs runtime.js lib.rs"
 # Moved files edited semantically after the move (path: reason).
 SEMANTIC_EDITS="
+dom_implementation.rs: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
 xpath_provider/README.md: 0.7.0 turbo-dom#185 documents fragment/shadow-root contexts and the empty namespace axis
 cssom_parser.rs: zoom_value + helpers moved to turbo_dom::rtdom::css_values (re-exported here)
 interceptor_mode.rs: frame read placed behind the native-sdk-frame-read feature scaffolding
@@ -377,6 +378,16 @@ css_live_tests.rs: 0.8.0 turbo-dom#318 button UA background-color vs its Chrome 
 animations_chrome156.json: 0.8.0 turbo-dom#340 recapture with Animation rangeStart / rangeEnd (#369)
 trusted_types_mapping.json: 0.8.0 onchecked / onopenerchange map to TrustedScript like Chrome 156 (turbo-surf#154)
 trusted_types_chrome155.json: 0.8.0 recaptured in Chrome 156.0.8078.47 with the same pinned cases / probe / collector (the moved path is kept); only onchecked / onopenerchange join the mapping (turbo-surf#154)
+document_xpath.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+document_basics.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+mutation_observers.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+html_invokers.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+event_listeners.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+interest_invokers.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+form_outputs.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+element_relations.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+element_internals.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+dom_implementation.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"

@@ -2,7 +2,10 @@
 // `complexity / js (cc <= 15)`). Only ESLint's `complexity` rule is enabled: every other
 // category is off so this config never doubles as a general linter. The limit is the
 // repo-wide cc <= 15 (CLAUDE.md "Complexity gates"); there is no allow-list or baseline.
+// The vendored xpath@0.0.35 drop is excluded: it must stay byte-identical to upstream (its
+// README pins the SHA-256), so it cannot be refactored.
 {
+  "ignorePatterns": ["crates/turbo-dom-browser-env/src/xpath_provider/xpath.js"],
   "categories": {
     "correctness": "off"
   },

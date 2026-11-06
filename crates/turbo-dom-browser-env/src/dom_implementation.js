@@ -12,14 +12,21 @@
   // effective qualified name (`a:b:c` -> `a:b`).
   const stringSplit=String.prototype.split,forbidden=/[\0\t\n\f\r />]/,asciiAlpha=/^[A-Za-z]$/,looseStart=/^(?:[_:]|[^\0-\x7f])$/,strictRest=/[\0-\x2c\x2f\x3b-\x40\x5b-\x5e\x60\x7b-\x7f]/;
   for(const pattern of [forbidden,asciiAlpha,looseStart,strictRest])define(pattern,'exec',{__proto__:null,value:regexExec});
+  // The element-name character rules over the split prefix / local name.
+  function invalidCharacters(prefix,local) {
+    if(prefix!==null&&(prefix===''||apply(regexTest,forbidden,[prefix]))||local===''||apply(regexTest,forbidden,[local]))return true;
+    const first=local[0],rest=apply(stringSlice,local,[1]);
+    return !apply(regexTest,asciiAlpha,[first])&&(!apply(regexTest,looseStart,[first])||apply(regexTest,strictRest,[rest]));
+  }
+  function invalidNamespace(namespace,prefix,effective) {
+    return prefix!==null&&!namespace||prefix==='xml'&&namespace!==namespaceXML||(effective==='xmlns'||prefix==='xmlns')&&namespace!==namespaceXMLNS||namespace===namespaceXMLNS&&effective!=='xmlns'&&prefix!=='xmlns';
+  }
   function qualified(namespace,name) {
     const parts=apply(stringSplit,name,[':']);
     const prefix=parts.length>1?parts[0]:null,local=parts.length>1?parts[1]:name;
-    if(prefix!==null&&(prefix===''||apply(regexTest,forbidden,[prefix]))||local===''||apply(regexTest,forbidden,[local]))throw new Exception('Invalid qualified name','InvalidCharacterError');
-    const first=local[0],rest=apply(stringSlice,local,[1]);
-    if(!apply(regexTest,asciiAlpha,[first])&&(!apply(regexTest,looseStart,[first])||apply(regexTest,strictRest,[rest])))throw new Exception('Invalid qualified name','InvalidCharacterError');
+    if(invalidCharacters(prefix,local))throw new Exception('Invalid qualified name','InvalidCharacterError');
     const effective=parts.length>2?prefix+':'+local:name;
-    if(prefix!==null&&!namespace||prefix==='xml'&&namespace!==namespaceXML||(effective==='xmlns'||prefix==='xmlns')&&namespace!==namespaceXMLNS||namespace===namespaceXMLNS&&effective!=='xmlns'&&prefix!=='xmlns')throw new Exception('Invalid namespace for qualified name','NamespaceError');
+    if(invalidNamespace(namespace,prefix,effective))throw new Exception('Invalid namespace for qualified name','NamespaceError');
     return effective;
   }
 

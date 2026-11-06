@@ -15,9 +15,12 @@
   function state(owner){element(owner);let shared=getRecord(owner);if(!shared){shared=create(null);shared.kind='Element';setRecord(owner,shared);}if(!hasOwn(shared,'aria'))define(shared,'aria',{value:create(null),writable:true});return shared.aria;}
   function inScope(owner,target){const wanted=apply(rootOf,target,[]);let current=apply(rootOf,owner,[]);while(current){if(current===wanted)return true;let host;try{host=apply(shadowHost,current,[]);}catch(_){return false;}current=host?apply(rootOf,host,[]):null;}return false;}
   function findId(root,id){if(!id)return null;const stack=[root];let depth=1;while(depth){const node=stack[--depth];if(apply(type,node,[])===1&&apply(getAttribute,node,['id'])===id)return node;const list=apply(children,node,[]);for(let index=list.length-1;index>=0;index--)define(stack,depth++,{value:list[index],writable:true,enumerable:true,configurable:true});}return null;}
+  // The explicit references still in scope, else the elements the attribute's IDs name
+  // (null when the attribute is absent).
+  function targets(owner,entry,value,many){const found=[];if(entry.references){const references=entry.references;for(let index=0;index<references.length;index++)if(inScope(owner,references[index]))add(found,references[index]);}else{if(value===null)return null;const root=apply(rootOf,owner,[]),list=many?words(value):[value];for(let index=0;index<list.length;index++){const target=findId(root,list[index]);if(target)add(found,target);}}return found;}
   function read(owner,attribute,many){const records=state(owner);let entry=records[attribute];const value=apply(getAttribute,owner,[attribute]);
     if(!entry)entry=records[attribute]=create(null);
-    const found=[];if(entry.references){const references=entry.references;for(let index=0;index<references.length;index++)if(inScope(owner,references[index]))add(found,references[index]);}else{if(value===null)return null;const root=apply(rootOf,owner,[]),list=many?words(value):[value];for(let index=0;index<list.length;index++){const target=findId(root,list[index]);if(target)add(found,target);}}
+    const found=targets(owner,entry,value,many);if(found===null)return null;
     if(!many)return found[0]||null;
     let same=!!entry.cache&&entry.cache.length===found.length;for(let index=0;same&&index<found.length;index++)if(entry.cache[index]!==found[index])same=false;if(!same)entry.cache=freeze(found);
     return entry.cache;
