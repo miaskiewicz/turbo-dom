@@ -1629,230 +1629,303 @@
     if(names)for(var index=0;index<names.length;index++){var name=names[index],value=decl[name];if(typeof value==='string'&&!$c.test(/shape\(/i,value))set(name,mathResolveText(name,value,font));}
     $c.forEach(['clip-path','offset-path','shape-outside'],function(name){var value=decl[name];if(typeof value==='string'&&$c.test(/shape\(/i,value))set(name,shapeComputed(name,value,font)||value);});
   }
-  function computeStyleFresh(el,snapshots,sink,pseudo,deps,base){
-    var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
-    if(noteCascadeRun)noteCascadeRun();
-    // Percentage lookup may visit several ancestors before font inheritance asks
-    // for the immediate parent again. Reuse each resolved ancestor only in this read.
-    function parentStyle(node){var style=computeStyleSnapshot(node,snapshots);if(deps&&deps[deps.length-2]!==node){deps[deps.length]=node;deps[deps.length]=style;}return style;}
-    // A disconnected element has no style (turbo-dom#67): every value reads "" until it is
-    // connected again (the declaration stays live). Typed OM's cascade read (`sink`) still
-    // reports the cascaded values.
-    // An element of a child iframe document (turbo-dom#299) cascades as connected.
-    var inFrame = !!el && computedFrameRoot(el) !== null;
+  // One computeStyleFresh read's state, shared by its phases below.
+  function ComputedCascade(el,snapshots,sink,pseudo,deps,base,inFrame){
+    this.el=el;this.snapshots=snapshots;this.sink=sink;this.pseudo=pseudo;this.deps=deps;this.base=base;this.inFrame=inFrame;
+    this.decl=null;this.priorities=null;this.uaValues=null;this.expanding=null;this.info=null;this.layer='';
+    this.parentStyle=null;this.setProp=null;this.bucketIndex=undefined;this.bucketOrder=undefined;
+    this.inheritParent=null;this.inheritSnapshot=null;this.inheritedValue=null;this.connected=false;
+  }
+  function computedCamel(p){ return $c.replace(p,/-([a-z])/g, function(_,c){ return $c.toUpperCase(c); }); }
+  // Normalize comma-spacing ("a,b" -> "a, b"): minified emotion rules drop the space, but jest-dom
+  // toHaveStyle's expected value is normalized by the browser's CSS parser (which inserts ", "),
+  // so font-family / shorthand lists must match that form.
+  // Normalize authored hex colors to the computed rgb()/rgba() spelling used by the
+  // declaration records and style assertions.
+  function computedNormColor(v){
+    var m = $c.exec(/^#([0-9a-fA-F]{3})$/, v); if (m){ var x=m[1]; return 'rgb('+parseInt(x[0]+x[0],16)+', '+parseInt(x[1]+x[1],16)+', '+parseInt(x[2]+x[2],16)+')'; }
+    m = $c.exec(/^#([0-9a-fA-F]{6})$/, v); if (m){ var h=m[1]; return 'rgb('+parseInt($c.slice(h, 0,2),16)+', '+parseInt($c.slice(h, 2,4),16)+', '+parseInt($c.slice(h, 4,6),16)+')'; }
+    m = $c.exec(/^#([0-9a-fA-F]{8})$/, v); if (m){ var h2=m[1]; return 'rgba('+parseInt($c.slice(h2, 0,2),16)+', '+parseInt($c.slice(h2, 2,4),16)+', '+parseInt($c.slice(h2, 4,6),16)+', '+($Mround(parseInt($c.slice(h2, 6,8),16)/255*100)/100)+')'; }
+    return v;
+  }
+  // Length-valued properties resolve a bare zero to the computed "0px" spelling.
+  var computedLenProp = /(width|height|^top$|^right$|^bottom$|^left$|^inset|margin|padding|gap|^flex-basis$|radius|^font-size$|letter-spacing|word-spacing|text-indent|^outline-offset$|^column-(width|gap)$|size$)/;
+  // A cascaded value as stored: `revert` takes the UA value, hex colors / bare zeros / lists
+  // take their computed spelling.
+  function cascadeSpelledValue(cs,name,val){
+    if(cs.uaValues&&typeof val==='string'&&$c.test(/^revert$/i,$c.trim(val))&&cs.uaValues[name]!==undefined)val=cs.uaValues[name];
+    if (typeof val === 'string' && $c.slice(name,0, 2) !== '--'){ var t = $c.trim(val); if (t[0] === '#') val = computedNormColor(t); else if (t === '0' && $c.test(computedLenProp,name)) val = '0px'; else if ($c.indexOf(val,',') >= 0) val = cssPrelude(val,true); }
+    return val;
+  }
+  // Priority is private per computed snapshot (cs.priorities); public CSSStyleDeclaration
+  // methods and page overrides cannot change the importance of parsed declarations. A
+  // cascaded longhand outdates the shorthand entries an earlier declaration (a UA table)
+  // stored; the shorthand being expanded (cs.expanding) keeps its own.
+  function cascadeSetProp(cs,name,val,important){
+    name = $c.trim(String(name)); if (!name) return;
+    if(important!==undefined){if(cs.priorities[name]&&!important)return;cs.priorities[name]=important;}
+    val=cascadeSpelledValue(cs,name,val);
+    var decl=cs.decl,sink=cs.sink;
+    decl[name] = val; decl[computedCamel(name)] = val;
+    $c.forEach(staleShorthands(name),function(shorthand){ if (shorthand !== cs.expanding) { delete decl[shorthand]; delete decl[computedCamel(shorthand)]; } });
+    if (sink) sink.order[name] = ++sink.count;
+    if (typeof val === 'string') { var outer = cs.expanding; cs.expanding = name; try { expandShorthand(name, val, function(property,value){cascadeSetProp(cs,property,value,important);}); } finally { cs.expanding = outer; } }
+  }
+  // `only`: true applies just the !important declarations, false just the normal ones.
+  function cascadeApplyDeclarations(cs,record,accepts,only){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;if(only!==undefined&&only!==(value.priority==='important'))continue;cascadeSetProp(cs,name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
+  // A disconnected element has no style (turbo-dom#67): every value reads "" until it is
+  // connected again (the declaration stays live). Typed OM's cascade read (`sink`) still
+  // reports the cascaded values. A pseudo-element of a disconnected (or <video>/<audio>
+  // child) element has no style. Null when the element has a style.
+  function computedStyleUnavailable(el,snapshots,sink,pseudo,inFrame){
     if (!pseudo && !sink && el) {
       var attached = true;
       try { attached = inFrame || __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
       if (!attached) { var empty = __ns.makeComputedStyleDeclaration({},el,null); computedSnapshotSet(snapshots,el,empty); return empty; }
     }
-    // A pseudo-element of a disconnected (or <video>/<audio> child) element has no style.
     if (pseudo) {
       var live = false;
       try { live = computedConnected(el) && !computedMediaChild(el); } catch(e) {}
       if (!live) return __ns.makeComputedStyleDeclaration({},el,null,pseudo);
     }
-    var camel = function(p){ return $c.replace(p,/-([a-z])/g, function(_,c){ return $c.toUpperCase(c); }); };
-    var decl = { __proto__:null, getPropertyValue: function(p){ var v = this[p]; if (v == null) v = this[camel(p)]; return v == null ? '' : String(v); }, getPropertyPriority: function(){ return ''; }, length: 0 };
-    // Minimal cascade: merge declarations from every injected stylesheet rule whose selector matches
-    // `el` (emotion's `sx` -> `.css-xxx{...}`), then overlay inline declarations,
-    // retaining per-longhand importance through shorthand expansion. Common authored
-    // values remain observable before layout-dependent resolution.
-    // Properties are exposed both kebab and camelCase.
-    // Normalize comma-spacing ("a,b" -> "a, b"): minified emotion rules drop the space, but jest-dom
-    // toHaveStyle's expected value is normalized by the browser's CSS parser (which inserts ", "),
-    // so font-family / shorthand lists must match that form.
-    // Normalize authored hex colors to the computed rgb()/rgba() spelling used by the
-    // declaration records and style assertions.
-    var normColor = function(v){
-      var m = $c.exec(/^#([0-9a-fA-F]{3})$/, v); if (m){ var x=m[1]; return 'rgb('+parseInt(x[0]+x[0],16)+', '+parseInt(x[1]+x[1],16)+', '+parseInt(x[2]+x[2],16)+')'; }
-      m = $c.exec(/^#([0-9a-fA-F]{6})$/, v); if (m){ var h=m[1]; return 'rgb('+parseInt($c.slice(h, 0,2),16)+', '+parseInt($c.slice(h, 2,4),16)+', '+parseInt($c.slice(h, 4,6),16)+')'; }
-      m = $c.exec(/^#([0-9a-fA-F]{8})$/, v); if (m){ var h2=m[1]; return 'rgba('+parseInt($c.slice(h2, 0,2),16)+', '+parseInt($c.slice(h2, 2,4),16)+', '+parseInt($c.slice(h2, 4,6),16)+', '+($Mround(parseInt($c.slice(h2, 6,8),16)/255*100)/100)+')'; }
-      return v;
-    };
-    // Length-valued properties resolve a bare zero to the computed "0px" spelling.
-    var LEN_PROP = /(width|height|^top$|^right$|^bottom$|^left$|^inset|margin|padding|gap|^flex-basis$|radius|^font-size$|letter-spacing|word-spacing|text-indent|^outline-offset$|^column-(width|gap)$|size$)/;
-    // Priority is private per computed snapshot; public CSSStyleDeclaration methods
-    // and page overrides cannot change the importance of parsed declarations.
-    var uaValues=null,priorities={__proto__:null};
-    // A cascaded longhand outdates the shorthand entries an earlier declaration (a UA table)
-    // stored; the shorthand being expanded keeps its own.
-    var expandingShorthand = null;
-    var setProp = function(name, val, important){ name = $c.trim(String(name)); if (!name) return; if(important!==undefined){if(priorities[name]&&!important)return;priorities[name]=important;} if(uaValues&&typeof val==='string'&&$c.test(/^revert$/i,$c.trim(val))&&uaValues[name]!==undefined)val=uaValues[name]; if (typeof val === 'string' && $c.slice(name,0, 2) !== '--'){ var t = $c.trim(val); if (t[0] === '#') val = normColor(t); else if (t === '0' && $c.test(LEN_PROP,name)) val = '0px'; else if ($c.indexOf(val,',') >= 0) val = cssPrelude(val,true); } decl[name] = val; decl[camel(name)] = val; $c.forEach(staleShorthands(name),function(shorthand){ if (shorthand !== expandingShorthand) { delete decl[shorthand]; delete decl[camel(shorthand)]; } }); if (sink) sink.order[name] = ++sink.count;
-      if (typeof val === 'string') { var outer = expandingShorthand; expandingShorthand = name; try { expandShorthand(name, val, function(property,value){setProp(property,value,important);}); } finally { expandingShorthand = outer; } }
-    };
-    // `only`: true applies just the !important declarations, false just the normal ones.
-    function applyDeclarations(record,accepts,only){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;if(only!==undefined&&only!==(value.priority==='important'))continue;setProp(name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
-    var info=pseudo&&pseudo!=='backdrop'&&pseudo!=='before'&&pseudo!=='after'?computedPseudoInfo(el,pseudo,parentStyle):null;
-    // Measured Chrome button defaults are UA declarations: every matching author
-    // rule (including a universal selector) and inline value takes precedence.
-    var ua = null, layer = '';
+    return null;
+  }
+  function computedPseudoInfoFor(el,pseudo,parentStyle){return pseudo&&pseudo!=='backdrop'&&pseudo!=='before'&&pseudo!=='after'?computedPseudoInfo(el,pseudo,parentStyle):null;}
+  function computedLayerOf(el,pseudo,inFrame){
+    var layer='';
     try { if(pseudo||inFrame||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
-    // The cascaded declarations come from this element's earlier computation (turbo-test#227)
-    // or a same-signature sibling's (turbo-dom#307), else from the rules below.
-    var reused=base?base.use:null,share=!reused&&base&&!pseudo&&!sink&&!inFrame&&layer===''?styleShareProbe(el):null;
-    if(share&&share.hit)reused=share.hit;
-    if(reused)computedBaseRestore(reused,decl,priorities),uaValues=reused.ua;
-    else {
-    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&(inFrame||cssApply(computedStyleNativeConnected,el,[]))){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=htmlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
-      if(!pseudo&&layer==='fullscreen')ua=$O.assign({},ua||{},fullscreenUserAgent); } catch(e){}
-    if(ua){$c.forEach($O.keys(ua), function(name){setProp(name,ua[name]);});uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
-    var sizeHints=!pseudo&&iframeSizeHints(el);
-    if(sizeHints)$c.forEach($O.keys(sizeHints),function(name){setProp(name,sizeHints[name]);});
+    return layer;
+  }
+  // Measured Chrome button defaults are UA declarations: every matching author
+  // rule (including a universal selector) and inline value takes precedence.
+  function computedBaseUserAgent(cs){
+    var pseudo=cs.pseudo,el=cs.el,layer=cs.layer;
+    if(pseudo==='backdrop')return backdropUserAgent(layer);
+    if(cs.info)return cs.info.ua;
+    if(pseudo)return null;
+    if(layer==='modal')return modalDialogUserAgent;
+    if(cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&(cs.inFrame||cssApply(computedStyleNativeConnected,el,[]))){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])return htmlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
+    return null;
+  }
+  function computedUserAgentDecls(cs){
+    var ua=null;
+    try { ua=computedBaseUserAgent(cs);
+      if(!cs.pseudo&&cs.layer==='fullscreen')ua=$O.assign({},ua||{},fullscreenUserAgent); } catch(e){}
+    return ua;
+  }
+  function computedBucketMatches(el,sheets,bucketIndex,bucketOrder,pseudo,matched){
+    for(var bucketAt=0;bucketAt<bucketOrder.length;bucketAt++){var bucketEntry=bucketOrder[bucketAt];if(sheetRecord(sheets[bucketIndex.sheet[bucketEntry]]).disabled)continue;var bucketHit=appliedEntryMatch(el,bucketIndex.entries[bucketEntry],pseudo,matched.length);if(bucketHit)$c.push(matched,bucketHit);}
+  }
+  function computedSheetMatches(el,sheets,build,pseudo,matched){
+    for (var si=0; si<sheets.length; si++) {
+      if(sheetRecord(sheets[si]).disabled)continue;
+      var entries = build.lists[si];
+      for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
+    }
+  }
+  // Minimal cascade: merge declarations from every injected stylesheet rule whose selector matches
+  // `el` (emotion's `sx` -> `.css-xxx{...}`), retaining per-longhand importance through
+  // shorthand expansion.
+  function computedApplySheets(cs){
+    var el=cs.el,info=cs.info;
     try {
       // Element-backed pseudo-elements the element does not have see no author rules.
       // Match the private selector list before touching declarations. Native parsing
       // preserves quoted delimiters that serialized text splitting loses.
       var sheets = info && !info.authored ? [] : computedSheets(el),build=computedSheetEntries(sheets,el),layers=build.layers,matched=[];
-      var bucketOwn=sheets.length?cssElementKeys(el):null,bucketIndex=bucketOwn?cssBucketIndex(build):null,bucketOrder=bucketIndex?cssBucketCandidates(bucketIndex,bucketOwn):null;
-      if(bucketOrder){for(var bucketAt=0;bucketAt<bucketOrder.length;bucketAt++){var bucketEntry=bucketOrder[bucketAt];if(sheetRecord(sheets[bucketIndex.sheet[bucketEntry]]).disabled)continue;var bucketHit=appliedEntryMatch(el,bucketIndex.entries[bucketEntry],pseudo,matched.length);if(bucketHit)$c.push(matched,bucketHit);}}
-      else for (var si=0; si<sheets.length; si++) {
-        if(sheetRecord(sheets[si]).disabled)continue;
-        var entries = build.lists[si];
-        for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
-      }
-      cascadeEntries(matched,layers,function(entry,only){applyDeclarations(declarationRecord(entry.rule.style),info&&info.accepts,only);});
+      var bucketOwn=sheets.length?cssElementKeys(el):null;
+      cs.bucketIndex=bucketOwn?cssBucketIndex(build):null;
+      cs.bucketOrder=cs.bucketIndex?cssBucketCandidates(cs.bucketIndex,bucketOwn):null;
+      if(cs.bucketOrder)computedBucketMatches(el,sheets,cs.bucketIndex,cs.bucketOrder,cs.pseudo,matched);
+      else computedSheetMatches(el,sheets,build,cs.pseudo,matched);
+      cascadeEntries(matched,layers,function(entry,only){cascadeApplyDeclarations(cs,declarationRecord(entry.rule.style),info&&info.accepts,only);});
     } catch(e){}
-    // overlay inline style (own props React/components set: background, height, display, ...)
+  }
+  // UA declarations, presentational hints, author rules, then inline declarations (own props
+  // React/components set: background, height, display, ...) and the !important UA ones
+  // (::placeholder pointer-events, the fullscreen element's box), which beat every author one.
+  function computedApplyCascade(cs){
+    var el=cs.el,pseudo=cs.pseudo,info=cs.info,decl=cs.decl;
+    var ua=computedUserAgentDecls(cs);
+    if(ua){$c.forEach($O.keys(ua), function(name){cs.setProp(name,ua[name]);});cs.uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')cs.uaValues[name]=decl[name];});}
+    var sizeHints=!pseudo&&iframeSizeHints(el);
+    if(sizeHints)$c.forEach($O.keys(sizeHints),function(name){cs.setProp(name,sizeHints[name]);});
+    computedApplySheets(cs);
     var st = !pseudo && el && __ns.makeInlineStyleDeclaration(el);
-    if (st) applyDeclarations(declarationRecord(st));
-    // !important UA declarations (::placeholder pointer-events, the fullscreen element's box)
-    // beat every author one.
-    var important = info ? info.important : !pseudo && layer === 'fullscreen' ? fullscreenImportant : null;
-    if (important) $c.forEach($O.keys(important), function(name){ setProp(name, important[name], true); });
+    if (st) cascadeApplyDeclarations(cs,declarationRecord(st));
+    var important = info ? info.important : !pseudo && cs.layer === 'fullscreen' ? fullscreenImportant : null;
+    if (important) $c.forEach($O.keys(important), function(name){ cs.setProp(name, important[name], true); });
+  }
+  function computedShareProbe(cs,reused){var base=cs.base;return !reused&&base&&!cs.pseudo&&!cs.sink&&!cs.inFrame&&cs.layer===''?styleShareProbe(cs.el):null;}
+  // The cascaded declarations come from this element's earlier computation (turbo-test#227)
+  // or a same-signature sibling's (turbo-dom#307), else from the rules.
+  function computedCascadeDecls(cs){
+    var base=cs.base,reused=base?base.use:null,share=computedShareProbe(cs,reused);
+    if(share&&share.hit)reused=share.hit;
+    if(reused){computedBaseRestore(reused,cs.decl,cs.priorities);cs.uaValues=reused.ua;return;}
+    computedApplyCascade(cs);
     // (A cascade goes volatile before this point only in a tree that never shares: an unkeyed
     // state rule has scope 8, an @import's media has scope -1.)
-    if(base&&!pseudo&&!sink){base.out=computedBaseCapture(decl,priorities,uaValues);if(share&&!base.out.stateRead)styleShareStore(el,share,base.out,bucketIndex,bucketOrder);}
-    }
-    if (sink) { var cascaded = { __proto__: null }; $c.forEach($O.keys(decl),function(name){ if (typeof decl[name] === 'string' && ($c.slice(name,0, 2) === '--' || name === $c.toLowerCase(name))) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
-    // Inherited values come from the composed parent's snapshot in this read, so
-    // CSSOM edits to document sheets reach descendants. Native cascade only adds
-    // shadow-scoped rules (shadow <style>, :host, ::slotted) the JS cascade lacks.
-    var inheritParent = null;
-    try { var inheritContext = computedFontContext(el); inheritParent = pseudo ? el : inheritContext ? inheritContext[2] : null; } catch(e) {}
+    if(base&&!cs.pseudo&&!cs.sink){base.out=computedBaseCapture(cs.decl,cs.priorities,cs.uaValues);if(share&&!base.out.stateRead)styleShareStore(cs.el,share,base.out,cs.bucketIndex,cs.bucketOrder);}
+  }
+  function computedSinkValues(decl){ var cascaded = { __proto__: null }; $c.forEach($O.keys(decl),function(name){ if (typeof decl[name] === 'string' && ($c.slice(name,0, 2) === '--' || name === $c.toLowerCase(name))) cascaded[name] = decl[name]; }); return cascaded; }
+  // Inherited values come from the composed parent's snapshot in this read, so
+  // CSSOM edits to document sheets reach descendants. Native cascade only adds
+  // shadow-scoped rules (shadow <style>, :host, ::slotted) the JS cascade lacks.
+  function computedInheritance(cs){
+    var el=cs.el,pseudo=cs.pseudo,info=cs.info;
+    try { var inheritContext = computedFontContext(el); cs.inheritParent = pseudo ? el : inheritContext ? inheritContext[2] : null; } catch(e) {}
     // A fresh internal result is already resolved. Reading its public live getter
     // would compute the same ancestors again and double recursion at every level.
     // A view-transition pseudo-element inherits from its parent in the pseudo-element tree.
-    var inheritSnapshot = info && info.parentPseudo ? computeStyleSnapshot(el, snapshots, undefined, info.parentPseudo) : null;
-    function inheritedValue(name){ return inheritSnapshot ? computedSnapshotValue(inheritSnapshot,name) : inheritParent ? computedSnapshotValue(parentStyle(inheritParent),name) : ''; }
-    // Web Animations compose over cascaded and inline values; !important declarations win.
+    cs.inheritSnapshot = info && info.parentPseudo ? computeStyleSnapshot(el, cs.snapshots, undefined, info.parentPseudo) : null;
+    cs.inheritedValue = function(name){ return cs.inheritSnapshot ? computedSnapshotValue(cs.inheritSnapshot,name) : cs.inheritParent ? computedSnapshotValue(cs.parentStyle(cs.inheritParent),name) : ''; };
+  }
+  // The element's own display as the UA / initial resolution below will compute it ("" for
+  // a value it cannot tell before then), and this read's snapshot map: a transition update
+  // decides "rendered" from them without resolving the element or its ancestors again
+  // (turbo-test#227).
+  function computedOwnDisplay(cs){
+    var value=cs.decl.display,el=cs.el;
+    if((value==null||value==='')&&typeof __ns.cascadeProp==='function'){try{value=__ns.cascadeProp.call(el,'display')||'';}catch(e){value='';}}
+    value=$c.toLowerCase($c.trim(String(value==null?'':value)));
+    if(!value||value==='revert'||value==='revert-layer'){try{return computedUserAgentBox(el,cs.layer).display;}catch(e){return '';}}
+    return $c.test(/^[a-z-]+(?: [a-z-]+)*$/,value)?value:'';
+  }
+  // Web Animations compose over cascaded and inline values; !important declarations win.
+  function computedApplyAnimations(cs){
+    var el=cs.el,pseudo=cs.pseudo,decl=cs.decl;
     if(!pseudo&&el&&__ns.hasAnimations&&__ns.hasAnimations(el))computedVolatile=true;
-    // The element's own display as the UA / initial resolution below will compute it ("" for
-    // a value it cannot tell before then), and this read's snapshot map: a transition update
-    // decides "rendered" from them without resolving the element or its ancestors again
-    // (turbo-test#227).
-    function ownDisplay(){
-      var value=decl.display;
-      if((value==null||value==='')&&typeof __ns.cascadeProp==='function'){try{value=__ns.cascadeProp.call(el,'display')||'';}catch(e){value='';}}
-      value=$c.toLowerCase($c.trim(String(value==null?'':value)));
-      if(!value||value==='revert'||value==='revert-layer'){try{return computedUserAgentBox(el,layer).display;}catch(e){return '';}}
-      return $c.test(/^[a-z-]+(?: [a-z-]+)*$/,value)?value:'';
-    }
-    var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},inheritedValue,snapshots,ownDisplay):null;
-    if(animated)for(var ai=0;ai<animated.length;ai++)if(!priorities[animated[ai][0]])setProp(animated[ai][0],animated[ai][1]);
-    // Tree-counting functions take this element's counts; their style follows its siblings.
-    var treeNames=treeCountingValues(decl,el,pseudo);
-    var color = decl.color || '';
-    if (!color && !pseudo && !inFrame) { try { color = __ns.cascadeProp.call(el, 'color'); } catch(e) {} }
-    // A highlight in highlight-inheritance mode inherits color / background-color from the
-    // parent's highlight, or takes the initial values (turbo-dom#47).
-    var highlightParent = undefined;
-    if (info && info.highlight) {
-      var highlightMode = false; try { highlightMode = computedHighlightMode(el, pseudo); } catch(e){}
-      if (highlightMode) {
-        var highlightContext = null; try { highlightContext = computedFontContext(el); } catch(e){}
-        var parentElement = highlightContext ? highlightContext[2] : null;
-        highlightParent = parentElement && computedHighlightMode(parentElement, pseudo) ? computeStyleSnapshot(parentElement, snapshots, undefined, pseudo) : null;
-        var inheritsKey = function(value){ return !value || $c.test(/^(inherit|unset)$/i, $c.trim(String(value))); };
-        if (inheritsKey(color)) color = highlightParent ? computedSnapshotValue(highlightParent, 'color') : 'rgb(0, 0, 0)';
-        if (inheritsKey(decl['background-color'])) setProp('background-color', highlightParent ? computedSnapshotValue(highlightParent, 'background-color') : 'rgba(0, 0, 0, 0)');
-      } else if (decl['background-color'] == null) setProp('background-color', 'rgba(0, 0, 0, 0)');
-    }
+    var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},cs.inheritedValue,cs.snapshots,function(){return computedOwnDisplay(cs);}):null;
+    if(animated)for(var ai=0;ai<animated.length;ai++)if(!cs.priorities[animated[ai][0]])cs.setProp(animated[ai][0],animated[ai][1]);
+  }
+  function highlightInheritsKey(value){ return !value || $c.test(/^(inherit|unset)$/i, $c.trim(String(value))); }
+  // A highlight in highlight-inheritance mode inherits color / background-color from the
+  // parent's highlight, or takes the initial values (turbo-dom#47).
+  function computedHighlightColor(cs,color){
+    var el=cs.el,pseudo=cs.pseudo,decl=cs.decl;
+    var highlightMode = false; try { highlightMode = computedHighlightMode(el, pseudo); } catch(e){}
+    if (highlightMode) {
+      var highlightContext = null; try { highlightContext = computedFontContext(el); } catch(e){}
+      var parentElement = highlightContext ? highlightContext[2] : null;
+      var highlightParent = parentElement && computedHighlightMode(parentElement, pseudo) ? computeStyleSnapshot(parentElement, cs.snapshots, undefined, pseudo) : null;
+      if (highlightInheritsKey(color)) color = highlightParent ? computedSnapshotValue(highlightParent, 'color') : 'rgb(0, 0, 0)';
+      if (highlightInheritsKey(decl['background-color'])) cs.setProp('background-color', highlightParent ? computedSnapshotValue(highlightParent, 'background-color') : 'rgba(0, 0, 0, 0)');
+    } else if (decl['background-color'] == null) cs.setProp('background-color', 'rgba(0, 0, 0, 0)');
+    return color;
+  }
+  function computedColorKeyword(cs,color){
     var colorKeyword = $c.toLowerCase(String(color || ''));
-    if (colorKeyword === 'initial' || colorKeyword === 'canvastext') color = 'rgb(0, 0, 0)';
-    else if (!color || colorKeyword === 'inherit' || colorKeyword === 'unset' || colorKeyword === 'currentcolor') {
-      color = inheritParent ? inheritedValue('color') : 'rgb(0, 0, 0)';
-    }
+    if (colorKeyword === 'initial' || colorKeyword === 'canvastext') return 'rgb(0, 0, 0)';
+    if (!color || colorKeyword === 'inherit' || colorKeyword === 'unset' || colorKeyword === 'currentcolor') return cs.inheritParent ? cs.inheritedValue('color') : 'rgb(0, 0, 0)';
+    return color;
+  }
+  // Children of <video> / <audio> are outside the flat tree: Chrome computes no style for them.
+  function computedConnectedForStyle(el,inFrame){
     var connected = false;
     try { connected = inFrame || __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
-    // Children of <video> / <audio> are outside the flat tree: Chrome computes no style for them.
     if (connected && computedMediaChild(el)) connected = false;
-    setProp('color', connected ? normalizeComputedColor(color) : '');
-    if (connected) resolveWideKeywords(decl, inheritParent ? $c.get(declarationRecords, parentStyle(inheritParent)) : null, setProp, function(name){ delete decl[name]; delete decl[camel(name)]; });
-    // UA and initial values for display / position / visibility (turbo-surf#36), measured in
-    // computed_defaults_chrome156.json: an author / inline / shadow-scoped declaration wins, the
-    // CSS-wide keywords resolve (inherit -> the composed parent's value, initial / unset -> the
-    // initial value, revert -> the UA value), otherwise Chrome's html.css value; display is then
-    // blockified for floats, absolutely positioned elements and flex / grid items. Disconnected
-    // elements keep "" like every other default above.
-    var cascadedValue = function(name){
-      var value = decl[name];
-      if ((value == null || value === '') && !pseudo && !inFrame && el && typeof __ns.cascadeProp === 'function') { try { value = __ns.cascadeProp.call(el, name) || ''; } catch(e){ value = ''; } }
-      return value == null ? '' : $c.trim(String(value));
-    };
-    var keyword = function(value){ var key = $c.toLowerCase(value); return $c.test(/^(inherit|initial|unset|revert|revert-layer)$/, key) ? key : ''; };
-    if (connected) {
-      var ua = pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : pseudo ? { display: info ? info.display : 'inline', position: info ? info.position : 'static', topLayer: false } : computedUserAgentBox(el, layer);
-      var displayValue = cascadedValue('display'), displayKey = keyword(displayValue);
-      if (!displayValue || displayKey === 'revert' || displayKey === 'revert-layer') displayValue = ua.display;
-      else if (displayKey === 'inherit') displayValue = inheritedValue('display') || 'inline';
-      else if (displayKey) displayValue = 'inline';
-      var positionValue = cascadedValue('position'), positionKey = keyword(positionValue);
-      if (!positionValue || positionKey === 'revert' || positionKey === 'revert-layer') positionValue = ua.position;
-      else if (positionKey === 'inherit') positionValue = inheritedValue('position') || 'static';
-      else if (positionKey) positionValue = 'static';
-      positionValue = $c.toLowerCase(positionValue);
-      if (ua.topLayer) positionValue = topLayerPosition(positionValue);
-      var floatValue = $c.toLowerCase($c.trim(String(decl['float'] == null ? '' : decl['float'])));
-      var floated = floatValue !== '' && floatValue !== 'none' && !keyword(floatValue);
-      if (positionValue === 'absolute' || positionValue === 'fixed' || floated || (pseudo ? pseudo !== 'backdrop' && (!info || info.container) && computedPseudoInContainer(el, parentStyle) : computedFlexOrGridItem(el, parentStyle)))
-        displayValue = blockifiedDisplay(displayValue);
-      decl.display = displayValue;
-      decl.position = positionValue;
-    } else if (decl.display == null) decl.display = '';
-    // `visibility` is INHERITED: a child with no explicit visibility takes the parent's computed
-    // value. testing-library / dom-accessibility-api rely on this — they treat an element as
-    // inaccessible when getComputedStyle(el).visibility === 'hidden', expecting a hidden ancestor to
-    // have propagated down. The JS cascade above only sees this element's own rules, so we defer to
-    // rtdom's native cascade (cascade::computed_style) for shadow-scoped rules; the composed
-    // parent's snapshot supplies inheritance and the root's value is the initial `visible`.
-    var visibilityValue = connected ? cascadedValue('visibility') : String(decl.visibility == null ? '' : decl.visibility);
-    var visibilityKey = keyword(visibilityValue);
+    return connected;
+  }
+  function computedColor(cs){
+    var el=cs.el,pseudo=cs.pseudo,decl=cs.decl;
+    var color = decl.color || '';
+    if (!color && !pseudo && !cs.inFrame) { try { color = __ns.cascadeProp.call(el, 'color'); } catch(e) {} }
+    if (cs.info && cs.info.highlight) color = computedHighlightColor(cs, color);
+    color = computedColorKeyword(cs, color);
+    cs.connected = computedConnectedForStyle(el, cs.inFrame);
+    cs.setProp('color', cs.connected ? normalizeComputedColor(color) : '');
+    if (cs.connected) resolveWideKeywords(decl, cs.inheritParent ? $c.get(declarationRecords, cs.parentStyle(cs.inheritParent)) : null, cs.setProp, function(name){ delete decl[name]; delete decl[computedCamel(name)]; });
+  }
+  function computedCascadedValue(cs,name){
+    var value = cs.decl[name];
+    if ((value == null || value === '') && !cs.pseudo && !cs.inFrame && cs.el && typeof __ns.cascadeProp === 'function') { try { value = __ns.cascadeProp.call(cs.el, name) || ''; } catch(e){ value = ''; } }
+    return value == null ? '' : $c.trim(String(value));
+  }
+  function computedWideKeyword(value){ var key = $c.toLowerCase(value); return $c.test(/^(inherit|initial|unset|revert|revert-layer)$/, key) ? key : ''; }
+  // display / position: an author / inline / shadow-scoped declaration wins, the CSS-wide
+  // keywords resolve (inherit -> the composed parent's value, initial / unset -> the initial
+  // value, revert -> the UA value), otherwise Chrome's html.css value.
+  function computedBoxKeywordValue(cs,name,uaValue,fallback){
+    var value = computedCascadedValue(cs,name), key = computedWideKeyword(value);
+    if (!value || key === 'revert' || key === 'revert-layer') return uaValue;
+    if (key === 'inherit') return cs.inheritedValue(name) || fallback;
+    if (key) return fallback;
+    return value;
+  }
+  function computedUaBox(cs){
+    var pseudo=cs.pseudo,info=cs.info,layer=cs.layer;
+    return pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : pseudo ? { display: info ? info.display : 'inline', position: info ? info.position : 'static', topLayer: false } : computedUserAgentBox(cs.el, layer);
+  }
+  function computedInFormattingContainer(cs){
+    var pseudo=cs.pseudo,info=cs.info;
+    return pseudo ? pseudo !== 'backdrop' && (!info || info.container) && computedPseudoInContainer(cs.el, cs.parentStyle) : computedFlexOrGridItem(cs.el, cs.parentStyle);
+  }
+  // UA and initial values for display / position / visibility (turbo-surf#36), measured in
+  // computed_defaults_chrome156.json; display is then blockified for floats, absolutely
+  // positioned elements and flex / grid items. Disconnected elements keep "" like every
+  // other default.
+  function computedDisplayPosition(cs){
+    var decl=cs.decl;
+    var ua = computedUaBox(cs);
+    var displayValue = computedBoxKeywordValue(cs, 'display', ua.display, 'inline');
+    var positionValue = $c.toLowerCase(computedBoxKeywordValue(cs, 'position', ua.position, 'static'));
+    if (ua.topLayer) positionValue = topLayerPosition(positionValue);
+    var floatValue = $c.toLowerCase($c.trim(String(decl['float'] == null ? '' : decl['float'])));
+    var floated = floatValue !== '' && floatValue !== 'none' && !computedWideKeyword(floatValue);
+    if (positionValue === 'absolute' || positionValue === 'fixed' || floated || computedInFormattingContainer(cs))
+      displayValue = blockifiedDisplay(displayValue);
+    decl.display = displayValue;
+    decl.position = positionValue;
+  }
+  // `visibility` is INHERITED: a child with no explicit visibility takes the parent's computed
+  // value. testing-library / dom-accessibility-api rely on this — they treat an element as
+  // inaccessible when getComputedStyle(el).visibility === 'hidden', expecting a hidden ancestor to
+  // have propagated down. The JS cascade above only sees this element's own rules, so we defer to
+  // rtdom's native cascade (cascade::computed_style) for shadow-scoped rules; the composed
+  // parent's snapshot supplies inheritance and the root's value is the initial `visible`.
+  function computedVisibility(cs){
+    var decl=cs.decl,connected=cs.connected;
+    var visibilityValue = connected ? computedCascadedValue(cs,'visibility') : String(decl.visibility == null ? '' : decl.visibility);
+    var visibilityKey = computedWideKeyword(visibilityValue);
     if (visibilityKey === 'initial') visibilityValue = 'visible';
-    else if (connected && (visibilityValue === '' || visibilityKey)) { try { visibilityValue = inheritedValue('visibility'); } catch(e){ visibilityValue = ''; } }
+    else if (connected && (visibilityValue === '' || visibilityKey)) { try { visibilityValue = cs.inheritedValue('visibility'); } catch(e){ visibilityValue = ''; } }
     if (!visibilityValue && connected) visibilityValue = 'visible';
     // Highlights never take the element's visibility (turbo-dom#47).
-    if (connected && info && info.highlight) visibilityValue = 'visible';
+    if (connected && cs.info && cs.info.highlight) visibilityValue = 'visible';
     decl.visibility = visibilityValue || '';
-    // `content` computes to normal, and to none on ::before / ::after / ::checkmark /
-    // ::picker-icon; strings serialize double-quoted (turbo-dom#47).
+  }
+  // `content` computes to normal, and to none on ::before / ::after / ::checkmark /
+  // ::picker-icon; strings serialize double-quoted (turbo-dom#47).
+  function computedContent(cs){
+    var decl=cs.decl,pseudo=cs.pseudo,info=cs.info;
     var contentValue = decl.content == null ? '' : $c.trim(String(decl.content));
     if (pseudo && contentValue) contentValue = $c.replace(contentValue, /'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + $c.replace($c.replace(inner, /\\'/g, "'"), /"/g, '\\"') + '"'; });
     if (pseudo === 'before' || pseudo === 'after' || info && info.generated) decl.content = contentValue === '' || $c.test(/^normal$/i, contentValue) ? 'none' : contentValue;
     else if (pseudo && contentValue) decl.content = contentValue;
-    else if (decl.content == null) decl.content = connected ? 'normal' : '';
-    // Initial computed values of properties Web Animations commonly animate.
+    else if (decl.content == null) decl.content = cs.connected ? 'normal' : '';
+  }
+  // Initial computed values of properties Web Animations commonly animate.
+  function computedTransformValues(cs){
+    var decl=cs.decl,connected=cs.connected;
     if (decl.opacity == null) decl.opacity = connected ? '1' : '';
     if (decl.transform == null) { decl.transform = connected ? 'none' : ''; }
     // Resolve `transform` to the matrix() / matrix3d() / none Chrome 156 reports (the
     // "resolved value" for a used transform). Percentage translates and em need a layout
     // box and the font size; `ns.resolveTransform` returns null to keep the declared text
     // when it cannot resolve them (turbo-dom#353).
-    if (connected && !pseudo && typeof __ns.resolveTransform === 'function' && typeof decl.transform === 'string') {
+    if (connected && !cs.pseudo && typeof __ns.resolveTransform === 'function' && typeof decl.transform === 'string') {
       try {
         var fontMatch = cssApply(cssZoomExec, /^([0-9.e+-]+)px$/, [String(decl['font-size'] == null ? '' : decl['font-size'])]);
-        var resolvedTransform = __ns.resolveTransform(decl.transform, el, fontMatch ? cssFontNumber(fontMatch[1]) : 16);
-        if (typeof resolvedTransform === 'string') setProp('transform', resolvedTransform);
+        var resolvedTransform = __ns.resolveTransform(decl.transform, cs.el, fontMatch ? cssFontNumber(fontMatch[1]) : 16);
+        if (typeof resolvedTransform === 'string') cs.setProp('transform', resolvedTransform);
       } catch(e){}
     }
-    // `zoom` is not inherited; it computes to its factor, with normal and 0 as 1.
-    decl.zoom = connected ? computedZoom(decl.zoom, function(){ return inheritedValue('zoom'); }) : '';
-    // Used-value resolution for percentage width/height. A no-layout env returns a raw "50%"
-    // verbatim, but a containing-block percentage has a well-defined used value in normal flow
-    // (pct * the containing block's content width/height), which a real browser reports in px.
-    // Resolve against the nearest ancestor with a px (or, for width, auto=fill) measure so
-    // getComputedStyle(child).width matches a browser without a full layout engine.
+  }
+  function computedNormalizeColorLonghands(cs){
+    var decl=cs.decl,connected=cs.connected,pseudo=cs.pseudo;
     // A modal dialog's overflow longhands recompose the shorthand.
-    if (connected && !pseudo && layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')
+    if (connected && !pseudo && cs.layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')
       decl.overflow = decl['overflow-x'] === decl['overflow-y'] ? decl['overflow-x'] : decl['overflow-x'] + ' ' + decl['overflow-y'];
     if (pseudo && typeof decl['background-color'] === 'string') decl['background-color'] = decl.backgroundColor = normalizeComputedColor(decl['background-color']);
     // turbo-dom#374: Chrome 156 serializes every `<color>` longhand in computed style as
@@ -1863,21 +1936,29 @@
       for (var ci = 0; ci < computedColorLonghands.length; ci++) {
         var colorProp = computedColorLonghands[ci];
         var colorValue = decl[colorProp];
-        if (typeof colorValue === 'string' && colorValue) decl[colorProp] = decl[camel(colorProp)] = normalizeComputedColor(colorValue);
+        if (typeof colorValue === 'string' && colorValue) decl[colorProp] = decl[computedCamel(colorProp)] = normalizeComputedColor(colorValue);
       }
     }
-    var usedPx = function(node, axis, depth){
-      if (!node || depth > 32) return null;
-      var raw;try{raw=node===el?decl[axis]:computedSnapshotValue(parentStyle(node),axis);}catch(e){return null;}
-      raw = raw == null ? '' : String(raw);
-      var mpx = $c.exec(/^(-?\d+(?:\.\d+)?)px$/, raw); if (mpx) return parseFloat(mpx[1]);
-      var parent = node.parentElement || (node.parentNode && node.parentNode.nodeType === 1 ? node.parentNode : null);
-      var mpc = $c.exec(/^(-?\d+(?:\.\d+)?)%$/, raw);
-      if (mpc) { var base = usedPx(parent, axis, depth + 1); return base == null ? null : (parseFloat(mpc[1]) / 100) * base; }
-      // width:auto in normal flow fills the containing block (block box); height:auto is content-driven (unknown here).
-      if ((raw === '' || raw === 'auto') && axis === 'width') return usedPx(parent, axis, depth + 1);
-      return null;
-    };
+  }
+  // Used-value resolution for percentage width/height. A no-layout env returns a raw "50%"
+  // verbatim, but a containing-block percentage has a well-defined used value in normal flow
+  // (pct * the containing block's content width/height), which a real browser reports in px.
+  // Resolve against the nearest ancestor with a px (or, for width, auto=fill) measure so
+  // getComputedStyle(child).width matches a browser without a full layout engine.
+  function computedUsedPx(cs, node, axis, depth){
+    if (!node || depth > 32) return null;
+    var raw;try{raw=node===cs.el?cs.decl[axis]:computedSnapshotValue(cs.parentStyle(node),axis);}catch(e){return null;}
+    raw = raw == null ? '' : String(raw);
+    var mpx = $c.exec(/^(-?\d+(?:\.\d+)?)px$/, raw); if (mpx) return parseFloat(mpx[1]);
+    var parent = node.parentElement || (node.parentNode && node.parentNode.nodeType === 1 ? node.parentNode : null);
+    var mpc = $c.exec(/^(-?\d+(?:\.\d+)?)%$/, raw);
+    if (mpc) { var base = computedUsedPx(cs, parent, axis, depth + 1); return base == null ? null : (parseFloat(mpc[1]) / 100) * base; }
+    // width:auto in normal flow fills the containing block (block box); height:auto is content-driven (unknown here).
+    if ((raw === '' || raw === 'auto') && axis === 'width') return computedUsedPx(cs, parent, axis, depth + 1);
+    return null;
+  }
+  function computedUsedSizes(cs){
+    var pseudo=cs.pseudo,layer=cs.layer,decl=cs.decl;
     // The fullscreen element's width / height (100% !important of the viewport, its
     // containing block as a fixed box) are the viewport's innerWidth / innerHeight in px
     // (turbo-dom#58); without a viewport they stay 100%.
@@ -1885,7 +1966,7 @@
       computedVolatile = true;
       [['width', g.innerWidth], ['height', g.innerHeight]].forEach(function(pair){
         var size = +pair[1];
-        if (size > 0 && cssFontFinite(size)) setProp(pair[0], ($Mround(size * 1000) / 1000) + 'px', true);
+        if (size > 0 && cssFontFinite(size)) cs.setProp(pair[0], ($Mround(size * 1000) / 1000) + 'px', true);
       });
     }
     // An embedder's layout answers the used size at read time (computedUsedSize); a box-less
@@ -1894,22 +1975,61 @@
       $c.forEach(['width', 'height'], function(axis){
         var raw = decl[axis];
         if (typeof raw === 'string' && $c.test(/^-?\d+(?:\.\d+)?%$/, $c.trim(raw))) {
-          var px = usedPx(el, axis, 0);
-          if (px != null && isFinite(px)) setProp(axis, ($Mround(px * 1000) / 1000) + 'px');
+          var px = computedUsedPx(cs, cs.el, axis, 0);
+          if (px != null && isFinite(px)) cs.setProp(axis, ($Mround(px * 1000) / 1000) + 'px');
         }
       });
     } catch(e){}
-    var fontState=computedFonts(decl,el,parentStyle,connected,pseudo,inheritSnapshot);
-    computedMathValues(decl,treeNames,fontState,connected,function(name,value){decl[name]=decl[camel(name)]=value;});
+  }
+  function computedFontDependents(cs,fontState){
+    var decl=cs.decl,connected=cs.connected,pseudo=cs.pseudo;
     // dialog:modal max-width / max-height: calc(100% - 6px - 2em) at the dialog's font size.
-    if (connected && !pseudo && layer === 'modal' && fontState && typeof fontState.size === 'number') {
+    if (connected && !pseudo && cs.layer === 'modal' && fontState && typeof fontState.size === 'number') {
       var inset = 'calc(100% - ' + cssFontString(cssFontNumber(cssApply(cssFontPrecision, 2 * fontState.size + 6, [6]))) + 'px)';
-      $c.forEach(['max-width', 'max-height'], function(name){ if (decl[name] == null) decl[name] = decl[camel(name)] = inset; });
+      $c.forEach(['max-width', 'max-height'], function(name){ if (decl[name] == null) decl[name] = decl[computedCamel(name)] = inset; });
     }
     // Custom properties inherit their specified text (turbo-dom#286).
-    if (connected && !pseudo && inheritParent) inheritCustomProperties(decl, parentStyle(inheritParent));
+    if (connected && !pseudo && cs.inheritParent) inheritCustomProperties(decl, cs.parentStyle(cs.inheritParent));
+  }
+  function computeStyleFresh(el,snapshots,sink,pseudo,deps,base){
+    var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
+    if(noteCascadeRun)noteCascadeRun();
+    // Percentage lookup may visit several ancestors before font inheritance asks
+    // for the immediate parent again. Reuse each resolved ancestor only in this read.
+    function parentStyle(node){var style=computeStyleSnapshot(node,snapshots);if(deps&&deps[deps.length-2]!==node){deps[deps.length]=node;deps[deps.length]=style;}return style;}
+    // An element of a child iframe document (turbo-dom#299) cascades as connected.
+    var inFrame = !!el && computedFrameRoot(el) !== null;
+    var unavailable = computedStyleUnavailable(el,snapshots,sink,pseudo,inFrame);
+    if (unavailable) return unavailable;
+    var cs = new ComputedCascade(el,snapshots,sink,pseudo,deps,base,inFrame);
+    // Properties are exposed both kebab and camelCase.
+    var decl = cs.decl = { __proto__:null, getPropertyValue: function(p){ var v = this[p]; if (v == null) v = this[computedCamel(p)]; return v == null ? '' : String(v); }, getPropertyPriority: function(){ return ''; }, length: 0 };
+    cs.priorities = {__proto__:null};
+    cs.parentStyle = parentStyle;
+    cs.setProp = function(name, val, important){ cascadeSetProp(cs, name, val, important); };
+    cs.info = computedPseudoInfoFor(el,pseudo,parentStyle);
+    cs.layer = computedLayerOf(el,pseudo,inFrame);
+    computedCascadeDecls(cs);
+    if (sink) { sink.values = computedSinkValues(decl); return null; }
+    computedInheritance(cs);
+    computedApplyAnimations(cs);
+    // Tree-counting functions take this element's counts; their style follows its siblings.
+    var treeNames=treeCountingValues(decl,el,pseudo);
+    computedColor(cs);
+    if (cs.connected) computedDisplayPosition(cs);
+    else if (decl.display == null) decl.display = '';
+    computedVisibility(cs);
+    computedContent(cs);
+    computedTransformValues(cs);
+    // `zoom` is not inherited; it computes to its factor, with normal and 0 as 1.
+    decl.zoom = cs.connected ? computedZoom(decl.zoom, function(){ return cs.inheritedValue('zoom'); }) : '';
+    computedNormalizeColorLonghands(cs);
+    computedUsedSizes(cs);
+    var fontState=computedFonts(decl,el,parentStyle,cs.connected,pseudo,cs.inheritSnapshot);
+    computedMathValues(decl,treeNames,fontState,cs.connected,function(name,value){decl[name]=decl[computedCamel(name)]=value;});
+    computedFontDependents(cs,fontState);
     // A connected element's unset properties compute lazily (computedDefault, turbo-dom#305).
-    var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,connected,inheritParent));
+    var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,cs.connected,cs.inheritParent));
     if(el&&!pseudo)computedSnapshotSet(snapshots,el,snapshot);
     return snapshot;
   }
