@@ -226,6 +226,57 @@
   var fontNormalLine=new FontLine('normal',0,undefined);
   // A child iframe document's root element is its own root (turbo-dom#299).
   function computedFontRoot(element,parent,root){return !parent&&computedFrameRoot(element)===element?element:root;}
+  function fontRaw(decl,name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||$c.test(/^(inherit|unset|revert|revert-layer)$/, key)?inheritedValue:key==='initial'?initialValue:value;}
+  function fontLength(value,base,rem,typedLine){
+    function term(text,scalar){
+      var match=$c.exec(/^((?:\d*\.)?\d+)(px|em|rem|%|pt|pc|in|cm|mm|q)?$/i, text);if(!match)return null;
+      var number=cssFontNumber(match[1]),unit=fontLower(match[2]||'');
+      var resolved=unit==='em'?(base===null?null:number*base):unit==='rem'?(rem===null?null:number*rem):unit==='%'?(base===null?null:number*base/100):unit?number*fontUnitScale[unit]:scalar||number===0?number:null;
+      return resolved!==null&&cssFontFinite(resolved)?new FontLength(resolved,unit?1:0):null;
+    }
+    function result(value){if(typedLine)return new FontLine(value&&value.dimension===0?'factor':'length',value?value.number:null,source);return value&&(value.dimension===1||value.number===0)?value.number:null;}
+    var source=value;
+    if(!$c.test(/^calc\(/i, value))return result(term(value,false));
+    var expression=$c.replace($c.replace(value, /calc\(/gi,'('), /\s+/g,''),tokens=[],cursor=0,tokenPattern=/(?:\d*\.)?\d+(?:[a-z]+|%)?|[()+*/-]/gi,tokenMatch;
+    tokenPattern.lastIndex=0;while((tokenMatch=$c.exec(tokenPattern,expression))!==null)$c.push(tokens,tokenMatch[0]);
+    if($c.join(tokens, '')!==expression)return result(null);
+    function atom(){var token=tokens[cursor++];if(token==='+'||token==='-'){var signed=atom();if(signed&&token==='-')signed.number=-signed.number;return signed;}if(token==='('){var grouped=sum();return tokens[cursor++]===')'?grouped:null;}return term(token||'',true);}
+    function product(){var value=atom();while(tokens[cursor]==='*'||tokens[cursor]==='/'){var operator=tokens[cursor++],right=atom();if(!value||!right||operator==='/'&&(right.number===0||right.dimension!==0)||operator==='*'&&value.dimension+right.dimension>1)return null;value=new FontLength(operator==='*'?value.number*right.number:value.number/right.number,operator==='*'?value.dimension+right.dimension:value.dimension);}return value;}
+    function sum(){var value=product();while(tokens[cursor]==='+'||tokens[cursor]==='-'){var operator=tokens[cursor++],right=product();if(!value||!right||value.dimension!==right.dimension)return null;value=new FontLength(operator==='+'?value.number+right.number:value.number-right.number,value.dimension);}return value;}
+    var calculated=sum();return result(cursor===tokens.length&&calculated&&cssFontFinite(calculated.number)?calculated:null);
+  }
+  function fontPixels(value){return cssFontString(cssFontNumber(cssApply(cssFontPrecision,value,[6])))+'px';}
+  // font-size keywords (`smaller` / `larger` / absolute) and the negative clamp.
+  function computedFontSize(sizeValue,inherited,rootSize,initialSize){
+    var size=typeof sizeValue==='number'?sizeValue:fontLength(sizeValue,inherited.size,rootSize);
+    var sizeKey=typeof sizeValue==='string'?fontLower(sizeValue):sizeValue;
+    if(size===null){if(sizeKey==='smaller')size=inherited.size===null?null:inherited.size/1.2;else if(sizeKey==='larger')size=inherited.size===null?null:inherited.size*1.2;else if(fontSizeKeywords[sizeKey])size=fontSizeKeywords[sizeKey]*initialSize/16;}
+    if(size!==null&&size<0)size=0;
+    return size;
+  }
+  // A value whose lower-cased form is one of `pattern`'s keywords reads lower-cased.
+  function fontKeyword(value,pattern){var key=fontLower(value);return $c.test(pattern, key)?key:value;}
+  function computedFontWeight(weight,inheritedWeight){
+    if(weight==='normal')weight='400';else if(weight==='bold')weight='700';else if(weight==='bolder')weight=cssFontNumber(inheritedWeight)<350?'400':cssFontNumber(inheritedWeight)<550?'700':'900';else if(weight==='lighter')weight=cssFontNumber(inheritedWeight)<550?'100':cssFontNumber(inheritedWeight)<750?'400':'700';
+    return weight;
+  }
+  function computedFontLine(decl,inherited,initial,size,rootSize){
+    var lineValue=decl['line-height'],lineKey=typeof lineValue==='string'?fontLower(lineValue):lineValue,line;
+    if(!lineValue||$c.test(/^(inherit|unset|revert|revert-layer)$/, lineKey))line=inherited.line;
+    else if($c.test(/^(normal|initial)$/, lineKey))line=initial.line;
+    else if($c.test(/^(?:\d*\.)?\d+$/, lineValue))line=new FontLine('factor',cssFontNumber(lineValue),undefined);
+    else line=fontLength(lineValue,size,rootSize,true);
+    if(line.value!==null&&line.value<0)line=new FontLine(line.kind,0,undefined);
+    return line;
+  }
+  function computedFontLineText(line,size){return line.kind==='normal'?'normal':line.value===null?line.text:line.kind==='factor'&&size===null?cssFontString(line.value):fontPixels(line.kind==='factor'?line.value*size:line.value);}
+  function computedFontAvailable(connected,context,parent,inherited,root,element){return !!(connected&&context&&context[4]&&(parent?inherited.active:root===element));}
+  function computedFontShorthand(style,caps,weight,stretch,sizeText,lineText,family){
+    var shorthand=[];
+    if(style!=='normal')$c.push(shorthand, style);if(caps!=='normal')$c.push(shorthand, caps);if(weight!=='400')$c.push(shorthand, weight);
+    if(stretch!=='100%'){var stretchName=$c.find($O.keys(fontStretchValues),function(key){return fontStretchValues[key]===stretch;});$c.push(shorthand, stretchName||stretch);}
+    $c.push(shorthand, sizeText);if(lineText!=='normal')$c.push(shorthand, '/ '+lineText);$c.push(shorthand, family);return $c.join(shorthand, ' ');
+  }
   function computedFonts(decl,element,parentStyle,connected,pseudo,parentSnapshot){
     var context=computedFontContext(element),parent=context&&context[2],root=context&&context[3];
     // A pseudo-element's parent is its originating element (or its parent pseudo-element).
@@ -235,54 +286,23 @@
     var inherited=parent?declarationRecords.get(parentSnapshot||parentStyle(parent)).fontState:null;
     var initial=new FontState(undefined,initialFamily,initialSize,undefined,'normal','400','100%','normal',fontNormalLine,initialSize);
     inherited=inherited||initial;
-    function raw(name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||$c.test(/^(inherit|unset|revert|revert-layer)$/, key)?inheritedValue:key==='initial'?initialValue:value;}
-    function length(value,base,rem,typedLine){
-      function term(text,scalar){
-        var match=$c.exec(/^((?:\d*\.)?\d+)(px|em|rem|%|pt|pc|in|cm|mm|q)?$/i, text);if(!match)return null;
-        var number=cssFontNumber(match[1]),unit=fontLower(match[2]||'');
-        var resolved=unit==='em'?(base===null?null:number*base):unit==='rem'?(rem===null?null:number*rem):unit==='%'?(base===null?null:number*base/100):unit?number*fontUnitScale[unit]:scalar||number===0?number:null;
-        return resolved!==null&&cssFontFinite(resolved)?new FontLength(resolved,unit?1:0):null;
-      }
-      function result(value){if(typedLine)return new FontLine(value&&value.dimension===0?'factor':'length',value?value.number:null,source);return value&&(value.dimension===1||value.number===0)?value.number:null;}
-      var source=value;
-      if(!$c.test(/^calc\(/i, value))return result(term(value,false));
-      var expression=$c.replace($c.replace(value, /calc\(/gi,'('), /\s+/g,''),tokens=[],cursor=0,tokenPattern=/(?:\d*\.)?\d+(?:[a-z]+|%)?|[()+*/-]/gi,tokenMatch;
-      tokenPattern.lastIndex=0;while((tokenMatch=$c.exec(tokenPattern,expression))!==null)$c.push(tokens,tokenMatch[0]);
-      if($c.join(tokens, '')!==expression)return result(null);
-      function atom(){var token=tokens[cursor++];if(token==='+'||token==='-'){var signed=atom();if(signed&&token==='-')signed.number=-signed.number;return signed;}if(token==='('){var grouped=sum();return tokens[cursor++]===')'?grouped:null;}return term(token||'',true);}
-      function product(){var value=atom();while(tokens[cursor]==='*'||tokens[cursor]==='/'){var operator=tokens[cursor++],right=atom();if(!value||!right||operator==='/'&&(right.number===0||right.dimension!==0)||operator==='*'&&value.dimension+right.dimension>1)return null;value=new FontLength(operator==='*'?value.number*right.number:value.number/right.number,operator==='*'?value.dimension+right.dimension:value.dimension);}return value;}
-      function sum(){var value=product();while(tokens[cursor]==='+'||tokens[cursor]==='-'){var operator=tokens[cursor++],right=product();if(!value||!right||value.dimension!==right.dimension)return null;value=new FontLength(operator==='+'?value.number+right.number:value.number-right.number,value.dimension);}return value;}
-      var calculated=sum();return result(cursor===tokens.length&&calculated&&cssFontFinite(calculated.number)?calculated:null);
-    }
-    function pixels(value){return cssFontString(cssFontNumber(cssApply(cssFontPrecision,value,[6])))+'px';}
     var rootSize=inherited.rootSize===undefined?initialSize:inherited.rootSize;
-    var sizeValue=raw('font-size',inherited.size===null?inherited.sizeText:inherited.size,initialSize),size=typeof sizeValue==='number'?sizeValue:length(sizeValue,inherited.size,rootSize);
-    var sizeKey=typeof sizeValue==='string'?fontLower(sizeValue):sizeValue;
-    if(size===null){if(sizeKey==='smaller')size=inherited.size===null?null:inherited.size/1.2;else if(sizeKey==='larger')size=inherited.size===null?null:inherited.size*1.2;else if(fontSizeKeywords[sizeKey])size=fontSizeKeywords[sizeKey]*initialSize/16;}
-    if(size!==null&&size<0)size=0;
-    var family=raw('font-family',inherited.family,initial.family),style=raw('font-style',inherited.style,initial.style),weight=cssFontString(raw('font-weight',inherited.weight,initial.weight));
-    var styleKey=fontLower(style);if($c.test(/^(normal|italic|oblique)$/, styleKey))style=styleKey;
-    var weightKey=fontLower(weight);if($c.test(/^(normal|bold|bolder|lighter)$/, weightKey))weight=weightKey;
+    var sizeValue=fontRaw(decl,'font-size',inherited.size===null?inherited.sizeText:inherited.size,initialSize),size=computedFontSize(sizeValue,inherited,rootSize,initialSize);
+    var family=fontRaw(decl,'font-family',inherited.family,initial.family),style=fontRaw(decl,'font-style',inherited.style,initial.style),weight=cssFontString(fontRaw(decl,'font-weight',inherited.weight,initial.weight));
+    style=fontKeyword(style,/^(normal|italic|oblique)$/);
+    weight=fontKeyword(weight,/^(normal|bold|bolder|lighter)$/);
     family=$c.join($c.map(cssParts(family,','), function(part){var name=$c.trim(part),key=fontLower(name);return $c.test(/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded|math|emoji|fangsong)$/, key)?key:name;}), ', ');
-    if(weight==='normal')weight='400';else if(weight==='bold')weight='700';else if(weight==='bolder')weight=cssFontNumber(inherited.weight)<350?'400':cssFontNumber(inherited.weight)<550?'700':'900';else if(weight==='lighter')weight=cssFontNumber(inherited.weight)<550?'100':cssFontNumber(inherited.weight)<750?'400':'700';
-    var stretch=raw('font-stretch',inherited.stretch,initial.stretch);
+    weight=computedFontWeight(weight,inherited.weight);
+    var stretch=fontRaw(decl,'font-stretch',inherited.stretch,initial.stretch);
     stretch=fontStretchValues[fontLower(stretch)]||stretch;
-    var caps=raw('font-variant-caps',raw('font-variant',inherited.caps,initial.caps),initial.caps);
-    var capsKey=fontLower(caps);if($c.test(/^(normal|small-caps|all-small-caps|petite-caps|all-petite-caps|unicase|titling-caps)$/, capsKey))caps=capsKey;
-    var lineValue=decl['line-height'],lineKey=typeof lineValue==='string'?fontLower(lineValue):lineValue,line;
-    if(!lineValue||$c.test(/^(inherit|unset|revert|revert-layer)$/, lineKey))line=inherited.line;
-    else if($c.test(/^(normal|initial)$/, lineKey))line=initial.line;
-    else if($c.test(/^(?:\d*\.)?\d+$/, lineValue))line=new FontLine('factor',cssFontNumber(lineValue),undefined);
-    else line=length(lineValue,size,rootSize,true);
-    if(line.value!==null&&line.value<0)line=new FontLine(line.kind,0,undefined);
-    var available=!!(connected&&context&&context[4]&&(parent?inherited.active:root===element));
+    var caps=fontRaw(decl,'font-variant-caps',fontRaw(decl,'font-variant',inherited.caps,initial.caps),initial.caps);
+    caps=fontKeyword(caps,/^(normal|small-caps|all-small-caps|petite-caps|all-petite-caps|unicase|titling-caps)$/);
+    var line=computedFontLine(decl,inherited,initial,size,rootSize);
+    var available=computedFontAvailable(connected,context,parent,inherited,root,element);
     var state=new FontState(available,family,size,cssFontString(sizeValue),style,weight,stretch,caps,line,root===element?size:rootSize);
-    var lineText=line.kind==='normal'?'normal':line.value===null?line.text:line.kind==='factor'&&size===null?cssFontString(line.value):pixels(line.kind==='factor'?line.value*size:line.value);
-    var values={'font-family':family,'font-size':size===null?cssFontString(sizeValue):pixels(size),'font-style':style,'font-weight':weight,'font-stretch':stretch,'font-variant-caps':caps,'line-height':lineText};
-    var shorthand=[];
-    if(style!=='normal')$c.push(shorthand, style);if(caps!=='normal')$c.push(shorthand, caps);if(weight!=='400')$c.push(shorthand, weight);
-    if(stretch!=='100%'){var stretchName=$c.find($O.keys(fontStretchValues),function(key){return fontStretchValues[key]===stretch;});$c.push(shorthand, stretchName||stretch);}
-    $c.push(shorthand, values['font-size']);if(lineText!=='normal')$c.push(shorthand, '/ '+lineText);$c.push(shorthand, family);values.font=$c.join(shorthand, ' ');
+    var lineText=computedFontLineText(line,size);
+    var values={'font-family':family,'font-size':size===null?cssFontString(sizeValue):fontPixels(size),'font-style':style,'font-weight':weight,'font-stretch':stretch,'font-variant-caps':caps,'line-height':lineText};
+    values.font=computedFontShorthand(style,caps,weight,stretch,values['font-size'],lineText,family);
     $c.forEach($O.keys(values), function(name){var value=available?values[name]:'';decl[name]=value;decl[$c.replace(name, /-([a-z])/g,function(_,letter){return $c.toUpperCase(letter);})]=value;});
     return state;
   }
@@ -332,26 +352,35 @@
   // empty declaration (invalid, or a form Chrome computes no style for), else the
   // pseudo-element: its lowercase name, functional ones with their argument (`highlight(x)`,
   // `picker(select)`).
+  // A functional pseudo-element argument: `name(` ... `)` per its kind.
+  function computedPseudoFunctional(name,rest,ident,colons){
+    var kind=computedPseudoFunctions[name];
+    if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!kind)return null;
+    var argument=$c.replace($c.slice(rest,ident.length+1,-1),/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g,''),word=cssIdentifierPrefix(argument);
+    if(kind==='direction'){var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';return scrollButtonDirections[direction]?name+'('+direction+')':null;}
+    if(!word||word.length!==argument.length)return null;
+    if(kind==='select')return word.name==='select'?name+'(select)':null;
+    return name+'('+argument+')';
+  }
+  // A non-functional name after one or two colons.
+  function computedPseudoPlain(name,colons,bare){
+    if(colons===1)return bare||name==='first-line'||name==='first-letter'?name:null;
+    if(computedPseudoNames[name])return name;
+    return name==='cue'||$c.slice(name,0,8)==='-webkit-'||$c.slice(name,0,10)==='-internal-'?'':null;
+  }
+  // No leading colon: only a bare before / after names a pseudo-element.
+  function computedPseudoUncoloned(name,rest,ident){
+    if(!ident)return '';if(ident.length<rest.length)return null;return name==='before'||name==='after'?name:'';
+  }
   function computedPseudoTarget(value){
     if(value===undefined||value===null)return '';
     var text=$c.replace(''+value,/\/\*[\s\S]*?(?:\*\/|$)/g,'');
     var colons=0;while(text[colons]===':')colons++;
     var rest=$c.slice(text,colons),ident=cssIdentifierPrefix(rest),name=ident&&ident.name;
-    var bare=name==='before'||name==='after';
-    if(colons===0){if(!ident)return '';if(ident.length<rest.length)return null;return bare?name:'';}
+    if(colons===0)return computedPseudoUncoloned(name,rest,ident);
     if(colons>2||!ident)return null;
-    if(ident.length<rest.length){
-      var kind=computedPseudoFunctions[name];
-      if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!kind)return null;
-      var argument=$c.replace($c.slice(rest,ident.length+1,-1),/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g,''),word=cssIdentifierPrefix(argument);
-      if(kind==='direction'){var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';return scrollButtonDirections[direction]?name+'('+direction+')':null;}
-      if(!word||word.length!==argument.length)return null;
-      if(kind==='select')return word.name==='select'?name+'(select)':null;
-      return name+'('+argument+')';
-    }
-    if(colons===1)return bare||name==='first-line'||name==='first-letter'?name:null;
-    if(computedPseudoNames[name])return name;
-    return name==='cue'||$c.slice(name,0,8)==='-webkit-'||$c.slice(name,0,10)==='-internal-'?'':null;
+    if(ident.length<rest.length)return computedPseudoFunctional(name,rest,ident,colons);
+    return computedPseudoPlain(name,colons,name==='before'||name==='after');
   }
   // Page-replaceable numeric and string intrinsics never participate in this read.
   var cssZoomFround=Math.fround,cssZoomExec=RegExp.prototype.exec,cssZoomTrim=String.prototype.trim;
@@ -652,26 +681,29 @@
   // functional pseudo-element's argument must match, `*` matching every one) and its
   // originating part matches `el`. `pseudo` is a computedPseudoTarget name, or a predicate
   // over the selector's pseudo-element name.
+  // Whether a selector item's pseudo-element (`name`, `argument`) is the `wanted` one.
+  function pseudoNameWanted(name, argument, wanted){
+    if (name !== wanted[1] || (argument === undefined) !== (wanted[2] === undefined)) return false;
+    if (argument !== undefined && argument !== '*' && wanted[2] !== '*') {
+      return wanted[1] === 'picker' || wanted[1] === 'scroll-button' ? $c.toLowerCase(argument) === wanted[2] : argument === wanted[2];
+    }
+    return true;
+  }
+  function pseudoItemMatches(el, item, wanted, pseudo){
+    var match = $c.exec(/(::?)([A-Za-z-]+)(?:\(\s*([^()]*?)\s*\))?$/, item);
+    if (!match || match.index > 0 && item[match.index - 1] === '\\') return false;
+    var name = $c.toLowerCase(match[2]), argument = match[3];
+    name = pseudoSelectorAliases[name] || name;
+    if (match[1] === ':' && !$c.test(/^(before|after|first-line|first-letter)$/, name)) return false;
+    if (wanted ? !pseudoNameWanted(name, argument, wanted) : !pseudo(name)) return false;
+    var origin = $c.slice(item, 0, match.index);
+    if (origin === '' || $c.test(/[\s>+~]$/, origin)) origin += '*';
+    return computedNativeMatches(el, origin);
+  }
   function pseudoRuleMatches(el, selectorText, pseudo){
     var items = selectorListItems(String(selectorText));
     var wanted = typeof pseudo === 'string' ? $c.exec(/^([a-z-]+)(?:\((.*)\))?$/, pseudo) : null;
-    for (var i = 0; i < items.length; i++) {
-      var item = $c.trim(items[i]), match = $c.exec(/(::?)([A-Za-z-]+)(?:\(\s*([^()]*?)\s*\))?$/, item);
-      if (!match || match.index > 0 && item[match.index - 1] === '\\') continue;
-      var name = $c.toLowerCase(match[2]), argument = match[3];
-      name = pseudoSelectorAliases[name] || name;
-      if (match[1] === ':' && !$c.test(/^(before|after|first-line|first-letter)$/, name)) continue;
-      if (wanted) {
-        if (name !== wanted[1] || (argument === undefined) !== (wanted[2] === undefined)) continue;
-        if (argument !== undefined && argument !== '*' && wanted[2] !== '*') {
-          var same = wanted[1] === 'picker' || wanted[1] === 'scroll-button' ? $c.toLowerCase(argument) === wanted[2] : argument === wanted[2];
-          if (!same) continue;
-        }
-      } else if (!pseudo(name)) continue;
-      var origin = $c.slice(item, 0, match.index);
-      if (origin === '' || $c.test(/[\s>+~]$/, origin)) origin += '*';
-      if (computedNativeMatches(el, origin)) return true;
-    }
+    for (var i = 0; i < items.length; i++) if (pseudoItemMatches(el, $c.trim(items[i]), wanted, pseudo)) return true;
     return false;
   }
   // turbo-dom#47: how a UA-styled pseudo-element computes in Chrome 156. Each kind lists the
@@ -733,48 +765,67 @@
     });
     return $c.test(/^inside$/i, position);
   }
+  // computedPseudoInfo's per-kind UA defaults, one writer per pseudo-element family.
+  function pseudoInfoMarker(info, el, parentStyle){
+    var inside = markerInside(el, parentStyle);
+    info.display = inside ? 'inline' : 'inline-block';
+    info.ua = { 'white-space': inside ? computedInheritedAuthored(el, 'white-space', parentStyle, 'normal') : 'pre', 'font-variant-numeric': 'tabular-nums', 'unicode-bidi': 'isolate', 'text-transform': 'none' };
+  }
+  function pseudoInfoHighlight(info){
+    info.highlight = true; info.container = false;
+    if (info.kind === 'spelling-error' || info.kind === 'grammar-error') info.ua = { 'text-decoration-line': info.kind };
+  }
+  function pseudoInfoPlaceholder(info, el, tag){
+    var input = tag === 'INPUT' && placeholderInputTypes[computedInputType(el)];
+    info.authored = (input || tag === 'TEXTAREA') && computedHasAttribute(el, 'placeholder');
+    if (info.authored) {
+      info.display = 'block';
+      info.ua = { 'color': 'rgb(117, 117, 117)', 'unicode-bidi': 'isolate' };
+      if (input) { info.ua['white-space'] = 'pre'; info.ua.overflow = 'hidden'; }
+      info.important = { 'pointer-events': 'none' };
+    }
+  }
+  function pseudoInfoFileButton(info, el, tag){
+    info.authored = tag === 'INPUT' && computedInputType(el) === 'file';
+    if (info.authored) {
+      info.display = 'inline-block';
+      info.ua = { 'background-color': 'rgb(239, 239, 239)', 'white-space': 'nowrap', 'padding': '1px 6px', 'margin': '0px 4px 0px 0px', 'border-width': '2px', 'border-style': 'outset', 'text-align': 'center', 'box-sizing': 'border-box', 'user-select': 'none' };
+    }
+  }
+  function pseudoInfoDetailsContent(info, el, tag){
+    info.authored = tag === 'DETAILS';
+    if (info.authored) { info.display = 'block'; info.ua = { 'content-visibility': computedHasAttribute(el, 'open') ? 'visible' : 'hidden' }; }
+  }
+  function pseudoInfoPicker(info, tag){
+    info.authored = tag === 'SELECT';
+    if (info.authored) { info.display = 'none'; info.position = 'fixed'; info.ua = { 'overflow': 'auto', 'white-space': 'normal', 'unicode-bidi': 'isolate' }; }
+  }
+  function pseudoInfoGenerated(info, kind, tag){
+    info.generated = true;
+    if (kind === 'picker-icon' && tag === 'SELECT') info.display = 'block';
+  }
+  function pseudoInfoViewTransition(info, kind){
+    info.display = 'block'; info.position = 'absolute';
+    info.ua = kind === 'view-transition' || kind === 'view-transition-image-pair' ? { 'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px' } : kind === 'view-transition-group' ? { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': '0px' } : { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': 'auto' };
+  }
+  // Fills `info` for `kind`; returns the kind pseudoAccepts reads (highlights share one).
+  function pseudoInfoForKind(info, kind, el, tag, parentStyle){
+    if (kind === 'marker') pseudoInfoMarker(info, el, parentStyle);
+    else if (kind === 'first-line' || kind === 'first-letter') info.container = kind === 'first-line';
+    else if (highlightPseudoNames[kind]) { pseudoInfoHighlight(info); return 'highlight'; }
+    else if (kind === 'placeholder') pseudoInfoPlaceholder(info, el, tag);
+    else if (kind === 'file-selector-button') pseudoInfoFileButton(info, el, tag);
+    else if (kind === 'details-content') pseudoInfoDetailsContent(info, el, tag);
+    else if (kind === 'picker') pseudoInfoPicker(info, tag);
+    else if (kind === 'checkmark' || kind === 'picker-icon') pseudoInfoGenerated(info, kind, tag);
+    else if (kind === 'scroll-marker-group') info.display = 'block';
+    else if ($c.slice(kind, 0, 15) === 'view-transition' && tag) pseudoInfoViewTransition(info, kind);
+    return kind;
+  }
   function computedPseudoInfo(el, pseudo, parentStyle){
     var kind = $c.replace(pseudo, /\(.*$/, ''), tag = computedHtmlTag(el);
     var info = { kind: kind, authored: true, accepts: null, ua: {}, important: null, display: 'inline', position: 'static', container: true, generated: false, highlight: false };
-    if (kind === 'marker') {
-      var inside = markerInside(el, parentStyle);
-      info.display = inside ? 'inline' : 'inline-block';
-      info.ua = { 'white-space': inside ? computedInheritedAuthored(el, 'white-space', parentStyle, 'normal') : 'pre', 'font-variant-numeric': 'tabular-nums', 'unicode-bidi': 'isolate', 'text-transform': 'none' };
-    } else if (kind === 'first-line' || kind === 'first-letter') {
-      info.container = kind === 'first-line';
-    } else if (highlightPseudoNames[kind]) {
-      info.highlight = true; info.container = false; kind = 'highlight';
-      if (info.kind === 'spelling-error' || info.kind === 'grammar-error') info.ua = { 'text-decoration-line': info.kind };
-    } else if (kind === 'placeholder') {
-      var input = tag === 'INPUT' && placeholderInputTypes[computedInputType(el)];
-      info.authored = (input || tag === 'TEXTAREA') && computedHasAttribute(el, 'placeholder');
-      if (info.authored) {
-        info.display = 'block';
-        info.ua = { 'color': 'rgb(117, 117, 117)', 'unicode-bidi': 'isolate' };
-        if (input) { info.ua['white-space'] = 'pre'; info.ua.overflow = 'hidden'; }
-        info.important = { 'pointer-events': 'none' };
-      }
-    } else if (kind === 'file-selector-button') {
-      info.authored = tag === 'INPUT' && computedInputType(el) === 'file';
-      if (info.authored) {
-        info.display = 'inline-block';
-        info.ua = { 'background-color': 'rgb(239, 239, 239)', 'white-space': 'nowrap', 'padding': '1px 6px', 'margin': '0px 4px 0px 0px', 'border-width': '2px', 'border-style': 'outset', 'text-align': 'center', 'box-sizing': 'border-box', 'user-select': 'none' };
-      }
-    } else if (kind === 'details-content') {
-      info.authored = tag === 'DETAILS';
-      if (info.authored) { info.display = 'block'; info.ua = { 'content-visibility': computedHasAttribute(el, 'open') ? 'visible' : 'hidden' }; }
-    } else if (kind === 'picker') {
-      info.authored = tag === 'SELECT';
-      if (info.authored) { info.display = 'none'; info.position = 'fixed'; info.ua = { 'overflow': 'auto', 'white-space': 'normal', 'unicode-bidi': 'isolate' }; }
-    } else if (kind === 'checkmark' || kind === 'picker-icon') {
-      info.generated = true;
-      if (kind === 'picker-icon' && tag === 'SELECT') info.display = 'block';
-    } else if (kind === 'scroll-marker-group') {
-      info.display = 'block';
-    } else if ($c.slice(kind, 0, 15) === 'view-transition' && tag) {
-      info.display = 'block'; info.position = 'absolute';
-      info.ua = kind === 'view-transition' || kind === 'view-transition-image-pair' ? { 'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px' } : kind === 'view-transition-group' ? { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': '0px' } : { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': 'auto' };
-    }
+    kind = pseudoInfoForKind(info, kind, el, tag, parentStyle);
     // ::view-transition > -group() > -image-pair() > -old() / -new().
     if ($c.slice(kind, 0, 16) === 'view-transition-') {
       var argument = $c.slice(pseudo, kind.length);
@@ -1343,21 +1394,32 @@
   var computedStateName=/^(?:checked|indeterminate|default|placeholder-shown|read-only|read-write|in-range|out-of-range|valid|invalid|user-valid|user-invalid|enabled|disabled|required|optional|popover-open|modal|open|active-view-transition|active-view-transition-type|interest-source|interest-target)$/i;
   var computedListFunction=/^(?:is|where|has|-webkit-any|matches)$/i;
   var computedRelaxed={__proto__:null},computedRelaxedCount=0;
+  // The index of the quote closing the string opened at `index` (escapes skipped).
+  function relaxStringEnd(text,index,c){var end=index+1;while(end<text.length&&text[end]!==c){if(text[end]==='\\')end++;end++;}return end;}
+  // The index after the `)` closing the argument opened before `after + 1`; -1 on an escape.
+  function relaxArgumentClose(text,after){
+    var depth=1,close=after+1;
+    while(close<text.length&&depth){var d=text[close];if(d==='\\')return -1;if(d==='"'||d==="'"){var q=close+1;while(q<text.length&&text[q]!==d)q++;close=q+1;continue;}if(d==='(')depth++;else if(d===')')depth--;close++;}
+    return close;
+  }
+  // A functional pseudo-class `:name(inner)` relaxed: states match anything, lists recurse.
+  function relaxFunctionalPseudo(text,index,name,inner,close){
+    if(cssApply(cssZoomExec,computedStateName,[name]))return ':is(*)';
+    if(cssApply(cssZoomExec,computedListFunction,[name]))return ':'+name+'('+computedRelaxSelector(inner)+')';
+    return cssApply(cssZoomExec,computedStatePattern,[inner])?':is(*)':$c.slice(text, index,close);
+  }
   function computedRelaxSelector(text){
     var out='',index=0;
     while(index<text.length){
       var c=text[index];
       if(c==='\\')return '*';
-      if(c==='"'||c==="'"){var end=index+1;while(end<text.length&&text[end]!==c){if(text[end]==='\\')end++;end++;}out+=$c.slice(text, index,end+1);index=end+1;continue;}
+      if(c==='"'||c==="'"){var end=relaxStringEnd(text,index,c);out+=$c.slice(text, index,end+1);index=end+1;continue;}
       if(c!==':'||text[index+1]===':'){if(c===':'){out+='::';index+=2;continue;}out+=c;index++;continue;}
       var name=cssApply(cssZoomExec,/^[A-Za-z0-9_-]*/,[$c.slice(text, index+1)])[0],after=index+1+name.length;
       if(text[after]!=='('){out+=cssApply(cssZoomExec,computedStateName,[name])?':is(*)':':'+name;index=after;continue;}
-      var depth=1,close=after+1;
-      while(close<text.length&&depth){var d=text[close];if(d==='\\')return '*';if(d==='"'||d==="'"){var q=close+1;while(q<text.length&&text[q]!==d)q++;close=q+1;continue;}if(d==='(')depth++;else if(d===')')depth--;close++;}
-      var inner=$c.slice(text, after+1,close-1);
-      if(cssApply(cssZoomExec,computedStateName,[name]))out+=':is(*)';
-      else if(cssApply(cssZoomExec,computedListFunction,[name]))out+=':'+name+'('+computedRelaxSelector(inner)+')';
-      else out+=cssApply(cssZoomExec,computedStatePattern,[inner])?':is(*)':$c.slice(text, index,close);
+      var close=relaxArgumentClose(text,after);
+      if(close<0)return '*';
+      out+=relaxFunctionalPseudo(text,index,name,$c.slice(text, after+1,close-1),close);
       index=close;
     }
     return out;
