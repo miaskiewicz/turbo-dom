@@ -109,6 +109,42 @@ function assertNotAncestor(parent, node) {
     if (n === node) throw domError('HierarchyRequestError', 'The new child element contains the parent.');
   }
 }
+// Does inserting `node` into `parent` run inside a [CEReactions] scope (a custom element
+// registry on either document, and not already in one)?
+function insertNeedsReactions(parent, node) {
+  return (parent.ownerDocument.__ceRegistry !== undefined || node.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0;
+}
+function hasCeRegistry(doc) {
+  return doc !== null && doc.__ceRegistry !== undefined;
+}
+// The previous sibling of a node just inserted into `kids` (at `i` before `ref`, or last).
+function insertedPrevious(kids, ref, i) {
+  return ref ? kids[i - 1] ?? null : kids[kids.length - 2] ?? null;
+}
+// Range extract / clone helpers. The character data [from, to) of `node` goes to `frag`
+// (removed from `node` when `move`).
+function cutData(frag, node, from, to, move) {
+  const copy = node.cloneNode(false);
+  copy.data = node.substringData(from, to - from);
+  frag.appendChild(copy);
+  if (move) node.replaceData(from, to - from, '');
+}
+// The child of `common` that is an inclusive ancestor of `n`.
+function childOfAncestor(n, common) {
+  while (n.parentNode !== common) n = n.parentNode;
+  return n;
+}
+// A partially contained child `node` of the range's common ancestor: its data within
+// [fromOff, toOff) when it is character data (then from = to = node), else a shallow clone
+// holding the extract of the sub-range (from, fromOff)..(to, toOff).
+function extractPartial(doc, frag, move, node, from, fromOff, to, toOff) {
+  if (isCharData(node)) { cutData(frag, node, fromOff, toOff, move); return; }
+  const copy = node.cloneNode(false);
+  frag.appendChild(copy);
+  const sub = new Range(doc);
+  sub.startContainer = from; sub.startOffset = fromOff; sub.endContainer = to; sub.endOffset = toOff;
+  copy.appendChild(sub.__extract(move));
+}
 // DOM "valid element local name" (createElement / createElementNS, Chrome 156): an ASCII
 // letter followed by anything but ASCII whitespace, NULL, '/' and '>'; or ':', '_' or a
 // non-ASCII code point followed by ASCII alphanumerics, '-', '.', ':', '_' and non-ASCII.
@@ -116,21 +152,24 @@ function validLocalName(name) {
   const n = name.length;
   if (n === 0) return false;
   const c0 = name.charCodeAt(0) | 0x20;
-  if (c0 >= 97 && c0 <= 122) {
-    for (let i = 1; i < n; i++) {
-      const c = name.charCodeAt(i);
-      if (c <= 32 ? c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 0 : c === 47 || c === 62) return false;
-    }
-    return true;
-  }
+  if (c0 >= 97 && c0 <= 122) return lettersNameRestValid(name);
   const first = name.charCodeAt(0);
   if (first !== 58 && first !== 95 && first < 0x80) return false;
-  for (let i = 1; i < n; i++) {
+  for (let i = 1; i < n; i++) if (!isLocalNameCodeUnit(name.charCodeAt(i))) return false;
+  return true;
+}
+// After a leading ASCII letter: anything but ASCII whitespace, NULL, '/' and '>'.
+function lettersNameRestValid(name) {
+  for (let i = 1; i < name.length; i++) {
     const c = name.charCodeAt(i);
-    if (c >= 0x80 || c === 45 || c === 46 || c === 58 || c === 95 || (c >= 48 && c <= 57) || ((c | 0x20) >= 97 && (c | 0x20) <= 122)) continue;
-    return false;
+    if (c <= 32 ? c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 0 : c === 47 || c === 62) return false;
   }
   return true;
+}
+// After a leading ':', '_' or non-ASCII code point: ASCII alphanumerics, '-', '.', ':',
+// '_' and non-ASCII.
+function isLocalNameCodeUnit(c) {
+  return c >= 0x80 || c === 45 || c === 46 || c === 58 || c === 95 || (c >= 48 && c <= 57) || ((c | 0x20) >= 97 && (c | 0x20) <= 122);
 }
 // DOM "valid namespace prefix": non-empty, no ASCII whitespace, NULL, '/' or '>'.
 function validPrefix(prefix) {
@@ -140,6 +179,25 @@ function validPrefix(prefix) {
     if (c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 0 || c === 47 || c === 62) return false;
   }
   return true;
+}
+// createElementNS "validate and extract": { prefix (null without a colon), local }; throws
+// InvalidCharacterError on an invalid prefix or local name.
+function splitQualifiedName(qualified) {
+  let prefix = null, local = qualified;
+  const colon = qualified.indexOf(':');
+  if (colon !== -1) {
+    prefix = qualified.slice(0, colon);
+    const end = qualified.indexOf(':', colon + 1);
+    local = end === -1 ? qualified.slice(colon + 1) : qualified.slice(colon + 1, end);
+    if (!validPrefix(prefix)) throw invalidName(qualified);
+  }
+  if (!validLocalName(local)) throw invalidName(qualified);
+  return { prefix, local };
+}
+// createElementNS's NamespaceError conditions.
+function namespaceMismatch(ns, qualified, prefix) {
+  return (prefix !== null && ns === null) || (prefix === 'xml' && ns !== XML_NS)
+    || ((qualified === 'xmlns' || prefix === 'xmlns') !== (ns === XMLNS_NS));
 }
 const invalidName = (name) => domError('InvalidCharacterError', `The qualified name provided ('${name}') contains the invalid name-start character or invalid character.`);
 
@@ -212,7 +270,7 @@ export class Node extends EventTarget {
   appendChild(node) { return this.insertBefore(node, null); }
 
   insertBefore(node, ref) {
-    if ((this.ownerDocument.__ceRegistry !== undefined || node.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0) return withReactions(METHOD.insertBefore, this, [node, ref]);
+    if (insertNeedsReactions(this, node)) return withReactions(METHOD.insertBefore, this, [node, ref]);
     // DOM "pre-insert": check the reference child before touching the tree, and a node
     // inserted before itself goes before its next sibling (miaskiewicz/turbo-dom#34)
     assertNotAncestor(this, node);
@@ -227,12 +285,11 @@ export class Node extends EventTarget {
     if (liveRanges.length !== 0) liveInsert(this, ref ? i : kids.length, 1);
     if (ref) kids.splice(i, 0, node); else kids.push(node);
     node.parentNode = this;
-    if (moQuiet === 0) notifyMutation(this, 'childList', node, null, ref || null, null, null, ref ? kids[i - 1] ?? null : kids[kids.length - 2] ?? null);
+    if (moQuiet === 0) notifyMutation(this, 'childList', node, null, ref || null, null, null, insertedPrevious(kids, ref, i));
     else this.__touch();
     // custom elements (custom-elements.mjs): upgrades + connectedCallback, only once a
     // registry exists — one predicted-false read otherwise
-    const doc = this.ownerDocument;
-    if (doc !== null && doc.__ceRegistry !== undefined) insertedNode(node);
+    if (hasCeRegistry(this.ownerDocument)) insertedNode(node);
     return node;
   }
 
@@ -1351,8 +1408,33 @@ const observed = (node) => { const d = node.ownerDocument; return d !== null && 
 // DOM "insert a fragment" / "replace all" for the multi-node APIs: the nodes leave their old
 // parents (recorded there), \`replaced\` children of \`parent\` go, and the nodes go in before
 // \`ref\` (after it when \`afterRef\`; null = at the start) — ONE childList record, as in Chrome.
-function insertBatch(parent, nodes, ref, replaced, afterRef = false) {
-  for (const n of nodes) assertNotAncestor(parent, n);
+// Document.__inflateNested helpers: an element (attributes, `is`, template contents) and a
+// container's children (the template `content` fragment is not a child).
+const isContentFragment = (c) => c.nodeType === DOCUMENT_FRAGMENT_NODE && c.name === 'content';
+function inflateNestedElement(doc, raw) {
+  const node = newElement(doc, raw.name, raw.namespace || '');
+  node.__attrs = raw.attrs.map((a) => ({ name: a.name, value: a.value, prefix: a.prefix || '' }));
+  // the fragment parser reads `is` at creation, like the initial parse (custom-elements.mjs)
+  if (node.__ns === '' && raw.attrs.length !== 0) parsedIsAttribute(node);
+  if (raw.name === 'template') {
+    const contentRaw = raw.children.find(isContentFragment);
+    if (contentRaw) node.__content = doc.__templateDocument().__inflateNested(contentRaw);
+  }
+  return node;
+}
+function inflateNestedKids(doc, raw, node) {
+  const kids = [];
+  for (const rc of raw.children) {
+    if (isContentFragment(rc)) continue;
+    const child = doc.__inflateNested(rc);
+    child.parentNode = node;
+    kids.push(child);
+  }
+  return kids;
+}
+// The nodes to insert, in order: a fragment's children (emptied, ONE record on the
+// fragment) or the node itself (removed from its old parent).
+function detachForInsert(nodes) {
   const flat = [];
   for (const n of nodes) {
     if (n.nodeType === DOCUMENT_FRAGMENT_NODE) {
@@ -1366,6 +1448,11 @@ function insertBatch(parent, nodes, ref, replaced, afterRef = false) {
       flat.push(n);
     }
   }
+  return flat;
+}
+function insertBatch(parent, nodes, ref, replaced, afterRef = false) {
+  for (const n of nodes) assertNotAncestor(parent, n);
+  const flat = detachForInsert(nodes);
   const before = afterRef ? (ref === null ? parent.firstChild : ref.nextSibling) : ref;
   const gone = replaced.filter((c) => c.parentNode === parent);
   let previous;
@@ -1644,36 +1731,16 @@ class Range {
     const frag = this.__doc.createDocumentFragment();
     if (this.collapsed) return frag;
     const sc = this.startContainer, so = this.startOffset, ec = this.endContainer, eo = this.endOffset;
-    const cutData = (node, from, to) => {
-      const copy = node.cloneNode(false);
-      copy.data = node.substringData(from, to - from);
-      frag.appendChild(copy);
-      if (move) node.replaceData(from, to - from, '');
-    };
-    if (sc === ec && isCharData(sc)) { cutData(sc, so, eo); if (move) this.collapse(true); return frag; }
+    if (sc === ec && isCharData(sc)) { cutData(frag, sc, so, eo, move); if (move) this.collapse(true); return frag; }
     const common = this.commonAncestorContainer;
-    const childOf = (n) => { while (n.parentNode !== common) n = n.parentNode; return n; };
-    const firstPartial = isInclusiveAncestor(sc, ec) ? null : childOf(sc);
-    const lastPartial = isInclusiveAncestor(ec, sc) ? null : childOf(ec);
+    const firstPartial = isInclusiveAncestor(sc, ec) ? null : childOfAncestor(sc, common);
+    const lastPartial = isInclusiveAncestor(ec, sc) ? null : childOfAncestor(ec, common);
     const contained = common.__children().filter((c) => this.__contains(c));
     if (contained.some((c) => c.nodeType === DOCUMENT_TYPE_NODE)) throw domError('HierarchyRequestError', 'A doctype cannot be extracted.');
     const [newNode, newOffset] = move ? this.__collapsePoint() : [null, 0];
-    const partial = (node, from, fromOff, to, toOff) => {
-      const copy = node.cloneNode(false);
-      frag.appendChild(copy);
-      const sub = new Range(this.__doc);
-      sub.startContainer = from; sub.startOffset = fromOff; sub.endContainer = to; sub.endOffset = toOff;
-      copy.appendChild(sub.__extract(move));
-    };
-    if (firstPartial) {
-      if (isCharData(firstPartial)) cutData(firstPartial, so, nodeLength(firstPartial));
-      else partial(firstPartial, sc, so, firstPartial, nodeLength(firstPartial));
-    }
+    if (firstPartial) extractPartial(this.__doc, frag, move, firstPartial, sc, so, firstPartial, nodeLength(firstPartial));
     for (const c of contained) frag.appendChild(move ? c : c.cloneNode(true));
-    if (lastPartial) {
-      if (isCharData(lastPartial)) cutData(lastPartial, 0, eo);
-      else partial(lastPartial, lastPartial, 0, ec, eo);
-    }
+    if (lastPartial) extractPartial(this.__doc, frag, move, lastPartial, lastPartial, 0, ec, eo);
     if (move) { this.startContainer = this.endContainer = newNode; this.startOffset = this.endOffset = newOffset; }
     return frag;
   }
@@ -2031,19 +2098,22 @@ function declarationEntries(prop, text) {
 // WHATWG value-sanitization per input type. Returns the accepted value, or null
 // if invalid (caller leaves the current value unchanged — like a real browser,
 // which rejects partial/garbage input rather than storing it).
+// The value syntax of the types whose invalid values sanitize to null.
+const INPUT_VALUE_SYNTAX = new Map([
+  ['date', /^\d{4}-\d{2}-\d{2}$/],
+  ['month', /^\d{4}-\d{2}$/],
+  ['week', /^\d{4}-W\d{2}$/],
+  ['time', /^\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?$/],
+  ['datetime-local', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/],
+  ['number', /^-?\d*\.?\d+(e[-+]?\d+)?$/i],
+]);
 function sanitizeInputValue(type, v) {
   if (v === '') return '';
-  switch (type) {
-    case 'date': return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
-    case 'month': return /^\d{4}-\d{2}$/.test(v) ? v : null;
-    case 'week': return /^\d{4}-W\d{2}$/.test(v) ? v : null;
-    case 'time': return /^\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?$/.test(v) ? v : null;
-    case 'datetime-local': return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(v) ? v : null;
-    case 'number': return /^-?\d*\.?\d+(e[-+]?\d+)?$/i.test(v) ? v : null;
-    case 'range': return /^-?\d*\.?\d+$/.test(v) ? v : '50';
-    case 'color': return /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : null;
-    default: return v; // text, email, password, search, url, tel, hidden, etc.
-  }
+  if (type === 'range') return /^-?\d*\.?\d+$/.test(v) ? v : '50';
+  if (type === 'color') return /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : null;
+  const syntax = INPUT_VALUE_SYNTAX.get(type);
+  if (syntax === undefined) return v; // text, email, password, search, url, tel, hidden, etc.
+  return syntax.test(v) ? v : null;
 }
 
 // element.dataset — camelCase <-> data-* attribute mapping.
@@ -2134,26 +2204,36 @@ function notifyMutation(target, type, added, removed, nextSibling, attributeName
   // attributeChangedCallback: queued after the mutation record, like Chrome
   if (type === 'attributes' && doc.__ceRegistry !== undefined) attributeChanged(target, attributeName, oldValue);
 }
+// One node, or the node list of a batched change (insertBatch, innerHTML, textContent).
+function recordNodes(nodes) {
+  return Array.isArray(nodes) ? nodes : nodes ? [nodes] : EMPTY_NODES;
+}
+// Does a registration observing `obsTarget` with `options` see a `type` change of `target`?
+function observes(options, obsTarget, target, type, attributeName) {
+  const onTarget = target === obsTarget;
+  const inSubtree = options.subtree && isDescendant(target, obsTarget);
+  if (!onTarget && !inSubtree) return false;
+  if (type === 'childList') return options.childList;
+  if (type === 'attributes') return options.attributes && (!options.attributeFilter || options.attributeFilter.includes(attributeName));
+  return type !== 'characterData' || options.characterData;
+}
+function recordOldValue(options, type, oldValue) {
+  const wanted = (type === 'attributes' && options.attributeOldValue) ||
+                 (type === 'characterData' && options.characterDataOldValue);
+  return wanted ? (oldValue ?? null) : null;
+}
 function queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue, previousSibling) {
-  // one node, or the node list of a batched change (insertBatch, innerHTML, textContent)
-  const addedNodes = Array.isArray(added) ? added : added ? [added] : EMPTY_NODES;
-  const removedNodes = Array.isArray(removed) ? removed : removed ? [removed] : EMPTY_NODES;
+  const addedNodes = recordNodes(added);
+  const removedNodes = recordNodes(removed);
   for (const reg of mo) {
     const { obs, target: obsTarget, options } = reg;
-    const onTarget = target === obsTarget;
-    const inSubtree = options.subtree && isDescendant(target, obsTarget);
-    if (!onTarget && !inSubtree) continue;
-    if (type === 'childList' && !options.childList) continue;
-    if (type === 'attributes' && !options.attributes) continue;
-    if (type === 'attributes' && options.attributeFilter && !options.attributeFilter.includes(attributeName)) continue;
-    if (type === 'characterData' && !options.characterData) continue;
+    if (!observes(options, obsTarget, target, type, attributeName)) continue;
     const rec = {
       type, target,
       addedNodes, removedNodes,
       previousSibling: previousSibling || null, nextSibling: nextSibling || null,
       attributeName: attributeName || null, attributeNamespace: null,
-      oldValue: (type === 'attributes' && options.attributeOldValue) ||
-                (type === 'characterData' && options.characterDataOldValue) ? (oldValue ?? null) : null,
+      oldValue: recordOldValue(options, type, oldValue),
     };
     obs.__enqueue(rec);
     doc.__scheduleMO(obs);
@@ -2281,32 +2361,14 @@ export class Document extends Node {
   __inflateNested(raw) {
     let node;
     switch (raw.nodeType) {
-      case ELEMENT_NODE:
-        node = newElement(this, raw.name, raw.namespace || '');
-        node.__attrs = raw.attrs.map((a) => ({ name: a.name, value: a.value, prefix: a.prefix || '' }));
-        // the fragment parser reads `is` at creation, like the initial parse (custom-elements.mjs)
-        if (node.__ns === '' && raw.attrs.length !== 0) parsedIsAttribute(node);
-        if (raw.name === 'template') {
-          const contentRaw = raw.children.find((c) => c.nodeType === DOCUMENT_FRAGMENT_NODE && c.name === 'content');
-          if (contentRaw) node.__content = this.__templateDocument().__inflateNested(contentRaw);
-        }
-        break;
+      case ELEMENT_NODE: node = inflateNestedElement(this, raw); break;
       case TEXT_NODE: node = new Text(this, raw.value); break;
       case COMMENT_NODE: node = new Comment(this, raw.value); break;
       case DOCUMENT_TYPE_NODE: node = new DocumentType(this, raw.name, raw.publicId, raw.systemId); break;
       case DOCUMENT_FRAGMENT_NODE: node = new DocumentFragment(this); break;
       default: node = new Comment(this, ''); break;
     }
-    if (raw.nodeType !== TEXT_NODE && raw.nodeType !== COMMENT_NODE && raw.nodeType !== DOCUMENT_TYPE_NODE) {
-      const kids = [];
-      for (const rc of raw.children) {
-        if (rc.nodeType === DOCUMENT_FRAGMENT_NODE && rc.name === 'content') continue;
-        const child = this.__inflateNested(rc);
-        child.parentNode = node;
-        kids.push(child);
-      }
-      node.__kids = kids;
-    }
+    if (raw.nodeType !== TEXT_NODE && raw.nodeType !== COMMENT_NODE && raw.nodeType !== DOCUMENT_TYPE_NODE) node.__kids = inflateNestedKids(this, raw, node);
     return node;
   }
 
@@ -2358,17 +2420,8 @@ export class Document extends Node {
   createElementNS(namespace, qualifiedName, options) {
     const ns = namespace === null || namespace === undefined || namespace === '' ? null : String(namespace);
     const qualified = String(qualifiedName);
-    let prefix = null, local = qualified;
-    const colon = qualified.indexOf(':');
-    if (colon !== -1) {
-      prefix = qualified.slice(0, colon);
-      const end = qualified.indexOf(':', colon + 1);
-      local = end === -1 ? qualified.slice(colon + 1) : qualified.slice(colon + 1, end);
-      if (!validPrefix(prefix)) throw invalidName(qualified);
-    }
-    if (!validLocalName(local)) throw invalidName(qualified);
-    if ((prefix !== null && ns === null) || (prefix === 'xml' && ns !== XML_NS)
-      || ((qualified === 'xmlns' || prefix === 'xmlns') !== (ns === XMLNS_NS))) {
+    const { prefix, local } = splitQualifiedName(qualified);
+    if (namespaceMismatch(ns, qualified, prefix)) {
       throw domError('NamespaceError', `The namespace and qualified name ('${qualified}') do not match.`);
     }
     const el = ns === HTML_NS && (this.__ceRegistry !== undefined || options !== undefined)
