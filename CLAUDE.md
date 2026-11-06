@@ -114,7 +114,10 @@ closures are scored on their own), installed from its home rather than copied he
 923c89f791f3a89cb089a59626a25cef0a9cbd5f cc-check` (CI pins the same rev). It scans every
 tracked `.rs` file (`git ls-files`, so the generated `crates/turbo-dom-v8/crate/` is never
 scanned). JS uses oxlint's ESLint-compatible `complexity` rule (pinned `oxlint@1.87.0` via npx,
-no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`. **0.8.0 flips both
+no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`; the vendored xpath@0.0.35
+drop (`crates/turbo-dom-browser-env/src/xpath_provider/xpath.js`) is excluded by the config's
+`ignorePatterns`, because it must stay byte-identical to upstream (its README pins the
+SHA-256). **0.8.0 flips both
 jobs blocking at cc ≤ 15**: the pre-release refactor (turbo-dom#297) drives the Rust and JS
 counts to zero, and the workflow drops `continue-on-error` on both jobs so a new
 cc > 15 function fails CI and blocks `publish.yml` like any other required check. The

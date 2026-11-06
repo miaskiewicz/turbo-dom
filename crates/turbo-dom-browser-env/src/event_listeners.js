@@ -55,15 +55,19 @@
   const aborted=signal=>{const value=native("aborted",signal);if(typeof value!=="boolean")throw new ErrorType("Signal must be an AbortSignal");return value;};
   let signalAdd=g.AbortSignal.prototype.addEventListener,signalRemove=g.AbortSignal.prototype.removeEventListener;
   g.__captureWindowEventInterfaces=interfaces=>{const signal=interfaces.AbortSignal;if(signal&&typeof signal[0]==='function'){signalGetter=signal[0];signalAdd=signal[1];signalRemove=signal[2];}};
+  // Reads an options dictionary (or the legacy capture boolean) into a listener record.
+  function readOptions(record,options,remove){
+    if(options!=null&&(typeof options==='object'||typeof options==='function')){
+      record.capture=!!options.capture;
+      if(!remove){record.once=!!options.once;const value=options.passive;if(value!==undefined)record.passive=!!value;let signal=options.signal;if(signal===undefined)signal=null;else aborted(signal);record.signal=signal;}
+    }else record.capture=!!options;
+  }
   function flatten(type,callback,options,remove=false,passiveDefault=false){
     type=string(type);
     if(callback!=null&&typeof callback!=='function'&&typeof callback!=='object')throw new ErrorType('Listener must be an object');
-    let capture=false,once=false,passive=passiveDefault&&(type==='touchstart'||type==='touchmove'||type==='wheel'||type==='mousewheel'),signal=null;
-    if(options!=null&&(typeof options==='object'||typeof options==='function')){
-      capture=!!options.capture;
-      if(!remove){once=!!options.once;const value=options.passive;if(value!==undefined)passive=!!value;signal=options.signal;if(signal===undefined)signal=null;else aborted(signal);}
-    }else capture=!!options;
-    return {__proto__:null,type,callback:callback??null,capture,once,passive,signal,removed:false,abortHook:null};
+    const record={__proto__:null,type,callback:callback??null,capture:false,once:false,passive:passiveDefault&&(type==='touchstart'||type==='touchmove'||type==='wheel'||type==='mousewheel'),signal:null,removed:false,abortHook:null};
+    readOptions(record,options,remove);
+    return record;
   }
   ns.eventTargetNativeBrand=receiver=>!!native('targetGet',receiver);
   function targetRecord(receiver){const record=native('targetGet',receiver);if(!record)throw new ErrorType('Illegal invocation');return record;}
@@ -90,10 +94,12 @@
     if(this!==g)throw new ErrorType('Illegal invocation');if(arguments.length<2)throw new ErrorType('removeEventListener requires 2 arguments');
     const wanted=flatten(type,callback,options,true);for(let index=0,list=slice(get(wanted.type)||[]);index<list.length;index++){const record=list[index];if(!record.removed&&!record.handler&&record.callback===wanted.callback&&record.capture===wanted.capture)remove(record);}
   }
+  // An on* handler: error events pass their five arguments and cancel on true.
+  function callHandler(event,state,record){let args,special=false;if(state.type==='error'){const values=native('error',event);if(values){args=values;special=true;}}const result=native('call',event,record.callback,g,args);if(state.cancelable&&(special?result===true:result===false))state.defaultPrevented=true;}
   function invoke(event,capture,phase){
     const state=readEvent(event),records=slice(get(state.type)||[]);state.currentTarget=g;state.eventPhase=phase;
     for(let index=0;index<records.length;index++){const record=records[index];if(state.stopImmediate)break;if(record.removed||(capture!==null&&record.capture!==capture)||record.signal&&aborted(record.signal))continue;if(record.once)remove(record);state.passive=record.passive;
-      try{if(record.handler){let args,special=false;if(state.type==='error'){const values=native('error',event);if(values){args=values;special=true;}}const result=native('call',event,record.callback,g,args);if(state.cancelable&&(special?result===true:result===false))state.defaultPrevented=true;}else native('call',event,record.callback,g);}finally{state.passive=false;}
+      try{if(record.handler)callHandler(event,state,record);else native('call',event,record.callback,g);}finally{state.passive=false;}
     }
   }
   function dispatch(event,host=false){
