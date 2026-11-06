@@ -6,6 +6,8 @@ Release **0.8.0**. turbo-dom is the shared browser-engine base of three projects
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
 - **[turbo-surf](https://github.com/miaskiewicz/turbo-surf)**, a headless browser that uses the DOM, the V8 binding, the layout engine and the screenshot painter.
 
+> Agents: start at [docs/AGENTS.md](docs/AGENTS.md) for the one-command workflows in `scripts/agent/`.
+
 turbo-dom is also a standalone npm package: a fast, spec-correct DOM environment for
 **vitest** and **jest**, usable in place of jsdom or happy-dom.
 
