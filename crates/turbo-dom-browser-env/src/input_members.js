@@ -142,80 +142,104 @@
     const quotient = divide(value, divisor);
     return quotient.kind !== NORMAL ? quotient : subtract(value, multiply(quotient.negative ? ceilOf(quotient) : floorOf(quotient), divisor));
   };
-  // Decimal::FromString's state machine: digits past the 18th only scale the exponent.
-  const parseDecimal = (text) => {
-    let state = 'start', negative = false, exponent = 0, exponentNegative = false, count = 0, afterDot = 0, extra = 0, accumulator = 0n;
-    for (let index = 0; index < text.length; index++) {
-      const code = apply(charCode, text, [index]), digit = code >= 48 && code <= 57, value = BigInt(code - 48);
-      if (state === 'digit') {
-        if (digit) { if (count < PRECISION) { count++; accumulator = accumulator * 10n + value; } else extra++; continue; }
-        if (code === 46) { state = 'dot'; continue; }
-        if (code === 69 || code === 101) { state = 'e'; continue; }
-        return NAN;
-      }
-      if (state === 'dot' || state === 'dot-digit') {
-        if (digit) { if (count < PRECISION) { count++; afterDot++; accumulator = accumulator * 10n + value; } state = 'dot-digit'; continue; }
-        if (code === 69 || code === 101) { state = 'e'; continue; }
-        return NAN;
-      }
-      if (state === 'e' || state === 'e-sign') {
-        if (state === 'e' && (code === 43 || code === 45)) { exponentNegative = code === 45; state = 'e-sign'; continue; }
-        if (digit) { exponent = code - 48; state = 'e-digit'; continue; }
-        return NAN;
-      }
-      if (state === 'e-digit') {
-        if (!digit) return NAN;
-        exponent = exponent * 10 + code - 48;
-        if (exponent > EXPONENT_MAX + PRECISION) return accumulator ? (exponentNegative ? make(false, 0, 0n) : infinity(negative)) : make(negative, 0, 0n);
-        continue;
-      }
-      if (state === 'zero') {
-        if (code === 48) continue;
-        if (digit) { accumulator = value; count = 1; state = 'digit'; continue; }
-        if (code === 46) { state = 'dot'; continue; }
-        if (code === 69 || code === 101) { state = 'e'; continue; }
-        return NAN;
-      }
-      if (digit && code !== 48) { accumulator = value; count = 1; state = 'digit'; continue; }
-      if (state === 'start' && (code === 43 || code === 45)) { negative = code === 45; state = 'sign'; continue; }
-      if (code === 48) { state = 'zero'; continue; }
-      if (code === 46) { state = 'dot'; continue; }
-      return NAN;
-    }
-    if (state === 'zero') return make(negative, 0, 0n);
-    if (state !== 'digit' && state !== 'e-digit' && state !== 'dot-digit') return NAN;
-    let resultExponent = (exponentNegative ? -exponent : exponent) - afterDot + extra;
+  // Decimal::FromString's state machine: digits past the 18th only scale the exponent. Each
+  // step updates the parse state `s` and returns null to go on, or the parse's result.
+  const exponentMark = (code) => code === 69 || code === 101;
+  const decimalInDigits = (s, code, digit, value) => {
+    if (digit) { if (s.count < PRECISION) { s.count++; s.accumulator = s.accumulator * 10n + value; } else s.extra++; return null; }
+    if (code === 46) { s.state = 'dot'; return null; }
+    if (exponentMark(code)) { s.state = 'e'; return null; }
+    return NAN;
+  };
+  const decimalInFraction = (s, code, digit, value) => {
+    if (digit) { if (s.count < PRECISION) { s.count++; s.afterDot++; s.accumulator = s.accumulator * 10n + value; } s.state = 'dot-digit'; return null; }
+    if (exponentMark(code)) { s.state = 'e'; return null; }
+    return NAN;
+  };
+  const decimalInExponentStart = (s, code, digit) => {
+    if (s.state === 'e' && (code === 43 || code === 45)) { s.exponentNegative = code === 45; s.state = 'e-sign'; return null; }
+    if (digit) { s.exponent = code - 48; s.state = 'e-digit'; return null; }
+    return NAN;
+  };
+  const decimalInExponent = (s, code, digit) => {
+    if (!digit) return NAN;
+    s.exponent = s.exponent * 10 + code - 48;
+    if (s.exponent > EXPONENT_MAX + PRECISION) return s.accumulator ? (s.exponentNegative ? make(false, 0, 0n) : infinity(s.negative)) : make(s.negative, 0, 0n);
+    return null;
+  };
+  const decimalInZero = (s, code, digit, value) => {
+    if (code === 48) return null;
+    if (digit) { s.accumulator = value; s.count = 1; s.state = 'digit'; return null; }
+    if (code === 46) { s.state = 'dot'; return null; }
+    if (exponentMark(code)) { s.state = 'e'; return null; }
+    return NAN;
+  };
+  // The 'start' and 'sign' states.
+  const decimalInStart = (s, code, digit, value) => {
+    if (digit && code !== 48) { s.accumulator = value; s.count = 1; s.state = 'digit'; return null; }
+    if (s.state === 'start' && (code === 43 || code === 45)) { s.negative = code === 45; s.state = 'sign'; return null; }
+    if (code === 48) { s.state = 'zero'; return null; }
+    if (code === 46) { s.state = 'dot'; return null; }
+    return NAN;
+  };
+  const decimalStep = (s, code, digit, value) => {
+    const state = s.state;
+    if (state === 'digit') return decimalInDigits(s, code, digit, value);
+    if (state === 'dot' || state === 'dot-digit') return decimalInFraction(s, code, digit, value);
+    if (state === 'e' || state === 'e-sign') return decimalInExponentStart(s, code, digit);
+    if (state === 'e-digit') return decimalInExponent(s, code, digit);
+    if (state === 'zero') return decimalInZero(s, code, digit, value);
+    return decimalInStart(s, code, digit, value);
+  };
+  const decimalFinish = (s) => {
+    if (s.state === 'zero') return make(s.negative, 0, 0n);
+    if (s.state !== 'digit' && s.state !== 'e-digit' && s.state !== 'dot-digit') return NAN;
+    let resultExponent = (s.exponentNegative ? -s.exponent : s.exponent) - s.afterDot + s.extra, accumulator = s.accumulator;
     if (resultExponent < EXPONENT_MIN) return make(false, 0, 0n);
     const overflow = resultExponent - EXPONENT_MAX + 1;
     if (overflow > 0) {
-      if (overflow + count - afterDot > PRECISION) return infinity(negative);
+      if (overflow + s.count - s.afterDot > PRECISION) return infinity(s.negative);
       resultExponent -= overflow; accumulator = scaleUp(accumulator, overflow);
     }
-    return make(negative, resultExponent, accumulator);
+    return make(s.negative, resultExponent, accumulator);
   };
-  const decimalText = (value) => {
-    if (value.kind === INFINITE) return value.negative ? '-Infinity' : 'Infinity';
-    if (value.kind === NOT_A_NUMBER) return 'NaN';
-    let exponent = value.exponent, coefficient = value.coefficient;
-    if (exponent < 0) {
-      let last = 0n;
-      while (digits(coefficient) > 15) { last = coefficient % 10n; coefficient /= 10n; exponent++; }
-      if (last >= 5n) coefficient++;
-      while (exponent < 0 && coefficient && coefficient % 10n === 0n) { coefficient /= 10n; exponent++; }
+  const parseDecimal = (text) => {
+    const s = {state: 'start', negative: false, exponent: 0, exponentNegative: false, count: 0, afterDot: 0, extra: 0, accumulator: 0n};
+    for (let index = 0; index < text.length; index++) {
+      const code = apply(charCode, text, [index]), digit = code >= 48 && code <= 57, value = BigInt(code - 48);
+      const result = decimalStep(s, code, digit, value);
+      if (result) return result;
     }
-    const text = StringValue(coefficient), sign = value.negative ? '-' : '';
+    return decimalFinish(s);
+  };
+  // A fractional coefficient rounds to 15 digits, then drops trailing fraction zeros.
+  const fractionDigits = (exponent, coefficient) => {
+    let last = 0n;
+    while (digits(coefficient) > 15) { last = coefficient % 10n; coefficient /= 10n; exponent++; }
+    if (last >= 5n) coefficient++;
+    while (exponent < 0 && coefficient && coefficient % 10n === 0n) { coefficient /= 10n; exponent++; }
+    return [exponent, coefficient];
+  };
+  const scientificText = (sign, text, adjusted) => {
     let length = text.length;
-    const adjusted = exponent + length - 1;
-    if (exponent <= 0 && adjusted >= -6) {
-      if (!exponent) return sign + text;
-      if (adjusted >= 0) return sign + apply(sliceText, text, [0, adjusted + 1]) + '.' + apply(sliceText, text, [adjusted + 1]);
-      return sign + '0.' + apply(padText, '', [-adjusted - 1, '0']) + text;
-    }
     while (length >= 2 && text[length - 1] === '0') length--;
     let result = sign + text[0];
     if (length >= 2) result += '.' + apply(sliceText, text, [1, length]);
     if (adjusted) result += (adjusted < 0 ? 'e' : 'e+') + adjusted;
     return result;
+  };
+  const decimalText = (value) => {
+    if (value.kind === INFINITE) return value.negative ? '-Infinity' : 'Infinity';
+    if (value.kind === NOT_A_NUMBER) return 'NaN';
+    const [exponent, coefficient] = value.exponent < 0 ? fractionDigits(value.exponent, value.coefficient) : [value.exponent, value.coefficient];
+    const text = StringValue(coefficient), sign = value.negative ? '-' : '';
+    const adjusted = exponent + text.length - 1;
+    if (exponent <= 0 && adjusted >= -6) {
+      if (!exponent) return sign + text;
+      if (adjusted >= 0) return sign + apply(sliceText, text, [0, adjusted + 1]) + '.' + apply(sliceText, text, [adjusted + 1]);
+      return sign + '0.' + apply(padText, '', [-adjusted - 1, '0']) + text;
+    }
+    return scientificText(sign, text, adjusted);
   };
   const fromDouble = (value) => isFiniteNumber(value) ? parseDecimal(StringValue(value)) : isNaNValue(value) ? NAN : infinity(value < 0);
   const toDouble = (value) => finite(value) ? NumberValue(decimalText(value)) : NaN;
@@ -389,11 +413,9 @@
     return parsed === null ? NAN : fromDouble(parsed);
   };
 
-  // StepRange (CreateStepRange + ParseStep) for one control.
-  const stepRange = (element, type) => {
-    const spec = TEMPORAL[type] || NUMERIC, read = (name) => parseFor(type, attr(element, name));
-    let base = read('min');
-    if (!finite(base)) { base = read('value'); if (!finite(base)) base = integer(spec.base); }
+  // The minimum and maximum: range defaults to 0..100 (maximum never below minimum), the
+  // other types to their limits.
+  const rangeLimits = (type, spec, read) => {
     let minimum = read('min'), maximum = read('max');
     if (type === 'range') {
       if (!finite(minimum)) minimum = integer(0);
@@ -403,17 +425,25 @@
       if (!finite(minimum)) minimum = spec.limits ? integer(spec.limits[0]) : negate(DOUBLE_MAX);
       if (!finite(maximum)) maximum = spec.limits ? integer(spec.limits[1]) : DOUBLE_MAX;
     }
-    const [fallback, scale, mode] = spec.step, text = attr(element, 'step');
-    let step;
-    if (text !== null && text !== '' && lowerAscii(text) === 'any') step = NAN;
-    else {
-      step = text === null ? NAN : parseNumber(text, NAN);
-      if (!finite(step) || !greater(step, integer(0))) step = multiply(integer(fallback), integer(scale));
-      else if (mode === 'real') step = multiply(step, integer(scale));
-      else if (mode === 'parsed') step = multiply(maximumOf(roundOf(step), integer(1)), integer(scale));
-      else step = maximumOf(roundOf(multiply(step, integer(scale))), integer(1));
-    }
-    return {base, minimum, maximum, step, real: mode === 'real'};
+    return [minimum, maximum];
+  };
+  // ParseStep: NaN for step=any, else the scaled step (the default for an invalid one).
+  const parseStep = (text, [fallback, scale, mode]) => {
+    if (text !== null && text !== '' && lowerAscii(text) === 'any') return NAN;
+    const step = text === null ? NAN : parseNumber(text, NAN);
+    if (!finite(step) || !greater(step, integer(0))) return multiply(integer(fallback), integer(scale));
+    if (mode === 'real') return multiply(step, integer(scale));
+    if (mode === 'parsed') return multiply(maximumOf(roundOf(step), integer(1)), integer(scale));
+    return maximumOf(roundOf(multiply(step, integer(scale))), integer(1));
+  };
+  // StepRange (CreateStepRange + ParseStep) for one control.
+  const stepRange = (element, type) => {
+    const spec = TEMPORAL[type] || NUMERIC, read = (name) => parseFor(type, attr(element, name));
+    let base = read('min');
+    if (!finite(base)) { base = read('value'); if (!finite(base)) base = integer(spec.base); }
+    const [minimum, maximum] = rangeLimits(type, spec, read);
+    const step = parseStep(attr(element, 'step'), spec.step);
+    return {base, minimum, maximum, step, real: spec.step[2] === 'real'};
   };
   const TWO_53 = integer(9007199254740992), TWO_24 = integer(16777216), TEN_21 = make(false, 21, 1n);
   const mismatch = (range, value) => {
@@ -465,6 +495,23 @@
     if (typeof value === 'symbol') throw new TypeErrorValue(describeFailure('Cannot convert a Symbol value to a string'));
     return StringValue(value);
   };
+  // A value off the step grid snaps to it in the step direction, using up one step.
+  const alignToStep = (range, current, count) => {
+    if (!mismatch(range, current)) return [current, count];
+    const {base, step} = range;
+    if (count < 0) return [add(base, multiply(floorOf(divide(subtract(current, base), step)), step)), count + 1];
+    if (count > 0) return [add(base, multiply(ceilOf(divide(subtract(current, base), step)), step)), count - 1];
+    return [current, count];
+  };
+  // Rounds the stepped value to the grid (below 1e21, from an aligned value) and clamps it
+  // to the aligned maximum or the first step at or above the minimum.
+  const clampStepped = (range, alignedMaximum, current, next) => {
+    const {base, step} = range;
+    if (!(compare(next, TEN_21) >= 0) && !mismatch(range, current)) next = roundByStep(range, next);
+    if (greater(next, range.maximum)) return alignedMaximum;
+    if (less(next, range.minimum)) return add(base, multiply(ceilOf(divide(subtract(range.minimum, base), step)), step));
+    return next;
+  };
   function applyStep(element, name, count) {
     const type = typeOf(element);
     if (type !== 'number' && type !== 'range' && !TEMPORAL[type]) throw new Exception(execute(name, 'This form element is not steppable.'), 'InvalidStateError');
@@ -476,17 +523,9 @@
     if (greater(range.minimum, range.maximum)) return;
     const alignedMaximum = snappedMaximum(range);
     if (!finite(alignedMaximum)) return;
-    const {base, step} = range;
-    let next = current;
-    if (mismatch(range, current)) {
-      if (count < 0) { next = add(base, multiply(floorOf(divide(subtract(next, base), step)), step)); count++; }
-      else if (count > 0) { next = add(base, multiply(ceilOf(divide(subtract(next, base), step)), step)); count--; }
-    }
-    next = add(next, multiply(step, fromDouble(count)));
-    if (!(compare(next, TEN_21) >= 0) && !mismatch(range, current)) next = roundByStep(range, next);
-    if (greater(next, range.maximum)) next = alignedMaximum;
-    else if (less(next, range.minimum)) next = add(base, multiply(ceilOf(divide(subtract(range.minimum, base), step)), step));
-    if (!invalid && (count < 0 && less(current, next) || count > 0 && greater(current, next))) return;
+    const [aligned, remaining] = alignToStep(range, current, count);
+    const next = clampStepped(range, alignedMaximum, current, add(aligned, multiply(range.step, fromDouble(remaining))));
+    if (!invalid && (remaining < 0 && less(current, next) || remaining > 0 && greater(current, next))) return;
     assignValue(element, serialize(element, type, next));
   }
   // Chromium value sanitization for range and the date/time family, plus the textarea API
@@ -499,16 +538,7 @@
     // Text-like states strip line breaks; url and email also trim ASCII whitespace,
     // each comma-separated address for email[multiple].
     if (type === 'text' || type === 'search' || type === 'tel' || type === 'password') return regexpReplace(value, /[\r\n]/g, '');
-    if (type === 'url' || type === 'email') {
-      value = regexpReplace(value, /[\r\n]/g, '');
-      const trim = (text) => regexpReplace(text, /^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '');
-      if (type === 'email' && attr(element, 'multiple') !== null) {
-        const parts = apply(splitText, value, [',']);
-        for (let index = 0; index < parts.length; index++) parts[index] = trim(parts[index]);
-        return apply(joinRows, parts, [',']);
-      }
-      return trim(value);
-    }
+    if (type === 'url' || type === 'email') return sanitizeAddress(element, type, value);
     if (type === 'number') return isNaNValue(parseDouble(value)) ? '' : value;
     if (type === 'color') return test(/^#[0-9a-fA-F]{6}$/, value) ? lowerAscii(value) : '#000000';
     if (type === 'range') {
@@ -516,6 +546,20 @@
       const fallback = add(range.minimum, divide(subtract(range.maximum, range.minimum), integer(2)));
       return numberText(clampValue(range, parseNumber(value, fallback)));
     }
+    return sanitizeTemporal(type, value);
+  };
+  // url / email: strip line breaks and trim ASCII whitespace (each address for email[multiple]).
+  const sanitizeAddress = (element, type, value) => {
+    value = regexpReplace(value, /[\r\n]/g, '');
+    const trim = (text) => regexpReplace(text, /^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '');
+    if (type === 'email' && attr(element, 'multiple') !== null) {
+      const parts = apply(splitText, value, [',']);
+      for (let index = 0; index < parts.length; index++) parts[index] = trim(parts[index]);
+      return apply(joinRows, parts, [',']);
+    }
+    return trim(value);
+  };
+  const sanitizeTemporal = (type, value) => {
     const spec = TEMPORAL[type];
     if (!spec) return undefined;
     const parsed = spec.parse(value);

@@ -117,7 +117,9 @@ scanned). JS uses oxlint's ESLint-compatible `complexity` rule (pinned `oxlint@1
 no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`; the vendored xpath@0.0.35
 drop (`crates/turbo-dom-browser-env/src/xpath_provider/xpath.js`) is excluded by the config's
 `ignorePatterns`, because it must stay byte-identical to upstream (its README pins the
-SHA-256). **0.8.0 flips both
+SHA-256), and so are 16 named Chrome-control `*_probe.js` files whose control JSON pins the
+probe's SHA-256 (editing one invalidates its recorded Chrome output; new probes stay gated).
+0.8.1 lowers the limit to cc <= 9 (turbo-dom#379). **0.8.0 flips both
 jobs blocking at cc ≤ 15**: the pre-release refactor (turbo-dom#297) drives the Rust and JS
 counts to zero, and the workflow drops `continue-on-error` on both jobs so a new
 cc > 15 function fails CI and blocks `publish.yml` like any other required check. The

@@ -5,7 +5,7 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## Unreleased
+## [0.8.0] — 2026-11-06
 
 ### Highlights
 

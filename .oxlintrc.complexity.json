@@ -3,9 +3,30 @@
 // category is off so this config never doubles as a general linter. The limit is the
 // repo-wide cc <= 15 (CLAUDE.md "Complexity gates"); there is no allow-list or baseline.
 // The vendored xpath@0.0.35 drop is excluded: it must stay byte-identical to upstream (its
-// README pins the SHA-256), so it cannot be refactored.
+// README pins the SHA-256), so it cannot be refactored. The 16 listed *_probe.js files are
+// Chrome-control fixtures whose control JSON pins the probe's SHA-256: editing one breaks its
+// recorded Chrome output, and several were captured on Chromes not cached here. New probes
+// are gated like any other file; only these named ones are excluded.
 {
-  "ignorePatterns": ["crates/turbo-dom-browser-env/src/xpath_provider/xpath.js"],
+  "ignorePatterns": [
+    "crates/turbo-dom-browser-env/src/xpath_provider/xpath.js",
+    "crates/turbo-dom-browser-env/src/computed_defaults_probe.js",
+    "crates/turbo-dom-browser-env/src/control_labels_probe.js",
+    "crates/turbo-dom-browser-env/src/dom_adoption_probe.js",
+    "crates/turbo-dom-browser-env/src/dom_implementation_probe.js",
+    "crates/turbo-dom-browser-env/src/dom_variadic_errors_probe.js",
+    "crates/turbo-dom-browser-env/src/form_methods_probe.js",
+    "crates/turbo-dom-browser-env/src/form_outputs_probe.js",
+    "crates/turbo-dom-browser-env/src/html_dialog_probe.js",
+    "crates/turbo-dom-browser-env/src/html_invokers_probe.js",
+    "crates/turbo-dom-browser-env/src/input_members_probe.js",
+    "crates/turbo-dom-browser-env/src/patched_builtins_sweep_probe.js",
+    "crates/turbo-dom-browser-env/src/radio_group_moves_probe.js",
+    "crates/turbo-dom-browser-env/src/svg_mathml_element_probe.js",
+    "crates/turbo-dom-browser-env/src/trusted_types_probe.js",
+    "crates/turbo-dom-browser-env/src/typed_om_probe.js",
+    "crates/turbo-dom-browser-env/src/view_transitions_probe.js"
+  ],
   "categories": {
     "correctness": "off"
   },

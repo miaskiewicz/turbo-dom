@@ -100,16 +100,28 @@
     }
     return false;
   }
+  // readonly applies to a textarea and the text-like / date-like input types.
+  const EMAIL=/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  function readOnlyApplies(element, kind, inputType) {
+    return present(element, 'readonly') && (kind === 'textarea' || kind === 'input' && regexTest(/^(text|search|url|tel|email|password|date|month|week|time|datetime-local|number)$/, inputType));
+  }
+  // The input / button types that are barred from constraint validation.
+  function barredType(kind, inputType) {
+    if (kind === 'input' && (inputType === 'hidden' || inputType === 'reset' || inputType === 'button' || inputType === 'image')) return true;
+    return kind === 'button' && inputType !== 'submit';
+  }
+  function insideDatalist(element) {
+    let ancestor = parent(element);
+    while (ancestor) {if (tag(ancestor) === 'datalist') return true;ancestor = parent(ancestor);}
+    return false;
+  }
   function candidate(element) {
     const kind = checkControl(element), inputType = type(element);
     if(kind==="custom")return !disabled(element)&&!present(element,"readonly");
     if (kind === 'fieldset' || kind === 'object' || kind === 'output' || disabled(element)) return false;
-    if (kind === 'input' && (inputType === 'hidden' || inputType === 'reset' || inputType === 'button' || inputType === 'image')) return false;
-    if (kind === 'button' && inputType !== 'submit') return false;
-    if (present(element, 'readonly') && (kind === 'textarea' || kind === 'input' && regexTest(/^(text|search|url|tel|email|password|date|month|week|time|datetime-local|number)$/, inputType))) return false;
-    let ancestor = parent(element);
-    while (ancestor) {if (tag(ancestor) === 'datalist') return false;ancestor = parent(ancestor);}
-    return true;
+    if (barredType(kind, inputType)) return false;
+    if (readOnlyApplies(element, kind, inputType)) return false;
+    return !insideDatalist(element);
   }
   function formControls(form) {
     const root = apply(getRoot, form, []), nodes = queryAll(root, '*');
@@ -117,65 +129,113 @@
     for (let index = 0; index < nodes.length; index++) if ((associatedGet(nodes[index])||apply(controlIndexOf,controlTags,[tag(nodes[index])])>=0)&&owner(nodes[index]) === form) define(result,result.length,{__proto__:null,value:nodes[index],writable:true,enumerable:true,configurable:true});
     return result;
   }
+  // A radio group is required, and missing a value, as a whole: any member's required
+  // attribute applies to all of them. An unnamed radio is its own group.
+  function radioGroupMissing(element, required, mutable) {
+    const name = attr(element,'name');
+    let groupRequired = required, checked = checkedValue(element);
+    if (name) {
+      const root = apply(getRoot, element, []), radios = queryAll(root,'input');
+      for (let index = 0; index < radios.length; index++) {
+        const radio = radios[index];
+        if (type(radio) !== 'radio' || attr(radio,'name') !== name || owner(radio) !== owner(element)) continue;
+        if (present(radio,'required')) groupRequired = true;
+        if (checkedValue(radio)) checked = true;
+      }
+    }
+    return mutable && groupRequired && !checked;
+  }
+  function valueMissingFlag(element, kind, inputType, value, required, mutable) {
+    if (kind === 'input' && inputType === 'radio') return radioGroupMissing(element, required, mutable);
+    if (mutable && required && (kind === 'textarea' || kind === 'select' || kind === 'input' && !regexTest(/^(range|color|hidden|button|submit|reset|image)$/,inputType))) {
+      if (inputType === 'checkbox') return !checkedValue(element);
+      return value === '';
+    }
+    return false;
+  }
+  function emailMismatch(element, value) {
+    let mismatch = !regexTest(EMAIL,value);
+    if(present(element,'multiple')) {
+      const parts=splitText(value,',');mismatch=false;
+      for(let index=0;index<parts.length;index++)if(!regexTest(EMAIL,trimText(parts[index])))mismatch=true;
+    }
+    return mismatch;
+  }
+  function typeMismatchFlag(element, inputType, value) {
+    if (inputType === 'email') return emailMismatch(element, value);
+    if (inputType === 'url') {try {if(!bridge('absolute-url',element,value))throw new ErrorType('Invalid URL');} catch (_) {return true;}}
+    return false;
+  }
+  function patternMismatchFlag(element, inputType, value) {
+    const pattern = attr(element, 'pattern');
+    if (pattern !== null && regexTest(/^(text|search|url|tel|email|password)$/,inputType)) {
+      try {return !regexTest(new Regex('^(?:'+pattern+')$','v'),value);} catch (_) {}
+    }
+    return false;
+  }
+  // A min / max attribute that parses as a number.
+  function numericLimit(raw) {return raw !== null && raw !== '' && !isNaNValue(number(raw));}
+  function stepInterval(step) {return step!==null&&number(step)>0?number(step):1;}
+  function stepBase(element, minimum) {return numericLimit(minimum)?number(minimum):number(attr(element,'value')||0);}
+  function numberFlags(element, value, state) {
+    const numeric = number(value), minimum = attr(element,'min'), maximum=attr(element,'max'), step=attr(element,'step');
+    if (numericLimit(minimum)) state.rangeUnderflow=numeric<number(minimum);
+    if (numericLimit(maximum)) state.rangeOverflow=numeric>number(maximum);
+    if (step !== 'any') {
+      const interval=stepInterval(step);
+      const basis=stepBase(element,minimum);
+      const difference=(numeric-basis)/interval;
+      state.stepMismatch=absolute(difference-round(difference))>1e-7;
+    }
+  }
+  function valueFlags(element, inputType, value, state) {
+    state.typeMismatch = typeMismatchFlag(element, inputType, value);
+    state.patternMismatch = patternMismatchFlag(element, inputType, value);
+    if (inputType === 'number') numberFlags(element, value, state);
+    else if (internals.rangeState && regexTest(/^(range|date|month|week|time|datetime-local)$/,inputType)) {
+      // Blink's StepRange over the sanitized value (a range value is clamped into range).
+      const range=internals.rangeState(element);
+      if (range) {state.rangeUnderflow=range.underflow;state.rangeOverflow=range.overflow;state.stepMismatch=range.mismatch;}
+    }
+  }
+  function anyFlag(state) {
+    return state.valueMissing||state.typeMismatch||state.patternMismatch||state.tooLong||state.tooShort||state.rangeUnderflow||state.rangeOverflow||state.stepMismatch||state.badInput||state.customError;
+  }
   function flags(element) {
     const associatedRecord=associatedGet(element);if(associatedRecord)return associatedRecord.flags;
     const kind = checkControl(element), inputType = type(element);
     const value = readValue(element), required = present(element, 'required');
     // Like Blink, the flags describe the value whether or not the control is barred from
     // validation; only valueMissing needs a mutable (enabled, not read-only) control.
-    const readOnly = present(element, 'readonly') && (kind === 'textarea' || kind === 'input' && regexTest(/^(text|search|url|tel|email|password|date|month|week|time|datetime-local|number)$/, inputType));
+    const readOnly = readOnlyApplies(element, kind, inputType);
     const mutable = !disabled(element) && !readOnly;
     const state = {valueMissing:false,typeMismatch:false,patternMismatch:false,tooLong:false,tooShort:false,rangeUnderflow:false,rangeOverflow:false,stepMismatch:false,badInput:false,customError:!!customGet(element)};
-    {
-      if (kind === 'input' && inputType === 'radio') {
-        // A radio group is required, and missing a value, as a whole: any member's required
-        // attribute applies to all of them. An unnamed radio is its own group.
-        const name = attr(element,'name');
-        let groupRequired = required, checked = checkedValue(element);
-        if (name) {
-          const root = apply(getRoot, element, []), radios = queryAll(root,'input');
-          for (let index = 0; index < radios.length; index++) {
-            const radio = radios[index];
-            if (type(radio) !== 'radio' || attr(radio,'name') !== name || owner(radio) !== owner(element)) continue;
-            if (present(radio,'required')) groupRequired = true;
-            if (checkedValue(radio)) checked = true;
-          }
-        }
-        state.valueMissing = mutable && groupRequired && !checked;
-      } else if (mutable && required && (kind === 'textarea' || kind === 'select' || kind === 'input' && !regexTest(/^(range|color|hidden|button|submit|reset|image)$/,inputType))) {
-        if (inputType === 'checkbox') state.valueMissing = !checkedValue(element);
-        else state.valueMissing = value === '';
-      }
-      if (kind === 'input' && value) {
-        if (inputType === 'email') state.typeMismatch = !regexTest(/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,value);
-        if(inputType==='email'&&present(element,'multiple')) {
-          const parts=splitText(value,',');state.typeMismatch=false;
-          for(let index=0;index<parts.length;index++)if(!regexTest(/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,trimText(parts[index])))state.typeMismatch=true;
-        }
-        if (inputType === 'url') {try {if(!bridge('absolute-url',element,value))throw new ErrorType('Invalid URL');} catch (_) {state.typeMismatch=true;}}
-        const pattern = attr(element, 'pattern');
-        if (pattern !== null && regexTest(/^(text|search|url|tel|email|password)$/,inputType)) {
-          try {state.patternMismatch=!regexTest(new Regex('^(?:'+pattern+')$','v'),value);} catch (_) {}
-        }
-        if (inputType === 'number') {
-          const numeric = number(value), minimum = attr(element,'min'), maximum=attr(element,'max'), step=attr(element,'step');
-          if (minimum !== null && minimum !== '' && !isNaNValue(number(minimum))) state.rangeUnderflow=numeric<number(minimum);
-          if (maximum !== null && maximum !== '' && !isNaNValue(number(maximum))) state.rangeOverflow=numeric>number(maximum);
-          if (step !== 'any') {
-            const interval=step!==null&&number(step)>0?number(step):1;
-            const basis=minimum!==null&&minimum!==''&&!isNaNValue(number(minimum))?number(minimum):number(attr(element,'value')||0);
-            const difference=(numeric-basis)/interval;
-            state.stepMismatch=absolute(difference-round(difference))>1e-7;
-          }
-        } else if (internals.rangeState && regexTest(/^(range|date|month|week|time|datetime-local)$/,inputType)) {
-          // Blink's StepRange over the sanitized value (a range value is clamped into range).
-          const range=internals.rangeState(element);
-          if (range) {state.rangeUnderflow=range.underflow;state.rangeOverflow=range.overflow;state.stepMismatch=range.mismatch;}
-        }
-      }
-    }
-    state.valid=!(state.valueMissing||state.typeMismatch||state.patternMismatch||state.tooLong||state.tooShort||state.rangeUnderflow||state.rangeOverflow||state.stepMismatch||state.badInput||state.customError);
+    state.valueMissing = valueMissingFlag(element, kind, inputType, value, required, mutable);
+    if (kind === 'input' && value) valueFlags(element, inputType, value, state);
+    state.valid=!anyFlag(state);
     return state;
+  }
+  function valueMissingMessage(element,inputType) {
+    if(inputType==='checkbox')return 'Please check this box if you want to proceed.';
+    if(inputType==='radio')return 'Please select one of these options.';
+    if(inputType==='file')return 'Please select a file.';
+    return tag(element)==='select'?'Please select an item in the list.':'Please fill out this field.';
+  }
+  function typeMismatchMessage(inputType,value) {
+    if(inputType==='url')return 'Please enter a URL.';
+    const at=indexOfText(value,'@');
+    if(at<0)return "Please include an '@' in the email address. '"+value+"' is missing an '@'.";
+    if(at===0)return "Please enter a part followed by '@'. '"+value+"' is incomplete.";
+    if(at===value.length-1)return "Please enter a part following '@'. '"+value+"' is incomplete.";
+    const host=sliceText(value,at+1);
+    if(host[0]==='.'||host[host.length-1]==='.'||indexOfText(host,'..')>=0)return "'.' is used at a wrong position in '"+host+"'.";
+    return 'Please enter an email address.';
+  }
+  function stepMismatchMessage(element,value) {
+    const minimum=attr(element,'min'),step=attr(element,'step'),interval=stepInterval(step);
+    const base=stepBase(element,minimum);
+    const below=base+floor((number(value)-base)/interval)*interval;
+    return 'Please enter a valid value. The two nearest valid values are '+below+' and '+(below+interval)+'.';
   }
   function message(element) {
     checkControl(element);const state=flags(element);
@@ -183,31 +243,12 @@
     if(!candidate(element)||state.valid)return '';
     const own=customGet(element);if(own)return own;
     const inputType=type(element),value=readValue(element);
-    if(state.valueMissing) {
-      if(inputType==='checkbox')return 'Please check this box if you want to proceed.';
-      if(inputType==='radio')return 'Please select one of these options.';
-      if(inputType==='file')return 'Please select a file.';
-      return tag(element)==='select'?'Please select an item in the list.':'Please fill out this field.';
-    }
-    if(state.typeMismatch) {
-      if(inputType==='url')return 'Please enter a URL.';
-      const at=indexOfText(value,'@');
-      if(at<0)return "Please include an '@' in the email address. '"+value+"' is missing an '@'.";
-      if(at===0)return "Please enter a part followed by '@'. '"+value+"' is incomplete.";
-      if(at===value.length-1)return "Please enter a part following '@'. '"+value+"' is incomplete.";
-      const host=sliceText(value,at+1);
-      if(host[0]==='.'||host[host.length-1]==='.'||indexOfText(host,'..')>=0)return "'.' is used at a wrong position in '"+host+"'.";
-      return 'Please enter an email address.';
-    }
+    if(state.valueMissing)return valueMissingMessage(element,inputType);
+    if(state.typeMismatch)return typeMismatchMessage(inputType,value);
     if(state.patternMismatch)return 'Please match the requested format.';
     if(state.rangeUnderflow)return 'Value must be greater than or equal to '+attr(element,'min')+'.';
     if(state.rangeOverflow)return 'Value must be less than or equal to '+attr(element,'max')+'.';
-    if(state.stepMismatch) {
-      const minimum=attr(element,'min'),step=attr(element,'step'),interval=step!==null&&number(step)>0?number(step):1;
-      const base=minimum!==null&&minimum!==''&&!isNaNValue(number(minimum))?number(minimum):number(attr(element,'value')||0);
-      const below=base+floor((number(value)-base)/interval)*interval;
-      return 'Please enter a valid value. The two nearest valid values are '+below+' and '+(below+interval)+'.';
-    }
+    if(state.stepMismatch)return stepMismatchMessage(element,value);
     return '';
   }
   function validity(element) {
@@ -274,29 +315,51 @@
   define(g,'FormDataEvent',{value:FormDataEventClass,writable:true,configurable:true});
   g.__captureFormDataEvent=(form,data)=>bridge('emit',form,new FormDataEventClass('formdata',{bubbles:true,formData:data}));
   const freeze = Object.freeze;
+  // A form-associated custom element's submission value: a FormData's entries, a File or a string.
+  function appendAssociatedEntries(control,name,associatedRecord,append) {
+    if(disabled(control)||associatedRecord.value===null)return;
+    const value=associatedRecord.value;
+    if(typeof value==='object'&&value.kind==='formdata'){for(let at=0;at<value.entries.length;at++)append(value.entries[at][0],value.entries[at][1]);}
+    else if(name)append(name,typeof value==='object'&&value.kind==='file'?value.value:value);
+  }
+  // True when a button contributes nothing more: not the submitter, or an image submitter
+  // whose coordinates were just appended.
+  function buttonEntriesDone(control,kind,inputType,name,submitter,append) {
+    if(!(kind==='button'||kind==='input'&&regexTest(/^(submit|reset|button|image)$/,inputType)))return false;
+    if(control!==submitter)return true;
+    if(inputType==='image'){append(name+'.x','0');append(name+'.y','0');return true;}
+    return false;
+  }
+  function appendFileEntries(control,name,append) {
+    const files=fileEntries&&fileEntries(control);if(!files)throw new Exception('Native FileList submission is not available.','NotSupportedError');for(let at=0;at<files.length;at++)append(name,files[at]);
+  }
+  function appendSelectEntries(control,name,append) {
+    const options=selectedOptions(control);
+    for(let j=0;j<options.length;j++) {
+      const option=options[j],group=parent(option);
+      if(present(option,'disabled')||group&&tag(group)==='optgroup'&&present(group,'disabled'))continue;
+      append(name,attr(option,'value')??readValue(option));
+    }
+  }
+  function appendValueEntry(control,inputType,name,append,entries,charsetEntries) {
+    if(inputType==='hidden'&&name==='_charset_')charsetEntries[charsetEntries.length]=entries.length;
+    append(name,inputType==='checkbox'||inputType==='radio'?attr(control,'value')??'on':readValue(control));
+  }
+  function appendControlEntries(control,submitter,append,entries,charsetEntries) {
+    const kind=tag(control),inputType=type(control),name=attr(control,'name');
+    const associatedRecord=associatedGet(control);if(associatedRecord){appendAssociatedEntries(control,name,associatedRecord,append);return;}
+    if(disabled(control)||!name||kind==='fieldset'||kind==='object'||kind==='output')return;
+    if(buttonEntriesDone(control,kind,inputType,name,submitter,append))return;
+    if(kind==='input'&&regexTest(/^(checkbox|radio)$/,inputType)&&!checkedValue(control))return;
+    if(kind==='input'&&inputType==='file'){appendFileEntries(control,name,append);return;}
+    if(kind==='select')appendSelectEntries(control,name,append);
+    else appendValueEntry(control,inputType,name,append,entries,charsetEntries);
+  }
   function submission(form, submitter) {
     const entries=[],charsetEntries=[];
     const controls=formControls(form);
     const append=(name,value)=>{entries[entries.length]=freeze([name,value]);};
-    for(let i=0;i<controls.length;i++) {
-      const control=controls[i],kind=tag(control),inputType=type(control),name=attr(control,'name');
-      const associatedRecord=associatedGet(control);if(associatedRecord){if(!disabled(control)&&associatedRecord.value!==null){const value=associatedRecord.value;if(typeof value==='object'&&value.kind==='formdata'){for(let at=0;at<value.entries.length;at++)append(value.entries[at][0],value.entries[at][1]);}else if(name)append(name,typeof value==='object'&&value.kind==='file'?value.value:value);}continue;}
-      if(disabled(control)||!name||kind==='fieldset'||kind==='object'||kind==='output')continue;
-      if(kind==='button'||kind==='input'&&regexTest(/^(submit|reset|button|image)$/,inputType)) {
-        if(control!==submitter)continue;
-        if(inputType==='image'){append(name+'.x','0');append(name+'.y','0');continue;}
-      }
-      if(kind==='input'&&regexTest(/^(checkbox|radio)$/,inputType)&&!checkedValue(control))continue;
-      if(kind==='input'&&inputType==='file'){const files=fileEntries&&fileEntries(control);if(!files)throw new Exception('Native FileList submission is not available.','NotSupportedError');for(let at=0;at<files.length;at++)append(name,files[at]);continue;}
-      if(kind==='select') {
-        const options=selectedOptions(control);
-        for(let j=0;j<options.length;j++) {
-          const option=options[j],group=parent(option);
-          if(present(option,'disabled')||group&&tag(group)==='optgroup'&&present(group,'disabled'))continue;
-          append(name,attr(option,'value')??readValue(option));
-        }
-      } else {if(inputType==='hidden'&&name==='_charset_')charsetEntries[charsetEntries.length]=entries.length;append(name,inputType==='checkbox'||inputType==='radio'?attr(control,'value')??'on':readValue(control));}
-    }
+    for(let i=0;i<controls.length;i++)appendControlEntries(controls[i],submitter,append,entries,charsetEntries);
     const override=(field,fallback)=>submitter&&present(submitter,'form'+field)?attr(submitter,'form'+field):attr(form,fallback||field);
     const method=lower(override('method')||'get'),enctype=lower(override('enctype')||'application/x-www-form-urlencoded');
     const result=create(null);

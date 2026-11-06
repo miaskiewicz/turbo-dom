@@ -8,7 +8,7 @@ name: CI
 #   msrv         Rust 1.89 for turbo-dom, -layout, -raster
 #   guards       rustfmt, version agreement, retired-gate guard, verify-copied reviews, script self-tests
 #   coverage     tarpaulin per crate with fail-under floors (blocking)
-#   complexity   cyclomatic complexity <= 15 per function: Rust (cc-check) and JS (oxlint); report-only for 0.6.0
+#   complexity   cyclomatic complexity <= 15 per function: Rust (cc-check) and JS (oxlint); blocking since 0.8.0
 # publish.yml calls this whole workflow before it publishes anything.
 
 on:
@@ -447,16 +447,13 @@ jobs:
             bash scripts/verify-copied-layout.sh
 
   # ---- complexity: cyclomatic complexity <= 15 per function, no allow-list, no baseline ----
-  # EXPECTED RED until the post-coverage refactor: the functions above 15 when the gate landed
-  # are the refactor backlog (docs/CONSOLIDATION.md "Complexity"); refactoring waits until
-  # unit-test coverage is complete so it cannot break behaviour silently. Never raise the limit
-  # or skip a file to turn it green. Rust: turbo-html2pdf's tools/cc-check installed from its
-  # home at a pinned rev (not copied here) over every tracked .rs file; JS: oxlint's
-  # `complexity` rule (.oxlintrc.complexity.json) over src/ (the npm runtime) and the browser-env crate's shipped JS (crates/turbo-dom-browser-env/src, runs in V8 on every page).
-  # `continue-on-error` keeps the red jobs from failing the workflow (publish.yml runs it via
-  # workflow_call) while the backlog exists; the failing job and its step summary list every
-  # function over the limit. Drop `continue-on-error` (and make both checks required) once
-  # the backlog is cleared.
+  # Blocking since 0.8.0 (turbo-dom#297 cleared the backlog). Never raise the limit to turn it
+  # green. Rust: turbo-html2pdf's tools/cc-check installed from its home at a pinned rev (not
+  # copied here) over every tracked .rs file; JS: oxlint's `complexity` rule
+  # (.oxlintrc.complexity.json) over src/ (the npm runtime) and the browser-env crate's JS.
+  # The only JS exclusions are the vendored xpath@0.0.35 drop and 16 named Chrome-control
+  # probes whose controls pin the probe's SHA-256 (see the config). 0.8.1 lowers the limit
+  # (turbo-dom#379).
   complexity-rust:
     name: complexity / rust (cc <= 15)
     runs-on: ubuntu-latest
@@ -489,7 +486,6 @@ jobs:
   complexity-js:
     name: complexity / js (cc <= 15)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
