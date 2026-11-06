@@ -1024,7 +1024,7 @@
         if (mode !== 'select' && mode !== 'start' && mode !== 'end' && mode !== 'preserve') throw new TypeErrorClass(prefix + "The provided value '" + mode + "' is not a valid enum value of type SelectionMode.");
       }
     }
-    if (nullable(control)) throw controlFail(owner, 'setRangeText', typeMessage(control));
+    if (owner === 'HTMLInputElement' && !supportsSelection(control)) throw controlFail(owner, 'setRangeText', typeMessage(control));
     const selection = current(control);
     if (count < 3) { start = selection.start; end = selection.end; }
     if (start > end) throw new Exception(prefix + 'The provided start value (' + start + ') is larger than the provided end value (' + end + ').', 'IndexSizeError');

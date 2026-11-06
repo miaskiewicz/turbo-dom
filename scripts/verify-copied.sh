@@ -376,8 +376,7 @@ browser_env.js: 0.8.0 turbo-dom#318 buttons and button-like inputs compute html.
 css_live_tests.rs: 0.8.0 turbo-dom#318 button UA background-color vs its Chrome 156 control
 animations_chrome156.json: 0.8.0 turbo-dom#340 recapture with Animation rangeStart / rangeEnd (#369)
 trusted_types_mapping.json: 0.8.0 onchecked / onopenerchange map to TrustedScript like Chrome 156 (turbo-surf#154)
-typed_om_probe.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
-view_transitions_probe.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+trusted_types_chrome155.json: 0.8.0 recaptured in Chrome 156.0.8078.47 with the same pinned cases / probe / collector (the moved path is kept); only onchecked / onopenerchange join the mapping (turbo-surf#154)
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"

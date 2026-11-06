@@ -63,9 +63,8 @@
     (document.activeViewTransition ? "A" : "-") +
     (root.matches(":active-view-transition") ? "M" : "-");
 
-  const section_fns = {};
   // Interface objects and member descriptors.
-  section_fns.surface = async () => {
+  if (wanted("surface")) {
     const surface = {};
     for (const [name, proto] of [
       ["Document", Document.prototype],
@@ -104,10 +103,10 @@
       .filter((key) => /^ViewTransition/.test(key))
       .sort();
     out.surface = surface;
-  };
+  }
 
   // Brand checks: promise attributes reject instead of throwing.
-  section_fns.brands = async () => {
+  if (wanted("brands")) {
     const VT = ViewTransition.prototype,
       TS = ViewTransitionTypeSet.prototype;
     const getter = (proto, key) => Object.getOwnPropertyDescriptor(proto, key).get;
@@ -137,7 +136,7 @@
   }
 
   // Argument conversion: (ViewTransitionUpdateCallback or ViewTransitionOptions).
-  section_fns.conversion = async () => {
+  if (wanted("conversion")) {
     await fresh();
     const conversion = {};
     const started = (owner, argument) =>
@@ -216,7 +215,7 @@
       return [...transition.types];
     });
     out.conversion = conversion;
-  };
+  }
 
   // Lifecycle against rendering frames. Consecutive identical frame entries
   // collapse, so the record is independent of how many frames the cross-fade spans.
@@ -279,7 +278,7 @@
         : [finishedFrame[1] - firstAfterReady >= 249, finishedFrame[0] - firstAfterReady < 251];
     return { log, timing, framesDuringCallback };
   }
-  section_fns.lifecycle = async () => {
+  if (wanted("lifecycle")) {
     const lifecycle = {};
     lifecycle.basic = await trace((callback) => document.startViewTransition(callback));
     lifecycle.noCallback = await trace(() => document.startViewTransition());
@@ -320,10 +319,10 @@
       return transition;
     });
     out.lifecycle = lifecycle;
-  };
+  }
 
   // Frames requested from inside the update callback run once rendering resumes.
-  section_fns.frameFromCallback = async () => {
+  if (wanted("frameFromCallback")) {
     await fresh();
     const log = [];
     const transition = document.startViewTransition(() => {
@@ -334,10 +333,10 @@
     transition.ready.then(() => log.push("ready"));
     await transition.finished;
     out.frameFromCallback = log;
-  };
+  }
 
   // Values, identity and transition roots.
-  section_fns.values = async () => {
+  if (wanted("values")) {
     await fresh();
     const transition = document.startViewTransition({ types: ["x"] });
     out.values = [
@@ -362,10 +361,10 @@
       await quick(viaRoot),
       document.activeViewTransition,
     ];
-  };
+  }
 
   // Skipping, by phase.
-  section_fns.skips = async () => {
+  if (wanted("skips")) {
     const skips = {};
     for (const when of ["beforeCallback", "inCallback", "afterUcd", "afterReady"]) {
       await fresh();
@@ -396,10 +395,10 @@
       skips[when] = { log, outcome: await outcome(transition) };
     }
     out.skips = skips;
-  };
+  }
 
   // A new transition skips the active one in every phase.
-  section_fns.abort = async () => {
+  if (wanted("abort")) {
     const abort = {};
     await fresh();
     {
@@ -452,12 +451,12 @@
       abort.animating = log;
     }
     out.abort = abort;
-  };
+  }
 
   // Placement of ready's rejection and of the update callback once a transition is
   // skipped before its callback ran: ready rejects one microtask later, the callback runs
   // in a task queued at the skip.
-  section_fns.skipOrder = async () => {
+  if (wanted("skipOrder")) {
     const order = {};
     const watch = async (name, start) => {
       await fresh();
@@ -495,10 +494,10 @@
     });
     await quick(replacement);
     out.skipOrder = order;
-  };
+  }
 
   // Style rules: :active-view-transition in the cascade.
-  section_fns.cascade = async () => {
+  if (wanted("cascade")) {
     await fresh();
     const style = document.head.appendChild(document.createElement("style"));
     const marker = document.body.appendChild(document.createElement("div"));
@@ -515,10 +514,10 @@
     out.cascade = [before, during, untyped, read()];
     style.remove();
     marker.remove();
-  };
+  }
 
   // Update callback results.
-  section_fns.results = async () => {
+  if (wanted("results")) {
     const results = {};
     await fresh();
     results.nonPromise = await outcome(document.startViewTransition(() => 42));
@@ -552,10 +551,10 @@
       ];
     }
     out.results = results;
-  };
+  }
 
   // Documents without a browsing context.
-  section_fns.documents = async () => {
+  if (wanted("documents")) {
     const documents = {};
     const factories = {
       createHTMLDocument: () => document.implementation.createHTMLDocument(""),
@@ -601,10 +600,10 @@
       ];
     }
     out.documents = documents;
-  };
+  }
 
   // Element-scoped transitions: which boxes can be a transition root.
-  section_fns.scopes = async () => {
+  if (wanted("scopes")) {
     const scopes = {};
     const make = (tag, style) => {
       const element = document.body.appendChild(document.createElement(tag));
@@ -679,10 +678,10 @@
       }
     }
     out.scopes = scopes;
-  };
+  }
 
   // Element-scoped concurrency and removal.
-  section_fns.scoped = async () => {
+  if (wanted("scoped")) {
     const scoped = {};
     const make = () => {
       const element = document.body.appendChild(document.createElement("div"));
@@ -791,10 +790,10 @@
       a.remove();
     }
     out.scoped = scoped;
-  };
+  }
 
   // view-transition-name uniqueness in the old and the new state.
-  section_fns.names = async () => {
+  if (wanted("names")) {
     const names = {};
     const host = document.body.appendChild(document.createElement("div"));
     const run = async (markup, update) => {
@@ -880,10 +879,10 @@
     }
     host.remove();
     out.names = names;
-  };
+  }
 
   // ViewTransitionTypeSet and the :active-view-transition pseudo-classes.
-  section_fns.selectors = async () => {
+  if (wanted("selectors")) {
     await fresh();
     const selectors = {};
     const transition = document.startViewTransition({ types: ["Slide", "fade"] });
@@ -979,10 +978,10 @@
       await outcome(skipped);
     }
     out.selectors = selectors;
-  };
+  }
 
   // waitUntil extends the transition until every promise settles.
-  section_fns.waitUntil = async () => {
+  if (wanted("waitUntil")) {
     const wait = {};
     await fresh();
     {
@@ -1038,10 +1037,10 @@
       wait.afterSkip = [attempt(() => transition.waitUntil(new Promise(() => {}))), await outcome(transition)];
     }
     out.waitUntil = wait;
-  };
+  }
 
   // Unhandled rejections are reported for the transition's promises.
-  section_fns.unhandled = async () => {
+  if (wanted("unhandled")) {
     await fresh();
     const reported = [];
     const listener = (event) => {
@@ -1057,7 +1056,6 @@
     await new Promise((resolve) => setTimeout(resolve, 400));
     window.removeEventListener("unhandledrejection", listener);
     out.unhandled = reported;
-  };
-  for (const [name, fn] of Object.entries(section_fns)) if (wanted(name)) await fn();
+  }
   return out;
 })();
