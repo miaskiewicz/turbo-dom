@@ -157,14 +157,16 @@
   // namespace, a V8 private on the global (turbo-dom#222): page script cannot name it, and
   // each engine script receives it as its `__tsNs` parameter (run_engine_script).
   var __ns = __tsNs;
+  // Moves a native hook the embedder put on the global onto the engine namespace.
+  function adoptNsHook(globalName, key){ if (typeof g[globalName] === 'function') { __ns[key] = g[globalName]; delete g[globalName]; } }
   // The uncurried captured builtins, for the engine files that run after this bootstrap.
   __ns.intrinsics=$c;
-  if (typeof g.__parseCssNative === 'function') { __ns.parseCssNative = g.__parseCssNative; delete g.__parseCssNative; }
-  if (typeof g.__cssShorthandNative === 'function') { __ns.cssShorthandNative = g.__cssShorthandNative; delete g.__cssShorthandNative; }
+  adoptNsHook('__parseCssNative', 'parseCssNative');
+  adoptNsHook('__cssShorthandNative', 'cssShorthandNative');
   var cssShorthand = __ns.cssShorthandNative;
   var cssNativeParse=__ns.parseCssNative,cssSetPrototype=Object.setPrototypeOf,cssApply=Reflect.apply,cssMapGet=Function.prototype.call.bind(Map.prototype.get),cssTagUpper=Function.prototype.call.bind(String.prototype.toUpperCase);
   var computedSnapshotMap=WeakMap,computedSnapshotGet=Function.prototype.call.bind(WeakMap.prototype.get),computedSnapshotSet=Function.prototype.call.bind(WeakMap.prototype.set);
-  if (typeof g.__domAccessor === 'function') { __ns.domAccessor = g.__domAccessor; delete g.__domAccessor; }
+  adoptNsHook('__domAccessor', 'domAccessor');
   computedStyleNativeOwner=__ns.domAccessor('ownerDocument',false,'Node');
   computedStyleNativeTag=__ns.domAccessor('tagName',false,'Element');
   computedStyleNativeNamespace=__ns.domAccessor('namespaceURI',false,'Element');
@@ -181,18 +183,21 @@
     $c.forEach([['width','300px'],['height','150px']],function(pair){var text=cssApply(computedStyleNativeAttribute,el,[pair[0]]),match=text==null?null:$c.exec(/^[\t\n\f\r ]*(\d+(?:\.\d+)?)(%?)/,text);hints[pair[0]]=match?(+match[1])+(match[2]?'%':'px'):pair[1];});
     return hints;
   }
-  if (typeof g.__nativeDOMFunction === 'function') { __ns.makeNativeFunction = g.__nativeDOMFunction; delete g.__nativeDOMFunction; }
-  if (typeof g.__nativeNamedObject === 'function') { __ns.makeNamedObject = g.__nativeNamedObject; delete g.__nativeNamedObject; }
-  if (typeof g.navigator === 'undefined') g.navigator = { userAgent: 'turbo-test', platform: 'rust', language: 'en-US', languages: ['en-US'], clipboard: {}, maxTouchPoints: 0 };
-  // Top-level window self-references (browsers + jsdom + vitest): a non-framed window is its own
-  // parent/top, and `self`/`frames` alias the window. `window === globalThis` here, so point them at
-  // g. Configurable so a test can stub framing (Object.defineProperty(window,'parent',{value:...})).
-  // Without these, `window.parent !== window` reads as "always inside an iframe" and silently breaks
-  // top-level/iframe detection that works under vitest.
-  $c.forEach(['self', 'parent', 'top', 'frames'], function(k){
-    if (g[k] !== g) { try { Object.defineProperty(g, k, { value: g, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g[k] = g; } catch(e2){} } }
-  });
-  if (typeof g.frameElement === 'undefined') { try { Object.defineProperty(g, 'frameElement', { value: null, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g.frameElement = null; } catch(e2){} } }
+  adoptNsHook('__nativeDOMFunction', 'makeNativeFunction');
+  adoptNsHook('__nativeNamedObject', 'makeNamedObject');
+  function installWindowSelfReferences(){
+    if (typeof g.navigator === 'undefined') g.navigator = { userAgent: 'turbo-test', platform: 'rust', language: 'en-US', languages: ['en-US'], clipboard: {}, maxTouchPoints: 0 };
+    // Top-level window self-references (browsers + jsdom + vitest): a non-framed window is its own
+    // parent/top, and `self`/`frames` alias the window. `window === globalThis` here, so point them at
+    // g. Configurable so a test can stub framing (Object.defineProperty(window,'parent',{value:...})).
+    // Without these, `window.parent !== window` reads as "always inside an iframe" and silently breaks
+    // top-level/iframe detection that works under vitest.
+    $c.forEach(['self', 'parent', 'top', 'frames'], function(k){
+      if (g[k] !== g) { try { Object.defineProperty(g, k, { value: g, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g[k] = g; } catch(e2){} } }
+    });
+    if (typeof g.frameElement === 'undefined') { try { Object.defineProperty(g, 'frameElement', { value: null, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g.frameElement = null; } catch(e2){} } }
+  }
+  installWindowSelfReferences();
   // ---- CSS shorthand expansion ----------------------------------------------------------------
   // Computed-style reads resolve longhands (marginTop, borderWidth, backgroundColor, rowGap,
   // flexBasis) of shorthands from the UA tables and Web Animations keyframes: rtdom's Chrome 156
@@ -226,6 +231,57 @@
   var fontNormalLine=new FontLine('normal',0,undefined);
   // A child iframe document's root element is its own root (turbo-dom#299).
   function computedFontRoot(element,parent,root){return !parent&&computedFrameRoot(element)===element?element:root;}
+  function fontRaw(decl,name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||$c.test(/^(inherit|unset|revert|revert-layer)$/, key)?inheritedValue:key==='initial'?initialValue:value;}
+  function fontLength(value,base,rem,typedLine){
+    function term(text,scalar){
+      var match=$c.exec(/^((?:\d*\.)?\d+)(px|em|rem|%|pt|pc|in|cm|mm|q)?$/i, text);if(!match)return null;
+      var number=cssFontNumber(match[1]),unit=fontLower(match[2]||'');
+      var resolved=unit==='em'?(base===null?null:number*base):unit==='rem'?(rem===null?null:number*rem):unit==='%'?(base===null?null:number*base/100):unit?number*fontUnitScale[unit]:scalar||number===0?number:null;
+      return resolved!==null&&cssFontFinite(resolved)?new FontLength(resolved,unit?1:0):null;
+    }
+    function result(value){if(typedLine)return new FontLine(value&&value.dimension===0?'factor':'length',value?value.number:null,source);return value&&(value.dimension===1||value.number===0)?value.number:null;}
+    var source=value;
+    if(!$c.test(/^calc\(/i, value))return result(term(value,false));
+    var expression=$c.replace($c.replace(value, /calc\(/gi,'('), /\s+/g,''),tokens=[],cursor=0,tokenPattern=/(?:\d*\.)?\d+(?:[a-z]+|%)?|[()+*/-]/gi,tokenMatch;
+    tokenPattern.lastIndex=0;while((tokenMatch=$c.exec(tokenPattern,expression))!==null)$c.push(tokens,tokenMatch[0]);
+    if($c.join(tokens, '')!==expression)return result(null);
+    function atom(){var token=tokens[cursor++];if(token==='+'||token==='-'){var signed=atom();if(signed&&token==='-')signed.number=-signed.number;return signed;}if(token==='('){var grouped=sum();return tokens[cursor++]===')'?grouped:null;}return term(token||'',true);}
+    function product(){var value=atom();while(tokens[cursor]==='*'||tokens[cursor]==='/'){var operator=tokens[cursor++],right=atom();if(!value||!right||operator==='/'&&(right.number===0||right.dimension!==0)||operator==='*'&&value.dimension+right.dimension>1)return null;value=new FontLength(operator==='*'?value.number*right.number:value.number/right.number,operator==='*'?value.dimension+right.dimension:value.dimension);}return value;}
+    function sum(){var value=product();while(tokens[cursor]==='+'||tokens[cursor]==='-'){var operator=tokens[cursor++],right=product();if(!value||!right||value.dimension!==right.dimension)return null;value=new FontLength(operator==='+'?value.number+right.number:value.number-right.number,value.dimension);}return value;}
+    var calculated=sum();return result(cursor===tokens.length&&calculated&&cssFontFinite(calculated.number)?calculated:null);
+  }
+  function fontPixels(value){return cssFontString(cssFontNumber(cssApply(cssFontPrecision,value,[6])))+'px';}
+  // font-size keywords (`smaller` / `larger` / absolute) and the negative clamp.
+  function computedFontSize(sizeValue,inherited,rootSize,initialSize){
+    var size=typeof sizeValue==='number'?sizeValue:fontLength(sizeValue,inherited.size,rootSize);
+    var sizeKey=typeof sizeValue==='string'?fontLower(sizeValue):sizeValue;
+    if(size===null){if(sizeKey==='smaller')size=inherited.size===null?null:inherited.size/1.2;else if(sizeKey==='larger')size=inherited.size===null?null:inherited.size*1.2;else if(fontSizeKeywords[sizeKey])size=fontSizeKeywords[sizeKey]*initialSize/16;}
+    if(size!==null&&size<0)size=0;
+    return size;
+  }
+  // A value whose lower-cased form is one of `pattern`'s keywords reads lower-cased.
+  function fontKeyword(value,pattern){var key=fontLower(value);return $c.test(pattern, key)?key:value;}
+  function computedFontWeight(weight,inheritedWeight){
+    if(weight==='normal')weight='400';else if(weight==='bold')weight='700';else if(weight==='bolder')weight=cssFontNumber(inheritedWeight)<350?'400':cssFontNumber(inheritedWeight)<550?'700':'900';else if(weight==='lighter')weight=cssFontNumber(inheritedWeight)<550?'100':cssFontNumber(inheritedWeight)<750?'400':'700';
+    return weight;
+  }
+  function computedFontLine(decl,inherited,initial,size,rootSize){
+    var lineValue=decl['line-height'],lineKey=typeof lineValue==='string'?fontLower(lineValue):lineValue,line;
+    if(!lineValue||$c.test(/^(inherit|unset|revert|revert-layer)$/, lineKey))line=inherited.line;
+    else if($c.test(/^(normal|initial)$/, lineKey))line=initial.line;
+    else if($c.test(/^(?:\d*\.)?\d+$/, lineValue))line=new FontLine('factor',cssFontNumber(lineValue),undefined);
+    else line=fontLength(lineValue,size,rootSize,true);
+    if(line.value!==null&&line.value<0)line=new FontLine(line.kind,0,undefined);
+    return line;
+  }
+  function computedFontLineText(line,size){return line.kind==='normal'?'normal':line.value===null?line.text:line.kind==='factor'&&size===null?cssFontString(line.value):fontPixels(line.kind==='factor'?line.value*size:line.value);}
+  function computedFontAvailable(connected,context,parent,inherited,root,element){return !!(connected&&context&&context[4]&&(parent?inherited.active:root===element));}
+  function computedFontShorthand(style,caps,weight,stretch,sizeText,lineText,family){
+    var shorthand=[];
+    if(style!=='normal')$c.push(shorthand, style);if(caps!=='normal')$c.push(shorthand, caps);if(weight!=='400')$c.push(shorthand, weight);
+    if(stretch!=='100%'){var stretchName=$c.find($O.keys(fontStretchValues),function(key){return fontStretchValues[key]===stretch;});$c.push(shorthand, stretchName||stretch);}
+    $c.push(shorthand, sizeText);if(lineText!=='normal')$c.push(shorthand, '/ '+lineText);$c.push(shorthand, family);return $c.join(shorthand, ' ');
+  }
   function computedFonts(decl,element,parentStyle,connected,pseudo,parentSnapshot){
     var context=computedFontContext(element),parent=context&&context[2],root=context&&context[3];
     // A pseudo-element's parent is its originating element (or its parent pseudo-element).
@@ -235,54 +291,23 @@
     var inherited=parent?declarationRecords.get(parentSnapshot||parentStyle(parent)).fontState:null;
     var initial=new FontState(undefined,initialFamily,initialSize,undefined,'normal','400','100%','normal',fontNormalLine,initialSize);
     inherited=inherited||initial;
-    function raw(name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||$c.test(/^(inherit|unset|revert|revert-layer)$/, key)?inheritedValue:key==='initial'?initialValue:value;}
-    function length(value,base,rem,typedLine){
-      function term(text,scalar){
-        var match=$c.exec(/^((?:\d*\.)?\d+)(px|em|rem|%|pt|pc|in|cm|mm|q)?$/i, text);if(!match)return null;
-        var number=cssFontNumber(match[1]),unit=fontLower(match[2]||'');
-        var resolved=unit==='em'?(base===null?null:number*base):unit==='rem'?(rem===null?null:number*rem):unit==='%'?(base===null?null:number*base/100):unit?number*fontUnitScale[unit]:scalar||number===0?number:null;
-        return resolved!==null&&cssFontFinite(resolved)?new FontLength(resolved,unit?1:0):null;
-      }
-      function result(value){if(typedLine)return new FontLine(value&&value.dimension===0?'factor':'length',value?value.number:null,source);return value&&(value.dimension===1||value.number===0)?value.number:null;}
-      var source=value;
-      if(!$c.test(/^calc\(/i, value))return result(term(value,false));
-      var expression=$c.replace($c.replace(value, /calc\(/gi,'('), /\s+/g,''),tokens=[],cursor=0,tokenPattern=/(?:\d*\.)?\d+(?:[a-z]+|%)?|[()+*/-]/gi,tokenMatch;
-      tokenPattern.lastIndex=0;while((tokenMatch=$c.exec(tokenPattern,expression))!==null)$c.push(tokens,tokenMatch[0]);
-      if($c.join(tokens, '')!==expression)return result(null);
-      function atom(){var token=tokens[cursor++];if(token==='+'||token==='-'){var signed=atom();if(signed&&token==='-')signed.number=-signed.number;return signed;}if(token==='('){var grouped=sum();return tokens[cursor++]===')'?grouped:null;}return term(token||'',true);}
-      function product(){var value=atom();while(tokens[cursor]==='*'||tokens[cursor]==='/'){var operator=tokens[cursor++],right=atom();if(!value||!right||operator==='/'&&(right.number===0||right.dimension!==0)||operator==='*'&&value.dimension+right.dimension>1)return null;value=new FontLength(operator==='*'?value.number*right.number:value.number/right.number,operator==='*'?value.dimension+right.dimension:value.dimension);}return value;}
-      function sum(){var value=product();while(tokens[cursor]==='+'||tokens[cursor]==='-'){var operator=tokens[cursor++],right=product();if(!value||!right||value.dimension!==right.dimension)return null;value=new FontLength(operator==='+'?value.number+right.number:value.number-right.number,value.dimension);}return value;}
-      var calculated=sum();return result(cursor===tokens.length&&calculated&&cssFontFinite(calculated.number)?calculated:null);
-    }
-    function pixels(value){return cssFontString(cssFontNumber(cssApply(cssFontPrecision,value,[6])))+'px';}
     var rootSize=inherited.rootSize===undefined?initialSize:inherited.rootSize;
-    var sizeValue=raw('font-size',inherited.size===null?inherited.sizeText:inherited.size,initialSize),size=typeof sizeValue==='number'?sizeValue:length(sizeValue,inherited.size,rootSize);
-    var sizeKey=typeof sizeValue==='string'?fontLower(sizeValue):sizeValue;
-    if(size===null){if(sizeKey==='smaller')size=inherited.size===null?null:inherited.size/1.2;else if(sizeKey==='larger')size=inherited.size===null?null:inherited.size*1.2;else if(fontSizeKeywords[sizeKey])size=fontSizeKeywords[sizeKey]*initialSize/16;}
-    if(size!==null&&size<0)size=0;
-    var family=raw('font-family',inherited.family,initial.family),style=raw('font-style',inherited.style,initial.style),weight=cssFontString(raw('font-weight',inherited.weight,initial.weight));
-    var styleKey=fontLower(style);if($c.test(/^(normal|italic|oblique)$/, styleKey))style=styleKey;
-    var weightKey=fontLower(weight);if($c.test(/^(normal|bold|bolder|lighter)$/, weightKey))weight=weightKey;
+    var sizeValue=fontRaw(decl,'font-size',inherited.size===null?inherited.sizeText:inherited.size,initialSize),size=computedFontSize(sizeValue,inherited,rootSize,initialSize);
+    var family=fontRaw(decl,'font-family',inherited.family,initial.family),style=fontRaw(decl,'font-style',inherited.style,initial.style),weight=cssFontString(fontRaw(decl,'font-weight',inherited.weight,initial.weight));
+    style=fontKeyword(style,/^(normal|italic|oblique)$/);
+    weight=fontKeyword(weight,/^(normal|bold|bolder|lighter)$/);
     family=$c.join($c.map(cssParts(family,','), function(part){var name=$c.trim(part),key=fontLower(name);return $c.test(/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded|math|emoji|fangsong)$/, key)?key:name;}), ', ');
-    if(weight==='normal')weight='400';else if(weight==='bold')weight='700';else if(weight==='bolder')weight=cssFontNumber(inherited.weight)<350?'400':cssFontNumber(inherited.weight)<550?'700':'900';else if(weight==='lighter')weight=cssFontNumber(inherited.weight)<550?'100':cssFontNumber(inherited.weight)<750?'400':'700';
-    var stretch=raw('font-stretch',inherited.stretch,initial.stretch);
+    weight=computedFontWeight(weight,inherited.weight);
+    var stretch=fontRaw(decl,'font-stretch',inherited.stretch,initial.stretch);
     stretch=fontStretchValues[fontLower(stretch)]||stretch;
-    var caps=raw('font-variant-caps',raw('font-variant',inherited.caps,initial.caps),initial.caps);
-    var capsKey=fontLower(caps);if($c.test(/^(normal|small-caps|all-small-caps|petite-caps|all-petite-caps|unicase|titling-caps)$/, capsKey))caps=capsKey;
-    var lineValue=decl['line-height'],lineKey=typeof lineValue==='string'?fontLower(lineValue):lineValue,line;
-    if(!lineValue||$c.test(/^(inherit|unset|revert|revert-layer)$/, lineKey))line=inherited.line;
-    else if($c.test(/^(normal|initial)$/, lineKey))line=initial.line;
-    else if($c.test(/^(?:\d*\.)?\d+$/, lineValue))line=new FontLine('factor',cssFontNumber(lineValue),undefined);
-    else line=length(lineValue,size,rootSize,true);
-    if(line.value!==null&&line.value<0)line=new FontLine(line.kind,0,undefined);
-    var available=!!(connected&&context&&context[4]&&(parent?inherited.active:root===element));
+    var caps=fontRaw(decl,'font-variant-caps',fontRaw(decl,'font-variant',inherited.caps,initial.caps),initial.caps);
+    caps=fontKeyword(caps,/^(normal|small-caps|all-small-caps|petite-caps|all-petite-caps|unicase|titling-caps)$/);
+    var line=computedFontLine(decl,inherited,initial,size,rootSize);
+    var available=computedFontAvailable(connected,context,parent,inherited,root,element);
     var state=new FontState(available,family,size,cssFontString(sizeValue),style,weight,stretch,caps,line,root===element?size:rootSize);
-    var lineText=line.kind==='normal'?'normal':line.value===null?line.text:line.kind==='factor'&&size===null?cssFontString(line.value):pixels(line.kind==='factor'?line.value*size:line.value);
-    var values={'font-family':family,'font-size':size===null?cssFontString(sizeValue):pixels(size),'font-style':style,'font-weight':weight,'font-stretch':stretch,'font-variant-caps':caps,'line-height':lineText};
-    var shorthand=[];
-    if(style!=='normal')$c.push(shorthand, style);if(caps!=='normal')$c.push(shorthand, caps);if(weight!=='400')$c.push(shorthand, weight);
-    if(stretch!=='100%'){var stretchName=$c.find($O.keys(fontStretchValues),function(key){return fontStretchValues[key]===stretch;});$c.push(shorthand, stretchName||stretch);}
-    $c.push(shorthand, values['font-size']);if(lineText!=='normal')$c.push(shorthand, '/ '+lineText);$c.push(shorthand, family);values.font=$c.join(shorthand, ' ');
+    var lineText=computedFontLineText(line,size);
+    var values={'font-family':family,'font-size':size===null?cssFontString(sizeValue):fontPixels(size),'font-style':style,'font-weight':weight,'font-stretch':stretch,'font-variant-caps':caps,'line-height':lineText};
+    values.font=computedFontShorthand(style,caps,weight,stretch,values['font-size'],lineText,family);
     $c.forEach($O.keys(values), function(name){var value=available?values[name]:'';decl[name]=value;decl[$c.replace(name, /-([a-z])/g,function(_,letter){return $c.toUpperCase(letter);})]=value;});
     return state;
   }
@@ -332,26 +357,35 @@
   // empty declaration (invalid, or a form Chrome computes no style for), else the
   // pseudo-element: its lowercase name, functional ones with their argument (`highlight(x)`,
   // `picker(select)`).
+  // A functional pseudo-element argument: `name(` ... `)` per its kind.
+  function computedPseudoFunctional(name,rest,ident,colons){
+    var kind=computedPseudoFunctions[name];
+    if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!kind)return null;
+    var argument=$c.replace($c.slice(rest,ident.length+1,-1),/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g,''),word=cssIdentifierPrefix(argument);
+    if(kind==='direction'){var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';return scrollButtonDirections[direction]?name+'('+direction+')':null;}
+    if(!word||word.length!==argument.length)return null;
+    if(kind==='select')return word.name==='select'?name+'(select)':null;
+    return name+'('+argument+')';
+  }
+  // A non-functional name after one or two colons.
+  function computedPseudoPlain(name,colons,bare){
+    if(colons===1)return bare||name==='first-line'||name==='first-letter'?name:null;
+    if(computedPseudoNames[name])return name;
+    return name==='cue'||$c.slice(name,0,8)==='-webkit-'||$c.slice(name,0,10)==='-internal-'?'':null;
+  }
+  // No leading colon: only a bare before / after names a pseudo-element.
+  function computedPseudoUncoloned(name,rest,ident){
+    if(!ident)return '';if(ident.length<rest.length)return null;return name==='before'||name==='after'?name:'';
+  }
   function computedPseudoTarget(value){
     if(value===undefined||value===null)return '';
     var text=$c.replace(''+value,/\/\*[\s\S]*?(?:\*\/|$)/g,'');
     var colons=0;while(text[colons]===':')colons++;
     var rest=$c.slice(text,colons),ident=cssIdentifierPrefix(rest),name=ident&&ident.name;
-    var bare=name==='before'||name==='after';
-    if(colons===0){if(!ident)return '';if(ident.length<rest.length)return null;return bare?name:'';}
+    if(colons===0)return computedPseudoUncoloned(name,rest,ident);
     if(colons>2||!ident)return null;
-    if(ident.length<rest.length){
-      var kind=computedPseudoFunctions[name];
-      if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!kind)return null;
-      var argument=$c.replace($c.slice(rest,ident.length+1,-1),/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g,''),word=cssIdentifierPrefix(argument);
-      if(kind==='direction'){var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';return scrollButtonDirections[direction]?name+'('+direction+')':null;}
-      if(!word||word.length!==argument.length)return null;
-      if(kind==='select')return word.name==='select'?name+'(select)':null;
-      return name+'('+argument+')';
-    }
-    if(colons===1)return bare||name==='first-line'||name==='first-letter'?name:null;
-    if(computedPseudoNames[name])return name;
-    return name==='cue'||$c.slice(name,0,8)==='-webkit-'||$c.slice(name,0,10)==='-internal-'?'':null;
+    if(ident.length<rest.length)return computedPseudoFunctional(name,rest,ident,colons);
+    return computedPseudoPlain(name,colons,name==='before'||name==='after');
   }
   // Page-replaceable numeric and string intrinsics never participate in this read.
   var cssZoomFround=Math.fround,cssZoomExec=RegExp.prototype.exec,cssZoomTrim=String.prototype.trim;
@@ -652,26 +686,29 @@
   // functional pseudo-element's argument must match, `*` matching every one) and its
   // originating part matches `el`. `pseudo` is a computedPseudoTarget name, or a predicate
   // over the selector's pseudo-element name.
+  // Whether a selector item's pseudo-element (`name`, `argument`) is the `wanted` one.
+  function pseudoNameWanted(name, argument, wanted){
+    if (name !== wanted[1] || (argument === undefined) !== (wanted[2] === undefined)) return false;
+    if (argument !== undefined && argument !== '*' && wanted[2] !== '*') {
+      return wanted[1] === 'picker' || wanted[1] === 'scroll-button' ? $c.toLowerCase(argument) === wanted[2] : argument === wanted[2];
+    }
+    return true;
+  }
+  function pseudoItemMatches(el, item, wanted, pseudo){
+    var match = $c.exec(/(::?)([A-Za-z-]+)(?:\(\s*([^()]*?)\s*\))?$/, item);
+    if (!match || match.index > 0 && item[match.index - 1] === '\\') return false;
+    var name = $c.toLowerCase(match[2]), argument = match[3];
+    name = pseudoSelectorAliases[name] || name;
+    if (match[1] === ':' && !$c.test(/^(before|after|first-line|first-letter)$/, name)) return false;
+    if (wanted ? !pseudoNameWanted(name, argument, wanted) : !pseudo(name)) return false;
+    var origin = $c.slice(item, 0, match.index);
+    if (origin === '' || $c.test(/[\s>+~]$/, origin)) origin += '*';
+    return computedNativeMatches(el, origin);
+  }
   function pseudoRuleMatches(el, selectorText, pseudo){
     var items = selectorListItems(String(selectorText));
     var wanted = typeof pseudo === 'string' ? $c.exec(/^([a-z-]+)(?:\((.*)\))?$/, pseudo) : null;
-    for (var i = 0; i < items.length; i++) {
-      var item = $c.trim(items[i]), match = $c.exec(/(::?)([A-Za-z-]+)(?:\(\s*([^()]*?)\s*\))?$/, item);
-      if (!match || match.index > 0 && item[match.index - 1] === '\\') continue;
-      var name = $c.toLowerCase(match[2]), argument = match[3];
-      name = pseudoSelectorAliases[name] || name;
-      if (match[1] === ':' && !$c.test(/^(before|after|first-line|first-letter)$/, name)) continue;
-      if (wanted) {
-        if (name !== wanted[1] || (argument === undefined) !== (wanted[2] === undefined)) continue;
-        if (argument !== undefined && argument !== '*' && wanted[2] !== '*') {
-          var same = wanted[1] === 'picker' || wanted[1] === 'scroll-button' ? $c.toLowerCase(argument) === wanted[2] : argument === wanted[2];
-          if (!same) continue;
-        }
-      } else if (!pseudo(name)) continue;
-      var origin = $c.slice(item, 0, match.index);
-      if (origin === '' || $c.test(/[\s>+~]$/, origin)) origin += '*';
-      if (computedNativeMatches(el, origin)) return true;
-    }
+    for (var i = 0; i < items.length; i++) if (pseudoItemMatches(el, $c.trim(items[i]), wanted, pseudo)) return true;
     return false;
   }
   // turbo-dom#47: how a UA-styled pseudo-element computes in Chrome 156. Each kind lists the
@@ -733,48 +770,67 @@
     });
     return $c.test(/^inside$/i, position);
   }
+  // computedPseudoInfo's per-kind UA defaults, one writer per pseudo-element family.
+  function pseudoInfoMarker(info, el, parentStyle){
+    var inside = markerInside(el, parentStyle);
+    info.display = inside ? 'inline' : 'inline-block';
+    info.ua = { 'white-space': inside ? computedInheritedAuthored(el, 'white-space', parentStyle, 'normal') : 'pre', 'font-variant-numeric': 'tabular-nums', 'unicode-bidi': 'isolate', 'text-transform': 'none' };
+  }
+  function pseudoInfoHighlight(info){
+    info.highlight = true; info.container = false;
+    if (info.kind === 'spelling-error' || info.kind === 'grammar-error') info.ua = { 'text-decoration-line': info.kind };
+  }
+  function pseudoInfoPlaceholder(info, el, tag){
+    var input = tag === 'INPUT' && placeholderInputTypes[computedInputType(el)];
+    info.authored = (input || tag === 'TEXTAREA') && computedHasAttribute(el, 'placeholder');
+    if (info.authored) {
+      info.display = 'block';
+      info.ua = { 'color': 'rgb(117, 117, 117)', 'unicode-bidi': 'isolate' };
+      if (input) { info.ua['white-space'] = 'pre'; info.ua.overflow = 'hidden'; }
+      info.important = { 'pointer-events': 'none' };
+    }
+  }
+  function pseudoInfoFileButton(info, el, tag){
+    info.authored = tag === 'INPUT' && computedInputType(el) === 'file';
+    if (info.authored) {
+      info.display = 'inline-block';
+      info.ua = { 'background-color': 'rgb(239, 239, 239)', 'white-space': 'nowrap', 'padding': '1px 6px', 'margin': '0px 4px 0px 0px', 'border-width': '2px', 'border-style': 'outset', 'text-align': 'center', 'box-sizing': 'border-box', 'user-select': 'none' };
+    }
+  }
+  function pseudoInfoDetailsContent(info, el, tag){
+    info.authored = tag === 'DETAILS';
+    if (info.authored) { info.display = 'block'; info.ua = { 'content-visibility': computedHasAttribute(el, 'open') ? 'visible' : 'hidden' }; }
+  }
+  function pseudoInfoPicker(info, tag){
+    info.authored = tag === 'SELECT';
+    if (info.authored) { info.display = 'none'; info.position = 'fixed'; info.ua = { 'overflow': 'auto', 'white-space': 'normal', 'unicode-bidi': 'isolate' }; }
+  }
+  function pseudoInfoGenerated(info, kind, tag){
+    info.generated = true;
+    if (kind === 'picker-icon' && tag === 'SELECT') info.display = 'block';
+  }
+  function pseudoInfoViewTransition(info, kind){
+    info.display = 'block'; info.position = 'absolute';
+    info.ua = kind === 'view-transition' || kind === 'view-transition-image-pair' ? { 'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px' } : kind === 'view-transition-group' ? { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': '0px' } : { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': 'auto' };
+  }
+  // Fills `info` for `kind`; returns the kind pseudoAccepts reads (highlights share one).
+  function pseudoInfoForKind(info, kind, el, tag, parentStyle){
+    if (kind === 'marker') pseudoInfoMarker(info, el, parentStyle);
+    else if (kind === 'first-line' || kind === 'first-letter') info.container = kind === 'first-line';
+    else if (highlightPseudoNames[kind]) { pseudoInfoHighlight(info); return 'highlight'; }
+    else if (kind === 'placeholder') pseudoInfoPlaceholder(info, el, tag);
+    else if (kind === 'file-selector-button') pseudoInfoFileButton(info, el, tag);
+    else if (kind === 'details-content') pseudoInfoDetailsContent(info, el, tag);
+    else if (kind === 'picker') pseudoInfoPicker(info, tag);
+    else if (kind === 'checkmark' || kind === 'picker-icon') pseudoInfoGenerated(info, kind, tag);
+    else if (kind === 'scroll-marker-group') info.display = 'block';
+    else if ($c.slice(kind, 0, 15) === 'view-transition' && tag) pseudoInfoViewTransition(info, kind);
+    return kind;
+  }
   function computedPseudoInfo(el, pseudo, parentStyle){
     var kind = $c.replace(pseudo, /\(.*$/, ''), tag = computedHtmlTag(el);
     var info = { kind: kind, authored: true, accepts: null, ua: {}, important: null, display: 'inline', position: 'static', container: true, generated: false, highlight: false };
-    if (kind === 'marker') {
-      var inside = markerInside(el, parentStyle);
-      info.display = inside ? 'inline' : 'inline-block';
-      info.ua = { 'white-space': inside ? computedInheritedAuthored(el, 'white-space', parentStyle, 'normal') : 'pre', 'font-variant-numeric': 'tabular-nums', 'unicode-bidi': 'isolate', 'text-transform': 'none' };
-    } else if (kind === 'first-line' || kind === 'first-letter') {
-      info.container = kind === 'first-line';
-    } else if (highlightPseudoNames[kind]) {
-      info.highlight = true; info.container = false; kind = 'highlight';
-      if (info.kind === 'spelling-error' || info.kind === 'grammar-error') info.ua = { 'text-decoration-line': info.kind };
-    } else if (kind === 'placeholder') {
-      var input = tag === 'INPUT' && placeholderInputTypes[computedInputType(el)];
-      info.authored = (input || tag === 'TEXTAREA') && computedHasAttribute(el, 'placeholder');
-      if (info.authored) {
-        info.display = 'block';
-        info.ua = { 'color': 'rgb(117, 117, 117)', 'unicode-bidi': 'isolate' };
-        if (input) { info.ua['white-space'] = 'pre'; info.ua.overflow = 'hidden'; }
-        info.important = { 'pointer-events': 'none' };
-      }
-    } else if (kind === 'file-selector-button') {
-      info.authored = tag === 'INPUT' && computedInputType(el) === 'file';
-      if (info.authored) {
-        info.display = 'inline-block';
-        info.ua = { 'background-color': 'rgb(239, 239, 239)', 'white-space': 'nowrap', 'padding': '1px 6px', 'margin': '0px 4px 0px 0px', 'border-width': '2px', 'border-style': 'outset', 'text-align': 'center', 'box-sizing': 'border-box', 'user-select': 'none' };
-      }
-    } else if (kind === 'details-content') {
-      info.authored = tag === 'DETAILS';
-      if (info.authored) { info.display = 'block'; info.ua = { 'content-visibility': computedHasAttribute(el, 'open') ? 'visible' : 'hidden' }; }
-    } else if (kind === 'picker') {
-      info.authored = tag === 'SELECT';
-      if (info.authored) { info.display = 'none'; info.position = 'fixed'; info.ua = { 'overflow': 'auto', 'white-space': 'normal', 'unicode-bidi': 'isolate' }; }
-    } else if (kind === 'checkmark' || kind === 'picker-icon') {
-      info.generated = true;
-      if (kind === 'picker-icon' && tag === 'SELECT') info.display = 'block';
-    } else if (kind === 'scroll-marker-group') {
-      info.display = 'block';
-    } else if ($c.slice(kind, 0, 15) === 'view-transition' && tag) {
-      info.display = 'block'; info.position = 'absolute';
-      info.ua = kind === 'view-transition' || kind === 'view-transition-image-pair' ? { 'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px' } : kind === 'view-transition-group' ? { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': '0px' } : { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': 'auto' };
-    }
+    kind = pseudoInfoForKind(info, kind, el, tag, parentStyle);
     // ::view-transition > -group() > -image-pair() > -old() / -new().
     if ($c.slice(kind, 0, 16) === 'view-transition-') {
       var argument = $c.slice(pseudo, kind.length);
@@ -1343,21 +1399,32 @@
   var computedStateName=/^(?:checked|indeterminate|default|placeholder-shown|read-only|read-write|in-range|out-of-range|valid|invalid|user-valid|user-invalid|enabled|disabled|required|optional|popover-open|modal|open|active-view-transition|active-view-transition-type|interest-source|interest-target)$/i;
   var computedListFunction=/^(?:is|where|has|-webkit-any|matches)$/i;
   var computedRelaxed={__proto__:null},computedRelaxedCount=0;
+  // The index of the quote closing the string opened at `index` (escapes skipped).
+  function relaxStringEnd(text,index,c){var end=index+1;while(end<text.length&&text[end]!==c){if(text[end]==='\\')end++;end++;}return end;}
+  // The index after the `)` closing the argument opened before `after + 1`; -1 on an escape.
+  function relaxArgumentClose(text,after){
+    var depth=1,close=after+1;
+    while(close<text.length&&depth){var d=text[close];if(d==='\\')return -1;if(d==='"'||d==="'"){var q=close+1;while(q<text.length&&text[q]!==d)q++;close=q+1;continue;}if(d==='(')depth++;else if(d===')')depth--;close++;}
+    return close;
+  }
+  // A functional pseudo-class `:name(inner)` relaxed: states match anything, lists recurse.
+  function relaxFunctionalPseudo(text,index,name,inner,close){
+    if(cssApply(cssZoomExec,computedStateName,[name]))return ':is(*)';
+    if(cssApply(cssZoomExec,computedListFunction,[name]))return ':'+name+'('+computedRelaxSelector(inner)+')';
+    return cssApply(cssZoomExec,computedStatePattern,[inner])?':is(*)':$c.slice(text, index,close);
+  }
   function computedRelaxSelector(text){
     var out='',index=0;
     while(index<text.length){
       var c=text[index];
       if(c==='\\')return '*';
-      if(c==='"'||c==="'"){var end=index+1;while(end<text.length&&text[end]!==c){if(text[end]==='\\')end++;end++;}out+=$c.slice(text, index,end+1);index=end+1;continue;}
+      if(c==='"'||c==="'"){var end=relaxStringEnd(text,index,c);out+=$c.slice(text, index,end+1);index=end+1;continue;}
       if(c!==':'||text[index+1]===':'){if(c===':'){out+='::';index+=2;continue;}out+=c;index++;continue;}
       var name=cssApply(cssZoomExec,/^[A-Za-z0-9_-]*/,[$c.slice(text, index+1)])[0],after=index+1+name.length;
       if(text[after]!=='('){out+=cssApply(cssZoomExec,computedStateName,[name])?':is(*)':':'+name;index=after;continue;}
-      var depth=1,close=after+1;
-      while(close<text.length&&depth){var d=text[close];if(d==='\\')return '*';if(d==='"'||d==="'"){var q=close+1;while(q<text.length&&text[q]!==d)q++;close=q+1;continue;}if(d==='(')depth++;else if(d===')')depth--;close++;}
-      var inner=$c.slice(text, after+1,close-1);
-      if(cssApply(cssZoomExec,computedStateName,[name]))out+=':is(*)';
-      else if(cssApply(cssZoomExec,computedListFunction,[name]))out+=':'+name+'('+computedRelaxSelector(inner)+')';
-      else out+=cssApply(cssZoomExec,computedStatePattern,[inner])?':is(*)':$c.slice(text, index,close);
+      var close=relaxArgumentClose(text,after);
+      if(close<0)return '*';
+      out+=relaxFunctionalPseudo(text,index,name,$c.slice(text, after+1,close-1),close);
       index=close;
     }
     return out;
@@ -1567,230 +1634,303 @@
     if(names)for(var index=0;index<names.length;index++){var name=names[index],value=decl[name];if(typeof value==='string'&&!$c.test(/shape\(/i,value))set(name,mathResolveText(name,value,font));}
     $c.forEach(['clip-path','offset-path','shape-outside'],function(name){var value=decl[name];if(typeof value==='string'&&$c.test(/shape\(/i,value))set(name,shapeComputed(name,value,font)||value);});
   }
-  function computeStyleFresh(el,snapshots,sink,pseudo,deps,base){
-    var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
-    if(noteCascadeRun)noteCascadeRun();
-    // Percentage lookup may visit several ancestors before font inheritance asks
-    // for the immediate parent again. Reuse each resolved ancestor only in this read.
-    function parentStyle(node){var style=computeStyleSnapshot(node,snapshots);if(deps&&deps[deps.length-2]!==node){deps[deps.length]=node;deps[deps.length]=style;}return style;}
-    // A disconnected element has no style (turbo-dom#67): every value reads "" until it is
-    // connected again (the declaration stays live). Typed OM's cascade read (`sink`) still
-    // reports the cascaded values.
-    // An element of a child iframe document (turbo-dom#299) cascades as connected.
-    var inFrame = !!el && computedFrameRoot(el) !== null;
+  // One computeStyleFresh read's state, shared by its phases below.
+  function ComputedCascade(el,snapshots,sink,pseudo,deps,base,inFrame){
+    this.el=el;this.snapshots=snapshots;this.sink=sink;this.pseudo=pseudo;this.deps=deps;this.base=base;this.inFrame=inFrame;
+    this.decl=null;this.priorities=null;this.uaValues=null;this.expanding=null;this.info=null;this.layer='';
+    this.parentStyle=null;this.setProp=null;this.bucketIndex=undefined;this.bucketOrder=undefined;
+    this.inheritParent=null;this.inheritSnapshot=null;this.inheritedValue=null;this.connected=false;
+  }
+  function computedCamel(p){ return $c.replace(p,/-([a-z])/g, function(_,c){ return $c.toUpperCase(c); }); }
+  // Normalize comma-spacing ("a,b" -> "a, b"): minified emotion rules drop the space, but jest-dom
+  // toHaveStyle's expected value is normalized by the browser's CSS parser (which inserts ", "),
+  // so font-family / shorthand lists must match that form.
+  // Normalize authored hex colors to the computed rgb()/rgba() spelling used by the
+  // declaration records and style assertions.
+  function computedNormColor(v){
+    var m = $c.exec(/^#([0-9a-fA-F]{3})$/, v); if (m){ var x=m[1]; return 'rgb('+parseInt(x[0]+x[0],16)+', '+parseInt(x[1]+x[1],16)+', '+parseInt(x[2]+x[2],16)+')'; }
+    m = $c.exec(/^#([0-9a-fA-F]{6})$/, v); if (m){ var h=m[1]; return 'rgb('+parseInt($c.slice(h, 0,2),16)+', '+parseInt($c.slice(h, 2,4),16)+', '+parseInt($c.slice(h, 4,6),16)+')'; }
+    m = $c.exec(/^#([0-9a-fA-F]{8})$/, v); if (m){ var h2=m[1]; return 'rgba('+parseInt($c.slice(h2, 0,2),16)+', '+parseInt($c.slice(h2, 2,4),16)+', '+parseInt($c.slice(h2, 4,6),16)+', '+($Mround(parseInt($c.slice(h2, 6,8),16)/255*100)/100)+')'; }
+    return v;
+  }
+  // Length-valued properties resolve a bare zero to the computed "0px" spelling.
+  var computedLenProp = /(width|height|^top$|^right$|^bottom$|^left$|^inset|margin|padding|gap|^flex-basis$|radius|^font-size$|letter-spacing|word-spacing|text-indent|^outline-offset$|^column-(width|gap)$|size$)/;
+  // A cascaded value as stored: `revert` takes the UA value, hex colors / bare zeros / lists
+  // take their computed spelling.
+  function cascadeSpelledValue(cs,name,val){
+    if(cs.uaValues&&typeof val==='string'&&$c.test(/^revert$/i,$c.trim(val))&&cs.uaValues[name]!==undefined)val=cs.uaValues[name];
+    if (typeof val === 'string' && $c.slice(name,0, 2) !== '--'){ var t = $c.trim(val); if (t[0] === '#') val = computedNormColor(t); else if (t === '0' && $c.test(computedLenProp,name)) val = '0px'; else if ($c.indexOf(val,',') >= 0) val = cssPrelude(val,true); }
+    return val;
+  }
+  // Priority is private per computed snapshot (cs.priorities); public CSSStyleDeclaration
+  // methods and page overrides cannot change the importance of parsed declarations. A
+  // cascaded longhand outdates the shorthand entries an earlier declaration (a UA table)
+  // stored; the shorthand being expanded (cs.expanding) keeps its own.
+  function cascadeSetProp(cs,name,val,important){
+    name = $c.trim(String(name)); if (!name) return;
+    if(important!==undefined){if(cs.priorities[name]&&!important)return;cs.priorities[name]=important;}
+    val=cascadeSpelledValue(cs,name,val);
+    var decl=cs.decl,sink=cs.sink;
+    decl[name] = val; decl[computedCamel(name)] = val;
+    $c.forEach(staleShorthands(name),function(shorthand){ if (shorthand !== cs.expanding) { delete decl[shorthand]; delete decl[computedCamel(shorthand)]; } });
+    if (sink) sink.order[name] = ++sink.count;
+    if (typeof val === 'string') { var outer = cs.expanding; cs.expanding = name; try { expandShorthand(name, val, function(property,value){cascadeSetProp(cs,property,value,important);}); } finally { cs.expanding = outer; } }
+  }
+  // `only`: true applies just the !important declarations, false just the normal ones.
+  function cascadeApplyDeclarations(cs,record,accepts,only){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;if(only!==undefined&&only!==(value.priority==='important'))continue;cascadeSetProp(cs,name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
+  // A disconnected element has no style (turbo-dom#67): every value reads "" until it is
+  // connected again (the declaration stays live). Typed OM's cascade read (`sink`) still
+  // reports the cascaded values. A pseudo-element of a disconnected (or <video>/<audio>
+  // child) element has no style. Null when the element has a style.
+  function computedStyleUnavailable(el,snapshots,sink,pseudo,inFrame){
     if (!pseudo && !sink && el) {
       var attached = true;
       try { attached = inFrame || __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
       if (!attached) { var empty = __ns.makeComputedStyleDeclaration({},el,null); computedSnapshotSet(snapshots,el,empty); return empty; }
     }
-    // A pseudo-element of a disconnected (or <video>/<audio> child) element has no style.
     if (pseudo) {
       var live = false;
       try { live = computedConnected(el) && !computedMediaChild(el); } catch(e) {}
       if (!live) return __ns.makeComputedStyleDeclaration({},el,null,pseudo);
     }
-    var camel = function(p){ return $c.replace(p,/-([a-z])/g, function(_,c){ return $c.toUpperCase(c); }); };
-    var decl = { __proto__:null, getPropertyValue: function(p){ var v = this[p]; if (v == null) v = this[camel(p)]; return v == null ? '' : String(v); }, getPropertyPriority: function(){ return ''; }, length: 0 };
-    // Minimal cascade: merge declarations from every injected stylesheet rule whose selector matches
-    // `el` (emotion's `sx` -> `.css-xxx{...}`), then overlay inline declarations,
-    // retaining per-longhand importance through shorthand expansion. Common authored
-    // values remain observable before layout-dependent resolution.
-    // Properties are exposed both kebab and camelCase.
-    // Normalize comma-spacing ("a,b" -> "a, b"): minified emotion rules drop the space, but jest-dom
-    // toHaveStyle's expected value is normalized by the browser's CSS parser (which inserts ", "),
-    // so font-family / shorthand lists must match that form.
-    // Normalize authored hex colors to the computed rgb()/rgba() spelling used by the
-    // declaration records and style assertions.
-    var normColor = function(v){
-      var m = $c.exec(/^#([0-9a-fA-F]{3})$/, v); if (m){ var x=m[1]; return 'rgb('+parseInt(x[0]+x[0],16)+', '+parseInt(x[1]+x[1],16)+', '+parseInt(x[2]+x[2],16)+')'; }
-      m = $c.exec(/^#([0-9a-fA-F]{6})$/, v); if (m){ var h=m[1]; return 'rgb('+parseInt($c.slice(h, 0,2),16)+', '+parseInt($c.slice(h, 2,4),16)+', '+parseInt($c.slice(h, 4,6),16)+')'; }
-      m = $c.exec(/^#([0-9a-fA-F]{8})$/, v); if (m){ var h2=m[1]; return 'rgba('+parseInt($c.slice(h2, 0,2),16)+', '+parseInt($c.slice(h2, 2,4),16)+', '+parseInt($c.slice(h2, 4,6),16)+', '+($Mround(parseInt($c.slice(h2, 6,8),16)/255*100)/100)+')'; }
-      return v;
-    };
-    // Length-valued properties resolve a bare zero to the computed "0px" spelling.
-    var LEN_PROP = /(width|height|^top$|^right$|^bottom$|^left$|^inset|margin|padding|gap|^flex-basis$|radius|^font-size$|letter-spacing|word-spacing|text-indent|^outline-offset$|^column-(width|gap)$|size$)/;
-    // Priority is private per computed snapshot; public CSSStyleDeclaration methods
-    // and page overrides cannot change the importance of parsed declarations.
-    var uaValues=null,priorities={__proto__:null};
-    // A cascaded longhand outdates the shorthand entries an earlier declaration (a UA table)
-    // stored; the shorthand being expanded keeps its own.
-    var expandingShorthand = null;
-    var setProp = function(name, val, important){ name = $c.trim(String(name)); if (!name) return; if(important!==undefined){if(priorities[name]&&!important)return;priorities[name]=important;} if(uaValues&&typeof val==='string'&&$c.test(/^revert$/i,$c.trim(val))&&uaValues[name]!==undefined)val=uaValues[name]; if (typeof val === 'string' && $c.slice(name,0, 2) !== '--'){ var t = $c.trim(val); if (t[0] === '#') val = normColor(t); else if (t === '0' && $c.test(LEN_PROP,name)) val = '0px'; else if ($c.indexOf(val,',') >= 0) val = cssPrelude(val,true); } decl[name] = val; decl[camel(name)] = val; $c.forEach(staleShorthands(name),function(shorthand){ if (shorthand !== expandingShorthand) { delete decl[shorthand]; delete decl[camel(shorthand)]; } }); if (sink) sink.order[name] = ++sink.count;
-      if (typeof val === 'string') { var outer = expandingShorthand; expandingShorthand = name; try { expandShorthand(name, val, function(property,value){setProp(property,value,important);}); } finally { expandingShorthand = outer; } }
-    };
-    // `only`: true applies just the !important declarations, false just the normal ones.
-    function applyDeclarations(record,accepts,only){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;if(only!==undefined&&only!==(value.priority==='important'))continue;setProp(name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
-    var info=pseudo&&pseudo!=='backdrop'&&pseudo!=='before'&&pseudo!=='after'?computedPseudoInfo(el,pseudo,parentStyle):null;
-    // Measured Chrome button defaults are UA declarations: every matching author
-    // rule (including a universal selector) and inline value takes precedence.
-    var ua = null, layer = '';
+    return null;
+  }
+  function computedPseudoInfoFor(el,pseudo,parentStyle){return pseudo&&pseudo!=='backdrop'&&pseudo!=='before'&&pseudo!=='after'?computedPseudoInfo(el,pseudo,parentStyle):null;}
+  function computedLayerOf(el,pseudo,inFrame){
+    var layer='';
     try { if(pseudo||inFrame||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
-    // The cascaded declarations come from this element's earlier computation (turbo-test#227)
-    // or a same-signature sibling's (turbo-dom#307), else from the rules below.
-    var reused=base?base.use:null,share=!reused&&base&&!pseudo&&!sink&&!inFrame&&layer===''?styleShareProbe(el):null;
-    if(share&&share.hit)reused=share.hit;
-    if(reused)computedBaseRestore(reused,decl,priorities),uaValues=reused.ua;
-    else {
-    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&(inFrame||cssApply(computedStyleNativeConnected,el,[]))){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=htmlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
-      if(!pseudo&&layer==='fullscreen')ua=$O.assign({},ua||{},fullscreenUserAgent); } catch(e){}
-    if(ua){$c.forEach($O.keys(ua), function(name){setProp(name,ua[name]);});uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
-    var sizeHints=!pseudo&&iframeSizeHints(el);
-    if(sizeHints)$c.forEach($O.keys(sizeHints),function(name){setProp(name,sizeHints[name]);});
+    return layer;
+  }
+  // Measured Chrome button defaults are UA declarations: every matching author
+  // rule (including a universal selector) and inline value takes precedence.
+  function computedBaseUserAgent(cs){
+    var pseudo=cs.pseudo,el=cs.el,layer=cs.layer;
+    if(pseudo==='backdrop')return backdropUserAgent(layer);
+    if(cs.info)return cs.info.ua;
+    if(pseudo)return null;
+    if(layer==='modal')return modalDialogUserAgent;
+    if(cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&(cs.inFrame||cssApply(computedStyleNativeConnected,el,[]))){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])return htmlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
+    return null;
+  }
+  function computedUserAgentDecls(cs){
+    var ua=null;
+    try { ua=computedBaseUserAgent(cs);
+      if(!cs.pseudo&&cs.layer==='fullscreen')ua=$O.assign({},ua||{},fullscreenUserAgent); } catch(e){}
+    return ua;
+  }
+  function computedBucketMatches(el,sheets,bucketIndex,bucketOrder,pseudo,matched){
+    for(var bucketAt=0;bucketAt<bucketOrder.length;bucketAt++){var bucketEntry=bucketOrder[bucketAt];if(sheetRecord(sheets[bucketIndex.sheet[bucketEntry]]).disabled)continue;var bucketHit=appliedEntryMatch(el,bucketIndex.entries[bucketEntry],pseudo,matched.length);if(bucketHit)$c.push(matched,bucketHit);}
+  }
+  function computedSheetMatches(el,sheets,build,pseudo,matched){
+    for (var si=0; si<sheets.length; si++) {
+      if(sheetRecord(sheets[si]).disabled)continue;
+      var entries = build.lists[si];
+      for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
+    }
+  }
+  // Minimal cascade: merge declarations from every injected stylesheet rule whose selector matches
+  // `el` (emotion's `sx` -> `.css-xxx{...}`), retaining per-longhand importance through
+  // shorthand expansion.
+  function computedApplySheets(cs){
+    var el=cs.el,info=cs.info;
     try {
       // Element-backed pseudo-elements the element does not have see no author rules.
       // Match the private selector list before touching declarations. Native parsing
       // preserves quoted delimiters that serialized text splitting loses.
       var sheets = info && !info.authored ? [] : computedSheets(el),build=computedSheetEntries(sheets,el),layers=build.layers,matched=[];
-      var bucketOwn=sheets.length?cssElementKeys(el):null,bucketIndex=bucketOwn?cssBucketIndex(build):null,bucketOrder=bucketIndex?cssBucketCandidates(bucketIndex,bucketOwn):null;
-      if(bucketOrder){for(var bucketAt=0;bucketAt<bucketOrder.length;bucketAt++){var bucketEntry=bucketOrder[bucketAt];if(sheetRecord(sheets[bucketIndex.sheet[bucketEntry]]).disabled)continue;var bucketHit=appliedEntryMatch(el,bucketIndex.entries[bucketEntry],pseudo,matched.length);if(bucketHit)$c.push(matched,bucketHit);}}
-      else for (var si=0; si<sheets.length; si++) {
-        if(sheetRecord(sheets[si]).disabled)continue;
-        var entries = build.lists[si];
-        for (var ri=0; ri<entries.length; ri++) { var record = appliedEntryMatch(el,entries[ri],pseudo,matched.length); if (record) $c.push(matched,record); }
-      }
-      cascadeEntries(matched,layers,function(entry,only){applyDeclarations(declarationRecord(entry.rule.style),info&&info.accepts,only);});
+      var bucketOwn=sheets.length?cssElementKeys(el):null;
+      cs.bucketIndex=bucketOwn?cssBucketIndex(build):null;
+      cs.bucketOrder=cs.bucketIndex?cssBucketCandidates(cs.bucketIndex,bucketOwn):null;
+      if(cs.bucketOrder)computedBucketMatches(el,sheets,cs.bucketIndex,cs.bucketOrder,cs.pseudo,matched);
+      else computedSheetMatches(el,sheets,build,cs.pseudo,matched);
+      cascadeEntries(matched,layers,function(entry,only){cascadeApplyDeclarations(cs,declarationRecord(entry.rule.style),info&&info.accepts,only);});
     } catch(e){}
-    // overlay inline style (own props React/components set: background, height, display, ...)
+  }
+  // UA declarations, presentational hints, author rules, then inline declarations (own props
+  // React/components set: background, height, display, ...) and the !important UA ones
+  // (::placeholder pointer-events, the fullscreen element's box), which beat every author one.
+  function computedApplyCascade(cs){
+    var el=cs.el,pseudo=cs.pseudo,info=cs.info,decl=cs.decl;
+    var ua=computedUserAgentDecls(cs);
+    if(ua){$c.forEach($O.keys(ua), function(name){cs.setProp(name,ua[name]);});cs.uaValues=$O.create(null);$c.forEach($O.keys(decl), function(name){if(typeof decl[name]==='string')cs.uaValues[name]=decl[name];});}
+    var sizeHints=!pseudo&&iframeSizeHints(el);
+    if(sizeHints)$c.forEach($O.keys(sizeHints),function(name){cs.setProp(name,sizeHints[name]);});
+    computedApplySheets(cs);
     var st = !pseudo && el && __ns.makeInlineStyleDeclaration(el);
-    if (st) applyDeclarations(declarationRecord(st));
-    // !important UA declarations (::placeholder pointer-events, the fullscreen element's box)
-    // beat every author one.
-    var important = info ? info.important : !pseudo && layer === 'fullscreen' ? fullscreenImportant : null;
-    if (important) $c.forEach($O.keys(important), function(name){ setProp(name, important[name], true); });
+    if (st) cascadeApplyDeclarations(cs,declarationRecord(st));
+    var important = info ? info.important : !pseudo && cs.layer === 'fullscreen' ? fullscreenImportant : null;
+    if (important) $c.forEach($O.keys(important), function(name){ cs.setProp(name, important[name], true); });
+  }
+  function computedShareProbe(cs,reused){var base=cs.base;return !reused&&base&&!cs.pseudo&&!cs.sink&&!cs.inFrame&&cs.layer===''?styleShareProbe(cs.el):null;}
+  // The cascaded declarations come from this element's earlier computation (turbo-test#227)
+  // or a same-signature sibling's (turbo-dom#307), else from the rules.
+  function computedCascadeDecls(cs){
+    var base=cs.base,reused=base?base.use:null,share=computedShareProbe(cs,reused);
+    if(share&&share.hit)reused=share.hit;
+    if(reused){computedBaseRestore(reused,cs.decl,cs.priorities);cs.uaValues=reused.ua;return;}
+    computedApplyCascade(cs);
     // (A cascade goes volatile before this point only in a tree that never shares: an unkeyed
     // state rule has scope 8, an @import's media has scope -1.)
-    if(base&&!pseudo&&!sink){base.out=computedBaseCapture(decl,priorities,uaValues);if(share&&!base.out.stateRead)styleShareStore(el,share,base.out,bucketIndex,bucketOrder);}
-    }
-    if (sink) { var cascaded = { __proto__: null }; $c.forEach($O.keys(decl),function(name){ if (typeof decl[name] === 'string' && ($c.slice(name,0, 2) === '--' || name === $c.toLowerCase(name))) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
-    // Inherited values come from the composed parent's snapshot in this read, so
-    // CSSOM edits to document sheets reach descendants. Native cascade only adds
-    // shadow-scoped rules (shadow <style>, :host, ::slotted) the JS cascade lacks.
-    var inheritParent = null;
-    try { var inheritContext = computedFontContext(el); inheritParent = pseudo ? el : inheritContext ? inheritContext[2] : null; } catch(e) {}
+    if(base&&!cs.pseudo&&!cs.sink){base.out=computedBaseCapture(cs.decl,cs.priorities,cs.uaValues);if(share&&!base.out.stateRead)styleShareStore(cs.el,share,base.out,cs.bucketIndex,cs.bucketOrder);}
+  }
+  function computedSinkValues(decl){ var cascaded = { __proto__: null }; $c.forEach($O.keys(decl),function(name){ if (typeof decl[name] === 'string' && ($c.slice(name,0, 2) === '--' || name === $c.toLowerCase(name))) cascaded[name] = decl[name]; }); return cascaded; }
+  // Inherited values come from the composed parent's snapshot in this read, so
+  // CSSOM edits to document sheets reach descendants. Native cascade only adds
+  // shadow-scoped rules (shadow <style>, :host, ::slotted) the JS cascade lacks.
+  function computedInheritance(cs){
+    var el=cs.el,pseudo=cs.pseudo,info=cs.info;
+    try { var inheritContext = computedFontContext(el); cs.inheritParent = pseudo ? el : inheritContext ? inheritContext[2] : null; } catch(e) {}
     // A fresh internal result is already resolved. Reading its public live getter
     // would compute the same ancestors again and double recursion at every level.
     // A view-transition pseudo-element inherits from its parent in the pseudo-element tree.
-    var inheritSnapshot = info && info.parentPseudo ? computeStyleSnapshot(el, snapshots, undefined, info.parentPseudo) : null;
-    function inheritedValue(name){ return inheritSnapshot ? computedSnapshotValue(inheritSnapshot,name) : inheritParent ? computedSnapshotValue(parentStyle(inheritParent),name) : ''; }
-    // Web Animations compose over cascaded and inline values; !important declarations win.
+    cs.inheritSnapshot = info && info.parentPseudo ? computeStyleSnapshot(el, cs.snapshots, undefined, info.parentPseudo) : null;
+    cs.inheritedValue = function(name){ return cs.inheritSnapshot ? computedSnapshotValue(cs.inheritSnapshot,name) : cs.inheritParent ? computedSnapshotValue(cs.parentStyle(cs.inheritParent),name) : ''; };
+  }
+  // The element's own display as the UA / initial resolution below will compute it ("" for
+  // a value it cannot tell before then), and this read's snapshot map: a transition update
+  // decides "rendered" from them without resolving the element or its ancestors again
+  // (turbo-test#227).
+  function computedOwnDisplay(cs){
+    var value=cs.decl.display,el=cs.el;
+    if((value==null||value==='')&&typeof __ns.cascadeProp==='function'){try{value=__ns.cascadeProp.call(el,'display')||'';}catch(e){value='';}}
+    value=$c.toLowerCase($c.trim(String(value==null?'':value)));
+    if(!value||value==='revert'||value==='revert-layer'){try{return computedUserAgentBox(el,cs.layer).display;}catch(e){return '';}}
+    return $c.test(/^[a-z-]+(?: [a-z-]+)*$/,value)?value:'';
+  }
+  // Web Animations compose over cascaded and inline values; !important declarations win.
+  function computedApplyAnimations(cs){
+    var el=cs.el,pseudo=cs.pseudo,decl=cs.decl;
     if(!pseudo&&el&&__ns.hasAnimations&&__ns.hasAnimations(el))computedVolatile=true;
-    // The element's own display as the UA / initial resolution below will compute it ("" for
-    // a value it cannot tell before then), and this read's snapshot map: a transition update
-    // decides "rendered" from them without resolving the element or its ancestors again
-    // (turbo-test#227).
-    function ownDisplay(){
-      var value=decl.display;
-      if((value==null||value==='')&&typeof __ns.cascadeProp==='function'){try{value=__ns.cascadeProp.call(el,'display')||'';}catch(e){value='';}}
-      value=$c.toLowerCase($c.trim(String(value==null?'':value)));
-      if(!value||value==='revert'||value==='revert-layer'){try{return computedUserAgentBox(el,layer).display;}catch(e){return '';}}
-      return $c.test(/^[a-z-]+(?: [a-z-]+)*$/,value)?value:'';
-    }
-    var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},inheritedValue,snapshots,ownDisplay):null;
-    if(animated)for(var ai=0;ai<animated.length;ai++)if(!priorities[animated[ai][0]])setProp(animated[ai][0],animated[ai][1]);
-    // Tree-counting functions take this element's counts; their style follows its siblings.
-    var treeNames=treeCountingValues(decl,el,pseudo);
-    var color = decl.color || '';
-    if (!color && !pseudo && !inFrame) { try { color = __ns.cascadeProp.call(el, 'color'); } catch(e) {} }
-    // A highlight in highlight-inheritance mode inherits color / background-color from the
-    // parent's highlight, or takes the initial values (turbo-dom#47).
-    var highlightParent = undefined;
-    if (info && info.highlight) {
-      var highlightMode = false; try { highlightMode = computedHighlightMode(el, pseudo); } catch(e){}
-      if (highlightMode) {
-        var highlightContext = null; try { highlightContext = computedFontContext(el); } catch(e){}
-        var parentElement = highlightContext ? highlightContext[2] : null;
-        highlightParent = parentElement && computedHighlightMode(parentElement, pseudo) ? computeStyleSnapshot(parentElement, snapshots, undefined, pseudo) : null;
-        var inheritsKey = function(value){ return !value || $c.test(/^(inherit|unset)$/i, $c.trim(String(value))); };
-        if (inheritsKey(color)) color = highlightParent ? computedSnapshotValue(highlightParent, 'color') : 'rgb(0, 0, 0)';
-        if (inheritsKey(decl['background-color'])) setProp('background-color', highlightParent ? computedSnapshotValue(highlightParent, 'background-color') : 'rgba(0, 0, 0, 0)');
-      } else if (decl['background-color'] == null) setProp('background-color', 'rgba(0, 0, 0, 0)');
-    }
+    var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},cs.inheritedValue,cs.snapshots,function(){return computedOwnDisplay(cs);}):null;
+    if(animated)for(var ai=0;ai<animated.length;ai++)if(!cs.priorities[animated[ai][0]])cs.setProp(animated[ai][0],animated[ai][1]);
+  }
+  function highlightInheritsKey(value){ return !value || $c.test(/^(inherit|unset)$/i, $c.trim(String(value))); }
+  // A highlight in highlight-inheritance mode inherits color / background-color from the
+  // parent's highlight, or takes the initial values (turbo-dom#47).
+  function computedHighlightColor(cs,color){
+    var el=cs.el,pseudo=cs.pseudo,decl=cs.decl;
+    var highlightMode = false; try { highlightMode = computedHighlightMode(el, pseudo); } catch(e){}
+    if (highlightMode) {
+      var highlightContext = null; try { highlightContext = computedFontContext(el); } catch(e){}
+      var parentElement = highlightContext ? highlightContext[2] : null;
+      var highlightParent = parentElement && computedHighlightMode(parentElement, pseudo) ? computeStyleSnapshot(parentElement, cs.snapshots, undefined, pseudo) : null;
+      if (highlightInheritsKey(color)) color = highlightParent ? computedSnapshotValue(highlightParent, 'color') : 'rgb(0, 0, 0)';
+      if (highlightInheritsKey(decl['background-color'])) cs.setProp('background-color', highlightParent ? computedSnapshotValue(highlightParent, 'background-color') : 'rgba(0, 0, 0, 0)');
+    } else if (decl['background-color'] == null) cs.setProp('background-color', 'rgba(0, 0, 0, 0)');
+    return color;
+  }
+  function computedColorKeyword(cs,color){
     var colorKeyword = $c.toLowerCase(String(color || ''));
-    if (colorKeyword === 'initial' || colorKeyword === 'canvastext') color = 'rgb(0, 0, 0)';
-    else if (!color || colorKeyword === 'inherit' || colorKeyword === 'unset' || colorKeyword === 'currentcolor') {
-      color = inheritParent ? inheritedValue('color') : 'rgb(0, 0, 0)';
-    }
+    if (colorKeyword === 'initial' || colorKeyword === 'canvastext') return 'rgb(0, 0, 0)';
+    if (!color || colorKeyword === 'inherit' || colorKeyword === 'unset' || colorKeyword === 'currentcolor') return cs.inheritParent ? cs.inheritedValue('color') : 'rgb(0, 0, 0)';
+    return color;
+  }
+  // Children of <video> / <audio> are outside the flat tree: Chrome computes no style for them.
+  function computedConnectedForStyle(el,inFrame){
     var connected = false;
     try { connected = inFrame || __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
-    // Children of <video> / <audio> are outside the flat tree: Chrome computes no style for them.
     if (connected && computedMediaChild(el)) connected = false;
-    setProp('color', connected ? normalizeComputedColor(color) : '');
-    if (connected) resolveWideKeywords(decl, inheritParent ? $c.get(declarationRecords, parentStyle(inheritParent)) : null, setProp, function(name){ delete decl[name]; delete decl[camel(name)]; });
-    // UA and initial values for display / position / visibility (turbo-surf#36), measured in
-    // computed_defaults_chrome156.json: an author / inline / shadow-scoped declaration wins, the
-    // CSS-wide keywords resolve (inherit -> the composed parent's value, initial / unset -> the
-    // initial value, revert -> the UA value), otherwise Chrome's html.css value; display is then
-    // blockified for floats, absolutely positioned elements and flex / grid items. Disconnected
-    // elements keep "" like every other default above.
-    var cascadedValue = function(name){
-      var value = decl[name];
-      if ((value == null || value === '') && !pseudo && !inFrame && el && typeof __ns.cascadeProp === 'function') { try { value = __ns.cascadeProp.call(el, name) || ''; } catch(e){ value = ''; } }
-      return value == null ? '' : $c.trim(String(value));
-    };
-    var keyword = function(value){ var key = $c.toLowerCase(value); return $c.test(/^(inherit|initial|unset|revert|revert-layer)$/, key) ? key : ''; };
-    if (connected) {
-      var ua = pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : pseudo ? { display: info ? info.display : 'inline', position: info ? info.position : 'static', topLayer: false } : computedUserAgentBox(el, layer);
-      var displayValue = cascadedValue('display'), displayKey = keyword(displayValue);
-      if (!displayValue || displayKey === 'revert' || displayKey === 'revert-layer') displayValue = ua.display;
-      else if (displayKey === 'inherit') displayValue = inheritedValue('display') || 'inline';
-      else if (displayKey) displayValue = 'inline';
-      var positionValue = cascadedValue('position'), positionKey = keyword(positionValue);
-      if (!positionValue || positionKey === 'revert' || positionKey === 'revert-layer') positionValue = ua.position;
-      else if (positionKey === 'inherit') positionValue = inheritedValue('position') || 'static';
-      else if (positionKey) positionValue = 'static';
-      positionValue = $c.toLowerCase(positionValue);
-      if (ua.topLayer) positionValue = topLayerPosition(positionValue);
-      var floatValue = $c.toLowerCase($c.trim(String(decl['float'] == null ? '' : decl['float'])));
-      var floated = floatValue !== '' && floatValue !== 'none' && !keyword(floatValue);
-      if (positionValue === 'absolute' || positionValue === 'fixed' || floated || (pseudo ? pseudo !== 'backdrop' && (!info || info.container) && computedPseudoInContainer(el, parentStyle) : computedFlexOrGridItem(el, parentStyle)))
-        displayValue = blockifiedDisplay(displayValue);
-      decl.display = displayValue;
-      decl.position = positionValue;
-    } else if (decl.display == null) decl.display = '';
-    // `visibility` is INHERITED: a child with no explicit visibility takes the parent's computed
-    // value. testing-library / dom-accessibility-api rely on this — they treat an element as
-    // inaccessible when getComputedStyle(el).visibility === 'hidden', expecting a hidden ancestor to
-    // have propagated down. The JS cascade above only sees this element's own rules, so we defer to
-    // rtdom's native cascade (cascade::computed_style) for shadow-scoped rules; the composed
-    // parent's snapshot supplies inheritance and the root's value is the initial `visible`.
-    var visibilityValue = connected ? cascadedValue('visibility') : String(decl.visibility == null ? '' : decl.visibility);
-    var visibilityKey = keyword(visibilityValue);
+    return connected;
+  }
+  function computedColor(cs){
+    var el=cs.el,pseudo=cs.pseudo,decl=cs.decl;
+    var color = decl.color || '';
+    if (!color && !pseudo && !cs.inFrame) { try { color = __ns.cascadeProp.call(el, 'color'); } catch(e) {} }
+    if (cs.info && cs.info.highlight) color = computedHighlightColor(cs, color);
+    color = computedColorKeyword(cs, color);
+    cs.connected = computedConnectedForStyle(el, cs.inFrame);
+    cs.setProp('color', cs.connected ? normalizeComputedColor(color) : '');
+    if (cs.connected) resolveWideKeywords(decl, cs.inheritParent ? $c.get(declarationRecords, cs.parentStyle(cs.inheritParent)) : null, cs.setProp, function(name){ delete decl[name]; delete decl[computedCamel(name)]; });
+  }
+  function computedCascadedValue(cs,name){
+    var value = cs.decl[name];
+    if ((value == null || value === '') && !cs.pseudo && !cs.inFrame && cs.el && typeof __ns.cascadeProp === 'function') { try { value = __ns.cascadeProp.call(cs.el, name) || ''; } catch(e){ value = ''; } }
+    return value == null ? '' : $c.trim(String(value));
+  }
+  function computedWideKeyword(value){ var key = $c.toLowerCase(value); return $c.test(/^(inherit|initial|unset|revert|revert-layer)$/, key) ? key : ''; }
+  // display / position: an author / inline / shadow-scoped declaration wins, the CSS-wide
+  // keywords resolve (inherit -> the composed parent's value, initial / unset -> the initial
+  // value, revert -> the UA value), otherwise Chrome's html.css value.
+  function computedBoxKeywordValue(cs,name,uaValue,fallback){
+    var value = computedCascadedValue(cs,name), key = computedWideKeyword(value);
+    if (!value || key === 'revert' || key === 'revert-layer') return uaValue;
+    if (key === 'inherit') return cs.inheritedValue(name) || fallback;
+    if (key) return fallback;
+    return value;
+  }
+  function computedUaBox(cs){
+    var pseudo=cs.pseudo,info=cs.info,layer=cs.layer;
+    return pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : pseudo ? { display: info ? info.display : 'inline', position: info ? info.position : 'static', topLayer: false } : computedUserAgentBox(cs.el, layer);
+  }
+  function computedInFormattingContainer(cs){
+    var pseudo=cs.pseudo,info=cs.info;
+    return pseudo ? pseudo !== 'backdrop' && (!info || info.container) && computedPseudoInContainer(cs.el, cs.parentStyle) : computedFlexOrGridItem(cs.el, cs.parentStyle);
+  }
+  // UA and initial values for display / position / visibility (turbo-surf#36), measured in
+  // computed_defaults_chrome156.json; display is then blockified for floats, absolutely
+  // positioned elements and flex / grid items. Disconnected elements keep "" like every
+  // other default.
+  function computedDisplayPosition(cs){
+    var decl=cs.decl;
+    var ua = computedUaBox(cs);
+    var displayValue = computedBoxKeywordValue(cs, 'display', ua.display, 'inline');
+    var positionValue = $c.toLowerCase(computedBoxKeywordValue(cs, 'position', ua.position, 'static'));
+    if (ua.topLayer) positionValue = topLayerPosition(positionValue);
+    var floatValue = $c.toLowerCase($c.trim(String(decl['float'] == null ? '' : decl['float'])));
+    var floated = floatValue !== '' && floatValue !== 'none' && !computedWideKeyword(floatValue);
+    if (positionValue === 'absolute' || positionValue === 'fixed' || floated || computedInFormattingContainer(cs))
+      displayValue = blockifiedDisplay(displayValue);
+    decl.display = displayValue;
+    decl.position = positionValue;
+  }
+  // `visibility` is INHERITED: a child with no explicit visibility takes the parent's computed
+  // value. testing-library / dom-accessibility-api rely on this — they treat an element as
+  // inaccessible when getComputedStyle(el).visibility === 'hidden', expecting a hidden ancestor to
+  // have propagated down. The JS cascade above only sees this element's own rules, so we defer to
+  // rtdom's native cascade (cascade::computed_style) for shadow-scoped rules; the composed
+  // parent's snapshot supplies inheritance and the root's value is the initial `visible`.
+  function computedVisibility(cs){
+    var decl=cs.decl,connected=cs.connected;
+    var visibilityValue = connected ? computedCascadedValue(cs,'visibility') : String(decl.visibility == null ? '' : decl.visibility);
+    var visibilityKey = computedWideKeyword(visibilityValue);
     if (visibilityKey === 'initial') visibilityValue = 'visible';
-    else if (connected && (visibilityValue === '' || visibilityKey)) { try { visibilityValue = inheritedValue('visibility'); } catch(e){ visibilityValue = ''; } }
+    else if (connected && (visibilityValue === '' || visibilityKey)) { try { visibilityValue = cs.inheritedValue('visibility'); } catch(e){ visibilityValue = ''; } }
     if (!visibilityValue && connected) visibilityValue = 'visible';
     // Highlights never take the element's visibility (turbo-dom#47).
-    if (connected && info && info.highlight) visibilityValue = 'visible';
+    if (connected && cs.info && cs.info.highlight) visibilityValue = 'visible';
     decl.visibility = visibilityValue || '';
-    // `content` computes to normal, and to none on ::before / ::after / ::checkmark /
-    // ::picker-icon; strings serialize double-quoted (turbo-dom#47).
+  }
+  // `content` computes to normal, and to none on ::before / ::after / ::checkmark /
+  // ::picker-icon; strings serialize double-quoted (turbo-dom#47).
+  function computedContent(cs){
+    var decl=cs.decl,pseudo=cs.pseudo,info=cs.info;
     var contentValue = decl.content == null ? '' : $c.trim(String(decl.content));
     if (pseudo && contentValue) contentValue = $c.replace(contentValue, /'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + $c.replace($c.replace(inner, /\\'/g, "'"), /"/g, '\\"') + '"'; });
     if (pseudo === 'before' || pseudo === 'after' || info && info.generated) decl.content = contentValue === '' || $c.test(/^normal$/i, contentValue) ? 'none' : contentValue;
     else if (pseudo && contentValue) decl.content = contentValue;
-    else if (decl.content == null) decl.content = connected ? 'normal' : '';
-    // Initial computed values of properties Web Animations commonly animate.
+    else if (decl.content == null) decl.content = cs.connected ? 'normal' : '';
+  }
+  // Initial computed values of properties Web Animations commonly animate.
+  function computedTransformValues(cs){
+    var decl=cs.decl,connected=cs.connected;
     if (decl.opacity == null) decl.opacity = connected ? '1' : '';
     if (decl.transform == null) { decl.transform = connected ? 'none' : ''; }
     // Resolve `transform` to the matrix() / matrix3d() / none Chrome 156 reports (the
     // "resolved value" for a used transform). Percentage translates and em need a layout
     // box and the font size; `ns.resolveTransform` returns null to keep the declared text
     // when it cannot resolve them (turbo-dom#353).
-    if (connected && !pseudo && typeof __ns.resolveTransform === 'function' && typeof decl.transform === 'string') {
+    if (connected && !cs.pseudo && typeof __ns.resolveTransform === 'function' && typeof decl.transform === 'string') {
       try {
         var fontMatch = cssApply(cssZoomExec, /^([0-9.e+-]+)px$/, [String(decl['font-size'] == null ? '' : decl['font-size'])]);
-        var resolvedTransform = __ns.resolveTransform(decl.transform, el, fontMatch ? cssFontNumber(fontMatch[1]) : 16);
-        if (typeof resolvedTransform === 'string') setProp('transform', resolvedTransform);
+        var resolvedTransform = __ns.resolveTransform(decl.transform, cs.el, fontMatch ? cssFontNumber(fontMatch[1]) : 16);
+        if (typeof resolvedTransform === 'string') cs.setProp('transform', resolvedTransform);
       } catch(e){}
     }
-    // `zoom` is not inherited; it computes to its factor, with normal and 0 as 1.
-    decl.zoom = connected ? computedZoom(decl.zoom, function(){ return inheritedValue('zoom'); }) : '';
-    // Used-value resolution for percentage width/height. A no-layout env returns a raw "50%"
-    // verbatim, but a containing-block percentage has a well-defined used value in normal flow
-    // (pct * the containing block's content width/height), which a real browser reports in px.
-    // Resolve against the nearest ancestor with a px (or, for width, auto=fill) measure so
-    // getComputedStyle(child).width matches a browser without a full layout engine.
+  }
+  function computedNormalizeColorLonghands(cs){
+    var decl=cs.decl,connected=cs.connected,pseudo=cs.pseudo;
     // A modal dialog's overflow longhands recompose the shorthand.
-    if (connected && !pseudo && layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')
+    if (connected && !pseudo && cs.layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')
       decl.overflow = decl['overflow-x'] === decl['overflow-y'] ? decl['overflow-x'] : decl['overflow-x'] + ' ' + decl['overflow-y'];
     if (pseudo && typeof decl['background-color'] === 'string') decl['background-color'] = decl.backgroundColor = normalizeComputedColor(decl['background-color']);
     // turbo-dom#374: Chrome 156 serializes every `<color>` longhand in computed style as
@@ -1801,21 +1941,29 @@
       for (var ci = 0; ci < computedColorLonghands.length; ci++) {
         var colorProp = computedColorLonghands[ci];
         var colorValue = decl[colorProp];
-        if (typeof colorValue === 'string' && colorValue) decl[colorProp] = decl[camel(colorProp)] = normalizeComputedColor(colorValue);
+        if (typeof colorValue === 'string' && colorValue) decl[colorProp] = decl[computedCamel(colorProp)] = normalizeComputedColor(colorValue);
       }
     }
-    var usedPx = function(node, axis, depth){
-      if (!node || depth > 32) return null;
-      var raw;try{raw=node===el?decl[axis]:computedSnapshotValue(parentStyle(node),axis);}catch(e){return null;}
-      raw = raw == null ? '' : String(raw);
-      var mpx = $c.exec(/^(-?\d+(?:\.\d+)?)px$/, raw); if (mpx) return parseFloat(mpx[1]);
-      var parent = node.parentElement || (node.parentNode && node.parentNode.nodeType === 1 ? node.parentNode : null);
-      var mpc = $c.exec(/^(-?\d+(?:\.\d+)?)%$/, raw);
-      if (mpc) { var base = usedPx(parent, axis, depth + 1); return base == null ? null : (parseFloat(mpc[1]) / 100) * base; }
-      // width:auto in normal flow fills the containing block (block box); height:auto is content-driven (unknown here).
-      if ((raw === '' || raw === 'auto') && axis === 'width') return usedPx(parent, axis, depth + 1);
-      return null;
-    };
+  }
+  // Used-value resolution for percentage width/height. A no-layout env returns a raw "50%"
+  // verbatim, but a containing-block percentage has a well-defined used value in normal flow
+  // (pct * the containing block's content width/height), which a real browser reports in px.
+  // Resolve against the nearest ancestor with a px (or, for width, auto=fill) measure so
+  // getComputedStyle(child).width matches a browser without a full layout engine.
+  function computedUsedPx(cs, node, axis, depth){
+    if (!node || depth > 32) return null;
+    var raw;try{raw=node===cs.el?cs.decl[axis]:computedSnapshotValue(cs.parentStyle(node),axis);}catch(e){return null;}
+    raw = raw == null ? '' : String(raw);
+    var mpx = $c.exec(/^(-?\d+(?:\.\d+)?)px$/, raw); if (mpx) return parseFloat(mpx[1]);
+    var parent = node.parentElement || (node.parentNode && node.parentNode.nodeType === 1 ? node.parentNode : null);
+    var mpc = $c.exec(/^(-?\d+(?:\.\d+)?)%$/, raw);
+    if (mpc) { var base = computedUsedPx(cs, parent, axis, depth + 1); return base == null ? null : (parseFloat(mpc[1]) / 100) * base; }
+    // width:auto in normal flow fills the containing block (block box); height:auto is content-driven (unknown here).
+    if ((raw === '' || raw === 'auto') && axis === 'width') return computedUsedPx(cs, parent, axis, depth + 1);
+    return null;
+  }
+  function computedUsedSizes(cs){
+    var pseudo=cs.pseudo,layer=cs.layer,decl=cs.decl;
     // The fullscreen element's width / height (100% !important of the viewport, its
     // containing block as a fixed box) are the viewport's innerWidth / innerHeight in px
     // (turbo-dom#58); without a viewport they stay 100%.
@@ -1823,7 +1971,7 @@
       computedVolatile = true;
       [['width', g.innerWidth], ['height', g.innerHeight]].forEach(function(pair){
         var size = +pair[1];
-        if (size > 0 && cssFontFinite(size)) setProp(pair[0], ($Mround(size * 1000) / 1000) + 'px', true);
+        if (size > 0 && cssFontFinite(size)) cs.setProp(pair[0], ($Mround(size * 1000) / 1000) + 'px', true);
       });
     }
     // An embedder's layout answers the used size at read time (computedUsedSize); a box-less
@@ -1832,36 +1980,78 @@
       $c.forEach(['width', 'height'], function(axis){
         var raw = decl[axis];
         if (typeof raw === 'string' && $c.test(/^-?\d+(?:\.\d+)?%$/, $c.trim(raw))) {
-          var px = usedPx(el, axis, 0);
-          if (px != null && isFinite(px)) setProp(axis, ($Mround(px * 1000) / 1000) + 'px');
+          var px = computedUsedPx(cs, cs.el, axis, 0);
+          if (px != null && isFinite(px)) cs.setProp(axis, ($Mround(px * 1000) / 1000) + 'px');
         }
       });
     } catch(e){}
-    var fontState=computedFonts(decl,el,parentStyle,connected,pseudo,inheritSnapshot);
-    computedMathValues(decl,treeNames,fontState,connected,function(name,value){decl[name]=decl[camel(name)]=value;});
+  }
+  function computedFontDependents(cs,fontState){
+    var decl=cs.decl,connected=cs.connected,pseudo=cs.pseudo;
     // dialog:modal max-width / max-height: calc(100% - 6px - 2em) at the dialog's font size.
-    if (connected && !pseudo && layer === 'modal' && fontState && typeof fontState.size === 'number') {
+    if (connected && !pseudo && cs.layer === 'modal' && fontState && typeof fontState.size === 'number') {
       var inset = 'calc(100% - ' + cssFontString(cssFontNumber(cssApply(cssFontPrecision, 2 * fontState.size + 6, [6]))) + 'px)';
-      $c.forEach(['max-width', 'max-height'], function(name){ if (decl[name] == null) decl[name] = decl[camel(name)] = inset; });
+      $c.forEach(['max-width', 'max-height'], function(name){ if (decl[name] == null) decl[name] = decl[computedCamel(name)] = inset; });
     }
     // Custom properties inherit their specified text (turbo-dom#286).
-    if (connected && !pseudo && inheritParent) inheritCustomProperties(decl, parentStyle(inheritParent));
+    if (connected && !pseudo && cs.inheritParent) inheritCustomProperties(decl, cs.parentStyle(cs.inheritParent));
+  }
+  function computeStyleFresh(el,snapshots,sink,pseudo,deps,base){
+    var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
+    if(noteCascadeRun)noteCascadeRun();
+    // Percentage lookup may visit several ancestors before font inheritance asks
+    // for the immediate parent again. Reuse each resolved ancestor only in this read.
+    function parentStyle(node){var style=computeStyleSnapshot(node,snapshots);if(deps&&deps[deps.length-2]!==node){deps[deps.length]=node;deps[deps.length]=style;}return style;}
+    // An element of a child iframe document (turbo-dom#299) cascades as connected.
+    var inFrame = !!el && computedFrameRoot(el) !== null;
+    var unavailable = computedStyleUnavailable(el,snapshots,sink,pseudo,inFrame);
+    if (unavailable) return unavailable;
+    var cs = new ComputedCascade(el,snapshots,sink,pseudo,deps,base,inFrame);
+    // Properties are exposed both kebab and camelCase.
+    var decl = cs.decl = { __proto__:null, getPropertyValue: function(p){ var v = this[p]; if (v == null) v = this[computedCamel(p)]; return v == null ? '' : String(v); }, getPropertyPriority: function(){ return ''; }, length: 0 };
+    cs.priorities = {__proto__:null};
+    cs.parentStyle = parentStyle;
+    cs.setProp = function(name, val, important){ cascadeSetProp(cs, name, val, important); };
+    cs.info = computedPseudoInfoFor(el,pseudo,parentStyle);
+    cs.layer = computedLayerOf(el,pseudo,inFrame);
+    computedCascadeDecls(cs);
+    if (sink) { sink.values = computedSinkValues(decl); return null; }
+    computedInheritance(cs);
+    computedApplyAnimations(cs);
+    // Tree-counting functions take this element's counts; their style follows its siblings.
+    var treeNames=treeCountingValues(decl,el,pseudo);
+    computedColor(cs);
+    if (cs.connected) computedDisplayPosition(cs);
+    else if (decl.display == null) decl.display = '';
+    computedVisibility(cs);
+    computedContent(cs);
+    computedTransformValues(cs);
+    // `zoom` is not inherited; it computes to its factor, with normal and 0 as 1.
+    decl.zoom = cs.connected ? computedZoom(decl.zoom, function(){ return cs.inheritedValue('zoom'); }) : '';
+    computedNormalizeColorLonghands(cs);
+    computedUsedSizes(cs);
+    var fontState=computedFonts(decl,el,parentStyle,cs.connected,pseudo,cs.inheritSnapshot);
+    computedMathValues(decl,treeNames,fontState,cs.connected,function(name,value){decl[name]=decl[computedCamel(name)]=value;});
+    computedFontDependents(cs,fontState);
     // A connected element's unset properties compute lazily (computedDefault, turbo-dom#305).
-    var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,connected,inheritParent));
+    var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,cs.connected,cs.inheritParent));
     if(el&&!pseudo)computedSnapshotSet(snapshots,el,snapshot);
     return snapshot;
   }
-  if (typeof g.requestAnimationFrame === 'undefined') g.requestAnimationFrame = function(cb){ return setTimeout(function(){ cb(Date.now()); }, 0); };
-  if (typeof g.cancelAnimationFrame === 'undefined') g.cancelAnimationFrame = function(id){ clearTimeout(id); };
   var ownMatchMedia = null;
-  if (typeof g.matchMedia === 'undefined') ownMatchMedia = g.matchMedia = function(q){ return __ns.matchMedia(q); };
-  if (typeof g.scrollTo === 'undefined') g.scrollTo = function(){};
-  // Window operations are not constructors: no own `prototype` (turbo-dom#221).
-  ['getComputedStyle','requestAnimationFrame','cancelAnimationFrame','matchMedia','scrollTo'].forEach(function(name){
-    var fn=g[name];
-    if(typeof fn==='function'&&Object.prototype.hasOwnProperty.call(fn,'prototype')&&__ns.makeNativeFunction)g[name]=__ns.makeNativeFunction(fn,name,name==='scrollTo'?0:1);
-  });
-  if (ownMatchMedia) ownMatchMedia = g.matchMedia;
+  function installWindowOperations(){
+    if (typeof g.requestAnimationFrame === 'undefined') g.requestAnimationFrame = function(cb){ return setTimeout(function(){ cb(Date.now()); }, 0); };
+    if (typeof g.cancelAnimationFrame === 'undefined') g.cancelAnimationFrame = function(id){ clearTimeout(id); };
+    if (typeof g.matchMedia === 'undefined') ownMatchMedia = g.matchMedia = function(q){ return __ns.matchMedia(q); };
+    if (typeof g.scrollTo === 'undefined') g.scrollTo = function(){};
+    // Window operations are not constructors: no own `prototype` (turbo-dom#221).
+    ['getComputedStyle','requestAnimationFrame','cancelAnimationFrame','matchMedia','scrollTo'].forEach(function(name){
+      var fn=g[name];
+      if(typeof fn==='function'&&Object.prototype.hasOwnProperty.call(fn,'prototype')&&__ns.makeNativeFunction)g[name]=__ns.makeNativeFunction(fn,name,name==='scrollTo'?0:1);
+    });
+    if (ownMatchMedia) ownMatchMedia = g.matchMedia;
+  }
+  installWindowOperations();
   // The cascade evaluates media text directly against the viewport (no MediaQueryList per
   // rule); like Chrome (and jsdom) it never asks a page's replacement window.matchMedia.
   // A child iframe window's getComputedStyle evaluates @media against its own viewport.
@@ -1884,9 +2074,12 @@
   __ns.withMediaView = function(target, run){ var outer = mediaView; mediaView = target; try { return run(); } finally { mediaView = outer; } };
   // `Image(width, height)` is the native legacy factory in html_image.js (turbo-dom#23); image
   // loading (load / error events, natural size) is the host's (record.imageHost).
-  if (typeof g.location === 'undefined' || g.location == null) {
-    g.location = { href: 'http://localhost/', origin: 'http://localhost', protocol: 'http:', host: 'localhost', hostname: 'localhost', port: '', pathname: '/', search: '', hash: '', assign: function(){}, replace: function(){}, reload: function(){}, toString: function(){ return this.href; } };
+  function installLocationFallback(){
+    if (typeof g.location === 'undefined' || g.location == null) {
+      g.location = { href: 'http://localhost/', origin: 'http://localhost', protocol: 'http:', host: 'localhost', hostname: 'localhost', port: '', pathname: '/', search: '', hash: '', assign: function(){}, replace: function(){}, reload: function(){}, toString: function(){ return this.href; } };
+    }
   }
+  installLocationFallback();
   // DOM interface constructors (for `instanceof` / global presence). Stubs; identity not enforced.
   // Event records stay private: readonly Web-IDL getters and native dispatch
   // share this state without exposing writable bookkeeping to page scripts.
@@ -2448,14 +2641,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   iface('DOMTokenList', function(o){ return o != null && typeof o === 'object' && typeof o.length === 'number' && typeof o.toggle === 'function'; });
   // Audio(src) — a real HTMLAudioElement built through the DOM (so it participates in
   // the tree + carries the media API stubs below), matching `new Audio(url)`.
-  if (typeof g.Audio === 'undefined') {
-    g.Audio = function Audio(src){
-      var el = d.createElement('audio');
-      if (src != null) { try { el.src = String(src); } catch(e){} }
-      return el;
-    };
-    try { g.Audio.prototype = (g.HTMLAudioElement && g.HTMLAudioElement.prototype) || {}; } catch(e){}
+  function installAudioFactory(){
+    if (typeof g.Audio === 'undefined') {
+      g.Audio = function Audio(src){
+        var el = d.createElement('audio');
+        if (src != null) { try { el.src = String(src); } catch(e){} }
+        return el;
+      };
+      try { g.Audio.prototype = (g.HTMLAudioElement && g.HTMLAudioElement.prototype) || {}; } catch(e){}
+    }
   }
+  installAudioFactory();
   // Media-element methods on the shared element prototype (headless has no audio/video
   // pipeline; these no-op so `el.play()`/`.load()` don't throw and `.play()` still
   // returns a promise as the spec requires). `canPlayType` reports no support.
@@ -2470,17 +2666,20 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // second thread, so it doesn't spawn one (the worker body doesn't run); it queues
   // postMessage + exposes onmessage/onerror + terminate so apps that construct a
   // Worker (analytics, off-main-thread hashing) don't throw and degrade gracefully.
-  if (typeof g.Worker === 'undefined') {
-    // An EventTarget subclass with no own instance state (turbo-dom#221).
-    var workerHandlers = new WeakMap();
-    g.Worker = function Worker(url){ if (new.target === undefined) throw new TypeError("Failed to construct 'Worker': Please use the 'new' operator, this DOM object constructor cannot be called as a function."); var worker = Reflect.construct(g.EventTarget, [], new.target); workerHandlers.set(worker, {}); return worker; };
-    Object.setPrototypeOf(g.Worker, g.EventTarget);
-    Object.setPrototypeOf(g.Worker.prototype, g.EventTarget.prototype);
-    g.Worker.prototype.postMessage = function(){};
-    g.Worker.prototype.terminate = function(){};
-    ['onmessage','onmessageerror','onerror'].forEach(function(name){ Object.defineProperty(g.Worker.prototype, name, { enumerable: true, configurable: true, get: function(){ var h = workerHandlers.get(this); return h && h[name] || null; }, set: function(value){ var h = workerHandlers.get(this); if (h) h[name] = typeof value === 'function' || (value && typeof value === 'object') ? value : null; } }); });
-    if (typeof g.SharedWorker === 'undefined') { g.SharedWorker = function SharedWorker(url){ this.url = String(url || ''); this.port = { postMessage: function(){}, start: function(){}, close: function(){}, addEventListener: function(){}, removeEventListener: function(){}, onmessage: null }; }; }
+  function installWorkerStubs(){
+    if (typeof g.Worker === 'undefined') {
+      // An EventTarget subclass with no own instance state (turbo-dom#221).
+      var workerHandlers = new WeakMap();
+      g.Worker = function Worker(url){ if (new.target === undefined) throw new TypeError("Failed to construct 'Worker': Please use the 'new' operator, this DOM object constructor cannot be called as a function."); var worker = Reflect.construct(g.EventTarget, [], new.target); workerHandlers.set(worker, {}); return worker; };
+      Object.setPrototypeOf(g.Worker, g.EventTarget);
+      Object.setPrototypeOf(g.Worker.prototype, g.EventTarget.prototype);
+      g.Worker.prototype.postMessage = function(){};
+      g.Worker.prototype.terminate = function(){};
+      ['onmessage','onmessageerror','onerror'].forEach(function(name){ Object.defineProperty(g.Worker.prototype, name, { enumerable: true, configurable: true, get: function(){ var h = workerHandlers.get(this); return h && h[name] || null; }, set: function(value){ var h = workerHandlers.get(this); if (h) h[name] = typeof value === 'function' || (value && typeof value === 'object') ? value : null; } }); });
+      if (typeof g.SharedWorker === 'undefined') { g.SharedWorker = function SharedWorker(url){ this.url = String(url || ''); this.port = { postMessage: function(){}, start: function(){}, close: function(){}, addEventListener: function(){}, removeEventListener: function(){}, onmessage: null }; }; }
+    }
   }
+  installWorkerStubs();
   // Extra HTML*Element constructors the base ctor list omits. App bundles reference these for
   // feature-detect / instanceof / subclassing (MUI's Dialog touches HTMLDialogElement); an
   // undefined reference aborts the chunk mid-hydration, blanking the tree. Single-tag elements get
@@ -3013,29 +3212,40 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     }
     return out;
   }
+  // parseCssRules' comment / string state: cssScanSkip steps over them and returns how many
+  // characters it consumed (0 when text[i] is outside both).
+  function CssRuleScan(){this.quote='';this.escaped=false;this.comment=false;}
+  function cssScanSkip(scan,c,next){
+    if(scan.comment){if(c==='*'&&next==='/'){scan.comment=false;return 2;}return 1;}
+    if(scan.quote){if(scan.escaped)scan.escaped=false;else if(c==='\\')scan.escaped=true;else if(c===scan.quote)scan.quote='';return 1;}
+    if(c==='/'&&next==='*'){scan.comment=true;return 2;}
+    if(c==='"'||c==="'"){scan.quote=c;return 1;}
+    return 0;
+  }
+  // A `head { body }` block: an at-rule or a style rule.
+  function cssPushBlockRule(out,text,start,open,close,sheet,parent){
+    var head=cssPrelude($c.slice(text,start,open),false),body=$c.slice(text,open+1,close);
+    if(!head)return;
+    var rule={parentStyleSheet:sheet,parentRule:parent||null};
+    if(head[0]==='@')fillAtRule(rule,head,body,sheet,parent);
+    else fillStyleRule(rule,head,body,sheet);
+    $c.push(cssItems(out),finishCssRule(rule));
+  }
+  // A top-level `;` statement: @import or an @layer statement.
+  function cssPushStatementRule(out,statement,sheet,parent){
+    var imported=$c.exec(/^@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*(.*)$/i,statement);
+    if(imported){var rule={};rule.type=3;rule.href=imported[1];rule.media=makeMedia(imported[2]||'');rule.styleSheet=null;rule.parentStyleSheet=sheet;rule.parentRule=parent||null;rule.cssText=statement+';';$c.push(cssItems(out),finishCssRule(rule));}
+    else if($c.test(/^@layer\s/i,statement)){var layer={};layer.type=0;layer.kind='layer-statement';layer.prelude=statement;layer.parentStyleSheet=sheet;layer.parentRule=parent||null;layer.cssText=statement+';';$c.push(cssItems(out),finishCssRule(layer));}
+  }
   var parseCssRules = function(text, sheet, parent, validated){
     text=String(text);if(!validated&&typeof cssNativeParse==='function')text=cssNativeParse(text);
-    var out=cssList(), start=0, depth=0, quote='', escaped=false, comment=false, open=-1;
+    var out=cssList(), start=0, depth=0, scan=new CssRuleScan(), open=-1;
     for(var i=0;i<text.length;i++){
-      var c=text[i],next=i+1<text.length?text[i+1]:undefined;
-      if(comment){if(c==='*'&&next==='/'){comment=false;i++;}continue;}
-      if(quote){if(escaped)escaped=false;else if(c==='\\')escaped=true;else if(c===quote)quote='';continue;}
-      if(c==='/'&&next==='*'){comment=true;i++;continue;} if(c==='"'||c==="'"){quote=c;continue;}
+      var c=text[i],next=i+1<text.length?text[i+1]:undefined,skip=cssScanSkip(scan,c,next);
+      if(skip){i+=skip-1;continue;}
       if(c==='{' ){if(depth++===0)open=i;}
-      else if(c==='}'&&depth>0&&--depth===0){
-        var head=cssPrelude($c.slice(text,start,open),false),body=$c.slice(text,open+1,i);
-        if(head){
-          var rule={parentStyleSheet:sheet,parentRule:parent||null};
-          if(head[0]==='@')fillAtRule(rule,head,body,sheet,parent);
-          else fillStyleRule(rule,head,body,sheet);
-          $c.push(cssItems(out),finishCssRule(rule));
-        }
-        start=i+1;
-      } else if(c===';'&&depth===0){
-        var statement=$c.trim($c.slice(text,start,i)),imported=$c.exec(/^@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*(.*)$/i,statement);
-        if(imported){var rule={};rule.type=3;rule.href=imported[1];rule.media=makeMedia(imported[2]||'');rule.styleSheet=null;rule.parentStyleSheet=sheet;rule.parentRule=parent||null;rule.cssText=statement+';';$c.push(cssItems(out),finishCssRule(rule));}
-        else if($c.test(/^@layer\s/i,statement)){var layer={};layer.type=0;layer.kind='layer-statement';layer.prelude=statement;layer.parentStyleSheet=sheet;layer.parentRule=parent||null;layer.cssText=statement+';';$c.push(cssItems(out),finishCssRule(layer));}start=i+1;
-      }
+      else if(c==='}'&&depth>0&&--depth===0){cssPushBlockRule(out,text,start,open,i,sheet,parent);start=i+1;}
+      else if(c===';'&&depth===0){cssPushStatementRule(out,$c.trim($c.slice(text,start,i)),sheet,parent);start=i+1;}
     }
     return out;
   };
@@ -3505,7 +3715,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // documentMode ABSENT) so React uses the modern input/change path, not the IE change polyfill —
   // otherwise fireEvent.change never fires onChange.
   d.oninput = null; d.onchange = null; d.onclick = null; d.onkeydown = null; d.onkeyup = null;
-  if (!d.head) { try { d.head = d.createElement('head'); if (d.documentElement) d.documentElement.appendChild(d.head); } catch(e){} }
+  function ensureDocumentHead(){
+    if (!d.head) { try { d.head = d.createElement('head'); if (d.documentElement) d.documentElement.appendChild(d.head); } catch(e){} }
+  }
+  ensureDocumentHead();
   // NOTE: document.createElementNS uses the native binding (namespace-aware: SVG/MathML elements keep
   // their namespace + case-preserved attributes like viewBox). Previously aliased to createElement.
   // NOTE: document.addEventListener/removeEventListener/dispatchEvent use the native binding (the
@@ -4349,60 +4562,63 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // (DataTableCore fullscreen) reaches our instances. Only affects methods that aren't own per
     // instance (own native methods still shadow). The genuine fullscreen API is installed by
     // user_activation_gates.js.
-    try {
-      if (g.HTMLElement) g.HTMLElement.prototype = baseProto;
-      if (g.Element) g.Element.prototype = baseProto;
-      if (g.Node) g.Node.prototype = baseProto;
-      // Lazy `<style>.sheet` for EVERY <style> — server-rendered ones (from the HTML
-      // parse / innerHTML) never pass through `createElement`, yet emotion /
-      // styled-components hydrate by calling `styleEl.sheet.insertRule(...)` on them.
-      // Without a `.sheet` that throws and aborts the chunk, blanking the styling.
-      // CSSOM mutations stay separate from the DOM text, just as in browsers.
-      // Defined on the shared element prototype and
-      // WITHOUT a descriptor guard (the NON_MASKING interceptor makes every lookup
-      // report a descriptor, so a guard would wrongly skip). Caches per element.
-      currentSheetGetter=function(){
-          var tag = cssApply(sheetTagName,this,[]);
-          if (!tag) return null;
-          tag=cssTagUpper(tag);if(tag!=='STYLE'&&tag!=='LINK')return null;
-          var cached=elementSheets.get(this);
-          // A child iframe document's <style> / <link> has a sheet (turbo-dom#299).
-          if (!computedConnected(this)) {if(cached)detachSheet(cached.sheet);elementSheets.delete(this);return null;}
-          if(tag==='LINK')return cached?cached.sheet:null;
-          if(!cssApply(inlineSheetAllowed,this,[])){if(cached)detachSheet(cached.sheet);elementSheets.set(this,{sheet:null,text:null});return null;}
-          var text=cssApply(sheetTextContent,this,[])||'';
-          if (!cached || !cached.sheet || cached.text!==text) {
-            if(cached)detachSheet(cached.sheet);
-            cached={sheet:mkSheet(this),text:text};elementSheets.set(this,cached);
-          }
-          return cached.sheet;
-        };
-      Object.defineProperty(baseProto, 'sheet', {configurable:true,get:currentSheetGetter});
-      var docProto = Object.getPrototypeOf(d) || baseProto;
-      // Documents without a browsing context list their own sheets too (turbo-dom#163).
-      var otherDocumentSheets=new WeakMap(),otherSheetsGet=WeakMap.prototype.get,otherSheetsSet=WeakMap.prototype.set,sheetsQuery=d.querySelectorAll;
-      __ns.documentSheetsDescriptor={configurable:true,enumerable:true,get:function(){
-        if(this===d)return documentSheets;
-        var doc=this,list=cssApply(otherSheetsGet,otherDocumentSheets,[doc]);
-        if(!list){list=cssList('StyleSheetList',function(){var out=[],found=cssApply(sheetsQuery,doc,['style,link']);for(var i=0;i<found.length;i++){var sheet=cssApply(currentSheetGetter,found[i],[]);if(sheet)out.push(sheet);}return out;});cssApply(otherSheetsSet,otherDocumentSheets,[doc,list]);}
-        return list;
-      }};
-      if (g.Document) g.Document.prototype = docProto;
-      if (g.HTMLDocument) g.HTMLDocument.prototype = docProto;
-      // NB: define these directly (NOT guarded by Object.getOwnPropertyDescriptor) — the all-Rust
-      // DOM's NON_MASKING name interceptor intercepts every absent property (returns undefined), so
-      // getOwnPropertyDescriptor synthesizes a truthy descriptor and a `if (!descriptor)` guard would
-      // wrongly skip the define. A real own accessor still shadows the interceptor once defined.
-      try { Object.defineProperty(d, 'fullscreenElement', { configurable: true, writable: true, value: null }); } catch(e){}
-      // Document lifecycle/visibility — our document is always fully parsed and "foregrounded".
-      // Components gate hydration / effects on these (readyState === 'complete', visibilityState).
-      try { Object.defineProperty(d, 'readyState', { configurable: true, get: function(){ return 'complete'; } }); } catch(e){}
-      try { Object.defineProperty(d, 'visibilityState', { configurable: true, get: function(){ return 'visible'; } }); } catch(e){}
-      try { Object.defineProperty(d, 'hidden', { configurable: true, get: function(){ return false; } }); } catch(e){}
-      // No hit-testing without layout → elementFromPoint(s) resolve to nothing.
-      d.elementFromPoint = function(){ return null; };
-      d.elementsFromPoint = function(){ return []; };
-    } catch(e){}
+    function aliasShimPrototypes(){
+      try {
+        if (g.HTMLElement) g.HTMLElement.prototype = baseProto;
+        if (g.Element) g.Element.prototype = baseProto;
+        if (g.Node) g.Node.prototype = baseProto;
+        // Lazy `<style>.sheet` for EVERY <style> — server-rendered ones (from the HTML
+        // parse / innerHTML) never pass through `createElement`, yet emotion /
+        // styled-components hydrate by calling `styleEl.sheet.insertRule(...)` on them.
+        // Without a `.sheet` that throws and aborts the chunk, blanking the styling.
+        // CSSOM mutations stay separate from the DOM text, just as in browsers.
+        // Defined on the shared element prototype and
+        // WITHOUT a descriptor guard (the NON_MASKING interceptor makes every lookup
+        // report a descriptor, so a guard would wrongly skip). Caches per element.
+        currentSheetGetter=function(){
+            var tag = cssApply(sheetTagName,this,[]);
+            if (!tag) return null;
+            tag=cssTagUpper(tag);if(tag!=='STYLE'&&tag!=='LINK')return null;
+            var cached=elementSheets.get(this);
+            // A child iframe document's <style> / <link> has a sheet (turbo-dom#299).
+            if (!computedConnected(this)) {if(cached)detachSheet(cached.sheet);elementSheets.delete(this);return null;}
+            if(tag==='LINK')return cached?cached.sheet:null;
+            if(!cssApply(inlineSheetAllowed,this,[])){if(cached)detachSheet(cached.sheet);elementSheets.set(this,{sheet:null,text:null});return null;}
+            var text=cssApply(sheetTextContent,this,[])||'';
+            if (!cached || !cached.sheet || cached.text!==text) {
+              if(cached)detachSheet(cached.sheet);
+              cached={sheet:mkSheet(this),text:text};elementSheets.set(this,cached);
+            }
+            return cached.sheet;
+          };
+        Object.defineProperty(baseProto, 'sheet', {configurable:true,get:currentSheetGetter});
+        var docProto = Object.getPrototypeOf(d) || baseProto;
+        // Documents without a browsing context list their own sheets too (turbo-dom#163).
+        var otherDocumentSheets=new WeakMap(),otherSheetsGet=WeakMap.prototype.get,otherSheetsSet=WeakMap.prototype.set,sheetsQuery=d.querySelectorAll;
+        __ns.documentSheetsDescriptor={configurable:true,enumerable:true,get:function(){
+          if(this===d)return documentSheets;
+          var doc=this,list=cssApply(otherSheetsGet,otherDocumentSheets,[doc]);
+          if(!list){list=cssList('StyleSheetList',function(){var out=[],found=cssApply(sheetsQuery,doc,['style,link']);for(var i=0;i<found.length;i++){var sheet=cssApply(currentSheetGetter,found[i],[]);if(sheet)out.push(sheet);}return out;});cssApply(otherSheetsSet,otherDocumentSheets,[doc,list]);}
+          return list;
+        }};
+        if (g.Document) g.Document.prototype = docProto;
+        if (g.HTMLDocument) g.HTMLDocument.prototype = docProto;
+        // NB: define these directly (NOT guarded by Object.getOwnPropertyDescriptor) — the all-Rust
+        // DOM's NON_MASKING name interceptor intercepts every absent property (returns undefined), so
+        // getOwnPropertyDescriptor synthesizes a truthy descriptor and a `if (!descriptor)` guard would
+        // wrongly skip the define. A real own accessor still shadows the interceptor once defined.
+        try { Object.defineProperty(d, 'fullscreenElement', { configurable: true, writable: true, value: null }); } catch(e){}
+        // Document lifecycle/visibility — our document is always fully parsed and "foregrounded".
+        // Components gate hydration / effects on these (readyState === 'complete', visibilityState).
+        try { Object.defineProperty(d, 'readyState', { configurable: true, get: function(){ return 'complete'; } }); } catch(e){}
+        try { Object.defineProperty(d, 'visibilityState', { configurable: true, get: function(){ return 'visible'; } }); } catch(e){}
+        try { Object.defineProperty(d, 'hidden', { configurable: true, get: function(){ return false; } }); } catch(e){}
+        // No hit-testing without layout → elementFromPoint(s) resolve to nothing.
+        d.elementFromPoint = function(){ return null; };
+        d.elementsFromPoint = function(){ return []; };
+      } catch(e){}
+    }
+    aliasShimPrototypes();
   })();
   // ---- Range + Selection (real model over rtdom) ----------------------------------------------
   // The no-op stubs were enough for libraries that merely construct a Range, but contenteditable
@@ -4492,17 +4708,20 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   });
   Object.defineProperty(Range.prototype,Symbol.toStringTag,{value:'Range',configurable:true});
   d.createRange=function(){return new Range();};
-  if(g.Range===undefined) g.Range=Range;
-  if (!d.getRootNode) d.getRootNode = function(){ return d; };
-  // document.write / writeln: parse the written markup and append it to <body>. Real browsers splice
-  // at the parser position; our scripts run post-parse, so appending is the faithful no-JS-engine
-  // behavior (e.g. a script that writes one element per item).
-  if (!d.write || !d.writeln) {
-    var docWrite = function(){ var html = Array.prototype.join.call(arguments, ''); var tmp = d.createElement('div'); tmp.innerHTML = html; var target = d.body || d.documentElement; if (!target) return; var kids = Array.prototype.slice.call(tmp.childNodes); for (var i=0;i<kids.length;i++) target.appendChild(kids[i]); };
-    if (!d.write) d.write = docWrite;
-    if (!d.writeln) d.writeln = function(){ docWrite(Array.prototype.join.call(arguments, '') + '\n'); };
+  function installDocumentFallbacks(){
+    if(g.Range===undefined) g.Range=Range;
+    if (!d.getRootNode) d.getRootNode = function(){ return d; };
+    // document.write / writeln: parse the written markup and append it to <body>. Real browsers splice
+    // at the parser position; our scripts run post-parse, so appending is the faithful no-JS-engine
+    // behavior (e.g. a script that writes one element per item).
+    if (!d.write || !d.writeln) {
+      var docWrite = function(){ var html = Array.prototype.join.call(arguments, ''); var tmp = d.createElement('div'); tmp.innerHTML = html; var target = d.body || d.documentElement; if (!target) return; var kids = Array.prototype.slice.call(tmp.childNodes); for (var i=0;i<kids.length;i++) target.appendChild(kids[i]); };
+      if (!d.write) d.write = docWrite;
+      if (!d.writeln) d.writeln = function(){ docWrite(Array.prototype.join.call(arguments, '') + '\n'); };
+    }
+    if (g.__addGetElems) { g.__addGetElems(d); try { delete g.__addGetElems; } catch(e){} }
   }
-  if (g.__addGetElems) { g.__addGetElems(d); try { delete g.__addGetElems; } catch(e){} }
+  installDocumentFallbacks();
   // Selection lives in selection.js (installed natively after the form-control modules).
 
   // ── <iframe> second realm (bridged, same-isolate) ───────────────────────────────
@@ -4687,13 +4906,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // Build (once) a bridged child realm for the <iframe> `hostEl`. `parentWin` defaults
     // to the top window `g`. Returns the child window; also sets hostEl.contentWindow /
     // contentDocument. Reused by turbo-surf's render tier for the reCAPTCHA bframe.
+    function frameSrcOf(hostEl){ return hostEl && (hostEl.src || (hostEl.getAttribute && hostEl.getAttribute('src'))); }
+    function frameParentOrigin(parentWin){ return (parentWin.location && parentWin.location.origin) || originOf(parentWin.location && parentWin.location.href) || ''; }
+    function frameProtocolOf(childOrigin){ return (childOrigin.split(':')[0] || 'about') + ':'; }
     __ns.makeFrameRealm = function(hostEl, parentWin, createWindow){
       parentWin = parentWin || g;
       if (hostEl && hostEl.__realm) return hostEl.__realm;
       var childDoc = makeChildDocument();
-      var srcAttr = hostEl && (hostEl.src || (hostEl.getAttribute && hostEl.getAttribute('src')));
+      var srcAttr = frameSrcOf(hostEl);
       var childOrigin = originOf(srcAttr);
-      var parentOrigin = (parentWin.location && parentWin.location.origin) || originOf(parentWin.location && parentWin.location.href) || '';
+      var parentOrigin = frameParentOrigin(parentWin);
       var wl = {}; // the child window's own event listeners
       var childWin, parentView;
       childWin = typeof createWindow === 'function' ? createWindow() : {};
@@ -4702,7 +4924,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         origin: childOrigin, length: 0, frames: [], devicePixelRatio: 1,
         innerWidth: 0, innerHeight: 0, outerWidth: 0, outerHeight: 0, screenX: 0, screenY: 0,
         location: { href: String(srcAttr || 'about:blank'), origin: childOrigin,
-          protocol: (childOrigin.split(':')[0] || 'about') + ':',
+          protocol: frameProtocolOf(childOrigin),
           host: childOrigin.replace(/^https?:\/\//,''),
           hostname: childOrigin.replace(/^https?:\/\//,'').split(':')[0],
           port: '', pathname: '/', search: '', hash: '',
