@@ -204,6 +204,13 @@ replacing the 0.6.0 / 0.7.0 report-only phase.
 
 ### Changed
 
+- **turbo-dom-browser-env: `mark_worker_context(scope, context) -> Result<(), WindowAlreadyInstalled>`**
+  (was `mark_worker_context(context)`, the turbo-dom#385 worker opt-out new in this release).
+  It refuses a context that already holds a window instead of marking it to no effect: one
+  an install already ran in, and every context made on a `snapshot_blob()` isolate (the
+  blob's default context is the bootstrapped window). Worker contexts come from a
+  non-snapshot isolate or a `snapshot_blob_with(prelude)` isolate's default context
+  (turbo-dom#389 review).
 - **turbo-dom-browser-env: `ActivationQuery` has a new `Sticky` variant** (the window has ever
   been activated). Embedders that match exhaustively add an arm for it. Without a host it
   answers false.

@@ -8393,12 +8393,47 @@ struct WorkerContextMarker;
 /// window/document DOM template onto its `globalThis`. For embedders (turbo-surf #203) that
 /// run the binding in a Worker-shaped global scope that owns its own globals.
 ///
+/// Mark the context before anything installs into it. A context that already holds a
+/// window is refused with [`WindowAlreadyInstalled`] and left unmarked: one an install
+/// already ran in, and every context `v8::Context::new` makes on a [`snapshot_blob`]
+/// isolate (the blob's default context IS the bootstrapped window). Make worker contexts on
+/// a non-snapshot isolate, or on a [`snapshot_blob_with`] isolate, whose default context ran
+/// only the embedder's prelude (the window is [`SNAPSHOT_WINDOW_CONTEXT`]).
+///
 /// Minimum opt-out hook for miaskiewicz/turbo-dom#385 landed in 0.8.0; the full
 /// `install_worker_global_scope(scope, context)` helper (DedicatedWorkerGlobalScope `self`,
 /// `importScripts`, structured-clone helpers) lands in 0.8.1.
-pub fn mark_worker_context(context: v8::Local<v8::Context>) {
+pub fn mark_worker_context(
+    scope: &mut v8::PinScope<'_, '_, ()>,
+    context: v8::Local<v8::Context>,
+) -> Result<(), WindowAlreadyInstalled> {
+    let scope = &mut v8::ContextScope::new(scope, context);
+    // invariant: a short string always allocates
+    let name = v8::String::new(scope, "turbo-dom.ownership.window-document").unwrap();
+    let key = v8::Private::for_api(scope, Some(name));
+    let window = context.global(scope).get_private(scope, key);
+    if window.is_some_and(|document| document.is_object()) {
+        return Err(WindowAlreadyInstalled);
+    }
     context.set_slot(std::rc::Rc::new(WorkerContextMarker));
+    Ok(())
 }
+
+/// [`mark_worker_context`] refused a context that already holds a window (an installed
+/// document, or a [`snapshot_blob`] context's bootstrapped one).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WindowAlreadyInstalled;
+
+impl std::fmt::Display for WindowAlreadyInstalled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            "the context already holds a window: mark a worker context before any install, on a \
+             non-snapshot isolate or a snapshot_blob_with isolate's default context",
+        )
+    }
+}
+
+impl std::error::Error for WindowAlreadyInstalled {}
 
 /// True if `context` was tagged with [`mark_worker_context`].
 fn is_worker_context(context: v8::Local<v8::Context>) -> bool {
