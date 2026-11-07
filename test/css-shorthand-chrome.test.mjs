@@ -80,7 +80,7 @@ test('an overflowing length reads back clamped to the largest float like Chrome 
   }
 });
 
-test('Object.prototype member names are ordinary function names, not special-function handlers', { todo: 'fails until SPECIAL_FUNCTION_HANDLERS has a null prototype' }, () => {
+test('Object.prototype member names are ordinary function names, not special-function handlers', () => {
   // `__proto__(1)` / `constructor(x)` / `toString(1)` must take the unknown-function path like
   // any other name (`foo(…)`) instead of reaching an Object.prototype member through the
   // special-function table (turbo-dom#389 review).
@@ -92,7 +92,7 @@ test('Object.prototype member names are ordinary function names, not special-fun
   };
   for (const name of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
     for (const [prop, args] of [['color', '1'], ['willChange', 'x'], ['transitionTimingFunction', '1'], ['width', '1px']]) {
-      assert.equal(read(prop, `${name}(${args})`), read(prop, `foo(${args})`).replaceAll('foo', name), `${prop}: ${name}(${args})`);
+      assert.equal(read(prop, `${name}(${args})`), read(prop, `foo(${args})`).replaceAll('foo', name.toLowerCase()), `${prop}: ${name}(${args})`);
     }
   }
   const el = document.createElement('div');
