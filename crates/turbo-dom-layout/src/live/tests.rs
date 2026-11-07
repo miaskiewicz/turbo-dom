@@ -134,6 +134,36 @@ fn only_the_outermost_math_is_a_mathml_root() {
     assert_eq!(capture.math_roots, ids);
 }
 
+// miaskiewicz/turbo-dom#376: the placeholder MathML style. The root is a 0x0
+// inline-block and every MathML element under it takes `display: none`, so no MathML
+// content (here a `<mrow>` with an `<mi>`'s text) gets a box until MathML layout lands.
+#[test]
+fn mathml_descendants_take_display_none_under_a_zero_sized_root() {
+    let (tree, snapshot, styles) = super::testing::layout(
+        "<body style='margin:0'><math id=m><mrow id=r><mi id=x>x</mi></mrow></math></body>",
+        "",
+        (800.0, 600.0),
+        Some(1.0),
+    );
+    let m = tree.get_element_by_id("m").unwrap();
+    assert_eq!(
+        styles[&source_id(DOCUMENT, m)].style.get("display"),
+        Some("inline-block")
+    );
+    assert_eq!(border(&snapshot, m), (0.0, 0.0));
+    for id in ["r", "x"] {
+        let node = tree.get_element_by_id(id).unwrap();
+        let source = source_id(DOCUMENT, node);
+        assert_eq!(styles[&source].style.get("display"), Some("none"), "{id}");
+        assert!(
+            snapshot
+                .source(source)
+                .is_none_or(|placed| placed.fragment_indices.is_empty()),
+            "{id} is laid out"
+        );
+    }
+}
+
 #[test]
 fn budgets_follow_the_counting_rules() {
     // Nodes: counted before filtering (3 elements + comments).

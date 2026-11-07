@@ -145,3 +145,57 @@ fn without_idl_states_a_bare_checkbox_is_unchecked() {
         "no IDL state should leave the checkbox unchecked, got {inside:?}"
     );
 }
+
+#[test]
+fn an_empty_idl_state_set_renders_like_no_idl_states() {
+    // `Some` with no indeterminate index is the same no-op as `None`: the render is
+    // byte-for-byte the markup-only screenshot.
+    let entry = case("indeterminate-checkbox");
+    let html = entry["html"].as_str().unwrap();
+    let assets = ImageAssets::new();
+    let plain =
+        screenshot_png_with_options(html, "", VIEWPORT, &assets, &ScreenshotOptions::default())
+            .unwrap();
+    let idl = IdlStates::default();
+    let mut options = ScreenshotOptions::default();
+    options.idl_states = Some(&idl);
+    let empty = screenshot_png_with_options(html, "", VIEWPORT, &assets, &options).unwrap();
+    assert_eq!(plain, empty);
+}
+
+#[test]
+fn idl_state_indices_count_inputs_in_tree_order_past_text() {
+    // Two `indeterminate-checkbox` boxes (the second 40px to the right) with page text
+    // before, between and inside a wrapper: only input #1 (the second in
+    // `querySelectorAll('input')` order) carries the flag, so only its box paints the
+    // Chrome dash (probe offsets as in the `indeterminate-checkbox` control).
+    let html = "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}\
+                input{position:absolute;top:20px;margin:0}</style></head><body>a\
+                <input type=checkbox style=\"left:20px\"> b <div>c\
+                <input type=checkbox style=\"left:60px\"></div></body></html>";
+    let mut inputs = HashSet::new();
+    inputs.insert(1);
+    let idl = IdlStates {
+        indeterminate_inputs: inputs,
+    };
+    let mut options = ScreenshotOptions::default();
+    options.idl_states = Some(&idl);
+    let assets = ImageAssets::new();
+    let png = screenshot_png_with_options(html, "", VIEWPORT, &assets, &options).unwrap();
+    let read = pixels(&png);
+    let near_blue = |p: [u8; 3]| {
+        p.iter()
+            .zip([0u8, 117, 255])
+            .all(|(&g, c)| g.abs_diff(c) <= 8)
+    };
+    // Input #0: unchecked, a white interior.
+    assert_eq!(class(read(22, 22)), 'W', "input #0 got {:?}", read(22, 22));
+    // Input #1: Chrome's indeterminate fill with the white dash across the middle.
+    assert!(near_blue(read(62, 22)), "input #1 got {:?}", read(62, 22));
+    assert_eq!(
+        class(read(67, 26)),
+        'W',
+        "input #1 dash got {:?}",
+        read(67, 26)
+    );
+}

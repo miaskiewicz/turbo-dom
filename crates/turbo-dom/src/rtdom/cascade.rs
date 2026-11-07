@@ -744,6 +744,20 @@ mod tests {
     }
 
     #[test]
+    fn a_parentless_element_resolves_its_own_inline_style() {
+        // A detached element (no parent, so no shadow host to take `::slotted` rules
+        // from and nothing to inherit) still resolves its inline declarations, and only
+        // those: the body's inherited colour does not reach it.
+        let mut tree = Tree::parse("<body style=\"color:blue\"></body>");
+        let el = tree.create_element("div");
+        tree.set_attribute(el, "style", "color:red;padding-left:3px");
+        let map = computed_style(&tree, el);
+        assert_eq!(get_property_value(&map, "color"), "rgb(255, 0, 0)");
+        assert_eq!(get_property_value(&map, "padding-left"), "3px");
+        assert_eq!(get_property_value(&map, "font-size"), "");
+    }
+
+    #[test]
     fn inline_color_canonicalized() {
         // (a) inline style="color:red" → rgb(255, 0, 0)
         let got = gcs_prop("<div id=x style=\"color:red\">hi</div>", "#x", "color");

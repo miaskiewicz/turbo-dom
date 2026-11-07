@@ -44,6 +44,10 @@ const TEXT_CASES: &[&str] = &[
     "ws-space-line-break-spaces",
     "ws-pre-line-newline",
     "ws-nowrap-space-span",
+    // The empty `<math>` placeholder is an inline-block sitting on a line: its `y` is
+    // the line's strut baseline, and the following `<p>`'s text line height is a font's.
+    "math-empty",
+    "math-empty-then-p",
 ];
 
 /// The `<style>` text of a control document (the testing cascade takes the CSS apart
