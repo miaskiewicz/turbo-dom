@@ -3823,11 +3823,12 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var selEndDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).end:null;},set:function(value){selectionRequire(this);var state=selectionState(this),end=value===null?0:+value>>>0;selectionUpdate(this,selectionMin(state.start,end),end,state.direction);}};
     var selDirDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).direction:null;},set:function(value){selectionRequire(this);var state=selectionState(this);selectionUpdate(this,state.start,state.end,value===null?'none':selectionText(value));}};
     function setControlSelectionRange(start,end){if(arguments.length<2)throw new selectionTypeError('setSelectionRange requires two arguments');start=+start>>>0;end=+end>>>0;var direction=arguments.length<3||arguments[2]===undefined?'none':selectionText(arguments[2]);selectionRequire(this);selectionUpdate(this,start,end,direction);}
-    function setControlRangeTextApplyMode(self,mode,state,start,end,replacement,next){
+    // oldStart / oldEnd: the selection before the value write (the write may move it).
+    function setControlRangeTextApplyMode(self,mode,oldStart,oldEnd,start,end,replacement,next){
       if(mode==='select'){selectionUpdate(self,start,next,'none');return;}
       if(mode==='start'){selectionUpdate(self,start,start,'none');return;}
       if(mode==='end'){selectionUpdate(self,next,next,'none');return;}
-      var delta=replacement.length-(end-start),oldStart=state.start,oldEnd=state.end;
+      var delta=replacement.length-(end-start);
       selectionUpdate(self,oldStart>end?oldStart+delta:oldStart>start?start:oldStart,oldEnd>end?oldEnd+delta:oldEnd>start?next:oldEnd,'none');
     }
     function setControlRangeTextMode(args){
@@ -3842,9 +3843,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var mode=setControlRangeTextMode(arguments);
       selectionRequire(this);if(start>end)throw new selectionException('The start exceeds the end','IndexSizeError');
       var value=selectionValue(this),length=value.length;start=selectionMin(start,length);end=selectionMin(end,length);
-      var next=start+replacement.length;
+      var oldStart=state.start,oldEnd=state.end,next=start+replacement.length;
       selectionApply(valDesc.set,this,[value.slice(0,start)+replacement+value.slice(end)]);
-      setControlRangeTextApplyMode(this,mode,state,start,end,replacement,next);
+      setControlRangeTextApplyMode(this,mode,oldStart,oldEnd,start,end,replacement,next);
     }
     // selection.js replaces these members on every text control prototype; the private namespace
     // keeps the binding's own selection model reachable for its unit test (never page-visible).
