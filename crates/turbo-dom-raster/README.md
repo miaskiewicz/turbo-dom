@@ -19,8 +19,8 @@ It depends on turbo-dom-layout with explicit features: `bundled-fonts` and
 ## Install
 
 ```toml
-turbo-dom-raster = "0.7"                                        # MSRV 1.89
-turbo-dom-raster = { version = "0.7", features = ["avif", "jxl"] }
+turbo-dom-raster = "0.8"                                        # MSRV 1.89
+turbo-dom-raster = { version = "0.8", features = ["avif", "jxl"] }
 ```
 
 ## Features
@@ -48,14 +48,49 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
   - `*_with_assets` adds caller-fetched images (`ImageAssets` = URL → bytes) and
     `full_page`;
   - `*_with_opts` adds `system_fonts`, which resolves against the installed fonts through
-    turbo-dom-layout's `FontRegistry::system`.
+    turbo-dom-layout's `FontRegistry::system`;
+  - `screenshot_png_with_options(html, external_css, viewport, images, &options) -> Result<Vec<u8>, String>`
+    and `screenshot_svg_with_options(...) -> Result<String, String>` take a
+    `ScreenshotOptions<'a>` (`#[non_exhaustive]`; start from
+    `ScreenshotOptions::default()` and set the fields you need):
+
+    | field | type | effect |
+    |---|---|---|
+    | `full_page` | `bool` | paint the full content height instead of the viewport |
+    | `system_fonts` | `bool` | resolve against installed system fonts (`FontRegistry::system`) |
+    | `canvases` | `Option<&'a CanvasContents>` | the embedder's canvas pixels (below) |
+    | `fonts` | `Option<&'a FontRegistry>` | lay out and paint with the caller's registry instead of the bundled / system set, so a caller that loads the page's `@font-face` sources (`FontFace::from_web_font_bytes`; `FontFace::is_web_font`) gets web fonts at Chrome's metrics (turbo-dom#304). The raster does not read `@font-face` rules itself |
+    | `idl_states` | `Option<&'a IdlStates>` | live IDL-state flags (below) |
+
+  - **Canvas content** (`canvases`, turbo-dom#291). `CanvasContents = HashMap<usize,
+    CanvasContent>` keys each canvas by its index among the document's `<canvas>`
+    elements in tree order (`document.querySelectorAll('canvas')` order). A
+    `CanvasContent` is either `Ops(String)` (the render tier's 2D-canvas op log —
+    `ctx._ops` JSON, replayed at the canvas's `width` x `height`) or
+    `Rgba { width, height, pixels: Vec<u8> }` (straight-alpha RGBA8, row-major from
+    the top-left, `width * height * 4` bytes, as `getImageData` reads). Painted in
+    each canvas's content box like Chrome 156: scaled by `object-fit`, placed by
+    `object-position`, inside border and padding, clipped to the content box and its
+    rounded corners, under the box's transform, upright in vertical writing modes.
+    A canvas without an entry stays blank (background and border only).
+  - **Live IDL state** (`idl_states`, turbo-dom#293 / #371).
+    `IdlStates { indeterminate_inputs: HashSet<usize> }` carries the IDL flags the
+    serialized HTML can't express: tree-order indices among
+    `document.querySelectorAll('input')` of `<input>` elements whose IDL
+    `indeterminate` flag a script set to `true`. A checkbox at one of those indices
+    paints the Chrome indeterminate dash (equivalent to
+    `turbo_dom_layout::INDETERMINATE_ATTR` on its styled box), checked or not; any
+    other control ignores the flag, like Chrome.
 - **Resource discovery** (works on the parsed document, never on source text):
   `image_urls`, `image_urls_in_css`, `stylesheet_hrefs`, and `delazy_tree` /
   `delazy_images` (fill lazy `<img>`s).
 - **Canvas:** `canvas_ops_png` / `canvas_ops_rgba` replay a 2D-canvas op log. Colours go
   through turbo-dom's `rtdom::color::parse_color`. `measure_text` measures a text run (width, height) with the bundled or system faces;
   `measure_canvas_text(text, font)` is canvas `measureText`'s width for a CSS `font`
-  shorthand.
+  shorthand. Canvas text uses the bundled faces; `canvas_ops_png_with_fonts(width,
+  height, ops_json, fonts)`, `canvas_ops_rgba_with_fonts(width, height, ops_json, fonts)`
+  and `measure_canvas_text_with_fonts(text, font, fonts)` take a caller `&FontRegistry`
+  (web fonts; the `coretext` path is skipped for an `@font-face` face).
 - **WebGL:** `webgl_readback` and `webgl_metadata` work on a recorded call batch, backed
   by the GPU under `gpu-metal`.
 
@@ -87,8 +122,10 @@ so any number of tiles fill the box; fractional tiles blend their edge pixels li
 (#269). Gradients take length, double-position and repeating stops (#264). A `transform`
 on an `<img>` itself applies (#272). Form controls paint Chrome 156's native appearance
 from turbo-dom-layout's galley boxes (#255, #257). Glyphs are rasterized with exact-area
-coverage, CoreText-like outline growth and Skia's mask pre-blend; Chrome's stem darkening
-is still missing, so small and white text differ most (open: #266).
+coverage, CoreText-like box-kernel outline growth and a luminance-dependent edge transfer
+(#266, #331); the SVG screenshot's glyph paths take Skia's mask pre-blend through one
+`feComponentTransfer` filter per text luminance class (#294). Chrome's grid-dependent
+vertical geometry below about 20px is not modelled, so 12–16px text differs most.
 
 ## Gates
 
@@ -102,7 +139,7 @@ size-only fallback is one branch shared by both features.
 - CI `raster` job: clippy pedantic `-D warnings` and tests (default, `avif`, `jxl`), a
   `gpu-metal` check on Linux, and `coretext` / `gpu-metal` on macOS in the release run.
   Pull requests run on Linux only.
-- MSRV 1.89. Cyclomatic complexity ≤ 15 is **report-only** until the post-release refactor.
+- MSRV 1.89. Cyclomatic complexity ≤ 15 is **blocking** since 0.8.0 (turbo-dom#297).
 
 ## Testing
 

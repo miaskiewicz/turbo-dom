@@ -1316,15 +1316,59 @@ mod tests {
     use super::{entry, SHORTHANDS};
 
     /// `grammar::expand` and `serialize::value` take an entry's grammar key: each one names
-    /// an entry (whose longhands the serializer reads) and has a parser.
+    /// an entry (whose longhands the serializer reads) and has a parser. `expand` returns
+    /// `None` both for an unknown key and for a value its parser rejects, so each key must
+    /// expand at least one value Chrome 156 accepts for one of its shorthands (the control's
+    /// `name|value` scenarios that set longhands; `-webkit-mask-box-image` sets them but reads
+    /// back ""): a key without a parser expands nothing.
     #[test]
     fn every_grammar_names_an_entry_with_a_parser() {
-        let comps = super::super::components::components("bogus").unwrap();
+        let control: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/css_shorthand_chrome156.json"
+        ))
+        .unwrap();
+        let mut accepted = std::collections::HashMap::<&str, Vec<&str>>::new();
+        for scenario in control["result"][0]["result"]["results"]
+            .as_array()
+            .unwrap()
+        {
+            let Some((name, value)) = scenario["id"].as_str().unwrap().split_once('|') else {
+                continue;
+            };
+            let set = scenario["items"]
+                .as_array()
+                .is_some_and(|items| !items.is_empty());
+            if set {
+                accepted.entry(name).or_default().push(value);
+            }
+        }
+        // The control's only non-keyword row-rule-inset-end value (`1px 2px`) is invalid;
+        // Chrome 156 accepts `row-rule-inset-end: 1px` (frozen headless shell).
+        accepted
+            .entry("row-rule-inset-end")
+            .or_default()
+            .push("1px");
         for shorthand in SHORTHANDS {
             let grammar = entry(shorthand.grammar).unwrap_or_else(|| panic!("{}", shorthand.name));
             assert_eq!(grammar.longhands, shorthand.longhands, "{}", shorthand.name);
-            // Every key reaches its parser (an unknown one is `unreachable!`).
-            let _ = super::super::grammar::expand(shorthand.grammar, &comps);
+        }
+        let mut grammars: Vec<&str> = SHORTHANDS.iter().map(|s| s.grammar).collect();
+        grammars.sort_unstable();
+        grammars.dedup();
+        for grammar in grammars {
+            let expands = SHORTHANDS
+                .iter()
+                .filter(|shorthand| shorthand.grammar == grammar)
+                .flat_map(|shorthand| accepted.get(shorthand.name).into_iter().flatten())
+                .any(|value| {
+                    super::super::components::components(value).is_some_and(|comps| {
+                        super::super::grammar::expand(grammar, &comps).is_some()
+                    })
+                });
+            assert!(
+                expands,
+                "grammar {grammar} expands no Chrome-accepted value"
+            );
         }
     }
 }

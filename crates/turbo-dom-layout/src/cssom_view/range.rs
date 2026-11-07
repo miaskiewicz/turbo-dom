@@ -116,38 +116,62 @@ pub fn select(
     nodes.sort_by_key(|(_, span)| span.before);
     let mut result = Vec::new();
     for (&handle, span) in nodes {
-        let source = source_id(document, handle);
-        if span.kind == 1 && fully_selected(span, begin, finish) {
-            let parent_selected = span
-                .parent
-                .and_then(|id| order.spans.get(&id))
-                .is_some_and(|parent| parent.kind == 1 && fully_selected(parent, begin, finish));
-            if !parent_selected {
-                result.push(Selection::Element(source));
-            }
-        }
-        // Only Text contributes character boxes (its span always records its data).
-        let (3, Some((base, units))) = (span.kind, span.data) else {
-            continue;
-        };
-        if units == 0 {
-            continue;
-        }
-        let end_position = base + units as u64;
-        let intersects = if begin == finish {
-            begin >= base && begin <= end_position
-        } else {
-            (begin < end_position && finish > base) || handle == start.0 || handle == end.0
-        };
-        if intersects {
-            result.push(Selection::Text {
-                source,
-                start: begin.saturating_sub(base).min(units as u64) as usize,
-                end: finish.saturating_sub(base).min(units as u64) as usize,
-            });
-        }
+        emit_selection(
+            &order,
+            handle,
+            span,
+            document,
+            begin,
+            finish,
+            start,
+            end,
+            &mut result,
+        );
     }
     Ok(result)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn emit_selection(
+    order: &Order,
+    handle: Handle,
+    span: &Span,
+    document: u32,
+    begin: u64,
+    finish: u64,
+    start: (Handle, usize),
+    end: (Handle, usize),
+    result: &mut Vec<Selection>,
+) {
+    let source = source_id(document, handle);
+    if span.kind == 1 && fully_selected(span, begin, finish) {
+        let parent_selected = span
+            .parent
+            .and_then(|id| order.spans.get(&id))
+            .is_some_and(|parent| parent.kind == 1 && fully_selected(parent, begin, finish));
+        if !parent_selected {
+            result.push(Selection::Element(source));
+        }
+    }
+    let (3, Some((base, units))) = (span.kind, span.data) else {
+        return;
+    };
+    if units == 0 {
+        return;
+    }
+    let end_position = base + units as u64;
+    let intersects = if begin == finish {
+        begin >= base && begin <= end_position
+    } else {
+        (begin < end_position && finish > base) || handle == start.0 || handle == end.0
+    };
+    if intersects {
+        result.push(Selection::Text {
+            source,
+            start: begin.saturating_sub(base).min(units as u64) as usize,
+            end: finish.saturating_sub(base).min(units as u64) as usize,
+        });
+    }
 }
 
 #[cfg(test)]

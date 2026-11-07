@@ -885,15 +885,26 @@ fn measure_width(
     }
 }
 
+/// How a replaced `<img>` item's measurement width is chosen.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Probe {
+    /// Its explicit `width` or intrinsic pixel width, plus the box frame.
+    Fixed(f32),
+    /// An image with a natural ratio and no natural size (an SVG with only a
+    /// `viewBox`) and an auto `width`: it fills the width it is offered
+    /// (miaskiewicz/turbo-dom#326); `ratio` is its natural width / height.
+    RatioOnly { ratio: f32 },
+}
+
 /// The max-content width of a replaced `<img>` flex item: its explicit `width`, else
 /// the intrinsic pixel width from the resolver (plus the box frame). `None` for a
 /// non-replaced box (the caller falls back to the content measurement). Without this
-/// an `<img>` with `width:auto` measured 0 in a flex row â its `max-width:100%` clamps
-/// against a 0-width containing block in the scratch measurement â and the item (a
+/// an `<img>` with `width:auto` measured 0 in a flex row â its `max-width:100%` clamps
+/// against a 0-width containing block in the scratch measurement â and the item (a
 /// logo / hero image) collapsed to nothing.
-fn replaced_probe_width(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<f32> {
+fn replaced_probe(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<Probe> {
     if let Some(viewport) = &item.svg_viewport {
-        return Some(svg_probe_width(item, viewport, fs));
+        return Some(Probe::Fixed(svg_probe_width(item, viewport, fs)));
     }
     let src = item.image.as_ref().filter(|s| s.replaced)?;
     let bs = item.resolved(ResolveCtx {
@@ -902,10 +913,59 @@ fn replaced_probe_width(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<
     });
     let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
     if let LengthPct::Px(w) = bs.width {
-        return Some(w + frame);
+        return Some(Probe::Fixed(w + frame));
     }
     let (intrinsic, _) = super::imgsize::replaced_intrinsic(images.resolver, src, &item.style)?;
-    Some(intrinsic.width as f32 + frame)
+    Some(match intrinsic.natural_ratio {
+        Some(ratio) => Probe::RatioOnly { ratio },
+        None => Probe::Fixed(intrinsic.width as f32 + frame),
+    })
+}
+
+/// Whether `item` is a replaced image with a natural ratio and no natural size.
+fn is_ratio_only(item: &LayoutBox, images: &ImageCtx) -> bool {
+    item.image
+        .as_ref()
+        .filter(|s| s.replaced && item.svg_viewport.is_none())
+        .and_then(|src| super::imgsize::replaced_intrinsic(images.resolver, src, &item.style))
+        .is_some_and(|(intrinsic, _)| intrinsic.natural_ratio.is_some())
+}
+
+/// The container an item is measured in: its inner (content-box) `width`, and whether
+/// it is a row flex container (a column flex or a grid container: `false`).
+#[derive(Clone, Copy, Debug)]
+struct Fill {
+    width: f32,
+    row: bool,
+}
+
+/// The border-box width a ratio-only image item takes as a row flex item's base size
+/// (miaskiewicz/turbo-dom#326), like Chrome 156: a definite `known_height` (the item
+/// stretched in a container of definite height) gives the width through the `ratio`;
+/// with no definite or min/max height it is the container's whole inner width less its
+/// margins — exactly, where block layout derives the width back from the layout-unit
+/// height (400 x 266.65625 against a block's 399.984375); taffy then applies its
+/// `min-width` / `max-width`. `None` when a height constraint sizes it instead, which the
+/// scratch layout already resolves.
+fn ratio_only_row_width(
+    item: &LayoutBox,
+    (fs, cb_width): (f32, f32),
+    known_height: Option<f32>,
+    ratio: f32,
+) -> Option<f32> {
+    let bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width,
+    });
+    if let Some(height) = known_height {
+        let frame_v = bs.padding.vertical() + bs.border.widths().vertical();
+        let frame_h = bs.padding.horizontal() + bs.border.widths().horizontal();
+        return Some((height - frame_v).max(0.0) * ratio + frame_h);
+    }
+    let free = matches!(bs.height, LengthPct::Auto)
+        && matches!(bs.max_height, LengthPct::Auto)
+        && matches!(bs.min_height, LengthPct::Auto | LengthPct::Px(..=0.0));
+    free.then(|| (cb_width - bs.margin.horizontal()).max(0.0))
 }
 
 fn svg_probe_width(
@@ -936,13 +996,30 @@ fn measure_item(
         bool,
         Option<f32>,
         Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
+        Fill,
     ),
 ) -> Size<f32> {
-    let (live_geometry, html_font_metrics, html_font_scale, original_units) = policy;
-    // A replaced `<img>` sizes from its intrinsic (or explicit) width; other items
-    // from a max-content measurement of their content.
-    let w = replaced_probe_width(item, images, fs)
-        .unwrap_or_else(|| measure_width(known.width, avail.width, item, fonts));
+    let (live_geometry, html_font_metrics, html_font_scale, original_units, fill) = policy;
+    // A replaced `<img>` sizes from its intrinsic (or explicit) width, a ratio-only one
+    // from the width it is offered; other items from a max-content measurement of
+    // their content.
+    let mut exact_width = None;
+    let w = match replaced_probe(item, images, fs) {
+        Some(Probe::Fixed(w)) => w,
+        Some(Probe::RatioOnly { ratio }) => {
+            // The width it is given, else the space it is offered (a grid area), else
+            // the container's (a flex base size is probed under a content constraint).
+            let w = known
+                .width
+                .or(avail.width.into_option())
+                .unwrap_or(fill.width);
+            if fill.row && known.width.is_none() {
+                exact_width = ratio_only_row_width(item, (fs, fill.width), known.height, ratio);
+            }
+            w
+        }
+        None => measure_width(known.width, avail.width, item, fonts),
+    };
     // Memoize the full sub-layout by proposed width: taffy probes each item several
     // times per solve, and each probe recurses a full layout, so nested flex is
     // exponential without this. `fs` (the flex container's font size) is stable per
@@ -1010,7 +1087,7 @@ fn measure_item(
         probe()
     };
     Size {
-        width: known.width.unwrap_or(cw),
+        width: known.width.or(exact_width).unwrap_or(cw),
         height: known.height.unwrap_or(ch),
     }
 }
@@ -1022,28 +1099,43 @@ fn measure_item(
 fn build_leaves(
     tree: &mut TaffyTree<usize>,
     items: &[LayoutBox],
-    fs: f32,
-    column: bool,
+    (fs, column): (f32, bool),
+    images: &ImageCtx,
 ) -> Vec<TaffyId> {
     items
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            tree.new_leaf_with_context(
-                border_box_sizes(item_style(it, fs, column), it, fs, column),
-                i,
-            )
-            .expect("flex leaf")
+            let mut style = border_box_sizes(item_style(it, fs, column), it, fs, column);
+            auto_min_main(&mut style, it, column, images);
+            tree.new_leaf_with_context(style, i).expect("flex leaf")
         })
         .collect()
+}
+
+/// A ratio-only image item (an SVG with only a `viewBox`) whose main-axis `min-width` /
+/// `min-height` is `auto` gets taffy's automatic minimum size, its content size
+/// suggestion (miaskiewicz/turbo-dom#326): Chrome 156 will not shrink it below the
+/// width it fills (a `flex-basis:100px` one still lays out 400 wide in a 400px row).
+/// Other items keep `min-width: auto` as 0.
+fn auto_min_main(style: &mut Style, item: &LayoutBox, column: bool, images: &ImageCtx) {
+    let prop = if column { "min-height" } else { "min-width" };
+    let auto = item.style.get(prop).is_none_or(|v| v.trim() == "auto");
+    if auto && is_ratio_only(item, images) {
+        if column {
+            style.min_size.height = Dimension::auto();
+        } else {
+            style.min_size.width = Dimension::auto();
+        }
+    }
 }
 
 fn solve(
     tree: &mut TaffyTree<usize>,
     root: TaffyId,
     items: &[LayoutBox],
-    fs: f32,
-    cw: f32,
+    (fs, cw): (f32, f32),
+    fill: Fill,
     ctx: &Ctx,
 ) {
     // Browser CSS geometry preserves fractional advances; whole-pixel rounding
@@ -1069,23 +1161,28 @@ fn solve(
                 ctx.html_font_metrics,
                 ctx.html_font_scale,
                 ctx.original_units,
+                fill,
             ),
         )
     })
     .expect("flex layout");
 }
 
+/// Lay out one placed item; `axis`: `Some(column)` for a flex item, `None` for a grid
+/// item.
 fn place_one(
     item: &LayoutBox,
     layout: &Layout,
     (cx, cy, fs): (f32, f32, f32),
-    column: bool,
+    axis: Option<bool>,
     ctx: &mut Ctx,
 ) -> Fragment {
+    let column = axis == Some(true);
     let mut bs = item.resolved(ResolveCtx {
         parent_font_size: fs,
         cb_width: layout.size.width,
     });
+    let was_border_box = bs.box_sizing == BoxSizing::BorderBox;
     // taffy has resolved this item's main-axis size (column `flex-basis`/`grow`)
     // and cross-axis size (row `align-items:stretch`). Force that border-box height
     // onto the item's own layout as a definite content-box height, so it drives the
@@ -1106,9 +1203,30 @@ fn place_one(
         }
         bs.box_sizing = BoxSizing::ContentBox;
     }
+    if axis.is_some() && matches!(bs.width, LengthPct::Auto) && is_ratio_only(item, ctx.images) {
+        flexed_width(&mut bs, layout.size.width, was_border_box);
+    }
     let mut frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, layout.size.width, ctx);
     frag.translate(cx + layout.location.x, cy + layout.location.y);
     frag
+}
+
+/// Give a ratio-only image flex item the border-box `width` taffy resolved for it as a
+/// definite width, as Chrome 156 does a flex item's used size: left `auto`, its width
+/// would be derived back from the layout-unit height (miaskiewicz/turbo-dom#326).
+/// `was_border_box`: the item's own `box-sizing` before [`place_one`] made it
+/// `content-box`, whose `min-width` / `max-width` become content-box lengths with it.
+fn flexed_width(bs: &mut BoxStyle, width: f32, was_border_box: bool) {
+    if bs.box_sizing == BoxSizing::BorderBox {
+        bs.width = LengthPct::Px(width);
+        return;
+    }
+    let inset_h = bs.padding.horizontal() + bs.border.widths().horizontal();
+    bs.width = LengthPct::Px((width - inset_h).max(0.0));
+    if was_border_box {
+        bs.min_width = content_height(bs.min_width, inset_h);
+        bs.max_width = content_height(bs.max_width, inset_h);
+    }
 }
 
 /// A border-box `px` length as a content-box one (`inset`: padding and border on that
@@ -1125,13 +1243,13 @@ fn place_items(
     leaves: &[TaffyId],
     items: &[LayoutBox],
     origin: (f32, f32, f32),
-    column: bool,
+    axis: Option<bool>,
     ctx: &mut Ctx,
 ) -> Vec<Fragment> {
     let mut frags = Vec::new();
     for (i, leaf) in leaves.iter().enumerate() {
         let layout = tree.layout(*leaf).expect("item layout");
-        frags.push(place_one(&items[i], layout, origin, column, ctx));
+        frags.push(place_one(&items[i], layout, origin, axis, ctx));
     }
     frags
 }
@@ -1591,8 +1709,12 @@ pub(crate) fn layout_grid(
     let root = tree
         .new_with_children(grid_container_style(container, cw, &areas), &leaves)
         .expect("grid root");
-    solve(&mut tree, root, items, fs, cw, ctx);
-    let frags = place_items(&tree, &leaves, items, (cx, cy, fs), false, ctx);
+    let fill = Fill {
+        width: cw,
+        row: false,
+    };
+    solve(&mut tree, root, items, (fs, cw), fill, ctx);
+    let frags = place_items(&tree, &leaves, items, (cx, cy, fs), None, ctx);
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }
@@ -1616,12 +1738,16 @@ pub(crate) fn layout_flex(
         flex_direction(&container.style),
         FlexDirection::Column | FlexDirection::ColumnReverse
     );
-    let leaves = build_leaves(&mut tree, items, fs, column);
+    let leaves = build_leaves(&mut tree, items, (fs, column), ctx.images);
     let root = tree
         .new_with_children(container_style(container, cw, fs, ctx.cb_h), &leaves)
         .expect("flex root");
-    solve(&mut tree, root, items, fs, cw, ctx);
-    let frags = place_items(&tree, &leaves, items, (cx, cy, fs), column, ctx);
+    let fill = Fill {
+        width: cw,
+        row: !column,
+    };
+    solve(&mut tree, root, items, (fs, cw), fill, ctx);
+    let frags = place_items(&tree, &leaves, items, (cx, cy, fs), Some(column), ctx);
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }
@@ -1893,10 +2019,17 @@ mod coverage_tests {
     }
 
     fn el(tag: &str, pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNode {
+        let mut style = cs(pairs);
+        // Chrome's `html.css` `div { display: block }` (miaskiewicz/turbo-dom#375):
+        // test-built styled trees bypass the UA cascade, so a `div` without an explicit
+        // display sets it here.
+        if tag == "div" && style.get("display").is_none() {
+            style.set("display", "block".into());
+        }
         StyledNode::Element(StyledElement {
             tag: Tag::Html(tag.to_string()),
             attrs: vec![],
-            style: cs(pairs),
+            style,
             children,
             source: None,
         })
@@ -2060,7 +2193,16 @@ mod coverage_tests {
                 16.0,
                 &fonts,
                 &images,
-                (false, false, None, None),
+                (
+                    false,
+                    false,
+                    None,
+                    None,
+                    Fill {
+                        width: 0.0,
+                        row: false,
+                    },
+                ),
             )
             .height
         };

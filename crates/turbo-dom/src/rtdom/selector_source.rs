@@ -75,54 +75,21 @@ pub(super) fn normalize<T: Unit>(source: &[T], mode: Mode) -> Option<Vec<T>> {
     while i < source.len() {
         let code = source[i].code();
         if code == u32::from(b'\\') {
-            if i + 1 == source.len() && mode == Mode::Dom {
-                // an escape at the end: U+FFFD in a name, nothing in a string (so the
-                // closers appended below are not escaped)
-                if quote.is_none() {
-                    out.push(T::replacement());
-                }
-                changed = true;
+            if handle_normalize_escape(source, &mut i, &mut out, mode, quote, &mut changed) {
                 break;
             }
-            // an escape takes the next code point verbatim (none at the end)
-            let end = (i + 2).min(source.len());
-            out.extend_from_slice(&source[i..end]);
-            i = end;
             continue;
         }
-        if let Some(q) = quote {
-            if code == q {
-                quote = None;
-            }
-        } else if code == u32::from(b'"') || code == u32::from(b'\'') {
-            quote = Some(code);
-        } else if code == u32::from(b'/') && is(i + 1, b'*') {
-            changed = true;
-            let mut end = i + 2;
-            while end < source.len() && !(is(end, b'*') && is(end + 1, b'/')) {
-                end += 1;
-            }
-            let after = (end + 2).min(source.len());
-            // `#` + name is one hash token only without the comment (`#/**/x` is invalid)
-            let joins = out
-                .last()
-                .is_some_and(|prev: &T| name_like(prev.code()) || prev.code() == u32::from(b'#'))
-                && unit(after).is_some_and(name_like);
-            if joins {
-                out.push(T::ascii(if open.last() == Some(&b']') {
-                    b' '
-                } else {
-                    b'!'
-                }));
-            }
-            i = after;
+        if normalize_consume(
+            source,
+            &mut i,
+            &mut out,
+            &mut open,
+            &mut quote,
+            &mut changed,
+            is,
+        ) {
             continue;
-        } else if code == u32::from(b'[') {
-            open.push(b']');
-        } else if code == u32::from(b'(') {
-            open.push(b')');
-        } else if open.last().is_some_and(|&close| code == u32::from(close)) {
-            open.pop();
         }
         out.push(source[i]);
         i += 1;
@@ -138,6 +105,87 @@ pub(super) fn normalize<T: Unit>(source: &[T], mode: Mode) -> Option<Vec<T>> {
         }
     }
     changed.then_some(out)
+}
+
+/// Classify the current character into a bracket/quote/comment update.
+/// Returns true when the caller should `continue` (comment skip).
+fn normalize_consume<T: Unit, F: Fn(usize, u8) -> bool>(
+    source: &[T],
+    i: &mut usize,
+    out: &mut Vec<T>,
+    open: &mut Vec<u8>,
+    quote: &mut Option<u32>,
+    changed: &mut bool,
+    is: F,
+) -> bool {
+    let code = source[*i].code();
+    if let Some(q) = *quote {
+        if code == q {
+            *quote = None;
+        }
+    } else if code == u32::from(b'"') || code == u32::from(b'\'') {
+        *quote = Some(code);
+    } else if code == u32::from(b'/') && is(*i + 1, b'*') {
+        skip_comment(source, i, out, open, changed);
+        return true;
+    } else if code == u32::from(b'[') {
+        open.push(b']');
+    } else if code == u32::from(b'(') {
+        open.push(b')');
+    } else if open.last().is_some_and(|&close| code == u32::from(close)) {
+        open.pop();
+    }
+    false
+}
+
+/// Returns true when the outer loop should break (end-of-input escape).
+fn handle_normalize_escape<T: Unit>(
+    source: &[T],
+    i: &mut usize,
+    out: &mut Vec<T>,
+    mode: Mode,
+    quote: Option<u32>,
+    changed: &mut bool,
+) -> bool {
+    if *i + 1 == source.len() && mode == Mode::Dom {
+        if quote.is_none() {
+            out.push(T::replacement());
+        }
+        *changed = true;
+        return true;
+    }
+    let end = (*i + 2).min(source.len());
+    out.extend_from_slice(&source[*i..end]);
+    *i = end;
+    false
+}
+
+fn skip_comment<T: Unit>(
+    source: &[T],
+    i: &mut usize,
+    out: &mut Vec<T>,
+    open: &[u8],
+    changed: &mut bool,
+) {
+    let is = |p: usize, b: u8| source.get(p).map(|u| u.code()) == Some(u32::from(b));
+    *changed = true;
+    let mut end = *i + 2;
+    while end < source.len() && !(is(end, b'*') && is(end + 1, b'/')) {
+        end += 1;
+    }
+    let after = (end + 2).min(source.len());
+    let joins = out
+        .last()
+        .is_some_and(|prev: &T| name_like(prev.code()) || prev.code() == u32::from(b'#'))
+        && source.get(after).map(|u| u.code()).is_some_and(name_like);
+    if joins {
+        out.push(T::ascii(if open.last() == Some(&b']') {
+            b' '
+        } else {
+            b'!'
+        }));
+    }
+    *i = after;
 }
 
 /// [`normalize`] for the string API, borrowing when nothing changes.

@@ -198,6 +198,62 @@ pub(super) fn convert_call<'s>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn attribute_kind(
+    mapping: &serde_json::Value,
+    tag: &str,
+    ns: &str,
+    attribute: &str,
+    local: &str,
+    namespace: Option<&str>,
+    html: bool,
+    svg: bool,
+) -> Option<&'static str> {
+    if attribute_is_script(mapping, attribute, ns, namespace, html, svg) {
+        return Some("TrustedScript");
+    }
+    if attribute_is_html_scripturl(tag, attribute, namespace, html) {
+        return Some("TrustedScriptURL");
+    }
+    if html && namespace.is_none() && tag == "iframe" && attribute == "srcdoc" {
+        return Some("TrustedHTML");
+    }
+    if attribute_is_svg_scripturl(tag, local, namespace, svg) {
+        return Some("TrustedScriptURL");
+    }
+    None
+}
+
+fn attribute_is_script(
+    mapping: &serde_json::Value,
+    attribute: &str,
+    ns: &str,
+    namespace: Option<&str>,
+    html: bool,
+    svg: bool,
+) -> bool {
+    namespace.is_none()
+        && (html || svg || ns == "http://www.w3.org/1998/Math/MathML")
+        && mapping["*"]["attributes"].get(attribute).is_some()
+}
+
+fn attribute_is_html_scripturl(
+    tag: &str,
+    attribute: &str,
+    namespace: Option<&str>,
+    html: bool,
+) -> bool {
+    html && namespace.is_none()
+        && ((tag == "script" || tag == "embed") && attribute == "src"
+            || tag == "object" && matches!(attribute, "data" | "codebase"))
+}
+
+fn attribute_is_svg_scripturl(tag: &str, local: &str, namespace: Option<&str>, svg: bool) -> bool {
+    svg && tag == "script"
+        && local == "href"
+        && (namespace.is_none() || namespace == Some("http://www.w3.org/1999/xlink"))
+}
+
 pub(super) fn attribute_units<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     node: v8::Local<'s, v8::Object>,
@@ -221,26 +277,8 @@ pub(super) fn attribute_units<'s>(
         serde_json::from_str(include_str!("trusted_types_mapping.json"))
             .expect("recorded trusted sinks")
     });
-    let kind = if namespace.is_none()
-        && (html || svg || ns == "http://www.w3.org/1998/Math/MathML")
-        && mapping["*"]["attributes"].get(attribute).is_some()
-    {
-        "TrustedScript"
-    } else if html
-        && namespace.is_none()
-        && ((tag == "script" || tag == "embed") && attribute == "src"
-            || tag == "object" && matches!(attribute, "data" | "codebase"))
-    {
-        "TrustedScriptURL"
-    } else if html && namespace.is_none() && tag == "iframe" && attribute == "srcdoc" {
-        "TrustedHTML"
-    } else if svg
-        && tag == "script"
-        && local == "href"
-        && (namespace.is_none() || namespace == Some("http://www.w3.org/1999/xlink"))
-    {
-        "TrustedScriptURL"
-    } else {
+    let Some(kind) = attribute_kind(mapping, &tag, &ns, attribute, local, namespace, html, svg)
+    else {
         return dom_units(scope, input);
     };
     let owner = match (tag.as_str(), attribute) {
@@ -478,6 +516,42 @@ mod tests {
             assert_eq!(actual["rows"], expected["rows"], "{}", case["id"]);
             assert_eq!(actual["trace"], expected["trace"], "{}", case["id"]);
         }
+        reset();
+    }
+    /// Namespaces and property names spelled like Object.prototype members are unknown names,
+    /// not table hits (turbo-dom#389 review). Expected rows: the frozen Chrome 156 headless shell
+    /// running the same expression over a file:// page.
+    #[test]
+    fn object_prototype_names_are_unknown_namespaces_and_properties_like_chrome() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body>");
+        let result = eval(
+            scope,
+            r#"(()=>{
+          const t=trustedTypes,r=[];
+          for(const ns of ['constructor','__proto__','toString','hasOwnProperty'])r.push(['attr',ns,t.getAttributeType('div','onclick',ns),t.getAttributeType('script','src',ns),t.getPropertyType('div','innerHTML',ns),t.getPropertyType('script','text',ns)]);
+          for(const p of ['constructor','__proto__','toString','valueOf','hasOwnProperty'])r.push(['prop',p,t.getPropertyType('script',p),t.getPropertyType('div',p),t.getAttributeType('script',p)]);
+          return JSON.stringify(r);
+        })()"#,
+        );
+        let actual: serde_json::Value =
+            serde_json::from_str(&result.to_rust_string_lossy(scope)).unwrap();
+        let chrome = serde_json::json!([
+            ["attr", "constructor", null, null, "TrustedHTML", null],
+            ["attr", "__proto__", null, null, "TrustedHTML", null],
+            ["attr", "toString", null, null, "TrustedHTML", null],
+            ["attr", "hasOwnProperty", null, null, "TrustedHTML", null],
+            ["prop", "constructor", null, null, null],
+            ["prop", "__proto__", null, null, null],
+            ["prop", "toString", null, null, null],
+            ["prop", "valueOf", null, null, null],
+            ["prop", "hasOwnProperty", null, null, null]
+        ]);
+        assert_eq!(actual, chrome);
         reset();
     }
     #[test]

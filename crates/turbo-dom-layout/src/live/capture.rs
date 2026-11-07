@@ -1,5 +1,5 @@
 //! The capture pass: walk the composed tree under the source budgets and record each
-//! kept source's identity, the SVG viewports and the original text.
+//! kept source's identity, the SVG viewports, the `MathML` roots and the original text.
 //!
 //! Budget order is part of the contract: a node is counted before its type is looked
 //! at; an element's namespace is checked, then its attributes, then its children (whose
@@ -18,6 +18,17 @@ use crate::layout_snapshot::{SourceId, SourceIdentity};
 
 const HTML: &str = "http://www.w3.org/1999/xhtml";
 const SVG: &str = "http://www.w3.org/2000/svg";
+pub(super) const MATHML: &str = "http://www.w3.org/1998/Math/MathML";
+
+/// The namespace bucket `capture` accepts an element into.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Ns {
+    Html,
+    Svg,
+    /// An element in the `MathML` namespace, with placeholder box metrics
+    /// ([miaskiewicz/turbo-dom#376](https://github.com/miaskiewicz/turbo-dom/issues/376)).
+    MathMl,
+}
 
 /// Capture a live document's layout provenance (see the [module docs](super)).
 ///
@@ -28,17 +39,19 @@ pub fn capture(live: &LiveTree) -> Result<LiveCapture, LiveError> {
         live,
         identities: Vec::new(),
         svg_viewports: Vec::new(),
+        math_roots: Vec::new(),
         original_text: HashMap::new(),
         nodes_left: MAX_NODES,
         text_left: MAX_TEXT_BYTES,
         attributes_left: MAX_ATTRIBUTE_BYTES,
     };
-    walk.children(live.tree.root(), &[], false)?;
+    walk.children(live.tree.root(), &[], None)?;
     Ok(LiveCapture {
         document: live.document,
         tree_version: live.tree.version,
         identities: walk.identities,
         svg_viewports: walk.svg_viewports,
+        math_roots: walk.math_roots,
         original_text: walk.original_text,
         quirks: live.tree.compat_mode() == "BackCompat",
         body: document_body(live.tree).map(|body| source_id(live.document, body)),
@@ -71,6 +84,7 @@ struct Walk<'l, 'a> {
     live: &'l LiveTree<'a>,
     identities: Vec<SourceIdentity>,
     svg_viewports: Vec<SourceId>,
+    math_roots: Vec<SourceId>,
     original_text: HashMap<SourceId, Vec<u16>>,
     nodes_left: usize,
     text_left: usize,
@@ -78,7 +92,12 @@ struct Walk<'l, 'a> {
 }
 
 impl Walk<'_, '_> {
-    fn children(&mut self, parent: Handle, path: &[usize], in_svg: bool) -> Result<(), LiveError> {
+    fn children(
+        &mut self,
+        parent: Handle,
+        path: &[usize],
+        ancestor: Option<Ns>,
+    ) -> Result<(), LiveError> {
         if path.len() > MAX_DEPTH {
             return Err(LiveError::DepthBudget);
         }
@@ -86,7 +105,7 @@ impl Walk<'_, '_> {
         for &child in (self.live.children)(parent) {
             let mut child_path = path.to_vec();
             child_path.push(kept);
-            if self.node(child, &child_path, in_svg)? {
+            if self.node(child, &child_path, ancestor)? {
                 kept += 1;
             }
         }
@@ -94,13 +113,18 @@ impl Walk<'_, '_> {
     }
 
     /// Count `node` and capture it; `false` for a node that is not a layout source.
-    fn node(&mut self, node: Handle, path: &[usize], in_svg: bool) -> Result<bool, LiveError> {
+    fn node(
+        &mut self,
+        node: Handle,
+        path: &[usize],
+        ancestor: Option<Ns>,
+    ) -> Result<bool, LiveError> {
         self.nodes_left = self
             .nodes_left
             .checked_sub(1)
             .ok_or(LiveError::NodeBudget)?;
         match self.live.tree.node_type(node) {
-            NodeType::Element => self.element(node, path, in_svg)?,
+            NodeType::Element => self.element(node, path, ancestor)?,
             NodeType::Text => self.text(node)?,
             _ => return Ok(false),
         }
@@ -115,17 +139,35 @@ impl Walk<'_, '_> {
         source_id(self.live.document, node)
     }
 
-    fn element(&mut self, node: Handle, path: &[usize], in_svg: bool) -> Result<(), LiveError> {
-        let svg = svg_namespace(self.live.tree, node)?;
-        self.note_viewport(node, svg, in_svg);
+    fn element(
+        &mut self,
+        node: Handle,
+        path: &[usize],
+        ancestor: Option<Ns>,
+    ) -> Result<(), LiveError> {
+        let ns = element_namespace(self.live.tree, node)?;
+        self.note_viewport(node, ns, ancestor);
+        self.note_math_root(node, ns, ancestor);
         self.attributes(node)?;
-        self.children(node, path, in_svg || svg)
+        self.children(node, path, Some(ns))
     }
 
     /// The outermost `<svg>` element of an SVG subtree is an SVG viewport.
-    fn note_viewport(&mut self, node: Handle, svg: bool, in_svg: bool) {
-        if svg && !in_svg && self.live.tree.local_name(node) == Some("svg") {
+    fn note_viewport(&mut self, node: Handle, ns: Ns, ancestor: Option<Ns>) {
+        if ns == Ns::Svg
+            && ancestor != Some(Ns::Svg)
+            && self.live.tree.local_name(node) == Some("svg")
+        {
             self.svg_viewports.push(self.id(node));
+        }
+    }
+
+    /// The outermost element of a composed `MathML` subtree is a `MathML` root — the only
+    /// element the style pass gives UA placeholder metrics to (its descendants take
+    /// `display: none`).
+    fn note_math_root(&mut self, node: Handle, ns: Ns, ancestor: Option<Ns>) {
+        if ns == Ns::MathMl && ancestor != Some(Ns::MathMl) {
+            self.math_roots.push(self.id(node));
         }
     }
 
@@ -153,11 +195,12 @@ impl Walk<'_, '_> {
     }
 }
 
-/// Whether an element is in the SVG namespace; anything but HTML and SVG is rejected.
-fn svg_namespace(tree: &Tree, node: Handle) -> Result<bool, LiveError> {
+/// The namespace bucket for `node`; anything but HTML, SVG and `MathML` is rejected.
+fn element_namespace(tree: &Tree, node: Handle) -> Result<Ns, LiveError> {
     match tree.namespace_uri(node) {
-        Some(HTML) => Ok(false),
-        Some(SVG) => Ok(true),
+        Some(HTML) => Ok(Ns::Html),
+        Some(SVG) => Ok(Ns::Svg),
+        Some(MATHML) => Ok(Ns::MathMl),
         _ => Err(LiveError::Namespace),
     }
 }

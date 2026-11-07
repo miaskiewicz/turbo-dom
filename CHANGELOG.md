@@ -5,6 +5,487 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.0] — 2026-11-06
+
+### Highlights
+
+0.8.0 fills in the live / static embedder contracts around CSS, media and canvas, and
+brings the complexity gates fully blocking.
+
+Public API additions (every item is non-breaking unless it appears under "Changed"):
+
+- **turbo-dom-browser-env**: `MediaMode` + `set_media_mode` (Chrome vs jsdom 27 media
+  surface); `set_css_transitions` (CSS transitions only) and the new
+  `set_css_animations` (gates `@keyframes` + animation events; both default on and
+  independent of each other and of `MediaMode`; both off hides the Web Animations
+  surface for jsdom parity); engine namespace hooks `layoutUsedSize` (now `[bw, bh,
+  cw, ch]` or `[bw, bh, cw, ch, fontSizePx]` — the fifth entry enables `em`
+  resolution in `getComputedStyle(el).transform`, turbo-dom#353) and
+  `cssSupports(text)` / `cssSupportsProperty(property, value)` for an embedder's
+  `CSS.supports()` (turbo-dom#322, strings coerced through a private `String`
+  primordial in #370); `dispatch_host_event_did_listeners_throw(scope, event,
+  target) -> bool` dispatches and reports the DOM's legacy-output-did-listeners-throw
+  flag (surf#148); `ActivationQuery::Sticky` variant for media `play()`'s autoplay
+  policy (turbo-dom#323).
+- **turbo-dom-layout**: new default-on cargo feature `hyphenation-languages` (~3 MB
+  of TeX patterns for the 21 languages Chrome 156 on macOS hyphenates; off keeps the
+  ~90 KB English-only build); `HyphenationLanguage` enum (`#[non_exhaustive]`,
+  `HyphenationLanguage::from_locale`) and `AutoHyphens::language`;
+  `INDETERMINATE_ATTR` (the attribute a live embedder adds in `post_cascade` for an
+  indeterminate checkbox); image sizing additions
+  `Intrinsic::natural_ratio: Option<f32>` and `Intrinsic::ratio_only(w, h, ratio,
+  has_alpha)` (an SVG with only a `viewBox` sizes from the ratio like Chrome), plus
+  `svg::natural_sizing(bytes) -> Option<((f32, f32), Option<f32>)>`;
+  `canvas_image_name(Handle)` and `canvas_bitmap_size(w, h)` (the canvas content
+  pipeline shared with turbo-dom-raster).
+- **turbo-dom-raster**: `ScreenshotOptions<'a>` (`#[non_exhaustive]`;
+  `full_page`, `system_fonts`, `canvases: Option<&CanvasContents>`,
+  `fonts: Option<&FontRegistry>`, `idl_states: Option<&IdlStates>`) +
+  `screenshot_png_with_options` / `screenshot_svg_with_options`;
+  `CanvasContents = HashMap<usize, CanvasContent>` (`Ops(String)` or
+  `Rgba { width, height, pixels }`), keyed by each canvas's tree-order index among
+  `document.querySelectorAll('canvas')`; `IdlStates { indeterminate_inputs }`
+  (same keying scheme over `input`); canvas helpers
+  `canvas_ops_png_with_fonts`, `canvas_ops_rgba_with_fonts`,
+  `measure_canvas_text_with_fonts`; font helpers
+  `FontFace::is_web_font` and `FontFace::from_web_font_bytes`.
+
+Caller-visible behaviour changes: `getComputedStyle` now returns computed defaults
+for unset properties (turbo-dom#305), the used `width` / `height` of a rendered box
+when the embedder supplies `layoutUsedSize` (#316), resolved CSS-wide keywords
+(#317), resolved `transform` as `matrix()` / `matrix3d()` / `none` (#353), and
+canonicalized named colours in every `<color>` longhand (#374); CSS transitions
+and `@keyframes` animations now dispatch their Chrome-timed events (#313); child
+iframe documents cascade their own sheets and are real HTML documents (#299, #306);
+shared `document.domain` across one agent cluster via `share_document_domain`
+(#284); live tables hit the table on `border-spacing` gaps (#321), and
+`position: sticky` sticks to its scroll container (#295). Cyclomatic complexity
+≤ 15 flips **blocking** in CI for both the Rust and the JS jobs (turbo-dom#297),
+replacing the 0.6.0 / 0.7.0 report-only phase.
+
+### Added
+
+- **turbo-dom-browser-env, turbo-dom: CSS Nesting (CSSStyleRule nested rules + their cascade,
+  turbo-dom#358).** Style rules now admit nested rules (`&`, implicit `&` for selectors that
+  start with a class / type / pseudo, `& > .b` combinators, selector lists, `:is()`-style
+  compounds, nested `@media` / `@supports` / `@container` / `@layer` / `@scope` /
+  `@starting-style`). `CSSStyleRule` gains `cssRules`, `insertRule(text, index?)` and
+  `deleteRule(index)` (a bare declaration inserted this way becomes a `CSSNestedDeclarations`,
+  as Chrome does). A new `CSSNestedDeclarations` interface wraps declaration runs that follow
+  a nested rule. `cssText` serializes multi-line in Chrome 156's authored order. The cascade
+  recurses through a style rule's nested cssRules, resolving `&` against the parent's
+  effective selector (`:is(parent)`) and prepending `& ` for a nested selector that doesn't
+  start with one. Chrome 156 control: `css_nesting_chrome156.json`. The last open half of
+  turbo-dom#340 is now done.
+- **turbo-dom-v8: `PinScope::get_incumbent_context()` (turbo-dom#367, turbo-surf#90).**
+  Added a Rust accessor for V8's `Isolate::GetIncumbentContext()`, needed for
+  HTML's incumbent-realm concept (populates `MessageEvent.source` on cross-realm
+  `postMessage`). Upstream rusty_v8 150.4 has no `v8__Isolate__GetIncumbentContext`
+  wrapper in `binding.cc`, so the extern links directly to V8's exported member
+  symbol. That member function returns the class `Local<Context>` by value, which
+  the two C++ ABIs return differently: Itanium (Linux, macOS) returns the
+  trivially-copyable one-pointer wrapper in a register like the `*const Context`
+  the sibling accessors return, while MSVC (Windows) returns it through a hidden
+  result buffer passed after `this` (x64: RCX = `this`, RDX = buffer), so the
+  Windows declaration passes that buffer and reads it (the first cut declared a
+  plain pointer return and crashed with 0xc0000005 on Windows).
+  Added via `patches/incumbent-context.patch` with a regression test
+  (`tests/incumbent_context.rs`); pins regenerated.
+- **turbo-dom-browser-env: media element follow-ups (turbo-dom#339).**
+  - `HTMLMediaElement.captureStream()` returns a new `MediaStream`. `MediaStream` is a real,
+    constructible interface (`id` a random v4 UUID, `clone()`, the track getters, the
+    constructor overloads and their errors, `onaddtrack` / `onremovetrack` / `onactive` /
+    `oninactive`). Nothing in the binding produces a `MediaStreamTrack`, so every stream has
+    no tracks and `active` is false, as Chrome 156 returns for an element with no media.
+    `MediaStreamTrack` exists with Chrome's members, each of which rejects any receiver.
+    `srcObject` accepts a `MediaStream`: it is loaded like a URL that never answers
+    (`NETWORK_LOADING`, `loadstart`).
+  - Inserting a `<source>` under a media element without a `src` attribute runs Blink's
+    `SourceWasAdded`. From `NETWORK_EMPTY` it starts resource selection. While the selection
+    waits for a source it restarts it: `NETWORK_LOADING` at once, then a new `loadstart` and a
+    rescan of every source. This covers every insertion path (`append`, `innerHTML`,
+    `replaceChildren`, moving a media element, ...).
+  - `TextTrackList` fires `addtrack` / `removetrack` (a new `TrackEvent` interface) and
+    `change`. `addTextTrack()` fires `addtrack` and then `change`. A track element inserted
+    into a media element runs Chrome's automatic text track selection (default
+    subtitles / captions / descriptions / chapters tracks become `showing`, default metadata
+    tracks `hidden`, and a new subtitles / captions track is shown while text tracks are
+    visible). A track whose mode leaves `disabled` starts the track processing model: without
+    a `src` its `readyState` becomes `ERROR` and it fires `error`. With a `src` it stays
+    `LOADING`, since the binding's network never answers.
+  - The media interfaces' event handler attributes keep any object, as Chrome's do.
+
+  Insertions reach the binding through the mutation pipeline. A document records its
+  mutations once script has seen an audio, video, source or track element. Test:
+  `html_media_events_match_chrome156_control` against `html_media_events_chrome156.json`.
+- **turbo-dom-browser-env: the HTML / DOM interface members Chrome 156 has and the binding
+  lacked (turbo-dom#323).** The new members are:
+  - The reflected attributes of `<iframe>`, `<img>`, `<object>`, `<embed>`, `<video>`, `<a>`,
+    `<area>`, `<link>`, `<script>`, `<template>`, `<fieldset>`, `<legend>`, `<optgroup>`,
+    `<style>`, `<html>`, `<div>` and `<body>`. They cover DOMString, URL, boolean,
+    enumerated, nullable `crossOrigin` / `referrerPolicy`, unsigned long and DOMTokenList
+    (`relList`, `sizes`, `blocking`, `controlsList`), with Chrome's supported tokens.
+  - `a.text`, `fieldset.type` / `elements`, `legend.form`, `datalist.options`,
+    `style.disabled` (its sheet's flag) and `CharacterData` `previousElementSibling` /
+    `nextElementSibling`.
+  - The body's window-reflecting event handlers, `getSVGDocument()`, and
+    `object.contentDocument` / `contentWindow` (null, since the binding builds no object
+    browsing context).
+  - The script element's own `textContent` / `innerText`.
+  - New `html_media.js`: `HTMLMediaElement` / `HTMLVideoElement` state with `TimeRanges`,
+    `MediaError`, `TextTrackList` (`addTextTrack()`), `VideoPlaybackQuality` and
+    `RemotePlayback`.
+
+  The binding has no media pipeline, so a media element runs the HTML algorithms up to the
+  fetch:
+  - The load algorithm (`load()`, a `src` change) and resource selection. An empty `src` gives
+    `MediaError` 4. A `<source>` whose type nothing plays fires `error` at the source. A URL
+    becomes `currentSrc` and stays `NETWORK_LOADING`.
+  - `play()` / `pause()` follow Chrome's autoplay policy: muted, or sticky activation, through
+    the new `ActivationQuery::Sticky`.
+  - The `play` / `waiting` / `timeupdate` / `pause` / `volumechange` / `ratechange` events
+    fire, and play promises are rejected the way Chrome rejects them.
+  - Promise-returning operations report their errors as rejections.
+
+  Test: `interface_parity_matches_chrome156_control` against `interface_parity_chrome156.json`.
+  Split out: `captureStream()`, `<source>` insertion and `TextTrackList` events go to
+  turbo-dom#339 (done, above); `CSSStyleRule` nested rules and `Animation` `rangeStart` / `rangeEnd` go to
+  turbo-dom#340.
+- **turbo-dom-browser-env: `CSS.supports()` from the engine's declaration grammar
+  (turbo-dom#322).** The engine namespace now has `cssSupports(text)` and
+  `cssSupportsProperty(property, value)`, for an embedder's `CSS` namespace. They answer with
+  the grammar the cascade, `@supports` and `el.style` use, including both call forms,
+  `selector()`, the `!important` and `;` rules, and case-insensitive property names.
+  `anchor-name`, `anchor-scope`, `timeline-scope` and `position-anchor` now accept exactly
+  `<dashed-ident>`s or their keywords (`--a` was rejected and `--a --b` accepted).
+  `if()` is an arbitrary substitution function like `var()`, with its condition grammar
+  (`else`, or `not` / `and` / `or` over `style()` / `media()` / `supports()`) checked at
+  parse time. Test: `css_supports_matches_chrome156_control` against
+  `css_supports_chrome156.json`. `shape()` and `sibling-index()` / `sibling-count()` are
+  turbo-dom#338 (below).
+- **turbo-dom-browser-env: `document.createEvent()` follows Chrome 156's table (turbo-dom#341).**
+  It used to return a plain `Event` for any argument. It now returns an uninitialized event
+  of the named interface. The names are the DOM createEvent table plus the legacy names Chrome
+  keeps (`Events`, `HTMLEvents`, `SVGEvents`, `MouseEvents`, `UIEvents`, `KeyboardEvents`,
+  `TransitionEvent`), matched ASCII case-insensitively. Any other name throws
+  `NotSupportedError`, including `AnimationEvent` and `TouchEvent`. An interface the realm
+  lacks, or has only as an `instanceof` placeholder (`StorageEvent`, `TextEvent`, …), throws
+  `NotSupportedError` until an embedder defines it. Test:
+  `create_event_matches_chrome156_control`.
+- **turbo-dom, turbo-dom-browser-env, npm: the tree-counting functions `sibling-index()` /
+  `sibling-count()` and the `shape()` basic shape (turbo-dom#338).**
+  - The shared declaration grammar (`rtdom::css_shorthand`, and its npm lockstep port
+    `src/runtime/css-shorthand.mjs`) admits the tree-counting functions as integers in math
+    expressions and spells the expression the way Chrome 156 keeps it: literal factors fold
+    into one leading coefficient, literal terms add up in front, nested sums and products
+    flatten and get parentheses (`calc(sibling-index() * 2px + 1px)` is
+    `calc(1px + (2px * sibling-index()))`, `calc(sibling-index())` is `sibling-index()`).
+    `order` now has its `<integer>` grammar, and `font-weight` takes a math function.
+  - `shape()` is parsed in `clip-path`, `offset-path` and `shape-outside` with Chrome's
+    spelling: positions, the default `nonzero` rule, `from origin` / `from start` anchors,
+    `ccw` / `small` / `rotate 0deg` arc flags and the default reference box left out.
+    `clip-path: path()` is admitted as well (Lightning CSS rejected it).
+  - turbo-dom-browser-env: style sheets, `CSS.supports()` and `el.style` agree (the CSSOM
+    parser takes the shared grammar's answer for these values). `getComputedStyle` resolves
+    them: each tree-counting function becomes the element's position among its siblings or
+    their count, and the math then computes like Chrome's (lengths in px against the font,
+    percentages kept, integers rounded half up, ranges clamped). `shape()` computes its
+    positions to percentages and lengths, and its angles to `deg`. A style that reads its
+    siblings is not cached.
+  Tests: `css_tree_counting_shape_chrome156.json` (browser-env), `css_math_shape_chrome156.json`
+  (turbo-dom `css_math_shape_chrome`, npm `css-math-shape-chrome.test.mjs`). The
+  `css_supports` test no longer keeps these rows as a known gap.
+- **turbo-dom-browser-env: `Animation.prototype.rangeStart` / `rangeEnd` (turbo-dom#340).**
+  The animation attachment range reads back as `"normal"` or `{ rangeName, offset }` with a
+  Typed OM `CSSUnitValue`. The setters take a string (`"entry 10%"`, `"cover"`, `"20px"`) or
+  a `TimelineRangeOffset` dictionary, with Chrome 156's conversions and errors (an offset it
+  cannot keep as px or a percentage reads `0px`; a range end set without an offset reads
+  `1%`). `Element.animate()` keeps its `rangeStart` / `rangeEnd` options, and a `CSSAnimation`
+  follows `animation-range-start` / `-end` until script sets one. Ranges only matter on scroll
+  and view timelines, which the binding does not have. Test: `animation_range_chrome156.json`.
+  `CSSStyleRule` nested rules (CSS Nesting), the other half of #340, are not done yet.
+- **turbo-dom-browser-env: CSS transitions and animations dispatch their events
+  (turbo-dom#313).** A `CSSTransition` fires `transitionrun`, `transitionstart`,
+  `transitionend` and `transitioncancel`, a `CSSAnimation` `animationstart`,
+  `animationiteration`, `animationend` and `animationcancel`, as Chrome 156 does: trusted,
+  bubbling, cancelable `TransitionEvent` / `AnimationEvent`s on the owner element, in the
+  rendering frame after the phase change and before its animation-frame callbacks, with
+  Blink's elapsed times (negative delays, skipped phases, backwards seeks, one
+  `animationiteration` per sample, cancel times) and `event.animation`. `AnimationEvent` and
+  `TransitionEvent` are real interfaces now (constructor, init dictionary, brand checks,
+  `animation`, `pseudoTarget`), no longer empty placeholders. A transition whose property
+  leaves `transition-property` is cancelled. A running CSS animation keeps frames requested
+  for its next iteration. Chrome control: `css_animation_events_chrome156.json`
+  (`scripts/animations-chrome-control.mjs`); the `jsdom_transitions_chrome156.json` events
+  row is asserted now.
+- turbo-dom-browser-env: `browser_env::set_css_animations(scope, enabled)`, on by default:
+  off runs no `@keyframes` animation and fires no animation event (jsdom 27).
+
+### Changed
+
+- **turbo-dom-browser-env: `mark_worker_context(scope, context) -> Result<(), WindowAlreadyInstalled>`**
+  (was `mark_worker_context(context)`, the turbo-dom#385 worker opt-out new in this release).
+  It refuses a context that already holds a window instead of marking it to no effect: one
+  an install already ran in, and every context made on a `snapshot_blob()` isolate (the
+  blob's default context is the bootstrapped window). Worker contexts come from a
+  non-snapshot isolate or a `snapshot_blob_with(prelude)` isolate's default context
+  (turbo-dom#389 review).
+- **turbo-dom-browser-env: `ActivationQuery` has a new `Sticky` variant** (the window has ever
+  been activated). Embedders that match exhaustively add an arm for it. Without a host it
+  answers false.
+- turbo-dom-browser-env: `browser_env::dispatch_host_event_did_listeners_throw(scope, event,
+  target) -> bool`, `dispatch_host_event` that also returns the DOM's
+  legacy-output-did-listeners-throw flag: whether a listener or event handler invoked by that
+  dispatch threw (nested dispatches from inside the listeners do not count). IndexedDB aborts
+  a transaction on it ("Uncaught exception in event handler.", turbo-surf#148). Window
+  `reportError(e)` is now a real global that reports `e` like Chrome 156 (turbo-dom#301).
+- **turbo-dom-browser-env: `set_css_transitions` covers CSS transitions only (turbo-dom#313).**
+  `set_css_transitions(scope, false)` now stops CSS transitions and their events alone;
+  `@keyframes` animations follow the new `set_css_animations`. The Web Animations surface
+  jsdom lacks is hidden only with both switches off. jsdom 27 parity (turbo-test) is
+  `set_css_transitions(scope, false)` plus `set_css_animations(scope, false)`.
+- **turbo-dom-raster: `<canvas>` content in screenshots.** Since #252 a canvas laid out as a
+  replaced box but painted only its frame and background: the snapshot HTML carries no canvas
+  pixels. `screenshot_png_with_options` / `screenshot_svg_with_options` take a
+  `ScreenshotOptions` (`full_page`, `system_fonts`, `canvases`; `#[non_exhaustive]`, start
+  from `default()`), whose `canvases: Option<&CanvasContents>` maps each canvas's index among
+  the document's `<canvas>` elements in tree order (`querySelectorAll('canvas')` order) to a
+  `CanvasContent`: `Ops(json)` (the `ctx._ops` op log `canvas_ops_png` replays, run at the
+  canvas's `width` x `height`) or `Rgba { width, height, pixels }` (straight-alpha RGBA8). The
+  bitmap paints in the canvas's content box like Chrome 156: scaled by `object-fit`, placed by
+  `object-position`, inside border and padding, clipped to the content box and its rounded
+  corners, under the box's transform, upright in vertical writing modes; PNG and SVG. The
+  `*_with_opts` entries are unchanged (they delegate). turbo-dom-layout: `canvas_image_name`
+  (the `ImageResolver` name a canvas box loads its content by) and `canvas_bitmap_size`.
+  Control: `canvas_content_chrome156.json` (`scripts/canvas-content-chrome-control.mjs`)
+  (turbo-dom#291).
+- turbo-dom-layout: `INDETERMINATE_ATTR`, the attribute a live embedder adds to a checkbox's
+  `StyledElement` (from `live::snapshot`'s `post_cascade` hook) when a script set its
+  `indeterminate` IDL flag; the checkbox then paints Chrome's indeterminate dash
+  (turbo-dom#293).
+
+### Fixed
+
+- **turbo-dom-browser-env: three Chrome 156 gaps in the browser binding (turbo-dom#370,
+  #373, #374).**
+  - `__tsNs.cssSupports` / `cssSupportsProperty` (turbo-dom#370): the string coercion of
+    their arguments now goes through an internal `String` primordial captured at install
+    time, so a page that replaces `globalThis.String` cannot break the engine's
+    `CSS.supports` path. Matches Chrome 156, which also uses a private coercion here;
+    unblocks turbo-surf#163.
+  - `getComputedStyle(el).transform` em resolution (turbo-dom#373): `translateX(2em)` on
+    an element whose `font-size` is inherited now resolves against the layout's reported
+    font size (`layoutUsedSize(el)[4]`, added in #353) instead of the element's declared
+    `font-size`, which may still be null at this cascade step. Matches Chrome 156's
+    `matrix(1, 0, 0, 1, 24, 0)` for `translateX(2em)` under an inherited 12px font.
+  - `getComputedStyle` color canonicalization (turbo-dom#374): named colors like `red` /
+    `blue` / `lime` in every `<color>` longhand (`background-color`, `border-*-color`,
+    `outline-color`, `caret-color`, `text-decoration-color`, `fill`, `stroke`, ...) now
+    serialize as Chrome 156's `rgb(...)` / `rgba(...)`; `color` and (for pseudos)
+    `background-color` were already normalized.
+- **turbo-dom-layout: vertical `<audio controls>` panel, short-panel controls, `<meter>`
+  shadow gradient under `appearance:none` / author background (turbo-dom#363, #364, #365).**
+  A vertical `<audio controls>` box (`writing-mode: vertical-rl` / `vertical-lr`) now
+  paints a 54 x content-block pill at the content box's inline-end (logical), which
+  `map_tree` rotates to the physical bottom like Chrome 156 (a 54 x 54 pill at the box's
+  bottom for a narrow `54 x 300` box). A horizontal box shorter than 54px keeps the
+  play button, timeline and menu dots painted at the virtual 54-tall panel's offsets:
+  the controls clip to the content box through a decoration clip group so they do not
+  enlarge the audio element's `getBoundingClientRect()` subtree bounds. A `<meter>`
+  with `appearance: none` or an author background now paints Chrome's shadow bars: a
+  white `#efefef` track across the middle half of the box with the value region filled
+  in `#78ab34` (the optimum-value gradient midpoint). Every audio-panel decoration
+  now carries a sentinel `DECORATION_ID` so the live-layout snapshot does not include
+  it in the audio element's subtree bounds (turbo-dom#364). Chrome 156 control: new
+  `audio-panel-{vertical-rl,vertical-lr,short-26}` cases and inside-box probes on
+  `meter-{appearance-none,author-background}` of `form_native_chrome156.json`.
+- **turbo-dom-layout: `<audio controls>` panel size variants, `<progress>` shadow bars and
+  indeterminate first frame (turbo-dom#346).** The audio panel paints at Chrome 156's
+  measured width thresholds (`-webkit-media-controls-*`): time-remaining from 211px,
+  current-time from 175px, volume from 143px, play from 100px, menu from 68px; the
+  timeline fills the gap between what is drawn on each side. A box under 54px tall paints
+  the pill at the content-box's height (the taller controls are left off; a follow-up for
+  the overflow). An indeterminate `<progress>` with its default look paints Chrome's
+  first-frame blue bar at 5%..19% of the box over the white track. A `<progress>` whose
+  author turns the native look off with `appearance:none` or an author background paints
+  Chrome's shadow-DOM bars instead: a grey #808080 track with a green #008000 value bar
+  (or the first-frame blue bar when indeterminate). Chrome 156 control:
+  `audio-panel-{210,174,142,99,67,short}`, `progress-{appearance-none,author-background,
+  indeterminate-first-frame}` cases of `form_native_chrome156.json`.
+- turbo-dom-browser-env: getComputedStyle `transform` reports the resolved `matrix()` / `matrix3d()` / `none` like Chrome 156, not the declared function list. 2D-only lists serialize as `matrix(a, b, c, d, e, f)`; any 3D function (`translate3d`, `rotateX` / `Y`, `matrix3d`, `perspective`, ...) promotes the whole list to `matrix3d(16 column-major values)`. Percentage translates resolve against the embedder-supplied border box (`layoutUsedSize`'s first two entries, from turbo-dom#316); `em` resolves against the element's font size (reported as a fifth entry). Without a layout a list with a percentage keeps its declared text. CSS-wide keywords (turbo-dom#317) already resolved for `transform` through the computed-default table (turbo-dom#353).
+- **turbo-dom-browser-env: an exception thrown by an event listener is reported, like Chrome
+  156.** The binding dropped every listener exception. Now a throwing listener (or `on*`
+  handler, or `handleEvent` method or getter) on a node, document, window, AbortSignal or
+  generic `EventTarget` fires a trusted, cancelable `ErrorEvent` at the listener's window
+  before the next listener runs: message `Uncaught Error: boom` (`Uncaught ` + `String(value)`
+  for a thrown non-Error object, `Uncaught exception` when that conversion throws), located
+  where a thrown Error was created and where any other value was thrown. `window.onerror`
+  gets its five arguments and can cancel the event. An exception thrown while a window is
+  reporting one is not reported again (HTML's error reporting mode), and a listener object
+  whose `handleEvent` is not callable is still skipped silently, as in Chrome. Errors reported
+  from custom element reactions are now cancelable too. Control: `listener_errors_chrome156.json`
+  (`listener_errors_probe.js`, `scripts/trusted-input-chrome-control.mjs`); tests
+  `listener_exceptions_are_reported_like_chrome156` and
+  `host_dispatch_reports_whether_its_own_listeners_threw` (turbo-dom#301).
+- **turbo-dom-layout: form controls on a `vertical-lr` line's central baseline (turbo-dom#345).**
+  Chrome 156 places an inline atom's central baseline on the line's over side — the physical
+  right in `vertical-lr`, its block end (CSS Writing Modes 4 §2.3's flipped-lines mode) — which
+  the layout engine was placing on the left (the block start): a checkbox on a 20px serif line
+  sat at `x=4.5` instead of Chrome's `5.5` (`vertical-rl` always matched), and an inline control
+  inside an abs-pos vertical wrapper was 1px off in both modes. The piece builder relabels an
+  atom's margins into line-relative space, the inline placer mirrors the atom back from the line
+  box's block end, and `form_baseline` / `gauge_baseline` read line-relative edges so a textarea,
+  colour well, empty button and progress / meter's baselines stay on the over side. Chrome 156
+  control: new `vline-*` cases of `form_native_chrome156.json`.
+- **turbo-dom-layout: `<progress>` / `<meter>`, indeterminate checkboxes and vertical controls
+  look native (turbo-dom#293).** A `<progress>` / `<meter>` is Chrome's `10em` / `5em` by `1em`
+  inline-block (logical, so `16 x 160` in a vertical mode) whose children do not render, its
+  baseline its bottom lowered by `vertical-align: -0.2em`, painted as Chrome's rounded bar
+  (half the box tall, `#efefef` in a `#b2b2b2` / `#cbcbcb` frame) filled to its value: a
+  progress in `#0075ff`, a meter in its value's region colour (optimum / suboptimal / even less
+  good; HTML's min / max / low / high / optimum defaults and clamping). An indeterminate checkbox
+  paints Chrome's white dash on blue. Every control keeps its native look in `vertical-lr` /
+  `vertical-rl` instead of falling back to its CSS border: drawn in its logical space, so a
+  range, progress or meter runs down its inline axis and a menu list's chevron points along the
+  block axis, while the check, dash and chevron glyphs keep their physical shape. Chrome 156
+  control: `form_native_chrome156.json` (`scripts/form-native-chrome-control.mjs`); tests:
+  `turbo-dom-raster` `form_native_chrome_tests`. An indeterminate progress shows its track (Chrome
+  animates a bar over it).
+- **turbo-dom-layout: `<audio controls>` paints Chrome's media control panel (turbo-dom#292).**
+  The `#f1f3f4` pill over the content box with the greyed-out play button, the `0:00 / 0:00`
+  time display, the timeline, the greyed-out volume button and the menu button, at Chrome's
+  positions (the timeline stretching with the box). Same control and tests (`audio-*`).
+- **turbo-dom-browser-env: a `<button>`'s computed `background-color` is `rgb(239, 239, 239)`
+  (turbo-dom#318).** Buttons and `<input type=button|submit|reset>` get html.css's ButtonFace as a
+  UA declaration below every author rule and inline style (it read `rgba(0, 0, 0, 0)`). Control:
+  `computed_form_background_chrome156.json`.
+- turbo-dom-layout: `Intrinsic::natural_ratio: Option<f32>` and `Intrinsic::ratio_only(width, height, ratio, has_alpha)`, an image with a natural aspect ratio and no natural size, and `svg::natural_sizing(bytes) -> Option<((f32, f32), Option<f32>)>` (`svg::natural_size` plus that ratio). `image::probe_natural` returns it for an SVG whose root has a `viewBox` and neither `width` nor `height` (`width`/`height` stay Chrome's `naturalWidth`/`naturalHeight`). Breaking for struct literals of `Intrinsic` (use `..Intrinsic::new(..)`); `Intrinsic` is `Eq` by a manual impl (turbo-dom#320).
+- **turbo-dom-layout / turbo-dom-raster: web fonts get Chrome's metrics, shadow installed
+  faces, and paint in screenshots and canvas** (turbo-dom#304, for turbo-surf#142).
+  `FontFace::from_web_font_bytes` faces now use Chrome 156's `@font-face` vertical metrics:
+  the `hhea` ascender, descender and line gap (OS/2 `USE_TYPO_METRICS` is not consulted),
+  each a 16.16 fixed-point fraction of the em for a TrueType font (exact for CFF), scaled and
+  rounded half up. IBM Plex Mono at 20px is 25px tall, as in Chrome (was 27). In a
+  `FontRegistry`, a family with an `@font-face` face is served by its web faces only (in
+  `select` and per-glyph resolution, whatever the registration order), as Chrome never matches
+  an installed face of a declared web family; new `FontFace::is_web_font`. turbo-dom-raster
+  adds `ScreenshotOptions::fonts: Option<&FontRegistry>` (the faces a
+  `screenshot_{png,svg}_with_options` page lays out and paints with; `None` keeps the bundled /
+  system set), `canvas_ops_png_with_fonts` / `canvas_ops_rgba_with_fonts(width, height,
+  ops_json, fonts)` and `measure_canvas_text_with_fonts(text, font, fonts)`; the existing entry
+  points are unchanged. Controls: `web-font-metrics/chrome156.json`,
+  `web-font-priority/chrome156.json` (turbo-dom-layout) and `web_font_paint_chrome156.json`
+  (turbo-dom-raster).
+- **turbo-dom-raster: `coretext` / `gpu-metal` canvas output matches the Chrome 156 controls
+  (#342).** The Metal canvas replay blended straight-alpha colours, so a translucent paint
+  over a transparent canvas stored premultiplied bytes in the PNG and colours blended a
+  level off; it now feeds colours premultiplied the way Skia rounds them and unpremultiplies
+  the read-back like `getImageData`. CoreText canvas text declines a named family CoreText
+  does not have (it used to substitute Helvetica for bundled or web fonts), so those trace
+  the registry's glyphs. The macOS raster CI job now runs the suite with both features.
+- **turbo-dom-raster: glyph edges closer to Chrome 156 (#266, #331).** The PNG painter grows
+  each glyph outline by a box (`0.0045 * size` px: each edge moves `d * (|nx| + |ny|)`, so
+  diagonal strokes of `W`, `x` and `y` no longer sit 0.14 px off), fills concave joins a
+  little, lifts the run `d + 0.03` px, and takes the coverage through an edge transfer keyed
+  on Skia's 3-bit text luminance (linear for dark text from 28px, as a 64px stem's four
+  subpixel phases measure, a little darker below, lighter for white). Against the Chrome 156
+  control the mean residual per inked pixel drops at every size, e.g. 12px black 12.3 to 10.8,
+  20px white 12.9 to 8.5, 64px black 5.1 to 3.8, and the stem / bar subpixel cases from
+  4.1–6.5 to 0.9–3.3; every `tests/glyph_coverage_chrome.rs` limit tightens. One probe
+  widens: `overflow-glyph-ink-visible` (28,44) tolerance 15 to 24 (Chrome 139, this model
+  163, the previous painter 154), the 40px `g` bar's glyph-specific vertical offset in
+  Chrome. Not modelled: Chrome's grid-dependent vertical geometry below about 20px. The SVG
+  screenshot keeps Skia's pre-blend filter (#294), now over the same box-grown outline.
+- **turbo-dom-layout: a ratio-only SVG `<img>` flex or grid item is sized like Chrome 156.** As a row flex item its base size is the container's inner width less its margins, exactly (a 400px row gives 400 x 266.65625; it laid out at its 225x150 reported size), with `min-width: auto` keeping it from shrinking below that, a definite stretched height giving the width through the ratio, and height constraints sizing it as in block layout; a column flex item stretches to the container's width, and a grid item fills its area. The flexed width is its used width. A width-constrained auto-sized one now also derives its width from the layout-unit height in block layout (`max-width: 287px` is 286.984375 x 191.328125). Control: the flex and grid rows of `svg_image_ratio_chrome156.json`, which now run in every feature configuration (turbo-dom#326).
+- **turbo-dom-raster: SVG screenshot glyph edges take the colour-dependent pre-blend.** Each
+  glyph run path now carries a `glyph-lum<class>` filter: an `feComponentTransfer` alpha table
+  with the raster painter's Skia pre-blend for the text's 3-bit luminance, one per class the
+  document uses. The colour's alpha is the path's `opacity`, applied after the table, as in
+  the PNG painter. Against Chrome 156, white text's SVG residual drops from a mean of
+  14.6–38.6 to 6.2–21.4 per pixel (`tests/glyph_coverage_chrome.rs`), and the
+  overflow-glyph-ink edge tolerances drop from 17 / 41 to 11 / 32 (turbo-dom#294).
+- **turbo-dom-layout: `hyphens: auto` hyphenates the languages Chrome 156 on macOS does,
+  not just English.** en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb / no, nl, pl, pt, ro, ru, sk, sv, uk break at the TeX `hyph-*` patterns' points (the `hyphenation`
+  crate's, the patterns Chrome's Minikin dictionaries on Linux, Windows and Android are built
+  from) under the new default-on `hyphenation-languages` cargo feature (~3 MB of embedded
+  patterns; `default-features = false, features = ["bundled-fonts", "hyphenation"]` keeps
+  the ~90 KB English-only build). Outside English a capitalized word hyphenates, as in Blink.
+  Chrome on macOS uses the system dictionary, whose points differ for 8 of the 330 words of
+  the new control (en `international`, `extraordinary`; es `desarrollo`; pl
+  `odpowiedzialność`, `szczególnie`, `elektryczność`, `chrząszcz`; cs `knihovna`); the test
+  pins exactly those. API: `AutoHyphens` gains a `language: HyphenationLanguage` field (a new
+  `#[non_exhaustive]` enum with `HyphenationLanguage::from_locale`). Controls:
+  `hyphens/chrome156.json` (new per-language cases) and `hyphens/words-chrome156.json`
+  (`scripts/fixture-font-chrome-controls.mjs`) (turbo-dom#289).
+- turbo-dom-browser-env: getComputedStyle `width` / `height` report the used value of a rendered box (Chrome 156): an embedder with a layout sets `layoutUsedSize` on the engine namespace (`(element) => [border-box width, height, content-box width, height]` or `null`), box-sizing picks the box and the px value serializes like Blink (`%g`, ties to even: `5.32812px`). Elements Chrome reports the computed value for — display none / contents (also under a display:none ancestor), non-atomic inline elements, SVG children other than rect / image / foreignObject — read their declared value or `auto` instead of `""`, and a display:none percentage stays a percentage. Without a layout a rendered box keeps its declared value. turbo-surf installs the hook to close its width column (turbo-dom#316; control: case `used-size` of `computed_defaults_chrome156.json`).
+- turbo-dom-browser-env: getComputedStyle resolves the CSS-wide keywords `initial` / `inherit` / `unset` / `revert` for the properties its computed defaults know, so `background-color: initial` reads `rgba(0, 0, 0, 0)` instead of `initial` (turbo-dom#317; control: case `css-wide-keywords`).
+- **turbo-dom-layout: a point in a table's border-spacing hits the table.** `cssom_view::hit::elements_at_point` no longer returns a row or row group for a point between cells, between rows or row groups, or in a row's missing cell slot: rows and row groups are not hit targets (a floated or absolutely positioned one is blockified and still hits), as in Chrome 156. The UA sheet gives `<tbody>` `display: table-row-group` (layout unchanged), and a row-spanning cell spans the vertical border-spacing between its rows (its height and the rows it grows). Chrome 156 control: `table-spacing-*` / `table-rowspan-spacing` in `scripts/live-geometry-chrome-control.mjs` (turbo-dom#321, turbo-surf#162; the spread of a spanning cell's excess height over its rows is turbo-dom#327).
+- **turbo-dom-layout: an SVG `<img>` with only a `viewBox` sizes from its ratio.** An auto-sized one is as wide as its containing block allows (less its margins, padding and border), the height a layout unit first and the width from it, under `width` / `height` / `min-*` / `max-*` and in a vertical writing mode; it contributes no width to a shrink-to-fit container (float, inline-block, table), like Chrome 156. It laid out at its 225x150 reported size. As a row flex item it still does (turbo-dom#326). Control: `svg_image_ratio_chrome156.json` (`scripts/svg-image-ratio-chrome-control.mjs`; turbo-dom#320, turbo-surf#161).
+- **turbo-dom-layout: no `font-family` resolves to the initial `serif`.** A box with no font-family declaration up the tree selected the registry's first face; it now selects `serif` (Times on macOS, Chrome's default). The line box of a 16px default `<p>` is 18px at `layout_scale` 1 and 18.5px at 2, as in Chrome at DSF 1 and 2 (Blink rounds font metrics in device pixels): turbo-surf#158's 18.5px is its `layout_scale: 2.0` on a DPR-1 page. Control: `default_line_box_chrome156.json` (`scripts/default-line-box-chrome-control.mjs`; turbo-dom#319).
+- **turbo-dom-browser-env: `setHTML` / `setHTMLUnsafe` / `template.innerHTML` keep template
+  contents and declarative shadow roots through a GC.** Past 256 live wrappers a mutating call
+  defers its ownership reconcile. These calls wrap the parsed nodes while they are still in a
+  detached source fragment (template contents and declarative roots are realized there), then
+  move them. Nothing kept those wrappers alive until the deferred reconcile, so a GC in between
+  collected them: a template's contents serialized empty, and a closed declarative root lost its
+  `serializable` / declarative state (`attachShadow` threw `NotSupportedError`). The source
+  fragment, and with it its ownership component, now stays pinned until the next reconcile. This
+  was the intermittent `sanitizer_api_matches_chrome_156` failure (turbo-dom#324). Test:
+  `set_html_wrappers_survive_collection_before_a_deferred_reconcile`.
+- **turbo-dom-layout: a row-spanning cell taller than its rows spreads the excess over
+  them like Chrome 156** instead of growing only the last row. Rowspan cells are taken by
+  end row, then the later-starting first; each one's excess over its rows and the
+  border-spacing (or collapsed grid lines) between them goes equally to the spanned rows
+  after the first where another rowspan cell starts, else to its unconstrained rows (no
+  fixed `height` on the row or a single-row cell; percentage heights do not constrain) in
+  proportion to their heights, else to all its rows by height, else to the last row, in
+  1/64 px shares. Collapsed tables weigh each row by its extent.
+  Control: the `table-rowspan-*` cases of `scripts/html-document-chrome-control.mjs`
+  (turbo-dom#327).
+- **turbo-dom-layout: a definite-height table grows its percent-height rows to their
+  percentage first, like Chrome 156.** Its extra height used to treat a `height: N%` row
+  as an auto row. Now each receiving section's percent rows first grow toward their
+  percentage of the section's final height (its rows, its share of the extra and the
+  border-spacing between its rows). The percentages are capped at 100% in row order, and
+  the rows split the extra by deficit when it runs short. The rest goes to the auto rows,
+  else to all rows by size. `calc()` heights stay auto. Control: `table-extra-percent-*`
+  in `scripts/html-document-chrome-control.mjs` (turbo-dom#349).
+- **turbo-dom-layout: collapsed-border columns are sized by each cell's own edges,
+  like Chrome 156** (the column analogue of #350). An auto-layout collapsed column
+  used to take half of the widest border anywhere on its grid line. Now each column
+  track is as wide as its widest cell's border box: the cell's own content+padding
+  plus half the widest collapsed segment along its own left and right edges in its
+  row (new `vsegments`, per `[line][row]`). Tracks tile with no interior gap, and the
+  table adds half of its widest outer-left and outer-right segments over the rows. A
+  spanning cell wider than its tracks plus the segments inside it (at its own row)
+  spreads the excess over the tracks proportionally. Fixed-layout collapsed tables
+  still use one width per grid line. Control: `table-collapsed-vedge-*`, column axis
+  (turbo-dom#355).
+- **turbo-dom-layout: collapsed-border rows are sized by each cell's own edges, like
+  Chrome 156.** A row used to take half of the widest border anywhere on its two grid
+  lines. Now it is as tall as its tallest cell's border box, and each cell adds half the
+  widest collapsed segment along its own top and bottom edges. The table adds half of
+  its outer lines. A thin-bordered tall cell next to a thick-bordered short one no longer
+  grows the row. Control: `table-collapsed-edge-*`, row axis (turbo-dom#350).
+  Collapsed columns still use one width per grid line.
+- **turbo-dom-browser-env: a control whose `type` names an `Object.prototype` member keeps
+  its value.** `<button type=constructor value=x>.value` threw a `TypeError`: the value
+  sanitizer looked the lowercased type up in a plain object and tested
+  `Object.prototype.constructor` as a pattern. The table has a null prototype now, so
+  `constructor`, `__proto__` and `toString` (attribute, `.type` setter, `.value` setter)
+  read `"x"` like Chrome 156 (turbo-dom#389 review).
+- **turbo-dom-browser-env: Backspace after a skin-toned ZWJ emoji deletes the whole
+  sequence.** After `x👨🏽‍💻` it left `x👨`: the walk back over a ZWJ took the skin-tone
+  modifier for the joined emoji's base. It now steps over the trailing extenders (FE0F,
+  skin tones) and their base, so Chrome 156's `x` remains (`editing_input_chrome156.json`
+  rows, recaptured with the frozen headless shell; turbo-dom#389 review).
+- **Release tooling: `Cargo.lock` is current and guarded.** It still locked the root
+  `turbo-dom-parser` at 0.7.1 and turbo-dom-v8 150.4.1 at a candidate commit holding
+  150.4.0, so `cargo metadata --locked` failed. The root `[patch.crates-io]` names the
+  150.4.1 candidate (with the MSVC fix) until publish drops it, `check-versions.py` asserts
+  the locked versions of our packages and the README dependency snippets (now `"0.8"`), and
+  the guards job runs `cargo metadata --locked` (turbo-dom#389 review).
+
 ## [0.7.1] — 2026-11-05
 
 ### Added

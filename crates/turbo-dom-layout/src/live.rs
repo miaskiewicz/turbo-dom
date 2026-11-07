@@ -128,6 +128,11 @@ pub struct LiveCapture {
     pub identities: Vec<SourceIdentity>,
     /// The outermost `<svg>` element of each composed SVG subtree, in document order.
     pub svg_viewports: Vec<SourceId>,
+    /// The outermost element of each composed `MathML` subtree, in document order. The
+    /// style pass gives it placeholder box metrics (`display: inline-block`, `width: 0`,
+    /// `height: 0`) and its descendants `display: none`, until the native `MathML` layout
+    /// is implemented ([miaskiewicz/turbo-dom#376](https://github.com/miaskiewicz/turbo-dom/issues/376)).
+    pub math_roots: Vec<SourceId>,
     /// Each text source's original UTF-16 code units.
     pub original_text: HashMap<SourceId, Vec<u16>>,
     /// The document is in quirks mode (BackCompat): viewport metrics address its body.

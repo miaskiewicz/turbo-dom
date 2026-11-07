@@ -23,11 +23,12 @@ const targets=[[Array.prototype,'Array.prototype'],[Array,'Array'],[Map.prototyp
   [Document.prototype,'Document.prototype'],[HTMLElement.prototype,'HTMLElement.prototype']];
 const skip={__proto__:null,constructor:1,prototype:1,length:1,name:1};
 const keep=(o,k)=>{saved[saved.length]=[o,k,gopd(o,k)];count++};
-for(let t=0;t<targets.length;t++){const o=targets[t][0],label=targets[t][1],ks=own(o);
-  for(let i=0;i<ks.length;i++){const k=ks[i];if(typeof k==='string'&&skip[k])continue;if(k===Symbol.hasInstance)continue;
-    const d=gopd(o,k);if(!d.configurable)continue;const n=label+'.'+(typeof k==='symbol'?'@@':'')+String(k);
+const patch=(o,label,k)=>{if(typeof k==='string'&&skip[k])return;if(k===Symbol.hasInstance)return;
+    const d=gopd(o,k);if(!d.configurable)return;const n=label+'.'+(typeof k==='symbol'?'@@':'')+String(k);
     if(typeof d.value==='function'){keep(o,k);def(o,k,{value:thrower(n),writable:true,configurable:true,enumerable:d.enumerable})}
-    else if(d.get||d.set){keep(o,k);def(o,k,{get:thrower('get '+n),set:thrower('set '+n),configurable:true,enumerable:d.enumerable})}}}
+    else if(d.get||d.set){keep(o,k);def(o,k,{get:thrower('get '+n),set:thrower('set '+n),configurable:true,enumerable:d.enumerable})}};
+for(let t=0;t<targets.length;t++){const o=targets[t][0],label=targets[t][1],ks=own(o);
+  for(let i=0;i<ks.length;i++)patch(o,label,ks[i]);}
 for(let t=0;t<2;t++)for(let i=0;i<4;i++){const o=t?Object.prototype:Array.prototype,k=''+i;keep(o,k);def(o,k,{get:thrower('get index'),set:thrower('set index'),configurable:true})}
 const attempt=(name,f)=>{try{out[name]=f()}catch(e){out[name]='threw '+(e&&e.message)}};
 const body=A(bodyOf,document,[]);

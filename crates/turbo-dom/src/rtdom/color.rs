@@ -280,37 +280,39 @@ fn parse_float_js(s: &str) -> Option<f64> {
     if i < len && (bytes[i] == b'+' || bytes[i] == b'-') {
         i += 1;
     }
-    let mut saw_digit = false;
-    while i < len && bytes[i].is_ascii_digit() {
-        i += 1;
-        saw_digit = true;
-    }
+    let mut saw_digit = consume_digits(bytes, &mut i, false);
     if i < len && bytes[i] == b'.' {
         i += 1;
-        while i < len && bytes[i].is_ascii_digit() {
-            i += 1;
-            saw_digit = true;
-        }
+        saw_digit = consume_digits(bytes, &mut i, saw_digit);
     }
     if !saw_digit {
         return None; // NaN
     }
-    // Optional exponent.
-    if i < len && (bytes[i] == b'e' || bytes[i] == b'E') {
-        let mut j = i + 1;
-        if j < len && (bytes[j] == b'+' || bytes[j] == b'-') {
-            j += 1;
-        }
-        let mut exp_digit = false;
-        while j < len && bytes[j].is_ascii_digit() {
-            j += 1;
-            exp_digit = true;
-        }
-        if exp_digit {
-            i = j;
-        }
-    }
+    try_consume_exponent(bytes, &mut i);
     s[..i].parse::<f64>().ok()
+}
+
+fn consume_digits(bytes: &[u8], i: &mut usize, mut saw: bool) -> bool {
+    while *i < bytes.len() && bytes[*i].is_ascii_digit() {
+        *i += 1;
+        saw = true;
+    }
+    saw
+}
+
+fn try_consume_exponent(bytes: &[u8], i: &mut usize) {
+    let len = bytes.len();
+    if *i >= len || (bytes[*i] != b'e' && bytes[*i] != b'E') {
+        return;
+    }
+    let mut j = *i + 1;
+    if j < len && (bytes[j] == b'+' || bytes[j] == b'-') {
+        j += 1;
+    }
+    let had_digit = consume_digits(bytes, &mut j, false);
+    if had_digit {
+        *i = j;
+    }
 }
 
 /// Re-serialize `rgb()`/`rgba()` to canonical spacing. Percentage components (rare

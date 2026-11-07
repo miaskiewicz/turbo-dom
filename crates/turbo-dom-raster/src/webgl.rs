@@ -173,54 +173,15 @@ impl State {
                     self.clear_color = c;
                 }
             }
-            "createShader" => {
-                if let (Some(h), Some(t)) = (id, arg_i64(a, 0)) {
-                    let stage = match t {
-                        GL_FRAGMENT_SHADER => ShaderKind::Fragment,
-                        GL_VERTEX_SHADER => ShaderKind::Vertex,
-                        _ => return, // unknown shader type: ignore
-                    };
-                    self.shaders.insert(
-                        h,
-                        Shader {
-                            stage,
-                            source: String::new(),
-                        },
-                    );
-                }
-            }
-            "shaderSource" => {
-                if let (Some(h), Some(src)) = (arg_i64(a, 0), arg_str(a, 1)) {
-                    if let Some(s) = self.shaders.get_mut(&h) {
-                        s.source = src;
-                    }
-                }
-            }
+            "createShader" => self.apply_create_shader(id, a),
+            "shaderSource" => self.apply_shader_source(a),
             "createProgram" => {
                 if let Some(h) = id {
                     self.programs.insert(h, Program::default());
                 }
             }
-            "attachShader" => {
-                if let (Some(p), Some(sh)) = (arg_i64(a, 0), arg_i64(a, 1)) {
-                    let stage = self.shaders.get(&sh).map(|s| s.stage);
-                    if let (Some(prog), Some(stage)) = (self.programs.get_mut(&p), stage) {
-                        match stage {
-                            ShaderKind::Vertex => prog.vs = Some(sh),
-                            ShaderKind::Fragment => prog.fs = Some(sh),
-                        }
-                    }
-                }
-            }
-            "attribLocation" => {
-                if let (Some(p), Some(loc), Some(name)) =
-                    (arg_i64(a, 0), arg_i64(a, 1), arg_str(a, 2))
-                {
-                    if let Some(prog) = self.programs.get_mut(&p) {
-                        prog.attrib_locs.insert(name, loc as u32);
-                    }
-                }
-            }
+            "attachShader" => self.apply_attach_shader(a),
+            "attribLocation" => self.apply_attrib_location(a),
             "uniform" => self.apply_uniform(a),
             "useProgram" => self.cur_program = arg_i64(a, 0),
             "createBuffer" => {
@@ -228,15 +189,7 @@ impl State {
                     self.buffers.insert(h, Vec::new());
                 }
             }
-            "bindBuffer" => {
-                let target = arg_i64(a, 0);
-                let buf = arg_i64(a, 1);
-                match target {
-                    Some(GL_ARRAY_BUFFER) => self.bound_array = buf,
-                    Some(GL_ELEMENT_ARRAY_BUFFER) => self.bound_element = buf,
-                    _ => {}
-                }
-            }
+            "bindBuffer" => self.apply_bind_buffer(a),
             "bufferData" => self.apply_buffer_data(a),
             "enableVertexAttribArray" => {
                 if let Some(loc) = arg_i64(a, 0) {
@@ -248,6 +201,66 @@ impl State {
             "drawElements" => self.apply_draw_elements(a),
             // createShader/compile/link have no extra state to record here beyond
             // the source we already keep; viewport/clear/enable/etc. unaffected.
+            _ => {}
+        }
+    }
+
+    fn apply_create_shader(&mut self, id: Option<i64>, a: Option<&serde_json::Value>) {
+        let (Some(h), Some(t)) = (id, arg_i64(a, 0)) else {
+            return;
+        };
+        let stage = match t {
+            GL_FRAGMENT_SHADER => ShaderKind::Fragment,
+            GL_VERTEX_SHADER => ShaderKind::Vertex,
+            _ => return, // unknown shader type: ignore
+        };
+        self.shaders.insert(
+            h,
+            Shader {
+                stage,
+                source: String::new(),
+            },
+        );
+    }
+
+    fn apply_shader_source(&mut self, a: Option<&serde_json::Value>) {
+        let (Some(h), Some(src)) = (arg_i64(a, 0), arg_str(a, 1)) else {
+            return;
+        };
+        if let Some(s) = self.shaders.get_mut(&h) {
+            s.source = src;
+        }
+    }
+
+    fn apply_attach_shader(&mut self, a: Option<&serde_json::Value>) {
+        let (Some(p), Some(sh)) = (arg_i64(a, 0), arg_i64(a, 1)) else {
+            return;
+        };
+        let stage = self.shaders.get(&sh).map(|s| s.stage);
+        let (Some(prog), Some(stage)) = (self.programs.get_mut(&p), stage) else {
+            return;
+        };
+        match stage {
+            ShaderKind::Vertex => prog.vs = Some(sh),
+            ShaderKind::Fragment => prog.fs = Some(sh),
+        }
+    }
+
+    fn apply_attrib_location(&mut self, a: Option<&serde_json::Value>) {
+        let (Some(p), Some(loc), Some(name)) = (arg_i64(a, 0), arg_i64(a, 1), arg_str(a, 2)) else {
+            return;
+        };
+        if let Some(prog) = self.programs.get_mut(&p) {
+            prog.attrib_locs.insert(name, loc as u32);
+        }
+    }
+
+    fn apply_bind_buffer(&mut self, a: Option<&serde_json::Value>) {
+        let target = arg_i64(a, 0);
+        let buf = arg_i64(a, 1);
+        match target {
+            Some(GL_ARRAY_BUFFER) => self.bound_array = buf,
+            Some(GL_ELEMENT_ARRAY_BUFFER) => self.bound_element = buf,
             _ => {}
         }
     }
@@ -610,39 +623,14 @@ fn rewrite(
     // > 0) are left intact so the body stays verbatim.
     let normalized = split_top_level_statements(src);
     for raw in normalized.lines() {
-        let line = raw.trim();
-        if line.starts_with("#version") || line.starts_with("precision ") {
-            continue;
-        }
-        if let Some(decl) = line.strip_prefix("attribute ") {
-            if stage == ShaderKind::Vertex {
-                let (ty, name) = split_decl(decl);
-                let loc = attribs.get(&name).copied().unwrap_or_else(|| {
-                    let l = next_attrib_loc;
-                    next_attrib_loc += 1;
-                    l
-                });
-                let _ = writeln!(body, "layout(location={loc}) in {ty} {name};");
-                continue;
-            }
-        }
-        if let Some(decl) = line.strip_prefix("varying ") {
-            let (ty, name) = split_decl(decl);
-            let loc = varyings.iter().position(|v| v == &name).unwrap_or(0);
-            let dir = if stage == ShaderKind::Vertex {
-                "out"
-            } else {
-                "in"
-            };
-            let _ = writeln!(body, "layout(location={loc}) {dir} {ty} {name};");
-            continue;
-        }
-        if line.starts_with("uniform ") {
-            // Folded into the UBO block; drop the standalone declaration.
-            continue;
-        }
-        body.push_str(raw);
-        body.push('\n');
+        rewrite_line(
+            raw,
+            stage,
+            attribs,
+            varyings,
+            &mut body,
+            &mut next_attrib_loc,
+        );
     }
 
     // Rewrite references in the BODY only (never inside the UBO block declaration
@@ -671,6 +659,51 @@ fn rewrite(
     }
     out.push_str(&body);
     out
+}
+
+/// One iteration of `rewrite`'s line loop: drops `#version`/`precision`, rewrites
+/// `attribute`/`varying`/`uniform` declarations, and copies everything else verbatim.
+fn rewrite_line(
+    raw: &str,
+    stage: ShaderKind,
+    attribs: &HashMap<String, u32>,
+    varyings: &[String],
+    body: &mut String,
+    next_attrib_loc: &mut u32,
+) {
+    let line = raw.trim();
+    if line.starts_with("#version") || line.starts_with("precision ") {
+        return;
+    }
+    if let Some(decl) = line.strip_prefix("attribute ") {
+        if stage == ShaderKind::Vertex {
+            let (ty, name) = split_decl(decl);
+            let loc = attribs.get(&name).copied().unwrap_or_else(|| {
+                let l = *next_attrib_loc;
+                *next_attrib_loc += 1;
+                l
+            });
+            let _ = writeln!(body, "layout(location={loc}) in {ty} {name};");
+            return;
+        }
+    }
+    if let Some(decl) = line.strip_prefix("varying ") {
+        let (ty, name) = split_decl(decl);
+        let loc = varyings.iter().position(|v| v == &name).unwrap_or(0);
+        let dir = if stage == ShaderKind::Vertex {
+            "out"
+        } else {
+            "in"
+        };
+        let _ = writeln!(body, "layout(location={loc}) {dir} {ty} {name};");
+        return;
+    }
+    if line.starts_with("uniform ") {
+        // Folded into the UBO block; drop the standalone declaration.
+        return;
+    }
+    body.push_str(raw);
+    body.push('\n');
 }
 
 /// Split a `<type> <name>` declaration tail (with optional precision qualifier and

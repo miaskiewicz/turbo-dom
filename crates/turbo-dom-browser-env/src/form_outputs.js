@@ -19,23 +19,32 @@
   const digit = code => code >= 48 && code <= 57;
   // HTML "rules for parsing floating-point number values": leading ASCII whitespace, one optional
   // sign, trailing junk ignored; the collected prefix is rounded by Number(). Error -> fallback.
-  function parse(value, fallback) {
-    if (value === null) return fallback;
-    let index = 0, sign = '', integer = '', fraction = '', exponent = '';
-    const length = value.length, at = position => position < length ? charCode(value, position) : -1;
-    while (at(index) === 9 || at(index) === 10 || at(index) === 12 || at(index) === 13 || at(index) === 32) index++;
-    if (at(index) === 45) { sign = '-'; index++; } else if (at(index) === 43) index++;
-    if (at(index) === 46 && digit(at(index + 1))) integer = '0';
-    else if (!digit(at(index))) return fallback;
-    else { const start = index; while (digit(at(index))) index++; integer = apply(sliceText, value, [start, index]); }
-    if (at(index) === 46 && (digit(at(index + 1)) || at(index + 1) === 101 || at(index + 1) === 69)) {
-      index++; const start = index; while (digit(at(index))) index++; fraction = apply(sliceText, value, [start, index]);
-    }
+  // `at` reads a code unit (-1 past the end); each helper returns the index after its run.
+  const skipWhitespace = (at, index) => { while (at(index) === 9 || at(index) === 10 || at(index) === 12 || at(index) === 13 || at(index) === 32) index++; return index; };
+  const digitsEnd = (at, index) => { while (digit(at(index))) index++; return index; };
+  // The `e`/`E` exponent at index ('' when absent or without digits).
+  function exponentPart(value, at, index) {
+    let exponent = '';
     if (at(index) === 101 || at(index) === 69) {
       let cursor = index + 1, exponentSign = '';
       if (at(cursor) === 45 || at(cursor) === 43) { exponentSign = at(cursor) === 45 ? '-' : ''; cursor++; }
-      if (digit(at(cursor))) { const start = cursor; while (digit(at(cursor))) cursor++; exponent = 'e' + exponentSign + apply(sliceText, value, [start, cursor]); }
+      if (digit(at(cursor))) { const start = cursor; cursor = digitsEnd(at, cursor); exponent = 'e' + exponentSign + apply(sliceText, value, [start, cursor]); }
     }
+    return exponent;
+  }
+  function parse(value, fallback) {
+    if (value === null) return fallback;
+    let index = 0, sign = '', integer = '', fraction = '';
+    const length = value.length, at = position => position < length ? charCode(value, position) : -1;
+    index = skipWhitespace(at, index);
+    if (at(index) === 45) { sign = '-'; index++; } else if (at(index) === 43) index++;
+    if (at(index) === 46 && digit(at(index + 1))) integer = '0';
+    else if (!digit(at(index))) return fallback;
+    else { const start = index; index = digitsEnd(at, index); integer = apply(sliceText, value, [start, index]); }
+    if (at(index) === 46 && (digit(at(index + 1)) || at(index + 1) === 101 || at(index + 1) === 69)) {
+      index++; const start = index; index = digitsEnd(at, index); fraction = apply(sliceText, value, [start, index]);
+    }
+    const exponent = exponentPart(value, at, index);
     const number = NumberValue(sign + integer + (fraction ? '.' + fraction : '') + exponent);
     if (!finite(number)) return fallback;
     return number === 0 ? 0 : number;

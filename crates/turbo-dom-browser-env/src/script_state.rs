@@ -190,26 +190,84 @@ pub fn set_document_resource_active(
     })
 }
 
+fn script_classification(
+    tree: &Tree,
+    handle: Handle,
+) -> Option<(Option<String>, String, Vec<u16>, String)> {
+    let src = tree.get_attribute(handle, "src").map(str::to_owned);
+    let source_units = tree
+        .children(handle)
+        .into_iter()
+        .filter(|node| matches!(tree.node_type_id(*node), 3 | 4))
+        .flat_map(|node| tree.node_value_utf16(node).unwrap_or_default())
+        .collect::<Vec<_>>();
+    let source = String::from_utf16_lossy(&source_units);
+    if src.is_none() && source.is_empty() || !is_connected(tree, handle) {
+        return None;
+    }
+    let kind = match tree.get_attribute(handle, "type") {
+        Some(value) => value
+            .trim_matches(|c| matches!(c, '\t' | '\n' | '\r' | '\x0c' | ' '))
+            .to_ascii_lowercase(),
+        None => tree
+            .get_attribute(handle, "language")
+            .filter(|value| !value.is_empty())
+            .map_or_else(String::new, |value| {
+                format!("text/{}", value.to_ascii_lowercase())
+            }),
+    };
+    if !matches!(
+        kind.as_str(),
+        "" | "text/javascript"
+            | "application/javascript"
+            | "text/ecmascript"
+            | "application/ecmascript"
+            | "application/x-ecmascript"
+            | "application/x-javascript"
+            | "text/javascript1.0"
+            | "text/javascript1.1"
+            | "text/javascript1.2"
+            | "text/javascript1.3"
+            | "text/javascript1.4"
+            | "text/javascript1.5"
+            | "text/jscript"
+            | "text/livescript"
+            | "text/x-ecmascript"
+            | "text/x-javascript"
+            | "module"
+            | "importmap"
+            | "speculationrules"
+    ) {
+        return None;
+    }
+    Some((src, source, source_units, kind))
+}
+
+fn script_tree_gate(tree: &Tree, handle: Handle) -> Option<bool> {
+    let mut root = handle;
+    while let Some(parent) = tree.parent(root) {
+        root = parent;
+    }
+    let in_shadow_tree = tree.is_shadow_root(root);
+    let mut ancestor = tree.parent(handle);
+    while let Some(node) = ancestor {
+        if tree.local_name(node) == Some("template") {
+            return None;
+        }
+        ancestor = tree.parent(node);
+    }
+    if !script(tree, handle) {
+        return None;
+    }
+    Some(in_shadow_tree)
+}
+
 fn prepared(handle: Handle, claim_active: bool) -> Option<PreparedScript> {
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
         let dom = dom.as_mut()?;
         let tree = &dom.tree;
-        let mut root = handle;
-        while let Some(parent) = tree.parent(root) {
-            root = parent;
-        }
-        let in_shadow_tree = tree.is_shadow_root(root);
-        let mut ancestor = tree.parent(handle);
-        while let Some(node) = ancestor {
-            if tree.local_name(node) == Some("template") {
-                return None;
-            }
-            ancestor = tree.parent(node);
-        }
-        if !script(tree, handle) {
-            return None;
-        }
+        let in_shadow_tree = script_tree_gate(tree, handle)?;
         let state = dom.scripts.entry(handle).or_default();
         if state.already_started {
             return None;
@@ -223,52 +281,10 @@ fn prepared(handle: Handle, claim_active: bool) -> Option<PreparedScript> {
         if parser_document.is_some() && !tree.has_attribute(handle, "async") {
             state.force_async = true;
         }
-        let src = tree.get_attribute(handle, "src").map(str::to_owned);
-        let source_units = tree
-            .children(handle)
-            .into_iter()
-            .filter(|node| matches!(tree.node_type_id(*node), 3 | 4))
-            .flat_map(|node| tree.node_value_utf16(node).unwrap_or_default())
-            .collect::<Vec<_>>();
-        let source = String::from_utf16_lossy(&source_units);
-        if src.is_none() && source.is_empty() || !is_connected(tree, handle) {
-            return None;
-        }
-        let kind = match tree.get_attribute(handle, "type") {
-            Some(value) => value
-                .trim_matches(|c| matches!(c, '\t' | '\n' | '\r' | '\x0c' | ' '))
-                .to_ascii_lowercase(),
-            None => tree
-                .get_attribute(handle, "language")
-                .filter(|value| !value.is_empty())
-                .map_or_else(String::new, |value| {
-                    format!("text/{}", value.to_ascii_lowercase())
-                }),
+        let (src, source, source_units, kind) = match script_classification(tree, handle) {
+            Some(t) => t,
+            None => return None,
         };
-        if !matches!(
-            kind.as_str(),
-            "" | "text/javascript"
-                | "application/javascript"
-                | "text/ecmascript"
-                | "application/ecmascript"
-                | "application/x-ecmascript"
-                | "application/x-javascript"
-                | "text/javascript1.0"
-                | "text/javascript1.1"
-                | "text/javascript1.2"
-                | "text/javascript1.3"
-                | "text/javascript1.4"
-                | "text/javascript1.5"
-                | "text/jscript"
-                | "text/livescript"
-                | "text/x-ecmascript"
-                | "text/x-javascript"
-                | "module"
-                | "importmap"
-                | "speculationrules"
-        ) {
-            return None;
-        }
         if let Some(document) = parser_document {
             state.parser_document = Some(document);
             state.parser_inserted = true;

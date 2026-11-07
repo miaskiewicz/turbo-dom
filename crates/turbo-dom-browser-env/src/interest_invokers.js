@@ -188,6 +188,21 @@
     }
   }
   const related = event => { try { return apply(relatedOf, event, []); } catch { return null; } };
+  const keydown = event => {
+    let key = '', prevented = true;
+    try { key = apply(keyOf, event, []); prevented = apply(preventedOf, event, []); } catch {}
+    // An unprevented Escape ends every shown interest at once, without the end delay;
+    // the loseinterest it fires cannot be canceled.
+    if (key === 'Escape' && !prevented) each(invoker => { const record = recordOf(invoker); if (record) end(invoker, record, false); });
+  };
+  // A removed subtree ends the interests whose invoker or target it held.
+  const disconnect = (node, extra) => {
+    const inside = target => within(target, node) && (extra || target !== node);
+    each(invoker => { const record = recordOf(invoker); if (record && (inside(invoker) || inside(record.target))) clear(invoker); });
+    const entries = drain(apply(ownerEntries, owners, []), mapNext);
+    for (let at = 0; at < entries.length; at++) { const target = entries[at][0], invoker = entries[at][1]; if (!recordOf(invoker) && (inside(target) || inside(invoker))) apply(ownerDelete, owners, [target]); }
+    engaged();
+  };
   // Native hooks: trusted focus/blur/mouseover/mouseout/keydown, removal and attribute changes.
   const hook = (kind, node, event, extra) => {
     switch (kind) {
@@ -195,22 +210,8 @@
       case 'blur': leave(node, Native('focused')); return;
       case 'mouseover': enter(node, related(event)); return;
       case 'mouseout': leave(node, related(event)); return;
-      case 'keydown': {
-        let key = '', prevented = true;
-        try { key = apply(keyOf, event, []); prevented = apply(preventedOf, event, []); } catch {}
-        // An unprevented Escape ends every shown interest at once, without the end delay;
-        // the loseinterest it fires cannot be canceled.
-        if (key === 'Escape' && !prevented) each(invoker => { const record = recordOf(invoker); if (record) end(invoker, record, false); });
-        return;
-      }
-      case 'disconnect': {
-        const inside = target => within(target, node) && (extra || target !== node);
-        each(invoker => { const record = recordOf(invoker); if (record && (inside(invoker) || inside(record.target))) clear(invoker); });
-        const entries = drain(apply(ownerEntries, owners, []), mapNext);
-        for (let at = 0; at < entries.length; at++) { const target = entries[at][0], invoker = entries[at][1]; if (!recordOf(invoker) && (inside(target) || inside(invoker))) apply(ownerDelete, owners, [target]); }
-        engaged();
-        return;
-      }
+      case 'keydown': keydown(event); return;
+      case 'disconnect': disconnect(node, extra); return;
       // Removing `interestfor` ends the interest; pointing it elsewhere ends only the source.
       case 'attribute': if (recordOf(node)) clear(node, apply(hasAttribute, node, ['interestfor'])); return;
       case 'sources': { const list = new ArrayValue(); each(invoker => { list[list.length] = invoker; }); return list; }

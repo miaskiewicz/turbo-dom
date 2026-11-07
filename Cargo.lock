@@ -2791,7 +2791,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "cssparser",
  "html5ever",
@@ -2807,7 +2807,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-browser-env"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "cssparser",
  "lightningcss",
@@ -2825,7 +2825,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-layout"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "core-foundation",
  "core-text",
@@ -2849,7 +2849,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-parser"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "html5ever",
  "markup5ever_rcdom",
@@ -2865,7 +2865,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-raster"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "base64",
  "core-foundation",
@@ -2888,8 +2888,8 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-v8"
-version = "150.4.0"
-source = "git+https://github.com/miaskiewicz/turbo-dom?rev=e9b36c8733ef1cf1073f7053a8c5931381c978c5#e9b36c8733ef1cf1073f7053a8c5931381c978c5"
+version = "150.4.1"
+source = "git+https://github.com/miaskiewicz/turbo-dom?rev=a673f79e22006b85315670493800418932f2df31#a673f79e22006b85315670493800418932f2df31"
 dependencies = [
  "bindgen",
  "bitflags 2.12.1",

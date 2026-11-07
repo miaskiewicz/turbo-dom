@@ -107,20 +107,32 @@ global allocator that a parallel test would pollute. Don't loosen either thresho
 
 **Complexity gates (CI jobs `complexity / rust (cc <= 15)` and `complexity / js (cc <= 15)`).**
 Every function's cyclomatic complexity must be <= 15 — one limit for the whole repo, no
-allow-list, no baseline (turbo-html2pdf's own crates stay at its stricter cc < 6). Rust is
+baseline, no per-function allow-list (turbo-html2pdf's own crates stay at its stricter cc < 6).
+The JS gate excludes 17 named files (`.oxlintrc.complexity.json` `ignorePatterns`) that cannot
+be refactored: the vendored `xpath_provider/xpath.js` (byte-identical to upstream, SHA-256
+pinned in its README) and 16 browser-env `*_probe.js` Chrome-control fixtures whose control
+JSON pins the probe's SHA-256 (editing one invalidates its recorded Chrome output; several were
+captured on Chromes not cached here). `computed_defaults_probe.js` was edited in 0.8.0 (#316,
+#317, #353) and recaptured, so its pin matches the current file; it stays excluded because the
+control pins the hash. New probes are gated like any other file. Rust is
 measured by turbo-html2pdf's `cc-check` (a `match` counts once; `if`/loops/`?`/`&&`/`||` add 1;
 closures are scored on their own), installed from its home rather than copied here:
 `cargo install --locked --git https://github.com/miaskiewicz/turbo-html2pdf --rev
 923c89f791f3a89cb089a59626a25cef0a9cbd5f cc-check` (CI pins the same rev). It scans every
 tracked `.rs` file (`git ls-files`, so the generated `crates/turbo-dom-v8/crate/` is never
 scanned). JS uses oxlint's ESLint-compatible `complexity` rule (pinned `oxlint@1.87.0` via npx,
-no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`. **Both jobs are
-report-only for 0.6.0 and 0.7.0**: the functions above 15 (59 Rust, 228 JS measured 2026-10-28;
-`docs/CONSOLIDATION.md` "Complexity"; a failing job writes the current list to its step
-summary) are the refactor backlog, refactored after the release. Until then both jobs run
-with `continue-on-error` (red job, green workflow, so `publish.yml` is not blocked) and are
-not required checks. Don't add new ones, and never raise
-the limit to turn the jobs green.
+no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`; the vendored xpath@0.0.35
+drop (`crates/turbo-dom-browser-env/src/xpath_provider/xpath.js`) is excluded by the config's
+`ignorePatterns`, because it must stay byte-identical to upstream (its README pins the
+SHA-256), and so are 16 named Chrome-control `*_probe.js` files whose control JSON pins the
+probe's SHA-256 (editing one invalidates its recorded Chrome output; new probes stay gated).
+0.8.1 lowers the limit to cc <= 9 (turbo-dom#379). **0.8.0 flips both
+jobs blocking at cc ≤ 15**: the pre-release refactor (turbo-dom#297) drives the Rust and JS
+counts to zero, and the workflow drops `continue-on-error` on both jobs so a new
+cc > 15 function fails CI and blocks `publish.yml` like any other required check. The
+report-only phase that carried 0.6.0 and 0.7.0 (59 Rust / 228 JS functions above the
+limit, measured 2026-10-28; `docs/CONSOLIDATION.md` "Complexity") is over. Don't add new
+ones, and never raise the limit to turn the jobs green.
 
 ## Releasing (`vX.Y.Z`)
 
@@ -216,6 +228,9 @@ package or publish workflow.
   `<audio controls>` / `<object>` / `<embed src>` are inline replaced boxes on both paths and in
   every writing mode (`boxgen::media_source`: Chrome's default sizes, canvas `width`/`height`
   attributes as natural size, video poster; no fallback content; frame + background painted;
+  a canvas's embedder-supplied content — raster `ScreenshotOptions::canvases`, layout
+  `canvas_image_name` — fills its content box per `object-fit` / `object-position`, turbo-dom#291,
+  `canvas_content_chrome156.json`;
   `live_geometry_chrome156.json` `media-*`, raster `paint_chrome156.json` `media-*`). Since
   turbo-dom#239 form controls take Chrome 156's `html.css` UA (13.333px control font, inset /
   outset frames, flow-relative padding and range / colour sizes via the internal
@@ -224,7 +239,12 @@ package or publish workflow.
   and lay out vertically in vertical modes; nothing fails with `UnsupportedVerticalWriting` any
   more (`form-*` controls). Since turbo-dom#255/#257 they paint Chrome 156's native appearance
   with galley boxes, and a menu list's / colour well's baseline follows Chrome; `<input type=image>`
-  is a replaced image control without a frame (#258). The
+  is a replaced image control without a frame (#258). Since turbo-dom#293 `<progress>` / `<meter>`
+  are native controls too (`-internal-ua-css-size`, kept under `appearance: none`), a checkbox
+  carrying `INDETERMINATE_ATTR` (a live embedder's script-set flag) paints Chrome's dash, and
+  vertical-mode controls stay native (drawn in their logical space; glyphs `form_paint::upright`);
+  since turbo-dom#292 `<audio controls>` paints Chrome's panel (`layout::media_paint`; controls:
+  raster `form_native_chrome156.json`). The
   flow-relative `border-*-*-radius` corners map with the sides (turbo-dom#253). Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
   `unicode-bidi`/`direction` as formatting characters (for inlines the static path
@@ -259,12 +279,17 @@ package or publish workflow.
   own integration tests enable it through a self dev-dependency).
 - `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
   (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Page text is painted like
-  Chrome 156 on macOS (`glyph_raster.rs`, turbo-dom#266): exact-area coverage of the
-  outline grown and lifted `0.005 * size` px (CoreText smoothing), Skia subpixel pens
-  and its luminance pre-blend (gamma 1.8, contrast 1); the SVG painter emits the same
-  grown outline. The residual vs Chrome is pinned per case by
-  `tests/glyph_coverage_chrome.rs` (`scripts/glyph-coverage-chrome-control.mjs`); Chrome's stem darkening is not
-  modelled yet, so turbo-dom#266 stays open with that residual. Relocated verbatim from
+  Chrome 156 on macOS (`glyph_raster.rs`, turbo-dom#266, #331): exact-area coverage of
+  the outline grown by a `0.0045 * size` px box (each edge `d * (|nx| + |ny|)`, concave
+  points a little further) and lifted `d + 0.03` px (CoreText smoothing), Skia subpixel
+  pens, and an edge transfer by Skia's 3-bit text luminance (linear for dark text from
+  28px, a little darker below, lighter for white); the SVG painter emits the same grown
+  outline with Skia's gamma-1.8 pre-blend as an `feComponentTransfer` alpha table, one
+  `glyph-lum<class>` filter per luminance class (turbo-dom#294; resvg's quarter-step
+  anti-aliasing lands nearer Chrome with it). The residual vs Chrome is pinned per case by
+  `tests/glyph_coverage_chrome.rs` (`scripts/glyph-coverage-chrome-control.mjs`); what is
+  left is Chrome's grid-dependent vertical geometry below about 20px and glyph-specific
+  vertical offsets (the 40px `g` bar, `paint_chrome.rs` probe (28,44)). Relocated verbatim from
   turbo-surf-raster 0.5.5 (S1). Decodes images through turbo-dom-layout's image layer (PNG,
   SVG at 1x) and the `image` crate (JPEG/GIF/WebP/BMP/ICO/CUR, resize, PNG re-encode for
   SVG `data:` URIs), AVIF via `rav1d` under the off-by-default `avif` feature (P5b

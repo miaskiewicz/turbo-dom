@@ -287,11 +287,24 @@ fn clamp_width(mut bb: f32, bs: &BoxStyle, cb_width: f32, extra: f32) -> f32 {
 }
 
 pub(crate) fn border_box_width(bs: &BoxStyle, cb_width: f32) -> f32 {
+    border_box_width_scaled(bs, cb_width, None)
+}
+
+/// [`border_box_width`] snapping a resolved percentage width to Chrome's
+/// `LayoutUnit` grid (1/64 device px) at the given physical scale before placement
+/// (miaskiewicz/turbo-dom#372): `width: 33.33%` of 784 is 261.296875 CSS px at
+/// `scale = 1` (Chrome 156), not 261.3072. `scale = None` leaves the width as
+/// resolved, as before (the PDF / generic path).
+pub(crate) fn border_box_width_scaled(bs: &BoxStyle, cb_width: f32, scale: Option<f32>) -> f32 {
     let avail = (cb_width - bs.margin.horizontal()).max(0.0);
     let extra = bs.padding.horizontal() + bs.border.widths().horizontal();
     let bb = match bs.width.resolve(cb_width) {
         None => avail,
-        Some(w) => to_border(w, bs.box_sizing, extra),
+        Some(w) => to_border(
+            super::value::html_used_value(w, scale),
+            bs.box_sizing,
+            extra,
+        ),
     };
     clamp_width(bb, bs, cb_width, extra)
 }
@@ -825,7 +838,7 @@ pub(crate) fn lay_marker_text(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) ->
     let units = ctx.html_font_scale.unwrap_or(1.0) * 64.0;
     let width = (super::flex::natural_width(b, ctx.fonts) * units).ceil() / units;
     let frag = layout_box_sized_impl(b, &bs, 0.0, 0.0, width, ctx, true);
-    let baseline = atom_baseline(b, &frag, None).unwrap_or(frag.height);
+    let baseline = atom_baseline(b, &frag, (None, false)).unwrap_or(frag.height);
     (frag, baseline)
 }
 
@@ -1291,9 +1304,41 @@ fn place_atom(
             ctx,
         );
     }
+    // On a flipped line `placed.y` is the atom's offset from the line-over edge, the
+    // line box's block end.
+    let y = if flipped_lines(ctx) {
+        line.height - placed.y - atom.height
+    } else {
+        placed.y
+    };
     let mut f = atom.clone();
-    f.translate(x, cy + line.top + placed.y + dy);
+    f.translate(x, cy + line.top + y + dy);
     f
+}
+
+/// Whether the lines laid out in `ctx`'s space are flipped: in `vertical-lr` a line's
+/// over side (where its glyphs' ascent faces, and where `vertical-align` raises an item
+/// to) is the physical right, its block end (CSS Writing Modes 4 §2.3; Blink's
+/// flipped-lines writing mode), so the line places its atoms and inline boxes from that
+/// side and mirrors them into the space (miaskiewicz/turbo-dom#345). A glyph run already
+/// measures its baseline from the physical right ([`super::fragment`]'s vertical text
+/// lines), so text needs no mirroring.
+pub(super) fn flipped_lines(ctx: &Ctx) -> bool {
+    ctx.writing == super::writing::WritingMode::VerticalLr
+}
+
+/// `edges` with their top and bottom swapped when `flipped`: a box's sides named from
+/// its line's over (`top`) and under (`bottom`) sides.
+pub(super) fn line_relative(edges: super::value::Edges, flipped: bool) -> super::value::Edges {
+    if flipped {
+        super::value::Edges {
+            top: edges.bottom,
+            bottom: edges.top,
+            ..edges
+        }
+    } else {
+        edges
+    }
 }
 
 /// The absolutely positioned atomic box of `items` with id `node_id`, if it is one.
@@ -1329,8 +1374,12 @@ fn out_of_flow_atom(id: usize) -> inline::InlineAtom {
 /// or one establishing a scroll container has none (its bottom margin edge
 /// aligns instead). `central` (the device scale) reads the last line's central
 /// baseline instead of its alphabetic one (miaskiewicz/turbo-dom#239).
-fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f32> {
-    if let Some(baseline) = form_baseline(b, f, central.is_some()) {
+fn atom_baseline(
+    b: &LayoutBox,
+    f: &Fragment,
+    (central, flipped): (Option<f32>, bool),
+) -> Option<f32> {
+    if let Some(baseline) = form_baseline(b, f, (central.is_some(), flipped)) {
         return Some(baseline);
     }
     if b.is_replaced() || b.containment().layout {
@@ -1352,9 +1401,26 @@ fn atom_baseline(b: &LayoutBox, f: &Fragment, central: Option<f32>) -> Option<f3
     }
     let mut floats = std::collections::HashSet::new();
     float_ids(b, &mut floats);
-    let mut last: Option<(f32, f32)> = None;
+    let mut last: Option<LastLine> = None;
     last_line(f, &floats, central, &mut last);
-    last.map(|(_, baseline)| baseline - f.y)
+    // A glyph run's baseline lies its `baseline` from the run's line-over side: its
+    // block start, or on a flipped line its block end.
+    last.map(|line| {
+        if flipped {
+            f.y + f.height - line.top - line.height + line.baseline
+        } else {
+            line.top + line.baseline - f.y
+        }
+    })
+}
+
+/// The lowest in-flow text line of an atom: its block-start `top`, block size `height`
+/// and `baseline` below its line-over side.
+#[derive(Clone, Copy)]
+struct LastLine {
+    top: f32,
+    height: f32,
+    baseline: f32,
 }
 
 /// A flex / grid atom sits on its first item's baseline, also when block-axis size
@@ -1377,42 +1443,53 @@ fn flow_atom_baseline(b: &LayoutBox, f: &Fragment) -> Option<f32> {
 /// inline-block's (miaskiewicz/turbo-dom#239): a checkbox / radio / range at its
 /// border-box bottom (on a vertical line's central baseline: its border-box middle), an
 /// empty button at its content-box top, a textarea at its bottom margin edge, a colour
-/// well 4px above its content-box bottom (miaskiewicz/turbo-dom#255).
-fn form_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> Option<f32> {
+/// well 4px above its content-box bottom (miaskiewicz/turbo-dom#255), a progress / meter
+/// as a checkbox, lowered by Chrome's `vertical-align: -0.2em` unless the author aligns
+/// it (miaskiewicz/turbo-dom#293). On a flipped line ([`flipped_lines`]) top and bottom
+/// are its line-over and line-under sides (miaskiewicz/turbo-dom#345).
+fn form_baseline(b: &LayoutBox, f: &Fragment, (central, flipped): (bool, bool)) -> Option<f32> {
     use super::form_controls::Control;
     match b.form_control()? {
         Control::Toggle if central => Some(f.height / 2.0),
         Control::Toggle => Some(f.height),
+        Control::Progress | Control::Meter => Some(gauge_baseline(b, f, central)),
         // A menu list's central baseline is its border-box middle rounded to a whole
         // pixel (Chrome 156: 10px down a 19px-tall list; miaskiewicz/turbo-dom#255).
         Control::Select if central => Some((f.height / 2.0).round()),
         _ if central => None,
-        // A textarea scrolls: it sits on its bottom margin edge, text or not.
-        Control::TextArea => Some(
-            f.height
-                + b.resolved(ResolveCtx {
-                    parent_font_size: super::value::DEFAULT_FONT_SIZE,
-                    cb_width: 0.0,
-                })
-                .margin
-                .bottom,
-        ),
-        Control::Button if !has_text(f) => {
+        control => {
             let style = b.resolved(ResolveCtx {
                 parent_font_size: super::value::DEFAULT_FONT_SIZE,
                 cb_width: 0.0,
             });
-            Some(style.border.widths().top + style.padding.top)
+            let margin = line_relative(style.margin, flipped);
+            let padding = line_relative(style.padding, flipped);
+            let border = line_relative(style.border.widths(), flipped);
+            match control {
+                // A textarea scrolls: it sits on its bottom margin edge, text or not.
+                Control::TextArea => Some(f.height + margin.bottom),
+                Control::Button if !has_text(f) => Some(border.top + padding.top),
+                Control::Color => Some(f.height - border.bottom - padding.bottom - SWATCH_GAP),
+                _ => None,
+            }
         }
-        Control::Color => {
-            let style = b.resolved(ResolveCtx {
-                parent_font_size: super::value::DEFAULT_FONT_SIZE,
-                cb_width: 0.0,
-            });
-            Some(f.height - style.border.widths().bottom - style.padding.bottom - SWATCH_GAP)
-        }
-        _ => None,
     }
+}
+
+/// A progress / meter's baseline (see [`form_baseline`]): its `vertical-align: -0.2em`
+/// lowers it toward the line-under side.
+fn gauge_baseline(b: &LayoutBox, f: &Fragment, central: bool) -> f32 {
+    let base = if central { f.height / 2.0 } else { f.height };
+    if b.style.get("vertical-align").is_some() {
+        return base;
+    }
+    let font_size = b
+        .resolved(ResolveCtx {
+            parent_font_size: super::value::DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        })
+        .font_size;
+    base - 0.2 * font_size
 }
 
 /// The bottom padding of a colour well's swatch wrapper, below its baseline.
@@ -1457,12 +1534,12 @@ fn float_ids(b: &LayoutBox, out: &mut std::collections::HashSet<NodeId>) {
     }
 }
 
-/// The `(top, baseline)` of the lowest in-flow text line in `f`'s subtree.
+/// The lowest in-flow text line in `f`'s subtree.
 fn last_line(
     f: &Fragment,
     floats: &std::collections::HashSet<NodeId>,
     central: Option<f32>,
-    last: &mut Option<(f32, f32)>,
+    last: &mut Option<LastLine>,
 ) {
     let in_flow = |child: &&Fragment| !child.is_positioned && !floats.contains(&child.node_id);
     for child in f.children.iter().filter(in_flow) {
@@ -1474,9 +1551,13 @@ fn last_line(
         } = &child.content
         {
             if let Some(glyph) = glyphs.first() {
-                if last.is_none_or(|(top, _)| child.y >= top) {
+                if last.is_none_or(|line| child.y >= line.top) {
                     let lift = central.map_or(0.0, |scale| central_lift(face, *font_size, scale));
-                    *last = Some((child.y, child.y + glyph.y - lift));
+                    *last = Some(LastLine {
+                        top: child.y,
+                        height: child.height,
+                        baseline: glyph.y - lift,
+                    });
                 }
             }
         }
@@ -1677,21 +1758,24 @@ fn build_inline_pieces(
                 let f = lay_atomic(b, cw, bs.font_size, ctx);
                 let scale = ctx.html_font_scale.unwrap_or(1.0);
                 // Cheap re-resolve (style cache memoizes) to read the box's own
-                // `vertical-align` + margins for line-box placement.
+                // `vertical-align` + margins for line-box placement; on a flipped line
+                // its line-over margin is its block-end one.
+                let flipped = flipped_lines(ctx);
                 let abs = resolve(b, cw, bs.font_size);
+                let margin = line_relative(abs.margin, flipped);
                 pieces.push(inline::Piece::Atom(inline::InlineAtom {
                     id: atom_frags.len(),
                     width: f.width,
                     height: f.height,
                     valign: abs.vertical_align,
                     font_size: abs.font_size,
-                    margin_top: abs.margin.top,
-                    margin_bottom: abs.margin.bottom,
-                    margin_left: abs.margin.left,
-                    margin_right: abs.margin.right,
+                    margin_top: margin.top,
+                    margin_bottom: margin.bottom,
+                    margin_left: margin.left,
+                    margin_right: margin.right,
                     placeholder: false,
-                    baseline: atom_baseline(b, &f, central.then_some(scale))
-                        .or_else(|| central.then(|| central_atom_baseline(&f, abs.margin, ctx))),
+                    baseline: atom_baseline(b, &f, (central.then_some(scale), flipped))
+                        .or_else(|| central.then(|| central_atom_baseline(&f, margin, ctx))),
                 }));
                 atom_frags.push(f);
             }
@@ -3282,7 +3366,7 @@ fn layout_box(
     if let Some(frag) = replaced_image_box(lb, &bs, bx, by, cb_width, ctx) {
         return frag;
     }
-    let mut bbw = border_box_width(&bs, cb_width);
+    let mut bbw = border_box_width_scaled(&bs, cb_width, ctx.html_font_scale);
     // A table never shrinks below its content: grow the border box to the columns'
     // min-content when a declared/`max-width` is narrower (CSS auto table layout).
     // Wikipedia's infobox is `width:200px` but its cat-image row is 267px wide — so
@@ -3402,7 +3486,13 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx, fonts: &FontRegis
     let probed = super::imgsize::replaced_intrinsic(images.resolver, src, &lb.style);
     src.unloaded.set(probed.is_none_or(|(_, loaded)| !loaded));
     if let Some((i, _)) = probed {
-        lb.set_intrinsic(i.width as f32, Some(i.height as f32));
+        if i.natural_ratio.is_some() {
+            // No natural size: a shrink-to-fit container gets no width from it, like
+            // Chrome 156 (the image then fills that 0 width; miaskiewicz/turbo-dom#320).
+            lb.set_intrinsic(0.0, Some(0.0));
+        } else {
+            lb.set_intrinsic(i.width as f32, Some(i.height as f32));
+        }
     }
 }
 
@@ -3434,19 +3524,30 @@ fn replaced_image_box(
     if !loaded && src.media == super::boxgen::Media::Viewport {
         // A media default box: no aspect ratio, like an iframe's (#252).
         let natural = (intrinsic.width as f32, intrinsic.height as f32);
-        return Some(embedded_viewport_fragment(
-            lb,
-            bs,
-            (bx, by),
-            cb_width,
-            natural,
-            ctx,
-        ));
+        let mut fragment = embedded_viewport_fragment(lb, bs, (bx, by), cb_width, natural, ctx);
+        if lb.audio_controls() {
+            let b = bs.border.widths();
+            let content = (
+                fragment.x + b.left + bs.padding.left,
+                fragment.y + b.top + bs.padding.top,
+                fragment.width - b.horizontal() - bs.padding.horizontal(),
+                fragment.height - b.vertical() - bs.padding.vertical(),
+            );
+            super::media_paint::audio_panel(
+                &mut fragment,
+                content,
+                ctx.writing.vertical(),
+                ctx.fonts,
+            );
+        }
+        return Some(fragment);
     }
     let intrinsic = logical_intrinsic(intrinsic, ctx);
     let sizing = size_ctx(bs, cb_width, ctx);
     if ctx.live_geometry {
-        let mut sized = super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing);
+        let scale = ctx.html_font_scale.unwrap_or(1.0);
+        let mut sized =
+            super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing, scale);
         record_metrics(lb, bs, sized.width, sized.height, ctx);
         physical_placement(&mut sized.placement, ctx);
         let mut fragment = live_image_fragment(lb, bx, by, &sized, bs);
@@ -3455,12 +3556,20 @@ fn replaced_image_box(
         }
         return Some(fragment);
     }
-    if !loaded && src.media == super::boxgen::Media::Canvas {
+    if src.media == super::boxgen::Media::Canvas {
         // A canvas is sized like Chrome's replaced boxes (`box-sizing`, min / max) on
-        // this path too: a content box inside its padding and border (#252).
-        let sized = super::imgsize::size_replaced_live(String::new(), intrinsic, &sizing);
+        // this path too: a content box inside its padding and border (#252), which its
+        // drawn content, when the embedder supplies it, fills (#291).
+        let mut sized =
+            super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing, 1.0);
         let content = (sized.width, sized.height);
-        return Some(viewport_fragment(lb, bs, bx, by, content, ctx));
+        let mut fragment = viewport_fragment(lb, bs, bx, by, content, ctx);
+        if loaded {
+            physical_placement(&mut sized.placement, ctx);
+            let placement = sized.placement;
+            super::canvas_content::attach(&mut fragment, &lb.style, bs, placement, ctx.writing);
+        }
+        return Some(fragment);
     }
     let mut sized = size_replaced(src.name.clone(), intrinsic, &sizing);
     physical_placement(&mut sized.placement, ctx);
@@ -3479,6 +3588,7 @@ fn replaced_image_box(
 fn logical_intrinsic(mut intrinsic: crate::image::Intrinsic, ctx: &Ctx) -> crate::image::Intrinsic {
     if ctx.writing.vertical() {
         std::mem::swap(&mut intrinsic.width, &mut intrinsic.height);
+        intrinsic.natural_ratio = intrinsic.natural_ratio.map(f32::recip);
     }
     intrinsic
 }

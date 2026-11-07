@@ -145,8 +145,34 @@ const ATTR_OP = { '~': 'includes', '|': 'dash', '^': 'prefix', $: 'suffix', '*':
 // unterminated comment runs to the end. `closeAtEof` (the DOM selector APIs): an
 // unterminated string and every open `[` / `(` are closed, as CSS does at EOF.
 const nameLike = (c) => c !== undefined && (c >= '\x80' || c === '-' || c === '_' || c === '\\' || isLetter(c) || isDigit(c));
+function needsNormalize(src, closeAtEof) {
+  return src.indexOf('/*') !== -1 || (closeAtEof && /[[("'\\]/.test(src));
+}
+// The index just past the comment opening at `i` (the input's end when unterminated).
+function commentEnd(src, i) {
+  const end = src.indexOf('*/', i + 2);
+  return end === -1 ? src.length : end + 2;
+}
+// What a comment between `out` and `next` leaves behind: a separator between two name
+// characters (a space inside `[…]`, the never-valid `!` elsewhere), else nothing.
+function commentSeparator(out, next, open) {
+  const prev = out[out.length - 1];
+  if ((nameLike(prev) || prev === '#') && nameLike(next)) return open[open.length - 1] === ']' ? ' ' : '!';
+  return '';
+}
+function trackBracket(c, open) {
+  if (c === '[') open.push(']');
+  else if (c === '(') open.push(')');
+  else if (c === open[open.length - 1]) open.pop();
+}
+// Close an unterminated string and every open `[` / `(` at EOF.
+function closeAtEnd(out, quote, open) {
+  if (quote) out += quote;
+  while (open.length) out += open.pop();
+  return out;
+}
 function normalizeSource(src, closeAtEof) {
-  if (src.indexOf('/*') === -1 && (!closeAtEof || !/[[("'\\]/.test(src))) return src;
+  if (!needsNormalize(src, closeAtEof)) return src;
   let out = '', quote = null;
   const open = [];
   for (let i = 0; i < src.length; i++) {
@@ -157,24 +183,17 @@ function normalizeSource(src, closeAtEof) {
       out += src.slice(i, i + 2); i++; continue;
     }
     if (quote) { if (c === quote) quote = null; out += c; continue; }
-    if (c === '"' || c === "'") quote = c;
-    else if (c === '/' && src[i + 1] === '*') {
-      let end = src.indexOf('*/', i + 2);
-      end = end === -1 ? src.length : end + 2;
-      const prev = out[out.length - 1];
-      if ((nameLike(prev) || prev === '#') && nameLike(src[end])) out += open[open.length - 1] === ']' ? ' ' : '!';
+    if (c === '/' && src[i + 1] === '*') {
+      const end = commentEnd(src, i);
+      out += commentSeparator(out, src[end], open);
       i = end - 1;
       continue;
-    } else if (c === '[') open.push(']');
-    else if (c === '(') open.push(')');
-    else if (c === open[open.length - 1]) open.pop();
+    }
+    if (c === '"' || c === "'") quote = c;
+    else trackBracket(c, open);
     out += c;
   }
-  if (closeAtEof) {
-    if (quote) out += quote;
-    while (open.length) out += open.pop();
-  }
-  return out;
+  return closeAtEof ? closeAtEnd(out, quote, open) : out;
 }
 // A quoted string starting at `i` (src[i] is the quote): { value, end } (end past the
 // closing quote; an unterminated string ends with the input, as in CSS — the attribute
@@ -201,11 +220,37 @@ function scanString(src, i) {
 // { op, value }; `ns: 'any'` for `[*|a]`; `ci: true` for the `i` modifier. Throws on what
 // Chrome 156 rejects, including the `s` modifier (so does the Rust engine since
 // turbo-dom#24).
+function skipWsAt(s, i) {
+  while (i < s.length && isWs(s[i])) i++;
+  return i;
+}
+function skipDigits(s, i) {
+  while (i < s.length && isDigit(s[i])) i++;
+  return i;
+}
+// The attribute value at `i` (a string or an identifier): { value, end }.
+function scanAttrValue(s, i, src) {
+  if (s[i] === '"' || s[i] === "'") return scanString(s, i);
+  if (startsIdent(s, i)) return scanIdent(s, i);
+  throw syntax(src, 'attribute value');
+}
+// The operator at `i`: { op, end }.
+function scanAttrOp(s, i, src) {
+  if (ATTR_OP[s[i]] !== undefined && s[i + 1] === '=') return { op: ATTR_OP[s[i]], end: i + 2 };
+  if (s[i] === '=') return { op: 'equals', end: i + 1 };
+  throw syntax(src, 'attribute operator');
+}
+// The optional modifier at `i` (only `i`), then the end of the selector.
+function parseAttrModifier(attr, s, i, src) {
+  if (i >= s.length) return;
+  const m = s[i];
+  if (m === 'i' || m === 'I') attr.ci = true;
+  else throw syntax(src, 'attribute modifier');
+  if (skipWsAt(s, i + 1) < s.length) throw syntax(src, 'attribute selector');
+}
 function parseAttr(raw, src) {
   const s = raw;
-  let i = 0;
-  const skip = () => { while (i < s.length && isWs(s[i])) i++; };
-  skip();
+  let i = skipWsAt(s, 0);
   let ns = null;
   if (s[i] === '*' && s[i + 1] === '|') { ns = 'any'; i += 2; }
   else if (s[i] === '|' && s[i + 1] !== '=') { i += 1; }
@@ -217,33 +262,12 @@ function parseAttr(raw, src) {
   if (ns) attr.ns = ns;
   // the HTML-element lookup name, folded once (non-enumerable: the AST stays `{ name, match }`)
   Object.defineProperty(attr, 'lname', { value: nameTok.value.toLowerCase() });
-  skip();
+  i = skipWsAt(s, i);
   if (i === s.length) return attr;
-  let op = 'equals';
-  if (ATTR_OP[s[i]] !== undefined && s[i + 1] === '=') { op = ATTR_OP[s[i]]; i += 2; }
-  else if (s[i] === '=') i += 1;
-  else throw syntax(src, 'attribute operator');
-  skip();
-  let value;
-  if (s[i] === '"' || s[i] === "'") {
-    const str = scanString(s, i);
-    value = str.value;
-    i = str.end;
-  } else if (startsIdent(s, i)) {
-    const v = scanIdent(s, i);
-    value = v.value;
-    i = v.end;
-  } else throw syntax(src, 'attribute value');
-  attr.match = { op, value };
-  skip();
-  if (i < s.length) {
-    const m = s[i];
-    if (m === 'i' || m === 'I') attr.ci = true;
-    else throw syntax(src, 'attribute modifier');
-    i++;
-    skip();
-    if (i < s.length) throw syntax(src, 'attribute selector');
-  }
+  const op = scanAttrOp(s, i, src);
+  const v = scanAttrValue(s, skipWsAt(s, op.end), src);
+  attr.match = { op: op.op, value: v.value };
+  parseAttrModifier(attr, s, skipWsAt(s, v.end), src);
   return attr;
 }
 
@@ -317,13 +341,15 @@ const PLAIN_AFTER = new Map([
 ]);
 // May pseudo-class `p` follow pseudo-element `pe` ({ name, arg })? (Chrome 156; mirrors
 // the Rust allowed_after_pseudo_element.)
+// After an ELEMENT_LIKE pseudo-element.
+function allowedAfterElementLike(p) {
+  if (p.arg !== null) return p.name === 'state' || p.name === 'lang' || p.name === 'dir';
+  return ELEMENT_LIKE_PLAIN.has(p.name) || (NEVER.has(p.name) && !NOT_AFTER_ELEMENT_LIKE.has(p.name));
+}
 function allowedAfter(pe, p) {
   const name = pe.name;
   if ((p.name === 'is' || p.name === 'where') && p.arg !== null) return name !== 'column' && name !== 'slotted';
-  if (ELEMENT_LIKE.has(name)) {
-    if (p.arg !== null) return p.name === 'state' || p.name === 'lang' || p.name === 'dir';
-    return ELEMENT_LIKE_PLAIN.has(p.name) || (NEVER.has(p.name) && !NOT_AFTER_ELEMENT_LIKE.has(p.name));
-  }
+  if (ELEMENT_LIKE.has(name)) return allowedAfterElementLike(p);
   if (p.arg !== null) return false;
   if (SCROLLBAR.has(name)) return AFTER_SCROLLBAR.has(p.name);
   if (name.startsWith('-webkit-') || (name === 'cue' && pe.arg === null)) return USER_ACTION.has(p.name);
@@ -359,32 +385,33 @@ function parseAnB(arg) {
   let sign = 1;
   if (s[0] === '+' || s[0] === '-') { sign = s[0] === '-' ? -1 : 1; i = 1; }
   const ds = i;
-  while (i < s.length && isDigit(s[i])) i++;
+  i = skipDigits(s, i);
   const digits = s.slice(ds, i);
   if (s[i] !== 'n') {
     if (!digits || i !== s.length) return null;
     return { a: 0, b: clamp32(clampInt(sign, digits)) };
   }
   const a = digits ? clamp32(clampInt(sign, digits)) : sign;
-  i++;
-  // `n-123` is one ident / dimension unit: its integer is converted exactly
-  if (s[i] === '-' && i + 1 < s.length && isDigit(s[i + 1])) {
-    let j = i + 1;
-    while (j < s.length && isDigit(s[j])) j++;
-    if (clampInt(-1, s.slice(i + 1, j)) < INT_MIN) return null;
-  }
-  while (i < s.length && isWs(s[i])) i++;
+  return parseAnBTail(s, i + 1, a);
+}
+// `n-123` is one ident / dimension unit: its integer (after the `n` at i - 1) is converted
+// exactly and must fit.
+function gluedIntegerFits(s, i) {
+  if (s[i] !== '-' || i + 1 >= s.length || !isDigit(s[i + 1])) return true;
+  return clampInt(-1, s.slice(i + 1, skipDigits(s, i + 1))) >= INT_MIN;
+}
+// The part after An's `n` (at i - 1): nothing, or a signed B.
+function parseAnBTail(s, i, a) {
+  if (!gluedIntegerFits(s, i)) return null;
+  i = skipWsAt(s, i);
   if (i === s.length) return { a, b: 0 };
   if (s[i] !== '+' && s[i] !== '-') return null;
   const bs = s[i] === '-' ? -1 : 1;
-  i++;
-  while (i < s.length && isWs(s[i])) i++;
-  const bd = i;
-  while (i < s.length && isDigit(s[i])) i++;
+  const bd = skipWsAt(s, i + 1);
+  i = skipDigits(s, bd);
   if (i === bd) return null;
   const b = clamp32(clampInt(bs, s.slice(bd, i)));
-  while (i < s.length && isWs(s[i])) i++;
-  return i === s.length ? { a, b } : null;
+  return skipWsAt(s, i) === s.length ? { a, b } : null;
 }
 // The `of` keyword of `:nth-child(An+B of S)`: lowercase, whitespace before it, a non-empty
 // An+B part, and no name code point right after it. Index or -1.
@@ -407,6 +434,61 @@ function nthMatch(a, b, index) {
 // ── lexer ───────────────────────────────────────────────────────────────────
 // Token kinds: ws | comma | comb (v) | type (ns, name) | id (v) | class (v) | attr |
 // pseudo (name, arg) | pelem (name, arg).
+// The type / universal selector at `i` (src[i] is `*`, `|` or an identifier start), with
+// an optional `*|` / `|` namespace prefix: pushes its token, returns the next index.
+function scanTypeToken(src, i, tokens) {
+  const c = src[i];
+  let ns = null, name = null;
+  if (c === '*') i++;
+  else if (c !== '|') { const t = scanIdent(src, i); name = t.value; i = t.end; }
+  if (src[i] === '|' && src[i + 1] !== '=') {
+    if (name !== null) throw syntax(src, 'undeclared namespace prefix');
+    ns = c === '*' ? 'any' : 'none';
+    i++;
+    if (src[i] === '*') i++;
+    else if (startsIdent(src, i)) { const t = scanIdent(src, i); name = t.value; i = t.end; }
+    else throw syntax(src, 'type selector after a namespace prefix');
+  } else if (c === '|') throw syntax(src, `unexpected '|'`);
+  tokens.push({ k: 'type', ns, name: name === null ? null : name.toLowerCase() });
+  return i;
+}
+// The pseudo-class / pseudo-element at `i` (src[i] is `:`): pushes its token, returns the
+// next index.
+function scanPseudoToken(src, i, tokens) {
+  const n = src.length;
+  i++;
+  const element = src[i] === ':';
+  if (element) i++;
+  if (!startsIdent(src, i)) throw syntax(src, `unexpected ':'`);
+  const t = scanIdent(src, i);
+  const name = t.value.toLowerCase();
+  i = t.end;
+  let arg = null;
+  if (src[i] === '(') {
+    const { inner, end } = scanBalanced(src, i + 1, '(', ')');
+    arg = inner;
+    i = end < n ? end + 1 : n; // an unterminated argument closes at the end (CSS)
+  }
+  const legacy = !element && LEGACY_PSEUDO_ELEMENTS.has(name);
+  tokens.push({ k: element || legacy ? 'pelem' : 'pseudo', name, arg, legacy });
+  return i;
+}
+// The attribute selector at `i` (src[i] is `[`): pushes its token, returns the next index.
+function scanAttrToken(src, i, tokens) {
+  const { inner, end } = scanBalanced(src, i + 1, '[', ']');
+  if (end >= src.length) throw new SyntaxError(`unterminated attribute selector: ${src.slice(i)}`);
+  tokens.push({ k: 'attr', attr: parseAttr(inner, src) });
+  return end + 1;
+}
+// The id / class selector at `i` (src[i] is `#` / `.`): pushes its token, returns the next
+// index.
+function scanHashOrClassToken(src, i, tokens) {
+  const c = src[i];
+  if (!startsIdent(src, i + 1)) throw syntax(src, `unexpected '${c}'`);
+  const t = scanIdent(src, i + 1);
+  tokens.push({ k: c === '#' ? 'id' : 'class', v: t.value });
+  return t.end;
+}
 function tokenize(src) {
   const tokens = [];
   const n = src.length;
@@ -414,53 +496,15 @@ function tokenize(src) {
   while (i < n) {
     const c = src[i];
     if (isWs(c)) {
-      while (i < n && isWs(src[i])) i++;
+      i = skipWsAt(src, i);
       tokens.push({ k: 'ws' });
     } else if (c === ',') { tokens.push({ k: 'comma' }); i++; }
     else if (c === '>' || c === '+' || c === '~') { tokens.push({ k: 'comb', v: c }); i++; }
-    else if (c === '*' || c === '|' || startsIdent(src, i)) {
-      // type / universal selector with an optional `*|` / `|` namespace prefix
-      let ns = null, name = null;
-      if (c === '*') i++;
-      else if (c !== '|') { const t = scanIdent(src, i); name = t.value; i = t.end; }
-      if (src[i] === '|' && src[i + 1] !== '=') {
-        if (name !== null) throw syntax(src, 'undeclared namespace prefix');
-        ns = c === '*' ? 'any' : 'none';
-        i++;
-        if (src[i] === '*') i++;
-        else if (startsIdent(src, i)) { const t = scanIdent(src, i); name = t.value; i = t.end; }
-        else throw syntax(src, 'type selector after a namespace prefix');
-      } else if (c === '|') throw syntax(src, `unexpected '|'`);
-      tokens.push({ k: 'type', ns, name: name === null ? null : name.toLowerCase() });
-    } else if (c === '#' || c === '.') {
-      if (!startsIdent(src, i + 1)) throw syntax(src, `unexpected '${c}'`);
-      const t = scanIdent(src, i + 1);
-      tokens.push({ k: c === '#' ? 'id' : 'class', v: t.value });
-      i = t.end;
-    } else if (c === '[') {
-      const { inner, end } = scanBalanced(src, i + 1, '[', ']');
-      if (end >= n) throw new SyntaxError(`unterminated attribute selector: ${src.slice(i)}`);
-      tokens.push({ k: 'attr', attr: parseAttr(inner, src) });
-      i = end + 1;
-    } else if (c === ':') {
-      i++;
-      const element = src[i] === ':';
-      if (element) i++;
-      if (!startsIdent(src, i)) throw syntax(src, `unexpected ':'`);
-      const t = scanIdent(src, i);
-      const name = t.value.toLowerCase();
-      i = t.end;
-      let arg = null;
-      if (src[i] === '(') {
-        const { inner, end } = scanBalanced(src, i + 1, '(', ')');
-        arg = inner;
-        i = end < n ? end + 1 : n; // an unterminated argument closes at the end (CSS)
-      }
-      const legacy = !element && LEGACY_PSEUDO_ELEMENTS.has(name);
-      tokens.push({ k: element || legacy ? 'pelem' : 'pseudo', name, arg, legacy });
-    } else {
-      throw new SyntaxError(`unexpected '${c}' in selector`);
-    }
+    else if (c === '*' || c === '|' || startsIdent(src, i)) i = scanTypeToken(src, i, tokens);
+    else if (c === '#' || c === '.') i = scanHashOrClassToken(src, i, tokens);
+    else if (c === '[') i = scanAttrToken(src, i, tokens);
+    else if (c === ':') i = scanPseudoToken(src, i, tokens);
+    else throw new SyntaxError(`unexpected '${c}' in selector`);
   }
   return tokens;
 }
@@ -479,44 +523,45 @@ function parsePseudo(tok, src, opts) {
   const { inHas, inCompound = false } = opts;
   const { name, arg } = tok;
   const p = { name, arg };
-  let parsed = null;
-  const functional = arg !== null;
-  if (PLAIN.has(name)) {
-    if (functional) throw syntax(src, `:${name}() takes no argument`);
-  } else if (NEVER.has(name) && !functional) {
-    parsed = { never: true };
-  } else if (NEVER_FUNCTIONAL.has(name) && functional) {
-    parsed = { never: true };
-  } else if (!functional) {
-    throw syntax(src, `unknown pseudo-class :${name}`);
-  } else if (name === 'not') {
-    parsed = { list: parseList(arg, { nested: true, forgiving: false, inHas, compound: inCompound, inCompound }) };
-  } else if (name === 'is' || name === 'where') {
-    parsed = { list: parseList(arg, { nested: true, forgiving: true, inHas, compound: inCompound, inCompound }) };
-  } else if (name === '-webkit-any') {
-    // unforgiving compound selectors, no :has() (a nested :is() drops items with one)
-    parsed = { list: parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true }) };
-  } else if (name === 'has') {
-    if (inHas) throw syntax(src, ':has() inside :has()');
-    parsed = { rel: parseRelative(arg, src) };
-  } else if (name === 'nth-child' || name === 'nth-last-child' || name === 'nth-of-type' || name === 'nth-last-of-type') {
-    const at = name.endsWith('child') ? nthOfPosition(arg) : -1;
-    const anb = parseAnB(at === -1 ? arg : arg.slice(0, at));
-    if (anb === null) throw syntax(src, `:${name}() argument`);
-    parsed = { a: anb.a, b: anb.b, of: at === -1 ? null : parseList(arg.slice(at + 2), { nested: true, forgiving: false, inHas, inCompound }) };
-  } else if (name === 'lang' || name === 'dir') {
-    const v = identValue(trimWs(arg));
-    if (v === null) throw syntax(src, `:${name}() takes one identifier`);
-    parsed = { v: v.toLowerCase() };
-  } else if (name === 'state') {
-    const v = identValue(trimWs(arg));
-    if (v === null) throw syntax(src, ':state() takes one identifier');
-    parsed = { v };
-  } else {
-    throw syntax(src, `unknown pseudo-class :${name}()`);
-  }
+  const parsed = arg === null ? parsePlainPseudo(name, src) : parseFunctionalPseudo(name, arg, src, inHas, inCompound);
   if (parsed) Object.defineProperty(p, 'parsed', { value: parsed });
   return p;
+}
+// An argument-less pseudo-class: its `parsed` (null for an implemented one).
+function parsePlainPseudo(name, src) {
+  if (PLAIN.has(name)) return null;
+  if (NEVER.has(name)) return { never: true };
+  throw syntax(src, `unknown pseudo-class :${name}`);
+}
+const NTH = new Set(['nth-child', 'nth-last-child', 'nth-of-type', 'nth-last-of-type']);
+// A functional pseudo-class: its `parsed`.
+function parseFunctionalPseudo(name, arg, src, inHas, inCompound) {
+  if (PLAIN.has(name)) throw syntax(src, `:${name}() takes no argument`);
+  if (NEVER_FUNCTIONAL.has(name)) return { never: true };
+  if (name === 'not') return { list: parseList(arg, { nested: true, forgiving: false, inHas, compound: inCompound, inCompound }) };
+  if (name === 'is' || name === 'where') return { list: parseList(arg, { nested: true, forgiving: true, inHas, compound: inCompound, inCompound }) };
+  // unforgiving compound selectors, no :has() (a nested :is() drops items with one)
+  if (name === '-webkit-any') return { list: parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true }) };
+  if (name === 'has') {
+    if (inHas) throw syntax(src, ':has() inside :has()');
+    return { rel: parseRelative(arg, src) };
+  }
+  if (NTH.has(name)) return parseNthPseudo(name, arg, src, inHas, inCompound);
+  if (name === 'lang' || name === 'dir') return { v: identArg(name, arg, src).toLowerCase() };
+  if (name === 'state') return { v: identArg(name, arg, src) };
+  throw syntax(src, `unknown pseudo-class :${name}()`);
+}
+// The one identifier argument of `:name()` (throws otherwise).
+function identArg(name, arg, src) {
+  const v = identValue(trimWs(arg));
+  if (v === null) throw syntax(src, `:${name}() takes one identifier`);
+  return v;
+}
+function parseNthPseudo(name, arg, src, inHas, inCompound) {
+  const at = name.endsWith('child') ? nthOfPosition(arg) : -1;
+  const anb = parseAnB(at === -1 ? arg : arg.slice(0, at));
+  if (anb === null) throw syntax(src, `:${name}() argument`);
+  return { a: anb.a, b: anb.b, of: at === -1 ? null : parseList(arg.slice(at + 2), { nested: true, forgiving: false, inHas, inCompound }) };
 }
 
 // A view-transition pseudo-element argument (<pt-name-and-class-selector>): `*` or a name,
@@ -592,10 +637,75 @@ function parsePseudoElement(tok, src) {
 // Parse tokens[lo..hi) (one complex selector, commas already split out). Throws on an empty
 // item, a dangling combinator, a type selector after another simple selector, and a
 // pseudo-element anywhere but at the end of the last compound.
+// The last pseudo-element of `pe`'s chain (`pe` itself without sub-pseudo-elements).
+function lastPseudoElement(pe) {
+  return pe.chain ? pe.chain[pe.chain.length - 1] : pe;
+}
+// A pseudo-element token `p` of `compound`: the compound's pseudo-element, or a
+// sub-pseudo-element (`::slotted(li)::marker`: valid, never matched here) of it.
+function addPseudoElement(compound, p, src, opts) {
+  if (opts.nested) throw syntax(src, 'pseudo-element inside a pseudo-class argument');
+  const next = parsePseudoElement(p, src);
+  const pe = compound.pe;
+  if (pe === null) { compound.pe = next; return; }
+  const last = lastPseudoElement(pe);
+  if (!allowedSub(last.name, next.name)) throw syntax(src, `::${next.name} after ::${last.name}`);
+  if (!pe.chain) Object.defineProperty(pe, 'chain', { value: [] });
+  pe.chain.push(next);
+}
+// A simple-selector token `p` after the compound's pseudo-element: only the pseudo-classes
+// Chrome allows there (the selector never matches an element either way) and further
+// pseudo-elements.
+function addAfterPseudoElement(compound, p, src, opts) {
+  if (p.k === 'pelem') { addPseudoElement(compound, p, src, opts); return; }
+  if (p.k !== 'pseudo') throw syntax(src, 'simple selector after a pseudo-element');
+  const last = lastPseudoElement(compound.pe);
+  if (!allowedAfter(last, p)) throw syntax(src, `:${p.name} after ::${last.name}`);
+  compound.pseudos.push({ name: p.name, arg: p.arg });
+}
+// Add simple-selector token `p` (the `parts`-th of its compound) to `compound`.
+function addSimple(compound, p, parts, src, opts) {
+  if (compound.pe !== null) { addAfterPseudoElement(compound, p, src, opts); return; }
+  if (p.k === 'type') {
+    if (parts) throw syntax(src, 'type selector after another simple selector');
+    compound.tag = p.name === null ? '*' : p.name;
+    compound.ns = p.ns;
+  } else if (p.k === 'id') compound.id = p.v;
+  else if (p.k === 'class') compound.classes.push(p.v);
+  else if (p.k === 'attr') compound.attrs.push(p.attr);
+  else if (p.k === 'pelem') addPseudoElement(compound, p, src, opts);
+  else compound.pseudos.push(parsePseudo(p, src, opts));
+}
+// Fill `compound` from tokens[pos..end) up to the next whitespace / combinator; returns
+// the index of that token (or `end`).
+function parseCompound(tokens, pos, end, src, opts, compound) {
+  const start = pos;
+  for (; pos < end; pos++) {
+    const p = tokens[pos];
+    if (p.k === 'ws' || p.k === 'comb') break;
+    addSimple(compound, p, pos - start, src, opts);
+  }
+  return pos;
+}
+function firstNonWs(tokens, lo, hi) {
+  while (lo < hi && tokens[lo].k === 'ws') lo++;
+  return lo;
+}
+function endNonWs(tokens, lo, hi) {
+  while (hi > lo && tokens[hi - 1].k === 'ws') hi--;
+  return hi;
+}
+// Whitespace after a compound is the descendant combinator unless another follows.
+function afterWhitespace(combinator, first) {
+  return combinator === null && first !== null ? ' ' : combinator;
+}
+// A pending combinator other than the descendant one has no compound after it.
+function isDangling(combinator) {
+  return combinator !== null && combinator !== ' ';
+}
 function parseComplexTokens(tokens, lo, hi, src, opts) {
-  let start = lo, end = hi;
-  while (start < end && tokens[start].k === 'ws') start++;
-  while (end > start && tokens[end - 1].k === 'ws') end--;
+  const start = firstNonWs(tokens, lo, hi);
+  const end = endNonWs(tokens, start, hi);
   if (start >= end) throw syntax(src, 'empty selector');
   let first = null;
   const rest = [];
@@ -604,9 +714,9 @@ function parseComplexTokens(tokens, lo, hi, src, opts) {
   let sawPe = false;
   while (pos < end) {
     const t = tokens[pos];
-    if (t.k === 'ws') { pos++; if (combinator === null && first !== null) combinator = ' '; continue; }
+    if (t.k === 'ws') { pos++; combinator = afterWhitespace(combinator, first); continue; }
     if (t.k === 'comb') {
-      if (first === null || (combinator !== null && combinator !== ' ')) throw syntax(src, 'dangling combinator');
+      if (first === null || isDangling(combinator)) throw syntax(src, 'dangling combinator');
       combinator = t.v;
       pos++;
       continue;
@@ -616,47 +726,13 @@ function parseComplexTokens(tokens, lo, hi, src, opts) {
     // one object shape for every compound (monomorphic matching): `ns` is null / 'any' /
     // 'none', `pe` the pseudo-element or null
     const compound = { tag: null, ns: null, id: null, classes: [], attrs: [], pseudos: [], pe: null };
-    let parts = 0;
-    let pe = null;
-    let last = null; // the last pseudo-element of the chain
-    for (; pos < end; pos++) {
-      const p = tokens[pos];
-      if (p.k === 'ws' || p.k === 'comb') break;
-      if (pe !== null && p.k !== 'pseudo' && p.k !== 'pelem') throw syntax(src, 'simple selector after a pseudo-element');
-      if (p.k === 'type') {
-        if (parts) throw syntax(src, 'type selector after another simple selector');
-        compound.tag = p.name === null ? '*' : p.name;
-        compound.ns = p.ns;
-      } else if (p.k === 'id') compound.id = p.v;
-      else if (p.k === 'class') compound.classes.push(p.v);
-      else if (p.k === 'attr') compound.attrs.push(p.attr);
-      else if (p.k === 'pelem') {
-        if (opts.nested) throw syntax(src, 'pseudo-element inside a pseudo-class argument');
-        const next = parsePseudoElement(p, src);
-        if (pe === null) pe = next;
-        else {
-          // a sub-pseudo-element (`::slotted(li)::marker`): valid, never matched here
-          if (!allowedSub(last.name, next.name)) throw syntax(src, `::${next.name} after ::${last.name}`);
-          if (!pe.chain) Object.defineProperty(pe, 'chain', { value: [] });
-          pe.chain.push(next);
-        }
-        last = next;
-      } else if (pe !== null) {
-        // after a pseudo-element only the pseudo-classes Chrome allows there (the selector
-        // never matches an element either way)
-        if (!allowedAfter(last, p)) throw syntax(src, `:${p.name} after ::${last.name}`);
-        compound.pseudos.push({ name: p.name, arg: p.arg });
-      } else {
-        compound.pseudos.push(parsePseudo(p, src, opts));
-      }
-      parts++;
-    }
-    if (pe !== null) { compound.pe = pe; sawPe = true; }
+    pos = parseCompound(tokens, pos, end, src, opts, compound);
+    if (compound.pe !== null) sawPe = true;
     if (first === null) first = compound;
     else rest.push({ combinator: combinator === null ? ' ' : combinator, compound });
     combinator = null;
   }
-  if (combinator !== null && combinator !== ' ') throw syntax(src, 'dangling combinator');
+  if (isDangling(combinator)) throw syntax(src, 'dangling combinator');
   if (opts.compound && rest.length) throw syntax(src, 'combinator inside :-webkit-any()');
   return { first, rest };
 }
@@ -860,18 +936,24 @@ function disabledState(el) {
       return actuallyDisabled(el);
     case 'optgroup':
       return boolAttr(el, 'disabled', 'disabled');
-    case 'option': {
-      if (el.hasAttribute('disabled')) return true;
-      let p = el.parentNode;
-      if (p && p.nodeType === 1 && p.localName === 'optgroup') {
-        if (p.hasAttribute('disabled')) return true;
-        p = p.parentNode;
-      }
-      return !!(p && p.nodeType === 1 && p.localName === 'select' && actuallyDisabled(p));
-    }
+    case 'option':
+      return optionDisabled(el);
     default:
       return undefined;
   }
+}
+function isElementNamed(n, localName) {
+  return !!n && n.nodeType === 1 && n.localName === localName;
+}
+// An option is disabled by its own attribute, its optgroup's or a disabled select.
+function optionDisabled(el) {
+  if (el.hasAttribute('disabled')) return true;
+  let p = el.parentNode;
+  if (isElementNamed(p, 'optgroup')) {
+    if (p.hasAttribute('disabled')) return true;
+    p = p.parentNode;
+  }
+  return isElementNamed(p, 'select') && actuallyDisabled(p);
 }
 function isEditable(el) {
   for (let n = el; n && n.nodeType === 1; n = n.parentNode) {
@@ -1014,12 +1096,11 @@ function matchAttr(el, a) {
 // The element `:scope` matches during the current match (null = stylesheet: `:root`).
 let currentScope = null;
 
+// matchPseudo dispatches by family: tree-structural here, then the selector-argument and
+// language ones (matchLogicalPseudo), then element state (matchStatePseudo).
 function matchPseudo(el, p) {
   const parsed = p.parsed;
   switch (p.name) {
-    case 'not': return !parsed.list.some((cx) => matchComplex(el, cx));
-    case 'is': case 'where': case '-webkit-any': return parsed.list.some((cx) => matchComplex(el, cx));
-    case 'has': return parsed.rel.some((rel) => hasMatch(el, rel));
     // O(1) sibling steps (a parentless element is its own only sibling)
     case 'first-child': return previousElement(el) === null;
     case 'last-child': return nextElement(el) === null;
@@ -1027,40 +1108,63 @@ function matchPseudo(el, p) {
     case 'first-of-type': return position(el, true)[0] === 1;
     case 'last-of-type': { const [i, n] = position(el, true); return i === n; }
     case 'only-of-type': return position(el, true)[1] === 1;
-    case 'nth-child': case 'nth-last-child': {
-      const last = p.name === 'nth-last-child';
-      if (parsed.of) {
-        if (!parsed.of.some((cx) => matchComplex(el, cx))) return false;
-        return nthMatch(parsed.a, parsed.b, positionOf(el, parsed.of, last));
-      }
-      const [i, n] = position(el, false);
-      return nthMatch(parsed.a, parsed.b, last ? n - i + 1 : i);
-    }
+    case 'nth-child': return matchNthChild(el, parsed, false);
+    case 'nth-last-child': return matchNthChild(el, parsed, true);
     case 'nth-of-type': case 'nth-last-of-type': {
       const [i, n] = position(el, true);
       return nthMatch(parsed.a, parsed.b, p.name === 'nth-last-of-type' ? n - i + 1 : i);
     }
-    case 'empty': return isEmpty(el);
-    case 'root': return !!el.parentNode && el.parentNode.nodeType === 9;
-    case 'scope': return currentScope === null ? !!el.parentNode && el.parentNode.nodeType === 9 : el === currentScope;
-    // form state reads the live PROPERTY first (what React sets), then the attribute
-    case 'checked':
-      if (el.localName === 'option') return !!el.selected;
-      return el.localName === 'input' && (inputType(el) === 'checkbox' || inputType(el) === 'radio') && boolAttr(el, 'checked', 'checked');
-    case 'disabled': return disabledState(el) === true;
-    case 'enabled': return disabledState(el) === false;
-    case 'required': return boolAttr(el, 'required', 'required');
-    case 'optional': return (el.localName === 'input' || el.localName === 'select' || el.localName === 'textarea') && !boolAttr(el, 'required', 'required');
-    case 'read-only': return isHtml(el) && !readWrite(el);
-    case 'read-write': return isHtml(el) && readWrite(el);
+    case 'scope': return currentScope === null ? isRootElement(el) : el === currentScope;
+    default: return matchLogicalPseudo(el, p);
+  }
+}
+function isRootElement(el) {
+  return !!el.parentNode && el.parentNode.nodeType === 9;
+}
+function matchNthChild(el, parsed, last) {
+  if (parsed.of) {
+    if (!parsed.of.some((cx) => matchComplex(el, cx))) return false;
+    return nthMatch(parsed.a, parsed.b, positionOf(el, parsed.of, last));
+  }
+  const [i, n] = position(el, false);
+  return nthMatch(parsed.a, parsed.b, last ? n - i + 1 : i);
+}
+function matchLogicalPseudo(el, p) {
+  const parsed = p.parsed;
+  switch (p.name) {
+    case 'not': return !parsed.list.some((cx) => matchComplex(el, cx));
+    case 'is': case 'where': case '-webkit-any': return parsed.list.some((cx) => matchComplex(el, cx));
+    case 'has': return parsed.rel.some((rel) => hasMatch(el, rel));
     case 'link': case 'any-link': return isLink(el);
     case 'defined': return isDefinedElement(el);
     case 'lang': return langMatches(el, parsed.v);
     case 'dir': return (parsed.v === 'rtl' || parsed.v === 'ltr') && isRtl(el) === (parsed.v === 'rtl');
+    default: return matchStatePseudo(el, p);
+  }
+}
+// element state; form state reads the live PROPERTY first (what React sets), then the attribute
+function matchStatePseudo(el, p) {
+  switch (p.name) {
+    case 'empty': return isEmpty(el);
+    case 'root': return isRootElement(el);
+    case 'checked': return isChecked(el);
+    case 'disabled': return disabledState(el) === true;
+    case 'enabled': return disabledState(el) === false;
+    case 'required': return boolAttr(el, 'required', 'required');
+    case 'optional': return isOptional(el);
+    case 'read-only': return isHtml(el) && !readWrite(el);
+    case 'read-write': return isHtml(el) && readWrite(el);
     // `:state()` parses; this runtime has no ElementInternals custom states, so it never
     // matches (falls through to the never-matching default)
     default: return false; // the valid never-matching pseudo-classes (:hover, :focus, …)
   }
+}
+function isChecked(el) {
+  if (el.localName === 'option') return !!el.selected;
+  return el.localName === 'input' && (inputType(el) === 'checkbox' || inputType(el) === 'radio') && boolAttr(el, 'checked', 'checked');
+}
+function isOptional(el) {
+  return (el.localName === 'input' || el.localName === 'select' || el.localName === 'textarea') && !boolAttr(el, 'required', 'required');
 }
 
 // allocation-free "does the class attribute contain this whole-word class"
@@ -1077,24 +1181,29 @@ function hasClass(cn, cls) {
   return false;
 }
 
+// The type selector `tag` (null = none, '*' = universal) against `el`.
+function tagMatches(el, tag) {
+  if (tag === null || tag === '*') return true;
+  const ln = el.localName;
+  // type selectors compare ASCII case-insensitively (as the Rust engine); HTML local
+  // names are already lowercase, so only foreign elements pay for the fold
+  return ln === tag || (!!el.__ns && ln.toLowerCase() === tag);
+}
+// classes: read the class attribute ONCE and test membership without allocating
+function classesMatch(el, classes) {
+  const cn = plainAttr(el, 'class');
+  if (!cn) return false;
+  for (let i = 0; i < classes.length; i++) if (!hasClass(cn, classes[i])) return false;
+  return true;
+}
+
 function matchCompound(el, compound) {
   if (!el || el.nodeType !== 1) return false;
   if (compound.pe) return false; // a pseudo-element is never an element
   if (compound.ns === 'none' && el.namespaceURI !== null) return false;
-  const tag = compound.tag;
-  if (tag !== null && tag !== '*') {
-    const ln = el.localName;
-    // type selectors compare ASCII case-insensitively (as the Rust engine); HTML local
-    // names are already lowercase, so only foreign elements pay for the fold
-    if (ln !== tag && (!el.__ns || ln.toLowerCase() !== tag)) return false;
-  }
+  if (!tagMatches(el, compound.tag)) return false;
   if (compound.id !== null && plainAttr(el, 'id') !== compound.id) return false;
-  // classes: read the class attribute ONCE and test membership without allocating
-  if (compound.classes.length) {
-    const cn = plainAttr(el, 'class');
-    if (!cn) return false;
-    for (const cls of compound.classes) if (!hasClass(cn, cls)) return false;
-  }
+  if (compound.classes.length && !classesMatch(el, compound.classes)) return false;
   for (const a of compound.attrs) if (!matchAttr(el, a)) return false;
   for (const p of compound.pseudos) if (!matchPseudo(el, p)) return false;
   return true;
@@ -1113,7 +1222,8 @@ function matchComplex(el, cx) {
 // Match compounds 0..=k of `cx` ending at `el`, recursing leftward. Descendant (' ') and
 // general-sibling ('~') combinators try EVERY candidate ancestor/sibling and backtrack.
 // `scope` supports `:has()`: `{ comb, node }` anchors the leftmost compound to the subject.
-function matchChain(el, cx, k, scope = null) {
+// (Every caller passes `scope`: null outside `:has()`.)
+function matchChain(el, cx, k, scope) {
   if (!matchCompound(el, compoundAt(cx, k))) return false;
   if (k === 0) return scope === null ? true : relatesToScope(el, scope.comb, scope.node);
   const comb = cx.rest[k - 1].combinator;
@@ -1125,14 +1235,20 @@ function matchChain(el, cx, k, scope = null) {
     const prev = previousElement(el);
     return !!prev && matchChain(prev, cx, k - 1, scope);
   }
-  if (comb === ' ') {
-    for (let anc = el.parentNode; anc && anc.nodeType === 1; anc = anc.parentNode) {
-      if (matchChain(anc, cx, k - 1, scope)) return true;
-    }
-    return false;
+  if (comb === ' ') return someAncestorMatches(el, cx, k - 1, scope);
+  return somePrecedingSiblingMatches(el, cx, k - 1, scope);
+}
+// The descendant combinator: compounds 0..=k end at SOME element ancestor of `el`.
+function someAncestorMatches(el, cx, k, scope) {
+  for (let anc = el.parentNode; anc && anc.nodeType === 1; anc = anc.parentNode) {
+    if (matchChain(anc, cx, k, scope)) return true;
   }
+  return false;
+}
+// The general-sibling combinator: compounds 0..=k end at SOME preceding element sibling.
+function somePrecedingSiblingMatches(el, cx, k, scope) {
   for (let prev = previousElement(el); prev; prev = previousElement(prev)) {
-    if (matchChain(prev, cx, k - 1, scope)) return true;
+    if (matchChain(prev, cx, k, scope)) return true;
   }
   return false;
 }

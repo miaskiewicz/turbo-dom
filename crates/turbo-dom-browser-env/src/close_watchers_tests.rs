@@ -51,7 +51,7 @@ fn activation_host(
             set_global_flag(scope, "__history", false);
             had
         }
-        ActivationQuery::CrossOriginFrame => false,
+        ActivationQuery::CrossOriginFrame | ActivationQuery::Sticky => false,
         ActivationQuery::FullscreenAllowed => true,
     }
 }

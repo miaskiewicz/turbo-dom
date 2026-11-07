@@ -139,6 +139,9 @@ fn time<'i>(input: &mut Parser<'i, '_>) -> Result<(), ParseError<'i, ()>> {
 fn deferred_value(tokens: &TokenList<'_>) -> bool {
     tokens.0.iter().any(|token| match token {
         TokenOrValue::Var(_) | TokenOrValue::Env(_) => true,
+        TokenOrValue::Function(function) if function.name.eq_ignore_ascii_case("if") => {
+            if_function(&function.arguments)
+        }
         TokenOrValue::Function(function) => deferred_value(&function.arguments),
         TokenOrValue::Token(Token::Ident(name)) => {
             ["inherit", "initial", "unset", "revert", "revert-layer"]
@@ -147,6 +150,114 @@ fn deferred_value(tokens: &TokenList<'_>) -> bool {
         }
         _ => false,
     })
+}
+
+/// CSS `if()`, an arbitrary substitution function like `var()` (turbo-dom#322): branches
+/// `<if-condition> : <declaration-value>?` separated by `;` (the last one's optional), where a
+/// condition is `else` or a `<boolean-expr>` over `style()` / `media()` / `supports()`.
+/// Chrome 156 checks this shape at parse time and substitutes at computed-value time.
+fn if_function(arguments: &TokenList<'_>) -> bool {
+    let (mut branches, mut condition, mut in_condition, mut depth) = (0, Vec::new(), true, 0usize);
+    for token in &arguments.0 {
+        match token {
+            TokenOrValue::Token(Token::WhiteSpace(_)) => continue,
+            TokenOrValue::Token(Token::Colon) if in_condition && depth == 0 => {
+                if !if_condition(&condition) {
+                    return false;
+                }
+                branches += 1;
+                in_condition = false;
+                continue;
+            }
+            TokenOrValue::Token(Token::Semicolon) if depth == 0 => {
+                // A condition without its `:`, or an empty branch (`;;`).
+                if in_condition {
+                    return false;
+                }
+                in_condition = true;
+                condition.clear();
+                continue;
+            }
+            TokenOrValue::Token(Token::ParenthesisBlock) => depth += 1,
+            TokenOrValue::Token(Token::CloseParenthesis) => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+        if in_condition {
+            condition.push(token);
+        }
+    }
+    // Only a trailing `;` may leave the last condition empty.
+    branches > 0 && (!in_condition || condition.is_empty())
+}
+
+/// An `if()` condition: `else`, or a `<boolean-expr>` of `style()` / `media()` / `supports()`
+/// tests: `not <test>`, or tests joined by one of `and` / `or`.
+fn if_condition(tokens: &[&TokenOrValue<'_>]) -> bool {
+    if let [TokenOrValue::Token(Token::Ident(name))] = tokens {
+        if name.eq_ignore_ascii_case("else") {
+            return true;
+        }
+    }
+    boolean_expression(tokens)
+}
+
+fn boolean_expression(tokens: &[&TokenOrValue<'_>]) -> bool {
+    let keyword = |token: Option<&&TokenOrValue<'_>>| match token {
+        Some(TokenOrValue::Token(Token::Ident(name))) => Some(name.to_ascii_lowercase()),
+        _ => None,
+    };
+    if keyword(tokens.first()).as_deref() == Some("not") {
+        return if_test(&tokens[1..]) == Some(tokens.len() - 1);
+    }
+    let Some(mut at) = if_test(tokens) else {
+        return false;
+    };
+    let mut operator = None;
+    while at < tokens.len() {
+        let joiner = keyword(tokens.get(at));
+        if !matches!(joiner.as_deref(), Some("and" | "or"))
+            || operator.is_some_and(|op| op != joiner)
+        {
+            return false;
+        }
+        operator = Some(joiner);
+        let Some(length) = if_test(&tokens[at + 1..]) else {
+            return false;
+        };
+        at += 1 + length;
+    }
+    true
+}
+
+/// The token count of the `if()` test that starts `tokens`: a `style()` / `media()` /
+/// `supports()` function, or a parenthesized `<boolean-expr>`.
+fn if_test(tokens: &[&TokenOrValue<'_>]) -> Option<usize> {
+    match tokens.first()? {
+        TokenOrValue::Function(function)
+            if ["style", "media", "supports"]
+                .iter()
+                .any(|name| function.name.eq_ignore_ascii_case(name)) =>
+        {
+            Some(1)
+        }
+        TokenOrValue::Token(Token::ParenthesisBlock) => {
+            let mut depth = 0usize;
+            for (index, token) in tokens.iter().enumerate() {
+                match token {
+                    TokenOrValue::Token(Token::ParenthesisBlock) => depth += 1,
+                    TokenOrValue::Token(Token::CloseParenthesis) => {
+                        depth -= 1;
+                        if depth == 0 {
+                            return boolean_expression(&tokens[1..index]).then_some(index + 1);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            None
+        }
+        _ => None,
+    }
 }
 
 pub(super) fn valid_selector(source: &str) -> bool {
@@ -172,6 +283,11 @@ struct CssParser {
     keyframes: bool,
     font_face: bool,
     raw_descriptors: bool,
+    /// Nested inside a style rule's body (turbo-dom#358): the group at-rules that admit
+    /// nested rules (`@media`, `@supports`, `@container`, `@scope`, `@starting-style`,
+    /// `@layer`) also admit bare declarations (CSSNestedDeclarations). Set on the parser
+    /// that walks a style rule's body.
+    nested: bool,
 }
 
 fn consume(input: &mut Parser<'_, '_>) -> String {
@@ -299,10 +415,15 @@ impl<'i> QualifiedRuleParser<'i> for CssParser {
         _: &ParserState,
         input: &mut Parser<'i, 't>,
     ) -> Result<String, ParseError<'i, ()>> {
+        // A style rule's body is a nesting context (turbo-dom#358): children at-rules admit
+        // bare declarations (CSSNestedDeclarations).
+        let was = self.nested;
+        self.nested = !self.keyframes;
         let body = RuleBodyParser::new(input, self)
             .filter_map(Result::ok)
             .collect::<Vec<_>>()
             .join(" ");
+        self.nested = was;
         Ok(format!("{prelude} {{ {body} }}"))
     }
 }
@@ -410,85 +531,12 @@ impl<'i> DeclarationParser<'i> for CssParser {
         _: &ParserState,
     ) -> Result<String, ParseError<'i, ()>> {
         let start = input.position();
-        if self.raw_descriptors {
-            return Ok(format!(
-                "{}: {};",
-                name.to_ascii_lowercase(),
-                consume(input)
-            ));
+        if let Some(early) = parse_value_early(self.raw_descriptors, self.font_face, &name, input)?
+        {
+            return Ok(early);
         }
-        if self.font_face {
-            let value = consume(input);
-            return font_descriptor(&name.to_ascii_lowercase(), &value)
-                .ok_or_else(|| input.new_custom_error(()));
-        }
-        if name.eq_ignore_ascii_case("zoom") {
-            // Lightning CSS has no typed `zoom`; Chrome serializes its own grammar.
-            let value = input.parse_until_before(Delimiter::Bang, zoom_declaration)?;
-            let important = important(input)?;
-            return Ok(format!("zoom: {value}{important};"));
-        }
-        let property = name.to_ascii_lowercase();
-        if SCROLL_KEYWORD_PROPERTIES.contains(&property.as_str()) {
-            let text = input.parse_until_before(Delimiter::Bang, |input| {
-                Ok::<_, ParseError<'i, ()>>(consume(input))
-            })?;
-            let value =
-                scroll_keyword_value(&property, &text).ok_or_else(|| input.new_custom_error(()))?;
-            let important = important(input)?;
-            return Ok(format!("{property}: {value}{important};"));
-        }
-        let valid = input.parse_until_before(Delimiter::Bang, |input| {
-            // Lightning CSS does not model the CSS2 font-variant shorthand.
-            // Admit its measured caps subset without accepting arbitrary custom tokens.
-            if name.eq_ignore_ascii_case("font-variant") {
-                let value = input.expect_ident_cloned()?.to_ascii_lowercase();
-                input.expect_exhausted()?;
-                return Ok(matches!(value.as_str(), "normal" | "small-caps" | "initial" | "inherit" | "unset" | "revert" | "revert-layer"));
-            }
-            // Lightning CSS does not model `writing-mode`; admit Chrome's keywords.
-            if name.eq_ignore_ascii_case("writing-mode") {
-                let value = input.expect_ident_cloned()?.to_ascii_lowercase();
-                input.expect_exhausted()?;
-                return Ok(WRITING_MODES.contains(&value.as_str()));
-            }
-            // Lightning CSS does not model interest-invoker delays: `normal | <time>`, and the
-            // shorthand takes one or two of those.
-            if let Some(count) = interest_delay_arity(&name) {
-                let mut values = 0;
-                while !input.is_exhausted() {
-                    let valid = input
-                        .try_parse(|input| input.expect_ident_matching("normal"))
-                        .is_ok()
-                        || input.try_parse(time).is_ok();
-                    if !valid {
-                        return Ok(false);
-                    }
-                    values += 1;
-                }
-                return Ok(values >= 1 && values <= count);
-            }
-            // Lightning CSS reads a shadow's `none` as an unparsed value; Chrome keeps it.
-            if matches!(
-                name.to_ascii_lowercase().as_str(),
-                "box-shadow" | "-webkit-box-shadow" | "text-shadow"
-            ) && input
-                .try_parse(|input| {
-                    input.expect_ident_matching("none")?;
-                    input.expect_exhausted()
-                })
-                .is_ok()
-            {
-                return Ok(true);
-            }
-            let property=Property::parse(
-                PropertyId::from(lightningcss::values::string::CowArcStr::from(name.to_string())),
-                input,
-                &ParserOptions::default(),
-            )
-            .map_err(|_| input.new_custom_error(()))?;
-            Ok(!matches!(&property, Property::Unparsed(property) if !deferred_value(&property.value)))
-        })?;
+        let valid =
+            input.parse_until_before(Delimiter::Bang, |input| parse_value_body(&name, input))?;
         if !valid {
             return Err(input.new_custom_error(()));
         }
@@ -506,6 +554,204 @@ impl<'i> DeclarationParser<'i> for CssParser {
         };
         Ok(format!("{name}: {value}{important};"))
     }
+}
+
+fn parse_value_early<'i, 't>(
+    raw_descriptors: bool,
+    font_face: bool,
+    name: &CowRcStr<'i>,
+    input: &mut Parser<'i, 't>,
+) -> Result<Option<String>, ParseError<'i, ()>> {
+    if raw_descriptors {
+        return Ok(Some(format!(
+            "{}: {};",
+            name.to_ascii_lowercase(),
+            consume(input)
+        )));
+    }
+    if font_face {
+        let value = consume(input);
+        return font_descriptor(&name.to_ascii_lowercase(), &value)
+            .map(Some)
+            .ok_or_else(|| input.new_custom_error(()));
+    }
+    if name.eq_ignore_ascii_case("zoom") {
+        let value = input.parse_until_before(Delimiter::Bang, zoom_declaration)?;
+        let important = important(input)?;
+        return Ok(Some(format!("zoom: {value}{important};")));
+    }
+    let property = name.to_ascii_lowercase();
+    if SCROLL_KEYWORD_PROPERTIES.contains(&property.as_str()) {
+        let text = input.parse_until_before(Delimiter::Bang, |input| {
+            Ok::<_, ParseError<'i, ()>>(consume(input))
+        })?;
+        let value =
+            scroll_keyword_value(&property, &text).ok_or_else(|| input.new_custom_error(()))?;
+        let important = important(input)?;
+        return Ok(Some(format!("{property}: {value}{important};")));
+    }
+    Ok(None)
+}
+
+fn parse_value_body<'i>(
+    name: &CowRcStr<'i>,
+    input: &mut Parser<'i, '_>,
+) -> Result<bool, ParseError<'i, ()>> {
+    if let Some(valid) = engine_grammar(name, input) {
+        return Ok(valid);
+    }
+    if let Some(valid) = keyword_property(name, input) {
+        return valid;
+    }
+    // Lightning CSS does not model interest-invoker delays: `normal | <time>`, and the
+    // shorthand takes one or two of those.
+    if let Some(count) = interest_delay_arity(name) {
+        let mut values = 0;
+        while !input.is_exhausted() {
+            let valid = input
+                .try_parse(|input| input.expect_ident_matching("normal"))
+                .is_ok()
+                || input.try_parse(time).is_ok();
+            if !valid {
+                return Ok(false);
+            }
+            values += 1;
+        }
+        return Ok(values >= 1 && values <= count);
+    }
+    // Lightning CSS reads a shadow's `none` as an unparsed value; Chrome keeps it.
+    if matches!(
+        name.to_ascii_lowercase().as_str(),
+        "box-shadow" | "-webkit-box-shadow" | "text-shadow"
+    ) && input
+        .try_parse(|input| {
+            input.expect_ident_matching("none")?;
+            input.expect_exhausted()
+        })
+        .is_ok()
+    {
+        return Ok(true);
+    }
+    let property = Property::parse(
+        PropertyId::from(lightningcss::values::string::CowArcStr::from(
+            name.to_string(),
+        )),
+        input,
+        &ParserOptions::default(),
+    )
+    .map_err(|_| input.new_custom_error(()))?;
+    Ok(!matches!(&property, Property::Unparsed(property) if !deferred_value(&property.value)))
+}
+
+/// The keyword properties Lightning CSS does not model: the CSS2 `font-variant` shorthand (its
+/// measured caps subset, without arbitrary custom tokens) and `writing-mode` (Chrome's
+/// keywords). `None` for any other property.
+fn keyword_property<'i>(
+    name: &str,
+    input: &mut Parser<'i, '_>,
+) -> Option<Result<bool, ParseError<'i, ()>>> {
+    let allowed: &[&str] = if name.eq_ignore_ascii_case("font-variant") {
+        &[
+            "normal",
+            "small-caps",
+            "initial",
+            "inherit",
+            "unset",
+            "revert",
+            "revert-layer",
+        ]
+    } else if name.eq_ignore_ascii_case("writing-mode") {
+        &WRITING_MODES
+    } else {
+        return None;
+    };
+    let mut read = || {
+        let value = input.expect_ident_cloned()?.to_ascii_lowercase();
+        input.expect_exhausted()?;
+        Ok(allowed.contains(&value.as_str()))
+    };
+    Some(read())
+}
+
+/// turbo-dom#338: Lightning CSS models neither the tree-counting functions
+/// (`sibling-index()` / `sibling-count()`) nor `shape()` (nor `clip-path: path()`). A value
+/// holding one takes the shared declaration grammar's answer (the one `el.style` and
+/// `CSS.supports` use) when that grammar decides. For a property it leaves to Lightning CSS,
+/// a tree-counting function is checked as the integer it computes to; `None` leaves any
+/// other value to Lightning CSS (a `var()` value, a property without such a function).
+fn engine_grammar(name: &str, input: &mut Parser<'_, '_>) -> Option<bool> {
+    use turbo_dom_parser::rtdom::css_shorthand::{
+        expand, is_shorthand, longhand_alias, longhand_value, Spelled,
+    };
+    let start = input.state();
+    let value = consume(input);
+    let lower = value.to_ascii_lowercase();
+    let tree = lower.contains("sibling-index(") || lower.contains("sibling-count(");
+    let name = name.to_ascii_lowercase();
+    let name = longhand_alias(&name).unwrap_or(&name);
+    let answer = match () {
+        () if !tree && !lower.contains("shape(") && !lower.contains("path(") => None,
+        () if is_shorthand(name) => Some(expand(name, &value).is_some()),
+        () => match longhand_value(name, &value) {
+            Spelled::Valid(_) => Some(true),
+            Spelled::Invalid => Some(false),
+            Spelled::Unchecked(_) if tree && !lower.contains("var(") => {
+                Some(lightning_accepts(name, &tree_counted(&lower)))
+            }
+            Spelled::Unchecked(_) => None,
+        },
+    };
+    if answer.is_none() {
+        input.reset(&start);
+    }
+    answer
+}
+
+/// `value` with each tree-counting function as the integer 1 (both compute to one or more).
+fn tree_counted(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut rest = value;
+    while let Some(at) = rest.find("sibling-") {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        let function = ["sibling-index(", "sibling-count("]
+            .iter()
+            .find(|name| tail.starts_with(**name))
+            .and_then(|name| {
+                let close = tail[name.len()..].find(')')?;
+                tail[name.len()..name.len() + close]
+                    .trim()
+                    .is_empty()
+                    .then_some(name.len() + close + 1)
+            });
+        match function {
+            Some(length) => {
+                out.push('1');
+                rest = &tail[length..];
+            }
+            None => {
+                out.push_str("sibling-");
+                rest = &tail[8..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Whether Lightning CSS parses `value` as property `name` (not as an unparsed value).
+fn lightning_accepts(name: &str, value: &str) -> bool {
+    let mut source = ParserInput::new(value);
+    let mut input = Parser::new(&mut source);
+    Property::parse(
+        PropertyId::from(lightningcss::values::string::CowArcStr::from(
+            name.to_string(),
+        )),
+        &mut input,
+        &ParserOptions::default(),
+    )
+    .is_ok_and(|property| !matches!(property, Property::Unparsed(_)))
+        && input.expect_exhausted().is_ok()
 }
 
 /// A declaration's optional `!important` and the end of its value: the suffix to serialize.
@@ -654,6 +900,22 @@ impl<'i> AtRuleParser<'i> for CssParser {
                 .filter_map(Result::ok)
                 .collect::<Vec<_>>()
                 .join(" ")
+        } else if self.nested
+            && matches!(
+                name.as_str(),
+                "media" | "supports" | "container" | "scope" | "starting-style" | "layer"
+            )
+        {
+            // Nested inside a style rule's body (turbo-dom#358): the group at-rule admits
+            // bare declarations (CSSNestedDeclarations) and nested style rules.
+            let mut nested = CssParser {
+                nested: true,
+                ..Default::default()
+            };
+            RuleBodyParser::new(input, &mut nested)
+                .filter_map(Result::ok)
+                .collect::<Vec<_>>()
+                .join(" ")
         } else {
             let mut nested = CssParser {
                 keyframes: name == "keyframes" || name.ends_with("-keyframes"),
@@ -743,6 +1005,37 @@ mod tests {
             Some(".a { text-shadow: none; }")
         );
         assert!(!parse(".a{box-shadow:none none}").contains("box-shadow"));
+    }
+
+    #[test]
+    fn if_function_admits_chrome156_conditions_only() {
+        // Chrome 156 control: css_supports_chrome156.json (the browser-env CSS.supports test).
+        for (value, valid) in [
+            ("if(style(--x: 1): red; else: blue)", true),
+            (
+                "if((style(--x) or (media(print))) and supports(display: grid): red)",
+                true,
+            ),
+            ("if(not media(print): red;)", true),
+            ("if(else:)", true),
+            ("if(red)", false),
+            ("if()", false),
+            ("if(: red)", false),
+            ("if(style(--x); red)", false),
+            ("if(not style(--x) and media(print): red)", false),
+            (
+                "if(style(--x) and media(print) or supports(a: b): red)",
+                false,
+            ),
+            ("if(style(--x) and: red)", false),
+            ("if(style(--x) red: blue)", false),
+            ("if((style(--x): red)", false),
+            ("if((): red)", false),
+            ("if(else: red;;)", false),
+        ] {
+            let parsed = parse(&format!("a {{ color: {value} }}"));
+            assert_eq!(parsed.contains("color:"), valid, "{value}: {parsed}");
+        }
     }
 
     #[test]

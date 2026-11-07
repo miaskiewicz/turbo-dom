@@ -503,7 +503,40 @@ const STICKY_MORE_CASES = [
     [[0, 0], [150, 0], [400, 0]],
   ],
 ];
+// miaskiewicz/turbo-dom#376: a `<math>` element exists in live layout. Until the
+// native MathML layout lands, a `<math>` root takes placeholder box metrics — an
+// empty one matches Chrome 156's own empty `<math>` box exactly (0×0, placed on
+// the body's first line baseline as an inline-block), and subsequent block content
+// starts on the next line like Chrome.
+const MATHML_CASES = [
+  { id: "math-empty", html: DOC("", `<math data-cid="m"></math>`) },
+  {
+    id: "math-empty-then-p",
+    html: DOC("p{margin:0}", `<math data-cid="m"></math><p data-cid="p">after</p>`),
+  },
+];
+
 const CASES = [
+  // miaskiewicz/turbo-dom#372: a percentage-resolved width snaps to Chrome's
+  // `LayoutUnit` grid (1/64 device px). On a 1280x800 viewport (body margin 8) the
+  // containing block is 1264 px; `width: 33.33%` is 421.28125 (421.2912 before),
+  // `width: 66.666%` is 842.578125, `width: 12.5%` is 158, `width: 20%` is 252.8.
+  {
+    id: "percent-width-snaps-to-layout-unit",
+    html: DOC(
+      "",
+      `<div data-cid="a" style="width:33.33%;height:1px"></div><div data-cid="b" style="width:66.666%;height:1px"></div><div data-cid="c" style="width:12.5%;height:1px"></div><div data-cid="d" style="width:20%;height:1px"></div>`,
+    ),
+  },
+  // miaskiewicz/turbo-dom#375: an empty unknown inline element (`<xform>` is
+  // `HTMLUnknownElement`, CSS initial `display: inline`) has `offsetWidth: 0`, not
+  // the containing-block width it used to grow to.
+  {
+    id: "unknown-inline-empty",
+    html: DOC("", `<xform data-cid="x"></xform>`),
+    metrics: true,
+    measure: { x: "wh" },
+  },
   // turbo-surf#31 C: position:absolute/fixed blockify an inline (display computes to
   // block; CSS 2.1 §9.7) and it lays out as an out-of-flow box.
   {
@@ -580,6 +613,38 @@ const CASES = [
     html: DOC(
       "",
       `<table data-cid="table"><tbody data-cid="b1"><tr data-cid="r1">${CELL(10, 10, "c1")}</tr></tbody><tbody data-cid="b2"><tr data-cid="r2">${CELL(10, 10, "c2")}</tr></tbody></table>`,
+    ),
+  },
+  // miaskiewicz/turbo-dom#321: rows and row groups do not own the border-spacing, so a
+  // point in a gap (between cells, between rows, between row groups, around the cells,
+  // or in a row's missing cell slot) hits the table; a cell hits itself, a spanning one
+  // also where it spans into the next row.
+  {
+    id: "table-spacing-hits",
+    html: DOC(
+      "body{margin:0}table{border-spacing:10px 6px;border:2px solid #000;padding:4px}td{padding:0}",
+      `<table data-cid="table"><tbody data-cid="b1"><tr data-cid="r1">${CELL(30, 10, "a")}${CELL(30, 10, "b")}<td data-cid="s" rowspan="2">${BOX(30, 10)}</td></tr><tr data-cid="r2">${CELL(30, 10, "c")}</tr></tbody><tbody data-cid="b2"><tr data-cid="r3">${CELL(30, 10, "d")}${CELL(30, 10, "e")}${CELL(30, 10, "f")}</tr></tbody></table>`,
+    ),
+    hits: [[20, 20], [50, 20], [20, 25], [70, 33], [110, 15], [110, 33], [20, 40], [50, 48], [130, 48], [3, 3], [8, 20], [20, 60], [140, 20], [145, 20]],
+  },
+  // A floated or absolutely positioned row / row group is blockified: a block box that
+  // hits itself (miaskiewicz/turbo-dom#321).
+  {
+    id: "table-spacing-blockified-rows",
+    html: DOC(
+      "body{margin:0}div{width:50px;height:20px}",
+      `<div data-cid="f" style="display:table-row;float:left"></div><div data-cid="g" style="display:table-row-group;float:left"></div><div data-cid="a" style="display:table-row;position:absolute;left:0;top:40px"></div><div data-cid="h" style="display:table-header-group;position:absolute;left:60px;top:40px"></div>`,
+    ),
+    hits: [[10, 10], [60, 10], [10, 50], [70, 50]],
+  },
+  // A row-spanning cell spans the border-spacing between its rows too: it is as tall as
+  // its rows and the gaps between them, and content that fits there grows no row
+  // (miaskiewicz/turbo-dom#321).
+  {
+    id: "table-rowspan-spacing",
+    html: DOC(
+      "body{margin:0}table{border-spacing:10px 6px}td{padding:0}",
+      `<table data-cid="table"><tr data-cid="r1">${CELL(30, 10, "a")}<td data-cid="s" rowspan="2">${BOX(30, 26)}</td><td data-cid="t" rowspan="2">${BOX(30, 20)}</td></tr><tr data-cid="r2">${CELL(30, 10, "c")}</tr></table>`,
     ),
   },
   {
@@ -953,6 +1018,7 @@ const CASES = [
       scroll: { [scroller || "sc"]: [left, top] },
     })),
   ),
+  ...MATHML_CASES,
   // miaskiewicz/turbo-dom#295: sticky inline boxes in scrolled scrollers.
   ...STICKY_CASES.flatMap(([id, body, offsets, scrollers]) =>
     offsets.map(([left, top]) => ({

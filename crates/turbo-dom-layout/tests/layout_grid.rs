@@ -15,10 +15,15 @@ fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
 }
 
 fn el(tag: &str, pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNode {
+    let mut style = cs(pairs);
+    // Chrome's `html.css` default `display` for the tag (miaskiewicz/turbo-dom#375):
+    // test-built styled trees bypass the UA cascade, so set it explicitly for known
+    // HTML block elements.
+    turbo_dom_layout::test_support::ensure_default_display(&mut style, tag);
     StyledNode::Element(StyledElement {
         tag: Tag::Html(tag.to_string()),
         attrs: vec![],
-        style: cs(pairs),
+        style,
         children,
         source: None,
     })

@@ -295,6 +295,59 @@
     const later = document.createElement('p');
     document.getElementById('styled').append(later);
     out.unsetAppended = read(later);
+  } else if (document.getElementById('cssWideKeywords')) {
+    // turbo-dom#317: a CSS-wide keyword computes to the value it selects: initial -> the
+    // property's initial value (currentcolor -> the element's color), inherit -> the parent's
+    // computed value, unset -> inherit / initial by whether the property inherits, revert ->
+    // the UA value (html.css), else as unset. Inline and rule declarations, any case.
+    const props = ['background-color', 'margin-top', 'margin-bottom', 'margin-left', 'padding-left', 'border-top-color', 'border-top-width', 'outline-color', 'opacity', 'transform', 'text-align', 'letter-spacing', 'max-width', 'z-index', 'float', 'color'];
+    const read = (el) => { const s = getComputedStyle(el); return Object.fromEntries(props.map((p) => [p, s.getPropertyValue(p)])); };
+    out.keywords = Object.fromEntries(Array.from(document.querySelectorAll('[id]'), (el) => [el.id, read(el)]));
+    const camel = getComputedStyle(document.getElementById('kwInitial'));
+    out.keywordsCamel = [camel.backgroundColor, camel.opacity, camel.borderTopColor];
+    const detached = document.createElement('div');
+    detached.style.backgroundColor = 'initial';
+    out.keywordsDetached = read(detached);
+  } else if (document.getElementById('usedSize')) {
+    // turbo-dom#316: width / height read the used value (px) of a rendered box that is not a
+    // non-atomic inline (box-sizing picks the content or border box; min / max clamp), and the
+    // computed value otherwise: display none / contents, inline non-replaced, disconnected ("").
+    // `usedBoxes` records Chrome's layout facts per element (null = no box; else the border
+    // box and content box sizes) that the binding's test feeds back as the embedder's layout.
+    const ids = Array.from(document.querySelectorAll('[id]'), (el) => el.id);
+    const size = (el) => { const s = getComputedStyle(el); return [s.width, s.height, s.getPropertyValue('width'), s.getPropertyValue('height')]; };
+    out.used = Object.fromEntries(ids.map((id) => [id, size(document.getElementById(id))]));
+    out.usedDetached = size(document.createElement('div'));
+    out.usedBoxes = Object.fromEntries(ids.map((id) => {
+      const el = document.getElementById(id);
+      if (!el.getClientRects().length) return [id, null];
+      const r = el.getBoundingClientRect(), s = getComputedStyle(el), px = (name) => parseFloat(s.getPropertyValue(name)) || 0;
+      const x = px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width');
+      const y = px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width');
+      return [id, [r.width, r.height, r.width - x, r.height - y]];
+    }));
+  } else if (document.getElementById('xform')) {
+    // turbo-dom#353: `transform` computes to the resolved matrix()/matrix3d()/none like
+    // Chrome 156. 2D-only lists serialize as matrix() with 6 values; a list with any 3D
+    // function as matrix3d() with 16 column-major values. Percentage translates resolve
+    // against the element's border box (width for X, height for Y); lengths use the
+    // element's font size for em. CSS-wide keywords on `transform` were covered by case
+    // css-wide-keywords.
+    const ids = Array.from(document.querySelectorAll('[id]'), (el) => el.id);
+    const xf = (el) => getComputedStyle(el).transform;
+    out.transform = Object.fromEntries(ids.map((id) => [id, xf(document.getElementById(id))]));
+    const camel = getComputedStyle(document.getElementById('x1'));
+    out.transformCamel = [camel.transform, camel.getPropertyValue('transform')];
+    out.transformDetached = xf(document.createElement('div'));
+    out.transformBoxes = Object.fromEntries(ids.map((id) => {
+      const el = document.getElementById(id);
+      if (!el.getClientRects().length) return [id, null];
+      const s = getComputedStyle(el), px = (name) => parseFloat(s.getPropertyValue(name)) || 0;
+      const w = el.offsetWidth, h = el.offsetHeight;
+      const x = px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width');
+      const y = px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width');
+      return [id, [w, h, w - x, h - y, px('font-size')]];
+    }));
   } else {
     // the title setter creates a <title> on demand
     document.title = 'set';

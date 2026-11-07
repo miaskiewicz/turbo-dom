@@ -20,6 +20,7 @@
 //   inline-sticky/probe.js         -> inline-sticky/chrome156.json         400x300
 //   line-height/probe.js           -> line-height/chrome156.json           400x300
 //   hyphens/probe.js               -> hyphens/chrome156.json               800x600
+//   hyphens/words-probe.js         -> hyphens/words-chrome156.json         800x600
 //   crates/turbo-dom-browser-env/src/canvas_measure_text_probe.js
 //                                  -> canvas_measure_text_chrome156.json   800x600
 //   text-advances/probe.js         -> text-advances/chrome156.json         800x600
@@ -94,6 +95,7 @@ const CONTROLS = [
   ["inline-sticky/probe.js", "inline-sticky/chrome156.json", [400, 300]],
   ["line-height/probe.js", "line-height/chrome156.json", [400, 300]],
   ["hyphens/probe.js", "hyphens/chrome156.json", [800, 600]],
+  ["hyphens/words-probe.js", "hyphens/words-chrome156.json", [800, 600]],
   ["text-advances/probe.js", "text-advances/chrome156.json", [800, 600]],
   ["bidi/probe.js", "bidi/chrome156.json", [800, 600]],
   // A repo-relative path names a control outside the layout fixtures (turbo-dom#237).

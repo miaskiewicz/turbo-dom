@@ -157,6 +157,16 @@ pub(super) fn focusable(
     if tree.node_type_id(node) != 1 {
         return false;
     }
+    if !focusable_kind(tree, node) || html_invokers::disabled_control(node) {
+        return false;
+    }
+    if hidden_visibility(tree, node, policy) {
+        return false;
+    }
+    rendered_up_to_dialog(tree, node, dialog, policy)
+}
+
+fn focusable_kind(tree: &Tree, node: Handle) -> bool {
     let attribute = |name: &str| tree.get_attribute(node, name);
     let native = match (tree.namespace_id(node), tree.local_name(node)) {
         (0, Some("a")) => attribute("href").is_some(),
@@ -195,14 +205,16 @@ pub(super) fn focusable(
                 "" | "true" | "plaintext-only"
             )
         });
-    if !(native || tabindex || editable) || html_invokers::disabled_control(node) {
-        return false;
-    }
-    if hidden_visibility(tree, node, policy) {
-        return false;
-    }
-    // Rendered and not inert up to the dialog: closed dialogs render nothing, closed details
-    // render only their summary.
+    native || tabindex || editable
+}
+
+/// Walk up to the dialog checking render/inert gates.
+fn rendered_up_to_dialog(
+    tree: &Tree,
+    node: Handle,
+    dialog: Handle,
+    policy: &turbo_dom_parser::rtdom::cascade::StylePolicy,
+) -> bool {
     let mut child = None;
     let mut current = Some(node);
     while let Some(element) = current {

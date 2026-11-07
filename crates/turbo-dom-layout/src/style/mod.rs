@@ -48,8 +48,11 @@ pub use token::{StyleToken, TokenSet};
 /// content-box. Form controls take Chrome 156's `html.css` defaults (the 13.333px
 /// control font, 2px inset / outset borders, paddings, checkbox / radio / range / color
 /// sizes and margins; miaskiewicz/turbo-dom#239); their font-dependent intrinsic sizes are
-/// `layout::form_controls`.
+/// `layout::form_controls`. A `<progress>` / `<meter>` is an inline-block of html.css's
+/// `10em` / `5em` by `1em` logical size (the internal `-internal-ua-css-size`, which
+/// `appearance: none` keeps; miaskiewicz/turbo-dom#293).
 const UA_CSS: &str = "
+address, article, aside, blockquote, body, center, dd, details, dialog, dir, div, dl, dt, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, html, legend, listing, main, menu, nav, ol, option, p, plaintext, pre, search, section, summary, ul, xmp { display: block }
 body { font-family: sans-serif }
 code, kbd, samp, pre { font-family: monospace }
 pre, listing, xmp, plaintext { white-space: pre }
@@ -77,6 +80,7 @@ sub { vertical-align: sub }
 sup { vertical-align: super }
 table { display: table; text-align: left; box-sizing: border-box; border-spacing: 2px }
 thead { display: table-header-group }
+tbody { display: table-row-group }
 tfoot { display: table-footer-group }
 tr { display: table-row }
 caption { display: table-caption; text-align: -webkit-center }
@@ -101,6 +105,9 @@ input[type=checkbox] { margin: 3px 3px 3px 4px; padding: 0; border: 0; -internal
 input[type=radio] { margin: 3px 3px 0 5px; padding: 0; border: 0; -internal-ua-size: 13px 13px }
 input[type=range] { margin: 2px; padding: 0; border: 0; -internal-ua-size: 129px 16px }
 input[type=color] { -internal-ua-size: 50px 27px; padding: 1px 2px; border: 1px solid #767676; background-color: #efefef }
+progress, meter { display: inline-block }
+progress { -internal-ua-css-size: 10em 1em }
+meter { -internal-ua-css-size: 5em 1em }
 button, select, meter, progress, input[type=button], input[type=submit], input[type=reset], input[type=color], input[type=checkbox], input[type=radio], input[type=search] { box-sizing: border-box }
 template { display: none }
 canvas, video, audio, object, embed { display: inline }
@@ -169,6 +176,51 @@ static QUIRKS_UA_SHEET: std::sync::LazyLock<Stylesheet> =
 /// `form` type selector's specificity, before every embedder UA rule).
 pub(crate) fn quirks_form_declarations() -> impl Iterator<Item = MatchedDeclaration> {
     QUIRKS_UA_SHEET.rules[0]
+        .declarations
+        .iter()
+        .map(|declaration| MatchedDeclaration {
+            declaration: declaration.clone(),
+            origin: CascadeOrigin::UserAgent,
+            scope_depth: 0,
+            inline: false,
+            specificity: (0, 0, 1),
+            order: 0,
+        })
+}
+
+/// Placeholder `MathML` user-agent rules ([miaskiewicz/turbo-dom#376](https://github.com/miaskiewicz/turbo-dom/issues/376)):
+/// a `MathML` root is an inline-block with 0×0 placeholder metrics (Chrome 156's
+/// own empty `<math>`: 0×0 on the current line box baseline), and every `MathML`
+/// descendant takes `display: none` so no `MathML` content enters the box. The real
+/// `MathML` layout — glyph-driven widths and heights per element — is future work.
+const MATHML_ROOT_CSS: &str = "math { display: inline-block; width: 0; height: 0 }";
+const MATHML_DESCENDANT_CSS: &str = "math * { display: none }";
+
+static MATHML_ROOT_SHEET: std::sync::LazyLock<Stylesheet> =
+    std::sync::LazyLock::new(|| parse_stylesheet(MATHML_ROOT_CSS));
+static MATHML_DESCENDANT_SHEET: std::sync::LazyLock<Stylesheet> =
+    std::sync::LazyLock::new(|| parse_stylesheet(MATHML_DESCENDANT_CSS));
+
+/// The placeholder `MathML`-root declarations as UA-origin matched declarations (before
+/// every embedder UA rule); see [`MATHML_ROOT_CSS`].
+pub(crate) fn mathml_root_declarations() -> impl Iterator<Item = MatchedDeclaration> {
+    MATHML_ROOT_SHEET.rules[0]
+        .declarations
+        .iter()
+        .map(|declaration| MatchedDeclaration {
+            declaration: declaration.clone(),
+            origin: CascadeOrigin::UserAgent,
+            scope_depth: 0,
+            inline: false,
+            specificity: (0, 0, 1),
+            order: 0,
+        })
+}
+
+/// The placeholder `MathML`-descendant declarations as UA-origin matched declarations
+/// (see [`MATHML_DESCENDANT_CSS`]).
+pub(crate) fn mathml_descendant_declarations() -> impl Iterator<Item = MatchedDeclaration> {
+    MATHML_DESCENDANT_SHEET.rules[0]
         .declarations
         .iter()
         .map(|declaration| MatchedDeclaration {

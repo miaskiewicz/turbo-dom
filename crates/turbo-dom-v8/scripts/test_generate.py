@@ -103,7 +103,7 @@ class ManifestTransformTests(unittest.TestCase):
     def test_package_identity_license_links_and_metadata(self):
         package = self.result["package"]
         self.assertEqual(package["name"], "turbo-dom-v8")
-        self.assertEqual(package["version"], "150.4.0")
+        self.assertEqual(package["version"], "150.4.1")
         self.assertEqual(package["links"], "rusty_v8")
         self.assertEqual(package["rust-version"], "1.91")
         self.assertEqual(package["repository"], "https://github.com/miaskiewicz/turbo-dom")

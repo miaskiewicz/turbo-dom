@@ -41,6 +41,10 @@ pub(crate) const DOCUMENT: u32 = 1;
 /// turbo-surf's live user-agent supplement (its `LIVE_UA`), so layouts match the
 /// embedder's defaults.
 const LIVE_UA: &str = concat!(
+    // Chrome's html.css block defaults (miaskiewicz/turbo-dom#375): the layout engine
+    // now defaults an unspecified `display` to `inline`, so known HTML block elements
+    // take `display: block` explicitly here.
+    "address,article,aside,blockquote,body,center,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,h1,h2,h3,h4,h5,h6,header,hgroup,hr,html,legend,listing,main,menu,nav,ol,option,p,plaintext,pre,search,section,summary,ul,xmp{display:block}",
     "body{margin:8px;font-family:serif}",
     "button{display:inline-block;font-family:Arial;font-size:13.3333px;font-style:normal;font-weight:400;font-stretch:normal;font-variant-caps:normal;line-height:normal;margin:0;border-width:2px;vertical-align:baseline}",
     "iframe{display:inline;border:2px inset}",

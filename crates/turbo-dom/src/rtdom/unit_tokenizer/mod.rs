@@ -651,6 +651,90 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         }
 
         trace!("processing in state {:?}", self.state);
+        match Self::step_group(self.state.get()) {
+            0 => self.step_group_0(input),
+            1 => self.step_group_1(input),
+            2 => self.step_group_2(input),
+            3 => self.step_group_3(input),
+            4 => self.step_group_4(input),
+            5 => self.step_group_5(input),
+            6 => self.step_group_6(input),
+            7 => self.step_group_7(input),
+            8 => self.step_group_8(input),
+            9 => self.step_group_9(input),
+            10 => self.step_group_10(input),
+            11 => self.step_group_11(input),
+            _ => self.step_group_12(input),
+        }
+    }
+
+    /// Which `step_group_N` runs `state`: the arms of the original `step` match, in
+    /// their order, split into groups so each stays under the complexity limit.
+    fn step_group(state: states::State) -> u8 {
+        match state {
+            states::Data => 0,
+            states::RawData(Rcdata) => 0,
+            states::RawData(Rawtext) => 0,
+            states::RawData(ScriptData) => 0,
+            states::RawData(ScriptDataEscaped(Escaped)) => 1,
+            states::RawData(ScriptDataEscaped(DoubleEscaped)) => 1,
+            states::Plaintext => 1,
+            states::TagOpen => 1,
+            states::EndTagOpen => 2,
+            states::TagName => 2,
+            states::RawLessThanSign(ScriptDataEscaped(Escaped)) => 2,
+            states::RawLessThanSign(ScriptDataEscaped(DoubleEscaped)) => 2,
+            states::RawLessThanSign(_) => 3,
+            states::RawEndTagOpen(_) => 3,
+            states::RawEndTagName(_) => 3,
+            states::ScriptDataEscapeStart(DoubleEscaped) => 4,
+            states::ScriptDataEscapeStart(Escaped) => 4,
+            states::ScriptDataEscapeStartDash => 4,
+            states::ScriptDataEscapedDash(_) => 4,
+            states::ScriptDataEscapedDashDash(_) => 5,
+            states::ScriptDataDoubleEscapeEnd => 5,
+            states::BeforeAttributeName => 5,
+            states::AttributeName => 6,
+            states::AfterAttributeName => 6,
+            states::BeforeAttributeValue => 6,
+            states::AttributeValue(DoubleQuoted) => 6,
+            states::AttributeValue(SingleQuoted) => 7,
+            states::AttributeValue(Unquoted) => 7,
+            states::AfterAttributeValueQuoted => 7,
+            states::SelfClosingStartTag => 7,
+            states::CommentStart => 7,
+            states::CommentStartDash => 7,
+            states::Comment => 8,
+            states::CommentLessThanSign => 8,
+            states::CommentLessThanSignBang => 8,
+            states::CommentLessThanSignBangDash => 8,
+            states::CommentLessThanSignBangDashDash => 8,
+            states::CommentEndDash => 8,
+            states::CommentEnd => 9,
+            states::CommentEndBang => 9,
+            states::Doctype => 9,
+            states::BeforeDoctypeName => 9,
+            states::DoctypeName => 9,
+            states::AfterDoctypeName => 10,
+            states::AfterDoctypeKeyword(_) => 10,
+            states::BeforeDoctypeIdentifier(_) => 10,
+            states::DoctypeIdentifierDoubleQuoted(_) => 10,
+            states::DoctypeIdentifierSingleQuoted(_) => 10,
+            states::AfterDoctypeIdentifier(Public) => 11,
+            states::AfterDoctypeIdentifier(System) => 11,
+            states::BetweenDoctypePublicAndSystemIdentifiers => 11,
+            states::BogusDoctype => 11,
+            states::BogusComment => 11,
+            states::MarkupDeclarationOpen => 12,
+            states::CdataSection => 12,
+            states::CdataSectionBracket => 12,
+            states::CdataSectionEnd => 12,
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 0.
+    #[allow(clippy::never_loop)]
+    fn step_group_0(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
         match self.state.get() {
             //§ data-state
             states::Data => loop {
@@ -743,6 +827,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 0"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 1.
+    #[allow(clippy::never_loop)]
+    fn step_group_1(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ script-data-escaped-state
             states::RawData(ScriptDataEscaped(Escaped)) => loop {
                 match pop_except_from!(self, input, small_char_set!('\r' '\0' '-' '<' '\n')) {
@@ -816,6 +909,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 1"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 2.
+    #[allow(clippy::never_loop)]
+    fn step_group_2(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ end-tag-open-state
             states::EndTagOpen => loop {
                 match get_char!(self, input) {
@@ -878,6 +980,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 2"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 3.
+    #[allow(clippy::never_loop)]
+    fn step_group_3(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ rcdata-less-than-sign-state rawtext-less-than-sign-state script-data-less-than-sign-state
             // otherwise
             states::RawLessThanSign(kind) => loop {
@@ -932,6 +1043,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 3"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 4.
+    #[allow(clippy::never_loop)]
+    fn step_group_4(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ script-data-double-escape-start-state
             states::ScriptDataEscapeStart(DoubleEscaped) => loop {
                 let c = get_char!(self, input);
@@ -1002,6 +1122,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 4"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 5.
+    #[allow(clippy::never_loop)]
+    fn step_group_5(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ script-data-escaped-dash-dash-state script-data-double-escaped-dash-dash-state
             states::ScriptDataEscapedDashDash(kind) => loop {
                 match get_char!(self, input) {
@@ -1076,6 +1205,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 5"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 6.
+    #[allow(clippy::never_loop)]
+    fn step_group_6(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ attribute-name-state
             states::AttributeName => loop {
                 match get_char!(self, input) {
@@ -1154,6 +1292,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 6"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 7.
+    #[allow(clippy::never_loop)]
+    fn step_group_7(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ attribute-value-(single-quoted)-state
             states::AttributeValue(SingleQuoted) => loop {
                 match pop_except_from!(self, input, small_char_set!('\r' '\'' '&' '\0' '\n')) {
@@ -1253,6 +1400,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 7"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 8.
+    #[allow(clippy::never_loop)]
+    fn step_group_8(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ comment-state
             states::Comment => loop {
                 match get_char!(self, input) {
@@ -1314,6 +1470,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 8"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 9.
+    #[allow(clippy::never_loop)]
+    fn step_group_9(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ comment-end-state
             states::CommentEnd => loop {
                 match get_char!(self, input) {
@@ -1383,6 +1548,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 9"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 10.
+    #[allow(clippy::never_loop)]
+    fn step_group_10(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ after-doctype-name-state
             states::AfterDoctypeName => loop {
                 if eat!(self, input, "public") {
@@ -1473,6 +1647,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 10"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 11.
+    #[allow(clippy::never_loop)]
+    fn step_group_11(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ after-doctype-public-identifier-state
             states::AfterDoctypeIdentifier(Public) => loop {
                 match get_char!(self, input) {
@@ -1551,6 +1734,15 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
 
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 11"),
+        }
+    }
+
+    /// `step` for the states [`Self::step_group`] routes to group 12.
+    #[allow(clippy::never_loop)]
+    fn step_group_12(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        match self.state.get() {
             //§ markup-declaration-open-state
             states::MarkupDeclarationOpen => loop {
                 if eat_exact!(self, input, "--") {
@@ -1600,6 +1792,8 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                 }
             },
             //§ END
+            // `step_group` routes only this group's states here.
+            _ => unreachable!("state not in step group 12"),
         }
     }
 

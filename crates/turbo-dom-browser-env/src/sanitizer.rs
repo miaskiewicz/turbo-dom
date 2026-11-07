@@ -344,75 +344,102 @@ pub(super) fn sanitize(
                     tree.remove_child(parent, node);
                 }
             }
-            1 => {
-                let element = Name {
-                    name: tree.local_name_utf16(node).unwrap_or_default(),
-                    namespace: tree.namespace_uri_utf16(node),
-                };
-                if config
-                    .replace_with_children
-                    .as_ref()
-                    .is_some_and(|list| list.contains(&element))
-                {
-                    for child in tree.children(node) {
-                        // A replaced template contributes its contents.
-                        let hoisted = if tree.node_type_id(child) == 11 {
-                            tree.children(child)
-                        } else {
-                            vec![child]
-                        };
-                        for child in hoisted {
-                            tree.insert_before(parent, child, Some(node));
-                            pending.push(Pending {
-                                node: child,
-                                parser_parent: node,
-                                parent_replaced: true,
-                            });
-                        }
-                    }
-                    tree.remove_child(parent, node);
-                    continue;
-                }
-                let rules = match &config.elements {
-                    Some(elements) => elements.get(&element),
-                    None => Some(&empty),
-                };
-                let Some(rules) = rules.filter(|_| {
-                    !config
-                        .remove_elements
-                        .as_ref()
-                        .is_some_and(|list| list.contains(&element))
-                }) else {
-                    tree.remove_child(parent, node);
-                    continue;
-                };
-                filter_attributes(tree, node, &element, rules, config, safe);
-                let shadow_template = element == template
-                    && tree
-                        .get_attribute(node, "shadowrootmode")
-                        .is_some_and(|mode| {
-                            mode.eq_ignore_ascii_case("open") || mode.eq_ignore_ascii_case("closed")
-                        })
-                    && shadow_html::valid_host(tree, parser_parent);
-                if shadow_template && parent_replaced {
-                    // Attached to the discarded host: dropped with it, once.
-                    if discarded_hosts.insert(parser_parent) {
-                        tree.remove_child(parent, node);
-                        continue;
-                    }
-                } else if shadow_template {
-                    declarative.insert(node);
-                }
-                pending.extend(children_of(tree, node, node, false));
-                if let Some(shadow) = tree.shadow_root(node) {
-                    pending.extend(children_of(tree, shadow, shadow, false));
-                }
-            }
+            1 => sanitize_element(
+                tree,
+                node,
+                parent,
+                parser_parent,
+                parent_replaced,
+                config,
+                &empty,
+                &template,
+                safe,
+                &mut pending,
+                &mut declarative,
+                &mut discarded_hosts,
+            ),
             _ => {}
         }
     }
     declarative
 }
+#[allow(clippy::too_many_arguments)]
+fn sanitize_element(
+    tree: &mut Tree,
+    node: Handle,
+    parent: Handle,
+    parser_parent: Handle,
+    parent_replaced: bool,
+    config: &Config,
+    empty: &ElementRules,
+    template: &Name,
+    safe: bool,
+    pending: &mut Vec<Pending>,
+    declarative: &mut HashSet<Handle>,
+    discarded_hosts: &mut HashSet<Handle>,
+) {
+    let element = Name {
+        name: tree.local_name_utf16(node).unwrap_or_default(),
+        namespace: tree.namespace_uri_utf16(node),
+    };
+    if config
+        .replace_with_children
+        .as_ref()
+        .is_some_and(|list| list.contains(&element))
+    {
+        for child in tree.children(node) {
+            let hoisted = if tree.node_type_id(child) == 11 {
+                tree.children(child)
+            } else {
+                vec![child]
+            };
+            for child in hoisted {
+                tree.insert_before(parent, child, Some(node));
+                pending.push(Pending {
+                    node: child,
+                    parser_parent: node,
+                    parent_replaced: true,
+                });
+            }
+        }
+        tree.remove_child(parent, node);
+        return;
+    }
+    let rules = match &config.elements {
+        Some(elements) => elements.get(&element),
+        None => Some(empty),
+    };
+    let Some(rules) = rules.filter(|_| {
+        !config
+            .remove_elements
+            .as_ref()
+            .is_some_and(|list| list.contains(&element))
+    }) else {
+        tree.remove_child(parent, node);
+        return;
+    };
+    filter_attributes(tree, node, &element, rules, config, safe);
+    let shadow_template = &element == template
+        && tree
+            .get_attribute(node, "shadowrootmode")
+            .is_some_and(|mode| {
+                mode.eq_ignore_ascii_case("open") || mode.eq_ignore_ascii_case("closed")
+            })
+        && shadow_html::valid_host(tree, parser_parent);
+    if shadow_template && parent_replaced {
+        if discarded_hosts.insert(parser_parent) {
+            tree.remove_child(parent, node);
+            return;
+        }
+    } else if shadow_template {
+        declarative.insert(node);
+    }
+    pending.extend(children_of(tree, node, node, false));
+    if let Some(shadow) = tree.shadow_root(node) {
+        pending.extend(children_of(tree, shadow, shadow, false));
+    }
+}
+
 fn filter_attributes(
     tree: &mut Tree,
     node: Handle,
@@ -427,34 +454,59 @@ fn filter_attributes(
             name: attribute.local_name,
             namespace: attribute.namespace,
         };
-        let contains =
-            |list: &Option<HashSet<Name>>| list.as_ref().is_some_and(|list| list.contains(&name));
-        let mut remove = contains(&rules.remove_attributes);
-        if !remove {
-            remove = if config.attributes.is_some() {
-                !contains(&config.attributes)
-                    && !contains(&rules.attributes)
-                    && !(config.data_attributes && data_attribute(&name))
-            } else if rules.attributes.is_some() {
-                !contains(&rules.attributes)
-            } else {
-                contains(&config.remove_attributes)
-            };
-        }
-        if !remove && safe {
-            let value = &attribute.value;
-            remove = navigating(element, &name) && javascript_url(value)
-                || mathml
-                    && (name.is("href", None) || name.is("href", Some(XLINK)))
-                    && javascript_url(value)
-                || animating(element, &name)
-                    && (value.iter().copied().eq("href".encode_utf16())
-                        || value.iter().copied().eq("xlink:href".encode_utf16()));
-        }
-        if remove {
+        if attribute_should_remove(
+            &name,
+            &attribute.value,
+            element,
+            rules,
+            config,
+            safe,
+            mathml,
+        ) {
             tree.remove_attribute_ns_units(node, name.namespace.as_deref(), &name.name);
         }
     }
+}
+
+fn attribute_should_remove(
+    name: &Name,
+    value: &[u16],
+    element: &Name,
+    rules: &ElementRules,
+    config: &Config,
+    safe: bool,
+    mathml: bool,
+) -> bool {
+    let contains =
+        |list: &Option<HashSet<Name>>| list.as_ref().is_some_and(|list| list.contains(name));
+    let mut remove = contains(&rules.remove_attributes);
+    if !remove {
+        remove = if config.attributes.is_some() {
+            !contains(&config.attributes)
+                && !contains(&rules.attributes)
+                && !(config.data_attributes && data_attribute(name))
+        } else if rules.attributes.is_some() {
+            !contains(&rules.attributes)
+        } else {
+            contains(&config.remove_attributes)
+        };
+    }
+    if !remove && safe {
+        remove = unsafe_attribute(element, name, value, mathml);
+    }
+    remove
+}
+
+fn unsafe_attribute(element: &Name, name: &Name, value: &[u16], mathml: bool) -> bool {
+    if navigating(element, name) && javascript_url(value) {
+        return true;
+    }
+    if mathml && (name.is("href", None) || name.is("href", Some(XLINK))) && javascript_url(value) {
+        return true;
+    }
+    animating(element, name)
+        && (value.iter().copied().eq("href".encode_utf16())
+            || value.iter().copied().eq("xlink:href".encode_utf16()))
 }
 
 fn record_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Private> {

@@ -1,10 +1,11 @@
 //! The style pass: resolve every kept composed source from its pre-matched
 //! declarations, presentational hints and inline style, parents before children.
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use turbo_dom::rtdom::tree::NodeType;
 use turbo_dom::Handle;
 
+use super::capture::MATHML;
 use super::{
     source_id, LiveCapture, LiveError, LiveStyle, MatchedTarget, OriginRules, PreMatched,
     MAX_DECLARATIONS,
@@ -24,10 +25,12 @@ pub(super) fn style(
     capture: &LiveCapture,
 ) -> Result<Vec<StyledNode>, LiveError> {
     let matched = matched(style.origins)?;
+    let math_roots: HashSet<SourceId> = capture.math_roots.iter().copied().collect();
     let styler = Styler {
         style,
         capture,
         matched: &matched,
+        math_roots: &math_roots,
     };
     styler.children(style.tree.tree.root(), &ComputedStyle::default())
 }
@@ -84,6 +87,8 @@ struct Styler<'s, 'a> {
     style: &'s LiveStyle<'a>,
     capture: &'s LiveCapture,
     matched: &'s Matched,
+    /// The composed `MathML` roots captured for this document; see [`LiveCapture::math_roots`].
+    math_roots: &'s HashSet<SourceId>,
 }
 
 impl Styler<'_, '_> {
@@ -129,6 +134,17 @@ impl Styler<'_, '_> {
         // take `margin-block-end: 1em` at the UA level, beneath every embedder rule.
         if self.capture.quirks && local == "form" {
             declarations.extend(crate::style::quirks_form_declarations());
+        }
+        // Placeholder `MathML` metrics (miaskiewicz/turbo-dom#376): the composed MathML
+        // root is an inline-block of 0×0 (matches Chrome 156's empty `<math>` placeholder
+        // box); its descendants take `display: none`, so no `MathML` content renders until
+        // the native `MathML` layout is implemented.
+        if tree.namespace_uri(node) == Some(MATHML) {
+            if self.math_roots.contains(&self.id(node)) {
+                declarations.extend(crate::style::mathml_root_declarations());
+            } else {
+                declarations.extend(crate::style::mathml_descendant_declarations());
+            }
         }
         declarations.extend(
             self.matched

@@ -216,6 +216,58 @@
   ce.created((host, definition) => {
     if (definition.formAssociated) recordFor(host, definition);
   });
+  // Whether an attribute mutation can change the host's form owner or disabled state.
+  const attributeRelevant = (event, host) => {
+    const name = event.attributeName;
+    if (name !== "disabled" && name !== "form" && name !== "id") return false;
+    if (name === "form" && event.target !== host) return false;
+    if (name === "disabled" && event.target !== host && !apply(contains, event.target, [host]))
+      return false;
+    return !(name === "id" && forms.attribute(host, "form") === null);
+  };
+  // Whether a childList mutation added or removed the host or its form owner.
+  const childListRelevant = (event, host, record) => {
+    let relevant = false;
+    for (const rows of [event.removedNodes, event.addedNodes])
+      for (let at = 0; at < rows.length; at++)
+        if (
+          apply(contains, rows[at], [host]) ||
+          (record.owner && apply(contains, rows[at], [record.owner]))
+        )
+          relevant = true;
+    return relevant;
+  };
+  const mutationRelevant = (event, host, record) => {
+    if (event?.type === "attributes") return attributeRelevant(event, host);
+    if (event?.type === "childList") return childListRelevant(event, host, record);
+    return true;
+  };
+  // The host removed without its form owner loses that owner first.
+  const ownerRemoved = (event, host, record) => {
+    for (let at = 0; at < event.removedNodes.length; at++) {
+      const removed = event.removedNodes[at];
+      if (apply(contains, removed, [host]) && !apply(contains, removed, [record.owner])) {
+        ns.bumpStyleState();
+        record.owner = null;
+        ce.callback(host, "formAssociatedCallback", [null]);
+        break;
+      }
+    }
+  };
+  const syncFormState = (host, record) => {
+    const owner = forms.owner(host),
+      disabled = forms.disabled(host);
+    if (owner !== record.owner) {
+      ns.bumpStyleState();
+      record.owner = owner;
+      ce.callback(host, "formAssociatedCallback", [owner]);
+    }
+    if (disabled !== record.disabled) {
+      ns.bumpStyleState();
+      record.disabled = disabled;
+      ce.callback(host, "formDisabledCallback", [disabled]);
+    }
+  };
   ce.updates((event) => {
     let count = 0;
     for (let i = 0; i < tracked.length; i++) {
@@ -224,48 +276,9 @@
       tracked[count++] = tracked[i];
       const record = read(records, host);
       if (!record?.associated || ce.record(host)?.status !== "custom") continue;
-      if (event?.type === "attributes") {
-        const name = event.attributeName;
-        if (name !== "disabled" && name !== "form" && name !== "id") continue;
-        if (name === "form" && event.target !== host) continue;
-        if (name === "disabled" && event.target !== host && !apply(contains, event.target, [host]))
-          continue;
-        if (name === "id" && forms.attribute(host, "form") === null) continue;
-      }
-      if (event?.type === "childList") {
-        let relevant = false;
-        for (const rows of [event.removedNodes, event.addedNodes])
-          for (let at = 0; at < rows.length; at++)
-            if (
-              apply(contains, rows[at], [host]) ||
-              (record.owner && apply(contains, rows[at], [record.owner]))
-            )
-              relevant = true;
-        if (!relevant) continue;
-      }
-      if (event?.type === "childList" && record.owner) {
-        for (let at = 0; at < event.removedNodes.length; at++) {
-          const removed = event.removedNodes[at];
-          if (apply(contains, removed, [host]) && !apply(contains, removed, [record.owner])) {
-            ns.bumpStyleState();
-            record.owner = null;
-            ce.callback(host, "formAssociatedCallback", [null]);
-            break;
-          }
-        }
-      }
-      const owner = forms.owner(host),
-        disabled = forms.disabled(host);
-      if (owner !== record.owner) {
-        ns.bumpStyleState();
-        record.owner = owner;
-        ce.callback(host, "formAssociatedCallback", [owner]);
-      }
-      if (disabled !== record.disabled) {
-        ns.bumpStyleState();
-        record.disabled = disabled;
-        ce.callback(host, "formDisabledCallback", [disabled]);
-      }
+      if (!mutationRelevant(event, host, record)) continue;
+      if (event?.type === "childList" && record.owner) ownerRemoved(event, host, record);
+      syncFormState(host, record);
     }
     tracked.length = count;
   });

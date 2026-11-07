@@ -39,26 +39,32 @@
   define(recordPrototype,Symbol.toStringTag,{__proto__:null,value:'MutationRecord',configurable:true});
   define(MutationRecord,'prototype',{__proto__:null,writable:false});
   define(g,'MutationRecord',{__proto__:null,value:MutationRecord,writable:true,configurable:true});
+  // attributeFilter as a sequence<DOMString> (undefined when absent).
+  function sequenceFilter(filter) {
+    if(filter===undefined)return undefined;
+    if(filter==null||typeof filter!=='object'&&typeof filter!=='function')throw new TypeErrorValue('attributeFilter must be a sequence');
+    const iterator=filter[iteratorSymbol];if(typeof iterator!=='function')throw new TypeErrorValue('attributeFilter must be iterable');
+    const cursor=apply(iterator,filter,[]),next=cursor.next,attributeFilter=[];
+    for(;;){const row=apply(next,cursor,[]);if(row==null||typeof row!=='object'&&typeof row!=='function')throw new TypeErrorValue('Iterator result is not an object');if(row.done)break;
+      append(attributeFilter,string(row.value));
+    }
+    return attributeFilter;
+  }
+  function invalidOptions(option) {
+    return !option.attributes&&!option.characterData&&!option.childList||!option.attributes&&(option.attributeOldValue||option.attributeFilter!==undefined)||!option.characterData&&option.characterDataOldValue;
+  }
   function options(value) {
     if(value==null)value={__proto__:null};
     if(typeof value!=='object'&&typeof value!=='function')throw new TypeErrorValue('Options must be a dictionary');
-    const filter=value.attributeFilter;
-    let attributeFilter;
-    if(filter!==undefined){
-      if(filter==null||typeof filter!=='object'&&typeof filter!=='function')throw new TypeErrorValue('attributeFilter must be a sequence');
-      const iterator=filter[iteratorSymbol];if(typeof iterator!=='function')throw new TypeErrorValue('attributeFilter must be iterable');
-      const cursor=apply(iterator,filter,[]),next=cursor.next;attributeFilter=[];
-      for(;;){const row=apply(next,cursor,[]);if(row==null||typeof row!=='object'&&typeof row!=='function')throw new TypeErrorValue('Iterator result is not an object');if(row.done)break;
-        append(attributeFilter,string(row.value));
-      }
-    }
+    const attributeFilter=sequenceFilter(value.attributeFilter);
     const attributeOldRaw=value.attributeOldValue,attributeOldValue=!!attributeOldRaw,attributeValue=value.attributes;
     const characterValue=value.characterData,characterOldRaw=value.characterDataOldValue,characterDataOldValue=!!characterOldRaw;
     const childList=!!value.childList,subtree=!!value.subtree;
     const attributes=attributeValue===undefined?(attributeOldRaw!==undefined||attributeFilter!==undefined):!!attributeValue;
     const characterData=characterValue===undefined?characterOldRaw!==undefined:!!characterValue;
-    if(!attributes&&!characterData&&!childList||!attributes&&(attributeOldValue||attributeFilter!==undefined)||!characterData&&characterDataOldValue)throw new TypeErrorValue('Invalid observer options');
-    return {__proto__:null,attributeFilter,attributeOldValue,attributes,characterData,characterDataOldValue,childList,subtree};
+    const result={__proto__:null,attributeFilter,attributeOldValue,attributes,characterData,characterDataOldValue,childList,subtree};
+    if(invalidOptions(result))throw new TypeErrorValue('Invalid observer options');
+    return result;
   }
   function release(observer,rows) {
     for(let index=0;index<rows.length;index++){const target=read(rows[index].target);if(target)native('anchor',observer,target,false);}
@@ -74,6 +80,19 @@
     if(event.type==='characterData')return option.characterData;
     return option.childList;
   }
+  // A removal under a subtree registration gives each removed node a transient registration.
+  function addTransients(observer,value,event,groups) {
+    const sources=[];
+    for(let group=0;group<groups.length;group++){const rows=groups[group];for(let index=0;index<rows.length;index++){
+      const registration=rows[index],target=read(registration.target);
+      if(target&&registration.options.subtree&&contains(event.ancestors,target))append(sources,registration);
+    }}
+    for(let index=0;index<sources.length;index++)for(let at=0;at<event.removed.length;at++){
+      const target=event.removed[at];append(value.transients,{__proto__:null,target:new WeakRefValue(target),options:sources[index].options,source:sources[index].source||sources[index]});
+      native('anchor',observer,target,true);
+    }
+    if(sources.length)native('schedule',observer);
+  }
   function queue(observer,value,event) {
     let interested=false,old=false;
     const groups=[value.registrations,value.transients];
@@ -81,18 +100,7 @@
       const registration=rows[index];
       if(matching(registration,event)){interested=true;old=old||(event.type==='attributes'?registration.options.attributeOldValue:registration.options.characterDataOldValue);}
     }}
-    if(event.type==='childList'&&event.removed.length){
-      const sources=[];
-      for(let group=0;group<groups.length;group++){const rows=groups[group];for(let index=0;index<rows.length;index++){
-        const registration=rows[index],target=read(registration.target);
-        if(target&&registration.options.subtree&&contains(event.ancestors,target))append(sources,registration);
-      }}
-      for(let index=0;index<sources.length;index++)for(let at=0;at<event.removed.length;at++){
-        const target=event.removed[at];append(value.transients,{__proto__:null,target:new WeakRefValue(target),options:sources[index].options,source:sources[index].source||sources[index]});
-        native('anchor',observer,target,true);
-      }
-      if(sources.length)native('schedule',observer);
-    }
+    if(event.type==='childList'&&event.removed.length)addTransients(observer,value,event,groups);
     if(!interested)return;
     const record=create(recordPrototype);
     put(records,record,{__proto__:null,type:event.type,target:event.target,addedNodes:list(event.added),removedNodes:list(event.removed),previousSibling:event.previousSibling,nextSibling:event.nextSibling,attributeName:event.attributeName,attributeNamespace:event.attributeNamespace,oldValue:old?event.oldValue:null});

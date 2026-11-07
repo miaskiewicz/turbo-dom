@@ -1,11 +1,13 @@
 {
-  "browser": "Chrome/156.0.8078.47",
+  "browser": "HeadlessChrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "casesSha256": "0c72a3018bf8a217453e9a9ba2b00e6f5b2b64709ec97deb6e00ce811583495c",
   "probeSha256": "fb4c68a5e71016e5d7710f42fc5f672ef38f134de1c580776a2e3a5998379b91",
-  "collectorSha256": "968cefb88486f3b7ed97951afc64d032014654012165feb27452e06b63e9c3ad",
+  "collectorSha256": "5d8c7e0c3a6f4cf612c01cf05f99bd46e708b4b538e6183ebca4d4c2bf9aac87",
   "flags": [
     "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
     "--remote-debugging-pipe",
     "--user-data-dir=<fresh-profile>",
     "--no-first-run",

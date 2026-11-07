@@ -38,9 +38,9 @@ so turbo-test and turbo-surf share one published crate. `scripts/verify-copied.s
 
 ```toml
 [dependencies]
-turbo-dom-browser-env = "0.7"                       # embedders: features = ["host-internals"]
+turbo-dom-browser-env = "0.8"                       # embedders: features = ["host-internals"]
 [dev-dependencies]
-turbo-dom-browser-env = { version = "0.7", features = ["test-support"] }
+turbo-dom-browser-env = { version = "0.8", features = ["test-support"] }
 ```
 
 MSRV 1.91. The crate links `turbo-dom-v8` `~150.4`, which downloads the prebuilt rusty_v8
@@ -73,8 +73,28 @@ return.
 | serializing | `document_html()` |
 | event loop | `flush_ownership(scope)` between tasks (wrapper ownership is reconciled in batches, so building n nodes is O(n)) |
 | realms and frames | `register_dom_exception`, `capture_window_event_interfaces`, `retire_custom_element_context`, `set_computed_font_defaults`, `set_canvas_fonts` (canvas `measureText` fonts: the page's loaded `@font-face` faces + system fonts as a turbo-dom-layout `FontRegistry`; bundled faces otherwise) |
-| engine namespace | `engine_namespace(scope)` (the realm's internal state object, held in a V8 private: page script cannot reach it), `run_engine_script(scope, source)` (runs `source` as a function body whose `__tsNs` parameter is that namespace; `ENGINE_NAMESPACE_PARAM`) |
-| embedding hooks (turbo-surf) | the other `pub fn`s: document response facts (`set_document_last_modified`, `set_document_domain_sandboxed`, `set_document_origin_keyed`; `share_document_domain(scope, document, origin)` joins a document to another's origin — initial `about:blank` / `about:srcdoc` children of one agent cluster — so `document.domain` reads and relaxes one effective domain across them like Chrome 156, turbo-dom#284; without it every document keeps its own), form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`), document parsing / import (`parse_xml_document_units` parses `DOMParser`'s XML types into an `XMLDocument`, `<parsererror>` documents included, and returns it as `ParsedXmlDocument { document, well_formed }` so an embedder can tell a malformed source without inspecting the tree), node nonces |
+| engine namespace | `engine_namespace(scope)` (the realm's internal state object, held in a V8 private: page script cannot reach it), `run_engine_script(scope, source)` (runs `source` as a function body whose `__tsNs` parameter is that namespace; `ENGINE_NAMESPACE_PARAM`). An embedder with a layout sets `layoutUsedSize` on it: `(element) => [borderBoxWidth, borderBoxHeight, contentBoxWidth, contentBoxHeight, fontSizePx?]` in unzoomed CSS px, or `null` for an element without a box; getComputedStyle's `width` / `height` then read the used value of a rendered box like Chrome 156 (turbo-dom#316), and `transform` percentage translates / `em` resolve against the border box and the (optional) fifth fontSize entry (turbo-dom#353). Without it a rendered box reports its declared size (or "") and a transform list with a percentage keeps its declared text. The binding installs no `CSS` namespace: an embedder's `CSS.supports()` calls the namespace's `cssSupports(text)` / `cssSupportsProperty(property, value)` (the grammar of the cascade, `@supports` and `el.style`; turbo-dom#322) and its `CSS.px()`-style factories come from `typedOmFactories()`. `mark_worker_context(scope, context) -> Result<(), WindowAlreadyInstalled>` tags a context as a worker so a later `install*` call skips the DOM template entirely — no `window` / `document` / `Element` on its `globalThis`. Mark it before anything installs into it: a context that already holds a window is refused (`Err(WindowAlreadyInstalled)`, left unmarked), and that includes every context `v8::Context::new` makes on a `snapshot_blob()` isolate (the blob's default context is the bootstrapped window), so worker contexts come from a non-snapshot isolate or the default context of a `snapshot_blob_with(prelude)` isolate (the prelude alone; the window is `SNAPSHOT_WINDOW_CONTEXT`) (minimum opt-out hook for a Worker-shaped global scope that owns its own globals, turbo-dom#385 for turbo-surf #203; the full `install_worker_global_scope` helper — `self`, `importScripts`, structured-clone — lands in 0.8.1). |
+| embedding hooks (turbo-surf) | the other `pub fn`s: document response facts (`set_document_last_modified`, `set_document_domain_sandboxed`, `set_document_origin_keyed`; `share_document_domain(scope, document, origin)` joins a document to another's origin — initial `about:blank` / `about:srcdoc` children of one agent cluster — so `document.domain` reads and relaxes one effective domain across them like Chrome 156, turbo-dom#284; without it every document keeps its own), form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`; `dispatch_host_event_did_listeners_throw(scope, event, target) -> bool` dispatches and also returns the DOM's legacy-output-did-listeners-throw flag — whether a listener of that dispatch threw (nested dispatches don't count) — which IndexedDB aborts a transaction on, turbo-surf#148; every listener exception is reported at the listener's window like Chrome 156, turbo-dom#301), user activation (`ActivationHost` answering `ActivationQuery`: new `ActivationQuery::Sticky` variant — the window has ever been activated — gates media `play()`'s autoplay policy, turbo-dom#323; without a host `Sticky` reports false), document parsing / import (`parse_xml_document_units` parses `DOMParser`'s XML types into an `XMLDocument`, `<parsererror>` documents included, and returns it as `ParsedXmlDocument { document, well_formed }` so an embedder can tell a malformed source without inspecting the tree), node nonces |
+
+**Runtime switches.** Set per window after install; an embedder that never calls them gets
+Chrome's behaviour. turbo-test turns all three to jsdom's for vitest parity.
+
+| switch | default | off / other value |
+|---|---|---|
+| `set_media_mode(scope, MediaMode)` | `MediaMode::Chrome`: live `matchMedia` / `MediaQueryList`, `@media` / `@import` media lists evaluated against the viewport | `MediaMode::Jsdom` (jsdom 27): no `matchMedia`, a media list applies only with an exact `screen` item |
+| `set_css_transitions(scope, enabled)` | `true`: a transitioned property's change creates a `CSSTransition` that animates it and fires `transitionrun` / `transitionstart` / `transitionend` / `transitioncancel` like Chrome 156 | `false` (jsdom 27): no transition runs, the end value applies at once, no transition event fires |
+| `set_css_animations(scope, enabled)` | `true`: an `animation-name` naming a `@keyframes` rule creates a `CSSAnimation` that animates the element and fires `animationstart` / `animationiteration` / `animationend` / `animationcancel` like Chrome 156 | `false` (jsdom 27): no `@keyframes` animation runs, no animation event fires; `Element.animate` is unaffected |
+
+The two CSS switches are independent of each other and of the media mode. With both off,
+the Web Animations surface jsdom lacks (`Element.prototype.animate` / `getAnimations`,
+`Document.prototype.getAnimations` / `timeline`, `ShadowRoot.prototype.getAnimations`,
+`Animation`, `AnimationEffect`, `AnimationTimeline`, `DocumentTimeline`, `KeyframeEffect`,
+`AnimationPlaybackEvent`, `CSSAnimation`, `CSSTransition`, `AnimationEvent`) is hidden too;
+turning either back on restores the same bindings (`TransitionEvent` always stays). CSS
+events dispatch to the owner element in the rendering frame after the change, before that
+frame's animation-frame callbacks (`css_animation_events_chrome156.json`). A running CSS
+animation keeps rendering frames requested while its switch is on (its next iteration is an
+event), as Chrome does; script animations without an end still request none.
 
 Also in the crate:
 - `css_snapshot::{SheetSnapshot, RuleSnapshot}` is the JSON contract of the private
@@ -154,8 +174,8 @@ every item that turbo-test and turbo-surf call, from outside the crate.
     archives.
   - The release run adds macOS arm64.
 - The crate is lint-exempt by design (`#![allow(unused, clippy::all)]` in `src/lib.rs`).
-- Cyclomatic complexity ≤ 15 is **report-only** until the post-release refactor, for
-  both the Rust code and the shipped JS (`npm run complexity:js` scans `src/`).
+- Cyclomatic complexity ≤ 15 is **blocking** since 0.8.0 (turbo-dom#297), for both the
+  Rust code and the shipped JS (`npm run complexity:js` scans `src/`).
 - Native guards reachable by page-controlled values must throw, never abort. Examples:
   oversized strings raise `RangeError` (turbo-dom#183), and a terminated setup returns
   `SetupTerminated` (#184).

@@ -105,14 +105,18 @@
     }
     const target = resolve(reference.read(node, 'commandfor')), command = commandState(node);
     if (target !== null && command !== '' && validCommand(target, command)) {
-      const event = new CommandEvent('command', { cancelable: true, composed: true, command, source: node });
-      if (!Native('dispatch', target, event) || !call(connected, target) || sliceText(command, 0, 2) === '--') return;
-      if (command === 'toggle-popover' || command === 'show-popover' || command === 'hide-popover') {
-        if (call(namespace, target) === HTML && call(popoverOf, target) !== null) Native('popover', target, sliceText(command, 0, -8), node);
-      } else if (html(target, 'dialog')) dialogSteps(target, command, node);
+      commandActivation(node, target, command);
       return;
     }
     popoverTargetActivation(node, eventTarget);
+  }
+  // A valid command: fire `command` at the target, then run the built-in command's steps.
+  function commandActivation(node, target, command) {
+    const event = new CommandEvent('command', { cancelable: true, composed: true, command, source: node });
+    if (!Native('dispatch', target, event) || !call(connected, target) || sliceText(command, 0, 2) === '--') return;
+    if (command === 'toggle-popover' || command === 'show-popover' || command === 'hide-popover') {
+      if (call(namespace, target) === HTML && call(popoverOf, target) !== null) Native('popover', target, sliceText(command, 0, -8), node);
+    } else if (html(target, 'dialog')) dialogSteps(target, command, node);
   }
   function inputActivation(node, eventTarget) {
     const type = lower(attr(node, 'type') || '');
@@ -143,10 +147,11 @@
   let labelControl = null;
   const firstChild = accessor(g.Node.prototype, 'firstChild'), nextSibling = accessor(g.Node.prototype, 'nextSibling');
   // https://html.spec.whatwg.org/#interactive-content between the event target and its label.
+  const alwaysInteractive = name => name === 'button' || name === 'details' || name === 'embed' || name === 'iframe' || name === 'label' || name === 'select' || name === 'textarea';
   const interactive = node => {
     if (!element(node) || call(namespace, node) !== HTML) return false;
     const name = call(localName, node);
-    if (name === 'button' || name === 'details' || name === 'embed' || name === 'iframe' || name === 'label' || name === 'select' || name === 'textarea') return true;
+    if (alwaysInteractive(name)) return true;
     if (name === 'a') return call(hasAttribute, node, 'href');
     if (name === 'input') return lower(attr(node, 'type') || '') !== 'hidden';
     if (name === 'audio' || name === 'video') return call(hasAttribute, node, 'controls');

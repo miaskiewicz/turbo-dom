@@ -45,24 +45,30 @@ const BORDER_STYLES = new Set(['none', 'hidden', 'dotted', 'dashed', 'solid', 'd
 // declarations of the same longhand override naturally (cascade order preserved).
 function setProp(map, name, val) {
   map.set(name, val);
-  if (name === 'margin' || name === 'padding') {
-    const t = val.trim().split(/\s+/);
-    const top = t[0], right = t[1] ?? top, bottom = t[2] ?? top, left = t[3] ?? right;
-    map.set(name + '-top', top); map.set(name + '-right', right);
-    map.set(name + '-bottom', bottom); map.set(name + '-left', left);
-  } else if (name === 'border') {
-    let width, style, color;
-    for (const p of val.trim().split(/\s+/)) {
-      if (BORDER_STYLES.has(p)) style = p;
-      else if (/^(thin|medium|thick)$/.test(p) || /^[\d.]+(px|em|rem|%|pt|vh|vw)?$/.test(p)) width = p;
-      else color = p;
-    }
-    if (width !== undefined) { map.set('border-width', width); for (const s of ['top', 'right', 'bottom', 'left']) map.set(`border-${s}-width`, width); }
-    if (style !== undefined) map.set('border-style', style);
-    if (color !== undefined) map.set('border-color', color);
-  } else if (name === 'background' && !/\s/.test(val.trim())) {
+  if (name === 'margin' || name === 'padding') setBoxSides(map, name, val);
+  else if (name === 'border') setBorder(map, val);
+  else if (name === 'background' && !/\s/.test(val.trim())) {
     map.set('background-color', val.trim());
   }
+}
+// `margin` / `padding`: the 1–4 value side expansion.
+function setBoxSides(map, name, val) {
+  const t = val.trim().split(/\s+/);
+  const top = t[0], right = t[1] ?? top, bottom = t[2] ?? top, left = t[3] ?? right;
+  map.set(name + '-top', top); map.set(name + '-right', right);
+  map.set(name + '-bottom', bottom); map.set(name + '-left', left);
+}
+// `border`: width / style / color by the shape of each value.
+function setBorder(map, val) {
+  let width, style, color;
+  for (const p of val.trim().split(/\s+/)) {
+    if (BORDER_STYLES.has(p)) style = p;
+    else if (/^(thin|medium|thick)$/.test(p) || /^[\d.]+(px|em|rem|%|pt|vh|vw)?$/.test(p)) width = p;
+    else color = p;
+  }
+  if (width !== undefined) { map.set('border-width', width); for (const s of ['top', 'right', 'bottom', 'left']) map.set(`border-${s}-width`, width); }
+  if (style !== undefined) map.set('border-style', style);
+  if (color !== undefined) map.set('border-color', color);
 }
 
 function parseDecls(text, into) {
@@ -95,18 +101,27 @@ function parseStylesheet(css, startOrder, rules) {
     if (css[j] === ';') { order++; i = j + 1; continue; }
     if (css[j] === '}') { i = j + 1; continue; }
     const sel = css.slice(i, j).trim();
-    let depth = 1, k = j + 1;
-    while (k < n && depth > 0) { const ch = css[k]; if (ch === '{') depth++; else if (ch === '}') depth--; k++; }
-    if (sel && sel[0] !== '@') {
-      const decls = parseDecls(css.slice(j + 1, k - 1));
-      // the prelude is a selector LIST split at top-level commas only (`:is(a, b)` stays
-      // whole); an invalid list drops the whole rule, as in a browser; each item carries its
-      // Selectors 4 specificity (mirrors rtdom::cascade::parse_stylesheet)
-      if (decls.size) for (const t of ruleSelectors(sel)) {
-        rules.push({ selector: t, decls, spec: specificity(t), order: order++ });
-      }
-    } else { order++; }
+    const k = blockEnd(css, j + 1);
+    if (sel && sel[0] !== '@') order = pushRules(sel, parseDecls(css.slice(j + 1, k - 1)), order, rules);
+    else order++;
     i = k;
+  }
+  return order;
+}
+// The index just past the `}` closing the block whose body starts at `k` (the input's
+// end when unclosed).
+function blockEnd(css, k) {
+  let depth = 1;
+  while (k < css.length && depth > 0) { const ch = css[k]; if (ch === '{') depth++; else if (ch === '}') depth--; k++; }
+  return k;
+}
+// The rules of a style rule with prelude `sel`; returns the next source order.
+function pushRules(sel, decls, order, rules) {
+  // the prelude is a selector LIST split at top-level commas only (`:is(a, b)` stays
+  // whole); an invalid list drops the whole rule, as in a browser; each item carries its
+  // Selectors 4 specificity (mirrors rtdom::cascade::parse_stylesheet)
+  if (decls.size) for (const t of ruleSelectors(sel)) {
+    rules.push({ selector: t, decls, spec: specificity(t), order: order++ });
   }
   return order;
 }
@@ -225,6 +240,29 @@ function makeProxy(map, v) {
   });
 }
 
+// Encapsulation: an element inside a shadow tree resolves against that shadow root's own
+// <style> rules, not the document's (and vice-versa). Gated on __hasShadow so the
+// no-shadow path keeps resolving against doc.
+function styleScope(doc, el) {
+  if (!doc.__hasShadow) return doc;
+  const root = el.getRootNode && el.getRootNode();
+  return root && root.__isShadowRoot ? root : doc;
+}
+// The shadow overlays (only once the document has a shadow root).
+function collectShadowMatched(el, v, matched) {
+  // shadow host: overlay :host rules from its OWN shadow root's stylesheet
+  if (el.__shadow) collectMatched(el, getIndex(el.__shadow, v), 'host', matched);
+  // slotted light node: overlay ::slotted rules from the slot's shadow root
+  const slot = el.assignedSlot;
+  if (slot) { const sr = slot.getRootNode(); if (sr.__isShadowRoot) collectMatched(el, getIndex(sr, v), 'slotted', matched, slot); }
+}
+// The unset INHERITED properties of `map` from the parent's computed style `ps`.
+function inheritFrom(map, ps) {
+  for (const prop of INHERITED) {
+    if (!map.has(prop)) { const pv = ps.getPropertyValue(prop); if (pv) map.set(prop, pv); }
+  }
+}
+
 // getComputedStyle(el): resolves cascade, memoized per element on the current
 // Document.__version (any style/DOM mutation bumps it → cache auto-invalidates).
 export function makeGetComputedStyle() {
@@ -238,24 +276,9 @@ export function makeGetComputedStyle() {
     const map = new Map();
     if (!doc) { const p = makeProxy(map, v); el.__computedStyle = p; return p; }
 
-    // Encapsulation: an element inside a shadow tree resolves against that
-    // shadow root's own <style> rules, not the document's (and vice-versa).
-    // Gated on __hasShadow so the no-shadow path keeps resolving against doc.
-    let scope = doc, inShadow = false;
-    if (doc.__hasShadow) {
-      const root = el.getRootNode && el.getRootNode();
-      if (root && root.__isShadowRoot) { scope = root; inShadow = true; }
-    }
-
     const matched = [];
-    collectMatched(el, getIndex(scope, v), 'normal', matched);
-    if (doc.__hasShadow) {
-      // shadow host: overlay :host rules from its OWN shadow root's stylesheet
-      if (el.__shadow) collectMatched(el, getIndex(el.__shadow, v), 'host', matched);
-      // slotted light node: overlay ::slotted rules from the slot's shadow root
-      const slot = el.assignedSlot;
-      if (slot) { const sr = slot.getRootNode(); if (sr.__isShadowRoot) collectMatched(el, getIndex(sr, v), 'slotted', matched, slot); }
-    }
+    collectMatched(el, getIndex(styleScope(doc, el), v), 'normal', matched);
+    if (doc.__hasShadow) collectShadowMatched(el, v, matched);
     applyMatched(matched, map);
 
     // inline style wins over stylesheet rules
@@ -268,17 +291,10 @@ export function makeGetComputedStyle() {
     // shadow content. Honest partial: only the curated INHERITED set inherits, only
     // from values a REAL rule/inline actually set (pv truthy) — never an initial
     // value. Recursion is memoized per element/version and terminates at the root
-    // (flattenedParent → null). Test-time only; hot paths never call gcs.
-    // `inShadow` is unused now that light-DOM inherits too, but the flattened-parent
-    // hop still crosses the host boundary correctly for shadow content.
-    void inShadow;
+    // (flattenedParent → null). Test-time only; hot paths never call gcs. The
+    // flattened-parent hop crosses the host boundary for shadow content.
     const parent = flattenedParent(el);
-    if (parent) {
-      const ps = gcs(parent);
-      for (const prop of INHERITED) {
-        if (!map.has(prop)) { const pv = ps.getPropertyValue(prop); if (pv) map.set(prop, pv); }
-      }
-    }
+    if (parent) inheritFrom(map, gcs(parent));
 
     const proxy = makeProxy(map, v);
     el.__computedStyle = proxy;

@@ -396,13 +396,11 @@ pub(super) fn mutation(scope: &mut v8::PinScope, event: &MutationEvent) {
         }
     }
 }
-fn assign(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>, arguments: v8::Local<v8::Object>) {
-    let length = v8::String::new(scope, "length").unwrap();
-    // A function's `arguments` object: an own data property `length` holding a uint32.
-    let length = arguments
-        .get(scope, length.into())
-        .and_then(|value| value.uint32_value(scope))
-        .expect("arguments.length");
+fn collect_assign_nodes<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    arguments: v8::Local<'s, v8::Object>,
+    length: u32,
+) -> Option<Vec<v8::Local<'s, v8::Object>>> {
     let mut nodes = Vec::new();
     for index in 0..length {
         let Some(node) = arguments
@@ -410,16 +408,16 @@ fn assign(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>, arguments: v8::
             .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
         else {
             illegal(scope);
-            return;
+            return None;
         };
         let _owner = DomScope::for_object(scope, node);
         let Some(handle) = handle_of(scope, node) else {
             illegal(scope);
-            return;
+            return None;
         };
         if !with_tree(|tree| slottable(tree, handle)).unwrap_or(false) {
             illegal(scope);
-            return;
+            return None;
         }
         if !nodes
             .iter()
@@ -428,6 +426,23 @@ fn assign(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>, arguments: v8::
             nodes.push(node);
         }
     }
+    Some(nodes)
+}
+
+fn assign<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    slot: v8::Local<'s, v8::Object>,
+    arguments: v8::Local<'s, v8::Object>,
+) {
+    let length = v8::String::new(scope, "length").unwrap();
+    // A function's `arguments` object: an own data property `length` holding a uint32.
+    let length = arguments
+        .get(scope, length.into())
+        .and_then(|value| value.uint32_value(scope))
+        .expect("arguments.length");
+    let Some(nodes) = collect_assign_nodes(scope, arguments, length) else {
+        return;
+    };
     let reverse = key(scope, "manual-slot");
     let private = key(scope, "assigned");
     let previous = slot
@@ -502,7 +517,11 @@ fn illegal(scope: &mut v8::PinScope) {
     let error = v8::Exception::type_error(scope, text);
     scope.throw_exception(error);
 }
-fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+fn native<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: v8::FunctionCallbackArguments<'s>,
+    mut rv: v8::ReturnValue,
+) {
     // Only shadow_slots.js calls this native, and script cannot run while terminating.
     let operation = args.get(0).to_rust_string_lossy(scope);
     // shadow_slots.js deletes this native from the global and calls it only with a receiver

@@ -40,7 +40,7 @@ fn activation_host(
         ActivationQuery::HistoryAction => flag(scope, "__history", None),
         ActivationQuery::ConsumeTransient => flag(scope, "__transient", Some(false)),
         ActivationQuery::ConsumeHistoryAction => flag(scope, "__history", Some(false)),
-        ActivationQuery::CrossOriginFrame => false,
+        ActivationQuery::CrossOriginFrame | ActivationQuery::Sticky => false,
         ActivationQuery::FullscreenAllowed => true,
     }
 }
