@@ -265,7 +265,11 @@ fn trusted_input_matches_chrome_156() {
     let steps = include_str!("editing_input_steps.json");
     let control: serde_json::Value =
         serde_json::from_str(include_str!("editing_input_chrome156.json")).unwrap();
-    assert_eq!(control["browser"], "Chrome/156.0.8078.47");
+    // The frozen headless shell (the same 156.0.8078.47 build) reports itself as HeadlessChrome.
+    assert!(
+        ["Chrome/156.0.8078.47", "HeadlessChrome/156.0.8078.47"]
+            .contains(&control["browser"].as_str().unwrap())
+    );
     assert_eq!(
         control["stepsSha256"],
         format!("{:x}", Sha256::digest(steps.as_bytes()))
