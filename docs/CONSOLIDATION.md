@@ -197,7 +197,9 @@ Chrome 156 differentials; the shorthand table vs the Chrome control), and its ga
 ### Complexity
 
 One limit for the whole repo: every function's cyclomatic complexity is <= 15, with no
-allow-list and no baseline (CLAUDE.md "Complexity gates" has the tools and commands;
+baseline and no per-function allow-list; the JS gate excludes 17 named files that cannot be
+refactored (the vendored `xpath.js` and 16 hash-pinned Chrome-control `*_probe.js` fixtures,
+`.oxlintrc.complexity.json`) (CLAUDE.md "Complexity gates" has the tools and commands;
 turbo-html2pdf's own crates stay at cc < 6). The limit was chosen from the distribution
 measured when the gate landed (functions above each threshold):
 

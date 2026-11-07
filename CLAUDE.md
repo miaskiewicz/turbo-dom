@@ -107,7 +107,14 @@ global allocator that a parallel test would pollute. Don't loosen either thresho
 
 **Complexity gates (CI jobs `complexity / rust (cc <= 15)` and `complexity / js (cc <= 15)`).**
 Every function's cyclomatic complexity must be <= 15 — one limit for the whole repo, no
-allow-list, no baseline (turbo-html2pdf's own crates stay at its stricter cc < 6). Rust is
+baseline, no per-function allow-list (turbo-html2pdf's own crates stay at its stricter cc < 6).
+The JS gate excludes 17 named files (`.oxlintrc.complexity.json` `ignorePatterns`) that cannot
+be refactored: the vendored `xpath_provider/xpath.js` (byte-identical to upstream, SHA-256
+pinned in its README) and 16 browser-env `*_probe.js` Chrome-control fixtures whose control
+JSON pins the probe's SHA-256 (editing one invalidates its recorded Chrome output; several were
+captured on Chromes not cached here). `computed_defaults_probe.js` was edited in 0.8.0 (#316,
+#317, #353) and recaptured, so its pin matches the current file; it stays excluded because the
+control pins the hash. New probes are gated like any other file. Rust is
 measured by turbo-html2pdf's `cc-check` (a `match` counts once; `if`/loops/`?`/`&&`/`||` add 1;
 closures are scored on their own), installed from its home rather than copied here:
 `cargo install --locked --git https://github.com/miaskiewicz/turbo-html2pdf --rev
