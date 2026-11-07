@@ -19,8 +19,8 @@ It depends on turbo-dom-layout with explicit features: `bundled-fonts` and
 ## Install
 
 ```toml
-turbo-dom-raster = "0.7"                                        # MSRV 1.89
-turbo-dom-raster = { version = "0.7", features = ["avif", "jxl"] }
+turbo-dom-raster = "0.8"                                        # MSRV 1.89
+turbo-dom-raster = { version = "0.8", features = ["avif", "jxl"] }
 ```
 
 ## Features

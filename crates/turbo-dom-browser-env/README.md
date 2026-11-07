@@ -38,9 +38,9 @@ so turbo-test and turbo-surf share one published crate. `scripts/verify-copied.s
 
 ```toml
 [dependencies]
-turbo-dom-browser-env = "0.7"                       # embedders: features = ["host-internals"]
+turbo-dom-browser-env = "0.8"                       # embedders: features = ["host-internals"]
 [dev-dependencies]
-turbo-dom-browser-env = { version = "0.7", features = ["test-support"] }
+turbo-dom-browser-env = { version = "0.8", features = ["test-support"] }
 ```
 
 MSRV 1.91. The crate links `turbo-dom-v8` `~150.4`, which downloads the prebuilt rusty_v8
