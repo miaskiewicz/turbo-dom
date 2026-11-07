@@ -20,7 +20,7 @@ fn eval(scope: &mut v8::PinScope, source: &str) -> String {
 fn mark_worker_context_skips_dom_install() {
     crate::browser_env::tests::init_v8();
     // A plain isolate on every path: a snapshot_blob() isolate's contexts already hold the
-    // window (see `a_snapshot_blob_context_is_not_a_worker_context`).
+    // window (see tests/worker_context_snapshot.rs).
     let isolate = &mut crate::browser_env::tests::plain_isolate();
     v8::scope!(let scope, isolate);
 
@@ -78,31 +78,15 @@ fn mark_worker_context_skips_dom_install() {
     reset();
 }
 
-/// A context made from a `snapshot_blob()` isolate already holds the bootstrapped window, so
-/// `mark_worker_context` refuses it and leaves it an ordinary window; a context that an install
-/// already ran in is refused the same way (turbo-dom#389 review).
-#[test]
-fn a_snapshot_blob_context_is_not_a_worker_context() {
-    crate::browser_env::tests::init_v8();
-    let blob = snapshot_blob().expect("the process blob builds");
-    let isolate = &mut v8::Isolate::new(blob.create_params());
-    v8::scope!(let scope, isolate);
-    let context = v8::Context::new(scope, Default::default());
-    assert_eq!(
-        mark_worker_context(scope, context),
-        Err(WindowAlreadyInstalled)
-    );
-    assert!(!is_worker_context(context));
-    assert!(WindowAlreadyInstalled
-        .to_string()
-        .contains("snapshot_blob_with"));
-    let scope = &mut v8::ContextScope::new(scope, context);
-    install_with_html(scope, "<!doctype html><p></p>");
-    assert_eq!(eval(scope, "typeof window"), "object");
-    assert_eq!(eval(scope, "document.querySelector('p') !== null"), "true");
-    reset();
-}
+// The `snapshot_blob()` case (refused, left an ordinary window) runs in its own process:
+// tests/worker_context_snapshot.rs. In this binary a failed snapshot build
+// (startup_snapshot_tests) leaks its snapshot creator, which keeps V8's process-shared
+// read-only heap from the default snapshot alive; an isolate later deserialized from a
+// process blob built before that leak resolves its read-only references against the wrong
+// heap (turbo-dom#392).
 
+/// A context an install already ran in holds a window, so `mark_worker_context` refuses it
+/// and leaves it unmarked (turbo-dom#389 review).
 #[test]
 fn an_installed_context_is_not_a_worker_context() {
     crate::browser_env::tests::init_v8();
