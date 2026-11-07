@@ -56,5 +56,12 @@
   {"eval": "e.textContent = 'x1\ufe0f\u20e3'; e.focus(); getSelection().collapse(e.firstChild, e.firstChild.length); take()"},
   {"key": "Backspace"},
   {"eval": "take()"},
-  {"eval": "e.textContent = 'x1\ufe0f\u20e3'; getSelection().collapse(e.firstChild, e.firstChild.length); take([document.execCommand('delete')])"}
+  {"eval": "e.textContent = 'x1\ufe0f\u20e3'; getSelection().collapse(e.firstChild, e.firstChild.length); take([document.execCommand('delete')])"},
+  {"eval": "e.textContent = 'x\ud83d\udc68\ud83c\udffd\u200d\ud83d\udcbb'; e.focus(); getSelection().collapse(e.firstChild, e.firstChild.length); take()"},
+  {"key": "Backspace"},
+  {"eval": "take()"},
+  {"eval": "e.textContent = 'x\ud83d\udc68\ud83c\udffd\u200d\ud83d\udcbb'; getSelection().collapse(e.firstChild, e.firstChild.length); take([document.execCommand('delete')])"},
+  {"eval": "e.textContent = 'x\u2764\ufe0f\u200d\ud83d\udd25'; e.focus(); getSelection().collapse(e.firstChild, e.firstChild.length); take()"},
+  {"key": "Backspace"},
+  {"eval": "take()"}
 ]
