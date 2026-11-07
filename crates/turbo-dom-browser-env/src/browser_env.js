@@ -3846,6 +3846,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       selectionApply(valDesc.set,this,[value.slice(0,start)+replacement+value.slice(end)]);
       setControlRangeTextApplyMode(this,mode,state,start,end,replacement,next);
     }
+    // selection.js replaces these members on every text control prototype; the private namespace
+    // keeps the binding's own selection model reachable for its unit test (never page-visible).
+    __ns.fallbackControlSelection={setRangeText:setControlRangeText,setSelectionRange:setControlSelectionRange,read:function(element){var state=selectionState(element);return [state.start,state.end];}};
     var baseProto = compatibilityElementPrototype = Object.getPrototypeOf(orig.call(d,'span'));
     // Reflected IDL attributes on every element: setting el.src / el.href (script/img/link/a — a DOM
     // property) must show as the content attribute so attribute selectors like script[src*="maps"]
