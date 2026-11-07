@@ -82,8 +82,13 @@ replacing the 0.6.0 / 0.7.0 report-only phase.
   HTML's incumbent-realm concept (populates `MessageEvent.source` on cross-realm
   `postMessage`). Upstream rusty_v8 150.4 has no `v8__Isolate__GetIncumbentContext`
   wrapper in `binding.cc`, so the extern links directly to V8's exported member
-  symbol — `Local<Context>` is a trivially-copyable one-pointer wrapper,
-  ABI-compatible with the `*const Context` the sibling context accessors use.
+  symbol. That member function returns the class `Local<Context>` by value, which
+  the two C++ ABIs return differently: Itanium (Linux, macOS) returns the
+  trivially-copyable one-pointer wrapper in a register like the `*const Context`
+  the sibling accessors return, while MSVC (Windows) returns it through a hidden
+  result buffer passed after `this` (x64: RCX = `this`, RDX = buffer), so the
+  Windows declaration passes that buffer and reads it (the first cut declared a
+  plain pointer return and crashed with 0xc0000005 on Windows).
   Added via `patches/incumbent-context.patch` with a regression test
   (`tests/incumbent_context.rs`); pins regenerated.
 - **turbo-dom-browser-env: media element follow-ups (turbo-dom#339).**

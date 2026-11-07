@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Package the generated turbo-dom-v8 crate; publish only from turbo-dom's version tag.
 
-Idempotent by crate name and version: when turbo-dom-v8 150.4.0 already exists on
+Idempotent by crate name and version: when turbo-dom-v8 <pins.json version> already exists on
 crates.io, the published archive must equal the freshly packaged one (only Cargo's
 generated Cargo.lock / .cargo_vcs_info.json may differ) and nothing is uploaded.
 
