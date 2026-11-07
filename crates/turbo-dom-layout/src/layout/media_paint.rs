@@ -12,6 +12,7 @@
 //! the registry's `system-ui` / `sans-serif` face (Chrome's is the host's system font).
 //! A vertical audio box paints no panel. Measured against the form-native Chrome 156
 //! control's `audio-*` cases (`scripts/form-native-chrome-control.mjs`).
+use super::form_paint::rgb;
 use super::fragment::{
     BorderRadii, ClipRect, Fragment, FragmentContent, NodeId, PositionedGlyph, Transform2D,
 };
@@ -42,10 +43,6 @@ const HEIGHT: f32 = 54.0;
 /// element's, so its subtree is not read by the live-layout snapshot's bounds
 /// (miaskiewicz/turbo-dom#364). `u32::MAX` never collides with a real box id.
 const DECORATION_ID: NodeId = NodeId(u32::MAX);
-
-const fn rgb(r: u8, g: u8, b: u8) -> Rgba {
-    Rgba { r, g, b, a: 255 }
-}
 
 /// Chrome 156's panel-width thresholds (miaskiewicz/turbo-dom#346): the play button,
 /// current-time, time-remaining, volume and menu are each dropped below the width
@@ -461,6 +458,49 @@ mod tests {
         // physical bottom.
         let (v, _) = audio("writing-mode:vertical-rl;width:54px;height:300px");
         assert!(v.iter().any(|p| p.4 == Some(PANEL)), "{v:?}");
+    }
+
+    /// The text lines the audio box's panel paints.
+    fn panel_texts(style: &str) -> Vec<String> {
+        fn walk(f: &Fragment, out: &mut Vec<String>) {
+            if let FragmentContent::TextLine { text, .. } = &f.content {
+                out.push(text.clone());
+            }
+            f.children.iter().for_each(|c| walk(c, out));
+        }
+        let html = format!(
+            "<!DOCTYPE html><style>body{{margin:0}}</style><audio controls style='position:absolute;left:0;top:0;{style}'></audio>"
+        );
+        let fonts = crate::test_support::fixture_fonts();
+        let mut diags = crate::Diagnostics::default();
+        let galley = crate::layout_html(&html, "", 800.0, &fonts, &mut diags).unwrap();
+        let mut out = Vec::new();
+        walk(&galley, &mut out);
+        out
+    }
+
+    #[test]
+    fn the_timeline_starts_after_what_the_panel_width_keeps() {
+        // From `SHOW_CURRENT_TIME` (175px) to under `SHOW_TIME_REMAINING` (211px): the
+        // current time alone (`0:00`, Chrome's `audio-panel-210` control) and the
+        // timeline from 89.25, at its 32px minimum (the volume starts at `pw - 90.4`).
+        let (mid, _) = audio("width:210px");
+        assert_eq!(panel_texts("width:210px"), ["0:00"]);
+        assert!(
+            mid.iter()
+                .any(|p| close(p, (89.25, 25.0, 32.0, 4.0)) && p.4 == Some(TIMELINE)),
+            "{mid:?}"
+        );
+        // Under `SHOW_PLAY` (100px, `audio-panel-99`): no play button, so the timeline
+        // starts 10px from the inline start and ends at the menu (`pw - 32`).
+        let (narrow, _) = audio("width:99px");
+        assert!(panel_texts("width:99px").is_empty());
+        assert!(
+            narrow
+                .iter()
+                .any(|p| close(p, (10.0, 25.0, 57.0, 4.0)) && p.4 == Some(TIMELINE)),
+            "{narrow:?}"
+        );
     }
 
     #[test]

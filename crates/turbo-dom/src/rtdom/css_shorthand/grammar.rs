@@ -2898,10 +2898,11 @@ fn offset_anchor(anchor: Option<&[Comp]>) -> Option<String> {
 
 /// The leading `offset-position` of `main` and the index after it (`None` = invalid).
 fn offset_leading_position(main: &[Comp]) -> Option<(String, usize)> {
-    let Some(first) = main.first() else {
-        return Some(("normal".to_string(), 0));
-    };
-    if first.is_ident(&["auto", "normal"]) {
+    // An empty `main` (`offset: / <anchor>`) finds no position below: `normal`, at 0.
+    if let Some(first) = main
+        .first()
+        .filter(|first| first.is_ident(&["auto", "normal"]))
+    {
         return Some((first.ident()?, 1));
     }
     let part = |c: &Comp| {

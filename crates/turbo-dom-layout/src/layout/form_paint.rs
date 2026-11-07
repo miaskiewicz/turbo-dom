@@ -60,7 +60,8 @@ const SHADOW_VALUE: Rgba = rgb(0x00, 0x80, 0x00);
 /// A `<meter>`'s shadow value bar's dark-green gradient midpoint (above).
 const METER_SHADOW_VALUE: Rgba = rgb(0x78, 0xab, 0x34);
 
-const fn rgb(r: u8, g: u8, b: u8) -> Rgba {
+/// An opaque colour (also the audio panel's, `media_paint`).
+pub(super) const fn rgb(r: u8, g: u8, b: u8) -> Rgba {
     Rgba { r, g, b, a: 255 }
 }
 
@@ -680,7 +681,8 @@ mod tests {
     use super::super::value::Rgba;
     use super::{
         meter_value, progress_position, step_align, step_of, ACCENT, EVEN_LESS_GOOD, FACE, FRAME,
-        INDETERMINATE_ATTR, METER_TRACK, OPTIMUM, SUBOPTIMAL, SWATCH, TRACK, WHITE,
+        INDETERMINATE_ATTR, METER_SHADOW_VALUE, METER_TRACK, OPTIMUM, SUBOPTIMAL, SWATCH, TRACK,
+        WHITE,
     };
 
     /// Every box fragment of `body` laid out at 400px: `(x, y, w, h, background,
@@ -1184,6 +1186,37 @@ mod tests {
         let round = (4.0, 4.0);
         assert_eq!(radii("1"), [round; 4]);
         assert_eq!(radii("0.5"), [round, (0.0, 0.0), (0.0, 0.0), round]);
+    }
+
+    #[test]
+    fn a_meter_without_its_native_look_paints_the_shadow_value_bar() {
+        // Chrome 156's `meter-appearance-none` / `meter-author-background` controls
+        // (miaskiewicz/turbo-dom#365): the frameless face track across the middle half of
+        // the 80 x 16 box, then the value bar in the optimum gradient's midpoint colour up
+        // to the value, whatever the value's region.
+        for (style, value, width) in [
+            ("appearance:none", "0.6", 48.0),
+            ("background:#ff0000", "0.3", 24.0),
+        ] {
+            let meter = parts(&format!(
+                "<meter value={value} style='{ABS};{style}'></meter>"
+            ));
+            let track = (0.0, 4.0, 80.0, 8.0, Some(FACE), None, 0, 0.0, false);
+            let bar = (
+                0.0,
+                4.0,
+                width,
+                8.0,
+                Some(METER_SHADOW_VALUE),
+                None,
+                0,
+                0.0,
+                false,
+            );
+            assert!(has(&meter, track), "{style}: {meter:?}");
+            assert!(has(&meter, bar), "{style}: {meter:?}");
+            assert!(meter.iter().all(|p| p.4 != Some(OPTIMUM)), "{style}");
+        }
     }
 
     #[test]
